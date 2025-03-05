@@ -43,15 +43,15 @@ RUN \
     export SCCACHE_DIR=/sccache; \
     export RUSTC_WRAPPER=/usr/bin/sccache; \
     export CC="/usr/bin/clang"; \
-    cargo build -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
+    cargo build --locked -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release && \
-    cargo build -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
+    cargo build --locked -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release && \
-    cargo build -p kanidm-ldap-sync ${KANIDM_BUILD_OPTIONS} \
+    cargo build --locked -p kanidm-ldap-sync ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release && \

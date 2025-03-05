@@ -18,7 +18,7 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::internal::{Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
-use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1};
+use kanidmd_lib::prelude::{Attribute, NAME_SYSTEM_ADMINS};
 use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";
@@ -92,6 +92,7 @@ pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreH
     #[allow(clippy::panic)]
     let rsclient = match KanidmClientBuilder::new()
         .address(addr.clone())
+        .enable_native_ca_roots(false)
         .no_proxy()
         .build()
     {
@@ -385,7 +386,7 @@ pub async fn login_put_admin_idm_admins(rsclient: &KanidmClient) {
 
     #[allow(clippy::expect_used)]
     rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
+        .idm_group_add_members(NAME_SYSTEM_ADMINS, &[ADMIN_TEST_USER])
         .await
         .expect("Failed to add admin user to idm_admins")
 }
@@ -396,7 +397,7 @@ macro_rules! assert_no_cache {
         // Check we have correct nocache headers.
         let cache_header: &str = $response
             .headers()
-            .get(http::header::CACHE_CONTROL)
+            .get(kanidm_client::http::header::CACHE_CONTROL)
             .expect("missing cache-control header")
             .to_str()
             .expect("invalid cache-control header");

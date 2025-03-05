@@ -1,0 +1,11 @@
+
+DO NOT ADD MORE TESTS TO THIS DIRECTORY
+
+Add them to the `testkit` directory.
+
+Each new test in this folder is a separate binary, that must be complied linked and executed. This
+takes HUGES AMOUNTS OF TIME. It makes tests unbelievably slow.
+
+If you want to add an integration test, put it into the testkit dir so it becomes part of the
+single larger integration test runner.
+

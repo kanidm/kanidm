@@ -11,6 +11,11 @@ license = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
 
+[[bin]]
+name = "kanidm-ipa-sync"
+test = false
+doctest = false
+
 [dependencies]
 clap = { workspace = true, features = ["derive", "env"] }
 chrono = { workspace = true }

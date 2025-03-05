@@ -27,6 +27,7 @@ use std::time::Duration;
 
 use compact_jwt::Jwk;
 
+pub use http;
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
     ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID, ATTR_ENTRY_MANAGED_BY,
@@ -137,6 +138,7 @@ pub struct KanidmClientBuilder {
     use_system_proxies: bool,
     /// Where to store auth tokens, only use in testing!
     token_cache_path: Option<String>,
+    disable_system_ca_store: bool,
 }
 
 impl Display for KanidmClientBuilder {
@@ -168,33 +170,6 @@ impl Display for KanidmClientBuilder {
                 .unwrap_or(CLIENT_TOKEN_CACHE.to_string())
         )
     }
-}
-
-#[test]
-fn test_kanidmclientbuilder_display() {
-    let defaultclient = KanidmClientBuilder::default();
-    println!("{}", defaultclient);
-    assert!(defaultclient.to_string().contains("verify_ca"));
-
-    let testclient = KanidmClientBuilder {
-        address: Some("https://example.com".to_string()),
-        verify_ca: true,
-        verify_hostnames: true,
-        ca: None,
-        connect_timeout: Some(420),
-        request_timeout: Some(69),
-        use_system_proxies: true,
-        token_cache_path: Some(CLIENT_TOKEN_CACHE.to_string()),
-    };
-    println!("testclient {}", testclient);
-    assert!(testclient.to_string().contains("verify_ca: true"));
-    assert!(testclient.to_string().contains("verify_hostnames: true"));
-
-    let badness = testclient.danger_accept_invalid_hostnames(true);
-    let badness = badness.danger_accept_invalid_certs(true);
-    println!("badness: {}", badness);
-    assert!(badness.to_string().contains("verify_ca: false"));
-    assert!(badness.to_string().contains("verify_hostnames: false"));
 }
 
 #[derive(Debug)]
@@ -233,6 +208,7 @@ impl KanidmClientBuilder {
             request_timeout: None,
             use_system_proxies: true,
             token_cache_path: None,
+            disable_system_ca_store: false,
         }
     }
 
@@ -290,6 +266,7 @@ impl KanidmClientBuilder {
             request_timeout,
             use_system_proxies,
             token_cache_path,
+            disable_system_ca_store,
         } = self;
         // Process and apply all our options if they exist.
         let address = match kcc.uri {
@@ -316,6 +293,7 @@ impl KanidmClientBuilder {
             request_timeout,
             use_system_proxies,
             token_cache_path,
+            disable_system_ca_store,
         })
     }
 
@@ -412,6 +390,16 @@ impl KanidmClientBuilder {
     pub fn address(self, address: String) -> Self {
         KanidmClientBuilder {
             address: Some(address),
+            ..self
+        }
+    }
+
+    /// Enable or disable the native ca roots. By default these roots are enabled.
+    pub fn enable_native_ca_roots(self, enable: bool) -> Self {
+        KanidmClientBuilder {
+            // We have to flip the bool state here due to Default on bool being false
+            // and we want our options to be positive to a native speaker.
+            disable_system_ca_store: !enable,
             ..self
         }
     }
@@ -527,6 +515,7 @@ impl KanidmClientBuilder {
             // implement sticky sessions with cookies.
             .cookie_store(true)
             .cookie_provider(client_cookies.clone())
+            .tls_built_in_native_certs(!self.disable_system_ca_store)
             .danger_accept_invalid_hostnames(!self.verify_hostnames)
             .danger_accept_invalid_certs(!self.verify_ca);
 
@@ -579,32 +568,6 @@ impl KanidmClientBuilder {
     }
 }
 
-#[test]
-fn test_make_url() {
-    use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
-    let client: KanidmClient = KanidmClientBuilder::new()
-        .address(format!("https://{}", DEFAULT_SERVER_ADDRESS))
-        .build()
-        .unwrap();
-    assert_eq!(
-        client.get_url(),
-        Url::parse(&format!("https://{}", DEFAULT_SERVER_ADDRESS)).unwrap()
-    );
-    assert_eq!(
-        client.make_url("/hello"),
-        Url::parse(&format!("https://{}/hello", DEFAULT_SERVER_ADDRESS)).unwrap()
-    );
-
-    let client: KanidmClient = KanidmClientBuilder::new()
-        .address(format!("https://{}/cheese/", DEFAULT_SERVER_ADDRESS))
-        .build()
-        .unwrap();
-    assert_eq!(
-        client.make_url("hello"),
-        Url::parse(&format!("https://{}/cheese/hello", DEFAULT_SERVER_ADDRESS)).unwrap()
-    );
-}
-
 /// This is probably pretty jank but it works and was pulled from here:
 /// <https://github.com/seanmonstar/reqwest/issues/1602#issuecomment-1220996681>
 fn find_reqwest_error_source<E: std::error::Error + 'static>(
@@ -623,6 +586,11 @@ fn find_reqwest_error_source<E: std::error::Error + 'static>(
 }
 
 impl KanidmClient {
+    /// Access the underlying reqwest client that has been configured for this Kanidm server
+    pub fn client(&self) -> &reqwest::Client {
+        &self.client
+    }
+
     pub fn get_origin(&self) -> &Url {
         &self.origin
     }
@@ -2174,31 +2142,97 @@ impl KanidmClient {
     }
 }
 
-#[tokio::test]
-async fn test_no_client_version_check_on_502() {
-    let res = reqwest::Response::from(
-        http::Response::builder()
-            .status(StatusCode::GATEWAY_TIMEOUT)
-            .body("")
-            .unwrap(),
-    );
-    let client = KanidmClientBuilder::new()
-        .address("http://localhost:8080".to_string())
-        .build()
-        .expect("Failed to build client");
-    eprintln!("This should pass because we are returning 504 and shouldn't check version...");
-    client.expect_version(&res).await;
+#[cfg(test)]
+mod tests {
+    use super::{KanidmClient, KanidmClientBuilder};
+    use kanidm_proto::constants::CLIENT_TOKEN_CACHE;
+    use reqwest::StatusCode;
+    use url::Url;
 
-    let res = reqwest::Response::from(
-        http::Response::builder()
-            .status(StatusCode::BAD_GATEWAY)
-            .body("")
-            .unwrap(),
-    );
-    let client = KanidmClientBuilder::new()
-        .address("http://localhost:8080".to_string())
-        .build()
-        .expect("Failed to build client");
-    eprintln!("This should pass because we are returning 502 and shouldn't check version...");
-    client.expect_version(&res).await;
+    #[tokio::test]
+    async fn test_no_client_version_check_on_502() {
+        let res = reqwest::Response::from(
+            http::Response::builder()
+                .status(StatusCode::GATEWAY_TIMEOUT)
+                .body("")
+                .unwrap(),
+        );
+        let client = KanidmClientBuilder::new()
+            .address("http://localhost:8080".to_string())
+            .enable_native_ca_roots(false)
+            .build()
+            .expect("Failed to build client");
+        eprintln!("This should pass because we are returning 504 and shouldn't check version...");
+        client.expect_version(&res).await;
+
+        let res = reqwest::Response::from(
+            http::Response::builder()
+                .status(StatusCode::BAD_GATEWAY)
+                .body("")
+                .unwrap(),
+        );
+        let client = KanidmClientBuilder::new()
+            .address("http://localhost:8080".to_string())
+            .enable_native_ca_roots(false)
+            .build()
+            .expect("Failed to build client");
+        eprintln!("This should pass because we are returning 502 and shouldn't check version...");
+        client.expect_version(&res).await;
+    }
+
+    #[test]
+    fn test_make_url() {
+        use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
+        let client: KanidmClient = KanidmClientBuilder::new()
+            .address(format!("https://{}", DEFAULT_SERVER_ADDRESS))
+            .enable_native_ca_roots(false)
+            .build()
+            .unwrap();
+        assert_eq!(
+            client.get_url(),
+            Url::parse(&format!("https://{}", DEFAULT_SERVER_ADDRESS)).unwrap()
+        );
+        assert_eq!(
+            client.make_url("/hello"),
+            Url::parse(&format!("https://{}/hello", DEFAULT_SERVER_ADDRESS)).unwrap()
+        );
+
+        let client: KanidmClient = KanidmClientBuilder::new()
+            .address(format!("https://{}/cheese/", DEFAULT_SERVER_ADDRESS))
+            .enable_native_ca_roots(false)
+            .build()
+            .unwrap();
+        assert_eq!(
+            client.make_url("hello"),
+            Url::parse(&format!("https://{}/cheese/hello", DEFAULT_SERVER_ADDRESS)).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_kanidmclientbuilder_display() {
+        let defaultclient = KanidmClientBuilder::default();
+        println!("{}", defaultclient);
+        assert!(defaultclient.to_string().contains("verify_ca"));
+
+        let testclient = KanidmClientBuilder {
+            address: Some("https://example.com".to_string()),
+            verify_ca: true,
+            verify_hostnames: true,
+            ca: None,
+            connect_timeout: Some(420),
+            request_timeout: Some(69),
+            use_system_proxies: true,
+            token_cache_path: Some(CLIENT_TOKEN_CACHE.to_string()),
+            disable_system_ca_store: false,
+        };
+        println!("testclient {}", testclient);
+        assert!(testclient.to_string().contains("verify_ca: true"));
+        assert!(testclient.to_string().contains("verify_hostnames: true"));
+
+        let badness = testclient.danger_accept_invalid_hostnames(true);
+        let badness = badness.danger_accept_invalid_certs(true);
+        println!("badness: {}", badness);
+        assert!(badness.to_string().contains("verify_ca: false"));
+        assert!(badness.to_string().contains("verify_hostnames: false"));
+    }
 }

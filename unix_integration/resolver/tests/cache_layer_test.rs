@@ -88,6 +88,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
     // Run fixtures
     let adminclient = KanidmClientBuilder::new()
         .address(addr.clone())
+        .enable_native_ca_roots(false)
         .no_proxy()
         .build()
         .expect("Failed to build sync client");
@@ -96,12 +97,14 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
 
     let client = KanidmClientBuilder::new()
         .address(addr.clone())
+        .enable_native_ca_roots(false)
         .no_proxy()
         .build()
         .expect("Failed to build async admin client");
 
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
+        .enable_native_ca_roots(false)
         .no_proxy()
         .build()
         .expect("Failed to build client");

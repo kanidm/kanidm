@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+use crate::migration_data;
 use kanidm_proto::internal::{
     DomainUpgradeCheckItem as ProtoDomainUpgradeCheckItem,
     DomainUpgradeCheckReport as ProtoDomainUpgradeCheckReport,
@@ -48,17 +49,24 @@ impl QueryServer {
         debug!(?db_domain_version, "Before setting internal domain info");
 
         if db_domain_version == 0 {
-            // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
-            // the base-schema here.
-            write_txn.initialise_schema_idm()?;
+            // This is here to catch when we increase domain levels but didn't create the migration
+            // hooks. If this fails it probably means you need to add another migration hook
+            // in the above.
+            debug_assert!(domain_target_level <= DOMAIN_MAX_LEVEL);
 
-            write_txn.reload()?;
-
-            // Since we just loaded in a ton of schema, lets reindex it to make
-            // sure that some base IDM operations are fast. Since this is still
-            // very early in the bootstrap process, and very few entries exist,
-            // reindexing is very fast here.
-            write_txn.reindex(false)?;
+            // No domain info was present, so neither was the rest of the IDM. Bring up the
+            // full IDM here.
+            match domain_target_level {
+                DOMAIN_LEVEL_8 => write_txn.migrate_domain_7_to_8()?,
+                DOMAIN_LEVEL_9 => write_txn.migrate_domain_8_to_9()?,
+                DOMAIN_LEVEL_10 => write_txn.migrate_domain_9_to_10()?,
+                DOMAIN_LEVEL_11 => write_txn.migrate_domain_10_to_11()?,
+                _ => {
+                    error!("Invalid requested domain target level for server bootstrap");
+                    debug_assert!(false);
+                    return Err(OperationError::MG0009InvalidTargetLevelForBootstrap);
+                }
+            }
         } else {
             // Domain info was present, so we need to reflect that in our server
             // domain structures. If we don't do this, the in memory domain level
@@ -71,23 +79,11 @@ impl QueryServer {
             write_txn.force_domain_reload();
 
             write_txn.reload()?;
-        }
 
-        // Indicate the schema is now ready, which allows dyngroups to work when they
-        // are created in the next phase of migrations.
-        write_txn.set_phase(ServerPhase::SchemaReady);
+            // Indicate the schema is now ready, which allows dyngroups to work when they
+            // are created in the next phase of migrations.
+            write_txn.set_phase(ServerPhase::SchemaReady);
 
-        // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
-        // the base entries here.
-        if db_domain_version == 0 {
-            // Init idm will now set the system config version and minimum domain
-            // level if none was present
-            write_txn.initialise_domain_info()?;
-
-            // In this path because we create the dyn groups they are immediately added to the
-            // dyngroup cache and begin to operate.
-            write_txn.initialise_idm()?;
-        } else {
             // #2756 - if we *aren't* creating the base IDM entries, then we
             // need to force dyn groups to reload since we're now at schema
             // ready. This is done indirectly by ... reloading the schema again.
@@ -97,13 +93,13 @@ impl QueryServer {
             // itself or a change to schema reloading. Since we aren't changing the
             // dyngroup here, we have to go via the schema reload path.
             write_txn.force_schema_reload();
-        };
 
-        // Reload as init idm affects access controls.
-        write_txn.reload()?;
+            // Reload as init idm affects access controls.
+            write_txn.reload()?;
 
-        // Domain info is now ready and reloaded, we can proceed.
-        write_txn.set_phase(ServerPhase::DomainInfoReady);
+            // Domain info is now ready and reloaded, we can proceed.
+            write_txn.set_phase(ServerPhase::DomainInfoReady);
+        }
 
         // This is the start of domain info related migrations which we will need in future
         // to handle replication. Due to the access control rework, and the addition of "managed by"
@@ -126,20 +122,18 @@ impl QueryServer {
         // If the database domain info is a lower version than our target level, we reload.
         if domain_info_version < domain_target_level {
             write_txn
-                .internal_modify_uuid(
-                    UUID_DOMAIN_INFO,
-                    &ModifyList::new_purge_and_set(
-                        Attribute::Version,
-                        Value::new_uint32(domain_target_level),
-                    ),
-                )
+                .internal_apply_domain_migration(domain_target_level)
                 .map(|()| {
                     warn!("Domain level has been raised to {}", domain_target_level);
                 })?;
-
             // Reload if anything in migrations requires it - this triggers the domain migrations
-            // which in turn can trigger schema reloads etc.
-            reload_required = true;
+            // which in turn can trigger schema reloads etc. If the server was just brought up
+            // then we don't need the extra reload since we are already at the correct
+            // version of the server, and this call to set the target level is just for persistance
+            // of the value.
+            if domain_info_version != 0 {
+                reload_required = true;
+            }
         } else if domain_development_taint {
             // This forces pre-release versions to re-migrate each start up. This solves
             // the domain-version-sprawl issue so that during a development cycle we can
@@ -182,9 +176,6 @@ impl QueryServer {
         // we would have skipped the patch level fix which needs to have occurred *first*.
         if reload_required {
             write_txn.reload()?;
-            // We are not yet at the schema phase where reindexes will auto-trigger
-            // so if one was required, do it now.
-            write_txn.reindex(false)?;
         }
 
         // Now set the db/domain devel taint flag to match our current release status
@@ -206,7 +197,8 @@ impl QueryServer {
         // We are ready to run
         write_txn.set_phase(ServerPhase::Running);
 
-        // Commit all changes, this also triggers the reload.
+        // Commit all changes, this also triggers the final reload, this should be a no-op
+        // since we already did all the needed loads above.
         write_txn.commit()?;
 
         debug!("Database version check and migrations success! ☀️  ");
@@ -217,7 +209,6 @@ impl QueryServer {
 impl QueryServerWriteTransaction<'_> {
     /// Apply a domain migration `to_level`. Panics if `to_level` is not greater than the active
     /// level.
-    #[cfg(test)]
     pub(crate) fn internal_apply_domain_migration(
         &mut self,
         to_level: u32,
@@ -230,6 +221,23 @@ impl QueryServerWriteTransaction<'_> {
         .and_then(|()| self.reload())
     }
 
+    fn internal_migrate_or_create_batch(
+        &mut self,
+        msg: &str,
+        entries: Vec<EntryInitNew>,
+    ) -> Result<(), OperationError> {
+        let r: Result<(), _> = entries
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+
+        if let Err(err) = r {
+            error!(?err, msg);
+            debug_assert!(false);
+        }
+
+        Ok(())
+    }
+
     #[instrument(level = "debug", skip_all)]
     /// - If the thing exists:
     ///   - Ensure the set of attributes match and are present
@@ -240,7 +248,7 @@ impl QueryServerWriteTransaction<'_> {
     /// This will extra classes an attributes alone!
     ///
     /// NOTE: `gen_modlist*` IS schema aware and will handle multivalue correctly!
-    pub fn internal_migrate_or_create(
+    fn internal_migrate_or_create(
         &mut self,
         e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
@@ -251,7 +259,7 @@ impl QueryServerWriteTransaction<'_> {
     /// list of attributes, so that if an admin has modified those values then we don't
     /// stomp them.
     #[instrument(level = "trace", skip_all)]
-    pub fn internal_migrate_or_create_ignore_attrs(
+    fn internal_migrate_or_create_ignore_attrs(
         &mut self,
         mut e: Entry<EntryInit, EntryNew>,
         attrs: &[Attribute],
@@ -294,6 +302,75 @@ impl QueryServerWriteTransaction<'_> {
         }
     }
 
+    /// Migration domain level 7 to 8 (1.4.0)
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_7_to_8(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_9 {
+            error!("Unable to raise domain level from 8 to 9.");
+            return Err(OperationError::MG0004DomainLevelInDevelopment);
+        }
+
+        // =========== Apply changes ==============
+        self.internal_migrate_or_create_batch(
+            "phase 1 - schema attrs",
+            migration_data::dl8::phase_1_schema_attrs(),
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 2 - schema classes",
+            migration_data::dl8::phase_2_schema_classes(),
+        )?;
+
+        // Reload for the new schema.
+        self.reload()?;
+
+        // Reindex?
+        self.reindex(false)?;
+
+        // Set Phase
+        self.set_phase(ServerPhase::SchemaReady);
+
+        self.internal_migrate_or_create_batch(
+            "phase 3 - key provider",
+            migration_data::dl8::phase_3_key_provider(),
+        )?;
+
+        // Reload for the new key providers
+        self.reload()?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 4 - system entries",
+            migration_data::dl8::phase_4_system_entries(),
+        )?;
+
+        // Reload for the new system entries
+        self.reload()?;
+
+        // Domain info is now ready and reloaded, we can proceed.
+        self.set_phase(ServerPhase::DomainInfoReady);
+
+        // Bring up the IDM entries.
+        self.internal_migrate_or_create_batch(
+            "phase 5 - builtin admin entries",
+            migration_data::dl8::phase_5_builtin_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 6 - builtin not admin entries",
+            migration_data::dl8::phase_6_builtin_non_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 7 - builtin access control profiles",
+            migration_data::dl8::phase_7_builtin_access_control_profiles(),
+        )?;
+
+        // Reload for all new access controls.
+        self.reload()?;
+
+        Ok(())
+    }
+
     /// Migration domain level 8 to 9 (1.5.0)
     #[instrument(level = "info", skip_all)]
     pub(crate) fn migrate_domain_8_to_9(&mut self) -> Result<(), OperationError> {
@@ -303,39 +380,61 @@ impl QueryServerWriteTransaction<'_> {
         }
 
         // =========== Apply changes ==============
+        self.internal_migrate_or_create_batch(
+            "phase 1 - schema attrs",
+            migration_data::dl9::phase_1_schema_attrs(),
+        )?;
 
-        // Now update schema
-        let idm_schema_changes = [
-            SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9.clone().into(),
-            SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS_DL9.clone().into(),
-            SCHEMA_CLASS_DOMAIN_INFO_DL9.clone().into(),
-        ];
+        self.internal_migrate_or_create_batch(
+            "phase 2 - schema classes",
+            migration_data::dl9::phase_2_schema_classes(),
+        )?;
 
-        idm_schema_changes
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_8_to_9 -> Error");
-                err
-            })?;
-
+        // Reload for the new schema.
         self.reload()?;
 
-        let idm_data = [
-            IDM_ACP_OAUTH2_MANAGE_DL9.clone().into(),
-            IDM_ACP_GROUP_MANAGE_DL9.clone().into(),
-            IDM_ACP_DOMAIN_ADMIN_DL9.clone().into(),
-        ];
+        // Reindex?
+        self.reindex(false)?;
 
-        idm_data
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_8_to_9 -> Error");
-                err
-            })?;
+        // Set Phase
+        self.set_phase(ServerPhase::SchemaReady);
 
+        self.internal_migrate_or_create_batch(
+            "phase 3 - key provider",
+            migration_data::dl9::phase_3_key_provider(),
+        )?;
+
+        // Reload for the new key providers
+        self.reload()?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 4 - system entries",
+            migration_data::dl9::phase_4_system_entries(),
+        )?;
+
+        // Reload for the new system entries
+        self.reload()?;
+
+        // Domain info is now ready and reloaded, we can proceed.
+        self.set_phase(ServerPhase::DomainInfoReady);
+
+        // Bring up the IDM entries.
+        self.internal_migrate_or_create_batch(
+            "phase 5 - builtin admin entries",
+            migration_data::dl9::phase_5_builtin_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 6 - builtin not admin entries",
+            migration_data::dl9::phase_6_builtin_non_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 7 - builtin access control profiles",
+            migration_data::dl9::phase_7_builtin_access_control_profiles(),
+        )?;
+
+        // Reload for all new access controls.
         self.reload()?;
 
         Ok(())
@@ -350,58 +449,7 @@ impl QueryServerWriteTransaction<'_> {
 
         debug_assert!(*self.phase >= ServerPhase::SchemaReady);
 
-        let idm_data = [
-            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone().into(),
-            IDM_ACP_ACCOUNT_SELF_WRITE_V1.clone().into(),
-            IDM_ACP_ACCOUNT_UNIX_EXTEND_V1.clone().into(),
-            IDM_ACP_ACP_MANAGE_V1.clone().into(),
-            IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1.clone().into(),
-            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8.clone().into(),
-            IDM_ACP_APPLICATION_MANAGE_DL8.clone().into(),
-            IDM_ACP_DOMAIN_ADMIN_DL8.clone().into(),
-            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8.clone().into(),
-            IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY_V1.clone().into(),
-            IDM_ACP_GROUP_ENTRY_MANAGER_V1.clone().into(),
-            IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
-            IDM_ACP_GROUP_READ_V1.clone().into(),
-            IDM_ACP_GROUP_UNIX_MANAGE_V1.clone().into(),
-            IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7.clone().into(),
-            IDM_ACP_HP_GROUP_UNIX_MANAGE_V1.clone().into(),
-            IDM_ACP_HP_PEOPLE_CREDENTIAL_RESET_V1.clone().into(),
-            IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1
-                .clone()
-                .into(),
-            IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
-            IDM_ACP_OAUTH2_MANAGE_DL7.clone().into(),
-            IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
-            IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1.clone().into(),
-            IDM_ACP_PEOPLE_DELETE_V1.clone().into(),
-            IDM_ACP_PEOPLE_MANAGE_V1.clone().into(),
-            IDM_ACP_PEOPLE_PII_MANAGE_V1.clone().into(),
-            IDM_ACP_PEOPLE_PII_READ_V1.clone().into(),
-            IDM_ACP_PEOPLE_READ_V1.clone().into(),
-            IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1.clone().into(),
-            IDM_ACP_RADIUS_SECRET_MANAGE_V1.clone().into(),
-            IDM_ACP_RADIUS_SERVERS_V1.clone().into(),
-            IDM_ACP_RECYCLE_BIN_REVIVE_V1.clone().into(),
-            IDM_ACP_RECYCLE_BIN_SEARCH_V1.clone().into(),
-            IDM_ACP_SCHEMA_WRITE_ATTRS_V1.clone().into(),
-            IDM_ACP_SCHEMA_WRITE_CLASSES_V1.clone().into(),
-            IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
-            IDM_ACP_SELF_READ_DL8.clone().into(),
-            IDM_ACP_SELF_WRITE_DL8.clone().into(),
-            IDM_ACP_SERVICE_ACCOUNT_CREATE_V1.clone().into(),
-            IDM_ACP_SERVICE_ACCOUNT_DELETE_V1.clone().into(),
-            IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1
-                .clone()
-                .into(),
-            IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1.clone().into(),
-            IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone().into(),
-            IDM_ACP_SYNC_ACCOUNT_MANAGE_V1.clone().into(),
-            IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1
-                .clone()
-                .into(),
-        ];
+        let idm_data = migration_data::dl9::phase_7_builtin_access_control_profiles();
 
         idm_data
             .into_iter()
@@ -425,21 +473,62 @@ impl QueryServerWriteTransaction<'_> {
         }
 
         // =========== Apply changes ==============
+        self.internal_migrate_or_create_batch(
+            "phase 1 - schema attrs",
+            migration_data::dl10::phase_1_schema_attrs(),
+        )?;
 
-        // Now update schema
-        let idm_schema_changes = [
-            SCHEMA_ATTR_DENIED_NAME_DL10.clone().into(),
-            SCHEMA_CLASS_DOMAIN_INFO_DL10.clone().into(),
-            SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES.clone().into(),
-        ];
+        self.internal_migrate_or_create_batch(
+            "phase 2 - schema classes",
+            migration_data::dl10::phase_2_schema_classes(),
+        )?;
 
-        idm_schema_changes
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_9_to_10 -> Error");
-                err
-            })?;
+        // Reload for the new schema.
+        self.reload()?;
+
+        // Since we just loaded in a ton of schema, lets reindex it incase we added
+        // new indexes, or this is a bootstrap and we have no indexes yet.
+        self.reindex(false)?;
+
+        // Set Phase
+        // Indicate the schema is now ready, which allows dyngroups to work when they
+        // are created in the next phase of migrations.
+        self.set_phase(ServerPhase::SchemaReady);
+
+        self.internal_migrate_or_create_batch(
+            "phase 3 - key provider",
+            migration_data::dl10::phase_3_key_provider(),
+        )?;
+
+        // Reload for the new key providers
+        self.reload()?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 4 - system entries",
+            migration_data::dl10::phase_4_system_entries(),
+        )?;
+
+        // Reload for the new system entries
+        self.reload()?;
+
+        // Domain info is now ready and reloaded, we can proceed.
+        self.set_phase(ServerPhase::DomainInfoReady);
+
+        // Bring up the IDM entries.
+        self.internal_migrate_or_create_batch(
+            "phase 5 - builtin admin entries",
+            migration_data::dl10::phase_5_builtin_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 6 - builtin not admin entries",
+            migration_data::dl10::phase_6_builtin_non_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 7 - builtin access control profiles",
+            migration_data::dl10::phase_7_builtin_access_control_profiles(),
+        )?;
 
         self.reload()?;
 
@@ -458,7 +547,7 @@ impl QueryServerWriteTransaction<'_> {
     }
 
     #[instrument(level = "info", skip_all)]
-    pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
+    pub(crate) fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
         let entries = self.schema.to_entries();
@@ -478,320 +567,6 @@ impl QueryServerWriteTransaction<'_> {
         // why do we have error handling if it's always supposed to be `Ok`?
         debug_assert!(r.is_ok());
         r
-    }
-
-    #[instrument(level = "info", skip_all)]
-    pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
-        admin_debug!("initialise_schema_idm -> start ...");
-
-        // ⚠️  DOMAIN LEVEL 1 SCHEMA ATTRIBUTES ⚠️
-        // Future schema attributes need to be added via migrations.
-        //
-        // DO NOT MODIFY THIS DEFINITION
-        let idm_schema_attrs = [
-            SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone().into(),
-            SCHEMA_ATTR_SYNC_YIELD_AUTHORITY.clone().into(),
-        ];
-
-        let r: Result<(), _> = idm_schema_attrs
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry));
-
-        if r.is_err() {
-            error!(res = ?r, "initialise_schema_idm -> Error");
-        }
-        debug_assert!(r.is_ok());
-
-        // ⚠️  DOMAIN LEVEL 1 SCHEMA ATTRIBUTES ⚠️
-        // Future schema classes need to be added via migrations.
-        //
-        // DO NOT MODIFY THIS DEFINITION
-        let idm_schema: Vec<EntryInitNew> = vec![
-            // SCHEMA_ATTR_MAIL.clone().into(),
-            SCHEMA_ATTR_ACCOUNT_EXPIRE.clone().into(),
-            SCHEMA_ATTR_ACCOUNT_VALID_FROM.clone().into(),
-            SCHEMA_ATTR_API_TOKEN_SESSION.clone().into(),
-            SCHEMA_ATTR_AUTH_SESSION_EXPIRY.clone().into(),
-            SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY.clone().into(),
-            SCHEMA_ATTR_AUTH_PASSWORD_MINIMUM_LENGTH.clone().into(),
-            SCHEMA_ATTR_BADLIST_PASSWORD.clone().into(),
-            SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN.clone().into(),
-            SCHEMA_ATTR_ATTESTED_PASSKEYS.clone().into(),
-            // SCHEMA_ATTR_DISPLAYNAME.clone().into(),
-            SCHEMA_ATTR_DOMAIN_DISPLAY_NAME.clone().into(),
-            SCHEMA_ATTR_DOMAIN_LDAP_BASEDN.clone().into(),
-            SCHEMA_ATTR_DOMAIN_NAME.clone().into(),
-            SCHEMA_ATTR_LDAP_ALLOW_UNIX_PW_BIND.clone().into(),
-            SCHEMA_ATTR_DOMAIN_SSID.clone().into(),
-            SCHEMA_ATTR_DOMAIN_TOKEN_KEY.clone().into(),
-            SCHEMA_ATTR_DOMAIN_UUID.clone().into(),
-            SCHEMA_ATTR_DYNGROUP_FILTER.clone().into(),
-            SCHEMA_ATTR_EC_KEY_PRIVATE.clone().into(),
-            SCHEMA_ATTR_ES256_PRIVATE_KEY_DER.clone().into(),
-            SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR.clone().into(),
-            SCHEMA_ATTR_GIDNUMBER.clone().into(),
-            SCHEMA_ATTR_GRANT_UI_HINT.clone().into(),
-            SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY.clone().into(),
-            // SCHEMA_ATTR_LEGALNAME.clone().into(),
-            SCHEMA_ATTR_LOGINSHELL.clone().into(),
-            SCHEMA_ATTR_NAME_HISTORY.clone().into(),
-            SCHEMA_ATTR_NSUNIQUEID.clone().into(),
-            SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE
-                .clone()
-                .into(),
-            SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP.clone().into(),
-            SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE.clone().into(),
-            SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_NAME.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING.clone().into(),
-            // SCHEMA_ATTR_OAUTH2_RS_ORIGIN.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY.clone().into(),
-            SCHEMA_ATTR_OAUTH2_SESSION.clone().into(),
-            SCHEMA_ATTR_PASSKEYS.clone().into(),
-            SCHEMA_ATTR_PRIMARY_CREDENTIAL.clone().into(),
-            SCHEMA_ATTR_PRIVATE_COOKIE_KEY.clone().into(),
-            SCHEMA_ATTR_RADIUS_SECRET.clone().into(),
-            SCHEMA_ATTR_RS256_PRIVATE_KEY_DER.clone().into(),
-            SCHEMA_ATTR_SSH_PUBLICKEY.clone().into(),
-            SCHEMA_ATTR_SYNC_COOKIE.clone().into(),
-            SCHEMA_ATTR_SYNC_TOKEN_SESSION.clone().into(),
-            SCHEMA_ATTR_UNIX_PASSWORD.clone().into(),
-            SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION.clone().into(),
-            SCHEMA_ATTR_DENIED_NAME.clone().into(),
-            SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM.clone().into(),
-            SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST.clone().into(),
-            // DL4
-            SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4.clone().into(),
-            SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT_DL4
-                .clone()
-                .into(),
-            // DL5
-            // DL6
-            SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
-            SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_PROVIDER_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6.clone().into(),
-            // DL7
-            SCHEMA_ATTR_PATCH_LEVEL_DL7.clone().into(),
-            SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7.clone().into(),
-            SCHEMA_ATTR_REFERS_DL7.clone().into(),
-            SCHEMA_ATTR_CERTIFICATE_DL7.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_ORIGIN_DL7.clone().into(),
-            SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI_DL7.clone().into(),
-            SCHEMA_ATTR_MAIL_DL7.clone().into(),
-            SCHEMA_ATTR_LEGALNAME_DL7.clone().into(),
-            SCHEMA_ATTR_DISPLAYNAME_DL7.clone().into(),
-            // DL8
-            SCHEMA_ATTR_LINKED_GROUP_DL8.clone().into(),
-            SCHEMA_ATTR_APPLICATION_PASSWORD_DL8.clone().into(),
-            SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8.clone().into(),
-        ];
-
-        let r = idm_schema
-            .into_iter()
-            // Each item individually logs it's result
-            .try_for_each(|entry| self.internal_migrate_or_create(entry));
-
-        if r.is_err() {
-            error!(res = ?r, "initialise_schema_idm -> Error");
-        }
-
-        debug_assert!(r.is_ok());
-
-        // ⚠️  DOMAIN LEVEL 1 SCHEMA CLASSES ⚠️
-        // Future schema classes need to be added via migrations.
-        //
-        // DO NOT MODIFY THIS DEFINITION
-        let idm_schema_classes_dl1: Vec<EntryInitNew> = vec![
-            SCHEMA_CLASS_DYNGROUP.clone().into(),
-            SCHEMA_CLASS_ORGPERSON.clone().into(),
-            SCHEMA_CLASS_POSIXACCOUNT.clone().into(),
-            SCHEMA_CLASS_POSIXGROUP.clone().into(),
-            SCHEMA_CLASS_SYSTEM_CONFIG.clone().into(),
-            // DL4
-            SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4.clone().into(),
-            // DL5
-            // SCHEMA_CLASS_PERSON_DL5.clone().into(),
-            SCHEMA_CLASS_ACCOUNT_DL5.clone().into(),
-            // SCHEMA_CLASS_OAUTH2_RS_DL5.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5.clone().into(),
-            // DL6
-            // SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
-            // SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
-            // SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
-            SCHEMA_CLASS_GROUP_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_OBJECT_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6.clone().into(),
-            // SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
-            // DL7
-            // SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
-            SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
-            SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
-            SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS_DL7.clone().into(),
-            // DL8
-            SCHEMA_CLASS_ACCOUNT_POLICY_DL8.clone().into(),
-            SCHEMA_CLASS_APPLICATION_DL8.clone().into(),
-            SCHEMA_CLASS_PERSON_DL8.clone().into(),
-            SCHEMA_CLASS_DOMAIN_INFO_DL8.clone().into(),
-        ];
-
-        let r: Result<(), _> = idm_schema_classes_dl1
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry));
-
-        if r.is_err() {
-            error!(res = ?r, "initialise_schema_idm -> Error");
-        }
-        debug_assert!(r.is_ok());
-
-        debug!("initialise_schema_idm -> Ok!");
-
-        r
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// This function is idempotent, runs all the startup functionality and checks
-    pub fn initialise_domain_info(&mut self) -> Result<(), OperationError> {
-        // Configure the default key provider. This needs to exist *before* the
-        // domain info!
-        self.internal_migrate_or_create(E_KEY_PROVIDER_INTERNAL_DL6.clone())
-            .and_then(|_| self.reload())
-            .map_err(|err| {
-                error!(?err, "initialise_domain_info::E_KEY_PROVIDER_INTERNAL_DL6");
-                debug_assert!(false);
-                err
-            })?;
-
-        self.internal_migrate_or_create(E_SYSTEM_INFO_V1.clone())
-            .and_then(|_| self.internal_migrate_or_create(E_DOMAIN_INFO_DL6.clone()))
-            .and_then(|_| self.internal_migrate_or_create(E_SYSTEM_CONFIG_V1.clone()))
-            .map_err(|err| {
-                error!(?err, "initialise_domain_info");
-                debug_assert!(false);
-                err
-            })
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// This function is idempotent, runs all the startup functionality and checks
-    pub fn initialise_idm(&mut self) -> Result<(), OperationError> {
-        // The domain info now exists, we should be able to do these migrations as they will
-        // cause SPN regenerations to occur
-
-        // Delete entries that no longer need to exist.
-        // TODO: Shouldn't this be a migration?
-        // Check the admin object exists (migrations).
-        // Create the default idm_admin group.
-        let admin_entries: Vec<EntryInitNew> = idm_builtin_admin_entries()?;
-        let res: Result<(), _> = admin_entries
-            .into_iter()
-            // Each item individually logs it's result
-            .try_for_each(|ent| self.internal_migrate_or_create(ent));
-        if res.is_ok() {
-            debug!("initialise_idm p1 -> result Ok!");
-        } else {
-            error!(?res, "initialise_idm p1 -> result");
-        }
-        debug_assert!(res.is_ok());
-        res?;
-
-        let res: Result<(), _> = idm_builtin_non_admin_groups()
-            .into_iter()
-            .try_for_each(|e| self.internal_migrate_or_create(e.clone().try_into()?));
-        if res.is_ok() {
-            debug!("initialise_idm p2 -> result Ok!");
-        } else {
-            error!(?res, "initialise_idm p2 -> result");
-        }
-        debug_assert!(res.is_ok());
-        res?;
-
-        // ⚠️  DOMAIN LEVEL 1 ENTRIES ⚠️
-        // Future entries need to be added via migrations.
-        //
-        // DO NOT MODIFY THIS DEFINITION
-        let idm_entries: Vec<BuiltinAcp> = vec![
-            // Built in access controls.
-            IDM_ACP_RECYCLE_BIN_SEARCH_V1.clone(),
-            IDM_ACP_RECYCLE_BIN_REVIVE_V1.clone(),
-            IDM_ACP_SCHEMA_WRITE_ATTRS_V1.clone(),
-            IDM_ACP_SCHEMA_WRITE_CLASSES_V1.clone(),
-            IDM_ACP_ACP_MANAGE_V1.clone(),
-            IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
-            IDM_ACP_GROUP_ENTRY_MANAGER_V1.clone(),
-            IDM_ACP_SYNC_ACCOUNT_MANAGE_V1.clone(),
-            IDM_ACP_RADIUS_SERVERS_V1.clone(),
-            IDM_ACP_RADIUS_SECRET_MANAGE_V1.clone(),
-            IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1.clone(),
-            // IDM_ACP_SELF_READ_V1.clone(),
-            // IDM_ACP_SELF_WRITE_V1.clone(),
-            IDM_ACP_ACCOUNT_SELF_WRITE_V1.clone(),
-            // IDM_ACP_SELF_NAME_WRITE_V1.clone(),
-            IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1.clone(),
-            IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1.clone(),
-            IDM_ACP_GROUP_UNIX_MANAGE_V1.clone(),
-            IDM_ACP_HP_GROUP_UNIX_MANAGE_V1.clone(),
-            IDM_ACP_GROUP_READ_V1.clone(),
-            IDM_ACP_ACCOUNT_UNIX_EXTEND_V1.clone(),
-            IDM_ACP_PEOPLE_PII_READ_V1.clone(),
-            IDM_ACP_PEOPLE_PII_MANAGE_V1.clone(),
-            IDM_ACP_PEOPLE_READ_V1.clone(),
-            IDM_ACP_PEOPLE_MANAGE_V1.clone(),
-            IDM_ACP_PEOPLE_DELETE_V1.clone(),
-            IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1.clone(),
-            IDM_ACP_HP_PEOPLE_CREDENTIAL_RESET_V1.clone(),
-            IDM_ACP_SERVICE_ACCOUNT_CREATE_V1.clone(),
-            IDM_ACP_SERVICE_ACCOUNT_DELETE_V1.clone(),
-            IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1.clone(),
-            IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
-            IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
-            IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone(),
-            // DL4
-            // DL5
-            // IDM_ACP_OAUTH2_MANAGE_DL5.clone(),
-            // DL6
-            // IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone(),
-            IDM_ACP_PEOPLE_CREATE_DL6.clone(),
-            IDM_ACP_GROUP_MANAGE_DL6.clone(),
-            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone(),
-            // IDM_ACP_DOMAIN_ADMIN_DL6.clone(),
-            // DL7
-            // IDM_ACP_SELF_WRITE_DL7.clone(),
-            IDM_ACP_SELF_NAME_WRITE_DL7.clone(),
-            IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7.clone(),
-            IDM_ACP_OAUTH2_MANAGE_DL7.clone(),
-            // DL8
-            IDM_ACP_SELF_READ_DL8.clone(),
-            IDM_ACP_SELF_WRITE_DL8.clone(),
-            IDM_ACP_APPLICATION_MANAGE_DL8.clone(),
-            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8.clone(),
-            IDM_ACP_MAIL_SERVERS_DL8.clone(),
-            IDM_ACP_DOMAIN_ADMIN_DL8.clone(),
-            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8.clone(),
-        ];
-
-        let res: Result<(), _> = idm_entries
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry.into()));
-        if res.is_ok() {
-            admin_debug!("initialise_idm p3 -> result Ok!");
-        } else {
-            admin_error!(?res, "initialise_idm p3 -> result");
-        }
-        debug_assert!(res.is_ok());
-        res
     }
 }
 
