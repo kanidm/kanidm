@@ -137,9 +137,9 @@ chmod 666 ~/.cache/kanidm_tokens
 docker pull kanidm/tools:latest
 docker run --rm -i -t \
     --network host \
-    --mount "type=bind,src=/etc/kanidm/config,target=/etc/kanidm/config" \
-    --mount "type=bind,src=$HOME/.config/kanidm,target=/home/kanidm/.config/kanidm" \
-    --mount "type=bind,src=$HOME/.cache/kanidm_tokens,target=/home/kanidm/.cache/kanidm_tokens" \
+    --mount "type=bind,src=/etc/kanidm/config,target=/data/config:ro" \
+    --mount "type=bind,src=$HOME/.config/kanidm,target=/root/.config/kanidm" \
+    --mount "type=bind,src=$HOME/.cache/kanidm_tokens,target=/root/.cache/kanidm_tokens" \
     kanidm/tools:latest \
     /sbin/kanidm --help
 ```
