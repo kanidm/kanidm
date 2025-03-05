@@ -59,6 +59,14 @@ fn group_attr_gidnumber() -> String {
     Attribute::GidNumber.to_string()
 }
 
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum GroupAttrSchema {
+    Rfc2307,
+    #[default]
+    Rfc2307Bis,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub sync_token: String,
@@ -102,6 +110,8 @@ pub struct Config {
     pub group_attr_gidnumber: String,
     #[serde(default = "group_attr_member")]
     pub group_attr_member: String,
+    #[serde(default)]
+    pub group_attr_schema: GroupAttrSchema,
 
     #[serde(flatten)]
     pub entry_map: BTreeMap<Uuid, EntryConfig>,
