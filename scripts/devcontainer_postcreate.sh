@@ -21,7 +21,8 @@ sudo apt-get install -y \
     libsystemd-dev \
     libudev-dev \
     pkg-config \
-    ripgrep
+    ripgrep \
+    lld
 
 export PATH="$HOME/.cargo/bin:$PATH"
 
@@ -36,7 +37,7 @@ sudo chgrp vscode ~/ -R
 # shellcheck disable=SC1091
 source scripts/devcontainer_poststart.sh
 
-cargo install
+cargo install \
     cargo-audit \
     mdbook-mermaid \
     mdbook
