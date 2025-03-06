@@ -4,7 +4,7 @@ Priority: 128
 
 Auth-Type: Primary
 Auth:
-  [success=end new_authtok_reqd=done default=ignore]    pam_kanidm.so ignore_unknown_user
+  [success=end new_authtok_reqd=done default=ignore]    pam_kanidm.so ignore_unknown_user use_first_pass
 
 Account-Type: Primary
 Account:
