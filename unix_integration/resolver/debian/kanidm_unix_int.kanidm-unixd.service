@@ -20,7 +20,7 @@ StateDirectory=kanidm-unixd
 
 
 Type=notify
-ExecStart=/usr/sbin/kanidm_unixd
+ExecStart=/usr/sbin/sparkle_unixd
 # auth going down is bad, but infinite speedlooping is worse
 Restart=always
 RestartSec=30
