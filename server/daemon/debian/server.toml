@@ -1,0 +1,51 @@
+# Kanidm server minimal configuration - /etc/kanidm/server.toml
+# For a full example and documentation, see /usr/share/kanidmd/server.toml
+# or `example/server.toml` in the source repository
+
+# NOTE: You must configure at least domain & origin below to allow the server to start!
+
+#   The webserver bind address. Requires TLS certificates.
+#   If the port is set to 443 you may require the
+#   NET_BIND_SERVICE capability.
+#   Defaults to "127.0.0.1:8443"
+bindaddress = "127.0.0.1:8443"
+
+#   The path to the kanidm database.
+#   The provided example uses systemd dynamic user pathing for security
+db_path = "/var/lib/private/kanidmd/kanidm.db"
+
+#   TLS chain and key in pem format. Both must be present.
+#   If the server receives a SIGHUP, these files will be
+#   re-read and reloaded if their content is valid.
+#   These should be owned by root:kanidmd to give the service access.
+tls_chain = "/etc/kanidmd/chain.pem"
+tls_key = "/etc/kanidmd/key.pem"
+
+log_level = "info"
+
+#   The DNS domain name of the server. This is used in a
+#   number of security-critical contexts
+#   such as webauthn, so it *must* match your DNS
+#
+#   ⚠️  WARNING ⚠️
+#
+#   Changing this value after first use WILL break many types of
+#   registered credentials for accounts including but not limited
+#   to: webauthn, oauth tokens, and more.
+#   If you change this value you *must* run
+#   `kanidmd domain rename` immediately after.
+# NOTE: You must set this value!
+#domain = "idm.example.com"
+#
+#   The origin for webauthn. This is the url to the server,
+#   with the port included if it is non-standard (any port
+#   except 443). This must match or be a descendent of the
+#   domain name you configure above. If these two items are
+#   not consistent, the server WILL refuse to start!
+#   origin = "https://idm.example.com"
+# NOTE: You must set this value!
+#origin = "https://idm.example.com:8443"
+
+[online_backup]
+path = "/var/lib/private/kanidmd/backups/"
+schedule = "00 22 * * *"
