@@ -1,0 +1,14 @@
+# The main difference from the release_linux profile is using
+# per-package shared directories for a clearer separation and 
+# thus more consistent install & sysadmin experience.
+
+# Don't set the value for autodetect
+# cpu_flags = "none"
+server_admin_bind_path = "/var/run/kanidmd/sock"
+server_ui_pkg_path = "/usr/share/kanidmd/static"
+server_config_path = "/etc/kanidmd/server.toml"
+client_config_path = "/etc/kanidm/config"
+# TODO: unixd should migrate to it's own config dir as part of the sparkled migration.
+# No point in doing two back to back migrations.
+resolver_config_path = "/etc/kanidm/unixd"
+resolver_unix_shell_path = "/bin/bash"
