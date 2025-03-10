@@ -4,7 +4,7 @@ use kanidmd_testkit::{create_user, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 use serde_json::Value;
 
 #[kanidmd_testkit::test]
-async fn test_v1_group_id_patch(rsclient: KanidmClient) {
+async fn test_v1_group_id_patch(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
@@ -25,7 +25,7 @@ async fn test_v1_group_id_patch(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_v1_group_id_attr_post(rsclient: KanidmClient) {
+async fn test_v1_group_id_attr_post(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;

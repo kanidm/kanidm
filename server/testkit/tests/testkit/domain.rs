@@ -3,7 +3,7 @@ use kanidm_proto::constants::ATTR_DOMAIN_DISPLAY_NAME;
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 
 #[kanidmd_testkit::test]
-async fn test_idm_set_ldap_allow_unix_password_bind(rsclient: KanidmClient) {
+async fn test_idm_set_ldap_allow_unix_password_bind(rsclient: &KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -13,8 +13,9 @@ async fn test_idm_set_ldap_allow_unix_password_bind(rsclient: KanidmClient) {
         .await
         .expect("Failed to set LDAP allow unix password bind to true");
 }
+
 #[kanidmd_testkit::test]
-async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
+async fn test_idm_domain_set_ldap_basedn(rsclient: &KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -27,7 +28,7 @@ async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: KanidmClient) {
+async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: &KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -40,7 +41,7 @@ async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_idm_domain_set_display_name(rsclient: KanidmClient) {
+async fn test_idm_domain_set_display_name(rsclient: &KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await

@@ -66,7 +66,7 @@ async fn get_webdriver_client() -> fantoccini::Client {
 
 #[kanidmd_testkit::test]
 #[cfg(feature = "webdriver")]
-async fn test_webdriver_user_login(rsclient: kanidm_client::KanidmClient) {
+async fn test_webdriver_user_login(rsclient: &KanidmClient) {
     if !cfg!(feature = "webdriver") {
         println!("Skipping test as webdriver feature is not enabled!");
         return;
@@ -206,7 +206,7 @@ async fn test_webdriver_user_login(rsclient: kanidm_client::KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_domain_reset_token_key(rsclient: KanidmClient) {
+async fn test_domain_reset_token_key(rsclient: &KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
 
     let token = rsclient.get_token().await.expect("No bearer token present");
@@ -219,7 +219,7 @@ async fn test_domain_reset_token_key(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
+async fn test_idm_domain_set_ldap_basedn(rsclient: &KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
     assert!(rsclient
         .idm_domain_set_ldap_basedn("dc=krabsarekool,dc=example,dc=com")
@@ -232,7 +232,7 @@ async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: KanidmClient) {
+async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: &KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
     assert!(rsclient
         .idm_domain_set_ldap_max_queryable_attrs(20)
@@ -246,7 +246,7 @@ async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: KanidmClient) {
 
 #[kanidmd_testkit::test]
 /// Checks that a built-in group idm_all_persons has the "builtin" class as expected.
-async fn test_all_persons_has_builtin_class(rsclient: KanidmClient) {
+async fn test_all_persons_has_builtin_class(rsclient: &KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
     let res = rsclient
         .idm_group_get("idm_all_persons")
