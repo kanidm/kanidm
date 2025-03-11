@@ -14,4 +14,3 @@ async fn test_ldap_basic_unix_bind(test_env: &AsyncTestEnvironment) {
 
     assert_eq!(whoami, Some("u: anonymous@localhost".to_string()));
 }
-

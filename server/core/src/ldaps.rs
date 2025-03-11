@@ -171,7 +171,7 @@ async fn ldap_tls_acceptor(
     info!("Stopped {}", super::TaskName::LdapActor);
 }
 
-/// TLS LDAP Listener, hands off to [client_process]
+/// PLAIN LDAP Listener, hands off to [client_process]
 async fn ldap_plaintext_acceptor(
     listener: TcpListener,
     qe_r_ref: &'static QueryServerReadV1,
