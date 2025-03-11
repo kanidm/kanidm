@@ -58,6 +58,21 @@ can only use the UID range `1879048192` (`0x70000000`) to `2147483647` (`0x7ffff
 limitations of the Linux kernel and
 [systemd reserving other uids in the range](http://systemd.io/UIDS-GIDS/) for its exclusive use.
 
+| name | min | max |
+|------|-----|-----|
+| system | 0 | 999 |
+| user | 1000 | 60000 |
+| systemd homed | 60001 | 60577 |
+| unused A | 60578 | 61183 |
+| systemd dynuser | 61184 | 65519 |
+| unused B | 65520 | 65533 |
+| nobody | 65534 | 65534 |
+| 16bit limit | 65535 | 65535 |
+| unused C | 65536 | 524287 |
+| systemd nspawn | 524288 | 1879048191 |
+| kanidm dyn alloc | 1879048192 | 2147483647 |
+| unusable | 2147483648 | 4294967295 |
+
 A valid concern is the possibility of duplication in the lower 24 bits. Given the
 [birthday problem](https://en.wikipedia.org/wiki/Birthday_problem), if you have ~7700 groups and
 accounts, you have a 50% chance of duplication. With ~5000 you have a 25% chance, ~930 you have a 1%
@@ -67,7 +82,7 @@ We advise that if you have a site with greater than approximately 2,000 users yo
 external system to allocate GID numbers serially or consistently to avoid potential duplication
 events.
 
-We recommend the use of the range `65536` through `524287` for manual allocation. This leaves the
+We recommend the use of the range `65536` through `524287` (`unused C`) for manual allocation. This leaves the
 range `1000` through `65535` for OS/Distro purposes, and allows Kanidm to continue dynamic
 allocation in the range `1879048192` to `2147483647` if you choose a hybrid allocation approach.
 
