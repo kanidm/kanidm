@@ -29,7 +29,7 @@ use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 
 #[kanidmd_testkit::test]
-async fn test_server_create(rsclient: KanidmClient) {
+async fn test_server_create(rsclient: &KanidmClient) {
     let e: Entry = serde_json::from_str(
         r#"{
             "attrs": {
@@ -55,7 +55,7 @@ async fn test_server_create(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_whoami_anonymous(rsclient: KanidmClient) {
+async fn test_server_whoami_anonymous(rsclient: &KanidmClient) {
     // First show we are un-authenticated.
     let pre_res = rsclient.whoami().await;
     // This means it was okay whoami, but no uat attached.
@@ -84,7 +84,7 @@ async fn test_server_whoami_anonymous(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_whoami_admin_simple_password(rsclient: KanidmClient) {
+async fn test_server_whoami_admin_simple_password(rsclient: &KanidmClient) {
     // First show we are un-authenticated.
     let pre_res = rsclient.whoami().await;
     // This means it was okay whoami, but no uat attached.
@@ -109,7 +109,7 @@ async fn test_server_whoami_admin_simple_password(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_search(rsclient: KanidmClient) {
+async fn test_server_search(rsclient: &KanidmClient) {
     // First show we are un-authenticated.
     let pre_res = rsclient.whoami().await;
     // This means it was okay whoami, but no uat attached.
@@ -135,7 +135,7 @@ async fn test_server_search(rsclient: KanidmClient) {
 
 // test the rest group endpoint.
 #[kanidmd_testkit::test]
-async fn test_server_rest_group_read(rsclient: KanidmClient) {
+async fn test_server_rest_group_read(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -151,7 +151,7 @@ async fn test_server_rest_group_read(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
+async fn test_server_rest_group_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -263,7 +263,7 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_account_read(rsclient: KanidmClient) {
+async fn test_server_rest_account_read(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -279,7 +279,7 @@ async fn test_server_rest_account_read(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_schema_read(rsclient: KanidmClient) {
+async fn test_server_rest_schema_read(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -313,7 +313,7 @@ async fn test_server_rest_schema_read(rsclient: KanidmClient) {
 
 // Test resetting a radius cred, and then checking/viewing it.
 #[kanidmd_testkit::test]
-async fn test_server_radius_credential_lifecycle(rsclient: KanidmClient) {
+async fn test_server_radius_credential_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -384,7 +384,7 @@ async fn test_server_radius_credential_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_person_account_lifecycle(rsclient: KanidmClient) {
+async fn test_server_rest_person_account_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -439,7 +439,7 @@ async fn test_server_rest_person_account_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_sshkey_lifecycle(rsclient: KanidmClient) {
+async fn test_server_rest_sshkey_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -509,7 +509,7 @@ async fn test_server_rest_sshkey_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_domain_lifecycle(rsclient: KanidmClient) {
+async fn test_server_rest_domain_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -539,7 +539,7 @@ async fn test_server_rest_domain_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
+async fn test_server_rest_posix_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -660,7 +660,7 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
+async fn test_server_rest_posix_auth_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -760,7 +760,7 @@ async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_recycle_lifecycle(rsclient: KanidmClient) {
+async fn test_server_rest_recycle_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -814,7 +814,7 @@ async fn test_server_rest_recycle_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
+async fn test_server_rest_oauth2_basic_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -1027,7 +1027,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
+async fn test_server_credential_update_session_pw(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -1102,7 +1102,7 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
+async fn test_server_credential_update_session_totp_pw(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -1365,7 +1365,7 @@ async fn setup_demo_account_password(
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
+async fn test_server_credential_update_session_passkey(rsclient: &KanidmClient) {
     let mut wa = setup_demo_account_passkey(&rsclient).await;
 
     let res = rsclient
@@ -1383,7 +1383,7 @@ async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
+async fn test_server_api_token_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
@@ -1566,7 +1566,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
+async fn test_server_user_auth_token_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
@@ -1689,7 +1689,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
+async fn test_server_user_auth_reauthentication(rsclient: &KanidmClient) {
     let mut wa = setup_demo_account_passkey(&rsclient).await;
 
     let res = rsclient
@@ -1868,7 +1868,7 @@ async fn start_password_session(
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_user_auth_unprivileged(rsclient: KanidmClient) {
+async fn test_server_user_auth_unprivileged(rsclient: &KanidmClient) {
     let (account_name, account_pass) = setup_demo_account_password(&rsclient)
         .await
         .expect("Failed to setup demo_account");
@@ -1891,7 +1891,7 @@ async fn test_server_user_auth_unprivileged(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_user_auth_privileged_shortcut(rsclient: KanidmClient) {
+async fn test_server_user_auth_privileged_shortcut(rsclient: &KanidmClient) {
     let (account_name, account_pass) = setup_demo_account_password(&rsclient)
         .await
         .expect("Failed to setup demo_account");

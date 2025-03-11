@@ -34,7 +34,7 @@ fn parse_attributes(
     });
 
     if !args_are_allowed {
-        let msg = "Invalid test config attribute. The following are allow";
+        let msg = "Invalid test config attribute. The following are allowed";
         return Err(syn::Error::new_spanned(
             input.sig.fn_token,
             format!("{}: {}", msg, ALLOWED_ATTRIBUTES.join(", ")),
