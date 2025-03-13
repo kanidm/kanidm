@@ -1089,9 +1089,29 @@ async fn main() -> ExitCode {
             // ====== setup an inotify watcher to reload on changes to system files ======
             let (inotify_tx, mut inotify_rx) = channel(4);
 
-            let watcher = new_debouncer(Duration::from_secs(2), None, move |_event| {
-                debug!(?_event, "Sending inotify event");
-                let _ = inotify_tx.try_send(true);
+            let watcher = new_debouncer(Duration::from_secs(4), None, move |event| {
+
+                match event {
+                    Ok(array_event) => {
+                        let mut was_changed = false;
+
+                        for event in array_event {
+                            if event.kind.is_create() || event.kind.is_modify() || event.kind.is_remove() {
+                                debug!(?event, "Handling inotify modification event");
+                                was_changed = true
+                            }
+                        }
+
+                        if was_changed {
+                            let _ = inotify_tx.try_send(true);
+                        }
+                    }
+                    Err(array_errors) => {
+                        for err in array_errors {
+                            error!(?err, "inotify debounce error");
+                        }
+                    }
+                }
             })
                 .and_then(|mut debouncer| {
                     debouncer.watch(Path::new("/etc/passwd"), RecursiveMode::NonRecursive)
