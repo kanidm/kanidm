@@ -212,7 +212,7 @@ impl Resolver {
     pub async fn reload_system_identities(
         &self,
         users: Vec<EtcUser>,
-        shadow: Option<Vec<EtcShadow>>,
+        shadow: Vec<EtcShadow>,
         groups: Vec<EtcGroup>,
     ) {
         self.system_provider.reload(users, shadow, groups).await

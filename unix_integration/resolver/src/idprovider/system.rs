@@ -147,12 +147,7 @@ impl SystemProvider {
         })
     }
 
-    pub async fn reload(
-        &self,
-        users: Vec<EtcUser>,
-        shadow: Option<Vec<EtcShadow>>,
-        groups: Vec<EtcGroup>,
-    ) {
+    pub async fn reload(&self, users: Vec<EtcUser>, shadow: Vec<EtcShadow>, groups: Vec<EtcGroup>) {
         let mut system_ids_txn = self.inner.lock().await;
         system_ids_txn.users.clear();
         system_ids_txn.user_list.clear();
@@ -160,52 +155,50 @@ impl SystemProvider {
         system_ids_txn.group_list.clear();
         system_ids_txn.shadow.clear();
 
-        system_ids_txn.shadow_enabled = shadow.is_some();
+        system_ids_txn.shadow_enabled = !shadow.is_empty();
 
-        if let Some(shadow) = shadow {
-            let s_iter = shadow.into_iter().filter_map(|shadow_entry| {
-                let EtcShadow {
+        let s_iter = shadow.into_iter().filter_map(|shadow_entry| {
+            let EtcShadow {
+                name,
+                password,
+                epoch_change_days,
+                days_min_password_age,
+                days_max_password_age,
+                days_warning_period,
+                days_inactivity_period,
+                epoch_expire_date,
+                flag_reserved: _,
+            } = shadow_entry;
+
+            if password.is_valid() {
+                let aging_policy = epoch_change_days.map(|change_days| {
+                    AgingPolicy::new(
+                        change_days,
+                        days_min_password_age,
+                        days_max_password_age,
+                        days_warning_period,
+                        days_inactivity_period,
+                    )
+                });
+
+                let expiration_date = epoch_expire_date
+                    .map(|expire| OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire));
+
+                Some((
                     name,
-                    password,
-                    epoch_change_days,
-                    days_min_password_age,
-                    days_max_password_age,
-                    days_warning_period,
-                    days_inactivity_period,
-                    epoch_expire_date,
-                    flag_reserved: _,
-                } = shadow_entry;
+                    Arc::new(Shadow {
+                        crypt_pw: password,
+                        aging_policy,
+                        expiration_date,
+                    }),
+                ))
+            } else {
+                // Invalid password, skip the account
+                None
+            }
+        });
 
-                if password.is_valid() {
-                    let aging_policy = epoch_change_days.map(|change_days| {
-                        AgingPolicy::new(
-                            change_days,
-                            days_min_password_age,
-                            days_max_password_age,
-                            days_warning_period,
-                            days_inactivity_period,
-                        )
-                    });
-
-                    let expiration_date = epoch_expire_date
-                        .map(|expire| OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire));
-
-                    Some((
-                        name,
-                        Arc::new(Shadow {
-                            crypt_pw: password,
-                            aging_policy,
-                            expiration_date,
-                        }),
-                    ))
-                } else {
-                    // Invalid password, skip the account
-                    None
-                }
-            });
-
-            system_ids_txn.shadow.extend(s_iter)
-        };
+        system_ids_txn.shadow.extend(s_iter);
 
         for group in groups {
             let name = Id::Name(group.name.clone());

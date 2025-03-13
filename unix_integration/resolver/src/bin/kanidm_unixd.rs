@@ -18,7 +18,7 @@ use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_proto::internal::OperationError;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow};
+use kanidm_unix_common::unix_passwd::EtcDb;
 use kanidm_unix_common::unix_proto::{
     ClientRequest, ClientResponse, TaskRequest, TaskRequestFrame, TaskResponse,
 };
@@ -30,7 +30,6 @@ use kanidm_unix_resolver::resolver::Resolver;
 use kanidm_unix_resolver::unix_config::{HsmType, UnixdConfig};
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
-use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, DebouncedEvent};
 use sketching::tracing::span;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
@@ -150,7 +149,7 @@ fn rm_if_exist(p: &str) {
 
 async fn handle_task_client(
     stream: UnixStream,
-    _task_channel_tx: &Sender<AsyncTaskRequest>,
+    notify_shadow_change_tx: &Sender<EtcDb>,
     task_channel_rx: &mut Receiver<AsyncTaskRequest>,
     broadcast_rx: &mut broadcast::Receiver<bool>,
 ) -> Result<(), Box<dyn Error>> {
@@ -209,8 +208,11 @@ async fn handle_task_client(
                         }
                         // If the ID was unregistered, ignore.
                     }
+                    Some(Ok(TaskResponse::NotifyShadowChange(etc_db))) => {
+                        let _ = notify_shadow_change_tx.send(etc_db).await;
+                    }
                     // Other things ....
-                    // Some(Ok(TaskResponse::
+                    // Some(Ok(TaskResponse::ReloadSystemIds))
 
                     other => {
                         error!("Error -> {:?}", other);
@@ -451,40 +453,6 @@ async fn handle_client(
     let span = span!(Level::DEBUG, "disconnecting client", uuid = %conn_id);
     let _enter = span.enter();
     debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
-
-    Ok(())
-}
-
-async fn process_etc_passwd_group(
-    cachelayer: &Resolver,
-    shadow_is_accessible: bool,
-) -> Result<(), Box<dyn Error>> {
-    let mut file = File::open("/etc/passwd").await?;
-    let mut contents = vec![];
-    file.read_to_end(&mut contents).await?;
-
-    let users = parse_etc_passwd(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
-
-    let maybe_shadow = if shadow_is_accessible {
-        let mut file = File::open("/etc/shadow").await?;
-        let mut contents = vec![];
-        file.read_to_end(&mut contents).await?;
-
-        let shadow = parse_etc_shadow(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
-        Some(shadow)
-    } else {
-        None
-    };
-
-    let mut file = File::open("/etc/group").await?;
-    let mut contents = vec![];
-    file.read_to_end(&mut contents).await?;
-
-    let groups = parse_etc_group(contents.as_slice()).map_err(|_| "Invalid group content")?;
-
-    cachelayer
-        .reload_system_identities(users, maybe_shadow, groups)
-        .await;
 
     Ok(())
 }
@@ -1044,23 +1012,6 @@ async fn main() -> ExitCode {
             // Undo umask changes.
             let _ = unsafe { umask(before) };
 
-            // We pre-check if we can read /etc/shadow, and we flag that for the process so that
-            // we don't attempt to read it again as we proceed.
-            let shadow_is_accessible = {
-                if let Err(err) = File::open("/etc/shadow").await {
-                    warn!(?err, "Unable to read /etc/shadow, some features will be disabled.");
-                    false
-                } else {
-                    true
-                }
-            };
-
-            // Pre-process /etc/passwd and /etc/group for nxset
-            if let Err(err) = process_etc_passwd_group(&cachelayer, shadow_is_accessible).await {
-                error!(?err, "Failed to process system id providers");
-                return ExitCode::FAILURE
-            }
-
             // Setup the tasks socket first.
             let (task_channel_tx, mut task_channel_rx) = channel(16);
             let task_channel_tx = Arc::new(task_channel_tx);
@@ -1071,6 +1022,10 @@ async fn main() -> ExitCode {
             let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
             let mut c_broadcast_rx = broadcast_tx.subscribe();
             let mut d_broadcast_rx = broadcast_tx.subscribe();
+
+            // This channel allowss
+            let (notify_shadow_channel_tx, mut notify_shadow_channel_rx) = channel(16);
+            let notify_shadow_channel_tx = Arc::new(notify_shadow_channel_tx);
 
             let task_b = tokio::spawn(async move {
                 loop {
@@ -1099,7 +1054,7 @@ async fn main() -> ExitCode {
                                     // client.
 
                                     // We have to check for signals here else this tasks waits forever.
-                                    if let Err(err) = handle_task_client(socket, &task_channel_tx, &mut task_channel_rx, &mut d_broadcast_rx).await {
+                                    if let Err(err) = handle_task_client(socket, &notify_shadow_channel_tx, &mut task_channel_rx, &mut d_broadcast_rx).await {
                                         error!(?err, "Task client error occurred");
                                     }
                                     // If they disconnect we go back to accept.
@@ -1115,79 +1070,31 @@ async fn main() -> ExitCode {
                 info!("Stopped task connector");
             });
 
-            // TODO: Setup a task that handles pre-fetching here.
+            // ====== Listen for shadow change notification from tasks ======
 
-            // ====== setup an inotify watcher to reload on changes to system files ======
-            let (inotify_tx, mut inotify_rx) = channel(4);
-
-            let watcher = new_debouncer(Duration::from_secs(1), None, move |event: Result<Vec<DebouncedEvent>, _>| {
-                let array_of_events = match event {
-                    Ok(events) => events,
-                    Err(array_errors) => {
-                        for err in array_errors {
-                            error!(?err, "inotify debounce error");
-                        }
-                        return
-                    }
-                };
-
-                let mut path_of_interest_was_changed = false;
-
-                for inode_event in array_of_events.iter() {
-                    if !inode_event.kind.is_access() && inode_event.paths.iter().any(|path| {
-                        path == Path::new("/etc/group") ||
-                        path == Path::new("/etc/passwd") ||
-                        (shadow_is_accessible && path == Path::new("/etc/shadow"))
-
-                    }) {
-                        // if shadow_is_accessible.
-                        debug!(?inode_event, "Handling inotify modification event");
-
-                        path_of_interest_was_changed = true
-                    }
-                }
-
-                if path_of_interest_was_changed {
-                    let _ = inotify_tx.try_send(true);
-                } else {
-                    debug!(?array_of_events, "IGNORED");
-                }
-            })
-                .and_then(|mut debouncer| {
-                    debouncer.watch(Path::new("/etc"), RecursiveMode::Recursive)
-                        .map(|()| debouncer)
-                });
-
-            let watcher =
-                match watcher {
-                    Ok(watcher) => {
-                        watcher
-                    }
-                    Err(e) => {
-                        error!("Failed to setup inotify {:?}",  e);
-                        return ExitCode::FAILURE
-                    }
-                };
-
+            let shadow_notify_cachelayer = cachelayer.clone();
             let mut c_broadcast_rx = broadcast_tx.subscribe();
 
-            let inotify_cachelayer = cachelayer.clone();
             let task_c = tokio::spawn(async move {
-                debug!("Spawned inotify task handler");
+                debug!("Spawned shadow reload task handler");
                 loop {
                     tokio::select! {
                         _ = c_broadcast_rx.recv() => {
                             break;
                         }
-                        _ = inotify_rx.recv() => {
-                            if let Err(err) = process_etc_passwd_group(&inotify_cachelayer, shadow_is_accessible).await {
-                                error!(?err, "Failed to process system id providers");
-                            }
+                        Some(EtcDb {
+                            users, shadow, groups
+                        }) = notify_shadow_channel_rx.recv() => {
+                            shadow_notify_cachelayer
+                                .reload_system_identities(users, shadow, groups)
+                                .await;
                         }
                     }
                 }
-                info!("Stopped inotify task handler");
+                info!("Stopped shadow reload task handler");
             });
+
+            // TODO: Setup a task that handles pre-fetching here.
 
             // Set the umask while we open the path for most clients.
             let before = unsafe { umask(0) };
@@ -1287,9 +1194,6 @@ async fn main() -> ExitCode {
             if let Err(e) = broadcast_tx.send(true) {
                 error!("Unable to shutdown workers {:?}", e);
             }
-
-            debug!("Dropping inotify watcher ...");
-            drop(watcher);
 
             let _ = task_a.await;
             let _ = task_b.await;

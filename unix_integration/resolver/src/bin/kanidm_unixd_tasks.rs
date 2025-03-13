@@ -10,6 +10,23 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
+use bytes::{BufMut, BytesMut};
+use futures::{SinkExt, StreamExt};
+use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow, EtcDb};
+use kanidm_unix_common::unix_proto::{
+    HomeDirectoryInfo, TaskRequest, TaskRequestFrame, TaskResponse,
+};
+use kanidm_unix_resolver::unix_config::UnixdConfig;
+use kanidm_utils_users::{get_effective_gid, get_effective_uid};
+use libc::{lchown, umask};
+use notify_debouncer_full::notify::RecommendedWatcher;
+use notify_debouncer_full::Debouncer;
+use notify_debouncer_full::FileIdMap;
+use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, DebouncedEvent};
+use sketching::tracing_forest::traits::*;
+use sketching::tracing_forest::util::*;
+use sketching::tracing_forest::{self};
 use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::symlink;
@@ -17,19 +34,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Duration;
 use std::{fs, io};
-
-use bytes::{BufMut, BytesMut};
-use futures::{SinkExt, StreamExt};
-use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_proto::{
-    HomeDirectoryInfo, TaskRequest, TaskRequestFrame, TaskResponse,
-};
-use kanidm_unix_resolver::unix_config::UnixdConfig;
-use kanidm_utils_users::{get_effective_gid, get_effective_uid};
-use libc::{lchown, umask};
-use sketching::tracing_forest::traits::*;
-use sketching::tracing_forest::util::*;
-use sketching::tracing_forest::{self};
+use tokio::fs::File;
+use tokio::io::AsyncReadExt;
 use tokio::net::UnixStream;
 use tokio::sync::broadcast;
 use tokio::time;
@@ -271,41 +277,173 @@ fn create_home_directory(
     Ok(())
 }
 
-async fn handle_tasks(stream: UnixStream, cfg: &UnixdConfig) {
+async fn handle_tasks(
+    stream: UnixStream,
+    ctl_broadcast_rx: &mut broadcast::Receiver<bool>,
+    shadow_broadcast_rx: &mut broadcast::Receiver<bool>,
+    cfg: &UnixdConfig,
+) {
     let mut reqs = Framed::new(stream, TaskCodec::new());
 
     loop {
-        match reqs.next().await {
-            Some(Ok(TaskRequestFrame {
-                id,
-                req: TaskRequest::HomeDirectory(info),
-            })) => {
-                debug!("Received task -> HomeDirectory({:?})", info);
-
-                let resp = match create_home_directory(
-                    &info,
-                    cfg.home_prefix.as_ref(),
-                    cfg.home_mount_prefix.as_ref(),
-                    cfg.use_etc_skel,
-                    cfg.selinux,
-                ) {
-                    Ok(()) => TaskResponse::Success(id),
-                    Err(msg) => TaskResponse::Error(msg),
-                };
-
-                // Now send a result.
-                if let Err(e) = reqs.send(resp).await {
-                    error!("Error -> {:?}", e);
-                    return;
-                }
-                // All good, loop.
+        tokio::select! {
+            _ = ctl_broadcast_rx.recv() => {
+                break;
             }
-            other => {
-                error!("Error -> {:?}", other);
-                return;
+            request = reqs.next() => {
+                match request {
+                    Some(Ok(TaskRequestFrame {
+                        id,
+                        req: TaskRequest::HomeDirectory(info),
+                    })) => {
+                        debug!("Received task -> HomeDirectory({:?})", info);
+
+                        let resp = match create_home_directory(
+                            &info,
+                            cfg.home_prefix.as_ref(),
+                            cfg.home_mount_prefix.as_ref(),
+                            cfg.use_etc_skel,
+                            cfg.selinux,
+                        ) {
+                            Ok(()) => TaskResponse::Success(id),
+                            Err(msg) => TaskResponse::Error(msg),
+                        };
+
+                        // Now send a result.
+                        if let Err(err) = reqs.send(resp).await {
+                            error!(?err, "Unable to communicate to kanidm unixd");
+                            break;
+                        }
+                        // All good, loop.
+                    }
+                    other => {
+                        error!("Error -> {:?}", other);
+                        break;
+                    }
+                }
+            }
+            _ = shadow_broadcast_rx.recv() => {
+                // process etc shadow and send it here.
+                match process_etc_passwd_group().await {
+                    Ok(etc_db) => {
+                        let resp = TaskResponse::NotifyShadowChange(etc_db);
+                        if let Err(err) = reqs.send(resp).await {
+                            error!(?err, "Unable to communicate to kanidm unixd");
+                            break;
+                        }
+                    }
+                    Err(()) => {
+                        error!("Unable to process etc db");
+                        continue
+                    }
+                }
             }
         }
     }
+
+    info!("Disconnected from kanidm_unixd ...");
+}
+
+async fn process_etc_passwd_group() -> Result<EtcDb, ()> {
+    let mut file = File::open("/etc/passwd").await.map_err(|err| {
+        error!(?err);
+    })?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents).await.map_err(|err| {
+        error!(?err);
+    })?;
+
+    let users = parse_etc_passwd(contents.as_slice())
+        .map_err(|_| "Invalid passwd content")
+        .map_err(|err| {
+            error!(?err);
+        })?;
+
+    let mut file = File::open("/etc/shadow").await.map_err(|err| {
+        error!(?err);
+    })?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents).await.map_err(|err| {
+        error!(?err);
+    })?;
+
+    let shadow = parse_etc_shadow(contents.as_slice())
+        .map_err(|_| "Invalid passwd content")
+        .map_err(|err| {
+            error!(?err);
+        })?;
+
+    let mut file = File::open("/etc/group").await.map_err(|err| {
+        error!(?err);
+    })?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents).await.map_err(|err| {
+        error!(?err);
+    })?;
+
+    let groups = parse_etc_group(contents.as_slice())
+        .map_err(|_| "Invalid group content")
+        .map_err(|err| {
+            error!(?err);
+        })?;
+
+    Ok(EtcDb {
+        users,
+        shadow,
+        groups,
+    })
+}
+
+fn setup_shadow_inotify_watcher(
+    shadow_broadcast_tx: broadcast::Sender<bool>,
+) -> Result<Debouncer<RecommendedWatcher, FileIdMap>, ExitCode> {
+    let watcher = new_debouncer(
+        Duration::from_secs(1),
+        None,
+        move |event: Result<Vec<DebouncedEvent>, _>| {
+            let array_of_events = match event {
+                Ok(events) => events,
+                Err(array_errors) => {
+                    for err in array_errors {
+                        error!(?err, "inotify debounce error");
+                    }
+                    return;
+                }
+            };
+
+            let mut path_of_interest_was_changed = false;
+
+            for inode_event in array_of_events.iter() {
+                if !inode_event.kind.is_access()
+                    && inode_event.paths.iter().any(|path| {
+                        path == Path::new("/etc/group")
+                            || path == Path::new("/etc/passwd")
+                            || path == Path::new("/etc/shadow")
+                    })
+                {
+                    debug!(?inode_event, "Handling inotify modification event");
+
+                    path_of_interest_was_changed = true
+                }
+            }
+
+            if path_of_interest_was_changed {
+                let _ = shadow_broadcast_tx.send(true);
+            } else {
+                debug!(?array_of_events, "IGNORED");
+            }
+        },
+    )
+    .and_then(|mut debouncer| {
+        debouncer
+            .watch(Path::new("/etc"), RecursiveMode::Recursive)
+            .map(|()| debouncer)
+    });
+
+    watcher.map_err(|err| {
+        error!(?err, "Failed to setup inotify");
+        ExitCode::FAILURE
+    })
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -374,8 +512,18 @@ async fn main() -> ExitCode {
             let task_sock_path = cfg.task_sock_path.clone();
             debug!("Attempting to use {} ...", task_sock_path);
 
+            // This is the startup/shutdown control channel
             let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
             let mut d_broadcast_rx = broadcast_tx.subscribe();
+
+            // This is to broadcast when we need to reload the shadow
+            // files.
+            let (shadow_broadcast_tx, mut shadow_broadcast_rx) = broadcast::channel(4);
+
+            let watcher = match setup_shadow_inotify_watcher(shadow_broadcast_tx.clone()) {
+                Ok(w) => w,
+                Err(exit) => return exit,
+            };
 
             let server = tokio::spawn(async move {
                 loop {
@@ -389,16 +537,14 @@ async fn main() -> ExitCode {
                             match connect_res {
                                 Ok(stream) => {
                                     info!("Found kanidm_unixd, waiting for tasks ...");
+
+                                    // Immediately trigger that we should reload the shadow files
+                                    let _ = shadow_broadcast_tx.send(true);
+
                                     // Yep! Now let the main handler do it's job.
                                     // If it returns (dc, etc, then we loop and try again).
-                                    tokio::select! {
-                                        _ = d_broadcast_rx.recv() => {
-                                            break;
-                                        }
-                                        _ = handle_tasks(stream, &cfg) => {
-                                            continue;
-                                        }
-                                    }
+                                    handle_tasks(stream, &mut d_broadcast_rx, &mut shadow_broadcast_rx, &cfg).await;
+                                    continue;
                                 }
                                 Err(e) => {
                                     debug!("\\---> {:?}", e);
@@ -408,8 +554,8 @@ async fn main() -> ExitCode {
                                 }
                             }
                         }
-                    }
-                }
+                    } // select
+                } // loop
             });
 
             info!("Server started ...");
@@ -466,6 +612,9 @@ async fn main() -> ExitCode {
             if let Err(e) = broadcast_tx.send(true) {
                 error!("Unable to shutdown workers {:?}", e);
             }
+
+            debug!("Dropping inotify watcher ...");
+            drop(watcher);
 
             let _ = server.await;
             ExitCode::SUCCESS

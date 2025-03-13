@@ -1,4 +1,4 @@
-use crate::unix_passwd::{EtcGroup, EtcUser};
+use crate::unix_passwd::{EtcDb, EtcGroup, EtcUser};
 use kanidm_proto::internal::OperationError;
 use serde::{Deserialize, Serialize};
 
@@ -215,6 +215,7 @@ pub enum TaskRequest {
 pub enum TaskResponse {
     Success(u64),
     Error(String),
+    NotifyShadowChange(EtcDb),
 }
 
 #[test]
