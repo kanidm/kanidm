@@ -22,7 +22,7 @@ use kanidm_utils_users::{get_effective_gid, get_effective_uid};
 use libc::{lchown, umask};
 use notify_debouncer_full::notify::RecommendedWatcher;
 use notify_debouncer_full::Debouncer;
-use notify_debouncer_full::FileIdMap;
+use notify_debouncer_full::RecommendedCache;
 use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, DebouncedEvent};
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
@@ -396,7 +396,7 @@ async fn process_etc_passwd_group() -> Result<EtcDb, ()> {
 
 fn setup_shadow_inotify_watcher(
     shadow_broadcast_tx: broadcast::Sender<bool>,
-) -> Result<Debouncer<RecommendedWatcher, FileIdMap>, ExitCode> {
+) -> Result<Debouncer<RecommendedWatcher, RecommendedCache>, ExitCode> {
     let watcher = new_debouncer(
         Duration::from_secs(1),
         None,
