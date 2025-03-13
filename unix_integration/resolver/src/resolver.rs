@@ -208,6 +208,7 @@ impl Resolver {
         nxcache_txn.get(id).copied()
     }
 
+    #[instrument(level = "info", skip_all)]
     pub async fn reload_system_identities(
         &self,
         users: Vec<EtcUser>,
