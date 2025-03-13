@@ -54,7 +54,7 @@ use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 
-use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
+use notify_debouncer_full::{new_debouncer, notify::RecursiveMode};
 
 #[cfg(not(target_os = "illumos"))]
 #[global_allocator]
@@ -1086,40 +1086,43 @@ async fn main() -> ExitCode {
 
             // TODO: Setup a task that handles pre-fetching here.
 
+            // ====== setup an inotify watcher to reload on changes to system files ======
             let (inotify_tx, mut inotify_rx) = channel(4);
 
             let watcher = new_debouncer(Duration::from_secs(2), None, move |_event| {
+                debug!(?_event, "Sending inotify event");
                 let _ = inotify_tx.try_send(true);
             })
                 .and_then(|mut debouncer| {
-                    debouncer.watcher().watch(Path::new("/etc/passwd"), RecursiveMode::NonRecursive)
+                    debouncer.watch(Path::new("/etc/passwd"), RecursiveMode::NonRecursive)
                         .map(|()| debouncer)
                 })
-                .and_then(|mut debouncer| debouncer.watcher().watch(Path::new("/etc/group"), RecursiveMode::NonRecursive)
+                .and_then(|mut debouncer| debouncer.watch(Path::new("/etc/group"), RecursiveMode::NonRecursive)
                         .map(|()| debouncer)
                 )
                 .and_then(|mut debouncer| if shadow_is_accessible {
-                    debouncer.watcher().watch(Path::new("/etc/shadow"), RecursiveMode::NonRecursive)
+                    debouncer.watch(Path::new("/etc/shadow"), RecursiveMode::NonRecursive)
                         .map(|()| debouncer)
                     } else {
                         Ok(debouncer)
                     }
                 );
             let watcher =
-            match watcher {
-                Ok(watcher) => {
-                    watcher
-                }
-                Err(e) => {
-                    error!("Failed to setup inotify {:?}",  e);
-                    return ExitCode::FAILURE
-                }
-            };
+                match watcher {
+                    Ok(watcher) => {
+                        watcher
+                    }
+                    Err(e) => {
+                        error!("Failed to setup inotify {:?}",  e);
+                        return ExitCode::FAILURE
+                    }
+                };
 
             let mut c_broadcast_rx = broadcast_tx.subscribe();
 
             let inotify_cachelayer = cachelayer.clone();
             let task_c = tokio::spawn(async move {
+                debug!("Spawned inotify task handler");
                 loop {
                     tokio::select! {
                         _ = c_broadcast_rx.recv() => {
@@ -1132,7 +1135,7 @@ async fn main() -> ExitCode {
                         }
                     }
                 }
-                info!("Stopped inotify watcher");
+                info!("Stopped inotify task handler");
             });
 
             // Set the umask while we open the path for most clients.
@@ -1234,6 +1237,7 @@ async fn main() -> ExitCode {
                 error!("Unable to shutdown workers {:?}", e);
             }
 
+            debug!("Dropping inotify watcher ...");
             drop(watcher);
 
             let _ = task_a.await;
