@@ -21,7 +21,9 @@ use std::{fs, io};
 use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_proto::{HomeDirectoryInfo, TaskRequest, TaskResponse};
+use kanidm_unix_common::unix_proto::{
+    HomeDirectoryInfo, TaskRequest, TaskRequestFrame, TaskResponse,
+};
 use kanidm_unix_resolver::unix_config::UnixdConfig;
 use kanidm_utils_users::{get_effective_gid, get_effective_uid};
 use libc::{lchown, umask};
@@ -41,10 +43,10 @@ struct TaskCodec;
 
 impl Decoder for TaskCodec {
     type Error = io::Error;
-    type Item = TaskRequest;
+    type Item = TaskRequestFrame;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_json::from_slice::<TaskRequest>(src) {
+        match serde_json::from_slice::<TaskRequestFrame>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
                 src.clear();
@@ -274,7 +276,10 @@ async fn handle_tasks(stream: UnixStream, cfg: &UnixdConfig) {
 
     loop {
         match reqs.next().await {
-            Some(Ok(TaskRequest::HomeDirectory(info))) => {
+            Some(Ok(TaskRequestFrame {
+                id,
+                req: TaskRequest::HomeDirectory(info),
+            })) => {
                 debug!("Received task -> HomeDirectory({:?})", info);
 
                 let resp = match create_home_directory(
@@ -284,7 +289,7 @@ async fn handle_tasks(stream: UnixStream, cfg: &UnixdConfig) {
                     cfg.use_etc_skel,
                     cfg.selinux,
                 ) {
-                    Ok(()) => TaskResponse::Success,
+                    Ok(()) => TaskResponse::Success(id),
                     Err(msg) => TaskResponse::Error(msg),
                 };
 

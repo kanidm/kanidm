@@ -201,13 +201,19 @@ pub struct HomeDirectoryInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TaskRequestFrame {
+    pub id: u64,
+    pub req: TaskRequest,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum TaskRequest {
     HomeDirectory(HomeDirectoryInfo),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum TaskResponse {
-    Success,
+    Success(u64),
     Error(String),
 }
 
