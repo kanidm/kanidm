@@ -1089,46 +1089,44 @@ async fn main() -> ExitCode {
             // ====== setup an inotify watcher to reload on changes to system files ======
             let (inotify_tx, mut inotify_rx) = channel(4);
 
-            let watcher = new_debouncer(Duration::from_secs(2), None, move |event: Result<Vec<DebouncedEvent>, _>| {
-
-                match event {
-                    Ok(array_event) => {
-                        let mut was_changed = false;
-
-                        for ievent in array_event {
-                            if !ievent.kind.is_access() {
-                                debug!(?ievent, "Handling inotify modification event");
-                                was_changed = true
-                            }
-                        }
-
-                        if was_changed {
-                            let _ = inotify_tx.try_send(true);
-                        } else {
-                            debug!(?event, "IGNORED");
-                        }
-                    }
+            let watcher = new_debouncer(Duration::from_secs(1), None, move |event: Result<Vec<DebouncedEvent>, _>| {
+                let array_of_events = match event {
+                    Ok(events) => events,
                     Err(array_errors) => {
                         for err in array_errors {
                             error!(?err, "inotify debounce error");
                         }
+                        return
                     }
+                };
+
+                let mut path_of_interest_was_changed = false;
+
+                for inode_event in array_of_events.iter() {
+                    if !inode_event.kind.is_access() && inode_event.paths.iter().any(|path| {
+                        path == Path::new("/etc/group") ||
+                        path == Path::new("/etc/passwd") ||
+                        (shadow_is_accessible && path == Path::new("/etc/shadow"))
+
+                    }) {
+                        // if shadow_is_accessible.
+                        debug!(?inode_event, "Handling inotify modification event");
+
+                        path_of_interest_was_changed = true
+                    }
+                }
+
+                if path_of_interest_was_changed {
+                    let _ = inotify_tx.try_send(true);
+                } else {
+                    debug!(?array_of_events, "IGNORED");
                 }
             })
                 .and_then(|mut debouncer| {
-                    debouncer.watch(Path::new("/etc/passwd"), RecursiveMode::NonRecursive)
+                    debouncer.watch(Path::new("/etc"), RecursiveMode::Recursive)
                         .map(|()| debouncer)
-                })
-                .and_then(|mut debouncer| debouncer.watch(Path::new("/etc/group"), RecursiveMode::NonRecursive)
-                        .map(|()| debouncer)
-                )
-                .and_then(|mut debouncer| if shadow_is_accessible {
-                    debouncer.watch(Path::new("/etc/shadow"), RecursiveMode::NonRecursive)
-                        .map(|()| debouncer)
-                    } else {
-                        Ok(debouncer)
-                    }
-                );
+                });
+
             let watcher =
                 match watcher {
                     Ok(watcher) => {
