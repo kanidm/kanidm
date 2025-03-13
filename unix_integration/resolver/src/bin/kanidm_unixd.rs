@@ -1104,6 +1104,8 @@ async fn main() -> ExitCode {
 
                         if was_changed {
                             let _ = inotify_tx.try_send(true);
+                        } else {
+                            debug!(?event, "IGNORED");
                         }
                     }
                     Err(array_errors) => {
