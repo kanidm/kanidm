@@ -54,7 +54,7 @@ use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 
-use notify_debouncer_full::{new_debouncer, notify::RecursiveMode};
+use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, DebouncedEvent};
 
 #[cfg(not(target_os = "illumos"))]
 #[global_allocator]
@@ -1089,15 +1089,15 @@ async fn main() -> ExitCode {
             // ====== setup an inotify watcher to reload on changes to system files ======
             let (inotify_tx, mut inotify_rx) = channel(4);
 
-            let watcher = new_debouncer(Duration::from_secs(4), None, move |event| {
+            let watcher = new_debouncer(Duration::from_secs(4), None, move |event: Result<Vec<DebouncedEvent>, _>| {
 
                 match event {
                     Ok(array_event) => {
                         let mut was_changed = false;
 
-                        for event in array_event {
-                            if event.kind.is_create() || event.kind.is_modify() || event.kind.is_remove() {
-                                debug!(?event, "Handling inotify modification event");
+                        for ievent in array_event {
+                            if ievent.kind.is_create() || ievent.kind.is_modify() || ievent.kind.is_remove() {
+                                debug!(?ievent, "Handling inotify modification event");
                                 was_changed = true
                             }
                         }
