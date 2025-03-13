@@ -54,7 +54,6 @@ services:
       - traefik.http.routers.kanidm.entrypoints=websecure
       - traefik.http.routers.kanidm.rule=Host(`idm.example.com`)
       - traefik.http.routers.kanidm.service=kanidm
-      - traefik.http.serversTransports.kanidm.insecureSkipVerify=true
       - traefik.http.services.kanidm.loadbalancer.server.port=8443
       - traefik.http.services.kanidm.loadbalancer.server.scheme=https
 volumes:
