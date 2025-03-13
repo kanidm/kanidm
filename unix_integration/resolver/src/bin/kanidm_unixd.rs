@@ -1089,14 +1089,14 @@ async fn main() -> ExitCode {
             // ====== setup an inotify watcher to reload on changes to system files ======
             let (inotify_tx, mut inotify_rx) = channel(4);
 
-            let watcher = new_debouncer(Duration::from_secs(4), None, move |event: Result<Vec<DebouncedEvent>, _>| {
+            let watcher = new_debouncer(Duration::from_secs(2), None, move |event: Result<Vec<DebouncedEvent>, _>| {
 
                 match event {
                     Ok(array_event) => {
                         let mut was_changed = false;
 
                         for ievent in array_event {
-                            if ievent.kind.is_create() || ievent.kind.is_modify() || ievent.kind.is_remove() {
+                            if !ievent.kind.is_access() {
                                 debug!(?ievent, "Handling inotify modification event");
                                 was_changed = true
                             }
