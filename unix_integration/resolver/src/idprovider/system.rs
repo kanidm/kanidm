@@ -194,6 +194,7 @@ impl SystemProvider {
                 ))
             } else {
                 // Invalid password, skip the account
+                debug!(?name, "account password is invalid.");
                 None
             }
         });
