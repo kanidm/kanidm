@@ -24,9 +24,7 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.7
-        with:
-          version: "v0.4.2"
+        uses: mozilla-actions/sccache-action@v0.0.8
       - name: Install deps
         run: |
           sudo apt-get update

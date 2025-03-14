@@ -27,10 +27,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.7
-        with:
-          version: "v0.4.2"
-
+        uses: mozilla-actions/sccache-action@v0.0.8
       - name: Install dependencies
         run: |
           sudo apt-get update && \
@@ -75,10 +72,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust_version }}
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.7
-        with:
-          version: "v0.4.2"
-
+        uses: mozilla-actions/sccache-action@v0.0.8
       - name: Install dependencies
         run: |
           sudo apt-get update && \
@@ -118,10 +112,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.7
-        with:
-          version: "v0.4.2"
-
+        uses: mozilla-actions/sccache-action@v0.0.8
       - name: Install dependencies
         run: |
           sudo apt-get update && \
