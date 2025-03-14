@@ -11,16 +11,26 @@
 // We allow expect since it forces good error messages at the least.
 #![allow(clippy::expect_used)]
 
-mod config;
-mod error;
-
-use crate::config::{Config, EntryConfig};
+use crate::config::{Config, EntryConfig, GroupAttrSchema};
 use crate::error::SyncError;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
+use kanidm_client::KanidmClientBuilder;
+use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 use kanidm_proto::constants::ATTR_OBJECTCLASS;
+use kanidm_proto::scim_v1::{
+    MultiValueAttr, ScimEntry, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
+    ScimSyncRetentionMode, ScimSyncState,
+};
+#[cfg(target_family = "unix")]
+use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use kanidmd_lib::prelude::Attribute;
+use ldap3_client::{
+    proto::{self, LdapFilter},
+    LdapClient, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry, LdapSyncStateValue,
+};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
@@ -38,22 +48,12 @@ use tokio::net::TcpListener;
 use tokio::runtime;
 use tokio::sync::broadcast;
 use tokio::time::sleep;
-
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-use kanidm_client::KanidmClientBuilder;
-use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
-use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntry, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
-    ScimSyncRetentionMode, ScimSyncState,
-};
-
-#[cfg(target_family = "unix")]
-use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
-
-use ldap3_client::{proto, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry, LdapSyncStateValue};
+mod config;
+mod error;
 
 include!("./opt.rs");
 
@@ -343,7 +343,7 @@ async fn run_sync(
         LdapSyncRepl::Success {
             cookie,
             refresh_deletes: _,
-            entries,
+            mut entries,
             delete_uuids,
             present_uuids,
         } => {
@@ -391,6 +391,14 @@ async fn run_sync(
                     error!("Ldap server provided an invalid sync repl response - unable to have both delete and present phases.");
                     return Err(SyncError::LdapStateInvalid);
                 }
+            };
+
+            if matches!(sync_config.group_attr_schema, GroupAttrSchema::Rfc2307) {
+                // Since the schema is rfc 2307, this means that the names of members
+                // in any group are uids, not dn's, so we need to resolve these now.
+                resolve_member_uid_to_dn(&mut ldap_client, &mut entries, sync_config)
+                    .await
+                    .map_err(|_| SyncError::Preprocess)?;
             };
 
             let entries = match process_ldap_sync_result(entries, sync_config).await {
@@ -442,6 +450,99 @@ async fn run_sync(
         Ok(())
     }
     // done!
+}
+
+async fn resolve_member_uid_to_dn(
+    ldap_client: &mut LdapClient,
+    ldap_entries: &mut [LdapSyncReplEntry],
+    sync_config: &Config,
+) -> Result<(), ()> {
+    let mut lookup_cache: BTreeMap<String, String> = Default::default();
+
+    for sync_entry in ldap_entries.iter_mut() {
+        let oc = sync_entry
+            .entry
+            .attrs
+            .get(ATTR_OBJECTCLASS)
+            .ok_or_else(|| {
+                error!("Invalid entry - no object class {}", sync_entry.entry.dn);
+            })?;
+
+        if !oc.contains(&sync_config.group_objectclass) {
+            // Not a group, skip.
+            continue;
+        }
+
+        // It's a group, does it have memberUid? We pop this out here
+        // because we plan to replace it.
+        let members = sync_entry
+            .entry
+            .remove_ava(&sync_config.group_attr_member)
+            .unwrap_or_default();
+
+        // Now, search all the members to dns.
+        let mut resolved_members: BTreeSet<String> = Default::default();
+
+        for member_uid in members {
+            if let Some(member_dn) = lookup_cache.get(&member_uid) {
+                resolved_members.insert(member_dn.to_string());
+            } else {
+                // Not in cache, search it. We use a syncrepl request here as this
+                // can bypass some query limits. Note we set the sync cookie to None.
+                let filter = LdapFilter::And(vec![
+                    // Always put uid first as openldap can't query optimise.
+                    LdapFilter::Equality(
+                        sync_config.person_attr_user_name.clone(),
+                        member_uid.clone(),
+                    ),
+                    LdapFilter::Equality(
+                        ATTR_OBJECTCLASS.into(),
+                        sync_config.person_objectclass.clone(),
+                    ),
+                ]);
+
+                let mode = proto::SyncRequestMode::RefreshOnly;
+                let sync_result = ldap_client
+                    .syncrepl(sync_config.ldap_sync_base_dn.clone(), filter, None, mode)
+                    .await
+                    .map_err(|err| {
+                        debug!(?member_uid, ?sync_entry.entry_uuid);
+                        error!(
+                            ?err,
+                            "Failed to perform syncrepl to resolve members from ldap"
+                        );
+                    })?;
+
+                // Get the memberDN out now.
+                let member_dn = match sync_result {
+                    LdapSyncRepl::Success { mut entries, .. } => {
+                        let Some(resolved_entry) = entries.pop() else {
+                            warn!(?member_uid, "Unable to resolve member, no matching entries");
+                            continue;
+                        };
+
+                        resolved_entry.entry.dn.clone()
+                    }
+                    _ => {
+                        error!("Invalid sync repl result state");
+                        return Err(());
+                    }
+                };
+
+                // cache it.
+                lookup_cache.insert(member_uid, member_dn.clone());
+                resolved_members.insert(member_dn);
+            }
+        }
+
+        // Put the members back in resolved as DN's now.
+        sync_entry
+            .entry
+            .attrs
+            .insert(sync_config.group_attr_member.clone(), resolved_members);
+    }
+
+    Ok(())
 }
 
 async fn process_ldap_sync_result(
