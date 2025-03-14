@@ -3,8 +3,8 @@ use kanidmd_lib::constants::NAME_IDM_ADMINS;
 use kanidmd_testkit::*;
 
 #[kanidmd_testkit::test]
-async fn account_id_unix_token(rsclient: KanidmClient) {
-    login_put_admin_idm_admins(&rsclient).await;
+async fn account_id_unix_token(rsclient: &KanidmClient) {
+    login_put_admin_idm_admins(rsclient).await;
 
     create_user(&rsclient, "group_manager", "idm_group_manage_priv").await;
     // create test user without creating new groups

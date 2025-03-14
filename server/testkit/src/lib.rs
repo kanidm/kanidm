@@ -10,16 +10,16 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use std::net::TcpStream;
-use std::sync::atomic::{AtomicU16, Ordering};
-
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-
 use kanidm_proto::internal::{Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
 use kanidmd_lib::prelude::{Attribute, NAME_SYSTEM_ADMINS};
+use std::net::TcpStream;
+use std::sync::atomic::{AtomicU16, Ordering};
 use tokio::task;
+use tracing::error;
+use url::Url;
 
 pub const ADMIN_TEST_USER: &str = "admin";
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -46,14 +46,9 @@ pub fn is_free_port(port: u16) -> bool {
 }
 
 // Test external behaviours of the service.
-
-// allowed because the use of this function is behind a test gate
-#[allow(dead_code)]
-pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreHandle) {
-    sketching::test_init();
-
+fn port_loop() -> u16 {
     let mut counter = 0;
-    let port = loop {
+    loop {
         let possible_port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
         if is_free_port(possible_port) {
             break possible_port;
@@ -64,7 +59,21 @@ pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreH
             tracing::error!("Unable to allocate port!");
             panic!();
         }
-    };
+    }
+}
+
+pub struct AsyncTestEnvironment {
+    pub rsclient: KanidmClient,
+    pub core_handle: CoreHandle,
+    pub ldap_url: Option<Url>,
+}
+
+// allowed because the use of this function is behind a test gate
+#[allow(dead_code)]
+pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment {
+    sketching::test_init();
+
+    let port = port_loop();
 
     let int_config = Box::new(IntegrationTestConfig {
         admin_user: ADMIN_TEST_USER.to_string(),
@@ -74,6 +83,16 @@ pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreH
     });
 
     let addr = format!("http://localhost:{}", port);
+
+    let ldap_url = if config.ldapaddress.is_some() {
+        let ldapport = port_loop();
+        config.ldapaddress = Some(format!("127.0.0.1:{}", ldapport));
+        Url::parse(&format!("ldap://127.0.0.1:{}", ldapport))
+            .inspect_err(|err| error!(?err, "ldap address setup"))
+            .ok()
+    } else {
+        None
+    };
 
     // Setup the address and origin..
     config.address = format!("127.0.0.1:{}", port);
@@ -102,7 +121,11 @@ pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreH
 
     tracing::info!("Testkit server setup complete - {}", addr);
 
-    (rsclient, core_handle)
+    AsyncTestEnvironment {
+        rsclient,
+        core_handle,
+        ldap_url,
+    }
 }
 
 /// creates a user (username: `id`) and puts them into a group, creating it if need be.

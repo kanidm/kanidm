@@ -19,9 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.7
-        with:
-          version: "v0.4.2"
+        uses: mozilla-actions/sccache-action@v0.0.8
       - name: Install dependencies
         run: |
           sudo apt-get update && \
@@ -41,8 +39,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.7
-        with:
-          version: "v0.4.2"
+        uses: mozilla-actions/sccache-action@v0.0.8
       - name: "Run cargo fmt"
         run: cargo fmt --check

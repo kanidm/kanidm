@@ -1,7 +1,7 @@
 use kanidm_client::{http::header, KanidmClient};
 
 #[kanidmd_testkit::test]
-async fn test_https_manifest(rsclient: KanidmClient) {
+async fn test_https_manifest(rsclient: &KanidmClient) {
     // We need to do manual reqwests here.
     let client = rsclient.client();
 
