@@ -206,7 +206,7 @@ lru = "^0.12.5"
 mathru = "^0.13.0"
 md-5 = "0.10.6"
 mimalloc = "0.1.43"
-notify-debouncer-full = { version = "0.1" }
+notify-debouncer-full = { version = "0.5" }
 num_enum = "^0.5.11"
 oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"

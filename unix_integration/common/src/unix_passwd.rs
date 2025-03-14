@@ -7,6 +7,13 @@ use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EtcDb {
+    pub users: Vec<EtcUser>,
+    pub shadow: Vec<EtcShadow>,
+    pub groups: Vec<EtcGroup>,
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct EtcUser {
     pub name: String,
@@ -39,7 +46,7 @@ pub fn read_etc_passwd_file<P: AsRef<Path>>(path: P) -> Result<Vec<EtcUser>, Uni
     parse_etc_passwd(contents.as_slice()).map_err(|_| UnixIntegrationError)
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(PartialEq, Default)]
 pub enum CryptPw {
     Sha256(String),
     Sha512(String),
@@ -52,6 +59,16 @@ impl fmt::Display for CryptPw {
         match self {
             CryptPw::Invalid => write!(f, "x"),
             CryptPw::Sha256(s) | CryptPw::Sha512(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl fmt::Debug for CryptPw {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CryptPw::Invalid => write!(f, "x"),
+            CryptPw::Sha256(_s) => write!(f, "crypt sha256"),
+            CryptPw::Sha512(_s) => write!(f, "crypt sha512"),
         }
     }
 }

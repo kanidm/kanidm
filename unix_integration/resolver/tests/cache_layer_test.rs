@@ -776,7 +776,7 @@ async fn test_cache_nxset_account() {
                 homedir: Default::default(),
                 shell: Default::default(),
             }],
-            None,
+            vec![],
             vec![],
         )
         .await;
@@ -832,7 +832,7 @@ async fn test_cache_nxset_group() {
     cachelayer
         .reload_system_identities(
             vec![],
-            None,
+            vec![],
             vec![EtcGroup {
                 name: "testgroup1".to_string(),
                 // Important! We set the GID to differ from what kanidm stores so we can
@@ -940,7 +940,7 @@ async fn test_cache_authenticate_system_account() {
                 shell: Default::default(),
             }
             ],
-            Some(vec![
+            vec![
                 EtcShadow {
                     name: "testaccount1".to_string(),
                     // The very secure password, "a".
@@ -965,7 +965,7 @@ async fn test_cache_authenticate_system_account() {
                     epoch_expire_date: Some(380),
                     flag_reserved: None
                 },
-            ]),
+            ],
             vec![],
         )
         .await;
@@ -1111,7 +1111,7 @@ async fn test_cache_extend_group_members() {
                 homedir: Default::default(),
                 shell: Default::default(),
             }],
-            None,
+            vec![],
             vec![EtcGroup {
                 // This group is configured to allow extension from
                 // the group "testgroup1"

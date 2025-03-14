@@ -10,6 +10,31 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
+use bytes::{BufMut, BytesMut};
+use clap::{Arg, ArgAction, Command};
+use futures::{SinkExt, StreamExt};
+use kanidm_client::KanidmClientBuilder;
+use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
+use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
+use kanidm_proto::internal::OperationError;
+use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::unix_passwd::EtcDb;
+use kanidm_unix_common::unix_proto::{
+    ClientRequest, ClientResponse, TaskRequest, TaskRequestFrame, TaskResponse,
+};
+use kanidm_unix_resolver::db::{Cache, Db};
+use kanidm_unix_resolver::idprovider::interface::IdProvider;
+use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
+use kanidm_unix_resolver::idprovider::system::SystemProvider;
+use kanidm_unix_resolver::resolver::Resolver;
+use kanidm_unix_resolver::unix_config::{HsmType, UnixdConfig};
+use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+use libc::umask;
+use sketching::tracing::span;
+use sketching::tracing_forest::traits::*;
+use sketching::tracing_forest::util::*;
+use sketching::tracing_forest::{self};
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::metadata;
 use std::io;
@@ -20,29 +45,6 @@ use std::process::ExitCode;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
-
-use bytes::{BufMut, BytesMut};
-use clap::{Arg, ArgAction, Command};
-use futures::{SinkExt, StreamExt};
-use kanidm_client::KanidmClientBuilder;
-use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
-use kanidm_proto::internal::OperationError;
-use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow};
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
-use kanidm_unix_resolver::db::{Cache, Db};
-use kanidm_unix_resolver::idprovider::interface::IdProvider;
-use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
-use kanidm_unix_resolver::idprovider::system::SystemProvider;
-use kanidm_unix_resolver::resolver::Resolver;
-use kanidm_unix_resolver::unix_config::{HsmType, UnixdConfig};
-
-use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
-use libc::umask;
-use sketching::tracing::span;
-use sketching::tracing_forest::traits::*;
-use sketching::tracing_forest::util::*;
-use sketching::tracing_forest::{self};
 use time::OffsetDateTime;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt; // for read_to_end()
@@ -52,17 +54,16 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
-use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
-
-use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
-
 #[cfg(not(target_os = "illumos"))]
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 //=== the codec
 
-type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);
+struct AsyncTaskRequest {
+    task_req: TaskRequest,
+    task_chan: oneshot::Sender<()>,
+}
 
 #[derive(Default)]
 struct ClientCodec;
@@ -117,11 +118,11 @@ impl Decoder for TaskCodec {
     }
 }
 
-impl Encoder<TaskRequest> for TaskCodec {
+impl Encoder<TaskRequestFrame> for TaskCodec {
     type Error = io::Error;
 
-    fn encode(&mut self, msg: TaskRequest, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        debug!("Attempting to send request -> {:?} ...", msg);
+    fn encode(&mut self, msg: TaskRequestFrame, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        debug!("Attempting to send request -> {:?} ...", msg.id);
         let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
             io::Error::new(io::ErrorKind::Other, "JSON encode error")
@@ -148,46 +149,79 @@ fn rm_if_exist(p: &str) {
 
 async fn handle_task_client(
     stream: UnixStream,
-    task_channel_tx: &Sender<AsyncTaskRequest>,
+    notify_shadow_change_tx: &Sender<EtcDb>,
     task_channel_rx: &mut Receiver<AsyncTaskRequest>,
+    broadcast_rx: &mut broadcast::Receiver<bool>,
 ) -> Result<(), Box<dyn Error>> {
-    // setup the codec
-    let mut reqs = Framed::new(stream, TaskCodec);
+    // setup the codec, this is to the unix socket which the task daemon
+    // connected to us with.
+    let mut last_task_id: u64 = 0;
+    let mut task_handles = BTreeMap::new();
+
+    let mut framed_stream = Framed::new(stream, TaskCodec);
 
     loop {
-        // TODO wait on the channel OR the task handler, so we know
-        // when it closes.
-        let v = match task_channel_rx.recv().await {
-            Some(v) => v,
-            None => return Ok(()),
-        };
-
-        debug!("Sending Task -> {:?}", v.0);
-
-        // Write the req to the socket.
-        if let Err(_e) = reqs.send(v.0.clone()).await {
-            // re-queue the event if not timed out.
-            // This is indicated by the one shot being dropped.
-            if !v.1.is_closed() {
-                let _ = task_channel_tx
-                    .send_timeout(v, Duration::from_millis(100))
-                    .await;
+        tokio::select! {
+            // We have been commanded to stop operation.
+            _ = broadcast_rx.recv() => {
+                return Ok(())
             }
-            // now return the error.
-            return Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")));
-        }
+            task_request = task_channel_rx.recv() => {
+                let Some(AsyncTaskRequest {
+                    task_req,
+                    task_chan
+                }) = task_request else {
+                    // Task channel has died, cease operation.
+                    return Ok(())
+                };
 
-        match reqs.next().await {
-            Some(Ok(TaskResponse::Success)) => {
-                debug!("Task was acknowledged and completed.");
-                // Send a result back via the one-shot
-                // Ignore if it fails.
-                let _ = v.1.send(());
+                debug!("Sending Task -> {:?}", task_req);
+
+                last_task_id += 1;
+                let task_id = last_task_id;
+
+                // Setup the task handle so we know who to get back to.
+                task_handles.insert(task_id, task_chan);
+
+                let task_frame = TaskRequestFrame {
+                    id: task_id,
+                    req: task_req,
+                };
+
+                if let Err(err) = framed_stream.send(task_frame).await {
+                    warn!("Unable to queue task for completion");
+                    return Err(Box::new(err));
+                }
+                // Task sent
             }
-            other => {
-                error!("Error -> {:?}", other);
-                return Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")));
+
+            response = framed_stream.next() => {
+                // Process incoming messages. They may be out of order.
+                match response {
+                    Some(Ok(TaskResponse::Success(task_id))) => {
+                        debug!("Task was acknowledged and completed.");
+
+                        if let Some(handle) = task_handles.remove(&task_id) {
+                            // Send a result back via the one-shot
+                            // Ignore if it fails.
+                            let _ = handle.send(());
+                        }
+                        // If the ID was unregistered, ignore.
+                    }
+                    Some(Ok(TaskResponse::NotifyShadowChange(etc_db))) => {
+                        let _ = notify_shadow_change_tx.send(etc_db).await;
+                    }
+                    // Other things ....
+                    // Some(Ok(TaskResponse::ReloadSystemIds))
+
+                    other => {
+                        error!("Error -> {:?}", other);
+                        return Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")));
+                    }
+                }
+
             }
+
         }
     }
 }
@@ -341,7 +375,10 @@ async fn handle_client(
 
                         match task_channel_tx
                             .send_timeout(
-                                (TaskRequest::HomeDirectory(info), tx),
+                                AsyncTaskRequest {
+                                    task_req: TaskRequest::HomeDirectory(info),
+                                    task_chan: tx,
+                                },
                                 Duration::from_millis(100),
                             )
                             .await
@@ -416,40 +453,6 @@ async fn handle_client(
     let span = span!(Level::DEBUG, "disconnecting client", uuid = %conn_id);
     let _enter = span.enter();
     debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
-
-    Ok(())
-}
-
-async fn process_etc_passwd_group(
-    cachelayer: &Resolver,
-    shadow_is_accessible: bool,
-) -> Result<(), Box<dyn Error>> {
-    let mut file = File::open("/etc/passwd").await?;
-    let mut contents = vec![];
-    file.read_to_end(&mut contents).await?;
-
-    let users = parse_etc_passwd(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
-
-    let maybe_shadow = if shadow_is_accessible {
-        let mut file = File::open("/etc/shadow").await?;
-        let mut contents = vec![];
-        file.read_to_end(&mut contents).await?;
-
-        let shadow = parse_etc_shadow(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
-        Some(shadow)
-    } else {
-        None
-    };
-
-    let mut file = File::open("/etc/group").await?;
-    let mut contents = vec![];
-    file.read_to_end(&mut contents).await?;
-
-    let groups = parse_etc_group(contents.as_slice()).map_err(|_| "Invalid group content")?;
-
-    cachelayer
-        .reload_system_identities(users, maybe_shadow, groups)
-        .await;
 
     Ok(())
 }
@@ -1009,23 +1012,6 @@ async fn main() -> ExitCode {
             // Undo umask changes.
             let _ = unsafe { umask(before) };
 
-            // We pre-check if we can read /etc/shadow, and we flag that for the process so that
-            // we don't attempt to read it again as we proceed.
-            let shadow_is_accessible = {
-                if let Err(err) = File::open("/etc/shadow").await {
-                    warn!(?err, "Unable to read /etc/shadow, some features will be disabled.");
-                    false
-                } else {
-                    true
-                }
-            };
-
-            // Pre-process /etc/passwd and /etc/group for nxset
-            if let Err(err) = process_etc_passwd_group(&cachelayer, shadow_is_accessible).await {
-                error!(?err, "Failed to process system id providers");
-                return ExitCode::FAILURE
-            }
-
             // Setup the tasks socket first.
             let (task_channel_tx, mut task_channel_rx) = channel(16);
             let task_channel_tx = Arc::new(task_channel_tx);
@@ -1037,9 +1023,14 @@ async fn main() -> ExitCode {
             let mut c_broadcast_rx = broadcast_tx.subscribe();
             let mut d_broadcast_rx = broadcast_tx.subscribe();
 
+            // This channel allowss
+            let (notify_shadow_channel_tx, mut notify_shadow_channel_rx) = channel(16);
+            let notify_shadow_channel_tx = Arc::new(notify_shadow_channel_tx);
+
             let task_b = tokio::spawn(async move {
                 loop {
                     tokio::select! {
+                        // Wait on the broadcast to see if we need to close down.
                         _ = c_broadcast_rx.recv() => {
                             break;
                         }
@@ -1062,16 +1053,11 @@ async fn main() -> ExitCode {
                                     // It did? Great, now we can wait and spin on that one
                                     // client.
 
-                                    tokio::select! {
-                                        _ = d_broadcast_rx.recv() => {
-                                            break;
-                                        }
-                                        // We have to check for signals here else this tasks waits forever.
-                                        Err(e) = handle_task_client(socket, &task_channel_tx, &mut task_channel_rx) => {
-                                            error!("Task client error occurred; error = {:?}", e);
-                                        }
+                                    // We have to check for signals here else this tasks waits forever.
+                                    if let Err(err) = handle_task_client(socket, &notify_shadow_channel_tx, &mut task_channel_rx, &mut d_broadcast_rx).await {
+                                        error!(?err, "Task client error occurred");
                                     }
-                                    // If they DC we go back to accept.
+                                    // If they disconnect we go back to accept.
                                 }
                                 Err(err) => {
                                     error!("Task Accept error -> {:?}", err);
@@ -1084,56 +1070,31 @@ async fn main() -> ExitCode {
                 info!("Stopped task connector");
             });
 
-            // TODO: Setup a task that handles pre-fetching here.
+            // ====== Listen for shadow change notification from tasks ======
 
-            let (inotify_tx, mut inotify_rx) = channel(4);
-
-            let watcher = new_debouncer(Duration::from_secs(2), None, move |_event| {
-                let _ = inotify_tx.try_send(true);
-            })
-                .and_then(|mut debouncer| {
-                    debouncer.watcher().watch(Path::new("/etc/passwd"), RecursiveMode::NonRecursive)
-                        .map(|()| debouncer)
-                })
-                .and_then(|mut debouncer| debouncer.watcher().watch(Path::new("/etc/group"), RecursiveMode::NonRecursive)
-                        .map(|()| debouncer)
-                )
-                .and_then(|mut debouncer| if shadow_is_accessible {
-                    debouncer.watcher().watch(Path::new("/etc/shadow"), RecursiveMode::NonRecursive)
-                        .map(|()| debouncer)
-                    } else {
-                        Ok(debouncer)
-                    }
-                );
-            let watcher =
-            match watcher {
-                Ok(watcher) => {
-                    watcher
-                }
-                Err(e) => {
-                    error!("Failed to setup inotify {:?}",  e);
-                    return ExitCode::FAILURE
-                }
-            };
-
+            let shadow_notify_cachelayer = cachelayer.clone();
             let mut c_broadcast_rx = broadcast_tx.subscribe();
 
-            let inotify_cachelayer = cachelayer.clone();
             let task_c = tokio::spawn(async move {
+                debug!("Spawned shadow reload task handler");
                 loop {
                     tokio::select! {
                         _ = c_broadcast_rx.recv() => {
                             break;
                         }
-                        _ = inotify_rx.recv() => {
-                            if let Err(err) = process_etc_passwd_group(&inotify_cachelayer, shadow_is_accessible).await {
-                                error!(?err, "Failed to process system id providers");
-                            }
+                        Some(EtcDb {
+                            users, shadow, groups
+                        }) = notify_shadow_channel_rx.recv() => {
+                            shadow_notify_cachelayer
+                                .reload_system_identities(users, shadow, groups)
+                                .await;
                         }
                     }
                 }
-                info!("Stopped inotify watcher");
+                info!("Stopped shadow reload task handler");
             });
+
+            // TODO: Setup a task that handles pre-fetching here.
 
             // Set the umask while we open the path for most clients.
             let before = unsafe { umask(0) };
@@ -1233,8 +1194,6 @@ async fn main() -> ExitCode {
             if let Err(e) = broadcast_tx.send(true) {
                 error!("Unable to shutdown workers {:?}", e);
             }
-
-            drop(watcher);
 
             let _ = task_a.await;
             let _ = task_b.await;

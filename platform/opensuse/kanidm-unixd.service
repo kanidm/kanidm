@@ -12,7 +12,7 @@ Conflicts=nscd.service
 
 [Service]
 DynamicUser=yes
-SupplementaryGroups=tss shadow
+SupplementaryGroups=tss
 UMask=0027
 CacheDirectory=kanidm-unixd
 RuntimeDirectory=kanidm-unixd
