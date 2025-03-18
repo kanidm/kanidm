@@ -1,14 +1,13 @@
-{ pkgs ? import <nixpkgs> {} }:
-	let
-	overrides = (builtins.fromTOML (builtins.readFile ./rust-toolchain.toml));
+let
+	rust-overlay = (import (builtins.fetchTarball "https://github.com/oxalica/rust-overlay/archive/master.tar.gz"));
 in
-pkgs.mkShellNoCC rec {
+{ pkgs ? import <nixpkgs> { overlays = [ rust-overlay ]; } }:
+pkgs.mkShellNoCC {
 	# Kanidm dependencies
 	buildInputs = with pkgs; [
 		pkg-config
 		
-		cargo
-		rustc
+		(rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
 
 		clang
 		llvmPackages.bintools
@@ -19,7 +18,6 @@ pkgs.mkShellNoCC rec {
 		linux-pam
 	];
 	
-	RUSTC_VERSION = overrides.toolchain.channel;
 	# https://github.com/rust-lang/rust-bindgen#environment-variables
 	LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.llvmPackages_latest.libclang.lib ];
 }
