@@ -1013,7 +1013,7 @@ async fn main() -> ExitCode {
             let _ = unsafe { umask(before) };
 
             // The tasks ... well task. Tasks-task. Anyway, the tasks-task is bidirectional
-            // in it's communication to the tasks-daemon. We submit tasks to the tasks-daemon
+            // in its communication to the tasks-daemon. We submit tasks to the tasks-daemon
             // via this channel here -\
             //                        |
             //                        v
