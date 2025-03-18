@@ -16,7 +16,9 @@ impl GroupOpt {
             GroupOpt::RemoveMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::SetMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
-            GroupOpt::Rename { copt, .. } | GroupOpt::SetMail { copt, .. } => copt.debug,
+            GroupOpt::SetDescription { copt, .. }
+            | GroupOpt::Rename { copt, .. }
+            | GroupOpt::SetMail { copt, .. } => copt.debug,
             GroupOpt::Posix { commands } => match commands {
                 GroupPosix::Show(gcopt) => gcopt.copt.debug,
                 GroupPosix::Set(gcopt) => gcopt.copt.debug,
@@ -176,6 +178,26 @@ impl GroupOpt {
                 match result {
                     Err(e) => handle_client_error(e, copt.output_mode),
                     Ok(_) => println!("Successfully set mail for group {}", name.as_str()),
+                }
+            }
+            GroupOpt::SetDescription {
+                copt,
+                name,
+                description,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+
+                let result = if let Some(description) = description {
+                    client
+                        .idm_group_set_description(name.as_str(), description.as_str())
+                        .await
+                } else {
+                    client.idm_group_purge_description(name.as_str()).await
+                };
+
+                match result {
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Ok(_) => println!("Successfully set description for group {}", name.as_str()),
                 }
             }
             GroupOpt::Rename {
