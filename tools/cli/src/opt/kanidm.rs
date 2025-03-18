@@ -348,6 +348,14 @@ pub enum GroupOpt {
         name: String,
         mail: Vec<String>,
     },
+    /// Set the description of this group. If no description is provided, the value is cleared
+    #[clap(name = "set-description")]
+    SetDescription {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        name: String,
+        description: Option<String>,
+    },
     /// Set a new entry-managed-by for this group.
     #[clap(name = "set-entry-manager")]
     SetEntryManagedBy {

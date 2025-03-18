@@ -195,4 +195,20 @@ impl KanidmClient {
         self.perform_get_request(&format!("/v1/group/{}/_attr/mail", id))
             .await
     }
+
+    pub async fn idm_group_purge_description(&self, id: &str) -> Result<(), ClientError> {
+        self.idm_group_purge_attr(id, "description").await
+    }
+
+    pub async fn idm_group_set_description(
+        &self,
+        id: &str,
+        description: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("/v1/group/{}/_attr/description", id),
+            &[description],
+        )
+        .await
+    }
 }
