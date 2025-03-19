@@ -998,7 +998,7 @@ async fn main() -> ExitCode {
 
             let cachelayer = Arc::new(cl_inner);
 
-            // Setup the root-only socket. Take away all other access bits.
+            // Setup the root-only tasks socket. Take away all other access bits.
             let before = unsafe { umask(0o0077) };
             let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
                 Ok(l) => l,
@@ -1012,20 +1012,32 @@ async fn main() -> ExitCode {
             // Undo umask changes.
             let _ = unsafe { umask(before) };
 
-            // Setup the tasks socket first.
+            // The tasks ... well task. Tasks-task. Anyway, the tasks-task is bidirectional
+            // in its communication to the tasks-daemon. We submit tasks to the tasks-daemon
+            // via this channel here -\
+            //                        |
+            //                        v
             let (task_channel_tx, mut task_channel_rx) = channel(16);
             let task_channel_tx = Arc::new(task_channel_tx);
-
             let task_channel_tx_cln = task_channel_tx.clone();
+            // Each submitted task contains a oneshot channel allowing the tasks-task to
+            // notify the submitter of the task that the task is completed.
 
-            // Start to build the worker tasks
+            // This channel is for the second case - the tasks-daemon can send us
+            // unsolicited dm's about system state, and when these occure we need to
+            // response to these notifications. Because each potential dm that the
+            // daemon can send us has a specific intent, we need a channel for each
+            // type of notification that we could get. This channel is for when
+            // the tasks daemon has a reloaded shadow database for us to process
+            // and cache:
+            let (notify_shadow_channel_tx, mut notify_shadow_channel_rx) = channel(16);
+            let notify_shadow_channel_tx = Arc::new(notify_shadow_channel_tx);
+
+            // Broadcast receivers so that the tasks-task can be shut down when we get
+            // signals etc.
             let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
             let mut c_broadcast_rx = broadcast_tx.subscribe();
             let mut d_broadcast_rx = broadcast_tx.subscribe();
-
-            // This channel allowss
-            let (notify_shadow_channel_tx, mut notify_shadow_channel_rx) = channel(16);
-            let notify_shadow_channel_tx = Arc::new(notify_shadow_channel_tx);
 
             let task_b = tokio::spawn(async move {
                 loop {
@@ -1037,7 +1049,9 @@ async fn main() -> ExitCode {
                         accept_res = task_listener.accept() => {
                             match accept_res {
                                 Ok((socket, _addr)) => {
-                                    // Did it come from root?
+                                    // Did it come from root? If not, they don't have the needed
+                                    // permissions to actually be a task handler, and we wouldn't
+                                    // want to leak to anyone else anyway.
                                     if let Ok(ucred) = socket.peer_cred() {
                                         if ucred.uid() != 0 {
                                             // move along.
