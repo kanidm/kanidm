@@ -84,9 +84,9 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
 
     let addr = format!("http://localhost:{}", port);
 
-    let ldap_url = if config.ldapaddress.is_some() {
+    let ldap_url = if config.ldapbindaddress.is_some() {
         let ldapport = port_loop();
-        config.ldapaddress = Some(format!("127.0.0.1:{}", ldapport));
+        config.ldapbindaddress = Some(format!("127.0.0.1:{}", ldapport));
         Url::parse(&format!("ldap://127.0.0.1:{}", ldapport))
             .inspect_err(|err| error!(?err, "ldap address setup"))
             .ok()

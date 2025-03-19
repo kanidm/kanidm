@@ -1,27 +1,22 @@
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::convert::{TryFrom, TryInto};
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::time::Duration;
-
 use super::keystorage::{KeyHandle, KeyHandleId};
-
-// use crate::valueset;
-use hashbrown::HashMap;
-use idlset::v2::IDLBitRange;
-use kanidm_proto::internal::{ConsistencyError, OperationError};
-use rusqlite::vtab::array::Array;
-use rusqlite::{Connection, OpenFlags, OptionalExtension};
-use uuid::Uuid;
-
 use crate::be::dbentry::DbIdentSpn;
 use crate::be::dbvalue::DbCidV1;
 use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::prelude::*;
 use crate::value::{IndexType, Value};
-
-// use uuid::Uuid;
+use hashbrown::HashMap;
+use idlset::v2::IDLBitRange;
+use kanidm_proto::internal::{ConsistencyError, OperationError};
+use rusqlite::vtab::array::Array;
+use rusqlite::{Connection, OpenFlags, OptionalExtension};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::convert::{TryFrom, TryInto};
+use std::path::Path;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::time::Duration;
+use uuid::Uuid;
 
 const DBV_ID2ENTRY: &str = "id2entry";
 const DBV_INDEXV: &str = "indexv";
@@ -1712,7 +1707,7 @@ impl IdlSqliteWriteTransaction {
 
 impl IdlSqlite {
     pub fn new(cfg: &BackendConfig, vacuum: bool) -> Result<Self, OperationError> {
-        if cfg.path.is_empty() {
+        if cfg.path == Path::new("") {
             debug_assert_eq!(cfg.pool_size, 1);
         }
         // If provided, set the page size to match the tuning we want. By default we use 4096. The VACUUM
@@ -1734,8 +1729,7 @@ impl IdlSqlite {
 
         // Initial setup routines.
         {
-            let vconn =
-                Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error)?;
+            let vconn = Connection::open_with_flags(&cfg.path, flags).map_err(sqlite_error)?;
 
             vconn
                 .execute_batch(
@@ -1764,8 +1758,7 @@ impl IdlSqlite {
             );
             */
 
-            let vconn =
-                Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error)?;
+            let vconn = Connection::open_with_flags(&cfg.path, flags).map_err(sqlite_error)?;
 
             vconn
                 .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
@@ -1786,8 +1779,7 @@ impl IdlSqlite {
                 OperationError::SqliteError
             })?;
 
-            let vconn =
-                Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error)?;
+            let vconn = Connection::open_with_flags(&cfg.path, flags).map_err(sqlite_error)?;
 
             vconn
                 .pragma_update(None, "page_size", cfg.fstype as u32)
@@ -1821,7 +1813,7 @@ impl IdlSqlite {
             .map(|i| {
                 trace!("Opening Connection {}", i);
                 let conn =
-                    Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error);
+                    Connection::open_with_flags(&cfg.path, flags).map_err(sqlite_error);
                 match conn {
                     Ok(conn) => {
                         // We need to set the cachesize at this point as well.

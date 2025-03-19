@@ -191,7 +191,7 @@ impl QueryServerReadV1 {
     pub async fn handle_online_backup(
         &self,
         msg: OnlineBackupEvent,
-        outpath: &str,
+        outpath: &Path,
         versions: usize,
     ) -> Result<(), OperationError> {
         trace!(eventid = ?msg.eventid, "Begin online backup event");
@@ -200,12 +200,12 @@ impl QueryServerReadV1 {
 
         #[allow(clippy::unwrap_used)]
         let timestamp = now.format(&Rfc3339).unwrap();
-        let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
+        let dest_file = outpath.join(format!("backup-{}.json", timestamp));
 
-        if Path::new(&dest_file).exists() {
+        if dest_file.exists() {
             error!(
                 "Online backup file {} already exists, will not overwrite it.",
-                dest_file
+                dest_file.display()
             );
             return Err(OperationError::InvalidState);
         }
@@ -218,10 +218,14 @@ impl QueryServerReadV1 {
                 .get_be_txn()
                 .backup(&dest_file)
                 .map(|()| {
-                    info!("Online backup created {} successfully", dest_file);
+                    info!("Online backup created {} successfully", dest_file.display());
                 })
                 .map_err(|e| {
-                    error!("Online backup failed to create {}: {:?}", dest_file, e);
+                    error!(
+                        "Online backup failed to create {}: {:?}",
+                        dest_file.display(),
+                        e
+                    );
                     OperationError::InvalidState
                 })?;
         }
@@ -267,7 +271,11 @@ impl QueryServerReadV1 {
                 }
             }
             Err(e) => {
-                error!("Online backup cleanup error read dir {}: {}", outpath, e);
+                error!(
+                    "Online backup cleanup error read dir {}: {}",
+                    outpath.display(),
+                    e
+                );
                 return Err(OperationError::InvalidState);
             }
         }
