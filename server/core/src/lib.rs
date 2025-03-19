@@ -36,9 +36,10 @@ mod ldaps;
 mod repl;
 mod utils;
 
-use std::fmt::{Display, Formatter};
-use std::sync::Arc;
-
+use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
+use crate::admin::AdminActor;
+use crate::config::{Configuration, ServerRole};
+use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::{JwsHs256Signer, JwsSigner};
 use kanidm_proto::internal::OperationError;
@@ -50,16 +51,13 @@ use kanidmd_lib::status::StatusActor;
 use kanidmd_lib::value::CredentialType;
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
-
+use std::fmt::{Display, Formatter};
+use std::path::Path;
+use std::sync::Arc;
 use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 use tokio::sync::Notify;
 use tokio::task;
-
-use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use crate::admin::AdminActor;
-use crate::config::{Configuration, ServerRole};
-use crate::interval::IntervalActor;
-use tokio::sync::mpsc;
 
 // === internal setup helpers
 
@@ -80,7 +78,7 @@ fn setup_backend_vacuum(
     let pool_size: u32 = config.threads as u32;
 
     let cfg = BackendConfig::new(
-        config.db_path.as_str(),
+        config.db_path.as_deref(),
         pool_size,
         config.db_fs_type.unwrap_or_default(),
         config.db_arc_size,
@@ -335,7 +333,7 @@ pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
     };
 }
 
-pub fn backup_server_core(config: &Configuration, dst_path: &str) {
+pub fn backup_server_core(config: &Configuration, dst_path: &Path) {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
@@ -371,8 +369,11 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
     // Let the txn abort, even on success.
 }
 
-pub async fn restore_server_core(config: &Configuration, dst_path: &str) {
-    touch_file_or_quit(config.db_path.as_str());
+pub async fn restore_server_core(config: &Configuration, dst_path: &Path) {
+    // If it's an in memory database, we don't need to touch anything
+    if let Some(db_path) = config.db_path.as_ref() {
+        touch_file_or_quit(db_path);
+    }
 
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
     let schema = match Schema::new() {
@@ -1011,7 +1012,7 @@ pub async fn create_server_core(
     let tls_accepter_reload_task_notify = tls_acceptor_reload_notify.clone();
     let tls_config = config.tls_config.clone();
 
-    let ldap_configured = config.ldapaddress.is_some();
+    let ldap_configured = config.ldapbindaddress.is_some();
     let (ldap_tls_acceptor_reload_tx, ldap_tls_acceptor_reload_rx) = mpsc::channel(1);
     let (http_tls_acceptor_reload_tx, http_tls_acceptor_reload_rx) = mpsc::channel(1);
 
@@ -1076,7 +1077,7 @@ pub async fn create_server_core(
     };
 
     // If we have been requested to init LDAP, configure it now.
-    let maybe_ldap_acceptor_handle = match &config.ldapaddress {
+    let maybe_ldap_acceptor_handle = match &config.ldapbindaddress {
         Some(la) => {
             let opt_ldap_ssl_acceptor = maybe_tls_acceptor.clone();
 

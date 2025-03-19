@@ -4,20 +4,6 @@
 //! is to persist content safely to disk, load that content, and execute queries
 //! utilising indexes in the most effective way possible.
 
-use std::collections::BTreeMap;
-use std::fs;
-use std::ops::DerefMut;
-use std::sync::Arc;
-use std::time::Duration;
-
-use concread::cowcell::*;
-use hashbrown::{HashMap as Map, HashSet};
-use idlset::v2::IDLBitRange;
-use idlset::AndNot;
-use kanidm_proto::internal::{ConsistencyError, OperationError};
-use tracing::{trace, trace_span};
-use uuid::Uuid;
-
 use crate::be::dbentry::{DbBackup, DbEntry};
 use crate::be::dbrepl::DbReplMeta;
 use crate::entry::Entry;
@@ -31,6 +17,19 @@ use crate::repl::ruv::{
 };
 use crate::utils::trigraph_iter;
 use crate::value::{IndexType, Value};
+use concread::cowcell::*;
+use hashbrown::{HashMap as Map, HashSet};
+use idlset::v2::IDLBitRange;
+use idlset::AndNot;
+use kanidm_proto::internal::{ConsistencyError, OperationError};
+use std::collections::BTreeMap;
+use std::fs;
+use std::ops::DerefMut;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Duration;
+use tracing::{trace, trace_span};
+use uuid::Uuid;
 
 pub(crate) mod dbentry;
 pub(crate) mod dbrepl;
@@ -132,7 +131,7 @@ impl IdxMeta {
 
 #[derive(Clone)]
 pub struct BackendConfig {
-    path: String,
+    path: PathBuf,
     pool_size: u32,
     db_name: &'static str,
     fstype: FsType,
@@ -141,10 +140,16 @@ pub struct BackendConfig {
 }
 
 impl BackendConfig {
-    pub fn new(path: &str, pool_size: u32, fstype: FsType, arcsize: Option<usize>) -> Self {
+    pub fn new(
+        path: Option<&Path>,
+        pool_size: u32,
+        fstype: FsType,
+        arcsize: Option<usize>,
+    ) -> Self {
         BackendConfig {
             pool_size,
-            path: path.to_string(),
+            // This means if path is None, that "" implies an sqlite in memory/ram only database.
+            path: path.unwrap_or_else(|| Path::new("")).to_path_buf(),
             db_name: "main",
             fstype,
             arcsize,
@@ -154,7 +159,7 @@ impl BackendConfig {
     pub(crate) fn new_test(db_name: &'static str) -> Self {
         BackendConfig {
             pool_size: 1,
-            path: "".to_string(),
+            path: PathBuf::from(""),
             db_name,
             fstype: FsType::Generic,
             arcsize: Some(2048),
@@ -936,7 +941,7 @@ pub trait BackendTransaction {
         self.get_ruv().verify(&entries, results);
     }
 
-    fn backup(&mut self, dst_path: &str) -> Result<(), OperationError> {
+    fn backup(&mut self, dst_path: &Path) -> Result<(), OperationError> {
         let repl_meta = self.get_ruv().to_db_backup_ruv();
 
         // load all entries into RAM, may need to change this later
@@ -1808,7 +1813,7 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(slope)
     }
 
-    pub fn restore(&mut self, src_path: &str) -> Result<(), OperationError> {
+    pub fn restore(&mut self, src_path: &Path) -> Result<(), OperationError> {
         let serialized_string = fs::read_to_string(src_path).map_err(|e| {
             admin_error!("fs::read_to_string {:?}", e);
             OperationError::FsError
@@ -2121,7 +2126,7 @@ impl Backend {
         debug!(db_tickets = ?cfg.pool_size, profile = %env!("KANIDM_PROFILE_NAME"), cpu_flags = %env!("KANIDM_CPU_FLAGS"));
 
         // If in memory, reduce pool to 1
-        if cfg.path.is_empty() {
+        if cfg.path == Path::new("") {
             cfg.pool_size = 1;
         }
 
@@ -2207,13 +2212,6 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
-    use std::iter::FromIterator;
-    use std::sync::Arc;
-    use std::time::Duration;
-
-    use idlset::v2::IDLBitRange;
-
     use super::super::entry::{Entry, EntryInit, EntryNew};
     use super::Limits;
     use super::{
@@ -2223,6 +2221,12 @@ mod tests {
     use crate::prelude::*;
     use crate::repl::cid::Cid;
     use crate::value::{IndexType, PartialValue, Value};
+    use idlset::v2::IDLBitRange;
+    use std::fs;
+    use std::iter::FromIterator;
+    use std::path::Path;
+    use std::sync::Arc;
+    use std::time::Duration;
 
     lazy_static! {
         static ref CID_ZERO: Cid = Cid::new_zero();
@@ -2597,11 +2601,9 @@ mod tests {
 
     #[test]
     fn test_be_backup_restore() {
-        let db_backup_file_name = format!(
-            "{}/.backup_test.json",
-            option_env!("OUT_DIR").unwrap_or("/tmp")
-        );
-        eprintln!(" ⚠️   {db_backup_file_name}");
+        let db_backup_file_name =
+            Path::new(option_env!("OUT_DIR").unwrap_or("/tmp")).join(".backup_test.json");
+        eprintln!(" ⚠️   {}", db_backup_file_name.display());
         run_test!(|be: &mut BackendWriteTransaction| {
             // Important! Need db metadata setup!
             be.reset_db_s_uuid().unwrap();
@@ -2656,11 +2658,9 @@ mod tests {
 
     #[test]
     fn test_be_backup_restore_tampered() {
-        let db_backup_file_name = format!(
-            "{}/.backup2_test.json",
-            option_env!("OUT_DIR").unwrap_or("/tmp")
-        );
-        eprintln!(" ⚠️   {db_backup_file_name}");
+        let db_backup_file_name =
+            Path::new(option_env!("OUT_DIR").unwrap_or("/tmp")).join(".backup2_test.json");
+        eprintln!(" ⚠️   {}", db_backup_file_name.display());
         run_test!(|be: &mut BackendWriteTransaction| {
             // Important! Need db metadata setup!
             be.reset_db_s_uuid().unwrap();

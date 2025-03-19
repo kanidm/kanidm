@@ -37,7 +37,7 @@ use kanidmd_core::admin::{
     AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
     ProtoDomainUpgradeCheckReport, ProtoDomainUpgradeCheckStatus,
 };
-use kanidmd_core::config::{Configuration, ServerConfig};
+use kanidmd_core::config::{CliConfig, Configuration, EnvironmentConfig, ServerConfigUntagged};
 use kanidmd_core::{
     backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
     dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
@@ -379,17 +379,13 @@ fn check_file_ownership(opt: &KanidmdParser) -> Result<(), ExitCode> {
 }
 
 // We have to do this because we can't use tracing until we've started the logging pipeline, and we can't start the logging pipeline until the tokio runtime's doing its thing.
-async fn start_daemon(
-    opt: KanidmdParser,
-    mut config: Configuration,
-    sconfig: ServerConfig,
-) -> ExitCode {
+async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
     // if we have a server config and it has an OTEL URL, then we'll start the logging pipeline now.
 
     // TODO: only send to stderr when we're not in a TTY
     let sub = match sketching::otel::start_logging_pipeline(
-        &sconfig.otel_grpc_url,
-        sconfig.log_level.unwrap_or_default(),
+        &config.otel_grpc_url,
+        config.log_level,
         "kanidmd",
     ) {
         Err(err) => {
@@ -423,8 +419,8 @@ async fn start_daemon(
         return err;
     };
 
-    if let Some(db_path) = sconfig.db_path.as_ref() {
-        let db_pathbuf = PathBuf::from(db_path.as_str());
+    if let Some(db_path) = config.db_path.as_ref() {
+        let db_pathbuf = db_path.to_path_buf();
         // We can't check the db_path permissions because it may not exist yet!
         if let Some(db_parent_path) = db_pathbuf.parent() {
             if !db_parent_path.exists() {
@@ -464,32 +460,10 @@ async fn start_daemon(
                 warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
             }
         }
-        config.update_db_path(db_path);
     } else {
         error!("No db_path set in configuration, server startup will FAIL!");
         return ExitCode::FAILURE;
     }
-
-    if let Some(origin) = sconfig.origin.clone() {
-        config.update_origin(&origin);
-    } else {
-        error!("No origin set in configuration, server startup will FAIL!");
-        return ExitCode::FAILURE;
-    }
-
-    if let Some(domain) = sconfig.domain.clone() {
-        config.update_domain(&domain);
-    } else {
-        error!("No domain set in configuration, server startup will FAIL!");
-        return ExitCode::FAILURE;
-    }
-
-    config.update_db_arc_size(sconfig.get_db_arc_size());
-    config.update_role(sconfig.role);
-    config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
-    config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
-    config.update_admin_bind_path(&sconfig.adminbindpath);
-    config.update_replication_config(sconfig.repl_config.clone());
 
     match &opt.commands {
         // we aren't going to touch the DB so we can carry on
@@ -501,19 +475,15 @@ async fn start_daemon(
         _ => {
             // Okay - Lets now create our lock and go.
             #[allow(clippy::expect_used)]
-            let klock_path = match sconfig.db_path.clone() {
-                Some(val) => format!("{}.klock", val),
-                None => std::env::temp_dir()
-                    .join("kanidmd.klock")
-                    .to_str()
-                    .expect("Unable to create klock path, this is a critical error!")
-                    .to_string(),
+            let klock_path = match config.db_path.clone() {
+                Some(val) => val.with_extension("klock"),
+                None => std::env::temp_dir().join("kanidmd.klock"),
             };
 
             let flock = match File::create(&klock_path) {
                 Ok(flock) => flock,
                 Err(e) => {
-                    error!("ERROR: Refusing to start - unable to create kanidmd exclusive lock at {} - {:?}", klock_path, e);
+                    error!("ERROR: Refusing to start - unable to create kanidmd exclusive lock at {} - {:?}", klock_path.display(), e);
                     return ExitCode::FAILURE;
                 }
             };
@@ -521,7 +491,7 @@ async fn start_daemon(
             match flock.try_lock_exclusive() {
                 Ok(()) => debug!("Acquired kanidm exclusive lock"),
                 Err(e) => {
-                    error!("ERROR: Refusing to start - unable to lock kanidmd exclusive lock at {} - {:?}", klock_path, e);
+                    error!("ERROR: Refusing to start - unable to lock kanidmd exclusive lock at {} - {:?}", klock_path.display(), e);
                     error!("Is another kanidmd process running?");
                     return ExitCode::FAILURE;
                 }
@@ -529,7 +499,7 @@ async fn start_daemon(
         }
     }
 
-    kanidm_main(sconfig, config, opt).await
+    kanidm_main(config, opt).await
 }
 
 fn main() -> ExitCode {
@@ -556,10 +526,6 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     };
 
-    //we set up a list of these so we can set the log config THEN log out the errors.
-    let mut config_error: Vec<String> = Vec::new();
-    let mut config = Configuration::new();
-
     if env!("KANIDM_SERVER_CONFIG_PATH").is_empty() {
         println!("CRITICAL: Kanidmd was not built correctly and is missing a valid KANIDM_SERVER_CONFIG_PATH value");
         return ExitCode::FAILURE;
@@ -581,49 +547,56 @@ fn main() -> ExitCode {
         }
     };
 
-    let sconfig = match ServerConfig::new(maybe_config_path) {
-        Ok(c) => Some(c),
-        Err(e) => {
-            config_error.push(format!("Config Parse failure {:?}", e));
+    let maybe_sconfig = if let Some(config_path) = maybe_config_path {
+        match ServerConfigUntagged::new(config_path) {
+            Ok(c) => Some(c),
+            Err(err) => {
+                eprintln!("ERROR: Configuration Parse Failure: {:?}", err);
+                return ExitCode::FAILURE;
+            }
+        }
+    } else {
+        eprintln!("WARNING: No configuration path was provided, relying on environment variables.");
+        None
+    };
+
+    let envconfig = match EnvironmentConfig::new() {
+        Ok(ec) => ec,
+        Err(err) => {
+            eprintln!("ERROR: Environment Configuration Parse Failure: {:?}", err);
             return ExitCode::FAILURE;
         }
     };
 
-    // Get information on the windows username
-    #[cfg(target_family = "windows")]
-    get_user_details_windows();
+    let cli_config = CliConfig {
+        output_mode: Some(opt.commands.commonopt().output_mode.to_owned().into()),
+    };
 
-    if !config_error.is_empty() {
-        println!("There were errors on startup, which prevent the server from starting:");
-        for e in config_error {
-            println!(" - {}", e);
-        }
+    let is_server = matches!(&opt.commands, KanidmdOpt::Server(_));
+
+    let config = Configuration::build()
+        .add_env_config(envconfig)
+        .add_opt_toml_config(maybe_sconfig)
+        // We always set threads to 1 unless it's the main server.
+        .add_cli_config(cli_config)
+        .is_server_mode(is_server)
+        .finish();
+
+    let Some(config) = config else {
+        eprintln!(
+            "ERROR: Unable to build server configuration from provided configuration inputs."
+        );
         return ExitCode::FAILURE;
-    }
-
-    let sconfig = match sconfig {
-        Some(val) => val,
-        None => {
-            println!("Somehow you got an empty ServerConfig after error checking? Cannot start!");
-            return ExitCode::FAILURE;
-        }
     };
 
     // ===========================================================================
     // Config ready
 
-    // We always set threads to 1 unless it's the main server.
-    if matches!(&opt.commands, KanidmdOpt::Server(_)) {
-        // If not updated, will default to maximum
-        if let Some(threads) = sconfig.thread_count {
-            config.update_threads_count(threads);
-        }
-    } else {
-        config.update_threads_count(1);
-    };
+    // Get information on the windows username
+    #[cfg(target_family = "windows")]
+    get_user_details_windows();
 
     // Start the runtime
-
     let maybe_rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(config.threads)
         .enable_all()
@@ -643,16 +616,12 @@ fn main() -> ExitCode {
         }
     };
 
-    rt.block_on(start_daemon(opt, config, sconfig))
+    rt.block_on(start_daemon(opt, config))
 }
 
 /// Build and execute the main server. The ServerConfig are the configuration options
 /// that we are processing into the config for the main server.
-async fn kanidm_main(
-    sconfig: ServerConfig,
-    mut config: Configuration,
-    opt: KanidmdParser,
-) -> ExitCode {
+async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
     match &opt.commands {
         KanidmdOpt::Server(_sopt) | KanidmdOpt::ConfigTest(_sopt) => {
             let config_test = matches!(&opt.commands, KanidmdOpt::ConfigTest(_));
@@ -662,88 +631,90 @@ async fn kanidm_main(
                 info!("Running in server mode ...");
             };
 
-            // configuration options that only relate to server mode
-            config.update_config_for_server_mode(&sconfig);
-
-            if let Some(i_str) = &(sconfig.tls_chain) {
-                let i_path = PathBuf::from(i_str.as_str());
-                let i_meta = match metadata(&i_path) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        error!(
-                            "Unable to read metadata for TLS chain file '{}' - {:?}",
-                            &i_path.to_str().unwrap_or("invalid file path"),
-                            e
-                        );
-                        let diag = kanidm_lib_file_permissions::diagnose_path(&i_path);
-                        info!(%diag);
-                        return ExitCode::FAILURE;
+            // Verify the TLs configs.
+            if let Some(tls_config) = config.tls_config.as_ref() {
+                {
+                    let i_meta = match metadata(&tls_config.chain) {
+                        Ok(m) => m,
+                        Err(e) => {
+                            error!(
+                                "Unable to read metadata for TLS chain file '{}' - {:?}",
+                                tls_config.chain.display(),
+                                e
+                            );
+                            let diag =
+                                kanidm_lib_file_permissions::diagnose_path(&tls_config.chain);
+                            info!(%diag);
+                            return ExitCode::FAILURE;
+                        }
+                    };
+                    if !kanidm_lib_file_permissions::readonly(&i_meta) {
+                        warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", tls_config.chain.display());
                     }
-                };
-                if !kanidm_lib_file_permissions::readonly(&i_meta) {
-                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
                 }
-            }
 
-            if let Some(i_str) = &(sconfig.tls_key) {
-                let i_path = PathBuf::from(i_str.as_str());
-
-                let i_meta = match metadata(&i_path) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        error!(
-                            "Unable to read metadata for TLS key file '{}' - {:?}",
-                            &i_path.to_str().unwrap_or("invalid file path"),
-                            e
-                        );
-                        let diag = kanidm_lib_file_permissions::diagnose_path(&i_path);
-                        info!(%diag);
-                        return ExitCode::FAILURE;
+                {
+                    let i_meta = match metadata(&tls_config.key) {
+                        Ok(m) => m,
+                        Err(e) => {
+                            error!(
+                                "Unable to read metadata for TLS key file '{}' - {:?}",
+                                tls_config.key.display(),
+                                e
+                            );
+                            let diag = kanidm_lib_file_permissions::diagnose_path(&tls_config.key);
+                            info!(%diag);
+                            return ExitCode::FAILURE;
+                        }
+                    };
+                    if !kanidm_lib_file_permissions::readonly(&i_meta) {
+                        warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", tls_config.key.display());
                     }
-                };
-                if !kanidm_lib_file_permissions::readonly(&i_meta) {
-                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
-                }
-                #[cfg(not(target_os = "windows"))]
-                if i_meta.mode() & 0o007 != 0 {
-                    warn!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
-                }
-            }
-
-            if let Some(ca_dir) = &(sconfig.tls_client_ca) {
-                // check that the TLS client CA config option is what we expect
-                let ca_dir_path = PathBuf::from(&ca_dir);
-                if !ca_dir_path.exists() {
-                    error!(
-                        "TLS CA folder {} does not exist, server startup will FAIL!",
-                        ca_dir
-                    );
-                    let diag = kanidm_lib_file_permissions::diagnose_path(&ca_dir_path);
-                    info!(%diag);
+                    #[cfg(not(target_os = "windows"))]
+                    if i_meta.mode() & 0o007 != 0 {
+                        warn!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", tls_config.key.display());
+                    }
                 }
 
-                let i_meta = match metadata(&ca_dir_path) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        error!("Unable to read metadata for '{}' - {:?}", ca_dir, e);
+                if let Some(ca_dir) = tls_config.client_ca.as_ref() {
+                    // check that the TLS client CA config option is what we expect
+                    let ca_dir_path = PathBuf::from(&ca_dir);
+                    if !ca_dir_path.exists() {
+                        error!(
+                            "TLS CA folder {} does not exist, server startup will FAIL!",
+                            ca_dir.display()
+                        );
                         let diag = kanidm_lib_file_permissions::diagnose_path(&ca_dir_path);
                         info!(%diag);
+                    }
+
+                    let i_meta = match metadata(&ca_dir_path) {
+                        Ok(m) => m,
+                        Err(e) => {
+                            error!(
+                                "Unable to read metadata for '{}' - {:?}",
+                                ca_dir.display(),
+                                e
+                            );
+                            let diag = kanidm_lib_file_permissions::diagnose_path(&ca_dir_path);
+                            info!(%diag);
+                            return ExitCode::FAILURE;
+                        }
+                    };
+                    if !i_meta.is_dir() {
+                        error!(
+                            "ERROR: Refusing to run - TLS Client CA folder {} may not be a directory",
+                            ca_dir.display()
+                        );
                         return ExitCode::FAILURE;
                     }
-                };
-                if !i_meta.is_dir() {
-                    error!(
-                        "ERROR: Refusing to run - TLS Client CA folder {} may not be a directory",
-                        ca_dir
-                    );
-                    return ExitCode::FAILURE;
-                }
-                if kanidm_lib_file_permissions::readonly(&i_meta) {
-                    warn!("WARNING: TLS Client CA folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", ca_dir);
-                }
-                #[cfg(not(target_os = "windows"))]
-                if i_meta.mode() & 0o007 != 0 {
-                    warn!("WARNING: TLS Client CA folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", ca_dir);
+                    if kanidm_lib_file_permissions::readonly(&i_meta) {
+                        warn!("WARNING: TLS Client CA folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", ca_dir.display());
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    if i_meta.mode() & 0o007 != 0 {
+                        warn!("WARNING: TLS Client CA folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", ca_dir.display());
+                    }
                 }
             }
 
@@ -880,34 +851,19 @@ async fn kanidm_main(
         }
         KanidmdOpt::CertGenerate(_sopt) => {
             info!("Running in certificate generate mode ...");
-            config.update_config_for_server_mode(&sconfig);
             cert_generate_core(&config);
         }
         KanidmdOpt::Database {
             commands: DbCommands::Backup(bopt),
         } => {
             info!("Running in backup mode ...");
-            let p = match bopt.path.to_str() {
-                Some(p) => p,
-                None => {
-                    error!("Invalid backup path");
-                    return ExitCode::FAILURE;
-                }
-            };
-            backup_server_core(&config, p);
+            backup_server_core(&config, &bopt.path);
         }
         KanidmdOpt::Database {
             commands: DbCommands::Restore(ropt),
         } => {
             info!("Running in restore mode ...");
-            let p = match ropt.path.to_str() {
-                Some(p) => p,
-                None => {
-                    error!("Invalid restore path");
-                    return ExitCode::FAILURE;
-                }
-            };
-            restore_server_core(&config, p).await;
+            restore_server_core(&config, &ropt.path).await;
         }
         KanidmdOpt::Database {
             commands: DbCommands::Verify(_vopt),
@@ -1088,8 +1044,6 @@ async fn kanidm_main(
             vacuum_server_core(&config);
         }
         KanidmdOpt::HealthCheck(sopt) => {
-            config.update_config_for_server_mode(&sconfig);
-
             debug!("{sopt:?}");
 
             let healthcheck_url = match &sopt.check_origin {
@@ -1110,12 +1064,15 @@ async fn kanidm_main(
                 .danger_accept_invalid_hostnames(!sopt.verify_tls)
                 .https_only(true);
 
-            client = match &sconfig.tls_chain {
+            client = match &config.tls_config {
                 None => client,
-                Some(ca_cert) => {
-                    debug!("Trying to load {} to build a CA cert path", ca_cert);
+                Some(tls_config) => {
+                    debug!(
+                        "Trying to load {} to build a CA cert path",
+                        tls_config.chain.display()
+                    );
                     // if the ca_cert file exists, then we'll use it
-                    let ca_cert_path = PathBuf::from(ca_cert);
+                    let ca_cert_path = tls_config.chain.clone();
                     match ca_cert_path.exists() {
                         true => {
                             let mut cert_buf = Vec::new();
@@ -1148,7 +1105,10 @@ async fn kanidm_main(
                             client
                         }
                         false => {
-                            warn!("Couldn't find ca cert {} but carrying on...", ca_cert);
+                            warn!(
+                                "Couldn't find ca cert {} but carrying on...",
+                                tls_config.chain.display()
+                            );
                             client
                         }
                     }
