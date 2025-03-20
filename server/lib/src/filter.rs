@@ -527,7 +527,8 @@ impl Filter<FilterValid> {
         // cases! The exception is *large* filters, especially from the memberof plugin. We
         // want to skip these because they can really jam up the server.
 
-        let cacheable = FilterResolved::resolve_cacheable(&self.state.inner);
+        // Don't cache anything unless we have valid indexing metadata.
+        let cacheable = idxmeta.is_some() && FilterResolved::resolve_cacheable(&self.state.inner);
 
         let cache_key = if cacheable {
             // do we have a cache?
@@ -536,6 +537,7 @@ impl Filter<FilterValid> {
                 let cache_key = (ev.get_event_origin_id(), Arc::new(self.clone()));
                 if let Some(f) = rcache.get(&cache_key) {
                     // Got it? Shortcut and return!
+                    trace!("shortcut: a resolved filter already exists.");
                     return Ok(f.as_ref().clone());
                 };
                 // Not in cache? Set the cache_key.
@@ -574,6 +576,7 @@ impl Filter<FilterValid> {
         // if cacheable == false.
         if let Some(cache_key) = cache_key {
             if let Some(rcache) = rsv_cache.as_mut() {
+                trace!(?resolved_filt, "inserting filter to resolved cache");
                 rcache.insert(cache_key, Arc::new(resolved_filt.clone()));
             }
         }

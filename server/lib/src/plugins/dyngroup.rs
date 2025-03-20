@@ -109,7 +109,7 @@ impl DynGroup {
                 nd_group.purge_ava(Attribute::DynMember);
             }
 
-            // Insert it to the dyngroup cache with the compiled/resolved filter for
+            // Insert it to the dyngroup cache with the parsed filter for
             // fast matching in other paths.
             if dyn_groups.insts.insert(uuid, scope_i).is_none() == expect {
                 error!("{} cache uuid conflict {}", Attribute::DynGroup, uuid);
@@ -175,6 +175,11 @@ impl DynGroup {
     ) -> Result<BTreeSet<Uuid>, OperationError> {
         let mut affected_uuids = BTreeSet::new();
 
+        if qs.get_phase() < ServerPhase::SchemaReady {
+            debug!("Server is not ready to apply dyngroups");
+            return Ok(affected_uuids);
+        }
+
         let ident_internal = Identity::from_internal();
 
         let (n_dyn_groups, entries): (Vec<&Entry<_, _>>, Vec<_>) = cand.iter().partition(|entry| {
@@ -202,9 +207,7 @@ impl DynGroup {
             let dg_filter_valid = dg_filter
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)
-                .and_then(|f| {
-                    f.resolve(&ident_internal, None, Some(qs.get_resolve_filter_cache()))
-                })?;
+                .and_then(|f| f.resolve(&ident_internal, None, qs.get_resolve_filter_cache()))?;
 
             // Did any of our modified entries match our dyn group filter?
             let matches: Vec<_> = entries
@@ -291,6 +294,11 @@ impl DynGroup {
     ) -> Result<BTreeSet<Uuid>, OperationError> {
         let mut affected_uuids = BTreeSet::new();
 
+        if qs.get_phase() < ServerPhase::SchemaReady {
+            debug!("Server is not ready to apply dyngroups");
+            return Ok(affected_uuids);
+        }
+
         let ident_internal = Identity::from_internal();
 
         // Probably should be filter here instead.
@@ -338,9 +346,7 @@ impl DynGroup {
             let dg_filter_valid = dg_filter
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)
-                .and_then(|f| {
-                    f.resolve(&ident_internal, None, Some(qs.get_resolve_filter_cache()))
-                })?;
+                .and_then(|f| f.resolve(&ident_internal, None, qs.get_resolve_filter_cache()))?;
 
             let matches: Vec<_> = pre_entries
                 .iter()

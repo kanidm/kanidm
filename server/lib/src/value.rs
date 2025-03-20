@@ -388,6 +388,65 @@ impl fmt::Display for SyntaxType {
     }
 }
 
+impl SyntaxType {
+    pub fn index_types(&self) -> &[IndexType] {
+        match self {
+            SyntaxType::Utf8String => &[IndexType::Equality, IndexType::Presence],
+            // Used by classes, needs to change ...
+            // Probably need an attrname syntax too
+            SyntaxType::Utf8StringInsensitive => &[IndexType::Equality, IndexType::Presence],
+            SyntaxType::Utf8StringIname => &[
+                IndexType::Equality,
+                IndexType::Presence,
+                IndexType::SubString,
+            ],
+            SyntaxType::Uuid => &[IndexType::Equality, IndexType::Presence],
+            SyntaxType::Boolean => &[IndexType::Equality],
+            SyntaxType::SyntaxId => &[],
+            SyntaxType::IndexId => &[],
+            SyntaxType::ReferenceUuid => &[IndexType::Equality, IndexType::Presence],
+            SyntaxType::JsonFilter => &[],
+            SyntaxType::Credential => &[IndexType::Equality],
+            SyntaxType::SecretUtf8String => &[],
+            SyntaxType::SshKey => &[IndexType::Equality, IndexType::Presence],
+            SyntaxType::SecurityPrincipalName => &[
+                IndexType::Equality,
+                IndexType::Presence,
+                IndexType::SubString,
+            ],
+            SyntaxType::Uint32 => &[IndexType::Equality, IndexType::Presence],
+            SyntaxType::Cid => &[],
+            SyntaxType::NsUniqueId => &[IndexType::Equality, IndexType::Presence],
+            SyntaxType::DateTime => &[],
+            SyntaxType::EmailAddress => &[IndexType::Equality, IndexType::SubString],
+            SyntaxType::Url => &[],
+            SyntaxType::OauthScope => &[],
+            SyntaxType::OauthScopeMap => &[IndexType::Equality],
+            SyntaxType::PrivateBinary => &[],
+            SyntaxType::IntentToken => &[IndexType::Equality],
+            SyntaxType::Passkey => &[IndexType::Equality],
+            SyntaxType::AttestedPasskey => &[IndexType::Equality],
+            SyntaxType::Session => &[IndexType::Equality],
+            SyntaxType::JwsKeyEs256 => &[],
+            SyntaxType::JwsKeyRs256 => &[],
+            SyntaxType::Oauth2Session => &[IndexType::Equality],
+            SyntaxType::UiHint => &[],
+            SyntaxType::TotpSecret => &[],
+            SyntaxType::ApiToken => &[IndexType::Equality],
+            SyntaxType::AuditLogString => &[],
+            SyntaxType::EcKeyPrivate => &[],
+            SyntaxType::Image => &[],
+            SyntaxType::CredentialType => &[],
+            SyntaxType::WebauthnAttestationCaList => &[],
+            SyntaxType::OauthClaimMap => &[IndexType::Equality],
+            SyntaxType::KeyInternal => &[],
+            SyntaxType::HexString => &[],
+            SyntaxType::Certificate => &[],
+            SyntaxType::ApplicationPassword => &[IndexType::Equality],
+        }
+    }
+}
+
 #[derive(
     Hash,
     Debug,

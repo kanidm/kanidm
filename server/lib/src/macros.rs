@@ -622,22 +622,6 @@ macro_rules! vs_syntax {
 
 #[allow(unused_macros)]
 #[macro_export]
-macro_rules! vs_index {
-    () => (
-        compile_error!("ValueSetIndex needs at least 1 element")
-    );
-    ($e:expr) => ({
-        ValueSetIndex::new($e)
-    });
-    ($e:expr, $($item:expr),*) => ({
-        let mut x = ValueSetIndex::new($e);
-        $(assert!(x.push($item));)*
-        x
-    });
-}
-
-#[allow(unused_macros)]
-#[macro_export]
 macro_rules! vs_cid {
     () => (
         compile_error!("ValueSetCid needs at least 1 element")

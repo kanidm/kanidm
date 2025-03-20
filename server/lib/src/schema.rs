@@ -16,16 +16,14 @@
 //! [`Attributes`]: struct.SchemaAttribute.html
 //! [`Classes`]: struct.SchemaClass.html
 
-use std::collections::BTreeSet;
-
-use concread::cowcell::*;
-use hashbrown::{HashMap, HashSet};
-use tracing::trace;
-use uuid::Uuid;
-
 use crate::be::IdxKey;
 use crate::prelude::*;
 use crate::valueset::ValueSet;
+use concread::cowcell::*;
+use hashbrown::{HashMap, HashSet};
+use std::collections::BTreeSet;
+use tracing::trace;
+use uuid::Uuid;
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
@@ -70,6 +68,31 @@ pub struct SchemaReadTransaction {
     ref_cache: CowCellReadTxn<HashMap<Attribute, SchemaAttribute>>,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub enum Replicated {
+    #[default]
+    True,
+    False,
+}
+
+impl From<Replicated> for bool {
+    fn from(value: Replicated) -> bool {
+        match value {
+            Replicated::True => true,
+            Replicated::False => false,
+        }
+    }
+}
+
+impl From<bool> for Replicated {
+    fn from(value: bool) -> Self {
+        match value {
+            true => Replicated::True,
+            false => Replicated::False,
+        }
+    }
+}
+
 /// An item representing an attribute and the rules that enforce it. These rules enforce if an
 /// attribute on an [`Entry`] may be single or multi value, must be unique amongst all other types
 /// of this attribute, if the attribute should be [`indexed`], and what type of data [`syntax`] it may hold.
@@ -81,21 +104,23 @@ pub struct SchemaReadTransaction {
 pub struct SchemaAttribute {
     pub name: Attribute,
     pub uuid: Uuid,
-    // Perhaps later add aliases?
     pub description: String,
-    /// This is a vec, not a single value
+    /// Defines if the attribute may have one or multiple values associated to it.
     pub multivalue: bool,
-    /// If the attribute must be unique amongst all other values of this attribute? Maybe?
+    /// If this flag is set, all instances of this attribute must be a unique value in the database.
     pub unique: bool,
-    /// TODO: What does this do?
+    /// This defines that the value is a phantom - it is "not real", can never "be real". It
+    /// is synthesised in memory, and will never be written to the database. This can exist for
+    /// placeholders like cn/uid in ldap.
     pub phantom: bool,
-    /// TODO: What does this do?
+    /// This boolean defines if this attribute may be altered by an external IDP sync
+    /// agreement.
     pub sync_allowed: bool,
 
-    /// If the value of this attribute get replicated to other servers
-    pub replicated: bool,
-    /// TODO: What does this do?
-    pub index: Vec<IndexType>,
+    /// If set the value of this attribute get replicated to other servers
+    pub replicated: Replicated,
+    /// Define if this attribute is indexed or not according to it's syntax type rule
+    pub indexed: bool,
     /// THe type of data that this attribute may hold.
     pub syntax: SyntaxType,
 }
@@ -144,6 +169,7 @@ impl SchemaAttribute {
                 admin_error!("missing {} - {}", Attribute::MultiValue, name);
                 OperationError::InvalidSchemaState("missing multivalue".to_string())
             })?;
+
         let unique = value
             .get_ava_single_bool(Attribute::Unique)
             .ok_or_else(|| {
@@ -153,25 +179,23 @@ impl SchemaAttribute {
 
         let phantom = value
             .get_ava_single_bool(Attribute::Phantom)
-            .unwrap_or(false);
+            .unwrap_or_default();
 
         let sync_allowed = value
             .get_ava_single_bool(Attribute::SyncAllowed)
-            .unwrap_or(false);
+            .unwrap_or_default();
 
         // Default, all attributes are replicated unless you opt in for them to NOT be.
         // Generally this is internal to the server only, so we don't advertise it.
         let replicated = value
             .get_ava_single_bool(Attribute::Replicated)
-            .unwrap_or(true);
+            .map(Replicated::from)
+            .unwrap_or_default();
 
-        // index vec
-        // even if empty, it SHOULD be present ... (is that valid to put an empty set?)
-        // The get_ava_opt_index handles the optional case for us :)
-        let index = value.get_ava_opt_index(Attribute::Index).ok_or_else(|| {
-            admin_error!("invalid {} - {}", Attribute::Index, name);
-            OperationError::InvalidSchemaState(format!("invalid {}", Attribute::Index))
-        })?;
+        let indexed = value
+            .get_ava_single_bool(Attribute::Indexed)
+            .unwrap_or_default();
+
         // syntax type
         let syntax = value
             .get_ava_single_syntax(Attribute::Syntax)
@@ -179,6 +203,8 @@ impl SchemaAttribute {
                 admin_error!("missing {} - {}", Attribute::Syntax, name);
                 OperationError::InvalidSchemaState(format!("missing {}", Attribute::Syntax))
             })?;
+
+        trace!(?name, ?indexed);
 
         Ok(SchemaAttribute {
             name,
@@ -189,7 +215,7 @@ impl SchemaAttribute {
             phantom,
             sync_allowed,
             replicated,
-            index,
+            indexed,
             syntax,
         })
     }
@@ -357,51 +383,6 @@ impl SchemaAttribute {
     }
 }
 
-impl From<SchemaAttribute> for EntryInitNew {
-    fn from(value: SchemaAttribute) -> Self {
-        let mut entry = EntryInitNew::new();
-
-        entry.set_ava(
-            Attribute::AttributeName,
-            vec![Value::new_iutf8(value.name.as_str())],
-        );
-        entry.add_ava(Attribute::MultiValue, Value::Bool(value.multivalue));
-        // syntax
-        entry.set_ava(Attribute::Syntax, vec![Value::Syntax(value.syntax)]);
-        entry.set_ava(Attribute::Unique, vec![Value::Bool(value.unique)]);
-        // index
-        entry.set_ava(Attribute::Index, value.index.into_iter().map(Value::Index));
-
-        // class
-        entry.set_ava(
-            Attribute::Class,
-            vec![
-                EntryClass::Object.to_value(),
-                EntryClass::System.into(),
-                EntryClass::AttributeType.to_value(),
-            ],
-        );
-        // description
-        entry.set_ava(
-            Attribute::Description,
-            vec![Value::new_utf8s(&value.description)],
-        );
-        // unique
-        // multivalue
-
-        // sync_allowed
-        entry.set_ava(
-            Attribute::SyncAllowed,
-            vec![Value::Bool(value.sync_allowed)],
-        );
-
-        // uid
-        entry.set_ava(Attribute::Uuid, vec![Value::Uuid(value.uuid)]);
-
-        entry
-    }
-}
-
 /// An item representing a class and the rules for that class. These rules enforce that an
 /// [`Entry`]'s avas conform to a set of requirements, giving structure to an entry about
 /// what avas must or may exist. The kanidm project provides attributes in `systemmust` and
@@ -541,73 +522,6 @@ impl SchemaClass {
     }
 }
 
-impl From<SchemaClass> for EntryInitNew {
-    fn from(value: SchemaClass) -> Self {
-        let mut entry = EntryInitNew::new();
-
-        entry.set_ava(Attribute::ClassName, vec![Value::new_iutf8(&value.name)]);
-
-        // class
-        entry.set_ava(
-            Attribute::Class,
-            vec![
-                EntryClass::Object.to_value(),
-                EntryClass::System.into(),
-                EntryClass::ClassType.into(),
-            ],
-        );
-
-        // description
-        entry.set_ava(
-            Attribute::Description,
-            vec![Value::new_utf8s(&value.description)],
-        );
-
-        // sync_allowed
-        entry.set_ava(
-            Attribute::SyncAllowed,
-            vec![Value::Bool(value.sync_allowed)],
-        );
-
-        // uid
-        entry.set_ava(Attribute::Uuid, vec![Value::Uuid(value.uuid)]);
-
-        // systemmay
-        if !value.systemmay.is_empty() {
-            entry.set_ava(
-                Attribute::SystemMay,
-                value.systemmay.iter().map(|s| Value::new_iutf8(s.as_str())),
-            );
-        }
-        // systemexcludes
-        if !value.systemexcludes.is_empty() {
-            entry.set_ava(
-                Attribute::SystemExcludes,
-                value.systemexcludes.iter().map(|s| Value::new_iutf8(s)),
-            );
-        }
-        // systemmust
-        if !value.systemmust.is_empty() {
-            entry.set_ava(
-                Attribute::SystemMust,
-                value
-                    .systemmust
-                    .iter()
-                    .map(|s| Value::new_iutf8(s.as_str())),
-            );
-        }
-        // systemsupplements
-        if !value.systemsupplements.is_empty() {
-            entry.set_ava(
-                Attribute::SystemSupplements,
-                value.systemsupplements.iter().map(|s| Value::new_iutf8(s)),
-            );
-        }
-
-        entry
-    }
-}
-
 pub trait SchemaTransaction {
     fn get_classes(&self) -> &HashMap<AttrString, SchemaClass>;
     fn get_attributes(&self) -> &HashMap<Attribute, SchemaAttribute>;
@@ -674,7 +588,7 @@ pub trait SchemaTransaction {
             Some(a_schema) => {
                 // We'll likely add more conditions here later.
                 // Allow items that are replicated and not phantoms
-                a_schema.replicated && !a_schema.phantom
+                a_schema.replicated.into() && !a_schema.phantom
             }
             None => {
                 warn!(
@@ -846,7 +760,14 @@ impl SchemaWriteTransaction<'_> {
         self.get_attributes()
             .values()
             .flat_map(|a| {
-                a.index.iter().map(move |itype: &IndexType| IdxKey {
+                // Unique values must be indexed
+                if a.indexed || a.unique {
+                    a.syntax.index_types()
+                } else {
+                    &[]
+                }
+                .iter()
+                .map(move |itype: &IndexType| IdxKey {
                     attr: a.name.clone(),
                     itype: *itype,
                 })
@@ -871,8 +792,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality, IndexType::Presence],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -888,8 +809,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality, IndexType::Presence],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Uuid,
             },
         );
@@ -907,8 +828,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality, IndexType::Presence],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Uuid,
             },
         );
@@ -924,8 +845,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Cid,
             },
         );
@@ -941,8 +862,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Cid,
             },
         );
@@ -956,12 +877,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: true,
                 phantom: false,
                 sync_allowed: true,
-                replicated: true,
-                index: vec![
-                    IndexType::Equality,
-                    IndexType::Presence,
-                    IndexType::SubString,
-                ],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringIname,
             },
         );
@@ -977,8 +894,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: true,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::SecurityPrincipalName,
             },
         );
@@ -992,8 +909,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: true,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1007,8 +924,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: true,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1022,8 +939,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: true,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Utf8String,
             },
         );
@@ -1035,8 +952,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Boolean,
             });
         self.attributes.insert(Attribute::Phantom, SchemaAttribute {
@@ -1047,8 +964,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Boolean,
             });
         self.attributes.insert(Attribute::SyncAllowed, SchemaAttribute {
@@ -1059,8 +976,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Boolean,
             });
         self.attributes.insert(Attribute::Replicated, SchemaAttribute {
@@ -1071,8 +988,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Boolean,
             });
         self.attributes.insert(
@@ -1087,8 +1004,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Boolean,
             },
         );
@@ -1104,9 +1021,26 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::IndexId,
+            },
+        );
+        self.attributes.insert(
+            Attribute::Indexed,
+            SchemaAttribute {
+                name: Attribute::Indexed,
+                uuid: UUID_SCHEMA_ATTR_INDEXED,
+                description: String::from(
+                    "A boolean stating if this attribute will be indexed according to it's syntax rules."
+                ),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: Replicated::True,
+                indexed: false,
+                syntax: SyntaxType::Boolean,
             },
         );
         self.attributes.insert(
@@ -1121,8 +1055,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::SyntaxId,
             },
         );
@@ -1138,8 +1072,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1155,8 +1089,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1172,8 +1106,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1189,45 +1123,45 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
         self.attributes.insert(
-                Attribute::SystemSupplements,
-                SchemaAttribute {
-                    name: Attribute::SystemSupplements,
-                    uuid: UUID_SCHEMA_ATTR_SYSTEMSUPPLEMENTS,
-                    description: String::from(
-                        "A set of classes that this type supplements too, where this class can't exist without their presence.",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    sync_allowed: false,
-                    replicated: true,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
+            Attribute::SystemSupplements,
+            SchemaAttribute {
+                name: Attribute::SystemSupplements,
+                uuid: UUID_SCHEMA_ATTR_SYSTEMSUPPLEMENTS,
+                description: String::from(
+                    "A set of classes that this type supplements too, where this class can't exist without their presence.",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: Replicated::True,
+                indexed: false,
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
         self.attributes.insert(
-                Attribute::Supplements,
-                SchemaAttribute {
-                    name: Attribute::Supplements,
-                    uuid: UUID_SCHEMA_ATTR_SUPPLEMENTS,
-                    description: String::from(
-                        "A set of user modifiable classes, where this determines that at least one other type must supplement this type",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    sync_allowed: false,
-                    replicated: true,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
+            Attribute::Supplements,
+            SchemaAttribute {
+                name: Attribute::Supplements,
+                uuid: UUID_SCHEMA_ATTR_SUPPLEMENTS,
+                description: String::from(
+                    "A set of user modifiable classes, where this determines that at least one other type must supplement this type",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: Replicated::True,
+                indexed: false,
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
         self.attributes.insert(
             Attribute::SystemExcludes,
             SchemaAttribute {
@@ -1240,46 +1174,46 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
         self.attributes.insert(
-                Attribute::Excludes,
-                SchemaAttribute {
-                    name: Attribute::Excludes,
-                    uuid: UUID_SCHEMA_ATTR_EXCLUDES,
-                    description: String::from(
-                        "A set of user modifiable classes that are denied presence in connection to this class",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    sync_allowed: false,
-                    replicated: true,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
+            Attribute::Excludes,
+            SchemaAttribute {
+                name: Attribute::Excludes,
+                uuid: UUID_SCHEMA_ATTR_EXCLUDES,
+                description: String::from(
+                    "A set of user modifiable classes that are denied presence in connection to this class",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: Replicated::True,
+                indexed: false,
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
 
         // SYSINFO attrs
         // ACP attributes.
         self.attributes.insert(
-                Attribute::AcpEnable,
-                SchemaAttribute {
-                    name: Attribute::AcpEnable,
-                    uuid: UUID_SCHEMA_ATTR_ACP_ENABLE,
-                    description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
-                    multivalue: false,
-                    unique: false,
-                    phantom: false,
-                    sync_allowed: false,
-                    replicated: true,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::Boolean,
-                },
-            );
+            Attribute::AcpEnable,
+            SchemaAttribute {
+                name: Attribute::AcpEnable,
+                uuid: UUID_SCHEMA_ATTR_ACP_ENABLE,
+                description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: Replicated::True,
+                indexed: true,
+                syntax: SyntaxType::Boolean,
+            },
+        );
 
         self.attributes.insert(
             Attribute::AcpReceiver,
@@ -1293,8 +1227,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::JsonFilter,
             },
         );
@@ -1310,8 +1244,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::ReferenceUuid,
             },
         );
@@ -1328,8 +1262,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::JsonFilter,
             },
         );
@@ -1345,8 +1279,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1360,8 +1294,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1377,8 +1311,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1395,8 +1329,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1412,26 +1346,26 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
         self.attributes.insert(
-                Attribute::AcpModifyClass,
-                SchemaAttribute {
-                    name: Attribute::AcpModifyClass,
-                    uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS,
-                    description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    sync_allowed: false,
-                    replicated: true,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
+            Attribute::AcpModifyClass,
+            SchemaAttribute {
+                name: Attribute::AcpModifyClass,
+                uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS,
+                description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: Replicated::True,
+                indexed: true,
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
         self.attributes.insert(
             Attribute::EntryManagedBy,
             SchemaAttribute {
@@ -1444,8 +1378,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::ReferenceUuid,
             },
         );
@@ -1460,8 +1394,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::False,
+                indexed: true,
                 syntax: SyntaxType::ReferenceUuid,
             },
         );
@@ -1475,8 +1409,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::False,
+                indexed: true,
                 syntax: SyntaxType::ReferenceUuid,
             },
         );
@@ -1494,8 +1428,8 @@ impl SchemaWriteTransaction<'_> {
                 //  "at delete" are replicated to partners. This avoids us having to replicate
                 // DMO which is very costly, while still retaining our ability to revive entries
                 // and their group memberships as a best effort.
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::ReferenceUuid,
             },
         );
@@ -1509,8 +1443,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: true,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::ReferenceUuid,
             },
         );
@@ -1524,8 +1458,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: true,
-                replicated: false,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::False,
+                indexed: true,
                 syntax: SyntaxType::ReferenceUuid,
             },
         );
@@ -1542,8 +1476,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Uint32,
             },
         );
@@ -1558,8 +1492,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringIname,
             },
         );
@@ -1575,8 +1509,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1592,8 +1526,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1611,8 +1545,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: true,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1628,8 +1562,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![IndexType::Equality],
+                replicated: Replicated::True,
+                indexed: true,
                 syntax: SyntaxType::ReferenceUuid,
             },
         );
@@ -1643,8 +1577,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1659,8 +1593,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: true,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Utf8String,
             },
         );
@@ -1677,8 +1611,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: true,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Utf8String,
             },
         );
@@ -1693,8 +1627,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: true,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::TotpSecret,
             },
         );
@@ -1710,8 +1644,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1725,8 +1659,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1740,8 +1674,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Uuid,
             },
         );
@@ -1755,8 +1689,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
         );
@@ -1770,8 +1704,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Utf8StringIname,
             },
         );
@@ -1785,8 +1719,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::SshKey,
             },
         );
@@ -1800,8 +1734,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::SshKey,
             },
         );
@@ -1815,8 +1749,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::EmailAddress,
             },
         );
@@ -1830,8 +1764,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::EmailAddress,
             },
         );
@@ -1845,8 +1779,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::EmailAddress,
             },
         );
@@ -1860,8 +1794,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::EmailAddress,
             },
         );
@@ -1875,8 +1809,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Utf8String,
             },
         );
@@ -1890,8 +1824,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Utf8String,
             },
         );
@@ -1905,8 +1839,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Uint32,
             },
         );
@@ -1920,8 +1854,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: true,
                 sync_allowed: false,
-                replicated: false,
-                index: vec![],
+                replicated: Replicated::False,
+                indexed: false,
                 syntax: SyntaxType::Utf8String,
             },
         );
@@ -1936,8 +1870,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: false,
                 phantom: false,
                 sync_allowed: true,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Image,
             },
         );
@@ -1952,8 +1886,8 @@ impl SchemaWriteTransaction<'_> {
                 unique: true,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
-                index: vec![],
+                replicated: Replicated::True,
+                indexed: false,
                 syntax: SyntaxType::Boolean,
             },
         );
@@ -1969,6 +1903,7 @@ impl SchemaWriteTransaction<'_> {
                     Attribute::Phantom,
                     Attribute::SyncAllowed,
                     Attribute::Index,
+                    Attribute::Indexed,
                 ],
                 systemmust: vec![
                     Attribute::Class,
@@ -2317,30 +2252,12 @@ impl Schema {
     pub(crate) fn write_blocking(&self) -> SchemaWriteTransaction<'_> {
         self.write()
     }
-
-    /*
-    pub async fn write<'a>(&'a self) -> SchemaWriteTransaction<'a> {
-        SchemaWriteTransaction {
-            classes: self.classes.write().await,
-            attributes: self.attributes.write().await,
-            unique_cache: self.unique_cache.write().await,
-            ref_cache: self.ref_cache.write().await,
-        }
-    }
-
-    #[cfg(test)]
-    pub fn write_blocking<'a>(&'a self) -> SchemaWriteTransaction<'a> {
-        task::block_on(self.write())
-    }
-    */
 }
 
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use crate::schema::{
-        IndexType, Schema, SchemaAttribute, SchemaClass, SchemaTransaction, SyntaxType,
-    };
+    use crate::schema::{Schema, SchemaAttribute, SchemaClass, SchemaTransaction, SyntaxType};
     use uuid::Uuid;
 
     // use crate::proto_v1::Filter as ProtoFilter;
@@ -2379,6 +2296,8 @@ mod tests {
 
     #[test]
     fn test_schema_attribute_from_entry() {
+        sketching::test_init();
+
         sch_from_entry_err!(
             entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
@@ -2410,8 +2329,7 @@ mod tests {
                 ),
                 (Attribute::MultiValue, Value::Bool(false)),
                 (Attribute::Unique, Value::Bool(false)),
-                (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String)),
-                (Attribute::Index, Value::Index(IndexType::Equality))
+                (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String))
             ),
             SchemaAttribute
         );
@@ -2434,8 +2352,7 @@ mod tests {
                 ),
                 (Attribute::MultiValue, Value::Utf8("htouaoeu".to_string())),
                 (Attribute::Unique, Value::Bool(false)),
-                (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String)),
-                (Attribute::Index, Value::Index(IndexType::Equality))
+                (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String))
             ),
             SchemaAttribute
         );
@@ -2458,32 +2375,7 @@ mod tests {
                 ),
                 (Attribute::MultiValue, Value::Bool(false)),
                 (Attribute::Unique, Value::Bool(false)),
-                (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String)),
-                (Attribute::Index, Value::Utf8("NTEHNOU".to_string()))
-            ),
-            SchemaAttribute
-        );
-
-        sch_from_entry_err!(
-            entry_init!(
-                (Attribute::Class, EntryClass::Object.to_value()),
-                (Attribute::Class, EntryClass::AttributeType.to_value()),
-                (
-                    Attribute::AttributeName,
-                    Value::new_iutf8("schema_attr_test")
-                ),
-                (
-                    Attribute::Uuid,
-                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
-                ),
-                (
-                    Attribute::Description,
-                    Value::Utf8("Test attr parsing".to_string())
-                ),
-                (Attribute::MultiValue, Value::Bool(false)),
-                (Attribute::Unique, Value::Bool(false)),
-                (Attribute::Syntax, Value::Utf8("TNEOUNTUH".to_string())),
-                (Attribute::Index, Value::Index(IndexType::Equality))
+                (Attribute::Syntax, Value::Utf8("TNEOUNTUH".to_string()))
             ),
             SchemaAttribute
         );
@@ -2532,7 +2424,7 @@ mod tests {
                 (Attribute::MultiValue, Value::Bool(false)),
                 (Attribute::Unique, Value::Bool(false)),
                 (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String)),
-                (Attribute::Index, Value::Index(IndexType::Equality))
+                (Attribute::Index, Value::Bool(true))
             ),
             SchemaAttribute
         );
@@ -2674,7 +2566,6 @@ mod tests {
             name: Attribute::from("single_value"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            index: vec![IndexType::Equality],
             syntax: SyntaxType::Utf8StringInsensitive,
             ..Default::default()
         };
@@ -2699,7 +2590,6 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: true,
-            index: vec![IndexType::Equality],
             syntax: SyntaxType::Utf8String,
             ..Default::default()
         };
@@ -2713,7 +2603,6 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: true,
-            index: vec![IndexType::Equality],
             syntax: SyntaxType::Boolean,
             ..Default::default()
         };
@@ -2743,7 +2632,6 @@ mod tests {
             name: Attribute::from("sv_syntax"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            index: vec![IndexType::Equality],
             syntax: SyntaxType::SyntaxId,
             ..Default::default()
         };
@@ -2763,14 +2651,9 @@ mod tests {
             name: Attribute::from("sv_index"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            index: vec![IndexType::Equality],
             syntax: SyntaxType::IndexId,
             ..Default::default()
         };
-        //
-        let rvs = vs_index![IndexType::try_from("EQUALITY").unwrap()] as _;
-        let r8 = single_value_index.validate_ava(&Attribute::from("sv_index"), &rvs);
-        assert_eq!(r8, Ok(()));
 
         let rvs = vs_utf8!["thaeountaheu".to_string()] as _;
         let r9 = single_value_index.validate_ava(&Attribute::from("sv_index"), &rvs);
