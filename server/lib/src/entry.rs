@@ -2744,23 +2744,6 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     // These are special types to allow returning typed values from
     // an entry, if we "know" what we expect to receive.
 
-    /*
-    /// This returns an array of IndexTypes, when the type is an Optional
-    /// multivalue in schema - IE this will *not* fail if the attribute is
-    /// empty, yielding and empty array instead.
-    ///
-    /// However, the conversion to IndexType is fallible, so in case of a failure
-    /// to convert, an empty vec is returned
-    pub(crate) fn get_ava_opt_index<A: AsRef<Attribute>>(&self, attr: A) -> Option<Vec<IndexType>> {
-        if let Some(vs) = self.get_ava_set(attr) {
-            vs.as_indextype_iter().map(|i| i.collect())
-        } else {
-            // Empty, but consider as valid.
-            Some(vec![])
-        }
-    }
-    */
-
     /// Return a single value of this attributes name, or `None` if it is NOT present, or
     /// there are multiple values present (ambiguous).
     pub fn get_ava_single<A: AsRef<Attribute>>(&self, attr: A) -> Option<Value> {
