@@ -31,7 +31,7 @@ fi
 
 # Save current directory and change to script directory without pushd
 OLD_DIR=$(pwd)
-cd "${SCRIPT_DIR}" > /dev/null 2>&1
+cd "${SCRIPT_DIR}" || exit 1
 if [ -n "${1}" ]; then
     COMMAND=$*
     #shellcheck disable=SC2086
@@ -42,4 +42,4 @@ else
     #shellcheck disable=SC2086
     cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- server -c "${CONFIG_FILE}"
 fi
-cd $OLD_DIR > /dev/null 2>&1
+cd "${OLD_DIR}" || exit 1
