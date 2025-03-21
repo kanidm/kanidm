@@ -492,6 +492,97 @@ impl Entry<EntryInit, EntryNew> {
     }
 }
 
+impl From<SchemaAttribute> for EntryInitNew {
+    fn from(value: SchemaAttribute) -> Self {
+        EntryInitNew::from(&value)
+    }
+}
+
+impl From<&SchemaAttribute> for EntryInitNew {
+    fn from(s: &SchemaAttribute) -> Self {
+        // Build the Map of the attributes
+        let mut attrs = Eattrs::new();
+        attrs.insert(Attribute::AttributeName, vs_iutf8![s.name.as_str()]);
+        attrs.insert(Attribute::Description, vs_utf8![s.description.to_owned()]);
+        attrs.insert(Attribute::Uuid, vs_uuid![s.uuid]);
+        attrs.insert(Attribute::MultiValue, vs_bool![s.multivalue]);
+        attrs.insert(Attribute::Phantom, vs_bool![s.phantom]);
+        attrs.insert(Attribute::SyncAllowed, vs_bool![s.sync_allowed]);
+        attrs.insert(Attribute::Replicated, vs_bool![s.replicated.into()]);
+        attrs.insert(Attribute::Unique, vs_bool![s.unique]);
+        attrs.insert(Attribute::Indexed, vs_bool![s.indexed]);
+        attrs.insert(Attribute::Syntax, vs_syntax![s.syntax]);
+        attrs.insert(
+            Attribute::Class,
+            vs_iutf8![
+                EntryClass::Object.into(),
+                EntryClass::System.into(),
+                EntryClass::AttributeType.into()
+            ],
+        );
+
+        // Insert stuff.
+
+        Entry {
+            valid: EntryInit,
+            state: EntryNew,
+            attrs,
+        }
+    }
+}
+
+impl From<SchemaClass> for EntryInitNew {
+    fn from(value: SchemaClass) -> Self {
+        EntryInitNew::from(&value)
+    }
+}
+
+impl From<&SchemaClass> for EntryInitNew {
+    fn from(s: &SchemaClass) -> Self {
+        let mut attrs = Eattrs::new();
+        attrs.insert(Attribute::ClassName, vs_iutf8![s.name.as_str()]);
+        attrs.insert(Attribute::Description, vs_utf8![s.description.to_owned()]);
+        attrs.insert(Attribute::SyncAllowed, vs_bool![s.sync_allowed]);
+        attrs.insert(Attribute::Uuid, vs_uuid![s.uuid]);
+        attrs.insert(
+            Attribute::Class,
+            vs_iutf8![
+                EntryClass::Object.into(),
+                EntryClass::System.into(),
+                EntryClass::ClassType.into()
+            ],
+        );
+
+        let vs_systemmay = ValueSetIutf8::from_iter(s.systemmay.iter().map(|sm| sm.as_str()));
+        if let Some(vs) = vs_systemmay {
+            attrs.insert(Attribute::SystemMay, vs);
+        }
+
+        let vs_systemmust = ValueSetIutf8::from_iter(s.systemmust.iter().map(|sm| sm.as_str()));
+        if let Some(vs) = vs_systemmust {
+            attrs.insert(Attribute::SystemMust, vs);
+        }
+
+        let vs_systemexcludes =
+            ValueSetIutf8::from_iter(s.systemexcludes.iter().map(|sm| sm.as_str()));
+        if let Some(vs) = vs_systemexcludes {
+            attrs.insert(Attribute::SystemExcludes, vs);
+        }
+
+        let vs_systemsupplements =
+            ValueSetIutf8::from_iter(s.systemsupplements.iter().map(|sm| sm.as_str()));
+        if let Some(vs) = vs_systemsupplements {
+            attrs.insert(Attribute::SystemSupplements, vs);
+        }
+
+        Entry {
+            valid: EntryInit,
+            state: EntryNew,
+            attrs,
+        }
+    }
+}
+
 impl Entry<EntryRefresh, EntryNew> {
     pub fn from_repl_entry_v1(repl_entry: ReplEntryV1) -> Result<Self, OperationError> {
         // From the entry, we have to rebuild the ecstate and the attrs.
@@ -1949,7 +2040,7 @@ impl<STATE> Entry<EntryValid, STATE> {
         };
 
         if !valid_supplements {
-            admin_warn!(
+            warn!(
                 "Validation error, the following possible supplement classes are missing - {:?}",
                 supplements_classes
             );
@@ -2633,21 +2724,6 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     // These are special types to allow returning typed values from
     // an entry, if we "know" what we expect to receive.
 
-    /// This returns an array of IndexTypes, when the type is an Optional
-    /// multivalue in schema - IE this will *not* fail if the attribute is
-    /// empty, yielding and empty array instead.
-    ///
-    /// However, the conversion to IndexType is fallible, so in case of a failure
-    /// to convert, an empty vec is returned
-    pub(crate) fn get_ava_opt_index<A: AsRef<Attribute>>(&self, attr: A) -> Option<Vec<IndexType>> {
-        if let Some(vs) = self.get_ava_set(attr) {
-            vs.as_indextype_iter().map(|i| i.collect())
-        } else {
-            // Empty, but consider as valid.
-            Some(vec![])
-        }
-    }
-
     /// Return a single value of this attributes name, or `None` if it is NOT present, or
     /// there are multiple values present (ambiguous).
     pub fn get_ava_single<A: AsRef<Attribute>>(&self, attr: A) -> Option<Value> {
@@ -3257,97 +3333,6 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
         // just end in eager false-results. We'll never say something is true
         // that should NOT be.
         compare_attrs(&self.attrs, &rhs.attrs)
-    }
-}
-
-impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
-    fn from(s: &SchemaAttribute) -> Self {
-        // Convert an Attribute to an entry ... make it good!
-        let uuid_v = vs_uuid![s.uuid];
-        let name_v = vs_iutf8![s.name.as_str()];
-        let desc_v = vs_utf8![s.description.to_owned()];
-
-        let multivalue_v = vs_bool![s.multivalue];
-        let sync_allowed_v = vs_bool![s.sync_allowed];
-        let replicated_v = vs_bool![s.replicated];
-        let phantom_v = vs_bool![s.phantom];
-        let unique_v = vs_bool![s.unique];
-
-        let index_v = ValueSetIndex::from_iter(s.index.iter().copied());
-
-        let syntax_v = vs_syntax![s.syntax];
-
-        // Build the Map of the attributes relevant
-        // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
-        let mut attrs: Map<Attribute, ValueSet> = Map::new();
-        attrs.insert(Attribute::AttributeName, name_v);
-        attrs.insert(Attribute::Description, desc_v);
-        attrs.insert(Attribute::Uuid, uuid_v);
-        attrs.insert(Attribute::MultiValue, multivalue_v);
-        attrs.insert(Attribute::Phantom, phantom_v);
-        attrs.insert(Attribute::SyncAllowed, sync_allowed_v);
-        attrs.insert(Attribute::Replicated, replicated_v);
-        attrs.insert(Attribute::Unique, unique_v);
-        if let Some(vs) = index_v {
-            attrs.insert(Attribute::Index, vs);
-        }
-        attrs.insert(Attribute::Syntax, syntax_v);
-        attrs.insert(
-            Attribute::Class,
-            vs_iutf8![
-                EntryClass::Object.into(),
-                EntryClass::System.into(),
-                EntryClass::AttributeType.into()
-            ],
-        );
-
-        // Insert stuff.
-
-        Entry {
-            valid: EntryInit,
-            state: EntryNew,
-            attrs,
-        }
-    }
-}
-
-impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
-    fn from(s: &SchemaClass) -> Self {
-        let uuid_v = vs_uuid![s.uuid];
-        let name_v = vs_iutf8![s.name.as_str()];
-        let desc_v = vs_utf8![s.description.to_owned()];
-        let sync_allowed_v = vs_bool![s.sync_allowed];
-
-        let mut attrs: Map<Attribute, ValueSet> = Map::new();
-        attrs.insert(Attribute::ClassName, name_v);
-        attrs.insert(Attribute::Description, desc_v);
-        attrs.insert(Attribute::SyncAllowed, sync_allowed_v);
-        attrs.insert(Attribute::Uuid, uuid_v);
-        attrs.insert(
-            Attribute::Class,
-            vs_iutf8![
-                EntryClass::Object.into(),
-                EntryClass::System.into(),
-                EntryClass::ClassType.into()
-            ],
-        );
-
-        let vs_systemmay = ValueSetIutf8::from_iter(s.systemmay.iter().map(|sm| sm.as_str()));
-        if let Some(vs) = vs_systemmay {
-            attrs.insert(Attribute::SystemMay, vs);
-        }
-
-        let vs_systemmust = ValueSetIutf8::from_iter(s.systemmust.iter().map(|sm| sm.as_str()));
-
-        if let Some(vs) = vs_systemmust {
-            attrs.insert(Attribute::SystemMust, vs);
-        }
-
-        Entry {
-            valid: EntryInit,
-            state: EntryNew,
-            attrs,
-        }
     }
 }
 

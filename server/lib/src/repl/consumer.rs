@@ -1,7 +1,7 @@
 use super::proto::*;
 use crate::plugins::Plugins;
 use crate::prelude::*;
-use crate::server::ChangeFlag;
+use crate::server::{ChangeFlag, ServerPhase};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -343,7 +343,7 @@ impl QueryServerWriteTransaction<'_> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     fn consumer_apply_changes_v1(
         &mut self,
         ctx_domain_version: DomainVersion,
@@ -548,7 +548,7 @@ impl QueryServerWriteTransaction<'_> {
         Ok(())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     fn consumer_apply_refresh_v1(
         &mut self,
         ctx_domain_version: DomainVersion,
@@ -583,6 +583,7 @@ impl QueryServerWriteTransaction<'_> {
         };
 
         // == ⚠️  Below this point we begin to make changes! ==
+        self.set_phase_bootstrap();
 
         // Update the d_uuid. This is what defines us as being part of this repl topology!
         self.be_txn
@@ -597,7 +598,6 @@ impl QueryServerWriteTransaction<'_> {
         self.reset_server_uuid()?;
 
         // Delete all entries - *proper delete, not just tombstone!*
-
         self.be_txn
             .danger_delete_all_db_content()
             .inspect_err(|err| {
@@ -607,6 +607,12 @@ impl QueryServerWriteTransaction<'_> {
         // Reset this transactions schema to a completely clean slate.
         self.schema.generate_in_memory().inspect_err(|err| {
             error!(?err, "Failed to reset in memory schema to clean state");
+        })?;
+
+        // Reindex now to force some basic indexes to exist as we consume the schema
+        // from our replica.
+        self.reindex(false).inspect_err(|err| {
+            error!(?err, "Failed to reload schema");
         })?;
 
         // Apply the schema entries first. This is the foundation that everything
@@ -620,6 +626,9 @@ impl QueryServerWriteTransaction<'_> {
         self.reload_schema().inspect_err(|err| {
             error!(?err, "Failed to reload schema");
         })?;
+
+        // Schema is now ready
+        self.set_phase(ServerPhase::SchemaReady);
 
         // We have to reindex to force all the existing indexes to be dumped
         // and recreated before we start to import.
@@ -652,7 +661,10 @@ impl QueryServerWriteTransaction<'_> {
                 | ChangeFlag::KEY_MATERIAL,
         );
 
-        // That's it! We are GOOD to go!
+        // Domain info is now ready.
+        self.set_phase(ServerPhase::DomainInfoReady);
+
+        // ==== That's it! We are GOOD to go! ====
 
         // Create all the entries. Note we don't hit plugins here beside post repl plugs.
         self.consumer_refresh_create_entries(ctx_entries)
@@ -671,6 +683,9 @@ impl QueryServerWriteTransaction<'_> {
         ruv.refresh_update_ruv(&ctx_ranges).inspect_err(|err| {
             error!(?err, "Unable to update RUV with supplier ranges.");
         })?;
+
+        // Refresh complete
+        self.set_phase(ServerPhase::Running);
 
         Ok(())
     }

@@ -69,7 +69,6 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_SYNC_TOKEN_SESSION.clone().into(),
         SCHEMA_ATTR_UNIX_PASSWORD.clone().into(),
         SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION.clone().into(),
-        SCHEMA_ATTR_DENIED_NAME.clone().into(),
         SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM.clone().into(),
         SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST.clone().into(),
         // DL4

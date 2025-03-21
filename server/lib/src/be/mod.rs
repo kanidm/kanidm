@@ -549,10 +549,11 @@ pub trait BackendTransaction {
                         }
                         (_, fp) => {
                             plan.push(fp);
-                            filter_error!(
+                            let setplan = FilterPlan::InclusionInvalid(plan);
+                            error!(
+                                ?setplan,
                                 "Inclusion is unable to proceed - all terms must be fully indexed!"
                             );
-                            let setplan = FilterPlan::InclusionInvalid(plan);
                             return Ok((IdList::Partial(IDLBitRange::new()), setplan));
                         }
                     }
@@ -1427,20 +1428,16 @@ impl<'a> BackendWriteTransaction<'a> {
         if self.is_idx_slopeyness_generated()? {
             trace!("Indexing slopes available");
         } else {
-            admin_warn!(
-                "No indexing slopes available. You should consider reindexing to generate these"
-            );
+            warn!("No indexing slopes available. You should consider reindexing to generate these");
         };
 
         // Setup idxkeys here. By default we set these all to "max slope" aka
         // all indexes are "equal" but also worse case unless analysed. If they
         // have been analysed, we can set the slope factor into here.
-        let idxkeys: Result<Map<_, _>, _> = idxkeys
+        let mut idxkeys = idxkeys
             .into_iter()
             .map(|k| self.get_idx_slope(&k).map(|slope| (k, slope)))
-            .collect();
-
-        let mut idxkeys = idxkeys?;
+            .collect::<Result<Map<_, _>, _>>()?;
 
         std::mem::swap(&mut self.idxmeta_wr.deref_mut().idxkeys, &mut idxkeys);
         Ok(())

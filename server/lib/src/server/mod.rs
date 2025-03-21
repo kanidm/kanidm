@@ -31,7 +31,7 @@ use crate::value::{CredentialType, EXTRACT_VAL_DN};
 use crate::valueset::uuid_to_proto_string;
 use crate::valueset::ScimValueIntermediate;
 use crate::valueset::*;
-use concread::arcache::{ARCacheBuilder, ARCacheReadTxn};
+use concread::arcache::{ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
@@ -205,6 +205,13 @@ pub struct QueryServerWriteTransaction<'a> {
     pub(super) changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
+    resolve_filter_cache_clear: bool,
+    resolve_filter_cache_write: ARCacheWriteTxn<
+        'a,
+        (IdentityId, Arc<Filter<FilterValid>>),
+        Arc<Filter<FilterValidResolved>>,
+        (),
+    >,
     resolve_filter_cache: ARCacheReadTxn<
         'a,
         (IdentityId, Arc<Filter<FilterValid>>),
@@ -260,7 +267,7 @@ pub trait QueryServerTransaction<'a> {
 
     fn get_domain_image_value(&self) -> Option<ImageValue>;
 
-    fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a>;
+    fn get_resolve_filter_cache(&mut self) -> Option<&mut ResolveFilterCacheReadTxn<'a>>;
 
     // Because of how borrowck in rust works, if we need to get two inner types we have to get them
     // in a single fn.
@@ -269,7 +276,7 @@ pub trait QueryServerTransaction<'a> {
         &mut self,
     ) -> (
         &mut Self::BackendTransactionType,
-        &mut ResolveFilterCacheReadTxn<'a>,
+        Option<&mut ResolveFilterCacheReadTxn<'a>>,
     );
 
     /// Conduct a search and apply access controls to yield a set of entries that
@@ -326,11 +333,15 @@ pub trait QueryServerTransaction<'a> {
         // NOTE: Filters are validated in event conversion.
 
         let (be_txn, resolve_filter_cache) = self.get_resolve_filter_cache_and_be_txn();
+
         let idxmeta = be_txn.get_idxmeta_ref();
+
+        trace!(resolve_filter_cache = %resolve_filter_cache.is_some());
+
         // Now resolve all references and indexes.
         let vfr = se
             .filter
-            .resolve(&se.ident, Some(idxmeta), Some(resolve_filter_cache))
+            .resolve(&se.ident, Some(idxmeta), resolve_filter_cache)
             .map_err(|e| {
                 admin_error!(?e, "search filter resolve failure");
                 e
@@ -366,7 +377,7 @@ pub trait QueryServerTransaction<'a> {
 
         let vfr = ee
             .filter
-            .resolve(&ee.ident, Some(idxmeta), Some(resolve_filter_cache))
+            .resolve(&ee.ident, Some(idxmeta), resolve_filter_cache)
             .map_err(|e| {
                 admin_error!(?e, "Failed to resolve filter");
                 e
@@ -1444,17 +1455,17 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.key_providers
     }
 
-    fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a> {
-        &mut self.resolve_filter_cache
+    fn get_resolve_filter_cache(&mut self) -> Option<&mut ResolveFilterCacheReadTxn<'a>> {
+        Some(&mut self.resolve_filter_cache)
     }
 
     fn get_resolve_filter_cache_and_be_txn(
         &mut self,
     ) -> (
         &mut BackendReadTransaction<'a>,
-        &mut ResolveFilterCacheReadTxn<'a>,
+        Option<&mut ResolveFilterCacheReadTxn<'a>>,
     ) {
-        (&mut self.be_txn, &mut self.resolve_filter_cache)
+        (&mut self.be_txn, Some(&mut self.resolve_filter_cache))
     }
 
     fn pw_badlist(&self) -> &HashSet<String> {
@@ -1678,17 +1689,25 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         &self.key_providers
     }
 
-    fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a> {
-        &mut self.resolve_filter_cache
+    fn get_resolve_filter_cache(&mut self) -> Option<&mut ResolveFilterCacheReadTxn<'a>> {
+        if self.resolve_filter_cache_clear || *self.phase < ServerPhase::SchemaReady {
+            None
+        } else {
+            Some(&mut self.resolve_filter_cache)
+        }
     }
 
     fn get_resolve_filter_cache_and_be_txn(
         &mut self,
     ) -> (
         &mut BackendWriteTransaction<'a>,
-        &mut ResolveFilterCacheReadTxn<'a>,
+        Option<&mut ResolveFilterCacheReadTxn<'a>>,
     ) {
-        (&mut self.be_txn, &mut self.resolve_filter_cache)
+        if self.resolve_filter_cache_clear || *self.phase < ServerPhase::SchemaReady {
+            (&mut self.be_txn, None)
+        } else {
+            (&mut self.be_txn, Some(&mut self.resolve_filter_cache))
+        }
     }
 
     fn pw_badlist(&self) -> &HashSet<String> {
@@ -2003,6 +2022,8 @@ impl QueryServer {
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
             resolve_filter_cache: self.resolve_filter_cache.read(),
+            resolve_filter_cache_clear: false,
+            resolve_filter_cache_write: self.resolve_filter_cache.write(),
             dyngroup_cache: self.dyngroup_cache.write(),
             key_providers: self.key_providers.write(),
         })
@@ -2152,16 +2173,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             ))
         }?;
 
-        // TODO: Clear the filter resolve cache.
-        // currently we can't do this because of the limits of types with arccache txns. The only
-        // thing this impacts is if something in indexed though, and the backend does handle
-        // incorrectly indexed items correctly.
+        // Since we reloaded the schema, we need to reload the filter cache since it
+        // may have incorrect or outdated information about indexes now.
+        self.resolve_filter_cache_clear = true;
 
         // Trigger reloads on services that require post-schema reloads.
         // Mainly this is plugins.
-        if *self.phase >= ServerPhase::SchemaReady {
-            DynGroup::reload(self)?;
-        }
+        DynGroup::reload(self)?;
 
         Ok(())
     }
@@ -2584,7 +2602,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_flags.remove(ChangeFlag::OAUTH2)
     }
 
-    fn set_phase(&mut self, phase: ServerPhase) {
+    /// Indicate that we are about to re-bootstrap this server. You should ONLY
+    /// call this during a replication refresh!!!
+    pub(crate) fn set_phase_bootstrap(&mut self) {
+        *self.phase = ServerPhase::Bootstrap;
+    }
+
+    /// Raise the currently running server phase.
+    pub(crate) fn set_phase(&mut self, phase: ServerPhase) {
         // Phase changes are one way
         if phase > *self.phase {
             *self.phase = phase
@@ -2698,6 +2723,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             changed_flags,
             changed_uuid: _,
             resolve_filter_cache: _,
+            resolve_filter_cache_clear,
+            mut resolve_filter_cache_write,
         } = self;
         debug_assert!(!committed);
 
@@ -2710,6 +2737,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // will be stable, so return if it fails.
         be_txn.set_db_ts_max(cid.ts)?;
         cid.commit();
+
+        // We don't care if this passes/fails, committing this is fine.
+        if resolve_filter_cache_clear {
+            resolve_filter_cache_write.clear();
+        }
+        resolve_filter_cache_write.commit();
 
         // Point of no return - everything has been validated and reloaded.
         //

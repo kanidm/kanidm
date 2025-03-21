@@ -2,7 +2,6 @@
 use crate::constants::entries::{Attribute, EntryClass};
 use crate::constants::uuids::*;
 use crate::schema::{SchemaAttribute, SchemaClass};
-use crate::value::IndexType;
 use crate::value::SyntaxType;
 
 lazy_static!(
@@ -11,8 +10,6 @@ pub static ref SCHEMA_ATTR_DISPLAYNAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DISPLAYNAME,
     name: Attribute::DisplayName,
     description: "The publicly visible display name of this person".to_string(),
-
-    index: vec![IndexType::Equality],
     sync_allowed: true,
     syntax: SyntaxType::Utf8String,
     ..Default::default()
@@ -22,8 +19,6 @@ pub static ref SCHEMA_ATTR_DISPLAYNAME_DL7: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DISPLAYNAME,
     name: Attribute::DisplayName,
     description: "The publicly visible display name of this person".to_string(),
-
-    index: vec![IndexType::Equality, IndexType::SubString],
     sync_allowed: true,
     syntax: SyntaxType::Utf8String,
     ..Default::default()
@@ -33,8 +28,6 @@ pub static ref SCHEMA_ATTR_MAIL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_MAIL,
     name: Attribute::Mail,
     description: "Mail addresses of the object".to_string(),
-
-    index: vec![IndexType::Equality],
     unique: true,
     multivalue: true,
     sync_allowed: true,
@@ -46,8 +39,6 @@ pub static ref SCHEMA_ATTR_MAIL_DL7: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_MAIL,
     name: Attribute::Mail,
     description: "Mail addresses of the object".to_string(),
-
-    index: vec![IndexType::Equality, IndexType::SubString],
     unique: true,
     multivalue: true,
     sync_allowed: true,
@@ -59,8 +50,6 @@ pub static ref SCHEMA_ATTR_EC_KEY_PRIVATE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_EC_KEY_PRIVATE,
     name: Attribute::IdVerificationEcKey,
     description: "Account verification private key".to_string(),
-
-    index: vec![IndexType::Presence],
     unique: false,
     sync_allowed: false,
     syntax: SyntaxType::EcKeyPrivate,
@@ -82,8 +71,6 @@ pub static ref SCHEMA_ATTR_PRIMARY_CREDENTIAL: SchemaAttribute = SchemaAttribute
     uuid: UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
     name: Attribute::PrimaryCredential,
     description: "Primary credential material of the account for authentication interactively".to_string(),
-
-    index: vec![IndexType::Presence],
     sync_allowed: true,
     syntax: SyntaxType::Credential,
     ..Default::default()
@@ -93,8 +80,6 @@ pub static ref SCHEMA_ATTR_LEGALNAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LEGALNAME,
     name: Attribute::LegalName,
     description: "The private and sensitive legal name of this person".to_string(),
-
-    index: vec![IndexType::Equality],
     sync_allowed: true,
     syntax: SyntaxType::Utf8String,
     ..Default::default()
@@ -104,8 +89,6 @@ pub static ref SCHEMA_ATTR_LEGALNAME_DL7: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LEGALNAME,
     name: Attribute::LegalName,
     description: "The private and sensitive legal name of this person".to_string(),
-
-    index: vec![IndexType::Equality, IndexType::SubString],
     sync_allowed: true,
     syntax: SyntaxType::Utf8String,
     ..Default::default()
@@ -115,8 +98,6 @@ pub static ref SCHEMA_ATTR_NAME_HISTORY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_NAME_HISTORY,
     name: Attribute::NameHistory,
     description: "The history of names that a person has had".to_string(),
-
-    index: vec![IndexType::Equality],
     multivalue: true,
     sync_allowed: true,
     syntax: SyntaxType::AuditLogString,
@@ -137,8 +118,6 @@ pub static ref SCHEMA_ATTR_DOMAIN_NAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_NAME,
     name: Attribute::DomainName,
     description: "The domain's DNS name for webauthn and SPN generation purposes".to_string(),
-
-    index: vec![IndexType::Equality, IndexType::Presence],
     unique: true,
     syntax: SyntaxType::Utf8StringIname,
     ..Default::default()
@@ -168,8 +147,6 @@ pub static ref SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: SchemaAttribute = SchemaAttribut
     uuid: UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
     name: Attribute::DomainDisplayName,
     description: "The user-facing display name of the Kanidm domain".to_string(),
-
-    index: vec![IndexType::Equality],
     syntax: SyntaxType::Utf8String,
     ..Default::default()
 };
@@ -178,8 +155,6 @@ pub static ref SCHEMA_ATTR_DOMAIN_UUID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_UUID,
     name: Attribute::DomainUuid,
     description: "The domain's uuid, used in CSN and trust relationships".to_string(),
-
-    index: vec![IndexType::Equality],
     unique: true,
     syntax: SyntaxType::Uuid,
     ..Default::default()
@@ -189,8 +164,6 @@ pub static ref SCHEMA_ATTR_DOMAIN_SSID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_SSID,
     name: Attribute::DomainSsid,
     description: "The domains site-wide SSID for device autoconfiguration of wireless".to_string(),
-
-    index: vec![IndexType::Equality],
     unique: true,
     syntax: SyntaxType::Utf8String,
     ..Default::default()
@@ -237,8 +210,6 @@ pub static ref SCHEMA_ATTR_GIDNUMBER: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_GIDNUMBER,
     name: Attribute::GidNumber,
     description: "The groupid (uid) number of a group or account.to_string(). This is the same value as the UID number on posix accounts for security reasons".to_string(),
-
-    index: vec![IndexType::Equality],
     unique: true,
     sync_allowed: true,
     syntax: SyntaxType::Uint32,
@@ -296,8 +267,6 @@ pub static ref SCHEMA_ATTR_UNIX_PASSWORD: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_UNIX_PASSWORD,
     name: Attribute::UnixPassword,
     description: "A POSIX user's UNIX login password".to_string(),
-
-    index: vec![IndexType::Presence],
     syntax: SyntaxType::Credential,
     ..Default::default()
 };
@@ -306,8 +275,6 @@ pub static ref SCHEMA_ATTR_NSUNIQUEID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_NSUNIQUEID,
     name: Attribute::NsUniqueId,
     description: "A unique id compatibility for 389-ds/dsee".to_string(),
-
-    index: vec![IndexType::Equality],
     unique: true,
     sync_allowed: true,
     syntax: SyntaxType::NsUniqueId,
@@ -348,8 +315,6 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_NAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_NAME,
     name: Attribute::OAuth2RsName,
     description: "The unique name of an external Oauth2 resource".to_string(),
-
-    index: vec![IndexType::Equality],
     unique: true,
     syntax: SyntaxType::Utf8StringIname,
     ..Default::default()
@@ -397,8 +362,6 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4: SchemaAttribute = SchemaAttr
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP,
     name: Attribute::OAuth2RsClaimMap,
     description: "A set of custom claims mapped to group memberships of accounts".to_string(),
-
-    index: vec![IndexType::Equality],
     multivalue: true,
     // CHANGE ME
     syntax: SyntaxType::OauthClaimMap,
@@ -409,8 +372,6 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: SchemaAttribute = SchemaAttribut
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP,
     name: Attribute::OAuth2RsScopeMap,
     description: "A reference to a group mapped to scopes for the associated oauth2 resource server".to_string(),
-
-    index: vec![IndexType::Equality],
     multivalue: true,
     syntax: SyntaxType::OauthScopeMap,
     ..Default::default()
@@ -420,8 +381,6 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: SchemaAttribute = SchemaAttr
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
     name: Attribute::OAuth2RsSupScopeMap,
     description: "A reference to a group mapped to scopes for the associated oauth2 resource server".to_string(),
-
-    index: vec![IndexType::Equality],
     multivalue: true,
     syntax: SyntaxType::OauthScopeMap,
     ..Default::default()
@@ -459,8 +418,6 @@ pub static ref SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP: SchemaAttribute = SchemaAtt
     uuid: UUID_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP,
     name: Attribute::OAuth2ConsentScopeMap,
     description: "A set of scopes mapped from a relying server to a user, where the user has previously consented to the following. If changed or deleted, consent will be re-sought".to_string(),
-
-    index: vec![IndexType::Equality],
     multivalue: true,
     syntax: SyntaxType::OauthScopeMap,
     ..Default::default()
@@ -507,8 +464,6 @@ pub static ref SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: SchemaAttribute = SchemaAttrib
     uuid: UUID_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY,
     name: Attribute::JwsEs256PrivateKey,
     description: "An es256 private key for jws".to_string(),
-
-    index: vec![IndexType::Equality],
     unique: true,
     syntax: SyntaxType::JwsKeyEs256,
     ..Default::default()
@@ -546,8 +501,6 @@ pub static ref SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: SchemaAttribute = Sch
     uuid: UUID_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
     name: Attribute::CredentialUpdateIntentToken,
     description: "The status of a credential update intent token".to_string(),
-
-    index: vec![IndexType::Equality],
     multivalue: true,
     syntax: SyntaxType::IntentToken,
     ..Default::default()
@@ -557,8 +510,6 @@ pub static ref SCHEMA_ATTR_PASSKEYS: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_PASSKEYS,
     name: Attribute::PassKeys,
     description: "A set of registered passkeys".to_string(),
-
-    index: vec![IndexType::Equality],
     multivalue: true,
     sync_allowed: true,
     syntax: SyntaxType::Passkey,
@@ -569,8 +520,6 @@ pub static ref SCHEMA_ATTR_ATTESTED_PASSKEYS: SchemaAttribute = SchemaAttribute 
     uuid: UUID_SCHEMA_ATTR_ATTESTED_PASSKEYS,
     name: Attribute::AttestedPasskeys,
     description: "A set of registered device keys".to_string(),
-
-    index: vec![IndexType::Equality],
     multivalue: true,
     sync_allowed: true,
     syntax: SyntaxType::AttestedPasskey,
@@ -599,8 +548,6 @@ pub static ref SCHEMA_ATTR_API_TOKEN_SESSION: SchemaAttribute = SchemaAttribute 
     uuid: UUID_SCHEMA_ATTR_API_TOKEN_SESSION,
     name: Attribute::ApiTokenSession,
     description: "A session entry related to an issued API token".to_string(),
-
-    index: vec![IndexType::Equality],
     unique: true,
     multivalue: true,
     syntax: SyntaxType::ApiToken,
@@ -611,8 +558,6 @@ pub static ref SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: SchemaAttribute = SchemaAttr
     uuid: UUID_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION,
     name: Attribute::UserAuthTokenSession,
     description: "A session entry related to an issued user auth token".to_string(),
-
-    index: vec![IndexType::Equality],
     unique: true,
     multivalue: true,
     syntax: SyntaxType::Session,
@@ -623,8 +568,6 @@ pub static ref SCHEMA_ATTR_OAUTH2_SESSION: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_SESSION,
     name: Attribute::OAuth2Session,
     description: "A session entry to an active oauth2 session, bound to a parent user auth token".to_string(),
-
-    index: vec![IndexType::Equality],
     multivalue: true,
     syntax: SyntaxType::Oauth2Session,
     ..Default::default()
@@ -634,8 +577,6 @@ pub static ref SCHEMA_ATTR_SYNC_TOKEN_SESSION: SchemaAttribute = SchemaAttribute
     uuid: UUID_SCHEMA_ATTR_SYNC_TOKEN_SESSION,
     name: Attribute::SyncTokenSession,
     description: "A session entry related to an issued sync token".to_string(),
-
-    index: vec![IndexType::Equality],
     unique: true,
     syntax: SyntaxType::ApiToken,
     ..Default::default()
@@ -654,8 +595,6 @@ pub static ref SCHEMA_ATTR_GRANT_UI_HINT: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_GRANT_UI_HINT,
     name: Attribute::GrantUiHint,
     description: "A UI hint that is granted via membership to a group".to_string(),
-
-    index: vec![IndexType::Equality],
     multivalue: true,
     syntax: SyntaxType::UiHint,
     ..Default::default()
