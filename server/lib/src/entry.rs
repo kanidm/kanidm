@@ -500,33 +500,18 @@ impl From<SchemaAttribute> for EntryInitNew {
 
 impl From<&SchemaAttribute> for EntryInitNew {
     fn from(s: &SchemaAttribute) -> Self {
-        // Convert an Attribute to an entry ... make it good!
-        let uuid_v = vs_uuid![s.uuid];
-        let name_v = vs_iutf8![s.name.as_str()];
-        let desc_v = vs_utf8![s.description.to_owned()];
-
-        let multivalue_v = vs_bool![s.multivalue];
-        let sync_allowed_v = vs_bool![s.sync_allowed];
-        let replicated_v = vs_bool![s.replicated.into()];
-        let phantom_v = vs_bool![s.phantom];
-        let unique_v = vs_bool![s.unique];
-        let indexed_v = vs_bool![s.indexed];
-
-        let syntax_v = vs_syntax![s.syntax];
-
-        // Build the Map of the attributes relevant
-        // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
+        // Build the Map of the attributes
         let mut attrs = Eattrs::new();
-        attrs.insert(Attribute::AttributeName, name_v);
-        attrs.insert(Attribute::Description, desc_v);
-        attrs.insert(Attribute::Uuid, uuid_v);
-        attrs.insert(Attribute::MultiValue, multivalue_v);
-        attrs.insert(Attribute::Phantom, phantom_v);
-        attrs.insert(Attribute::SyncAllowed, sync_allowed_v);
-        attrs.insert(Attribute::Replicated, replicated_v);
-        attrs.insert(Attribute::Unique, unique_v);
-        attrs.insert(Attribute::Indexed, indexed_v);
-        attrs.insert(Attribute::Syntax, syntax_v);
+        attrs.insert(Attribute::AttributeName, vs_iutf8![s.name.as_str()]);
+        attrs.insert(Attribute::Description, vs_utf8![s.description.to_owned()]);
+        attrs.insert(Attribute::Uuid, vs_uuid![s.uuid]);
+        attrs.insert(Attribute::MultiValue, vs_bool![s.multivalue]);
+        attrs.insert(Attribute::Phantom, vs_bool![s.phantom]);
+        attrs.insert(Attribute::SyncAllowed, vs_bool![s.sync_allowed]);
+        attrs.insert(Attribute::Replicated, vs_bool![s.replicated.into()]);
+        attrs.insert(Attribute::Unique, vs_bool![s.unique]);
+        attrs.insert(Attribute::Indexed, vs_bool![s.indexed]);
+        attrs.insert(Attribute::Syntax, vs_syntax![s.syntax]);
         attrs.insert(
             Attribute::Class,
             vs_iutf8![
@@ -554,16 +539,11 @@ impl From<SchemaClass> for EntryInitNew {
 
 impl From<&SchemaClass> for EntryInitNew {
     fn from(s: &SchemaClass) -> Self {
-        let uuid_v = vs_uuid![s.uuid];
-        let name_v = vs_iutf8![s.name.as_str()];
-        let desc_v = vs_utf8![s.description.to_owned()];
-        let sync_allowed_v = vs_bool![s.sync_allowed];
-
         let mut attrs = Eattrs::new();
-        attrs.insert(Attribute::ClassName, name_v);
-        attrs.insert(Attribute::Description, desc_v);
-        attrs.insert(Attribute::SyncAllowed, sync_allowed_v);
-        attrs.insert(Attribute::Uuid, uuid_v);
+        attrs.insert(Attribute::ClassName, vs_iutf8![s.name.as_str()]);
+        attrs.insert(Attribute::Description, vs_utf8![s.description.to_owned()]);
+        attrs.insert(Attribute::SyncAllowed, vs_bool![s.sync_allowed]);
+        attrs.insert(Attribute::Uuid, vs_uuid![s.uuid]);
         attrs.insert(
             Attribute::Class,
             vs_iutf8![

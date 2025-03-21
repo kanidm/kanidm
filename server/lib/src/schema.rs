@@ -119,7 +119,7 @@ pub struct SchemaAttribute {
 
     /// If set the value of this attribute get replicated to other servers
     pub replicated: Replicated,
-    /// Define if this attribute is indexed or not according to it's syntax type rule
+    /// Define if this attribute is indexed or not according to its syntax type rule
     pub indexed: bool,
     /// THe type of data that this attribute may hold.
     pub syntax: SyntaxType,
@@ -1032,7 +1032,7 @@ impl SchemaWriteTransaction<'_> {
                 name: Attribute::Indexed,
                 uuid: UUID_SCHEMA_ATTR_INDEXED,
                 description: String::from(
-                    "A boolean stating if this attribute will be indexed according to it's syntax rules."
+                    "A boolean stating if this attribute will be indexed according to its syntax rules."
                 ),
                 multivalue: false,
                 unique: false,
@@ -1134,7 +1134,7 @@ impl SchemaWriteTransaction<'_> {
                 name: Attribute::SystemSupplements,
                 uuid: UUID_SCHEMA_ATTR_SYSTEMSUPPLEMENTS,
                 description: String::from(
-                    "A set of classes that this type supplements too, where this class can't exist without their presence.",
+                    "A set of classes that this type supplements, where this class can't exist without their presence.",
                 ),
                 multivalue: true,
                 unique: false,
@@ -1204,7 +1204,7 @@ impl SchemaWriteTransaction<'_> {
             SchemaAttribute {
                 name: Attribute::AcpEnable,
                 uuid: UUID_SCHEMA_ATTR_ACP_ENABLE,
-                description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
+                description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforced. False is checked but not enforced."),
                 multivalue: false,
                 unique: false,
                 phantom: false,
