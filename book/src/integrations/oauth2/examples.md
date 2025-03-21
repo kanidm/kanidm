@@ -566,7 +566,7 @@ Due to a [lack of public client support](https://github.com/oauth2-proxy/oauth2-
 
 ```bash
 kanidm system oauth2 create webapp 'webapp.example.com' 'https://webapp.example.com'
-kanidm system add-redirect-url webapp 'https://webapp.example.com/oauth2/callback'
+kanidm system oauth2 add-redirect-url webapp 'https://webapp.example.com/oauth2/callback'
 kanidm system oauth2 update-scope-map webapp email openid
 kanidm system oauth2 get webapp
 kanidm system oauth2 show-basic-secret webapp
