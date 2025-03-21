@@ -1376,8 +1376,8 @@ impl SchemaWriteTransaction<'_> {
                     unique: false,
                     phantom: false,
                     sync_allowed: false,
-                    replicated: true,
-                    index: vec![],
+                    replicated: Replicated::True,
+                    indexed: false,
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
@@ -1391,8 +1391,8 @@ impl SchemaWriteTransaction<'_> {
                     unique: false,
                     phantom: false,
                     sync_allowed: false,
-                    replicated: true,
-                    index: vec![],
+                    replicated: Replicated::True,
+                    indexed: false,
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
