@@ -249,7 +249,6 @@ impl Plugins {
         _cand: &[Entry<EntrySealed, EntryNew>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        // protected::Protected::pre_create(qs, cand, ce)
         Ok(())
     }
 
@@ -270,7 +269,6 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        // protected::Protected::pre_modify(qs, pre_cand, cand, me)?;
         base::Base::pre_modify(qs, pre_cand, cand, me)?;
         valuedeny::ValueDeny::pre_modify(qs, pre_cand, cand, me)?;
         cred_import::CredImport::pre_modify(qs, pre_cand, cand, me)?;
@@ -306,7 +304,6 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        // protected::Protected::pre_batch_modify(qs, pre_cand, cand, me)?;
         base::Base::pre_batch_modify(qs, pre_cand, cand, me)?;
         valuedeny::ValueDeny::pre_batch_modify(qs, pre_cand, cand, me)?;
         cred_import::CredImport::pre_batch_modify(qs, pre_cand, cand, me)?;
@@ -341,7 +338,6 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        // protected::Protected::pre_delete(qs, cand, de)?;
         memberof::MemberOf::pre_delete(qs, cand, de)
     }
 
