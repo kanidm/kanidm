@@ -1367,6 +1367,36 @@ impl SchemaWriteTransaction<'_> {
             },
         );
         self.attributes.insert(
+                Attribute::AcpModifyPresentClass,
+                SchemaAttribute {
+                    name: Attribute::AcpModifyPresentClass,
+                    uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENT_CLASS,
+                    description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
+                    multivalue: true,
+                    unique: false,
+                    phantom: false,
+                    sync_allowed: false,
+                    replicated: Replicated::True,
+                    indexed: false,
+                    syntax: SyntaxType::Utf8StringInsensitive,
+                },
+            );
+        self.attributes.insert(
+                Attribute::AcpModifyRemoveClass,
+                SchemaAttribute {
+                    name: Attribute::AcpModifyRemoveClass,
+                    uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVE_CLASS,
+                    description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::remove operations on class."),
+                    multivalue: true,
+                    unique: false,
+                    phantom: false,
+                    sync_allowed: false,
+                    replicated: Replicated::True,
+                    indexed: false,
+                    syntax: SyntaxType::Utf8StringInsensitive,
+                },
+            );
+        self.attributes.insert(
             Attribute::EntryManagedBy,
             SchemaAttribute {
                 name: Attribute::EntryManagedBy,
@@ -2069,6 +2099,8 @@ impl SchemaWriteTransaction<'_> {
                     Attribute::AcpModifyRemovedAttr,
                     Attribute::AcpModifyPresentAttr,
                     Attribute::AcpModifyClass,
+                    Attribute::AcpModifyPresentClass,
+                    Attribute::AcpModifyRemoveClass,
                 ],
                 ..Default::default()
             },
