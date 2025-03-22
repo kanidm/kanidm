@@ -45,6 +45,7 @@ can take many forms such as.
 - firstname firstname lastname
 - firstname lastname lastname
 - firstname
+- middlename lastname
 - lastname firstname
 
 And many many more that are not listed here. This is why our names are displayName as a freetext
