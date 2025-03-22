@@ -1,3 +1,4 @@
+version = "2"
 bindaddress = "[::]:8443"
 ldapbindaddress = "127.0.0.1:3636"
 

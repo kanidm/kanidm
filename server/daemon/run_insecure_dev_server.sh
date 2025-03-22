@@ -22,7 +22,7 @@ fi
 
 mkdir -p "${KANI_TMP}"/client_ca
 
-CONFIG_FILE=${CONFIG_FILE:="${SCRIPT_DIR}/../../examples/insecure_server.toml"}
+CONFIG_FILE=${CONFIG_FILE:="${SCRIPT_DIR}/insecure_server.toml"}
 
 if [ ! -f "${CONFIG_FILE}" ]; then
     echo "Couldn't find configuration file at ${CONFIG_FILE}, please ensure you're running this script from its base directory (${SCRIPT_DIR})."
