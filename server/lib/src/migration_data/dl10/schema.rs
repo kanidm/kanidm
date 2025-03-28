@@ -849,9 +849,9 @@ pub static ref SCHEMA_CLASS_ACCOUNT_DL5: SchemaClass = SchemaClass {
         Attribute::Spn
     ],
     systemsupplements: vec![
+        EntryClass::OAuth2ResourceServer.into(),
         EntryClass::Person.into(),
         EntryClass::ServiceAccount.into(),
-        EntryClass::OAuth2ResourceServer.into(),
     ],
     ..Default::default()
 };

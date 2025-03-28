@@ -9,10 +9,11 @@ use super::ServerState;
 use crate::https::extractors::VerifiedClientInformation;
 use axum::extract::{rejection::JsonRejection, DefaultBodyLimit, Path, Query, State};
 use axum::response::{Html, IntoResponse, Response};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Extension, Json, Router};
 use kanidm_proto::scim_v1::{
-    server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+    client::ScimEntryPostGeneric, server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest,
+    ScimSyncState,
 };
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
@@ -383,6 +384,65 @@ async fn scim_person_id_get(
         .map_err(WebError::from)
 }
 
+#[utoipa::path(
+    post,
+    path = "/scim/v1/Application",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_application_post"
+)]
+async fn scim_application_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(entry_post): Json<ScimEntryPostGeneric>,
+) -> Result<Json<ScimEntryKanidm>, WebError> {
+    state
+        .qe_w_ref
+        .scim_entry_create(
+            client_auth_info,
+            kopid.eventid,
+            &[
+                EntryClass::Account,
+                EntryClass::ServiceAccount,
+                EntryClass::Application,
+            ],
+            entry_post,
+        )
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    delete,
+    path = "/scim/v1/Application/{id}",
+    responses(
+        (status = 200, content_type="application/json"),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_application_id_delete"
+)]
+async fn scim_application_id_delete(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<()>, WebError> {
+    state
+        .qe_w_ref
+        .scim_entry_id_delete(client_auth_info, kopid.eventid, id, EntryClass::Application)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
 pub fn route_setup() -> Router<ServerState> {
     Router::new()
         .route(
@@ -486,6 +546,17 @@ pub fn route_setup() -> Router<ServerState> {
         //
         //                            POST                   Send a sync update
         //
+        //
+        //  Application   /Application     Post              Create a new application
+        //
+        .route("/scim/v1/Application", post(scim_application_post))
+        //  Application   /Application/{id}     Delete      Delete the application identified by id
+        //
+        .route(
+            "/scim/v1/Application/:id",
+            delete(scim_application_id_delete),
+        )
+        // Synchronisation routes.
         .route(
             "/scim/v1/Sync",
             post(scim_sync_post)

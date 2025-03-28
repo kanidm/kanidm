@@ -858,7 +858,7 @@ mod tests {
         let preload = Vec::with_capacity(0);
         let create = vec![ea, eb];
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,
@@ -889,7 +889,7 @@ mod tests {
         let preload = Vec::with_capacity(0);
         let create = vec![ea, eb, ec];
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,
@@ -941,7 +941,7 @@ mod tests {
         let preload = Vec::with_capacity(0);
         let create = vec![ea, eb, ec];
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,
@@ -999,7 +999,7 @@ mod tests {
         let preload = Vec::with_capacity(0);
         let create = vec![ea, eb, ec, ed];
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,

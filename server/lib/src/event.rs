@@ -346,6 +346,8 @@ pub struct CreateEvent {
     pub entries: Vec<Entry<EntryInit, EntryNew>>,
     // Is the CreateEvent from an internal or external source?
     // This may affect which plugins are run ...
+    /// If true, the list of created entry UUID's will be returned.
+    pub return_created_uuids: bool,
 }
 
 impl CreateEvent {
@@ -363,7 +365,11 @@ impl CreateEvent {
         // What is the correct consuming iterator here? Can we
         // even do that?
         match rentries {
-            Ok(entries) => Ok(CreateEvent { ident, entries }),
+            Ok(entries) => Ok(CreateEvent {
+                ident,
+                entries,
+                return_created_uuids: false,
+            }),
             Err(e) => Err(e),
         }
     }
@@ -373,13 +379,18 @@ impl CreateEvent {
         ident: Identity,
         entries: Vec<Entry<EntryInit, EntryNew>>,
     ) -> Self {
-        CreateEvent { ident, entries }
+        CreateEvent {
+            ident,
+            entries,
+            return_created_uuids: false,
+        }
     }
 
     pub fn new_internal(entries: Vec<Entry<EntryInit, EntryNew>>) -> Self {
         CreateEvent {
             ident: Identity::from_internal(),
             entries,
+            return_created_uuids: false,
         }
     }
 }
