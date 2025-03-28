@@ -13,11 +13,11 @@
 use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::unix_config::UnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow, EtcDb};
 use kanidm_unix_common::unix_proto::{
     HomeDirectoryInfo, TaskRequest, TaskRequestFrame, TaskResponse,
 };
-use kanidm_unix_resolver::unix_config::UnixdConfig;
 use kanidm_utils_users::{get_effective_gid, get_effective_uid};
 use libc::{lchown, umask};
 use notify_debouncer_full::notify::RecommendedWatcher;
