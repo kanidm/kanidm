@@ -238,6 +238,13 @@ impl ValueSetScimPut for ValueSetRefer {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         use kanidm_proto::scim_v1::client::{ScimReference, ScimReferences};
 
+        // May be a single reference, lets wrap it in an array to proceed.
+        let value = if !value.is_array() && value.is_object() {
+            JsonValue::Array(vec![value])
+        } else {
+            value
+        };
+
         let scim_refs: ScimReferences = serde_json::from_value(value).map_err(|err| {
             warn!(?err, "Invalid SCIM reference set syntax");
             OperationError::SC0002ReferenceSyntaxInvalid
