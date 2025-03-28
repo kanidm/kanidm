@@ -18,6 +18,7 @@ use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_proto::internal::OperationError;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::unix_config::{HsmType, UnixdConfig};
 use kanidm_unix_common::unix_passwd::EtcDb;
 use kanidm_unix_common::unix_proto::{
     ClientRequest, ClientResponse, TaskRequest, TaskRequestFrame, TaskResponse,
@@ -27,7 +28,6 @@ use kanidm_unix_resolver::idprovider::interface::IdProvider;
 use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
 use kanidm_unix_resolver::idprovider::system::SystemProvider;
 use kanidm_unix_resolver::resolver::Resolver;
-use kanidm_unix_resolver::unix_config::{HsmType, UnixdConfig};
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
 use sketching::tracing::span;
