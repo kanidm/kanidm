@@ -330,6 +330,7 @@ pub const UUID_SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS: Uuid =
 pub const UUID_SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000187");
 pub const UUID_SCHEMA_ATTR_INDEXED: Uuid = uuid!("00000000-0000-0000-0000-ffff00000188");
+pub const UUID_SCHEMA_ATTR_APPLICATION_URL: Uuid = uuid!("00000000-0000-0000-0000-ffff00000189");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

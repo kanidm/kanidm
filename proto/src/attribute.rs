@@ -30,6 +30,7 @@ pub enum Attribute {
     AcpTargetScope,
     ApiTokenSession,
     ApplicationPassword,
+    ApplicationUrl,
     AttestedPasskeys,
     #[default]
     Attr,
@@ -263,6 +264,7 @@ impl Attribute {
             Attribute::AcpTargetScope => ATTR_ACP_TARGET_SCOPE,
             Attribute::ApiTokenSession => ATTR_API_TOKEN_SESSION,
             Attribute::ApplicationPassword => ATTR_APPLICATION_PASSWORD,
+            Attribute::ApplicationUrl => ATTR_APPLICATION_URL,
             Attribute::AttestedPasskeys => ATTR_ATTESTED_PASSKEYS,
             Attribute::Attr => ATTR_ATTR,
             Attribute::AttributeName => ATTR_ATTRIBUTENAME,
@@ -448,6 +450,7 @@ impl Attribute {
             ATTR_ACP_TARGET_SCOPE => Attribute::AcpTargetScope,
             ATTR_API_TOKEN_SESSION => Attribute::ApiTokenSession,
             ATTR_APPLICATION_PASSWORD => Attribute::ApplicationPassword,
+            ATTR_APPLICATION_URL => Attribute::ApplicationUrl,
             ATTR_ATTESTED_PASSKEYS => Attribute::AttestedPasskeys,
             ATTR_ATTR => Attribute::Attr,
             ATTR_ATTRIBUTENAME => Attribute::AttributeName,
