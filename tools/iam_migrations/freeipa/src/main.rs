@@ -306,6 +306,7 @@ async fn run_sync(
     // Preflight check.
     //  * can we connect to ipa?
     let mut ipa_client = match LdapClientBuilder::new(&sync_config.ipa_uri)
+        .max_ber_size(sync_config.max_ber_size)
         .add_tls_ca(&sync_config.ipa_ca)
         .build()
         .await

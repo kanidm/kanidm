@@ -113,11 +113,11 @@ pub struct Config {
     #[serde(default)]
     pub group_attr_schema: GroupAttrSchema,
 
-    #[serde(flatten)]
-    pub entry_map: BTreeMap<Uuid, EntryConfig>,
-
     /// Maximum LDAP message size (in kilobytes)
     pub max_ber_size: Option<usize>,
+
+    #[serde(flatten)]
+    pub entry_map: BTreeMap<Uuid, EntryConfig>,
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]
