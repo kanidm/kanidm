@@ -2,6 +2,7 @@
 use super::ScimEntryGetQuery;
 use super::ScimOauth2ClaimMapJoinChar;
 use crate::attribute::{Attribute, SubAttribute};
+use scim_proto::ScimEntryHeader;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use serde_with::formats::PreferMany;
@@ -79,6 +80,25 @@ pub struct ScimOAuth2ScopeMap {
     pub scopes: BTreeSet<String>,
 }
 
+#[serde_as]
+#[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimEntryApplicationPost {
+    pub name: String,
+    pub display_name: String,
+}
+
+#[serde_as]
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimEntryApplication {
+    #[serde(flatten)]
+    pub header: ScimEntryHeader,
+
+    pub name: String,
+    pub display_name: String,
+}
+
 #[derive(Serialize, Debug, Clone)]
 pub struct ScimEntryPutKanidm {
     pub id: Uuid,
@@ -89,6 +109,13 @@ pub struct ScimEntryPutKanidm {
 #[serde_as]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ScimStrings(#[serde_as(as = "OneOrMany<_, PreferMany>")] pub Vec<String>);
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct ScimEntryPostGeneric {
+    /// Create an attribute to contain the following value state.
+    #[serde(flatten)]
+    pub attrs: BTreeMap<Attribute, JsonValue>,
+}
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct ScimEntryPutGeneric {
