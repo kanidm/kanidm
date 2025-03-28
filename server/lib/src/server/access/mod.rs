@@ -56,7 +56,7 @@ mod search;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Access {
     Grant,
-    Denied,
+    Deny,
     Allow(BTreeSet<Attribute>),
 }
 
@@ -64,7 +64,7 @@ impl From<&Access> for ScimAttributeEffectiveAccess {
     fn from(value: &Access) -> Self {
         match value {
             Access::Grant => Self::Grant,
-            Access::Denied => Self::Denied,
+            Access::Deny => Self::Deny,
             Access::Allow(set) => Self::Allow(set.clone()),
         }
     }
@@ -73,7 +73,7 @@ impl From<&Access> for ScimAttributeEffectiveAccess {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AccessClass {
     Grant,
-    Denied,
+    Deny,
     Allow(BTreeSet<AttrString>),
 }
 
@@ -93,7 +93,7 @@ pub struct AccessEffectivePermission {
 
 pub enum AccessBasicResult {
     // Deny this operation unconditionally.
-    Denied,
+    Deny,
     // Unbounded allow, provided no deny state exists.
     Grant,
     // This module makes no decisions about this entry.
@@ -102,7 +102,7 @@ pub enum AccessBasicResult {
 
 pub enum AccessSrchResult {
     // Deny this operation unconditionally.
-    Denied,
+    Deny,
     // Unbounded allow, provided no deny state exists.
     Grant,
     // This module makes no decisions about this entry.
@@ -120,7 +120,7 @@ pub enum AccessSrchResult {
 
 pub enum AccessModResult<'a> {
     // Deny this operation unconditionally.
-    Denied,
+    Deny,
     // Unbounded allow, provided no deny state exists.
     // Grant,
     // This module makes no decisions about this entry.
@@ -327,7 +327,7 @@ pub trait AccessControlsTransaction<'a> {
             .into_iter()
             .filter(|e| {
                 match apply_search_access(ident, related_acp.as_slice(), e) {
-                    SearchResult::Denied => false,
+                    SearchResult::Deny => false,
                     SearchResult::Grant => true,
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
@@ -425,7 +425,7 @@ pub trait AccessControlsTransaction<'a> {
             .into_iter()
             .filter_map(|entry| {
                 match apply_search_access(&se.ident, &search_related_acp, &entry) {
-                    SearchResult::Denied => {
+                    SearchResult::Deny => {
                         None
                     }
                     SearchResult::Grant => {
@@ -607,7 +607,7 @@ pub trait AccessControlsTransaction<'a> {
             debug!(entry_id = %e.get_display_id());
 
             match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
-                ModifyResult::Denied => false,
+                ModifyResult::Deny => false,
                 ModifyResult::Grant => true,
                 ModifyResult::Allow {
                     pres,
@@ -763,7 +763,7 @@ pub trait AccessControlsTransaction<'a> {
             let sync_agmts = self.get_sync_agreements();
 
             match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
-                ModifyResult::Denied => false,
+                ModifyResult::Deny => false,
                 ModifyResult::Grant => true,
                 ModifyResult::Allow {
                     pres,
@@ -862,7 +862,7 @@ pub trait AccessControlsTransaction<'a> {
         // For each entry
         let r = entries.iter().all(|e| {
             match apply_create_access(&ce.ident, related_acp.as_slice(), e) {
-                CreateResult::Denied => false,
+                CreateResult::Deny => false,
                 CreateResult::Grant => true,
             }
         });
@@ -918,7 +918,7 @@ pub trait AccessControlsTransaction<'a> {
         // For each entry
         let r = entries.iter().all(|e| {
             match apply_delete_access(&de.ident, related_acp.as_slice(), e) {
-                DeleteResult::Denied => false,
+                DeleteResult::Deny => false,
                 DeleteResult::Grant => true,
             }
         });
@@ -1007,7 +1007,7 @@ pub trait AccessControlsTransaction<'a> {
     ) -> AccessEffectivePermission {
         // == search ==
         let search_effective = match apply_search_access(ident, search_related_acp, entry) {
-            SearchResult::Denied => Access::Denied,
+            SearchResult::Deny => Access::Deny,
             SearchResult::Grant => Access::Grant,
             SearchResult::Allow(allowed_attrs) => {
                 // Bound by requested attrs?
@@ -1018,11 +1018,11 @@ pub trait AccessControlsTransaction<'a> {
         // == modify ==
         let (modify_pres, modify_rem, modify_pres_class, modify_rem_class) =
             match apply_modify_access(ident, modify_related_acp, sync_agmts, entry) {
-                ModifyResult::Denied => (
-                    Access::Denied,
-                    Access::Denied,
-                    AccessClass::Denied,
-                    AccessClass::Denied,
+                ModifyResult::Deny => (
+                    Access::Deny,
+                    Access::Deny,
+                    AccessClass::Deny,
+                    AccessClass::Deny,
                 ),
                 ModifyResult::Grant => (
                     Access::Grant,
@@ -1047,7 +1047,7 @@ pub trait AccessControlsTransaction<'a> {
         let delete_status = apply_delete_access(ident, delete_related_acp, entry);
 
         let delete = match delete_status {
-            DeleteResult::Denied => false,
+            DeleteResult::Deny => false,
             DeleteResult::Grant => true,
         };
 
@@ -2283,8 +2283,8 @@ mod tests {
             "member class",
             // Allow rem name and class
             "member class",
-            "group",
-            "group",
+            EntryClass::Group.into(),
+            EntryClass::Group.into(),
         );
         // Does not have a pres or rem class in attrs
         let acp_no_class = AccessControlModify::from_raw(
@@ -2302,8 +2302,8 @@ mod tests {
             // Allow rem name and class
             "name class",
             // And the class allowed is NOT an account ...
-            "group",
-            "group",
+            EntryClass::Group.into(),
+            EntryClass::Group.into(),
         );
 
         // Test allowed pres

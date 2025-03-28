@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 pub(super) enum ModifyResult<'a> {
-    Denied,
+    Deny,
     Grant,
     Allow {
         pres: BTreeSet<Attribute>,
@@ -52,14 +52,14 @@ pub(super) fn apply_modify_access<'a>(
     // kind of being three operations all in one.
 
     match modify_ident_test(ident) {
-        AccessBasicResult::Denied => denied = true,
+        AccessBasicResult::Deny => denied = true,
         AccessBasicResult::Grant => grant = true,
         AccessBasicResult::Ignore => {}
     }
 
     // Check with protected if we should proceed.
     match modify_protected_attrs(ident, entry) {
-        AccessModResult::Denied => denied = true,
+        AccessModResult::Deny => denied = true,
         AccessModResult::Constrain {
             mut pres_attr,
             mut rem_attr,
@@ -86,7 +86,7 @@ pub(super) fn apply_modify_access<'a>(
     if !grant && !denied {
         // If it's a sync entry, constrain it.
         match modify_sync_constrain(ident, entry, sync_agreements) {
-            AccessModResult::Denied => denied = true,
+            AccessModResult::Deny => denied = true,
             AccessModResult::Constrain {
                 mut pres_attr,
                 mut rem_attr,
@@ -156,7 +156,7 @@ pub(super) fn apply_modify_access<'a>(
             .collect();
 
         match modify_pres_test(scoped_acp.as_slice()) {
-            AccessModResult::Denied => denied = true,
+            AccessModResult::Deny => denied = true,
             // Can never return a unilateral grant.
             // AccessModResult::Grant => {}
             AccessModResult::Ignore => {}
@@ -176,7 +176,7 @@ pub(super) fn apply_modify_access<'a>(
     }
 
     if denied {
-        ModifyResult::Denied
+        ModifyResult::Deny
     } else if grant {
         ModifyResult::Grant
     } else {
@@ -235,7 +235,7 @@ fn modify_ident_test(ident: &Identity) -> AccessBasicResult {
         }
         IdentType::Synch(_) => {
             security_critical!("Blocking sync check");
-            return AccessBasicResult::Denied;
+            return AccessBasicResult::Deny;
         }
         IdentType::User(_) => {}
     };
@@ -244,7 +244,7 @@ fn modify_ident_test(ident: &Identity) -> AccessBasicResult {
     match ident.access_scope() {
         AccessScope::ReadOnly | AccessScope::Synchronise => {
             security_access!("denied ❌ - identity access scope is not permitted to modify");
-            return AccessBasicResult::Denied;
+            return AccessBasicResult::Deny;
         }
         AccessScope::ReadWrite => {
             // As you were
@@ -328,7 +328,7 @@ fn modify_sync_constrain<'a>(
                 }
             } else {
                 warn!(entry = ?entry.get_uuid(), "sync_parent_uuid not found on sync object, preventing all access");
-                AccessModResult::Denied
+                AccessModResult::Deny
             }
         }
     }
@@ -369,7 +369,7 @@ fn modify_protected_entry_attrs<'a>(classes: &BTreeSet<String>) -> AccessModResu
     // First check for the hard-deny rules.
     if !classes.is_disjoint(&LOCKED_ENTRY_CLASSES) {
         // Hard deny attribute modifications to these types.
-        return AccessModResult::Denied;
+        return AccessModResult::Deny;
     }
 
     let mut constrain_attrs = BTreeSet::default();
@@ -422,7 +422,7 @@ fn modify_protected_entry_attrs<'a>(classes: &BTreeSet<String>) -> AccessModResu
     // If we don't constrain the attributes at all, we have to deny the change
     // from proceeding.
     if constrain_attrs.is_empty() {
-        AccessModResult::Denied
+        AccessModResult::Deny
     } else {
         AccessModResult::Constrain {
             pres_attr: constrain_attrs.clone(),

@@ -6,12 +6,12 @@ use crate::prelude::*;
 use std::sync::Arc;
 
 pub(super) enum DeleteResult {
-    Denied,
+    Deny,
     Grant,
 }
 
 enum IResult {
-    Denied,
+    Deny,
     Grant,
     Ignore,
 }
@@ -25,25 +25,25 @@ pub(super) fn apply_delete_access<'a>(
     let mut grant = false;
 
     match protected_filter_entry(ident, entry) {
-        IResult::Denied => denied = true,
+        IResult::Deny => denied = true,
         IResult::Grant | IResult::Ignore => {}
     }
 
     match delete_filter_entry(ident, related_acp, entry) {
-        IResult::Denied => denied = true,
+        IResult::Deny => denied = true,
         IResult::Grant => grant = true,
         IResult::Ignore => {}
     }
 
     if denied {
         // Something explicitly said no.
-        DeleteResult::Denied
+        DeleteResult::Deny
     } else if grant {
         // Something said yes
         DeleteResult::Grant
     } else {
         // Nothing said yes.
-        DeleteResult::Denied
+        DeleteResult::Deny
     }
 }
 
@@ -60,7 +60,7 @@ fn delete_filter_entry<'a>(
         }
         IdentType::Synch(_) => {
             security_critical!("Blocking sync check");
-            return IResult::Denied;
+            return IResult::Deny;
         }
         IdentType::User(_) => {}
     };
@@ -69,7 +69,7 @@ fn delete_filter_entry<'a>(
     match ident.access_scope() {
         AccessScope::ReadOnly | AccessScope::Synchronise => {
             security_access!("denied ❌ - identity access scope is not permitted to delete");
-            return IResult::Denied;
+            return IResult::Deny;
         }
         AccessScope::ReadWrite => {
             // As you were
@@ -153,13 +153,13 @@ fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -
         }
         IdentType::Synch(_) => {
             security_access!("sync agreements may not directly delete entities");
-            IResult::Denied
+            IResult::Deny
         }
         IdentType::User(_) => {
             // Prevent deletion of entries that exist in the system controlled entry range.
             if entry.get_uuid() <= UUID_ANONYMOUS {
                 security_access!("attempt to delete system builtin entry");
-                return IResult::Denied;
+                return IResult::Deny;
             }
 
             // Prevent deleting some protected types.
@@ -170,7 +170,7 @@ fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -
                 } else {
                     // Block the mod, something is present
                     security_access!("attempt to create with protected class type");
-                    IResult::Denied
+                    IResult::Deny
                 }
             } else {
                 // Nothing to check - this entry will fail to create anyway because it has

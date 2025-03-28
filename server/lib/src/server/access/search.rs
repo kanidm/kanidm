@@ -8,7 +8,7 @@ use super::AccessSrchResult;
 use std::sync::Arc;
 
 pub(super) enum SearchResult {
-    Denied,
+    Deny,
     Grant,
     Allow(BTreeSet<Attribute>),
 }
@@ -28,7 +28,7 @@ pub(super) fn apply_search_access(
 
     // The access control profile
     match search_filter_entry(ident, related_acp, entry) {
-        AccessSrchResult::Denied => denied = true,
+        AccessSrchResult::Deny => denied = true,
         AccessSrchResult::Grant => grant = true,
         AccessSrchResult::Ignore => {}
         // AccessSrchResult::Constrain { mut attr } => constrain.append(&mut attr),
@@ -36,7 +36,7 @@ pub(super) fn apply_search_access(
     };
 
     match search_oauth2_filter_entry(ident, entry) {
-        AccessSrchResult::Denied => denied = true,
+        AccessSrchResult::Deny => denied = true,
         AccessSrchResult::Grant => grant = true,
         AccessSrchResult::Ignore => {}
         // AccessSrchResult::Constrain { mut attr } => constrain.append(&mut attr),
@@ -44,7 +44,7 @@ pub(super) fn apply_search_access(
     };
 
     match search_sync_account_filter_entry(ident, entry) {
-        AccessSrchResult::Denied => denied = true,
+        AccessSrchResult::Deny => denied = true,
         AccessSrchResult::Grant => grant = true,
         AccessSrchResult::Ignore => {}
         // AccessSrchResult::Constrain{ mut attr } => constrain.append(&mut attr),
@@ -56,7 +56,7 @@ pub(super) fn apply_search_access(
     // Now finalise the decision.
 
     if denied {
-        SearchResult::Denied
+        SearchResult::Deny
     } else if grant {
         SearchResult::Grant
     } else {
@@ -84,7 +84,7 @@ fn search_filter_entry(
         }
         IdentType::Synch(_) => {
             security_debug!(uuid = ?entry.get_display_id(), "Blocking sync check");
-            return AccessSrchResult::Denied;
+            return AccessSrchResult::Deny;
         }
         IdentType::User(_) => {}
     };
@@ -95,7 +95,7 @@ fn search_filter_entry(
             security_debug!(
                 "denied ❌ - identity access scope 'Synchronise' is not permitted to search"
             );
-            return AccessSrchResult::Denied;
+            return AccessSrchResult::Deny;
         }
         AccessScope::ReadOnly | AccessScope::ReadWrite => {
             // As you were
