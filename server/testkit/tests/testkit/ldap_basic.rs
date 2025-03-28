@@ -1,6 +1,8 @@
 use kanidmd_testkit::{AsyncTestEnvironment, IDM_ADMIN_TEST_PASSWORD, IDM_ADMIN_TEST_USER};
 use ldap3_client::LdapClientBuilder;
 
+use kanidm_proto::scim_v1::client::ScimEntryApplicationPost;
+
 const TEST_PERSON: &str = "user_mcuserton";
 
 #[kanidmd_testkit::test(ldap = true)]
@@ -19,26 +21,37 @@ async fn test_ldap_basic_unix_bind(test_env: &AsyncTestEnvironment) {
 
 #[kanidmd_testkit::test(ldap = true)]
 async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
+    const APPLICATION_1_NAME: &str = "test_application_1";
+
     // Remember, this isn't the exhaustive test for application password behaviours,
     // those are in the main server. This is just a basic smoke test that the interfaces
     // are exposed and work in a basic manner.
 
-    let rsclient = test_env.rsclient.new_session().unwrap();
+    let idm_admin_rsclient = test_env.rsclient.new_session().unwrap();
 
     // Create a person
 
-    rsclient
+    idm_admin_rsclient
         .auth_simple_password(IDM_ADMIN_TEST_USER, IDM_ADMIN_TEST_PASSWORD)
         .await
         .expect("Failed to login as admin");
 
-    #[allow(clippy::expect_used)]
-    rsclient
+    idm_admin_rsclient
         .idm_person_account_create(TEST_PERSON, TEST_PERSON)
         .await
         .expect("Failed to create the user");
 
     // Create two applications
+
+    let application_1 = ScimEntryApplicationPost {
+        name: APPLICATION_1_NAME.to_string(),
+        display_name: APPLICATION_1_NAME.to_string(),
+    };
+
+    let _application_entry = idm_admin_rsclient
+        .idm_application_create(&application_1)
+        .await
+        .expect("Failed to create the user");
 
     // List, get them.
 
@@ -55,4 +68,15 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     // let ldap_url = test_env.ldap_url.as_ref().unwrap();
 
     // let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+
+    idm_admin_rsclient
+        .idm_application_delete(APPLICATION_1_NAME)
+        .await
+        .expect("Failed to create the user");
+
+    // Delete the applications
+
+    // Check that you can no longer bind.
+
+    // They no longer list
 }
