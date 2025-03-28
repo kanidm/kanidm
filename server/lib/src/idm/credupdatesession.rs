@@ -599,19 +599,19 @@ impl IdmServerProxyWriteTransaction<'_> {
         }
 
         let eperm_search_primary_cred = match &eperm.search {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::PrimaryCredential),
         };
 
         let eperm_mod_primary_cred = match &eperm.modify_pres {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::PrimaryCredential),
         };
 
         let eperm_rem_primary_cred = match &eperm.modify_rem {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::PrimaryCredential),
         };
@@ -620,19 +620,19 @@ impl IdmServerProxyWriteTransaction<'_> {
             eperm_search_primary_cred && eperm_mod_primary_cred && eperm_rem_primary_cred;
 
         let eperm_search_passkeys = match &eperm.search {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::PassKeys),
         };
 
         let eperm_mod_passkeys = match &eperm.modify_pres {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::PassKeys),
         };
 
         let eperm_rem_passkeys = match &eperm.modify_rem {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::PassKeys),
         };
@@ -640,19 +640,19 @@ impl IdmServerProxyWriteTransaction<'_> {
         let passkeys_can_edit = eperm_search_passkeys && eperm_mod_passkeys && eperm_rem_passkeys;
 
         let eperm_search_attested_passkeys = match &eperm.search {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::AttestedPasskeys),
         };
 
         let eperm_mod_attested_passkeys = match &eperm.modify_pres {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::AttestedPasskeys),
         };
 
         let eperm_rem_attested_passkeys = match &eperm.modify_rem {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::AttestedPasskeys),
         };
@@ -662,19 +662,19 @@ impl IdmServerProxyWriteTransaction<'_> {
             && eperm_rem_attested_passkeys;
 
         let eperm_search_unixcred = match &eperm.search {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::UnixPassword),
         };
 
         let eperm_mod_unixcred = match &eperm.modify_pres {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::UnixPassword),
         };
 
         let eperm_rem_unixcred = match &eperm.modify_rem {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::UnixPassword),
         };
@@ -685,19 +685,19 @@ impl IdmServerProxyWriteTransaction<'_> {
             && eperm_rem_unixcred;
 
         let eperm_search_sshpubkey = match &eperm.search {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::SshPublicKey),
         };
 
         let eperm_mod_sshpubkey = match &eperm.modify_pres {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::SshPublicKey),
         };
 
         let eperm_rem_sshpubkey = match &eperm.modify_rem {
-            Access::Denied => false,
+            Access::Deny => false,
             Access::Grant => true,
             Access::Allow(attrs) => attrs.contains(&Attribute::SshPublicKey),
         };
@@ -726,7 +726,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             })?;
 
             match &eperm.search {
-                Access::Denied => false,
+                Access::Deny => false,
                 Access::Grant => true,
                 Access::Allow(attrs) => attrs.contains(&Attribute::SyncCredentialPortal),
             }

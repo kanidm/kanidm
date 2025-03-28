@@ -33,7 +33,7 @@ pub enum ScimAttributeEffectiveAccess {
     /// All attributes on the entry have this permission granted
     Grant,
     /// All attributes on the entry have this permission denied
-    Denied,
+    Deny,
     /// The following attributes on the entry have this permission granted
     Allow(BTreeSet<Attribute>),
 }
@@ -43,7 +43,7 @@ impl ScimAttributeEffectiveAccess {
     pub fn check(&self, attr: &Attribute) -> bool {
         match self {
             Self::Grant => true,
-            Self::Denied => false,
+            Self::Deny => false,
             Self::Allow(set) => set.contains(attr),
         }
     }

@@ -50,12 +50,13 @@ mod create;
 mod delete;
 mod modify;
 pub mod profiles;
+mod protected;
 mod search;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Access {
     Grant,
-    Denied,
+    Deny,
     Allow(BTreeSet<Attribute>),
 }
 
@@ -63,7 +64,7 @@ impl From<&Access> for ScimAttributeEffectiveAccess {
     fn from(value: &Access) -> Self {
         match value {
             Access::Grant => Self::Grant,
-            Access::Denied => Self::Denied,
+            Access::Deny => Self::Deny,
             Access::Allow(set) => Self::Allow(set.clone()),
         }
     }
@@ -72,7 +73,7 @@ impl From<&Access> for ScimAttributeEffectiveAccess {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AccessClass {
     Grant,
-    Denied,
+    Deny,
     Allow(BTreeSet<AttrString>),
 }
 
@@ -86,12 +87,22 @@ pub struct AccessEffectivePermission {
     pub search: Access,
     pub modify_pres: Access,
     pub modify_rem: Access,
-    pub modify_class: AccessClass,
+    pub modify_pres_class: AccessClass,
+    pub modify_rem_class: AccessClass,
 }
 
-pub enum AccessResult {
+pub enum AccessBasicResult {
     // Deny this operation unconditionally.
-    Denied,
+    Deny,
+    // Unbounded allow, provided no deny state exists.
+    Grant,
+    // This module makes no decisions about this entry.
+    Ignore,
+}
+
+pub enum AccessSrchResult {
+    // Deny this operation unconditionally.
+    Deny,
     // Unbounded allow, provided no deny state exists.
     Grant,
     // This module makes no decisions about this entry.
@@ -99,24 +110,37 @@ pub enum AccessResult {
     // Limit the allowed attr set to this - this doesn't
     // allow anything, it constrains what might be allowed
     // by a later module.
-    Constrain(BTreeSet<Attribute>),
-    // Allow these attributes within constraints.
-    Allow(BTreeSet<Attribute>),
+    /*
+    Constrain {
+        attr: BTreeSet<Attribute>,
+    },
+    */
+    Allow { attr: BTreeSet<Attribute> },
 }
 
-#[allow(dead_code)]
-pub enum AccessResultClass<'a> {
+pub enum AccessModResult<'a> {
     // Deny this operation unconditionally.
-    Denied,
-    // Unbounded allow, provided no denied exists.
-    Grant,
+    Deny,
+    // Unbounded allow, provided no deny state exists.
+    // Grant,
     // This module makes no decisions about this entry.
     Ignore,
     // Limit the allowed attr set to this - this doesn't
-    // allow anything, it constrains what might be allowed.
-    Constrain(BTreeSet<&'a str>),
-    // Allow these attributes within constraints.
-    Allow(BTreeSet<&'a str>),
+    // allow anything, it constrains what might be allowed
+    // by a later module.
+    Constrain {
+        pres_attr: BTreeSet<Attribute>,
+        rem_attr: BTreeSet<Attribute>,
+        pres_cls: Option<BTreeSet<&'a str>>,
+        rem_cls: Option<BTreeSet<&'a str>>,
+    },
+    // Allow these modifications within constraints.
+    Allow {
+        pres_attr: BTreeSet<Attribute>,
+        rem_attr: BTreeSet<Attribute>,
+        pres_class: BTreeSet<&'a str>,
+        rem_class: BTreeSet<&'a str>,
+    },
 }
 
 // =========================================================================
@@ -303,7 +327,7 @@ pub trait AccessControlsTransaction<'a> {
             .into_iter()
             .filter(|e| {
                 match apply_search_access(ident, related_acp.as_slice(), e) {
-                    SearchResult::Denied => false,
+                    SearchResult::Deny => false,
                     SearchResult::Grant => true,
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
@@ -401,7 +425,7 @@ pub trait AccessControlsTransaction<'a> {
             .into_iter()
             .filter_map(|entry| {
                 match apply_search_access(&se.ident, &search_related_acp, &entry) {
-                    SearchResult::Denied => {
+                    SearchResult::Deny => {
                         None
                     }
                     SearchResult::Grant => {
@@ -536,7 +560,8 @@ pub trait AccessControlsTransaction<'a> {
         // Build the set of classes that we to work on, only in terms of "addition". To remove
         // I think we have no limit, but ... william of the future may find a problem with this
         // policy.
-        let mut requested_classes: BTreeSet<&str> = Default::default();
+        let mut requested_pres_classes: BTreeSet<&str> = Default::default();
+        let mut requested_rem_classes: BTreeSet<&str> = Default::default();
 
         for modify in me.modlist.iter() {
             match modify {
@@ -548,27 +573,33 @@ pub trait AccessControlsTransaction<'a> {
                         // existence, and second, we would have failed the mod at schema checking
                         // earlier in the process as these were not correctly type. As a result
                         // we can trust these to be correct here and not to be "None".
-                        requested_classes.extend(v.to_str())
+                        requested_pres_classes.extend(v.to_str())
                     }
                 }
                 Modify::Removed(a, v) => {
                     if a == Attribute::Class.as_ref() {
-                        requested_classes.extend(v.to_str())
+                        requested_rem_classes.extend(v.to_str())
                     }
                 }
                 Modify::Set(a, v) => {
                     if a == Attribute::Class.as_ref() {
-                        // flatten to remove the option down to an iterator
-                        requested_classes.extend(v.as_iutf8_iter().into_iter().flatten())
+                        // This is a reasonably complex case - we actually have to contemplate
+                        // the difference between what exists and what doesn't, but that's per-entry.
+                        //
+                        // for now, we treat this as both pres and rem, but I think that ultimately
+                        // to fix this we need to make all modifies apply in terms of "batch mod"
+                        requested_pres_classes.extend(v.as_iutf8_iter().into_iter().flatten());
+                        requested_rem_classes.extend(v.as_iutf8_iter().into_iter().flatten());
                     }
                 }
                 _ => {}
             }
         }
 
-        debug!(?requested_pres, "Requested present set");
-        debug!(?requested_rem, "Requested remove set");
-        debug!(?requested_classes, "Requested class set");
+        debug!(?requested_pres, "Requested present attribute set");
+        debug!(?requested_rem, "Requested remove attribute set");
+        debug!(?requested_pres_classes, "Requested present class set");
+        debug!(?requested_rem_classes, "Requested remove class set");
 
         let sync_agmts = self.get_sync_agreements();
 
@@ -576,9 +607,16 @@ pub trait AccessControlsTransaction<'a> {
             debug!(entry_id = %e.get_display_id());
 
             match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
-                ModifyResult::Denied => false,
+                ModifyResult::Deny => false,
                 ModifyResult::Grant => true,
-                ModifyResult::Allow { pres, rem, cls } => {
+                ModifyResult::Allow {
+                    pres,
+                    rem,
+                    pres_cls,
+                    rem_cls,
+                } => {
+                    let mut decision = true;
+
                     if !requested_pres.is_subset(&pres) {
                         security_error!("requested_pres is not a subset of allowed");
                         security_error!(
@@ -586,23 +624,41 @@ pub trait AccessControlsTransaction<'a> {
                             requested_pres,
                             pres
                         );
-                        false
-                    } else if !requested_rem.is_subset(&rem) {
+                        decision = false
+                    };
+
+                    if !requested_rem.is_subset(&rem) {
                         security_error!("requested_rem is not a subset of allowed");
                         security_error!("requested_rem: {:?} !⊆ allowed: {:?}", requested_rem, rem);
-                        false
-                    } else if !requested_classes.is_subset(&cls) {
-                        security_error!("requested_classes is not a subset of allowed");
+                        decision = false;
+                    };
+
+                    if !requested_pres_classes.is_subset(&pres_cls) {
+                        security_error!("requested_pres_classes is not a subset of allowed");
                         security_error!(
-                            "requested_classes: {:?} !⊆ allowed: {:?}",
-                            requested_classes,
-                            cls
+                            "requested_pres_classes: {:?} !⊆ allowed: {:?}",
+                            requested_pres_classes,
+                            pres_cls
                         );
-                        false
-                    } else {
+                        decision = false;
+                    };
+
+                    if !requested_rem_classes.is_subset(&rem_cls) {
+                        security_error!("requested_rem_classes is not a subset of allowed");
+                        security_error!(
+                            "requested_rem_classes: {:?} !⊆ allowed: {:?}",
+                            requested_rem_classes,
+                            rem_cls
+                        );
+                        decision = false;
+                    }
+
+                    if decision {
                         debug!("passed pres, rem, classes check.");
-                        true
-                    } // if acc == false
+                    }
+
+                    // Yield the result
+                    decision
                 }
             }
         });
@@ -668,47 +724,55 @@ pub trait AccessControlsTransaction<'a> {
                 })
                 .collect();
 
-            // Build the set of classes that we to work on, only in terms of "addition". To remove
-            // I think we have no limit, but ... william of the future may find a problem with this
-            // policy.
-            let requested_classes: BTreeSet<&str> = modlist
-                .iter()
-                .filter_map(|m| match m {
+            let mut requested_pres_classes: BTreeSet<&str> = Default::default();
+            let mut requested_rem_classes: BTreeSet<&str> = Default::default();
+
+            for modify in modlist.iter() {
+                match modify {
                     Modify::Present(a, v) => {
                         if a == Attribute::Class.as_ref() {
-                            // Here we have an option<&str> which could mean there is a risk of
-                            // a malicious entity attempting to trick us by masking class mods
-                            // in non-iutf8 types. However, the server first won't respect their
-                            // existence, and second, we would have failed the mod at schema checking
-                            // earlier in the process as these were not correctly type. As a result
-                            // we can trust these to be correct here and not to be "None".
-                            v.to_str()
-                        } else {
-                            None
+                            requested_pres_classes.extend(v.to_str())
                         }
                     }
                     Modify::Removed(a, v) => {
                         if a == Attribute::Class.as_ref() {
-                            v.to_str()
-                        } else {
-                            None
+                            requested_rem_classes.extend(v.to_str())
                         }
                     }
-                    _ => None,
-                })
-                .collect();
+                    Modify::Set(a, v) => {
+                        if a == Attribute::Class.as_ref() {
+                            // This is a reasonably complex case - we actually have to contemplate
+                            // the difference between what exists and what doesn't, but that's per-entry.
+                            //
+                            // for now, we treat this as both pres and rem, but I think that ultimately
+                            // to fix this we need to make all modifies apply in terms of "batch mod"
+                            requested_pres_classes.extend(v.as_iutf8_iter().into_iter().flatten());
+                            requested_rem_classes.extend(v.as_iutf8_iter().into_iter().flatten());
+                        }
+                    }
+                    _ => {}
+                }
+            }
 
             debug!(?requested_pres, "Requested present set");
             debug!(?requested_rem, "Requested remove set");
-            debug!(?requested_classes, "Requested class set");
+            debug!(?requested_pres_classes, "Requested present class set");
+            debug!(?requested_rem_classes, "Requested remove class set");
             debug!(entry_id = %e.get_display_id());
 
             let sync_agmts = self.get_sync_agreements();
 
             match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
-                ModifyResult::Denied => false,
+                ModifyResult::Deny => false,
                 ModifyResult::Grant => true,
-                ModifyResult::Allow { pres, rem, cls } => {
+                ModifyResult::Allow {
+                    pres,
+                    rem,
+                    pres_cls,
+                    rem_cls,
+                } => {
+                    let mut decision = true;
+
                     if !requested_pres.is_subset(&pres) {
                         security_error!("requested_pres is not a subset of allowed");
                         security_error!(
@@ -716,23 +780,41 @@ pub trait AccessControlsTransaction<'a> {
                             requested_pres,
                             pres
                         );
-                        false
-                    } else if !requested_rem.is_subset(&rem) {
+                        decision = false
+                    };
+
+                    if !requested_rem.is_subset(&rem) {
                         security_error!("requested_rem is not a subset of allowed");
                         security_error!("requested_rem: {:?} !⊆ allowed: {:?}", requested_rem, rem);
-                        false
-                    } else if !requested_classes.is_subset(&cls) {
-                        security_error!("requested_classes is not a subset of allowed");
+                        decision = false;
+                    };
+
+                    if !requested_pres_classes.is_subset(&pres_cls) {
+                        security_error!("requested_pres_classes is not a subset of allowed");
                         security_error!(
                             "requested_classes: {:?} !⊆ allowed: {:?}",
-                            requested_classes,
-                            cls
+                            requested_pres_classes,
+                            pres_cls
                         );
-                        false
-                    } else {
-                        security_access!("passed pres, rem, classes check.");
-                        true
-                    } // if acc == false
+                        decision = false;
+                    };
+
+                    if !requested_rem_classes.is_subset(&rem_cls) {
+                        security_error!("requested_rem_classes is not a subset of allowed");
+                        security_error!(
+                            "requested_classes: {:?} !⊆ allowed: {:?}",
+                            requested_rem_classes,
+                            rem_cls
+                        );
+                        decision = false;
+                    }
+
+                    if decision {
+                        debug!("passed pres, rem, classes check.");
+                    }
+
+                    // Yield the result
+                    decision
                 }
             }
         });
@@ -780,7 +862,7 @@ pub trait AccessControlsTransaction<'a> {
         // For each entry
         let r = entries.iter().all(|e| {
             match apply_create_access(&ce.ident, related_acp.as_slice(), e) {
-                CreateResult::Denied => false,
+                CreateResult::Deny => false,
                 CreateResult::Grant => true,
             }
         });
@@ -836,7 +918,7 @@ pub trait AccessControlsTransaction<'a> {
         // For each entry
         let r = entries.iter().all(|e| {
             match apply_delete_access(&de.ident, related_acp.as_slice(), e) {
-                DeleteResult::Denied => false,
+                DeleteResult::Deny => false,
                 DeleteResult::Grant => true,
             }
         });
@@ -925,7 +1007,7 @@ pub trait AccessControlsTransaction<'a> {
     ) -> AccessEffectivePermission {
         // == search ==
         let search_effective = match apply_search_access(ident, search_related_acp, entry) {
-            SearchResult::Denied => Access::Denied,
+            SearchResult::Deny => Access::Deny,
             SearchResult::Grant => Access::Grant,
             SearchResult::Allow(allowed_attrs) => {
                 // Bound by requested attrs?
@@ -934,14 +1016,30 @@ pub trait AccessControlsTransaction<'a> {
         };
 
         // == modify ==
-        let (modify_pres, modify_rem, modify_class) =
+        let (modify_pres, modify_rem, modify_pres_class, modify_rem_class) =
             match apply_modify_access(ident, modify_related_acp, sync_agmts, entry) {
-                ModifyResult::Denied => (Access::Denied, Access::Denied, AccessClass::Denied),
-                ModifyResult::Grant => (Access::Grant, Access::Grant, AccessClass::Grant),
-                ModifyResult::Allow { pres, rem, cls } => (
+                ModifyResult::Deny => (
+                    Access::Deny,
+                    Access::Deny,
+                    AccessClass::Deny,
+                    AccessClass::Deny,
+                ),
+                ModifyResult::Grant => (
+                    Access::Grant,
+                    Access::Grant,
+                    AccessClass::Grant,
+                    AccessClass::Grant,
+                ),
+                ModifyResult::Allow {
+                    pres,
+                    rem,
+                    pres_cls,
+                    rem_cls,
+                } => (
                     Access::Allow(pres.into_iter().collect()),
                     Access::Allow(rem.into_iter().collect()),
-                    AccessClass::Allow(cls.into_iter().map(|s| s.into()).collect()),
+                    AccessClass::Allow(pres_cls.into_iter().map(|s| s.into()).collect()),
+                    AccessClass::Allow(rem_cls.into_iter().map(|s| s.into()).collect()),
                 ),
             };
 
@@ -949,7 +1047,7 @@ pub trait AccessControlsTransaction<'a> {
         let delete_status = apply_delete_access(ident, delete_related_acp, entry);
 
         let delete = match delete_status {
-            DeleteResult::Denied => false,
+            DeleteResult::Deny => false,
             DeleteResult::Grant => true,
         };
 
@@ -960,7 +1058,8 @@ pub trait AccessControlsTransaction<'a> {
             search: search_effective,
             modify_pres,
             modify_rem,
-            modify_class,
+            modify_pres_class,
+            modify_rem_class,
         }
     }
 }
@@ -2166,6 +2265,8 @@ mod tests {
             "name class",
             // And the class allowed is account
             EntryClass::Account.into(),
+            // And the class allowed is account
+            EntryClass::Account.into(),
         );
         // Allow member, class is group. IE not account
         let acp_deny = AccessControlModify::from_raw(
@@ -2182,8 +2283,8 @@ mod tests {
             "member class",
             // Allow rem name and class
             "member class",
-            // And the class allowed is account
-            "group",
+            EntryClass::Group.into(),
+            EntryClass::Group.into(),
         );
         // Does not have a pres or rem class in attrs
         let acp_no_class = AccessControlModify::from_raw(
@@ -2201,7 +2302,8 @@ mod tests {
             // Allow rem name and class
             "name class",
             // And the class allowed is NOT an account ...
-            "group",
+            EntryClass::Group.into(),
+            EntryClass::Group.into(),
         );
 
         // Test allowed pres
@@ -2286,6 +2388,7 @@ mod tests {
             // Allow rem name and class
             "name class",
             // And the class allowed is account
+            EntryClass::Account.into(),
             EntryClass::Account.into(),
         );
 
@@ -2614,7 +2717,8 @@ mod tests {
                 search: Access::Allow(btreeset![Attribute::Name]),
                 modify_pres: Access::Allow(BTreeSet::new()),
                 modify_rem: Access::Allow(BTreeSet::new()),
-                modify_class: AccessClass::Allow(BTreeSet::new()),
+                modify_pres_class: AccessClass::Allow(BTreeSet::new()),
+                modify_rem_class: AccessClass::Allow(BTreeSet::new()),
             }]
         )
     }
@@ -2647,6 +2751,7 @@ mod tests {
                 Attribute::Name.as_ref(),
                 Attribute::Name.as_ref(),
                 EntryClass::Object.into(),
+                EntryClass::Object.into(),
             )],
             &r_set,
             vec![AccessEffectivePermission {
@@ -2656,7 +2761,8 @@ mod tests {
                 search: Access::Allow(BTreeSet::new()),
                 modify_pres: Access::Allow(btreeset![Attribute::Name]),
                 modify_rem: Access::Allow(btreeset![Attribute::Name]),
-                modify_class: AccessClass::Allow(btreeset![EntryClass::Object.into()]),
+                modify_pres_class: AccessClass::Allow(btreeset![EntryClass::Object.into()]),
+                modify_rem_class: AccessClass::Allow(btreeset![EntryClass::Object.into()]),
             }]
         )
     }
@@ -2795,6 +2901,7 @@ mod tests {
             // Allow user_auth_token_session
             &format!("{} {}", Attribute::UserAuthTokenSession, Attribute::Name),
             // And the class allowed is account, we don't use it though.
+            EntryClass::Account.into(),
             EntryClass::Account.into(),
         );
 
@@ -3296,6 +3403,7 @@ mod tests {
             "name class",
             // And the class allowed is account
             EntryClass::Account.into(),
+            EntryClass::Account.into(),
         );
 
         // Test allowed pres
@@ -3423,5 +3531,186 @@ mod tests {
 
         // Finally test it!
         test_acp_search_reduce!(&se_anon_ro, vec![acp], r_set, ex_anon_some);
+    }
+
+    #[test]
+    fn test_access_protected_deny_create() {
+        sketching::test_init();
+
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        );
+        let r1_set = vec![ev1];
+
+        let ev2 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        );
+
+        let r2_set = vec![ev2];
+
+        let ce_admin = CreateEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
+            vec![],
+        );
+
+        let acp = AccessControlCreate::from_raw(
+            "test_create",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To create matching filter testperson
+            // Can this be empty?
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // classes
+            EntryClass::Account.into(),
+            // attrs
+            "class name uuid",
+        );
+
+        // Test allowed to create
+        test_acp_create!(&ce_admin, vec![acp.clone()], &r1_set, true);
+        // Test reject create (not allowed attr)
+        test_acp_create!(&ce_admin, vec![acp.clone()], &r2_set, false);
+    }
+
+    #[test]
+    fn test_access_protected_deny_delete() {
+        sketching::test_init();
+
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
+        let r1_set = vec![Arc::new(ev1)];
+
+        let ev2 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
+
+        let r2_set = vec![Arc::new(ev2)];
+
+        let de = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
+
+        let acp = AccessControlDelete::from_raw(
+            "test_delete",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To delete testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
+
+        // Test allowed to delete
+        test_acp_delete!(&de, vec![acp.clone()], &r1_set, true);
+        // Test not allowed to delete
+        test_acp_delete!(&de, vec![acp.clone()], &r2_set, false);
+    }
+
+    #[test]
+    fn test_access_protected_deny_modify() {
+        sketching::test_init();
+
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
+        let r1_set = vec![Arc::new(ev1)];
+
+        let ev2 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
+
+        let r2_set = vec![Arc::new(ev2)];
+
+        // Allow name and class, class is account
+        let acp_allow = AccessControlModify::from_raw(
+            "test_modify_allow",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // Allow pres disp name and class
+            "displayname class",
+            // Allow rem disp name and class
+            "displayname class",
+            // And the classes allowed to add/rem are as such
+            "system recycled",
+            "system recycled",
+        );
+
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_pres(Attribute::DisplayName, &Value::new_utf8s("value"))]),
+        );
+
+        // Test allowed pres
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r1_set, true);
+
+        // Test not allowed pres (due to system class)
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r2_set, false);
+
+        // Test that we can not remove class::system
+        let me_rem_sys = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Class,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_remove(
+                Attribute::Class,
+                &EntryClass::System.to_partialvalue()
+            )]),
+        );
+
+        test_acp_modify!(&me_rem_sys, vec![acp_allow.clone()], &r2_set, false);
+
+        // Ensure that we can't add recycled.
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([m_pres(Attribute::Class, &EntryClass::Recycled.to_value())]),
+        );
+
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r1_set, false);
     }
 }
