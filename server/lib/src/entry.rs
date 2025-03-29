@@ -24,11 +24,6 @@
 //! [`filter`]: ../filter/index.html
 //! [`schema`]: ../schema/index.html
 
-use std::cmp::Ordering;
-pub use std::collections::BTreeSet as Set;
-use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
-use std::sync::Arc;
-
 use crate::be::dbentry::{DbEntry, DbEntryVers};
 use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
@@ -41,7 +36,13 @@ use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::entry::EntryChangeState;
 use crate::repl::proto::{ReplEntryV1, ReplIncrementalEntryV1};
+use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::access::AccessEffectivePermission;
+use crate::value::{
+    ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session,
+    SyntaxType, Value,
+};
+use crate::valueset::{self, ScimResolveStatus, ValueSet};
 use compact_jwt::JwsEs256Signer;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::ImageValue;
@@ -53,19 +54,16 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use openssl::ec::EcKey;
 use openssl::pkey::{Private, Public};
+use std::cmp::Ordering;
+pub use std::collections::BTreeSet as Set;
+use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
+use std::sync::Arc;
 use time::OffsetDateTime;
 use tracing::trace;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
     AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
 };
-
-use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
-use crate::value::{
-    ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session,
-    SyntaxType, Value,
-};
-use crate::valueset::{self, ScimResolveStatus, ValueSet};
 
 pub type EntryInitNew = Entry<EntryInit, EntryNew>;
 pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;
@@ -285,6 +283,18 @@ impl Default for Entry<EntryInit, EntryNew> {
     }
 }
 
+impl FromIterator<(Attribute, ValueSet)> for EntryInitNew {
+    fn from_iter<I: IntoIterator<Item = (Attribute, ValueSet)>>(iter: I) -> Self {
+        let attrs = Eattrs::from_iter(iter);
+
+        Entry {
+            valid: EntryInit,
+            state: EntryNew,
+            attrs,
+        }
+    }
+}
+
 impl Entry<EntryInit, EntryNew> {
     pub fn new() -> Self {
         Entry {
@@ -292,7 +302,6 @@ impl Entry<EntryInit, EntryNew> {
             valid: EntryInit,
             state: EntryNew,
             attrs: Map::new(),
-            // attrs: Map::with_capacity(32),
         }
     }
 
@@ -477,6 +486,11 @@ impl Entry<EntryInit, EntryNew> {
 
     pub fn remove_ava(&mut self, attr: &Attribute) {
         self.attrs.remove(attr);
+    }
+
+    /// Set the content of this ava with this valueset, ignoring the previous data.
+    pub fn set_ava_set(&mut self, attr: &Attribute, vs: ValueSet) {
+        self.attrs.insert(attr.clone(), vs);
     }
 
     /// Replace the existing content of an attribute set of this Entry, with a new set of Values.
