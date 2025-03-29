@@ -189,7 +189,51 @@ impl QueryServerWriteTransaction<'_> {
             entries: vec![entry],
         };
 
-        self.create(&create_event)
+        let mut changed_uuids = self.create(&create_event)?;
+
+        let target = if let Some(target) = changed_uuids.pop() {
+            if !changed_uuids.is_empty() {
+                // Too many results!
+                return Err(OperationError::UniqueConstraintViolation);
+            }
+
+            target
+        } else {
+            // No results!
+            return Err(OperationError::NoMatchingEntries);
+        };
+
+        // Now get the entry. We handle a lot of the errors here nicely,
+        // but if we got to this point, they really can't happen.
+        let filter_intent = filter!(f_and!([f_eq(Attribute::Uuid, PartialValue::Uuid(target))]));
+
+        let f_intent_valid = filter_intent
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let f_valid = f_intent_valid.clone().into_ignore_hidden();
+
+        let se = SearchEvent {
+            ident,
+            filter: f_valid,
+            filter_orig: f_intent_valid,
+            // Return all attributes
+            attrs: None,
+            effective_access_check: false,
+        };
+
+        let mut vs = self.search_ext(&se)?;
+        match vs.pop() {
+            Some(entry) if vs.is_empty() => entry.to_scim_kanidm(self),
+            _ => {
+                if vs.is_empty() {
+                    Err(OperationError::NoMatchingEntries)
+                } else {
+                    // Multiple entries matched, should not be possible!
+                    Err(OperationError::UniqueConstraintViolation)
+                }
+            }
+        }
     }
 
     pub fn scim_delete(&mut self, scim_delete: ScimDeleteEvent) -> Result<(), OperationError> {
