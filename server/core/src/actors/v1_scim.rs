@@ -202,7 +202,7 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let scim_create_event = ScimCreateEvent::try_from(ident, classes, entry, idms_prox_write)?;
+        let scim_create_event = ScimCreateEvent::try_from(ident, classes, entry, &mut idms_prox_write.qs_write)?;
 
         idms_prox_write
             .qs_write

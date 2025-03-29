@@ -488,6 +488,11 @@ impl Entry<EntryInit, EntryNew> {
         self.attrs.remove(attr);
     }
 
+    /// Set the content of this ava with this valueset, ignoring the previous data.
+    pub fn set_ava_set(&mut self, attr: &Attribute, vs: ValueSet) {
+        self.attrs.insert(attr.clone(), vs);
+    }
+
     /// Replace the existing content of an attribute set of this Entry, with a new set of Values.
     pub fn set_ava<T>(&mut self, attr: Attribute, iter: T)
     where
