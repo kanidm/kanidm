@@ -65,14 +65,24 @@ impl ScimCreateEvent {
         entry: ScimEntryPostGeneric,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let entry = entry
+        let mut entry = entry
             .attrs
             .into_iter()
             .map(|(attr, json_value)| {
                 qs.resolve_scim_json_post(&attr, json_value)
                     .map(|kani_value| (attr, kani_value))
             })
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<EntryInitNew, _>>()?;
+
+
+        let classes =
+            ValueSetIutf8::from_iter(
+                classes.iter()
+                    .map(|cls| cls.as_ref())
+            )
+            .ok_or(OperationError::SC0027ClassSetInvalid)?;
+
+        entry.set_ava_set(&Attribute::Class, classes);
 
         Ok(ScimCreateEvent { ident, entry })
     }
@@ -169,8 +179,17 @@ impl QueryServerWriteTransaction<'_> {
         }
     }
 
-    pub fn scim_create(&mut self, _scim_create: ScimCreateEvent) -> Result<(), OperationError> {
-        todo!();
+    pub fn scim_create(&mut self, scim_create: ScimCreateEvent) -> Result<(), OperationError> {
+        let ScimCreateEvent {
+            ident, entry
+        } = scim_create;
+
+        let create_event = CreateEvent {
+            ident,
+            entries: vec![entry],
+        };
+
+        self.create(&create_event)
     }
 
     pub fn scim_delete(&mut self, scim_delete: ScimDeleteEvent) -> Result<(), OperationError> {

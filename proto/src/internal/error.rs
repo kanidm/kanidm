@@ -213,6 +213,7 @@ pub enum OperationError {
     SC0024SshPublicKeySyntaxInvalid,
     SC0025UiHintSyntaxInvalid,
     SC0026Utf8SyntaxInvalid,
+    SC0027ClassSetInvalid,
     // Migration
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
@@ -492,6 +493,7 @@ impl OperationError {
             Self::SC0024SshPublicKeySyntaxInvalid => Some("A SCIM Ssh Public Key contained invalid syntax".into()),
             Self::SC0025UiHintSyntaxInvalid => Some("A SCIM UiHint contained invalid syntax".into()),
             Self::SC0026Utf8SyntaxInvalid => Some("A SCIM Utf8 String Scope Map contained invalid syntax".into()),
+            Self::SC0027ClassSetInvalid => Some("The internal set of class templates used in this create operation was invalid. THIS IS A BUG.".into()),
 
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
