@@ -87,15 +87,18 @@ CONS:
 
 ## Bit of A, bit of B, cleanup
 
+AKA Capabilities
+
 Rather than fully merge all the types, or fully split them, have a *little* merge of some bits, allowing
-some limited extension of actions to specific actors.
+some limited extension of actions to specific actors. Effectively we end up granting *capabilities*
+to different roles, and we can add extra capabilities later if we want.
 
 OAuth2 and Applications would gain the ability to have API tokens associated for some tasks and
 could act on Kanidm, but they wouldn't be fully fleshed service accounts.
 
-|                 | Api Token        | OAuth2 Sessions              | Interactive Login   |
+| Capabilities    | Api Token        | OAuth2 Sessions              | Interactive Login   |
 |-----------------|------------------|------------------------------|---------------------|
-| OAuth2          | Yes              | Via Client Credentials Grant | No                  |
+| OAuth2          | No               | Via Client Credentials Grant | No                  |
 | Application     | Yes              | No                           | No                  |
 | Service Account | Yes (rw capable) | Yes (via session grant (TBD) | Yes (to be removed) |
 | Break Glass     | No               | No                           | Yes                 |
@@ -106,11 +109,10 @@ PROS:
 * Grants some new abilities within limits to other roles
 * While not as locked down as separate concern proposal, still minimises the risk of compromise of an SA
 
-
 CONS:
 
 * Requires admins to have multiple accounts in some contexts (as above).
-* Auditing requires knowledge of what each roles capabilities are
+* Auditing requires knowledge of what each roles capabilities are, and what the capabilities do
 
 
 
