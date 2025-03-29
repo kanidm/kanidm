@@ -18,13 +18,13 @@
 
 use crate::attribute::Attribute;
 use serde::{Deserialize, Serialize};
+use serde_with::formats::CommaSeparator;
+use serde_with::{serde_as, skip_serializing_none, StringWithSeparator};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::BTreeMap;
 use std::ops::Not;
 use utoipa::ToSchema;
-
-use serde_with::formats::CommaSeparator;
-use serde_with::{serde_as, skip_serializing_none, StringWithSeparator};
+use uuid::Uuid;
 
 pub use self::synch::*;
 pub use scim_proto::prelude::*;
@@ -84,6 +84,13 @@ pub struct ScimMail {
 pub struct ScimSshPublicKey {
     pub label: String,
     pub value: SshPublicKey,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimReference {
+    pub uuid: Uuid,
+    pub value: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
