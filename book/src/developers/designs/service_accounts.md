@@ -21,14 +21,6 @@ authenticate to clients, which means they need to maintain credentials. This is 
 but there are still some ideas in these docs worth knowing about and considering like group managed
 service accounts (gMSA).
 
-## High Level Suggestions
-
-There are the ideas today that I have - there may be others!
-
-* Service Accounts can have attached roles.
-* Keep concerns separate.
-* Bit of A, bit of B, cleanup.
-
 ## Current state of affairs
 
 We have:
@@ -41,7 +33,58 @@ We have:
 From this we can see that we have some separation, but also some cross over of functionality.
 break glass isn't delegated, but service account is, OAuth2 isn't an SA, but Applications are.
 
-## Attach roles to service accounts.
+## Capabilities
+
+In order to properly handle this, we don't want to grant unbounded abilities to types, we don't
+want to fully merge them, but we want to be able to mix-match what they require.
+
+This also makes it possible in the future that we can more easily assign (or remove) a capability
+from an account type.
+
+To achieve this we should introduce the idea of capabilities - capabilities can act via schema
+classes, and we can extend the schema such that only the parent class needs to know that the
+capabilities class is required.
+
+This allows us to nominate more carefully what each role type can or can't do, and keeps things
+
+| Capabilities    | Api Token        | OAuth2 Sessions              | Interactive Login   |
+|-----------------|------------------|------------------------------|---------------------|
+| OAuth2          | No               | Via Client Credentials Grant | No                  |
+| Application     | Yes (ro)         | No                           | No                  |
+| Service Account | Yes (rw capable) | Yes (via session grant (TBD) | Yes (to be removed) |
+| Machine Account | Yes (ro)         | No                           | No                  |
+| Break Glass     | No               | No                           | Yes                 |
+| Person          | No               | Yes                          | Yes                 |
+
+A key requirement of this is that we want each role to have a defined intent - it shouldn't be
+the everything role, it still needs to be focused and administered in it's own right.
+
+|                 | Intent                                                                                                                                                                                    |
+|-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| OAuth2          | An OAuth2 client (external server/service) that is treating Kani as the IDP it trusts to validate user authorisation to it's resources.                                                   |
+| Application     | An LDAP application password context, allowing per-user/per-device/per-application passwords to validated, as well as defining group based authorisation of whom may use this application |
+| Service Account | An account that belongs to a process or automation that needs to read from or write to Kanidm, or a Kanidm related service.                                                               |
+| Machine Account | A domain joined machine that is reads user posix or login information. May be used to configure machine service accounts in future.                                                       |
+| Break Glass     | An emergency access account used in disaster recovery.                                                                                                                                    |
+| Person          | A humans owned account that needs to authenticate day to day, and self manage their own credentials. A person may need to manage other accounts and resource types                        |
+
+This has the benefit that it makes it easier to assign the permissions via ACP (since we can filter
+on the Target class *and* capability type).
+
+### Example
+
+An Email service has an SMTP gateway and OAuth2 web ui.
+
+Although this is "the email service" it is made up of multiple parts that each have their own intents.
+
+The Webui has an Oauth2 client created to define the relationship of who may access the webui.
+
+An LDAP application is made to allow IMAP/SMTP processes to authenticate users with application passwords and
+to read users PII via LDAP.
+
+## Below was the drafting process of some ideas
+
+### Attach roles to service accounts.
 
 In this approach we centre the service account, and allow optional extension of other concerns. This
 would make OAuth2 applications an extension of a service account. Similar Application as well.
@@ -62,8 +105,9 @@ CONS:
 * May be confusing to administrators
 * More "inheritance" of schema classes, when we may want to try to simplify to single classes in line with SCIM.
 * Harder to audit capabilities
+* The administration UI becomes a shitshow as the Service Account is now a kitchen sink.
 
-## Separate Concerns
+### Separate Concerns
 
 In this approach we split our concerns. This is similar to today, but taken a bit further.
 
@@ -85,7 +129,7 @@ CONS:
 * More administrative overhead to manage the multiple accounts
 * Stacked applications will need mulitple configurations for a role - OAuth2, LDAP application, Service accounts for example in an email server with a WebUI.
 
-## Bit of A, bit of B, cleanup
+### Bit of A, bit of B, cleanup
 
 AKA Capabilities
 
@@ -113,9 +157,5 @@ CONS:
 
 * Requires admins to have multiple accounts in some contexts (as above).
 * Auditing requires knowledge of what each roles capabilities are, and what the capabilities do
-
-
-
-
 
 
