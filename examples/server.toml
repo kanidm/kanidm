@@ -1,3 +1,6 @@
+# The server configuration file version.
+version = "2"
+
 #   The webserver bind address. Requires TLS certificates.
 #   If the port is set to 443 you may require the
 #   NET_BIND_SERVICE capability.
