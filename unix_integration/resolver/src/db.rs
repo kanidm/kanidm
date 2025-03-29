@@ -792,6 +792,37 @@ impl DbTxn<'_> {
         }
     }
 
+    pub fn get_user_groups(&mut self, a_uuid: Uuid) -> Result<Vec<GroupToken>, CacheError> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT group_t.token FROM (group_t, memberof_t) WHERE group_t.uuid = memberof_t.g_uuid AND memberof_t.a_uuid = :a_uuid")
+            .map_err(|e| {
+                self.sqlite_error("select prepare", &e)
+            })?;
+
+        let data_iter = stmt
+            .query_map([a_uuid.as_hyphenated().to_string()], |row| row.get(0))
+            .map_err(|e| self.sqlite_error("query_map", &e))?;
+        let data: Result<Vec<Vec<u8>>, _> = data_iter
+            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
+            .collect();
+
+        let data = data?;
+
+        Ok(data
+            .iter()
+            .filter_map(|token| {
+                // token convert with json.
+                // trace!("{:?}", token);
+                serde_json::from_slice(token.as_slice())
+                    .map_err(|e| {
+                        error!("json error -> {:?}", e);
+                    })
+                    .ok()
+            })
+            .collect())
+    }
+
     pub fn get_group_members(&mut self, g_uuid: Uuid) -> Result<Vec<UserToken>, CacheError> {
         let mut stmt = self
             .conn
