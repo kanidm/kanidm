@@ -32,6 +32,18 @@ pub struct ScimReference {
     pub value: Option<String>,
 }
 
+impl<T> From<T> for ScimReference
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        ScimReference {
+            uuid: None,
+            value: Some(value.as_ref().to_string()),
+        }
+    }
+}
+
 pub type ScimReferences = Vec<ScimReference>;
 
 #[serde_as]
@@ -82,21 +94,27 @@ pub struct ScimOAuth2ScopeMap {
 
 #[serde_as]
 #[derive(Serialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ScimEntryApplicationPost {
     pub name: String,
-    pub display_name: String,
+    pub displayname: String,
+    pub linked_group: ScimReference,
 }
 
 #[serde_as]
 #[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ScimEntryApplication {
     #[serde(flatten)]
     pub header: ScimEntryHeader,
 
     pub name: String,
-    pub display_name: String,
+    pub displayname: String,
+
+    pub linked_group: Vec<super::ScimReference>,
+
+    #[serde(flatten)]
+    pub attrs: BTreeMap<Attribute, JsonValue>,
 }
 
 #[derive(Serialize, Debug, Clone)]

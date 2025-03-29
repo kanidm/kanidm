@@ -393,7 +393,7 @@ async fn scim_person_id_get(
     ),
     security(("token_jwt" = [])),
     tag = "scim",
-    operation_id = ""
+    operation_id = "scim_application_post"
 )]
 async fn scim_application_post(
     State(state): State<ServerState>,
@@ -427,18 +427,19 @@ async fn scim_application_post(
     ),
     security(("token_jwt" = [])),
     tag = "scim",
-    operation_id = "scim_person_id_get"
+    operation_id = "scim_application_id_delete"
 )]
 async fn scim_application_id_delete(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-) -> Result<(), WebError> {
+) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
         .scim_entry_id_delete(client_auth_info, kopid.eventid, id, EntryClass::Application)
         .await
+        .map(Json::from)
         .map_err(WebError::from)
 }
 

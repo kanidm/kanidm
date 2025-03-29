@@ -1,9 +1,10 @@
+use kanidm_proto::scim_v1::client::{ScimEntryApplicationPost, ScimReference};
 use kanidmd_testkit::{AsyncTestEnvironment, IDM_ADMIN_TEST_PASSWORD, IDM_ADMIN_TEST_USER};
 use ldap3_client::LdapClientBuilder;
-
-use kanidm_proto::scim_v1::client::ScimEntryApplicationPost;
+use tracing::debug;
 
 const TEST_PERSON: &str = "user_mcuserton";
+const TEST_GROUP: &str = "group_mcgroupington";
 
 #[kanidmd_testkit::test(ldap = true)]
 async fn test_ldap_basic_unix_bind(test_env: &AsyncTestEnvironment) {
@@ -41,17 +42,25 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
         .await
         .expect("Failed to create the user");
 
+    idm_admin_rsclient
+        .idm_group_create(TEST_GROUP, None)
+        .await
+        .expect("Failed to create test group");
+
     // Create two applications
 
     let application_1 = ScimEntryApplicationPost {
         name: APPLICATION_1_NAME.to_string(),
-        display_name: APPLICATION_1_NAME.to_string(),
+        displayname: APPLICATION_1_NAME.to_string(),
+        linked_group: ScimReference::from(TEST_GROUP),
     };
 
-    let _application_entry = idm_admin_rsclient
+    let application_entry = idm_admin_rsclient
         .idm_application_create(&application_1)
         .await
         .expect("Failed to create the user");
+
+    debug!(?application_entry);
 
     // List, get them.
 
@@ -69,10 +78,12 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
 
     // let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
 
-    idm_admin_rsclient
+    let result = idm_admin_rsclient
         .idm_application_delete(APPLICATION_1_NAME)
         .await
         .expect("Failed to create the user");
+
+    debug!(?result);
 
     // Delete the applications
 

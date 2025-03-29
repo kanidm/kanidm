@@ -74,12 +74,7 @@ impl ScimCreateEvent {
             })
             .collect::<Result<EntryInitNew, _>>()?;
 
-
-        let classes =
-            ValueSetIutf8::from_iter(
-                classes.iter()
-                    .map(|cls| cls.as_ref())
-            )
+        let classes = ValueSetIutf8::from_iter(classes.iter().map(|cls| cls.as_ref()))
             .ok_or(OperationError::SC0027ClassSetInvalid)?;
 
         entry.set_ava_set(&Attribute::Class, classes);
@@ -179,17 +174,21 @@ impl QueryServerWriteTransaction<'_> {
         }
     }
 
-    pub fn scim_create(&mut self, scim_create: ScimCreateEvent) -> Result<(), OperationError> {
-        let ScimCreateEvent {
-            ident, entry
-        } = scim_create;
+    pub fn scim_create(
+        &mut self,
+        scim_create: ScimCreateEvent,
+    ) -> Result<ScimEntryKanidm, OperationError> {
+        let ScimCreateEvent { ident, entry } = scim_create;
 
         let create_event = CreateEvent {
             ident,
             entries: vec![entry],
+            return_created_uuids: true,
         };
 
-        let mut changed_uuids = self.create(&create_event)?;
+        let changed_uuids = self.create(&create_event)?;
+
+        let mut changed_uuids = changed_uuids.ok_or(OperationError::SC0028CreatedUuidsInvalid)?;
 
         let target = if let Some(target) = changed_uuids.pop() {
             if !changed_uuids.is_empty() {
@@ -214,7 +213,7 @@ impl QueryServerWriteTransaction<'_> {
         let f_valid = f_intent_valid.clone().into_ignore_hidden();
 
         let se = SearchEvent {
-            ident,
+            ident: create_event.ident,
             filter: f_valid,
             filter_orig: f_intent_valid,
             // Return all attributes
