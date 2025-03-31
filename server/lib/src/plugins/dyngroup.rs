@@ -464,7 +464,7 @@ mod tests {
         let create = vec![e_dyn];
 
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,
@@ -513,7 +513,7 @@ mod tests {
         let create = vec![e_group];
 
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,
@@ -562,7 +562,7 @@ mod tests {
         let create = vec![e_group];
 
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,
@@ -607,7 +607,7 @@ mod tests {
         let create = vec![e_dyn, e_group];
 
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,

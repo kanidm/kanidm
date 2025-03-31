@@ -105,6 +105,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         // DL10
         SCHEMA_ATTR_DENIED_NAME_DL10.clone().into(),
         SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES.clone().into(),
+        SCHEMA_ATTR_APPLICATION_URL.clone().into(),
     ]
 }
 
@@ -134,7 +135,7 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7.clone().into(),
         // DL8
         SCHEMA_CLASS_ACCOUNT_POLICY_DL8.clone().into(),
-        SCHEMA_CLASS_APPLICATION_DL8.clone().into(),
+        SCHEMA_CLASS_APPLICATION.clone().into(),
         SCHEMA_CLASS_PERSON_DL8.clone().into(),
         // DL9
         SCHEMA_CLASS_OAUTH2_RS_DL9.clone().into(),
