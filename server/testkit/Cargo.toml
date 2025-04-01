@@ -51,7 +51,7 @@ kanidm_build_profiles = { workspace = true }
 compact_jwt = { workspace = true }
 escargot = "0.5.13"
 # used for webdriver testing
-fantoccini = { version = "0.21.4" }
+fantoccini = { version = "0.21.5" }
 futures = { workspace = true }
 ldap3_client = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false, features = [
@@ -64,7 +64,7 @@ tokio-openssl = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 uuid = { workspace = true }
 webauthn-authenticator-rs = { workspace = true }
-jsonschema = "0.29.0"
+jsonschema = "0.29.1"
 
 [package.metadata.cargo-machete]
 ignored = ["escargot", "futures", "kanidm_build_profiles"]
