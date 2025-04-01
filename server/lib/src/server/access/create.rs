@@ -1,16 +1,17 @@
 use super::profiles::{
     AccessControlCreateResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
 };
+use super::protected::PROTECTED_ENTRY_CLASSES;
 use crate::prelude::*;
 use std::collections::BTreeSet;
 
 pub(super) enum CreateResult {
-    Denied,
+    Deny,
     Grant,
 }
 
 enum IResult {
-    Denied,
+    Deny,
     Grant,
     Ignore,
 }
@@ -25,25 +26,25 @@ pub(super) fn apply_create_access<'a>(
 
     // This module can never yield a grant.
     match protected_filter_entry(ident, entry) {
-        IResult::Denied => denied = true,
+        IResult::Deny => denied = true,
         IResult::Grant | IResult::Ignore => {}
     }
 
     match create_filter_entry(ident, related_acp, entry) {
-        IResult::Denied => denied = true,
+        IResult::Deny => denied = true,
         IResult::Grant => grant = true,
         IResult::Ignore => {}
     }
 
     if denied {
         // Something explicitly said no.
-        CreateResult::Denied
+        CreateResult::Deny
     } else if grant {
         // Something said yes
         CreateResult::Grant
     } else {
         // Nothing said yes.
-        CreateResult::Denied
+        CreateResult::Deny
     }
 }
 
@@ -60,7 +61,7 @@ fn create_filter_entry<'a>(
         }
         IdentType::Synch(_) => {
             security_critical!("Blocking sync check");
-            return IResult::Denied;
+            return IResult::Deny;
         }
         IdentType::User(_) => {}
     };
@@ -69,7 +70,7 @@ fn create_filter_entry<'a>(
     match ident.access_scope() {
         AccessScope::ReadOnly | AccessScope::Synchronise => {
             security_access!("denied ❌ - identity access scope is not permitted to create");
-            return IResult::Denied;
+            return IResult::Deny;
         }
         AccessScope::ReadWrite => {
             // As you were
@@ -96,7 +97,7 @@ fn create_filter_entry<'a>(
         Some(s) => s.collect(),
         None => {
             admin_error!("Class set failed to build - corrupted entry?");
-            return IResult::Denied;
+            return IResult::Deny;
         }
     };
 
@@ -173,22 +174,22 @@ fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) 
         }
         IdentType::Synch(_) => {
             security_access!("sync agreements may not directly create entities");
-            IResult::Denied
+            IResult::Deny
         }
         IdentType::User(_) => {
             // Now check things ...
-
-            // For now we just block create on sync object
-            if let Some(classes) = entry.get_ava_set(Attribute::Class) {
-                if classes.contains(&EntryClass::SyncObject.into()) {
-                    // Block the mod
-                    security_access!("attempt to create with protected class type");
-                    IResult::Denied
-                } else {
+            if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
+                if classes.is_disjoint(&PROTECTED_ENTRY_CLASSES) {
+                    // It's different, go ahead
                     IResult::Ignore
+                } else {
+                    // Block the mod, something is present
+                    security_access!("attempt to create with protected class type");
+                    IResult::Deny
                 }
             } else {
-                // Nothing to check.
+                // Nothing to check - this entry will fail to create anyway because it has
+                // no classes
                 IResult::Ignore
             }
         }

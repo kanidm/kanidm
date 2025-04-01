@@ -1,21 +1,25 @@
-use crate::prelude::*;
-use hashbrown::HashMap;
-use std::collections::BTreeSet;
-
 use super::profiles::{
     AccessControlModify, AccessControlModifyResolved, AccessControlReceiverCondition,
     AccessControlTargetCondition,
 };
-use super::{AccessResult, AccessResultClass};
+use super::protected::{
+    LOCKED_ENTRY_CLASSES, PROTECTED_MOD_ENTRY_CLASSES, PROTECTED_MOD_PRES_ENTRY_CLASSES,
+    PROTECTED_MOD_REM_ENTRY_CLASSES,
+};
+use super::{AccessBasicResult, AccessModResult};
+use crate::prelude::*;
+use hashbrown::HashMap;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 pub(super) enum ModifyResult<'a> {
-    Denied,
+    Deny,
     Grant,
     Allow {
         pres: BTreeSet<Attribute>,
         rem: BTreeSet<Attribute>,
-        cls: BTreeSet<&'a str>,
+        pres_cls: BTreeSet<&'a str>,
+        rem_cls: BTreeSet<&'a str>,
     },
 }
 
@@ -27,12 +31,17 @@ pub(super) fn apply_modify_access<'a>(
 ) -> ModifyResult<'a> {
     let mut denied = false;
     let mut grant = false;
+
     let mut constrain_pres = BTreeSet::default();
     let mut allow_pres = BTreeSet::default();
     let mut constrain_rem = BTreeSet::default();
     let mut allow_rem = BTreeSet::default();
-    let mut constrain_cls = BTreeSet::default();
-    let mut allow_cls = BTreeSet::default();
+
+    let mut constrain_pres_cls = BTreeSet::default();
+    let mut allow_pres_cls = BTreeSet::default();
+
+    let mut constrain_rem_cls = BTreeSet::default();
+    let mut allow_rem_cls = BTreeSet::default();
 
     // Some useful references.
     //  - needed for checking entry manager conditions.
@@ -43,28 +52,53 @@ pub(super) fn apply_modify_access<'a>(
     // kind of being three operations all in one.
 
     match modify_ident_test(ident) {
-        AccessResult::Denied => denied = true,
-        AccessResult::Grant => grant = true,
-        AccessResult::Ignore => {}
-        AccessResult::Constrain(mut set) => constrain_pres.append(&mut set),
-        AccessResult::Allow(mut set) => allow_pres.append(&mut set),
+        AccessBasicResult::Deny => denied = true,
+        AccessBasicResult::Grant => grant = true,
+        AccessBasicResult::Ignore => {}
+    }
+
+    // Check with protected if we should proceed.
+    match modify_protected_attrs(ident, entry) {
+        AccessModResult::Deny => denied = true,
+        AccessModResult::Constrain {
+            mut pres_attr,
+            mut rem_attr,
+            pres_cls,
+            rem_cls,
+        } => {
+            constrain_rem.append(&mut rem_attr);
+            constrain_pres.append(&mut pres_attr);
+
+            if let Some(mut pres_cls) = pres_cls {
+                constrain_pres_cls.append(&mut pres_cls);
+            }
+
+            if let Some(mut rem_cls) = rem_cls {
+                constrain_rem_cls.append(&mut rem_cls);
+            }
+        }
+        // Can't grant.
+        // AccessModResult::Grant |
+        // Can't allow
+        AccessModResult::Allow { .. } | AccessModResult::Ignore => {}
     }
 
     if !grant && !denied {
-        // Check with protected if we should proceed.
-
         // If it's a sync entry, constrain it.
         match modify_sync_constrain(ident, entry, sync_agreements) {
-            AccessResult::Denied => denied = true,
-            AccessResult::Constrain(mut set) => {
-                constrain_rem.extend(set.iter().cloned());
-                constrain_pres.append(&mut set)
+            AccessModResult::Deny => denied = true,
+            AccessModResult::Constrain {
+                mut pres_attr,
+                mut rem_attr,
+                ..
+            } => {
+                constrain_rem.append(&mut rem_attr);
+                constrain_pres.append(&mut pres_attr);
             }
             // Can't grant.
-            AccessResult::Grant |
+            // AccessModResult::Grant |
             // Can't allow
-            AccessResult::Allow(_) |
-            AccessResult::Ignore => {}
+            AccessModResult::Allow { .. } | AccessModResult::Ignore => {}
         }
 
         // Setup the acp's here
@@ -122,35 +156,27 @@ pub(super) fn apply_modify_access<'a>(
             .collect();
 
         match modify_pres_test(scoped_acp.as_slice()) {
-            AccessResult::Denied => denied = true,
+            AccessModResult::Deny => denied = true,
             // Can never return a unilateral grant.
-            AccessResult::Grant => {}
-            AccessResult::Ignore => {}
-            AccessResult::Constrain(mut set) => constrain_pres.append(&mut set),
-            AccessResult::Allow(mut set) => allow_pres.append(&mut set),
-        }
-
-        match modify_rem_test(scoped_acp.as_slice()) {
-            AccessResult::Denied => denied = true,
-            // Can never return a unilateral grant.
-            AccessResult::Grant => {}
-            AccessResult::Ignore => {}
-            AccessResult::Constrain(mut set) => constrain_rem.append(&mut set),
-            AccessResult::Allow(mut set) => allow_rem.append(&mut set),
-        }
-
-        match modify_cls_test(scoped_acp.as_slice()) {
-            AccessResultClass::Denied => denied = true,
-            // Can never return a unilateral grant.
-            AccessResultClass::Grant => {}
-            AccessResultClass::Ignore => {}
-            AccessResultClass::Constrain(mut set) => constrain_cls.append(&mut set),
-            AccessResultClass::Allow(mut set) => allow_cls.append(&mut set),
+            // AccessModResult::Grant => {}
+            AccessModResult::Ignore => {}
+            AccessModResult::Constrain { .. } => {}
+            AccessModResult::Allow {
+                mut pres_attr,
+                mut rem_attr,
+                mut pres_class,
+                mut rem_class,
+            } => {
+                allow_pres.append(&mut pres_attr);
+                allow_rem.append(&mut rem_attr);
+                allow_pres_cls.append(&mut pres_class);
+                allow_rem_cls.append(&mut rem_class);
+            }
         }
     }
 
     if denied {
-        ModifyResult::Denied
+        ModifyResult::Deny
     } else if grant {
         ModifyResult::Grant
     } else {
@@ -168,31 +194,48 @@ pub(super) fn apply_modify_access<'a>(
             allow_rem
         };
 
-        let allowed_cls = if !constrain_cls.is_empty() {
+        let mut allowed_pres_cls = if !constrain_pres_cls.is_empty() {
             // bit_and
-            &constrain_cls & &allow_cls
+            &constrain_pres_cls & &allow_pres_cls
         } else {
-            allow_cls
+            allow_pres_cls
         };
+
+        let mut allowed_rem_cls = if !constrain_rem_cls.is_empty() {
+            // bit_and
+            &constrain_rem_cls & &allow_rem_cls
+        } else {
+            allow_rem_cls
+        };
+
+        // Deny these classes from being part of any addition or removal to an entry
+        for protected_cls in PROTECTED_MOD_PRES_ENTRY_CLASSES.iter() {
+            allowed_pres_cls.remove(protected_cls.as_str());
+        }
+
+        for protected_cls in PROTECTED_MOD_REM_ENTRY_CLASSES.iter() {
+            allowed_rem_cls.remove(protected_cls.as_str());
+        }
 
         ModifyResult::Allow {
             pres: allowed_pres,
             rem: allowed_rem,
-            cls: allowed_cls,
+            pres_cls: allowed_pres_cls,
+            rem_cls: allowed_rem_cls,
         }
     }
 }
 
-fn modify_ident_test(ident: &Identity) -> AccessResult {
+fn modify_ident_test(ident: &Identity) -> AccessBasicResult {
     match &ident.origin {
         IdentType::Internal => {
             trace!("Internal operation, bypassing access check");
             // No need to check ACS
-            return AccessResult::Grant;
+            return AccessBasicResult::Grant;
         }
         IdentType::Synch(_) => {
             security_critical!("Blocking sync check");
-            return AccessResult::Denied;
+            return AccessBasicResult::Deny;
         }
         IdentType::User(_) => {}
     };
@@ -201,53 +244,56 @@ fn modify_ident_test(ident: &Identity) -> AccessResult {
     match ident.access_scope() {
         AccessScope::ReadOnly | AccessScope::Synchronise => {
             security_access!("denied ❌ - identity access scope is not permitted to modify");
-            return AccessResult::Denied;
+            return AccessBasicResult::Deny;
         }
         AccessScope::ReadWrite => {
             // As you were
         }
     };
 
-    AccessResult::Ignore
+    AccessBasicResult::Ignore
 }
 
-fn modify_pres_test(scoped_acp: &[&AccessControlModify]) -> AccessResult {
-    let allowed_pres: BTreeSet<Attribute> = scoped_acp
+fn modify_pres_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessModResult<'a> {
+    let pres_attr: BTreeSet<Attribute> = scoped_acp
         .iter()
         .flat_map(|acp| acp.presattrs.iter().cloned())
         .collect();
-    AccessResult::Allow(allowed_pres)
-}
 
-fn modify_rem_test(scoped_acp: &[&AccessControlModify]) -> AccessResult {
-    let allowed_rem: BTreeSet<Attribute> = scoped_acp
+    let rem_attr: BTreeSet<Attribute> = scoped_acp
         .iter()
         .flat_map(|acp| acp.remattrs.iter().cloned())
         .collect();
-    AccessResult::Allow(allowed_rem)
-}
 
-// TODO: Should this be reverted to the Str borrow method? Or do we try to change
-// to EntryClass?
-fn modify_cls_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResultClass<'a> {
-    let allowed_classes: BTreeSet<&'a str> = scoped_acp
+    let pres_class: BTreeSet<&'a str> = scoped_acp
         .iter()
-        .flat_map(|acp| acp.classes.iter().map(|s| s.as_str()))
+        .flat_map(|acp| acp.pres_classes.iter().map(|s| s.as_str()))
         .collect();
-    AccessResultClass::Allow(allowed_classes)
+
+    let rem_class: BTreeSet<&'a str> = scoped_acp
+        .iter()
+        .flat_map(|acp| acp.rem_classes.iter().map(|s| s.as_str()))
+        .collect();
+
+    AccessModResult::Allow {
+        pres_attr,
+        rem_attr,
+        pres_class,
+        rem_class,
+    }
 }
 
-fn modify_sync_constrain(
+fn modify_sync_constrain<'a>(
     ident: &Identity,
     entry: &Arc<EntrySealedCommitted>,
     sync_agreements: &HashMap<Uuid, BTreeSet<Attribute>>,
-) -> AccessResult {
+) -> AccessModResult<'a> {
     match &ident.origin {
-        IdentType::Internal => AccessResult::Ignore,
+        IdentType::Internal => AccessModResult::Ignore,
         IdentType::Synch(_) => {
             // Allowed to mod sync objects. Later we'll probably need to check the limits of what
             // it can do if we go that way.
-            AccessResult::Ignore
+            AccessModResult::Ignore
         }
         IdentType::User(_) => {
             // We need to meet these conditions.
@@ -259,7 +305,7 @@ fn modify_sync_constrain(
                 .unwrap_or(false);
 
             if !is_sync {
-                return AccessResult::Ignore;
+                return AccessModResult::Ignore;
             }
 
             if let Some(sync_uuid) = entry.get_ava_single_refer(Attribute::SyncParentUuid) {
@@ -274,11 +320,115 @@ fn modify_sync_constrain(
                     set.extend(sync_yield_authority.iter().cloned())
                 }
 
-                AccessResult::Constrain(set)
+                AccessModResult::Constrain {
+                    pres_attr: set.clone(),
+                    rem_attr: set,
+                    pres_cls: None,
+                    rem_cls: None,
+                }
             } else {
                 warn!(entry = ?entry.get_uuid(), "sync_parent_uuid not found on sync object, preventing all access");
-                AccessResult::Denied
+                AccessModResult::Deny
             }
+        }
+    }
+}
+
+/// Verify if the modification runs into limits that are defined by our protection rules.
+fn modify_protected_attrs<'a>(
+    ident: &Identity,
+    entry: &Arc<EntrySealedCommitted>,
+) -> AccessModResult<'a> {
+    match &ident.origin {
+        IdentType::Internal | IdentType::Synch(_) => {
+            // We don't constraint or influence these.
+            AccessModResult::Ignore
+        }
+        IdentType::User(_) => {
+            if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
+                if classes.is_disjoint(&PROTECTED_MOD_ENTRY_CLASSES) {
+                    // Not protected, go ahead
+                    AccessModResult::Ignore
+                } else {
+                    // Okay, the entry is protected, apply the full ruleset.
+                    modify_protected_entry_attrs(classes)
+                }
+            } else {
+                // Nothing to check - this entry will fail to modify anyway because it has
+                // no classes
+                AccessModResult::Ignore
+            }
+        }
+    }
+}
+
+fn modify_protected_entry_attrs<'a>(classes: &BTreeSet<String>) -> AccessModResult<'a> {
+    // This is where the majority of the logic is - this contains the modification
+    // rules as they apply.
+
+    // First check for the hard-deny rules.
+    if !classes.is_disjoint(&LOCKED_ENTRY_CLASSES) {
+        // Hard deny attribute modifications to these types.
+        return AccessModResult::Deny;
+    }
+
+    let mut constrain_attrs = BTreeSet::default();
+
+    // Allows removal of the recycled class specifically on recycled entries.
+    if classes.contains(EntryClass::Recycled.into()) {
+        constrain_attrs.extend([Attribute::Class]);
+    }
+
+    if classes.contains(EntryClass::ClassType.into()) {
+        constrain_attrs.extend([Attribute::May, Attribute::Must]);
+    }
+
+    if classes.contains(EntryClass::SystemConfig.into()) {
+        constrain_attrs.extend([Attribute::BadlistPassword]);
+    }
+
+    // Allow domain settings.
+    if classes.contains(EntryClass::DomainInfo.into()) {
+        constrain_attrs.extend([
+            Attribute::DomainSsid,
+            Attribute::DomainLdapBasedn,
+            Attribute::LdapMaxQueryableAttrs,
+            Attribute::LdapAllowUnixPwBind,
+            Attribute::FernetPrivateKeyStr,
+            Attribute::Es256PrivateKeyDer,
+            Attribute::KeyActionRevoke,
+            Attribute::KeyActionRotate,
+            Attribute::IdVerificationEcKey,
+            Attribute::DeniedName,
+            Attribute::DomainDisplayName,
+            Attribute::Image,
+        ]);
+    }
+
+    // Allow account policy related attributes to be changed on dyngroup
+    if classes.contains(EntryClass::DynGroup.into()) {
+        constrain_attrs.extend([
+            Attribute::AuthSessionExpiry,
+            Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
+            Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
+            Attribute::LimitSearchMaxResults,
+            Attribute::LimitSearchMaxFilterTest,
+            Attribute::AllowPrimaryCredFallback,
+        ]);
+    }
+
+    // If we don't constrain the attributes at all, we have to deny the change
+    // from proceeding.
+    if constrain_attrs.is_empty() {
+        AccessModResult::Deny
+    } else {
+        AccessModResult::Constrain {
+            pres_attr: constrain_attrs.clone(),
+            rem_attr: constrain_attrs,
+            pres_cls: None,
+            rem_cls: None,
         }
     }
 }
