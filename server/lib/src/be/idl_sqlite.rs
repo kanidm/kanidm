@@ -12,7 +12,6 @@ use rusqlite::vtab::array::Array;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::convert::{TryFrom, TryInto};
-use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -1707,7 +1706,7 @@ impl IdlSqliteWriteTransaction {
 
 impl IdlSqlite {
     pub fn new(cfg: &BackendConfig, vacuum: bool) -> Result<Self, OperationError> {
-        if cfg.path == Path::new("") {
+        if cfg.path.as_os_str().is_empty() {
             debug_assert_eq!(cfg.pool_size, 1);
         }
         // If provided, set the page size to match the tuning we want. By default we use 4096. The VACUUM

@@ -2126,7 +2126,7 @@ impl Backend {
         debug!(db_tickets = ?cfg.pool_size, profile = %env!("KANIDM_PROFILE_NAME"), cpu_flags = %env!("KANIDM_CPU_FLAGS"));
 
         // If in memory, reduce pool to 1
-        if cfg.path == Path::new("") {
+        if cfg.path.as_os_str().is_empty() {
             cfg.pool_size = 1;
         }
 
