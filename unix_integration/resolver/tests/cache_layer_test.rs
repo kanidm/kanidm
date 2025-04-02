@@ -70,7 +70,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
     });
 
     // Setup the config ...
-    let mut config = Configuration::new();
+    let mut config = Configuration::new_for_test();
     config.address = format!("127.0.0.1:{}", port);
     config.integration_test_config = Some(int_config);
     config.role = ServerRole::WriteReplicaNoUI;

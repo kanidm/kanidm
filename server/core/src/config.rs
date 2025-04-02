@@ -20,10 +20,30 @@ use url::Url;
 
 use crate::repl::config::ReplicationConfiguration;
 
+// Allowed as the large enum is only short lived at startup to the true config
+#[allow(clippy::large_enum_variant)]
+// These structures allow us to move to version tagging of the configuration structure.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum ServerConfigUntagged {
+    Version(ServerConfigVersion),
+    Legacy(ServerConfig),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "version")]
+pub enum ServerConfigVersion {
+    #[serde(rename = "2")]
+    V2 {
+        #[serde(flatten)]
+        values: ServerConfigV2,
+    },
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct OnlineBackup {
     /// The destination folder for your backups, defaults to the db_path dir if not set
-    pub path: Option<String>,
+    pub path: Option<PathBuf>,
     /// The schedule to run online backups (see <https://crontab.guru/>), defaults to @daily
     ///
     /// Examples:
@@ -92,51 +112,53 @@ pub struct TlsConfiguration {
 #[serde(deny_unknown_fields)]
 pub struct ServerConfig {
     /// *REQUIRED* - Kanidm Domain, eg `kanidm.example.com`.
-    pub domain: Option<String>,
+    domain: Option<String>,
     /// *REQUIRED* - The user-facing HTTPS URL for this server, eg <https://idm.example.com>
     // TODO  -this should be URL
-    pub origin: Option<String>,
+    origin: Option<String>,
     /// File path of the database file
-    pub db_path: Option<String>,
+    db_path: Option<PathBuf>,
+    /// The filesystem type, either "zfs" or "generic". Defaults to "generic" if unset. I you change this, run a database vacuum.
+    db_fs_type: Option<kanidm_proto::internal::FsType>,
+
     ///  *REQUIRED* - The file path to the TLS Certificate Chain
-    pub tls_chain: Option<String>,
+    tls_chain: Option<PathBuf>,
     ///  *REQUIRED* - The file path to the TLS Private Key
-    pub tls_key: Option<String>,
+    tls_key: Option<PathBuf>,
 
     /// The directory path of the client ca and crl dir.
-    pub tls_client_ca: Option<String>,
+    tls_client_ca: Option<PathBuf>,
 
     /// The listener address for the HTTPS server.
     ///
     /// eg. `[::]:8443` or `127.0.0.1:8443`. Defaults to [kanidm_proto::constants::DEFAULT_SERVER_ADDRESS]
-    pub bindaddress: Option<String>,
+    bindaddress: Option<String>,
     /// The listener address for the LDAP server.
     ///
     /// eg. `[::]:3636` or `127.0.0.1:3636`.
     ///
     /// If unset, the LDAP server will be disabled.
-    pub ldapbindaddress: Option<String>,
+    ldapbindaddress: Option<String>,
     /// The role of this server, one of write_replica, write_replica_no_ui, read_only_replica, defaults to [ServerRole::WriteReplica]
-    #[serde(default)]
-    pub role: ServerRole,
+    role: Option<ServerRole>,
     /// The log level, one of info, debug, trace. Defaults to "info" if not set.
-    pub log_level: Option<LogLevel>,
+    log_level: Option<LogLevel>,
 
     /// Backup Configuration, see [OnlineBackup] for details on sub-keys.
-    pub online_backup: Option<OnlineBackup>,
+    online_backup: Option<OnlineBackup>,
 
     /// Trust the X-Forwarded-For header for client IP address. Defaults to false if unset.
-    pub trust_x_forward_for: Option<bool>,
-
-    /// The filesystem type, either "zfs" or "generic". Defaults to "generic" if unset. I you change this, run a database vacuum.
-    pub db_fs_type: Option<kanidm_proto::internal::FsType>,
+    trust_x_forward_for: Option<bool>,
 
     /// The path to the "admin" socket, used for local communication when performing certain server control tasks. Default is set on build, based on the system target.
-    pub adminbindpath: Option<String>,
+    adminbindpath: Option<String>,
 
     /// The maximum amount of threads the server will use for the async worker pool. Defaults
     /// to std::threads::available_parallelism.
-    pub thread_count: Option<usize>,
+    thread_count: Option<usize>,
+
+    /// Maximum Request Size in bytes
+    maximum_request_size_bytes: Option<usize>,
 
     /// Don't touch this unless you know what you're doing!
     #[allow(dead_code)]
@@ -144,110 +166,100 @@ pub struct ServerConfig {
     #[serde(default)]
     #[serde(rename = "replication")]
     /// Replication configuration, this is a development feature and not yet ready for production use.
-    pub repl_config: Option<ReplicationConfiguration>,
+    repl_config: Option<ReplicationConfiguration>,
     /// An optional OpenTelemetry collector (GRPC) url to send trace and log data to, eg `http://localhost:4317`. If not set, disables the feature.
-    pub otel_grpc_url: Option<String>,
+    otel_grpc_url: Option<String>,
 }
 
-impl ServerConfig {
+impl ServerConfigUntagged {
     /// loads the configuration file from the path specified, then overlays fields from environment variables starting with `KANIDM_``
-    pub fn new<P: AsRef<Path>>(config_path: Option<P>) -> Result<Self, std::io::Error> {
-        // start with a base config
-        let mut config = ServerConfig::default();
-
-        if let Some(config_path) = config_path {
-            // see if we can load it from the config file you asked for
-            if config_path.as_ref().exists() {
-                eprintln!("📜 Using config file: {:?}", config_path.as_ref());
-                let mut f: File = File::open(config_path.as_ref()).map_err(|e| {
-                    eprintln!("Unable to open config file [{:?}] 🥺", e);
-                    let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-                    eprintln!("{}", diag);
-                    e
-                })?;
-
-                let mut contents = String::new();
-
-                f.read_to_string(&mut contents).map_err(|e| {
-                    eprintln!("unable to read contents {:?}", e);
-                    let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-                    eprintln!("{}", diag);
-                    e
-                })?;
-
-                // if we *can* load the config we'll set config to that.
-                match toml::from_str::<ServerConfig>(contents.as_str()) {
-                    Err(err) => {
-                        eprintln!(
-                            "Unable to parse config from '{:?}': {:?}",
-                            config_path.as_ref(),
-                            err
-                        );
-                    }
-                    Ok(val) => config = val,
-                };
-            } else {
-                eprintln!("📜 No config file found at {:?}", config_path.as_ref());
-            }
-        } else {
-            eprintln!(
-                "WARNING: No configuration path was provided, relying on environment variables."
-            );
-        };
-
-        // build from the environment variables
-        let res = config.try_from_env().map_err(|e| {
-            println!("Failed to use environment variable config: {e}");
-            std::io::Error::new(std::io::ErrorKind::Other, e)
+    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, std::io::Error> {
+        // see if we can load it from the config file you asked for
+        eprintln!("📜 Using config file: {:?}", config_path.as_ref());
+        let mut f: File = File::open(config_path.as_ref()).inspect_err(|e| {
+            eprintln!("Unable to open config file [{:?}] 🥺", e);
+            let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+            eprintln!("{}", diag);
         })?;
 
-        // check if the required fields are there
-        let mut config_failed = false;
-        if res.domain.is_none() {
-            eprintln!("❌ 'domain' field in server configuration is not set, server cannot start!");
-            config_failed = true;
-        }
+        let mut contents = String::new();
 
-        if res.origin.is_none() {
-            eprintln!("❌ 'origin' field in server configuration is not set, server cannot start!");
-            config_failed = true;
-        }
+        f.read_to_string(&mut contents).inspect_err(|e| {
+            eprintln!("unable to read contents {:?}", e);
+            let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+            eprintln!("{}", diag);
+        })?;
 
-        if res.db_path.is_none() {
+        // if we *can* load the config we'll set config to that.
+        toml::from_str::<ServerConfigUntagged>(contents.as_str()).map_err(|err| {
             eprintln!(
-                "❌ 'db_path' field in server configuration is not set, server cannot start!"
+                "Unable to parse config from '{:?}': {:?}",
+                config_path.as_ref(),
+                err
             );
-            config_failed = true;
-        }
-
-        #[cfg(not(test))]
-        if res.tls_chain.is_none() {
-            eprintln!(
-                "❌ 'tls_chain' field in server configuration is not set, server cannot start!"
-            );
-            config_failed = true;
-        }
-        #[cfg(not(test))]
-        if res.tls_key.is_none() {
-            eprintln!(
-                "❌ 'tls_key' field in server configuration is not set, server cannot start!"
-            );
-            config_failed = true;
-        }
-
-        if config_failed {
-            eprintln!("Failed to parse configuration, server cannot start!");
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Failed to parse configuration, server cannot start!",
-            ))
-        } else {
-            Ok(res)
-        }
+            std::io::Error::new(std::io::ErrorKind::InvalidData, err)
+        })
     }
+}
 
+#[derive(Debug, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct ServerConfigV2 {
+    domain: Option<String>,
+    origin: Option<String>,
+    db_path: Option<PathBuf>,
+    db_fs_type: Option<kanidm_proto::internal::FsType>,
+    tls_chain: Option<PathBuf>,
+    tls_key: Option<PathBuf>,
+    tls_client_ca: Option<PathBuf>,
+    bindaddress: Option<String>,
+    ldapbindaddress: Option<String>,
+    role: Option<ServerRole>,
+    log_level: Option<LogLevel>,
+    online_backup: Option<OnlineBackup>,
+    trust_x_forward_for: Option<bool>,
+    adminbindpath: Option<String>,
+    thread_count: Option<usize>,
+    maximum_request_size_bytes: Option<usize>,
+    #[allow(dead_code)]
+    db_arc_size: Option<usize>,
+    #[serde(default)]
+    #[serde(rename = "replication")]
+    repl_config: Option<ReplicationConfiguration>,
+    otel_grpc_url: Option<String>,
+}
+
+#[derive(Default)]
+pub struct CliConfig {
+    pub output_mode: Option<ConsoleOutputMode>,
+}
+
+#[derive(Default)]
+pub struct EnvironmentConfig {
+    domain: Option<String>,
+    origin: Option<String>,
+    db_path: Option<PathBuf>,
+    tls_chain: Option<PathBuf>,
+    tls_key: Option<PathBuf>,
+    tls_client_ca: Option<PathBuf>,
+    bindaddress: Option<String>,
+    ldapbindaddress: Option<String>,
+    role: Option<ServerRole>,
+    log_level: Option<LogLevel>,
+    online_backup: Option<OnlineBackup>,
+    trust_x_forward_for: Option<bool>,
+    db_fs_type: Option<kanidm_proto::internal::FsType>,
+    adminbindpath: Option<String>,
+    db_arc_size: Option<usize>,
+    repl_config: Option<ReplicationConfiguration>,
+    otel_grpc_url: Option<String>,
+}
+
+impl EnvironmentConfig {
     /// Updates the ServerConfig from environment variables starting with `KANIDM_`
-    fn try_from_env(mut self) -> Result<Self, String> {
+    pub fn new() -> Result<Self, String> {
+        let mut env_config = Self::default();
+
         for (key, value) in std::env::vars() {
             let Some(key) = key.strip_prefix("KANIDM_") else {
                 continue;
@@ -272,56 +284,56 @@ impl ServerConfig {
 
             match key {
                 "DOMAIN" => {
-                    self.domain = Some(value.to_string());
+                    env_config.domain = Some(value.to_string());
                 }
                 "ORIGIN" => {
-                    self.origin = Some(value.to_string());
+                    env_config.origin = Some(value.to_string());
                 }
                 "DB_PATH" => {
-                    self.db_path = Some(value.to_string());
+                    env_config.db_path = Some(PathBuf::from(value.to_string()));
                 }
                 "TLS_CHAIN" => {
-                    self.tls_chain = Some(value.to_string());
+                    env_config.tls_chain = Some(PathBuf::from(value.to_string()));
                 }
                 "TLS_KEY" => {
-                    self.tls_key = Some(value.to_string());
+                    env_config.tls_key = Some(PathBuf::from(value.to_string()));
                 }
                 "TLS_CLIENT_CA" => {
-                    self.tls_client_ca = Some(value.to_string());
+                    env_config.tls_client_ca = Some(PathBuf::from(value.to_string()));
                 }
                 "BINDADDRESS" => {
-                    self.bindaddress = Some(value.to_string());
+                    env_config.bindaddress = Some(value.to_string());
                 }
                 "LDAPBINDADDRESS" => {
-                    self.ldapbindaddress = Some(value.to_string());
+                    env_config.ldapbindaddress = Some(value.to_string());
                 }
                 "ROLE" => {
-                    self.role = ServerRole::from_str(&value).map_err(|err| {
+                    env_config.role = Some(ServerRole::from_str(&value).map_err(|err| {
                         format!("Failed to parse KANIDM_ROLE as ServerRole: {}", err)
-                    })?;
+                    })?);
                 }
                 "LOG_LEVEL" => {
-                    self.log_level = LogLevel::from_str(&value)
+                    env_config.log_level = LogLevel::from_str(&value)
                         .map_err(|err| {
                             format!("Failed to parse KANIDM_LOG_LEVEL as LogLevel: {}", err)
                         })
                         .ok();
                 }
                 "ONLINE_BACKUP_PATH" => {
-                    if let Some(backup) = &mut self.online_backup {
-                        backup.path = Some(value.to_string());
+                    if let Some(backup) = &mut env_config.online_backup {
+                        backup.path = Some(PathBuf::from(value.to_string()));
                     } else {
-                        self.online_backup = Some(OnlineBackup {
-                            path: Some(value.to_string()),
+                        env_config.online_backup = Some(OnlineBackup {
+                            path: Some(PathBuf::from(value.to_string())),
                             ..Default::default()
                         });
                     }
                 }
                 "ONLINE_BACKUP_SCHEDULE" => {
-                    if let Some(backup) = &mut self.online_backup {
+                    if let Some(backup) = &mut env_config.online_backup {
                         backup.schedule = value.to_string();
                     } else {
-                        self.online_backup = Some(OnlineBackup {
+                        env_config.online_backup = Some(OnlineBackup {
                             schedule: value.to_string(),
                             ..Default::default()
                         });
@@ -331,17 +343,17 @@ impl ServerConfig {
                     let versions = value.parse().map_err(|_| {
                         "Failed to parse KANIDM_ONLINE_BACKUP_VERSIONS as usize".to_string()
                     })?;
-                    if let Some(backup) = &mut self.online_backup {
+                    if let Some(backup) = &mut env_config.online_backup {
                         backup.versions = versions;
                     } else {
-                        self.online_backup = Some(OnlineBackup {
+                        env_config.online_backup = Some(OnlineBackup {
                             versions,
                             ..Default::default()
                         })
                     }
                 }
                 "TRUST_X_FORWARD_FOR" => {
-                    self.trust_x_forward_for = value
+                    env_config.trust_x_forward_for = value
                         .parse()
                         .map_err(|_| {
                             "Failed to parse KANIDM_TRUST_X_FORWARD_FOR as bool".to_string()
@@ -349,29 +361,29 @@ impl ServerConfig {
                         .ok();
                 }
                 "DB_FS_TYPE" => {
-                    self.db_fs_type = FsType::try_from(value.as_str())
+                    env_config.db_fs_type = FsType::try_from(value.as_str())
                         .map_err(|_| {
                             "Failed to parse KANIDM_DB_FS_TYPE env var to valid value!".to_string()
                         })
                         .ok();
                 }
                 "DB_ARC_SIZE" => {
-                    self.db_arc_size = value
+                    env_config.db_arc_size = value
                         .parse()
                         .map_err(|_| "Failed to parse KANIDM_DB_ARC_SIZE as value".to_string())
                         .ok();
                 }
                 "ADMIN_BIND_PATH" => {
-                    self.adminbindpath = Some(value.to_string());
+                    env_config.adminbindpath = Some(value.to_string());
                 }
                 "REPLICATION_ORIGIN" => {
                     let repl_origin = Url::parse(value.as_str()).map_err(|err| {
                         format!("Failed to parse KANIDM_REPLICATION_ORIGIN as URL: {}", err)
                     })?;
-                    if let Some(repl) = &mut self.repl_config {
+                    if let Some(repl) = &mut env_config.repl_config {
                         repl.origin = repl_origin
                     } else {
-                        self.repl_config = Some(ReplicationConfiguration {
+                        env_config.repl_config = Some(ReplicationConfiguration {
                             origin: repl_origin,
                             ..Default::default()
                         });
@@ -381,10 +393,10 @@ impl ServerConfig {
                     let repl_bind_address = value
                         .parse()
                         .map_err(|_| "Failed to parse replication bind address".to_string())?;
-                    if let Some(repl) = &mut self.repl_config {
+                    if let Some(repl) = &mut env_config.repl_config {
                         repl.bindaddress = repl_bind_address;
                     } else {
-                        self.repl_config = Some(ReplicationConfiguration {
+                        env_config.repl_config = Some(ReplicationConfiguration {
                             bindaddress: repl_bind_address,
                             ..Default::default()
                         });
@@ -397,29 +409,24 @@ impl ServerConfig {
                             "Failed to parse replication task poll interval as u64".to_string()
                         })
                         .ok();
-                    if let Some(repl) = &mut self.repl_config {
+                    if let Some(repl) = &mut env_config.repl_config {
                         repl.task_poll_interval = poll_interval;
                     } else {
-                        self.repl_config = Some(ReplicationConfiguration {
+                        env_config.repl_config = Some(ReplicationConfiguration {
                             task_poll_interval: poll_interval,
                             ..Default::default()
                         });
                     }
                 }
                 "OTEL_GRPC_URL" => {
-                    self.otel_grpc_url = Some(value.to_string());
+                    env_config.otel_grpc_url = Some(value.to_string());
                 }
 
                 _ => eprintln!("Ignoring env var KANIDM_{key}"),
             }
         }
 
-        Ok(self)
-    }
-
-    /// Return the ARC size for the database, it's something you really shouldn't touch unless you are doing extreme tuning.
-    pub fn get_db_arc_size(&self) -> Option<usize> {
-        self.db_arc_size
+        Ok(env_config)
     }
 }
 
@@ -475,11 +482,11 @@ pub struct IntegrationReplConfig {
 #[derive(Debug, Clone)]
 pub struct Configuration {
     pub address: String,
-    pub ldapaddress: Option<String>,
+    pub ldapbindaddress: Option<String>,
     pub adminbindpath: String,
     pub threads: usize,
     // db type later
-    pub db_path: String,
+    pub db_path: Option<PathBuf>,
     pub db_fs_type: Option<FsType>,
     pub db_arc_size: Option<usize>,
     pub maximum_request: usize,
@@ -492,27 +499,89 @@ pub struct Configuration {
     pub role: ServerRole,
     pub output_mode: ConsoleOutputMode,
     pub log_level: LogLevel,
-
     /// Replication settings.
     pub repl_config: Option<ReplicationConfiguration>,
     /// This allows internally setting some unsafe options for replication.
     pub integration_repl_config: Option<Box<IntegrationReplConfig>>,
-
     pub otel_grpc_url: Option<String>,
+}
+
+impl Configuration {
+    pub fn build() -> ConfigurationBuilder {
+        ConfigurationBuilder {
+            bindaddress: None,
+            ldapbindaddress: None,
+            adminbindpath: None,
+            threads: std::thread::available_parallelism()
+                .map(|t| t.get())
+                .unwrap_or_else(|_e| {
+                    eprintln!("WARNING: Unable to read number of available CPUs, defaulting to 4");
+                    4
+                }),
+            db_path: None,
+            db_fs_type: None,
+            db_arc_size: None,
+            maximum_request: 256 * 1024, // 256k
+            trust_x_forward_for: None,
+            tls_key: None,
+            tls_chain: None,
+            tls_client_ca: None,
+            online_backup: None,
+            domain: None,
+            origin: None,
+            output_mode: None,
+            log_level: None,
+            role: None,
+            repl_config: None,
+            otel_grpc_url: None,
+        }
+    }
+
+    pub fn new_for_test() -> Self {
+        Configuration {
+            address: DEFAULT_SERVER_ADDRESS.to_string(),
+            ldapbindaddress: None,
+            adminbindpath: env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string(),
+            threads: 1,
+            db_path: None,
+            db_fs_type: None,
+            db_arc_size: None,
+            maximum_request: 256 * 1024, // 256k
+            trust_x_forward_for: false,
+            tls_config: None,
+            integration_test_config: None,
+            online_backup: None,
+            domain: "idm.example.com".to_string(),
+            origin: "https://idm.example.com".to_string(),
+            output_mode: ConsoleOutputMode::default(),
+            log_level: LogLevel::default(),
+            role: ServerRole::WriteReplica,
+            repl_config: None,
+            integration_repl_config: None,
+            otel_grpc_url: None,
+        }
+    }
 }
 
 impl fmt::Display for Configuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "address: {}, ", self.address)?;
         write!(f, "domain: {}, ", self.domain)?;
-        match &self.ldapaddress {
+        match &self.ldapbindaddress {
             Some(la) => write!(f, "ldap address: {}, ", la),
             None => write!(f, "ldap address: disabled, "),
         }?;
         write!(f, "origin: {} ", self.origin)?;
         write!(f, "admin bind path: {}, ", self.adminbindpath)?;
         write!(f, "thread count: {}, ", self.threads)?;
-        write!(f, "dbpath: {}, ", self.db_path)?;
+        write!(
+            f,
+            "dbpath: {}, ",
+            self.db_path
+                .as_ref()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or("MEMORY".to_string())
+        )?;
         match self.db_arc_size {
             Some(v) => write!(f, "arcsize: {}, ", v),
             None => write!(f, "arcsize: AUTO, "),
@@ -527,7 +596,10 @@ impl fmt::Display for Configuration {
                 bck.enabled,
                 bck.schedule,
                 bck.versions,
-                bck.path.clone().unwrap_or("<unset>".to_string()),
+                bck.path
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or("<unset>".to_string())
             ),
             None => write!(f, "online_backup: disabled, "),
         }?;
@@ -559,178 +631,387 @@ impl fmt::Display for Configuration {
     }
 }
 
-impl Default for Configuration {
-    fn default() -> Self {
-        Self::new()
-    }
+/// The internal configuration of the server. User-facing configuration is in [ServerConfig], as the configuration file is parsed by that object.
+#[derive(Debug, Clone)]
+pub struct ConfigurationBuilder {
+    bindaddress: Option<String>,
+    ldapbindaddress: Option<String>,
+    adminbindpath: Option<String>,
+    threads: usize,
+    db_path: Option<PathBuf>,
+    db_fs_type: Option<FsType>,
+    db_arc_size: Option<usize>,
+    maximum_request: usize,
+    trust_x_forward_for: Option<bool>,
+    tls_key: Option<PathBuf>,
+    tls_chain: Option<PathBuf>,
+    tls_client_ca: Option<PathBuf>,
+    online_backup: Option<OnlineBackup>,
+    domain: Option<String>,
+    origin: Option<String>,
+    role: Option<ServerRole>,
+    output_mode: Option<ConsoleOutputMode>,
+    log_level: Option<LogLevel>,
+    repl_config: Option<ReplicationConfiguration>,
+    otel_grpc_url: Option<String>,
 }
 
-impl Configuration {
-    pub fn new() -> Self {
-        Configuration {
-            address: DEFAULT_SERVER_ADDRESS.to_string(),
-            ldapaddress: None,
-            adminbindpath: env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string(),
-            threads: std::thread::available_parallelism()
-                .map(|t| t.get())
-                .unwrap_or_else(|_e| {
-                    eprintln!("WARNING: Unable to read number of available CPUs, defaulting to 4");
-                    4
-                }),
-            db_path: String::from(""),
-            db_fs_type: None,
-            db_arc_size: None,
-            maximum_request: 256 * 1024, // 256k
-            trust_x_forward_for: false,
-            tls_config: None,
-            integration_test_config: None,
-            online_backup: None,
-            domain: "idm.example.com".to_string(),
-            origin: "https://idm.example.com".to_string(),
-            output_mode: ConsoleOutputMode::default(),
-            log_level: Default::default(),
-            role: ServerRole::WriteReplica,
-            repl_config: None,
-            integration_repl_config: None,
-            otel_grpc_url: None,
+impl ConfigurationBuilder {
+    #![allow(clippy::needless_pass_by_value)]
+    pub fn add_cli_config(mut self, cli_config: CliConfig) -> Self {
+        if cli_config.output_mode.is_some() {
+            self.output_mode = cli_config.output_mode;
         }
+
+        self
     }
 
-    pub fn new_for_test() -> Self {
-        Configuration {
-            threads: 1,
-            ..Configuration::new()
+    pub fn add_env_config(mut self, env_config: EnvironmentConfig) -> Self {
+        if env_config.bindaddress.is_some() {
+            self.bindaddress = env_config.bindaddress;
         }
+
+        if env_config.ldapbindaddress.is_some() {
+            self.ldapbindaddress = env_config.ldapbindaddress;
+        }
+
+        if env_config.adminbindpath.is_some() {
+            self.adminbindpath = env_config.adminbindpath;
+        }
+
+        if env_config.db_path.is_some() {
+            self.db_path = env_config.db_path;
+        }
+
+        if env_config.db_fs_type.is_some() {
+            self.db_fs_type = env_config.db_fs_type;
+        }
+
+        if env_config.db_arc_size.is_some() {
+            self.db_arc_size = env_config.db_arc_size;
+        }
+
+        if env_config.trust_x_forward_for.is_some() {
+            self.trust_x_forward_for = env_config.trust_x_forward_for;
+        }
+
+        if env_config.tls_key.is_some() {
+            self.tls_key = env_config.tls_key;
+        }
+
+        if env_config.tls_chain.is_some() {
+            self.tls_chain = env_config.tls_chain;
+        }
+
+        if env_config.tls_client_ca.is_some() {
+            self.tls_client_ca = env_config.tls_client_ca;
+        }
+
+        if env_config.online_backup.is_some() {
+            self.online_backup = env_config.online_backup;
+        }
+
+        if env_config.domain.is_some() {
+            self.domain = env_config.domain;
+        }
+
+        if env_config.origin.is_some() {
+            self.origin = env_config.origin;
+        }
+
+        if env_config.role.is_some() {
+            self.role = env_config.role;
+        }
+
+        if env_config.log_level.is_some() {
+            self.log_level = env_config.log_level;
+        }
+
+        if env_config.repl_config.is_some() {
+            self.repl_config = env_config.repl_config;
+        }
+
+        if env_config.otel_grpc_url.is_some() {
+            self.otel_grpc_url = env_config.otel_grpc_url;
+        }
+
+        self
     }
 
-    pub fn update_online_backup(&mut self, cfg: &Option<OnlineBackup>) {
-        match cfg {
-            None => {}
-            Some(cfg) => {
-                let path = match cfg.path.clone() {
-                    Some(path) => Some(path),
-                    // Default to the same path as the data directory
-                    None => {
-                        let db_filepath = Path::new(&self.db_path);
-                        #[allow(clippy::expect_used)]
-                        let db_path = db_filepath
-                            .parent()
-                            .map(|p| {
-                                #[allow(clippy::expect_used)]
-                                p.to_str()
-                                    .expect("Couldn't turn db_path to str")
-                                    .to_string()
-                            })
-                            .expect("Unable to get parent directory of db_path");
+    pub fn add_opt_toml_config(self, toml_config: Option<ServerConfigUntagged>) -> Self {
+        // Can only proceed if the config is real
+        let Some(toml_config) = toml_config else {
+            return self;
+        };
 
-                        Some(db_path)
-                    }
-                };
-                self.online_backup = Some(OnlineBackup {
-                    path,
-                    ..cfg.clone()
-                })
+        match toml_config {
+            ServerConfigUntagged::Version(ServerConfigVersion::V2 { values }) => {
+                self.add_v2_config(values)
             }
+            ServerConfigUntagged::Legacy(config) => self.add_legacy_config(config),
         }
     }
 
-    pub fn update_log_level(&mut self, level: &Option<LogLevel>) {
-        self.log_level = level.unwrap_or_default();
-    }
-
-    // Startup config action, used in kanidmd server etc
-    pub fn update_config_for_server_mode(&mut self, sconfig: &ServerConfig) {
-        #[cfg(any(test, debug_assertions))]
-        debug!("update_config_for_server_mode {:?}", sconfig);
-        self.update_tls(&sconfig.tls_chain, &sconfig.tls_key, &sconfig.tls_client_ca);
-        self.update_bind(&sconfig.bindaddress);
-        self.update_ldapbind(&sconfig.ldapbindaddress);
-        self.update_online_backup(&sconfig.online_backup);
-        self.update_log_level(&sconfig.log_level);
-    }
-
-    pub fn update_trust_x_forward_for(&mut self, t: Option<bool>) {
-        self.trust_x_forward_for = t.unwrap_or(false);
-    }
-
-    pub fn update_db_path(&mut self, p: &str) {
-        self.db_path = p.to_string();
-    }
-
-    pub fn update_db_arc_size(&mut self, v: Option<usize>) {
-        self.db_arc_size = v
-    }
-
-    pub fn update_db_fs_type(&mut self, p: &Option<FsType>) {
-        p.clone_into(&mut self.db_fs_type);
-    }
-
-    pub fn update_bind(&mut self, b: &Option<String>) {
-        self.address = b
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| DEFAULT_SERVER_ADDRESS.to_string());
-    }
-
-    pub fn update_ldapbind(&mut self, l: &Option<String>) {
-        self.ldapaddress.clone_from(l);
-    }
-
-    pub fn update_admin_bind_path(&mut self, p: &Option<String>) {
-        if let Some(p) = p {
-            self.adminbindpath.clone_from(p);
+    fn add_legacy_config(mut self, config: ServerConfig) -> Self {
+        if config.domain.is_some() {
+            self.domain = config.domain;
         }
+
+        if config.origin.is_some() {
+            self.origin = config.origin;
+        }
+
+        if config.db_path.is_some() {
+            self.db_path = config.db_path;
+        }
+
+        if config.db_fs_type.is_some() {
+            self.db_fs_type = config.db_fs_type;
+        }
+
+        if config.tls_key.is_some() {
+            self.tls_key = config.tls_key;
+        }
+
+        if config.tls_chain.is_some() {
+            self.tls_chain = config.tls_chain;
+        }
+
+        if config.tls_client_ca.is_some() {
+            self.tls_client_ca = config.tls_client_ca;
+        }
+
+        if config.bindaddress.is_some() {
+            self.bindaddress = config.bindaddress;
+        }
+
+        if config.ldapbindaddress.is_some() {
+            self.ldapbindaddress = config.ldapbindaddress;
+        }
+
+        if config.adminbindpath.is_some() {
+            self.adminbindpath = config.adminbindpath;
+        }
+
+        if config.role.is_some() {
+            self.role = config.role;
+        }
+
+        if config.log_level.is_some() {
+            self.log_level = config.log_level;
+        }
+
+        if let Some(threads) = config.thread_count {
+            self.threads = threads;
+        }
+
+        if let Some(maximum) = config.maximum_request_size_bytes {
+            self.maximum_request = maximum;
+        }
+
+        if config.db_arc_size.is_some() {
+            self.db_arc_size = config.db_arc_size;
+        }
+
+        if config.trust_x_forward_for.is_some() {
+            self.trust_x_forward_for = config.trust_x_forward_for;
+        }
+
+        if config.online_backup.is_some() {
+            self.online_backup = config.online_backup;
+        }
+
+        if config.repl_config.is_some() {
+            self.repl_config = config.repl_config;
+        }
+
+        if config.otel_grpc_url.is_some() {
+            self.otel_grpc_url = config.otel_grpc_url;
+        }
+
+        self
     }
 
-    pub fn update_origin(&mut self, o: &str) {
-        self.origin = o.to_string();
+    fn add_v2_config(mut self, config: ServerConfigV2) -> Self {
+        if config.domain.is_some() {
+            self.domain = config.domain;
+        }
+
+        if config.origin.is_some() {
+            self.origin = config.origin;
+        }
+
+        if config.db_path.is_some() {
+            self.db_path = config.db_path;
+        }
+
+        if config.db_fs_type.is_some() {
+            self.db_fs_type = config.db_fs_type;
+        }
+
+        if config.tls_key.is_some() {
+            self.tls_key = config.tls_key;
+        }
+
+        if config.tls_chain.is_some() {
+            self.tls_chain = config.tls_chain;
+        }
+
+        if config.tls_client_ca.is_some() {
+            self.tls_client_ca = config.tls_client_ca;
+        }
+
+        if config.bindaddress.is_some() {
+            self.bindaddress = config.bindaddress;
+        }
+
+        if config.ldapbindaddress.is_some() {
+            self.ldapbindaddress = config.ldapbindaddress;
+        }
+
+        if config.adminbindpath.is_some() {
+            self.adminbindpath = config.adminbindpath;
+        }
+
+        if config.role.is_some() {
+            self.role = config.role;
+        }
+
+        if config.log_level.is_some() {
+            self.log_level = config.log_level;
+        }
+
+        if let Some(threads) = config.thread_count {
+            self.threads = threads;
+        }
+
+        if let Some(maximum) = config.maximum_request_size_bytes {
+            self.maximum_request = maximum;
+        }
+
+        if config.db_arc_size.is_some() {
+            self.db_arc_size = config.db_arc_size;
+        }
+
+        if config.trust_x_forward_for.is_some() {
+            self.trust_x_forward_for = config.trust_x_forward_for;
+        }
+
+        if config.online_backup.is_some() {
+            self.online_backup = config.online_backup;
+        }
+
+        if config.repl_config.is_some() {
+            self.repl_config = config.repl_config;
+        }
+
+        if config.otel_grpc_url.is_some() {
+            self.otel_grpc_url = config.otel_grpc_url;
+        }
+
+        self
     }
 
-    pub fn update_domain(&mut self, d: &str) {
-        self.domain = d.to_string();
+    // We always set threads to 1 unless it's the main server.
+    pub fn is_server_mode(mut self, is_server: bool) -> Self {
+        if is_server {
+            self.threads = 1;
+        }
+        self
     }
 
-    pub fn update_role(&mut self, r: ServerRole) {
-        self.role = r;
-    }
+    pub fn finish(self) -> Option<Configuration> {
+        let ConfigurationBuilder {
+            bindaddress,
+            ldapbindaddress,
+            adminbindpath,
+            threads,
+            db_path,
+            db_fs_type,
+            db_arc_size,
+            maximum_request,
+            trust_x_forward_for,
+            tls_key,
+            tls_chain,
+            tls_client_ca,
+            mut online_backup,
+            domain,
+            origin,
+            role,
+            output_mode,
+            log_level,
+            repl_config,
+            otel_grpc_url,
+        } = self;
 
-    /// Sets the output mode for writing to the console
-    pub fn update_output_mode(&mut self, om: ConsoleOutputMode) {
-        self.output_mode = om;
-    }
-
-    pub fn update_replication_config(&mut self, repl_config: Option<ReplicationConfiguration>) {
-        self.repl_config = repl_config;
-    }
-
-    pub fn update_tls(
-        &mut self,
-        chain: &Option<String>,
-        key: &Option<String>,
-        client_ca: &Option<String>,
-    ) {
-        match (chain, key) {
-            (None, None) => {}
-            (Some(chainp), Some(keyp)) => {
-                let chain = PathBuf::from(chainp.clone());
-                let key = PathBuf::from(keyp.clone());
-                let client_ca = client_ca.clone().map(PathBuf::from);
-                self.tls_config = Some(TlsConfiguration {
-                    chain,
-                    key,
-                    client_ca,
-                })
-            }
+        let tls_config = match (tls_key, tls_chain, tls_client_ca) {
+            (Some(key), Some(chain), client_ca) => Some(TlsConfiguration {
+                chain,
+                key,
+                client_ca,
+            }),
             _ => {
-                eprintln!("ERROR: Invalid TLS configuration - must provide chain and key!");
-                std::process::exit(1);
+                eprintln!("ERROR: Tls Private Key and Certificate Chain are required.");
+                return None;
             }
-        }
-    }
+        };
 
-    // Update the thread count of this server, only up to the maximum set by self threads
-    // which is configured with available parallelism.
-    pub fn update_threads_count(&mut self, threads: usize) {
-        self.threads = std::cmp::min(self.threads, threads);
+        let domain = domain.or_else(|| {
+            eprintln!("ERROR: domain was not set.");
+            None
+        })?;
+
+        let origin = origin.or_else(|| {
+            eprintln!("ERROR: origin was not set.");
+            None
+        })?;
+
+        if let Some(online_backup_ref) = online_backup.as_mut() {
+            if online_backup_ref.path.is_none() {
+                if let Some(db_path) = db_path.as_ref() {
+                    if let Some(db_parent_path) = db_path.parent() {
+                        online_backup_ref.path = Some(db_parent_path.to_path_buf());
+                    } else {
+                        eprintln!("ERROR: when db_path has no parent, and can not be used for online backups.");
+                        return None;
+                    }
+                } else {
+                    eprintln!("ERROR: when db_path is unset (in memory) then online backup paths must be declared.");
+                    return None;
+                }
+            }
+        };
+
+        // Apply any defaults if needed
+        let adminbindpath =
+            adminbindpath.unwrap_or(env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string());
+        let address = bindaddress.unwrap_or(DEFAULT_SERVER_ADDRESS.to_string());
+        let trust_x_forward_for = trust_x_forward_for.unwrap_or_default();
+        let output_mode = output_mode.unwrap_or_default();
+        let role = role.unwrap_or(ServerRole::WriteReplica);
+        let log_level = log_level.unwrap_or_default();
+
+        Some(Configuration {
+            address,
+            ldapbindaddress,
+            adminbindpath,
+            threads,
+            db_path,
+            db_fs_type,
+            db_arc_size,
+            maximum_request,
+            trust_x_forward_for,
+            tls_config,
+            online_backup,
+            domain,
+            origin,
+            role,
+            output_mode,
+            log_level,
+            repl_config,
+            otel_grpc_url,
+            integration_repl_config: None,
+            integration_test_config: None,
+        })
     }
 }

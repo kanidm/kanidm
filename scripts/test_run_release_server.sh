@@ -25,7 +25,7 @@ if [ ! -f "run_insecure_dev_server.sh" ]; then
     exit 1
 fi
 
-export KANIDM_CONFIG="../../examples/insecure_server.toml"
+export KANIDM_CONFIG="./insecure_server.toml"
 
 mkdir -p /tmp/kanidm/client_ca
 
@@ -48,7 +48,7 @@ fi
 
 ATTEMPT=0
 
-KANIDM_CONFIG_FILE="../../examples/insecure_server.toml"
+KANIDM_CONFIG_FILE="./insecure_server.toml"
 KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 

@@ -112,19 +112,19 @@ impl IntervalActor {
         if !op.exists() {
             info!(
                 "Online backup output folder '{}' does not exist, trying to create it.",
-                outpath
+                outpath.display()
             );
             fs::create_dir_all(&outpath).map_err(|e| {
                 error!(
                     "Online backup failed to create output directory '{}': {}",
-                    outpath.clone(),
+                    outpath.display(),
                     e
                 )
             })?;
         }
 
         if !op.is_dir() {
-            error!("Online backup output '{}' is not a directory or we are missing permissions to access it.", outpath);
+            error!("Online backup output '{}' is not a directory or we are missing permissions to access it.", outpath.display());
             return Err(());
         }
 
@@ -148,7 +148,7 @@ impl IntervalActor {
                         if let Err(e) = server
                             .handle_online_backup(
                                 OnlineBackupEvent::new(),
-                                outpath.clone().as_str(),
+                                &outpath,
                                 versions,
                             )
                             .await
