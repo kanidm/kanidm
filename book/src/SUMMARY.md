@@ -53,7 +53,6 @@
 
 - [Service Integration Examples](examples/readme.md)
   - [Kubernetes Ingress](examples/kubernetes_ingress.md)
-  - [OAuth2 Examples](integrations/oauth2/examples.md)
   - [Traefik](examples/traefik.md)
 
 - [Replication](repl/readme.md)
