@@ -724,14 +724,6 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                 #[cfg(target_os = "linux")]
                 {
                     let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
-                    // Undocumented systemd feature - all messages should have a monotonic usec sent
-                    // with them. In some cases like "reloading" messages, it is undocumented but
-                    // failure to send this message causes the reload to fail.
-                    if let Ok(monotonic_usec) = sd_notify::NotifyState::monotonic_usec_now() {
-                        let _ = sd_notify::notify(true, &[monotonic_usec]);
-                    } else {
-                        error!("CRITICAL!!! Unable to access clock monotonic time. SYSTEMD WILL KILL US.");
-                    };
                     let _ = sd_notify::notify(
                         true,
                         &[sd_notify::NotifyState::Status("Started Kanidm 🦀")],
@@ -771,15 +763,11 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                                                     // systemd has a special reload handler for this.
                                                     #[cfg(target_os = "linux")]
                                                     {
-                                                    let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Reloading]);
-                                                    // CRITICAL - if you do not send a monotonic usec message after a reloading
-                                                    // message, your service WILL BE KILLED.
                                 if let Ok(monotonic_usec) = sd_notify::NotifyState::monotonic_usec_now() {
-                                let _ =
-                                    sd_notify::notify(true, &[monotonic_usec]);
-                                } else {
+                                else {
                                     error!("CRITICAL!!! Unable to access clock monotonic time. SYSTEMD WILL KILL US.");
                                 };
+                                                    let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Reloading, monotonic_usec]);
                                                     let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Status("Reloading ...")]);
                                                     }
 
