@@ -25,7 +25,7 @@ def recover_account(username: str) -> str:
         "recover-account",
         username,
         "--config",
-        "../../examples/insecure_server.toml",
+        "./insecure_server.toml",
         "--output",
         "json",
     ]

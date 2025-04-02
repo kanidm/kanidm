@@ -44,7 +44,7 @@ fi
 
 
 # defaults
-KANIDM_CONFIG_FILE="../../examples/insecure_server.toml"
+KANIDM_CONFIG_FILE="./insecure_server.toml"
 KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
@@ -83,7 +83,7 @@ if [ "${REMOVE_TEST_DB}" -eq 1 ]; then
     rm /tmp/kanidm/kanidm.db || true
 fi
 
-export KANIDM_CONFIG="../../examples/insecure_server.toml"
+export KANIDM_CONFIG="./insecure_server.toml"
 IDM_ADMIN_USER="idm_admin@localhost"
 
 echo "Resetting the idm_admin user..."
