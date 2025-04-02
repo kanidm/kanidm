@@ -764,7 +764,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                                                     #[cfg(target_os = "linux")]
                                                     {
                                 if let Ok(monotonic_usec) = sd_notify::NotifyState::monotonic_usec_now() {
-                                else {
+                               } else {
                                     error!("CRITICAL!!! Unable to access clock monotonic time. SYSTEMD WILL KILL US.");
                                 };
                                                     let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Reloading, monotonic_usec]);
