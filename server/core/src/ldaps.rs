@@ -149,7 +149,7 @@ async fn client_tls_accept(
             }
         }
     } else {
-        (stream, connection_addr.clone())
+        (stream, connection_addr)
     };
 
     // Start the event
@@ -228,7 +228,7 @@ async fn ldap_plaintext_acceptor(
             accept_result = listener.accept() => {
                 match accept_result {
                     Ok((tcpstream, client_socket_addr)) => {
-                        tokio::spawn(client_process(tcpstream, client_socket_addr.clone(), client_socket_addr, qe_r_ref));
+                        tokio::spawn(client_process(tcpstream, client_socket_addr, client_socket_addr, qe_r_ref));
                     }
                     Err(e) => {
                         error!("LDAP acceptor error, continuing -> {:?}", e);

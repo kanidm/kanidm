@@ -230,7 +230,7 @@ impl Connected<ClientConnInfo> for ClientConnInfo {
 impl Connected<SocketAddr> for ClientConnInfo {
     fn connect_info(connection_addr: SocketAddr) -> Self {
         ClientConnInfo {
-            client_addr: connection_addr.clone(),
+            client_addr: connection_addr,
             connection_addr,
             client_cert: None,
         }

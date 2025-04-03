@@ -444,7 +444,7 @@ pub(crate) async fn handle_conn(
             }
         }
     } else {
-        (stream, connection_addr.clone())
+        (stream, connection_addr)
     };
 
     let ssl = Ssl::new(acceptor.context()).map_err(|e| {
