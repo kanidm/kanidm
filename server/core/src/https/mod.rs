@@ -417,7 +417,10 @@ pub(crate) async fn handle_conn(
     connection_addr: SocketAddr,
     enable_haproxy_hdr: bool,
 ) -> Result<(), std::io::Error> {
-    let (stream, client_addr) = if enable_haproxy_hdr {
+    // IMPORTANT: We only check the proxy header on non-loopback requests. This is because
+    // the healthcheck can't have the proxy header added. Generally it also makes it a bit
+    // nicer as well for localhost-administration of the instance.
+    let (stream, client_addr) = if enable_haproxy_hdr && !connection_addr.ip().is_loopback() {
         match ProxyHdrV2::parse_from_read(stream).await {
             Ok((stream, hdr)) => {
                 let remote_socket_addr = match hdr.to_remote_addr() {
@@ -436,7 +439,7 @@ pub(crate) async fn handle_conn(
                 (stream, remote_socket_addr)
             }
             Err(err) => {
-                error!(?err, "Unable to process proxy v2 header");
+                error!(?connection_addr, ?err, "Unable to process proxy v2 header");
                 return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
             }
         }
