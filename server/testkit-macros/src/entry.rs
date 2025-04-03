@@ -10,7 +10,7 @@ const ALLOWED_ATTRIBUTES: &[&str] = &[
     "threads",
     "db_path",
     "maximum_request",
-    "trust_x_forward_for",
+    "http_client_address_info",
     "role",
     "output_mode",
     "log_level",

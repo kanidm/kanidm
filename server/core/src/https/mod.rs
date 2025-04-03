@@ -211,7 +211,7 @@ pub async fn create_https_server(
         error!(?err, "Unable to generate content security policy");
     })?;
 
-    let trust_x_forward_for = config.trust_x_forward_for;
+    let trust_x_forward_for = config.http_client_address_info.is_x_forward_for();
 
     let origin = Url::parse(&config.origin)
         // Should be impossible!
