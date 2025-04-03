@@ -2,12 +2,13 @@ use crate::actors::QueryServerReadV1;
 use crate::CoreAction;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
+use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
 use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;
 use ldap3_proto::LdapCodec;
 use openssl::ssl::{Ssl, SslAcceptor};
-use std::net;
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::str::FromStr;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -33,7 +34,7 @@ impl LdapSession {
 #[instrument(name = "ldap-request", skip(client_address, qe_r_ref))]
 async fn client_process_msg(
     uat: Option<LdapBoundToken>,
-    client_address: net::SocketAddr,
+    client_address: SocketAddr,
     protomsg: LdapMsg,
     qe_r_ref: &'static QueryServerReadV1,
 ) -> Option<LdapResponseState> {
@@ -50,7 +51,8 @@ async fn client_process_msg(
 
 async fn client_process<STREAM>(
     stream: STREAM,
-    client_address: net::SocketAddr,
+    client_address: SocketAddr,
+    connection_address: SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
 ) where
     STREAM: AsyncRead + AsyncWrite,
@@ -66,6 +68,8 @@ async fn client_process<STREAM>(
         // Start the event
         let uat = session.uat.clone();
         let caddr = client_address;
+
+        debug!(?client_address, ?connection_address);
 
         match client_process_msg(uat, caddr, protomsg, qe_r_ref).await {
             // I'd really have liked to have put this near the [LdapResponseState::Bind] but due
@@ -112,28 +116,61 @@ async fn client_process<STREAM>(
 }
 
 async fn client_tls_accept(
-    tcpstream: TcpStream,
+    stream: TcpStream,
     tls_acceptor: SslAcceptor,
-    client_socket_addr: net::SocketAddr,
+    connection_addr: SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
+    enable_haproxy_hdr: bool,
 ) {
+    let (stream, client_addr) = if enable_haproxy_hdr {
+        match ProxyHdrV2::parse_from_read(stream).await {
+            Ok((stream, hdr)) => {
+                let remote_socket_addr = match hdr.to_remote_addr() {
+                    RemoteAddress::Local => {
+                        debug!("haproxy check - will not contain client data");
+                        return;
+                    }
+                    RemoteAddress::TcpV4 { src, dst: _ } => SocketAddr::from(src),
+                    RemoteAddress::TcpV6 { src, dst: _ } => SocketAddr::from(src),
+                    remote_addr => {
+                        error!(?remote_addr, "remote address in proxy header is invalid");
+                        return;
+                    }
+                };
+
+                (stream, remote_socket_addr)
+            }
+            Err(err) => {
+                error!(?err, "Unable to process proxy v2 header");
+                return;
+            }
+        }
+    } else {
+        (stream, connection_addr.clone())
+    };
+
     // Start the event
     // From the parameters we need to create an SslContext.
     let mut tlsstream = match Ssl::new(tls_acceptor.context())
-        .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
+        .and_then(|tls_obj| SslStream::new(tls_obj, stream))
     {
         Ok(ta) => ta,
         Err(err) => {
-            error!(?err, %client_socket_addr, "LDAP TLS setup error");
+            error!(?err, %client_addr, %connection_addr, "LDAP TLS setup error");
             return;
         }
     };
     if let Err(err) = SslStream::accept(Pin::new(&mut tlsstream)).await {
-        error!(?err, %client_socket_addr, "LDAP TLS accept error");
+        error!(?err, %client_addr, %connection_addr, "LDAP TLS accept error");
         return;
     };
 
-    tokio::spawn(client_process(tlsstream, client_socket_addr, qe_r_ref));
+    tokio::spawn(client_process(
+        tlsstream,
+        client_addr,
+        connection_addr,
+        qe_r_ref,
+    ));
 }
 
 /// TLS LDAP Listener, hands off to [client_tls_accept]
@@ -143,6 +180,7 @@ async fn ldap_tls_acceptor(
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
     mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
+    enable_haproxy_hdr: bool,
 ) {
     loop {
         tokio::select! {
@@ -155,7 +193,7 @@ async fn ldap_tls_acceptor(
                 match accept_result {
                     Ok((tcpstream, client_socket_addr)) => {
                         let clone_tls_acceptor = tls_acceptor.clone();
-                        tokio::spawn(client_tls_accept(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref));
+                        tokio::spawn(client_tls_accept(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref, enable_haproxy_hdr));
                     }
                     Err(err) => {
                         warn!(?err, "LDAP acceptor error, continuing");
@@ -187,7 +225,7 @@ async fn ldap_plaintext_acceptor(
             accept_result = listener.accept() => {
                 match accept_result {
                     Ok((tcpstream, client_socket_addr)) => {
-                        tokio::spawn(client_process(tcpstream, client_socket_addr, qe_r_ref));
+                        tokio::spawn(client_process(tcpstream, client_socket_addr.clone(), client_socket_addr, qe_r_ref));
                     }
                     Err(e) => {
                         error!("LDAP acceptor error, continuing -> {:?}", e);
@@ -205,6 +243,7 @@ pub(crate) async fn create_ldap_server(
     qe_r_ref: &'static QueryServerReadV1,
     rx: broadcast::Receiver<CoreAction>,
     tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
+    enable_haproxy_hdr: bool,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
     if address.starts_with(":::") {
         // takes :::xxxx to xxxx
@@ -212,7 +251,7 @@ pub(crate) async fn create_ldap_server(
         error!("Address '{}' looks like an attempt to wildcard bind with IPv6 on port {} - please try using ldapbindaddress = '[::]:{}'", address, port, port);
     };
 
-    let addr = net::SocketAddr::from_str(address).map_err(|e| {
+    let addr = SocketAddr::from_str(address).map_err(|e| {
         error!("Could not parse LDAP server address {} -> {:?}", address, e);
     })?;
 
@@ -233,6 +272,7 @@ pub(crate) async fn create_ldap_server(
                 qe_r_ref,
                 rx,
                 tls_acceptor_reload_rx,
+                enable_haproxy_hdr,
             ))
         }
         None => tokio::spawn(ldap_plaintext_acceptor(listener, qe_r_ref, rx)),

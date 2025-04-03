@@ -109,7 +109,7 @@ pub enum LdapAddressInfo {
 }
 
 impl LdapAddressInfo {
-    pub fn proxy_v2(&self) -> bool {
+    pub fn is_proxy_v2(&self) -> bool {
         matches!(self, Self::ProxyV2)
     }
 }
@@ -138,7 +138,7 @@ impl HttpAddressInfo {
         matches!(self, Self::XForwardFor)
     }
 
-    pub fn proxy_v2(&self) -> bool {
+    pub fn is_proxy_v2(&self) -> bool {
         matches!(self, Self::ProxyV2)
     }
 }

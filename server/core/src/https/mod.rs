@@ -19,7 +19,6 @@ use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::config::{Configuration, ServerRole};
 use crate::CoreAction;
-
 use axum::{
     body::Body,
     extract::connect_info::IntoMakeServiceWithConnectInfo,
@@ -29,21 +28,23 @@ use axum::{
     routing::*,
     Router,
 };
-
 use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
 use futures::pin_mut;
+use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
+use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
 use openssl::ssl::{Ssl, SslAcceptor};
-
-use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
-
 use serde::de::DeserializeOwned;
 use sketching::*;
 use std::fmt::Write;
+use std::io::ErrorKind;
+use std::path::PathBuf;
+use std::pin::Pin;
+use std::{net::SocketAddr, str::FromStr};
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::broadcast,
@@ -55,11 +56,6 @@ use tower::Service;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use url::Url;
 use uuid::Uuid;
-
-use std::io::ErrorKind;
-use std::path::PathBuf;
-use std::pin::Pin;
-use std::{net::SocketAddr, str::FromStr};
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -212,6 +208,7 @@ pub async fn create_https_server(
     })?;
 
     let trust_x_forward_for = config.http_client_address_info.is_x_forward_for();
+    let enable_haproxy_hdr = config.http_client_address_info.is_proxy_v2();
 
     let origin = Url::parse(&config.origin)
         // Should be impossible!
@@ -337,6 +334,7 @@ pub async fn create_https_server(
                 rx,
                 server_message_tx,
                 tls_acceptor_reload_rx,
+                enable_haproxy_hdr,
             )))
         }
         None => Ok(task::spawn(server_loop_plaintext(addr, app, rx))),
@@ -350,6 +348,7 @@ async fn server_loop(
     mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
     mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
+    enable_haproxy_hdr: bool,
 ) {
     pin_mut!(listener);
 
@@ -365,7 +364,7 @@ async fn server_loop(
                     Ok((stream, addr)) => {
                         let tls_acceptor = tls_acceptor.clone();
                         let app = app.clone();
-                        task::spawn(handle_conn(tls_acceptor, stream, app, addr));
+                        task::spawn(handle_conn(tls_acceptor, stream, app, addr, enable_haproxy_hdr));
                     }
                     Err(err) => {
                         error!("Web server exited with {:?}", err);
@@ -415,8 +414,36 @@ pub(crate) async fn handle_conn(
     acceptor: SslAcceptor,
     stream: TcpStream,
     mut app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
-    addr: SocketAddr,
+    connection_addr: SocketAddr,
+    enable_haproxy_hdr: bool,
 ) -> Result<(), std::io::Error> {
+    let (stream, client_addr) = if enable_haproxy_hdr {
+        match ProxyHdrV2::parse_from_read(stream).await {
+            Ok((stream, hdr)) => {
+                let remote_socket_addr = match hdr.to_remote_addr() {
+                    RemoteAddress::Local => {
+                        debug!("haproxy check - will not contain client data");
+                        return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+                    }
+                    RemoteAddress::TcpV4 { src, dst: _ } => SocketAddr::from(src),
+                    RemoteAddress::TcpV6 { src, dst: _ } => SocketAddr::from(src),
+                    remote_addr => {
+                        error!(?remote_addr, "remote address in proxy header is invalid");
+                        return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+                    }
+                };
+
+                (stream, remote_socket_addr)
+            }
+            Err(err) => {
+                error!(?err, "Unable to process proxy v2 header");
+                return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+            }
+        }
+    } else {
+        (stream, connection_addr.clone())
+    };
+
     let ssl = Ssl::new(acceptor.context()).map_err(|e| {
         error!("Failed to create TLS context: {:?}", e);
         std::io::Error::from(ErrorKind::ConnectionAborted)
@@ -459,7 +486,11 @@ pub(crate) async fn handle_conn(
                 None
             };
 
-            let client_conn_info = ClientConnInfo { addr, client_cert };
+            let client_conn_info = ClientConnInfo {
+                connection_addr,
+                client_addr,
+                client_cert,
+            };
 
             debug!(?client_conn_info);
 

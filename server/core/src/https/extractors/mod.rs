@@ -5,7 +5,6 @@ use axum::{
     http::{
         header::HeaderName, header::AUTHORIZATION as AUTHORISATION, request::Parts, StatusCode,
     },
-    serve::IncomingStream,
     RequestPartsExt,
 };
 
@@ -40,7 +39,8 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
         state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
         let ConnectInfo(ClientConnInfo {
-            addr,
+            connection_addr: _,
+            client_addr,
             client_cert: _,
         }) = parts
             .extract::<ConnectInfo<ClientConnInfo>>()
@@ -75,10 +75,13 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
                     )
                 })?
             } else {
-                addr.ip()
+                client_addr.ip()
             }
         } else {
-            addr.ip()
+            // This can either be the client_addr == connection_addr if there are
+            // no ip address trust sources, or this is the value as reported by haproxy
+            // proxy header.
+            client_addr.ip()
         };
 
         Ok(TrustedClientIp(ip_addr))
@@ -97,7 +100,11 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
         parts: &mut Parts,
         state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
-        let ConnectInfo(ClientConnInfo { addr, client_cert }) = parts
+        let ConnectInfo(ClientConnInfo {
+            connection_addr: _,
+            client_addr,
+            client_cert,
+        }) = parts
             .extract::<ConnectInfo<ClientConnInfo>>()
             .await
             .map_err(|_| {
@@ -130,10 +137,10 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
                     )
                 })?
             } else {
-                addr.ip()
+                client_addr.ip()
             }
         } else {
-            addr.ip()
+            client_addr.ip()
         };
 
         let (basic_authz, bearer_token) = if let Some(header) = parts.headers.get(AUTHORISATION) {
@@ -201,30 +208,30 @@ impl FromRequestParts<ServerState> for DomainInfo {
 
 #[derive(Debug, Clone)]
 pub struct ClientConnInfo {
-    pub addr: SocketAddr,
+    /// This is the address that is *connected* to kanidm right now
+    /// for this operation.
+    #[allow(dead_code)]
+    pub connection_addr: SocketAddr,
+    /// This is the client address as reported by a remote IP source
+    /// such as x-forward-for or proxy-hdr
+    pub client_addr: SocketAddr,
     // Only set if the certificate is VALID
     pub client_cert: Option<ClientCertInfo>,
 }
 
+// This is the normal way that our extractors get the ip info
 impl Connected<ClientConnInfo> for ClientConnInfo {
     fn connect_info(target: ClientConnInfo) -> Self {
         target
     }
 }
 
+// This is only used for plaintext http - in other words, integration tests only.
 impl Connected<SocketAddr> for ClientConnInfo {
-    fn connect_info(addr: SocketAddr) -> Self {
+    fn connect_info(connection_addr: SocketAddr) -> Self {
         ClientConnInfo {
-            addr,
-            client_cert: None,
-        }
-    }
-}
-
-impl Connected<IncomingStream<'_>> for ClientConnInfo {
-    fn connect_info(target: IncomingStream<'_>) -> Self {
-        ClientConnInfo {
-            addr: target.remote_addr(),
+            client_addr: connection_addr.clone(),
+            connection_addr,
             client_cert: None,
         }
     }
