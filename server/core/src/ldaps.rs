@@ -3,14 +3,16 @@ use crate::CoreAction;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
 use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
+use hashbrown::HashSet;
 use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;
 use ldap3_proto::LdapCodec;
 use openssl::ssl::{Ssl, SslAcceptor};
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 use std::str::FromStr;
+use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
@@ -120,12 +122,13 @@ async fn client_tls_accept(
     tls_acceptor: SslAcceptor,
     connection_addr: SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
-    enable_haproxy_hdr: bool,
+    trusted_haproxy_ips: Option<Arc<HashSet<IpAddr>>>,
 ) {
-    // IMPORTANT: We only check the proxy header on non-loopback requests. This is because
-    // the healthcheck can't have the proxy header added. Generally it also makes it a bit
-    // nicer as well for localhost-administration of the instance.
-    let (stream, client_addr) = if enable_haproxy_hdr && !connection_addr.ip().is_loopback() {
+    let enable_haproxy_hdr = trusted_haproxy_ips
+        .map(|trusted| trusted.contains(&connection_addr.ip()))
+        .unwrap_or_default();
+
+    let (stream, client_addr) = if enable_haproxy_hdr {
         match ProxyHdrV2::parse_from_read(stream).await {
             Ok((stream, hdr)) => {
                 let remote_socket_addr = match hdr.to_remote_addr() {
@@ -183,7 +186,7 @@ async fn ldap_tls_acceptor(
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
     mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-    enable_haproxy_hdr: bool,
+    trusted_haproxy_ips: Option<Arc<HashSet<IpAddr>>>,
 ) {
     loop {
         tokio::select! {
@@ -196,7 +199,7 @@ async fn ldap_tls_acceptor(
                 match accept_result {
                     Ok((tcpstream, client_socket_addr)) => {
                         let clone_tls_acceptor = tls_acceptor.clone();
-                        tokio::spawn(client_tls_accept(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref, enable_haproxy_hdr));
+                        tokio::spawn(client_tls_accept(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref, trusted_haproxy_ips.clone()));
                     }
                     Err(err) => {
                         warn!(?err, "LDAP acceptor error, continuing");
@@ -246,7 +249,7 @@ pub(crate) async fn create_ldap_server(
     qe_r_ref: &'static QueryServerReadV1,
     rx: broadcast::Receiver<CoreAction>,
     tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-    enable_haproxy_hdr: bool,
+    trusted_haproxy_ips: Option<HashSet<IpAddr>>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
     if address.starts_with(":::") {
         // takes :::xxxx to xxxx
@@ -265,6 +268,8 @@ pub(crate) async fn create_ldap_server(
         );
     })?;
 
+    let trusted_haproxy_ips = trusted_haproxy_ips.map(Arc::new);
+
     let ldap_acceptor_handle = match opt_ssl_acceptor {
         Some(ssl_acceptor) => {
             info!("Starting LDAPS interface ldaps://{} ...", address);
@@ -275,7 +280,7 @@ pub(crate) async fn create_ldap_server(
                 qe_r_ref,
                 rx,
                 tls_acceptor_reload_rx,
-                enable_haproxy_hdr,
+                trusted_haproxy_ips,
             ))
         }
         None => tokio::spawn(ldap_plaintext_acceptor(listener, qe_r_ref, rx)),

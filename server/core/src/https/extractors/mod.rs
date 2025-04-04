@@ -39,7 +39,7 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
         state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
         let ConnectInfo(ClientConnInfo {
-            connection_addr: _,
+            connection_addr,
             client_addr,
             client_cert: _,
         }) = parts
@@ -53,7 +53,13 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
                 )
             })?;
 
-        let ip_addr = if state.trust_x_forward_for {
+        let trust_x_forward_for = state
+            .trust_x_forward_for_ips
+            .as_ref()
+            .map(|range| range.contains(&connection_addr.ip()))
+            .unwrap_or_default();
+
+        let ip_addr = if trust_x_forward_for {
             if let Some(x_forward_for) = parts.headers.get(X_FORWARDED_FOR_HEADER) {
                 // X forward for may be comma separated.
                 let first = x_forward_for
@@ -101,7 +107,7 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
         state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
         let ConnectInfo(ClientConnInfo {
-            connection_addr: _,
+            connection_addr,
             client_addr,
             client_cert,
         }) = parts
@@ -115,7 +121,13 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
                 )
             })?;
 
-        let ip_addr = if state.trust_x_forward_for {
+        let trust_x_forward_for = state
+            .trust_x_forward_for_ips
+            .as_ref()
+            .map(|range| range.contains(&connection_addr.ip()))
+            .unwrap_or_default();
+
+        let ip_addr = if trust_x_forward_for {
             if let Some(x_forward_for) = parts.headers.get(X_FORWARDED_FOR_HEADER) {
                 // X forward for may be comma separated.
                 let first = x_forward_for

@@ -17,7 +17,7 @@ mod views;
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use crate::config::{Configuration, ServerRole};
+use crate::config::{AddressRange, Configuration, ServerRole};
 use crate::CoreAction;
 use axum::{
     body::Body,
@@ -32,6 +32,7 @@ use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
 use futures::pin_mut;
 use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
+use hashbrown::HashSet;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
@@ -42,8 +43,10 @@ use serde::de::DeserializeOwned;
 use sketching::*;
 use std::fmt::Write;
 use std::io::ErrorKind;
+use std::net::IpAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::{net::SocketAddr, str::FromStr};
 use tokio::{
     net::{TcpListener, TcpStream},
@@ -64,7 +67,7 @@ pub struct ServerState {
     pub(crate) qe_r_ref: &'static QueryServerReadV1,
     // Store the token management parts.
     pub(crate) jws_signer: JwsHs256Signer,
-    pub(crate) trust_x_forward_for: bool,
+    pub(crate) trust_x_forward_for_ips: Option<Arc<AddressRange>>,
     pub(crate) csp_header: HeaderValue,
     pub(crate) origin: Url,
     pub(crate) domain: String,
@@ -207,8 +210,15 @@ pub async fn create_https_server(
         error!(?err, "Unable to generate content security policy");
     })?;
 
-    let trust_x_forward_for = config.http_client_address_info.is_x_forward_for();
-    let enable_haproxy_hdr = config.http_client_address_info.is_proxy_v2();
+    let trust_x_forward_for_ips = config
+        .http_client_address_info
+        .trusted_x_forward_for()
+        .map(Arc::new);
+
+    let trusted_haproxy_ips = config
+        .http_client_address_info
+        .trusted_proxy_v2()
+        .map(Arc::new);
 
     let origin = Url::parse(&config.origin)
         // Should be impossible!
@@ -221,7 +231,7 @@ pub async fn create_https_server(
         qe_w_ref,
         qe_r_ref,
         jws_signer,
-        trust_x_forward_for,
+        trust_x_forward_for_ips,
         csp_header,
         origin,
         domain: config.domain.clone(),
@@ -334,7 +344,7 @@ pub async fn create_https_server(
                 rx,
                 server_message_tx,
                 tls_acceptor_reload_rx,
-                enable_haproxy_hdr,
+                trusted_haproxy_ips,
             )))
         }
         None => Ok(task::spawn(server_loop_plaintext(addr, app, rx))),
@@ -348,7 +358,7 @@ async fn server_loop(
     mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
     mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-    enable_haproxy_hdr: bool,
+    trusted_haproxy_ips: Option<Arc<HashSet<IpAddr>>>,
 ) {
     pin_mut!(listener);
 
@@ -364,7 +374,7 @@ async fn server_loop(
                     Ok((stream, addr)) => {
                         let tls_acceptor = tls_acceptor.clone();
                         let app = app.clone();
-                        task::spawn(handle_conn(tls_acceptor, stream, app, addr, enable_haproxy_hdr));
+                        task::spawn(handle_conn(tls_acceptor, stream, app, addr, trusted_haproxy_ips.clone()));
                     }
                     Err(err) => {
                         error!("Web server exited with {:?}", err);
@@ -415,12 +425,13 @@ pub(crate) async fn handle_conn(
     stream: TcpStream,
     mut app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     connection_addr: SocketAddr,
-    enable_haproxy_hdr: bool,
+    trusted_haproxy_ips: Option<Arc<HashSet<IpAddr>>>,
 ) -> Result<(), std::io::Error> {
-    // IMPORTANT: We only check the proxy header on non-loopback requests. This is because
-    // the healthcheck can't have the proxy header added. Generally it also makes it a bit
-    // nicer as well for localhost-administration of the instance.
-    let (stream, client_addr) = if enable_haproxy_hdr && !connection_addr.ip().is_loopback() {
+    let enable_haproxy_hdr = trusted_haproxy_ips
+        .map(|trusted| trusted.contains(&connection_addr.ip()))
+        .unwrap_or_default();
+
+    let (stream, client_addr) = if enable_haproxy_hdr {
         match ProxyHdrV2::parse_from_read(stream).await {
             Ok((stream, hdr)) => {
                 let remote_socket_addr = match hdr.to_remote_addr() {

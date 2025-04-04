@@ -4,18 +4,18 @@
 //! These components should be "per server". Any "per domain" config should be in the system
 //! or domain entries that are able to be replicated.
 
-use std::fmt::{self, Display};
-use std::fs::File;
-use std::io::Read;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-
+use hashbrown::HashSet;
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
-
 use serde::Deserialize;
 use sketching::LogLevel;
+use std::fmt::{self, Display};
+use std::fs::File;
+use std::io::Read;
+use std::net::IpAddr;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use url::Url;
 
 use crate::repl::config::ReplicationConfiguration;
@@ -105,12 +105,16 @@ pub enum LdapAddressInfo {
     #[default]
     None,
     #[serde(rename = "proxy-v2")]
-    ProxyV2,
+    ProxyV2 { trusted: HashSet<IpAddr> },
 }
 
 impl LdapAddressInfo {
-    pub fn is_proxy_v2(&self) -> bool {
-        matches!(self, Self::ProxyV2)
+    pub fn trusted_proxy_v2(&self) -> Option<HashSet<IpAddr>> {
+        if let Self::ProxyV2 { trusted } = self {
+            Some(trusted.clone())
+        } else {
+            None
+        }
     }
 }
 
@@ -118,7 +122,27 @@ impl Display for LdapAddressInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::None => f.write_str("none"),
-            Self::ProxyV2 => f.write_str("proxy-v2"),
+            Self::ProxyV2 { trusted } => {
+                f.write_str("proxy-v2 [ ")?;
+                for ip in trusted {
+                    write!(f, "{} ", ip)?;
+                }
+                f.write_str("]")
+            }
+        }
+    }
+}
+
+pub(crate) enum AddressRange {
+    Range(HashSet<IpAddr>),
+    All,
+}
+
+impl AddressRange {
+    pub(crate) fn contains(&self, ip_addr: &IpAddr) -> bool {
+        match self {
+            Self::All => true,
+            Self::Range(range) => range.contains(ip_addr),
         }
     }
 }
@@ -128,18 +152,28 @@ pub enum HttpAddressInfo {
     #[default]
     None,
     #[serde(rename = "x-forward-for")]
-    XForwardFor,
+    XForwardFor { trusted: HashSet<IpAddr> },
+    #[serde(rename = "x-forward-for-all-source-trusted")]
+    XForwardForAllSourcesTrusted,
     #[serde(rename = "proxy-v2")]
-    ProxyV2,
+    ProxyV2 { trusted: HashSet<IpAddr> },
 }
 
 impl HttpAddressInfo {
-    pub fn is_x_forward_for(&self) -> bool {
-        matches!(self, Self::XForwardFor)
+    pub(crate) fn trusted_x_forward_for(&self) -> Option<AddressRange> {
+        match self {
+            Self::XForwardForAllSourcesTrusted => Some(AddressRange::All),
+            Self::XForwardFor { trusted } => Some(AddressRange::Range(trusted.clone())),
+            _ => None,
+        }
     }
 
-    pub fn is_proxy_v2(&self) -> bool {
-        matches!(self, Self::ProxyV2)
+    pub(crate) fn trusted_proxy_v2(&self) -> Option<HashSet<IpAddr>> {
+        if let Self::ProxyV2 { trusted } = self {
+            Some(trusted.clone())
+        } else {
+            None
+        }
     }
 }
 
@@ -147,8 +181,24 @@ impl Display for HttpAddressInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::None => f.write_str("none"),
-            Self::XForwardFor => f.write_str("x-forward-for"),
-            Self::ProxyV2 => f.write_str("proxy-v2"),
+
+            Self::XForwardFor { trusted } => {
+                f.write_str("x-forward-for [ ")?;
+                for ip in trusted {
+                    write!(f, "{} ", ip)?;
+                }
+                f.write_str("]")
+            }
+            Self::XForwardForAllSourcesTrusted => {
+                f.write_str("x-forward-for [ ALL SOURCES TRUSTED ]")
+            }
+            Self::ProxyV2 { trusted } => {
+                f.write_str("proxy-v2 [ ")?;
+                for ip in trusted {
+                    write!(f, "{} ", ip)?;
+                }
+                f.write_str("]")
+            }
         }
     }
 }
@@ -764,7 +814,7 @@ impl ConfigurationBuilder {
         }
 
         if env_config.trust_x_forward_for == Some(true) {
-            self.http_client_address_info = HttpAddressInfo::XForwardFor;
+            self.http_client_address_info = HttpAddressInfo::XForwardForAllSourcesTrusted;
         }
 
         if env_config.tls_key.is_some() {
@@ -886,7 +936,7 @@ impl ConfigurationBuilder {
         }
 
         if config.trust_x_forward_for == Some(true) {
-            self.http_client_address_info = HttpAddressInfo::XForwardFor;
+            self.http_client_address_info = HttpAddressInfo::XForwardForAllSourcesTrusted;
         }
 
         if config.online_backup.is_some() {
