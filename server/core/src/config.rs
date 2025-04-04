@@ -105,12 +105,12 @@ pub enum LdapAddressInfo {
     #[default]
     None,
     #[serde(rename = "proxy-v2")]
-    ProxyV2 { trusted: HashSet<IpAddr> },
+    ProxyV2(HashSet<IpAddr>),
 }
 
 impl LdapAddressInfo {
     pub fn trusted_proxy_v2(&self) -> Option<HashSet<IpAddr>> {
-        if let Self::ProxyV2 { trusted } = self {
+        if let Self::ProxyV2(trusted) = self {
             Some(trusted.clone())
         } else {
             None
@@ -122,7 +122,7 @@ impl Display for LdapAddressInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::None => f.write_str("none"),
-            Self::ProxyV2 { trusted } => {
+            Self::ProxyV2(trusted) => {
                 f.write_str("proxy-v2 [ ")?;
                 for ip in trusted {
                     write!(f, "{} ", ip)?;
@@ -152,24 +152,24 @@ pub enum HttpAddressInfo {
     #[default]
     None,
     #[serde(rename = "x-forward-for")]
-    XForwardFor { trusted: HashSet<IpAddr> },
+    XForwardFor(HashSet<IpAddr>),
     #[serde(rename = "x-forward-for-all-source-trusted")]
     XForwardForAllSourcesTrusted,
     #[serde(rename = "proxy-v2")]
-    ProxyV2 { trusted: HashSet<IpAddr> },
+    ProxyV2(HashSet<IpAddr>),
 }
 
 impl HttpAddressInfo {
     pub(crate) fn trusted_x_forward_for(&self) -> Option<AddressRange> {
         match self {
             Self::XForwardForAllSourcesTrusted => Some(AddressRange::All),
-            Self::XForwardFor { trusted } => Some(AddressRange::Range(trusted.clone())),
+            Self::XForwardFor(trusted) => Some(AddressRange::Range(trusted.clone())),
             _ => None,
         }
     }
 
     pub(crate) fn trusted_proxy_v2(&self) -> Option<HashSet<IpAddr>> {
-        if let Self::ProxyV2 { trusted } = self {
+        if let Self::ProxyV2(trusted) = self {
             Some(trusted.clone())
         } else {
             None
@@ -182,7 +182,7 @@ impl Display for HttpAddressInfo {
         match self {
             Self::None => f.write_str("none"),
 
-            Self::XForwardFor { trusted } => {
+            Self::XForwardFor(trusted) => {
                 f.write_str("x-forward-for [ ")?;
                 for ip in trusted {
                     write!(f, "{} ", ip)?;
@@ -192,7 +192,7 @@ impl Display for HttpAddressInfo {
             Self::XForwardForAllSourcesTrusted => {
                 f.write_str("x-forward-for [ ALL SOURCES TRUSTED ]")
             }
-            Self::ProxyV2 { trusted } => {
+            Self::ProxyV2(trusted) => {
                 f.write_str("proxy-v2 [ ")?;
                 for ip in trusted {
                     write!(f, "{} ", ip)?;
