@@ -25,7 +25,7 @@ service accounts (gMSA).
 
 We have:
 
-* Break glass accounts are service accounts, may not have delegated management.
+* Break glass accounts (`admin`/`idm_admin`) are service accounts, may not have delegated management.
 * OAuth2 is not a service account, supports delegated management.
 * Service accounts can be group or user managed.
 * Applications (To Be Introduced) is an extension of a Service account.
@@ -45,7 +45,10 @@ To achieve this we should introduce the idea of capabilities - capabilities can 
 classes, and we can extend the schema such that only the parent class needs to know that the
 capabilities class is required.
 
-This allows us to nominate more carefully what each role type can or can't do, and keeps things
+This allows us to nominate more carefully what each role type can or can't do. More importantly
+within the server, we don't have to hardcode that "service accounts and applications" can use
+api tokens vs every other capability type. We only need look for the capability on the entry.
+
 
 | Capabilities    | Api Token        | OAuth2 Sessions              | Interactive Login   |
 |-----------------|------------------|------------------------------|---------------------|
@@ -62,7 +65,7 @@ the everything role, it still needs to be focused and administered in it's own r
 |                 | Intent                                                                                                                                                                                    |
 |-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | OAuth2          | An OAuth2 client (external server/service) that is treating Kani as the IDP it trusts to validate user authorisation to it's resources.                                                   |
-| Application     | An LDAP application password context, allowing per-user/per-device/per-application passwords to validated, as well as defining group based authorisation of whom may use this application |
+| Application     | An application password context, allowing per-user/per-device/per-application passwords to validated, as well as defining group based authorisation of whom may use this application |
 | Service Account | An account that belongs to a process or automation that needs to read from or write to Kanidm, or a Kanidm related service.                                                               |
 | Machine Account | A domain joined machine that is reads user posix or login information. May be used to configure machine service accounts in future.                                                       |
 | Break Glass     | An emergency access account used in disaster recovery.                                                                                                                                    |
@@ -87,10 +90,17 @@ to read users PII via LDAP.
 ### Attach roles to service accounts.
 
 In this approach we centre the service account, and allow optional extension of other concerns. This
-would make OAuth2 applications an extension of a service account. Similar Application as well.
+would make OAuth2 applications an extension of a service account. Similar application would become
+an extension of service account.
 
 This would mean that we create a service account first, then need a way to extend it with the
 application or oauth2 types.
+
+This would mean that a service account could potentially be everything - an application password
+provider, an oauth2 client, and more. This would make the administration very difficult and deeply
+nested on the single service account type, and could encourage bad administration practices as
+admins can "shovel in" every possible role to single accounts.
+
 
 PROS:
 
