@@ -69,7 +69,7 @@ pub(crate) struct CommitSaveProfileQuery {
     #[serde(rename = "emails[]")]
     emails: Vec<String>,
     #[serde(rename = "new_primary_mail")]
-    new_primary_mail: Option<String>
+    new_primary_mail: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -123,7 +123,7 @@ pub(crate) async fn view_profile_get(
             &kopid,
             client_auth_info.clone(),
         )
-            .await?;
+        .await?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
 
@@ -163,7 +163,8 @@ pub(crate) async fn view_profile_diff_start_save_post(
         state,
         &kopid,
         client_auth_info.clone(),
-    ).await?;
+    )
+    .await?;
 
     let primary_index = query
         .emails_indexes
@@ -179,10 +180,11 @@ pub(crate) async fn view_profile_diff_start_save_post(
             value: email.to_string(),
         })
         .collect();
-    let old_primary_mail = scim_person.mails.iter()
+    let old_primary_mail = scim_person
+        .mails
+        .iter()
         .find(|sm| sm.primary)
         .map(|sm| sm.value.clone());
-
 
     let profile_view = ProfileChangesPartialView {
         menu_active_item: ProfileMenuItems::UserProfile,
@@ -200,7 +202,8 @@ pub(crate) async fn view_profile_diff_start_save_post(
     Ok((
         HxPushUrl(Uri::from_static("/ui/profile/diff")),
         profile_view,
-    ).into_response())
+    )
+        .into_response())
 }
 
 pub(crate) async fn view_profile_diff_confirm_save_post(
@@ -232,7 +235,6 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
         )
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
-
 
     let mut emails = query.emails;
     if let Some(primary) = query.new_primary_mail {
@@ -286,7 +288,7 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
         VerifiedClientInformation(client_auth_info),
         DomainInfo(domain_info),
     )
-        .await
+    .await
     {
         Ok(_) => Ok(Redirect::to(Urls::Profile.as_ref()).into_response()),
         Err(e) => Ok(e.into_response()),
@@ -351,5 +353,5 @@ pub(crate) async fn view_profile_unlock_get(
         Urls::Profile.as_ref(),
         display_ctx,
     )
-        .await)
+    .await)
 }
