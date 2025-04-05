@@ -14,8 +14,8 @@ repository = { workspace = true }
 [features]
 default = ["unix"]
 unix = []
-selinux = ["dep:selinux"]
-tpm = ["kanidm-hsm-crypto/tpm"]
+selinux = ["dep:selinux", "kanidm_unix_common/selinux"]
+tpm = ["kanidm-hsm-crypto/tpm", "kanidm_unix_common/tpm"]
 
 [[bin]]
 name = "kanidm_unixd"
