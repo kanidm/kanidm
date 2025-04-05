@@ -17,9 +17,8 @@ mod views;
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use crate::config::{Configuration, ServerRole};
+use crate::config::{AddressSet, Configuration, ServerRole};
 use crate::CoreAction;
-
 use axum::{
     body::Body,
     extract::connect_info::IntoMakeServiceWithConnectInfo,
@@ -29,22 +28,28 @@ use axum::{
     routing::*,
     Router,
 };
-
 use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
 use futures::pin_mut;
+use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
+use hashbrown::HashSet;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
+use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
 use openssl::ssl::{Ssl, SslAcceptor};
-
-use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
-
 use serde::de::DeserializeOwned;
 use sketching::*;
 use std::fmt::Write;
+use std::io::ErrorKind;
+use std::net::IpAddr;
+use std::path::PathBuf;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::{net::SocketAddr, str::FromStr};
 use tokio::{
+    io::{AsyncRead, AsyncWrite},
     net::{TcpListener, TcpStream},
     sync::broadcast,
     sync::mpsc,
@@ -56,11 +61,6 @@ use tower_http::{services::ServeDir, trace::TraceLayer};
 use url::Url;
 use uuid::Uuid;
 
-use std::io::ErrorKind;
-use std::path::PathBuf;
-use std::pin::Pin;
-use std::{net::SocketAddr, str::FromStr};
-
 #[derive(Clone)]
 pub struct ServerState {
     pub(crate) status_ref: &'static StatusActor,
@@ -68,7 +68,7 @@ pub struct ServerState {
     pub(crate) qe_r_ref: &'static QueryServerReadV1,
     // Store the token management parts.
     pub(crate) jws_signer: JwsHs256Signer,
-    pub(crate) trust_x_forward_for: bool,
+    pub(crate) trust_x_forward_for_ips: Option<Arc<AddressSet>>,
     pub(crate) csp_header: HeaderValue,
     pub(crate) origin: Url,
     pub(crate) domain: String,
@@ -211,7 +211,15 @@ pub async fn create_https_server(
         error!(?err, "Unable to generate content security policy");
     })?;
 
-    let trust_x_forward_for = config.trust_x_forward_for;
+    let trust_x_forward_for_ips = config
+        .http_client_address_info
+        .trusted_x_forward_for()
+        .map(Arc::new);
+
+    let trusted_proxy_v2_ips = config
+        .http_client_address_info
+        .trusted_proxy_v2()
+        .map(Arc::new);
 
     let origin = Url::parse(&config.origin)
         // Should be impossible!
@@ -224,7 +232,7 @@ pub async fn create_https_server(
         qe_w_ref,
         qe_r_ref,
         jws_signer,
-        trust_x_forward_for,
+        trust_x_forward_for_ips,
         csp_header,
         origin,
         domain: config.domain.clone(),
@@ -321,35 +329,41 @@ pub async fn create_https_server(
 
     info!("Starting the web server...");
 
-    match maybe_tls_acceptor {
-        Some(tls_acceptor) => {
-            let listener = match TcpListener::bind(addr).await {
-                Ok(l) => l,
-                Err(err) => {
-                    error!(?err, "Failed to bind tcp listener");
-                    return Err(());
-                }
-            };
-            Ok(task::spawn(server_loop(
-                tls_acceptor,
-                listener,
-                app,
-                rx,
-                server_message_tx,
-                tls_acceptor_reload_rx,
-            )))
+    let listener = match TcpListener::bind(addr).await {
+        Ok(l) => l,
+        Err(err) => {
+            error!(?err, "Failed to bind tcp listener");
+            return Err(());
         }
-        None => Ok(task::spawn(server_loop_plaintext(addr, app, rx))),
+    };
+
+    match maybe_tls_acceptor {
+        Some(tls_acceptor) => Ok(task::spawn(server_tls_loop(
+            tls_acceptor,
+            listener,
+            app,
+            rx,
+            server_message_tx,
+            tls_acceptor_reload_rx,
+            trusted_proxy_v2_ips,
+        ))),
+        None => Ok(task::spawn(server_plaintext_loop(
+            listener,
+            app,
+            rx,
+            trusted_proxy_v2_ips,
+        ))),
     }
 }
 
-async fn server_loop(
+async fn server_tls_loop(
     mut tls_acceptor: SslAcceptor,
     listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
     mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
+    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
 ) {
     pin_mut!(listener);
 
@@ -365,7 +379,7 @@ async fn server_loop(
                     Ok((stream, addr)) => {
                         let tls_acceptor = tls_acceptor.clone();
                         let app = app.clone();
-                        task::spawn(handle_conn(tls_acceptor, stream, app, addr));
+                        task::spawn(handle_tls_conn(tls_acceptor, stream, app, addr, trusted_proxy_v2_ips.clone()));
                     }
                     Err(err) => {
                         error!("Web server exited with {:?}", err);
@@ -386,24 +400,33 @@ async fn server_loop(
     info!("Stopped {}", super::TaskName::HttpsServer);
 }
 
-async fn server_loop_plaintext(
-    addr: SocketAddr,
+async fn server_plaintext_loop(
+    listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     mut rx: broadcast::Receiver<CoreAction>,
+    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
 ) {
-    let listener = axum_server::bind(addr).serve(app);
-
     pin_mut!(listener);
 
     loop {
         tokio::select! {
             Ok(action) = rx.recv() => {
                 match action {
-                    CoreAction::Shutdown =>
-                        break,
+                    CoreAction::Shutdown => break,
                 }
             }
-            _ = &mut listener => {}
+            accept = listener.accept() => {
+                match accept {
+                    Ok((stream, addr)) => {
+                        let app = app.clone();
+                        task::spawn(handle_conn(stream, app, addr, trusted_proxy_v2_ips.clone()));
+                    }
+                    Err(err) => {
+                        error!("Web server exited with {:?}", err);
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -412,11 +435,38 @@ async fn server_loop_plaintext(
 
 /// This handles an individual connection.
 pub(crate) async fn handle_conn(
+    stream: TcpStream,
+    app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
+    connection_addr: SocketAddr,
+    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+) -> Result<(), std::io::Error> {
+    let (stream, client_addr) =
+        process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
+
+    let client_conn_info = ClientConnInfo {
+        connection_addr,
+        client_addr,
+        client_cert: None,
+    };
+
+    // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+    // `TokioIo` converts between them.
+    let stream = TokioIo::new(stream);
+
+    process_client_hyper(stream, app, client_conn_info).await
+}
+
+/// This handles an individual connection.
+pub(crate) async fn handle_tls_conn(
     acceptor: SslAcceptor,
     stream: TcpStream,
-    mut app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
-    addr: SocketAddr,
+    app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
+    connection_addr: SocketAddr,
+    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
 ) -> Result<(), std::io::Error> {
+    let (stream, client_addr) =
+        process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
+
     let ssl = Ssl::new(acceptor.context()).map_err(|e| {
         error!("Failed to create TLS context: {:?}", e);
         std::io::Error::from(ErrorKind::ConnectionAborted)
@@ -459,46 +509,101 @@ pub(crate) async fn handle_conn(
                 None
             };
 
-            let client_conn_info = ClientConnInfo { addr, client_cert };
-
-            debug!(?client_conn_info);
-
-            let svc = axum_server::service::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
-                &mut app,
-                client_conn_info,
-            );
-
-            let svc = svc.await.map_err(|e| {
-                error!("Failed to build HTTP response: {:?}", e);
-                std::io::Error::from(ErrorKind::Other)
-            })?;
+            let client_conn_info = ClientConnInfo {
+                connection_addr,
+                client_addr,
+                client_cert,
+            };
 
             // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
             // `TokioIo` converts between them.
             let stream = TokioIo::new(tls_stream);
 
-            // Hyper also has its own `Service` trait and doesn't use tower. We can use
-            // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
-            // `tower::Service::call`.
-            let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {
-                // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
-                // tower's `Service` requires `&mut self`.
-                //
-                // We don't need to call `poll_ready` since `Router` is always ready.
-                svc.clone().call(request)
-            });
-
-            hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
-                .serve_connection_with_upgrades(stream, hyper_service)
-                .await
-                .map_err(|e| {
-                    debug!("Failed to complete connection: {:?}", e);
-                    std::io::Error::from(ErrorKind::ConnectionAborted)
-                })
+            process_client_hyper(stream, app, client_conn_info).await
         }
         Err(error) => {
             trace!("Failed to handle connection: {:?}", error);
             Ok(())
         }
     }
+}
+
+async fn process_client_addr(
+    stream: TcpStream,
+    connection_addr: SocketAddr,
+    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+) -> Result<(TcpStream, SocketAddr), std::io::Error> {
+    let enable_proxy_v2_hdr = trusted_proxy_v2_ips
+        .map(|trusted| trusted.contains(&connection_addr.ip()))
+        .unwrap_or_default();
+
+    let (stream, client_addr) = if enable_proxy_v2_hdr {
+        match ProxyHdrV2::parse_from_read(stream).await {
+            Ok((stream, hdr)) => {
+                let remote_socket_addr = match hdr.to_remote_addr() {
+                    RemoteAddress::Local => {
+                        debug!("PROXY protocol liveness check - will not contain client data");
+                        return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+                    }
+                    RemoteAddress::TcpV4 { src, dst: _ } => SocketAddr::from(src),
+                    RemoteAddress::TcpV6 { src, dst: _ } => SocketAddr::from(src),
+                    remote_addr => {
+                        error!(?remote_addr, "remote address in proxy header is invalid");
+                        return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+                    }
+                };
+
+                (stream, remote_socket_addr)
+            }
+            Err(err) => {
+                error!(?connection_addr, ?err, "Unable to process proxy v2 header");
+                return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+            }
+        }
+    } else {
+        (stream, connection_addr)
+    };
+
+    Ok((stream, client_addr))
+}
+
+async fn process_client_hyper<T>(
+    stream: TokioIo<T>,
+    mut app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
+    client_conn_info: ClientConnInfo,
+) -> Result<(), std::io::Error>
+where
+    T: AsyncRead + AsyncWrite + std::marker::Unpin + std::marker::Send + 'static,
+{
+    debug!(?client_conn_info);
+
+    let svc =
+        axum_server::service::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
+            &mut app,
+            client_conn_info,
+        );
+
+    let svc = svc.await.map_err(|e| {
+        error!("Failed to build HTTP response: {:?}", e);
+        std::io::Error::from(ErrorKind::Other)
+    })?;
+
+    // Hyper also has its own `Service` trait and doesn't use tower. We can use
+    // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+    // `tower::Service::call`.
+    let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {
+        // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+        // tower's `Service` requires `&mut self`.
+        //
+        // We don't need to call `poll_ready` since `Router` is always ready.
+        svc.clone().call(request)
+    });
+
+    hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+        .serve_connection_with_upgrades(stream, hyper_service)
+        .await
+        .map_err(|e| {
+            debug!("Failed to complete connection: {:?}", e);
+            std::io::Error::from(ErrorKind::ConnectionAborted)
+        })
 }

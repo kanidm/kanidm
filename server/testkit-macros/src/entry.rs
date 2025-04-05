@@ -10,16 +10,17 @@ const ALLOWED_ATTRIBUTES: &[&str] = &[
     "threads",
     "db_path",
     "maximum_request",
-    "trust_x_forward_for",
+    "http_client_address_info",
     "role",
     "output_mode",
     "log_level",
     "ldap",
+    "with_test_env",
 ];
 
 #[derive(Default)]
 struct Flags {
-    ldap: bool,
+    target_wants_test_env: bool,
 }
 
 fn parse_attributes(
@@ -60,8 +61,11 @@ fn parse_attributes(
             .unwrap_or_default()
             .as_str()
         {
+            "with_test_env" => {
+                flags.target_wants_test_env = true;
+            }
             "ldap" => {
-                flags.ldap = true;
+                flags.target_wants_test_env = true;
                 field_modifications.extend(quote! {
                 ldapbindaddress: Some("on".to_string()),})
             }
@@ -134,7 +138,7 @@ pub(crate) fn test(args: TokenStream, item: TokenStream) -> TokenStream {
         #[::core::prelude::v1::test]
     };
 
-    let test_fn_args = if flags.ldap {
+    let test_fn_args = if flags.target_wants_test_env {
         quote! {
             &test_env
         }
