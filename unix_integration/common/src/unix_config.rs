@@ -1,3 +1,12 @@
+//! This is configuration definitions and parser for the various unix integration
+//! tools and services. This needs to support a number of use cases like pam/nss
+//! modules parsing the config quickly and the unix daemon which has to connect to
+//! various backend sources.
+//!
+//! To achieve this the configuration has two main sections - the configuration
+//! specification which will be parsed by the tools, then the configuration as
+//! relevant to that tool.
+
 use std::env;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
@@ -51,6 +60,25 @@ impl Display for UidAttr {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub enum HsmType {
+    #[cfg_attr(not(feature = "tpm"), default)]
+    Soft,
+    #[cfg_attr(feature = "tpm", default)]
+    TpmIfPossible,
+    Tpm,
+}
+
+impl Display for HsmType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HsmType::Soft => write!(f, "Soft"),
+            HsmType::TpmIfPossible => write!(f, "Tpm if possible"),
+            HsmType::Tpm => write!(f, "Tpm"),
+        }
+    }
+}
+
 // Allowed as the large enum is only short lived at startup to the true config
 #[allow(clippy::large_enum_variant)]
 // This bit of magic lets us deserialise the old config and the new versions.
@@ -73,6 +101,7 @@ enum ConfigVersion {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
+/// This is the version 2 of the JSON configuration specification for the unixd suite.
 struct ConfigV2 {
     cache_db_path: Option<String>,
     sock_path: Option<String>,
@@ -113,6 +142,7 @@ struct KanidmConfigV2 {
 }
 
 #[derive(Debug, Deserialize)]
+/// This is the version 1 of the JSON configuration specification for the unixd suite.
 struct ConfigInt {
     db_path: Option<String>,
     sock_path: Option<String>,
@@ -137,33 +167,28 @@ struct ConfigInt {
     hsm_type: Option<String>,
     tpm_tcti_name: Option<String>,
 
-    // Detect and warn on values in these places.
+    // Detect and warn on values in these places - this is to catch
+    // when someone is using a v2 value on a v1 config.
     #[serde(default)]
     cache_db_path: Option<toml::value::Value>,
     #[serde(default)]
     kanidm: Option<toml::value::Value>,
 }
 
-#[derive(Debug, Clone, Default)]
-pub enum HsmType {
-    #[cfg_attr(not(feature = "tpm"), default)]
-    Soft,
-    #[cfg_attr(feature = "tpm", default)]
-    TpmIfPossible,
-    Tpm,
-}
+// ========================================================================
 
-impl Display for HsmType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            HsmType::Soft => write!(f, "Soft"),
-            HsmType::TpmIfPossible => write!(f, "Tpm if possible"),
-            HsmType::Tpm => write!(f, "Tpm"),
-        }
-    }
+#[derive(Debug)]
+/// This is the parsed Kanidm provider configuration that the Unixd resolver
+/// will use to connect to Kanidm.
+pub struct KanidmConfig {
+    pub conn_timeout: u64,
+    pub request_timeout: u64,
+    pub pam_allowed_login_groups: Vec<String>,
+    pub map_group: Vec<GroupMap>,
 }
 
 #[derive(Debug)]
+/// This is the parsed configuration for the Unixd resolver.
 pub struct UnixdConfig {
     pub cache_db_path: String,
     pub sock_path: String,
@@ -182,16 +207,7 @@ pub struct UnixdConfig {
     pub hsm_type: HsmType,
     pub hsm_pin_path: String,
     pub tpm_tcti_name: String,
-
     pub kanidm_config: Option<KanidmConfig>,
-}
-
-#[derive(Debug)]
-pub struct KanidmConfig {
-    pub conn_timeout: u64,
-    pub request_timeout: u64,
-    pub pam_allowed_login_groups: Vec<String>,
-    pub map_group: Vec<GroupMap>,
 }
 
 impl Default for UnixdConfig {
@@ -540,6 +556,8 @@ impl UnixdConfig {
 }
 
 #[derive(Debug)]
+/// This is the parsed configuration that will be used by pam/nss tools that need fast access to
+/// only the socket and timeout information related to the resolver.
 pub struct KanidmUnixdConfig {
     pub sock_path: String,
     // pub conn_timeout: u64,
