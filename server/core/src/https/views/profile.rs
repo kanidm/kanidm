@@ -10,7 +10,7 @@ use askama::Template;
 use askama_axum::IntoResponse;
 use axum::extract::{Query, State};
 use axum::http::Uri;
-use axum::response::Response;
+use axum::response::{Redirect, Response};
 use axum::Extension;
 use axum_extra::extract::cookie::CookieJar;
 use axum_extra::extract::Form;
@@ -61,6 +61,18 @@ pub(crate) struct SaveProfileQuery {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct CommitSaveProfileQuery {
+    #[serde(rename = "account_name")]
+    account_name: String,
+    #[serde(rename = "display_name")]
+    display_name: String,
+    #[serde(rename = "emails[]")]
+    emails: Vec<String>,
+    #[serde(rename = "new_primary_mail")]
+    new_primary_mail: Option<String>
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct ProfileAttributes {
     account_name: String,
     display_name: String,
@@ -73,7 +85,9 @@ struct ProfileChangesPartialView {
     menu_active_item: ProfileMenuItems,
     can_rw: bool,
     person: ScimPerson,
+    primary_mail: Option<String>,
     new_attrs: ProfileAttributes,
+    new_primary_mail: Option<String>,
 }
 
 #[derive(Template, Clone)]
@@ -109,7 +123,7 @@ pub(crate) async fn view_profile_get(
             &kopid,
             client_auth_info.clone(),
         )
-        .await?;
+            .await?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
 
@@ -149,8 +163,7 @@ pub(crate) async fn view_profile_diff_start_save_post(
         state,
         &kopid,
         client_auth_info.clone(),
-    )
-    .await?;
+    ).await?;
 
     let primary_index = query
         .emails_indexes
@@ -166,23 +179,28 @@ pub(crate) async fn view_profile_diff_start_save_post(
             value: email.to_string(),
         })
         .collect();
+    let old_primary_mail = scim_person.mails.iter()
+        .find(|sm| sm.primary)
+        .map(|sm| sm.value.clone());
+
 
     let profile_view = ProfileChangesPartialView {
         menu_active_item: ProfileMenuItems::UserProfile,
         can_rw,
         person: scim_person,
+        primary_mail: old_primary_mail,
         new_attrs: ProfileAttributes {
             account_name: query.account_name,
             display_name: query.display_name,
             emails: new_mails,
         },
+        new_primary_mail: query.emails.get(primary_index).cloned(),
     };
 
     Ok((
         HxPushUrl(Uri::from_static("/ui/profile/diff")),
         profile_view,
-    )
-        .into_response())
+    ).into_response())
 }
 
 pub(crate) async fn view_profile_diff_confirm_save_post(
@@ -191,14 +209,14 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     // Form must be the last parameter because it consumes the request body
-    Form(mut new_attrs): Form<ProfileAttributes>,
+    Form(query): Form<CommitSaveProfileQuery>,
 ) -> axum::response::Result<Response> {
     let uat: UserAuthToken = state
         .qe_r_ref
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
-    dbg!(&new_attrs);
+    dbg!(&query);
 
     let filter = filter_all!(f_and!([f_id(uat.uuid.to_string().as_str())]));
 
@@ -208,24 +226,26 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
             client_auth_info.clone(),
             uat.uuid.to_string(),
             ATTR_DISPLAYNAME.to_string(),
-            vec![new_attrs.display_name],
+            vec![query.display_name],
             filter.clone(),
             kopid.eventid,
         )
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
-    new_attrs
-        .emails
-        .sort_by_key(|sm| if sm.primary { 0 } else { 1 });
-    let email_addresses = new_attrs.emails.into_iter().map(|sm| sm.value).collect();
+
+    let mut emails = query.emails;
+    if let Some(primary) = query.new_primary_mail {
+        emails.insert(0, primary);
+    }
+
     state
         .qe_w_ref
         .handle_setattribute(
             client_auth_info.clone(),
             uat.uuid.to_string(),
             ATTR_MAIL.to_string(),
-            email_addresses,
+            emails,
             filter.clone(),
             kopid.eventid,
         )
@@ -266,9 +286,9 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
         VerifiedClientInformation(client_auth_info),
         DomainInfo(domain_info),
     )
-    .await
+        .await
     {
-        Ok(pv) => Ok(pv.into_response()),
+        Ok(_) => Ok(Redirect::to(Urls::Profile.as_ref()).into_response()),
         Err(e) => Ok(e.into_response()),
     }
 }
@@ -331,5 +351,5 @@ pub(crate) async fn view_profile_unlock_get(
         Urls::Profile.as_ref(),
         display_ctx,
     )
-    .await)
+        .await)
 }
