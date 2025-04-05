@@ -6,9 +6,9 @@ function rehook_string_list_removers() {
         if (button.getAttribute("kanidm_hooked") !== null) continue
 
         button.addEventListener("click", (e) => {
-            // Expected html nesting: li > div.input-group > button.kanidm-remove-list-entry
+            // Expected html nesting: div.email-entry > div.input-group > button.kanidm-remove-list-entry
             let li = button.parentElement?.parentElement;
-            if (li && li.tagName === "LI") {
+            if (li && li.classList.contains("email-entry")) {
                 li.remove();
             }
         })

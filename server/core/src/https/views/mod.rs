@@ -132,7 +132,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/api/cu_commit", post(reset::commit))
         .route(
             "/api/user_settings/add_email",
-            post(profile::view_new_email_entry_partial),
+            get(profile::view_new_email_entry_partial),
         )
         .route(
             "/api/user_settings/edit_profile",

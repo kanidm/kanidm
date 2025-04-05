@@ -13,7 +13,7 @@ Profile Difference
     <input type="hidden" name="display_name" value="(( new_attrs.display_name ))"/>
 <!--    <input type="hidden" name="legal_name" value=" new_attrs.legal_name "/>-->
     (% for email in new_attrs.emails %)
-        <input type="hidden" name="emails[]" value="(( email ))"/>
+        <input type="hidden" name="emails[]" value="(( email.value ))"/>
     (% endfor %)
 
     <table class="table table-bordered table-responsive">
@@ -54,7 +54,7 @@ Profile Difference
             <td class="text-break">
                 <ul>
                 (% for email in new_attrs.emails %)
-                    <li>(( email ))</li>
+                    <li>(( email.value ))</li>
                 (% endfor %)
                 </ul>
             </td>

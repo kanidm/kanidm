@@ -21,17 +21,26 @@ Profile
 
 (% block settings_window %)
 
-<form id="user_settings_container" class="needs-validation" hx-post="/ui/api/user_settings/edit_profile"
-      hx-target="#user_settings_container" hx-swap="outerHTML" hx-validate="true" hx-ext="bs-validation" novalidate>
+<form id="user_settings_container" class="needs-validation"
+      hx-post="/ui/api/user_settings/edit_profile"
+      hx-target="#user_settings_container"
+      hx-swap="outerHTML"
+      hx-validate="true"
+      hx-ext="bs-validation"
+      novalidate>
     (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)
 
     (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)
 
     <div class="mb-2">
         <div class="mt-3 mb-2 col-12 col-md-11 col-lg-8">
-            <label for="profileEmail" class="fw-bold">Email addresses (select primary)</label>
+            <label for="profileEmail" class="fw-bold">Email addresses (% if can_rw %)(selected => primary)(% else %)(select primary)(% endif %)</label>
             (% if can_rw %)
-            <a class="cursor-pointer float-end" hx-boost="true" hx-post="/ui/api/user_settings/add_email" hx-target="#emailAddresses"
+            <a class="cursor-pointer float-end"
+               hx-boost="true"
+               hx-get="/ui/api/user_settings/add_email"
+               hx-target="#emailAddresses"
+               hx-include="#emailAddresses :last-child .email-index-state"
                hx-swap="beforeend">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square"
                      viewBox="0 0 16 16" width="20" height="20">
@@ -39,29 +48,17 @@ Profile
                     <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"></path>
                 </svg>
             </a>
+            (% endif %)
         </div>
-        (% endif %)
         <div>
             <div class="row g-0">
                 <div class="col-12 col-md-11 col-lg-8" id="emailAddresses">
-                    (% for (i, email) in person.mails.iter().enumerate() %)
-                    (% let type = "email" %)
-                    (% let name = "emails[]" %)
+                    (% for (index, email) in person.mails.iter().enumerate() %)
                     (% let value = email.value.clone() %)
-                    (% let invalid_feedback = "Please enter a valid email address." %)
+                    (% let primary = email.primary %)
+                    (% let can_edit = scim_effective_access.modify_present.check(Attribute::Mail|as_ref) %)
 
-                        <div class="input-group mb-1">
-                            <div class="input-group-text">
-                                <input class="form-check-input mt-0" name="primary_email_index" type="radio" value="((i))" aria-label="Primary email radio button for following text input">
-                            </div>
-
-                            <input type="(( type ))" class="form-control" name="(( name ))" value="(( value ))" hx-validate="true" required>
-                            (% if can_rw %)
-                            <button type="button" class="btn btn-secondary kanidm-remove-list-entry">Remove</button>
-                            (% endif %)
-
-                        </div>
-                        <div class="invalid-feedback">(( invalid_feedback ))</div>
+                    (% include "user_settings/form_email_entry_partial.html" %)
 
                     (% endfor %)
                 </div>

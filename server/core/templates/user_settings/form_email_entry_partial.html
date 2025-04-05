@@ -1,0 +1,17 @@
+<div class="email-entry">
+    <input hidden class="email-index-state" type="text" name="email_index" value="((index))">
+    <div class="input-group mb-1">
+
+        <div class="input-group-text">
+            <input class="form-check-input mt-0" name="primary_email_index" type="radio" value="((index))" aria-label="Primary email radio button for following text input" (% if primary %) checked (% endif %)(% if !can_edit %) disabled (% endif %)>
+        </div>
+
+        (% if can_edit %)
+        <input type="email" aria-label="Email address input ((index))" class="form-control" name="emails[]" value="(( value ))" hx-validate="true" required>
+        <button type="button" class="btn btn-secondary kanidm-remove-list-entry">Remove</button>
+        (% else %)
+        <input type="email" aria-label="Email address input ((index))" class="form-control" name="emails[]" value="(( value ))" hx-validate="true" required disabled>
+        (% endif %)
+    </div>
+    <div class="invalid-feedback">Please enter a valid email address.</div>
+</div>
