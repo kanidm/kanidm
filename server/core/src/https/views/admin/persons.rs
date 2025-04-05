@@ -1,3 +1,4 @@
+use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
@@ -7,17 +8,15 @@ use crate::https::ServerState;
 use askama::Template;
 use axum::extract::{Path, State};
 use axum::http::Uri;
-use axum::response::{ErrorResponse, IntoResponse, Response};
+use axum::response::{IntoResponse, Response};
 use axum::Extension;
 use axum_htmx::{HxPushUrl, HxRequest};
-use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::internal::OperationError;
 use kanidm_proto::scim_v1::client::ScimFilter;
 use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimEntryKanidm, ScimPerson};
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidmd_lib::constants::EntryClass;
-use kanidmd_lib::idm::server::DomainInfoRead;
 use kanidmd_lib::idm::ClientAuthInfo;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -70,7 +69,7 @@ pub(crate) async fn view_person_view_get(
     DomainInfo(domain_info): DomainInfo,
 ) -> axum::response::Result<Response> {
     let (person, scim_effective_access) =
-        get_person_info(uuid, state, &kopid, client_auth_info, domain_info.clone()).await?;
+        get_person_info(uuid, state, &kopid, client_auth_info).await?;
     let person_partial = PersonViewPartial {
         person,
         scim_effective_access,
@@ -101,7 +100,7 @@ pub(crate) async fn view_persons_get(
     DomainInfo(domain_info): DomainInfo,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> axum::response::Result<Response> {
-    let persons = get_persons_info(state, &kopid, client_auth_info, domain_info.clone()).await?;
+    let persons = get_persons_info(state, &kopid, client_auth_info).await?;
     let persons_partial = PersonsPartialView { persons };
 
     let push_url = HxPushUrl(Uri::from_static("/ui/admin/persons"));
@@ -119,13 +118,12 @@ pub(crate) async fn view_persons_get(
     })
 }
 
-async fn get_person_info(
+pub async fn get_person_info(
     uuid: Uuid,
     state: ServerState,
     kopid: &KOpId,
     client_auth_info: ClientAuthInfo,
-    domain_info: DomainInfoRead,
-) -> Result<(ScimPerson, ScimEffectiveAccess), ErrorResponse> {
+) -> Result<(ScimPerson, ScimEffectiveAccess), WebError> {
     let scim_entry: ScimEntryKanidm = state
         .qe_r_ref
         .scim_entry_id_get(
@@ -138,13 +136,12 @@ async fn get_person_info(
                 ext_access_check: true,
             },
         )
-        .map_err(|op_err| HtmxError::new(kopid, op_err, domain_info.clone()))
         .await?;
 
     if let Some(personinfo_info) = scimentry_into_personinfo(scim_entry) {
         Ok(personinfo_info)
     } else {
-        Err(HtmxError::new(kopid, OperationError::InvalidState, domain_info.clone()).into())
+        Err(WebError::from(OperationError::InvalidState))
     }
 }
 
@@ -152,8 +149,7 @@ async fn get_persons_info(
     state: ServerState,
     kopid: &KOpId,
     client_auth_info: ClientAuthInfo,
-    domain_info: DomainInfoRead,
-) -> Result<Vec<(ScimPerson, ScimEffectiveAccess)>, ErrorResponse> {
+) -> Result<Vec<(ScimPerson, ScimEffectiveAccess)>, WebError> {
     let filter = ScimFilter::Equal(Attribute::Class.into(), EntryClass::Person.into());
 
     let base: Vec<ScimEntryKanidm> = state
@@ -167,7 +163,6 @@ async fn get_persons_info(
                 ext_access_check: true,
             },
         )
-        .map_err(|op_err| HtmxError::new(kopid, op_err, domain_info.clone()))
         .await?;
 
     // TODO: inefficient to sort here

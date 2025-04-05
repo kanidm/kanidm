@@ -11,7 +11,7 @@ Profile Difference
 <form>
     <input type="hidden" name="account_name" value="(( new_attrs.account_name ))"/>
     <input type="hidden" name="display_name" value="(( new_attrs.display_name ))"/>
-    <input type="hidden" name="legal_name" value="(( new_attrs.legal_name ))"/>
+<!--    <input type="hidden" name="legal_name" value=" new_attrs.legal_name "/>-->
     (% for email in new_attrs.emails %)
         <input type="hidden" name="emails[]" value="(( email ))"/>
     (% endfor %)
@@ -24,39 +24,30 @@ Profile Difference
                 <th scope="col">New value</th>
             </tr>
         </thead>
-    (% if attrs.account_name != new_attrs.account_name %)
+    (% if person.name != new_attrs.account_name %)
         <tr>
-            <th scope="row">User name</th>
-            <td class="text-break">(( attrs.account_name ))</td>
+            <th scope="row">Username</th>
+            <td class="text-break">(( person.name ))</td>
             <td class="text-break">(( new_attrs.account_name ))</td>
         </tr>
     (% endif %)
 
-    (% if attrs.display_name != new_attrs.display_name %)
+    (% if person.displayname != new_attrs.display_name %)
         <tr>
             <th scope="row">Display name</th>
-            <td class="text-break">(( attrs.display_name ))</td>
+            <td class="text-break">(( person.displayname ))</td>
             <td class="text-break">(( new_attrs.display_name ))</td>
         </tr>
     (% endif %)
 
-    (% if attrs.legal_name != new_attrs.legal_name %)
-        <tr>
-            <th scope="row">Legal name</th>
-            <td class="text-break">(( attrs.legal_name ))</td>
-            <td class="text-break">(( new_attrs.legal_name ))</td>
-        </tr>
-    (% endif %)
-
-    (% if attrs.emails != new_attrs.emails %)
 
         <!-- TODO: List new items with +, same items with . -->
         <tr>
             <th scope="row">Emails</th>
             <td class="text-break">
                 <ul>
-                (% for email in attrs.emails %)
-                    <li>(( email ))</li>
+                (% for email in person.mails %)
+                    <li>(( email.value ))</li>
                 (% endfor %)
                 </ul>
             </td>
@@ -68,7 +59,6 @@ Profile Difference
                 </ul>
             </td>
         </tr>
-    (% endif %)
     </table>
     <!-- Edit button -->
     <div class="pt-4" hx-target="#user_settings_container" hx-swap="outerHTML">

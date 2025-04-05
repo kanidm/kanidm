@@ -201,3 +201,7 @@ nav a.navbar-brand {
   height: var(--icon-size);
   transform: rotate(35deg);
 }
+
+.cursor-pointer:hover {
+  cursor: pointer;
+}

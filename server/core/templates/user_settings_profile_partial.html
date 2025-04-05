@@ -4,56 +4,79 @@
 Profile
 (% endblock %)
 
+(% macro string_attr(dispname, name, value, editable, attribute) %)
+(% if scim_effective_access.search.check(attribute|as_ref) %)
+<div class="row g-0 mt-3">
+    <label for="person(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
+    <div class="col-12 col-md-8 col-lg-6">
+        (% if scim_effective_access.modify_present.check(attribute|as_ref) %)
+        <input class="form-control py-0" id="person(( name ))" name="(( name ))" value="(( value ))">
+        (% else %)
+        <input readonly class="form-control-plaintext py-0" id="person(( name ))" name="(( name ))" value="(( value ))">
+        (% endif %)
+    </div>
+</div>
+(% endif %)
+(% endmacro %)
+
 (% block settings_window %)
 
-<form class="needs-validation" hx-post="/ui/api/user_settings/edit_profile" hx-target="#user_settings_container" hx-swap="outerHTML" hx-validate="true" hx-ext="bs-validation" novalidate>
-    <div class="mb-2 row">
-        <label for="profileUserName" class="col-12 col-md-3 col-lg-2 col-form-label">User name</label>
-        <div class="col-12 col-md-6 col-lg-5">
-            <input type="text" readonly class="form-control-plaintext" id="profileUserName" value="(( attrs.account_name ))">
-        </div>
-    </div>
-    
-    <div class="mb-2 row">
-        <label for="profileDisplayName" class="col-12 col-md-3 col-lg-2 col-form-label">Display name</label>
-        <div class="col-12 col-md-6 col-lg-5">
-            <input type="text" class="form-control-plaintext" id="profileDisplayName" value="(( attrs.display_name ))">
-        </div>
-    </div>
+<form id="user_settings_container" class="needs-validation" hx-post="/ui/api/user_settings/edit_profile"
+      hx-target="#user_settings_container" hx-swap="outerHTML" hx-validate="true" hx-ext="bs-validation" novalidate>
+    (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)
 
-    <div class="mb-2 row">
-        <label for="profileLegalName" class="col-12 col-md-3 col-lg-2 col-form-label">Legal name</label>
-        <div class="col-12 col-md-6 col-lg-5">
-            <input type="text" class="form-control-plaintext" id="profileLegalName" value="(( attrs.legal_name ))">
-        </div>
-    </div>
+    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)
 
     <div class="mb-2">
-        <label for="profileEmail" class="mb-2">Emails</label>
+        <div class="mt-3 mb-2 col-12 col-md-11 col-lg-8">
+            <label for="profileEmail" class="fw-bold">Email addresses (select primary)</label>
+            (% if can_rw %)
+            <a class="cursor-pointer float-end" hx-boost="true" hx-post="/ui/api/user_settings/add_email" hx-target="#emailAddresses"
+               hx-swap="beforeend">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square"
+                     viewBox="0 0 16 16" width="20" height="20">
+                    <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"></path>
+                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"></path>
+                </svg>
+            </a>
+        </div>
+        (% endif %)
         <div>
-            <div class="row">
-                <ul class="col-12 col-md-11 col-lg-8" id="emailList">
-                    (% for email in attrs.emails %)
-                        (% let type = "email" %)
-                        (% let name = "emails[]" %)
-                        (% let value = email %)
-                        (% let invalid_feedback = "Please enter a valid email address." %)
-                        (% include "user_settings/form_modifiable_entry_modifiable_list_partial.html" %)
+            <div class="row g-0">
+                <div class="col-12 col-md-11 col-lg-8" id="emailAddresses">
+                    (% for (i, email) in person.mails.iter().enumerate() %)
+                    (% let type = "email" %)
+                    (% let name = "emails[]" %)
+                    (% let value = email.value.clone() %)
+                    (% let invalid_feedback = "Please enter a valid email address." %)
+
+                        <div class="input-group mb-1">
+                            <div class="input-group-text">
+                                <input class="form-check-input mt-0" name="primary_email_index" type="radio" value="((i))" aria-label="Primary email radio button for following text input">
+                            </div>
+
+                            <input type="(( type ))" class="form-control" name="(( name ))" value="(( value ))" hx-validate="true" required>
+                            (% if can_rw %)
+                            <button type="button" class="btn btn-secondary kanidm-remove-list-entry">Remove</button>
+                            (% endif %)
+
+                        </div>
+                        <div class="invalid-feedback">(( invalid_feedback ))</div>
+
                     (% endfor %)
-                </ul>
+                </div>
             </div>
-            (% if can_rw %)<button type="button" class="btn btn-primary" hx-post="/ui/api/user_settings/add_email" hx-target="#emailList" hx-swap="beforeend">Add Email</button>(% endif %)
         </div>
     </div>
 
     <!-- Edit button -->
     <div class="pt-4">
         (% if can_rw %)
-            <button class="btn btn-primary" type="submit">Edit</button>
+        <button class="btn btn-primary" type="submit">Save</button>
         (% else %)
-            <a href="/ui/profile/unlock" hx-boost="false">
-                <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
-            </a>
+        <a href="/ui/profile/unlock" hx-boost="false">
+            <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
+        </a>
         (% endif %)
     </div>
 </form>

@@ -1,3 +1,4 @@
+use kanidm_proto::attribute::Attribute;
 use super::constants::{ProfileMenuItems, Urls};
 use super::errors::HtmxError;
 use super::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
@@ -16,13 +17,11 @@ use axum_extra::extract::cookie::CookieJar;
 use axum_extra::extract::Form;
 use axum_htmx::{HxEvent, HxPushUrl, HxResponseTrigger};
 use futures_util::TryFutureExt;
-use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_LEGALNAME, ATTR_MAIL};
+use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_MAIL};
 use kanidm_proto::internal::UserAuthToken;
-use kanidm_proto::v1::Entry;
-use kanidmd_lib::filter::{f_eq, f_id, Filter};
+use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimPerson};
+use kanidmd_lib::filter::{f_id, Filter};
 use kanidmd_lib::prelude::f_and;
-use kanidmd_lib::prelude::PartialValue;
 use kanidmd_lib::prelude::FC;
 use serde::Deserialize;
 use serde::Serialize;
@@ -42,17 +41,20 @@ pub(crate) struct ProfileView {
 struct ProfilePartialView {
     menu_active_item: ProfileMenuItems,
     can_rw: bool,
-    attrs: ProfileAttributes
+    person: ScimPerson,
+    scim_effective_access: ScimEffectiveAccess,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct ProfileAttributes {
+    #[serde(rename = "name")]
     account_name: String,
+    #[serde(rename = "displayname")]
     display_name: String,
-    legal_name: String,
     #[serde(rename = "emails[]")]
     emails: Vec<String>,
-    primary_email: Option<String>,
+    // radio buttons are used to pick a primary index
+    primary_email_index: u16,
 }
 
 #[derive(Template, Clone)]
@@ -60,7 +62,7 @@ pub(crate) struct ProfileAttributes {
 struct ProfileChangesPartialView {
     menu_active_item: ProfileMenuItems,
     can_rw: bool,
-    attrs: ProfileAttributes,
+    person: ScimPerson,
     new_attrs: ProfileAttributes,
 }
 
@@ -92,19 +94,12 @@ pub(crate) async fn view_profile_get(
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
         .await?;
 
-    let filter = filter_all!(f_and!([f_eq(
-        Attribute::Uuid,
-        PartialValue::Uuid(uat.uuid)
-    )]));
-    let base: Vec<Entry> = state
-        .qe_r_ref
-        .handle_internalsearch(client_auth_info.clone(), filter, None, kopid.eventid)
-        .await?;
+    let (scim_person, scim_effective_access) = crate::https::views::admin::persons::get_person_info(
+        uat.uuid,
+        state,
+        &kopid,
+        client_auth_info.clone()).await?;
 
-    let self_entry = base.first().expect("Self no longer exists");
-    let empty = vec![];
-    let emails = self_entry.attrs.get(ATTR_MAIL).unwrap_or(&empty).clone();
-    let primary_email = emails.first().cloned();
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
 
@@ -116,13 +111,8 @@ pub(crate) async fn view_profile_get(
         profile_partial: ProfilePartialView {
             menu_active_item: ProfileMenuItems::UserProfile,
             can_rw,
-            attrs: ProfileAttributes {
-                account_name: uat.name().to_string(),
-                display_name: uat.displayname.clone(),
-                legal_name: "hardcoded".to_string(),
-                emails,
-                primary_email,
-            },
+            person: scim_person,
+            scim_effective_access
         },
     })
 }
@@ -143,32 +133,17 @@ pub(crate) async fn view_profile_diff_start_save_post(
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
     let can_rw = uat.purpose_readwrite_active(time);
-
-    let filter = filter_all!(f_and!([f_eq(
-        Attribute::Uuid,
-        PartialValue::Uuid(uat.uuid)
-    )]));
-    let base: Vec<Entry> = state
-        .qe_r_ref
-        .handle_internalsearch(client_auth_info.clone(), filter, None, kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info))
-        .await?;
-
-    let self_entry = base.first().expect("Self no longer exists");
-    let empty = vec![];
-    let emails = self_entry.attrs.get(ATTR_MAIL).unwrap_or(&empty).clone();
-    let primary_email = emails.first().cloned();
+    // TODO: A bit overkill to request scimEffectiveAccess here.
+    let (scim_person, _) = crate::https::views::admin::persons::get_person_info(
+        uat.uuid,
+        state,
+        &kopid,
+        client_auth_info.clone()).await?;
 
     let profile_view = ProfileChangesPartialView {
         menu_active_item: ProfileMenuItems::UserProfile,
         can_rw,
-        attrs: ProfileAttributes {
-            account_name: uat.name().to_string(),
-            display_name: uat.displayname.clone(),
-            legal_name: "hardcoded".to_string(),
-            emails,
-            primary_email,
-        },
+        person: scim_person,
         new_attrs
     };
 
@@ -195,19 +170,6 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
     dbg!(&new_attrs);
 
     let filter = filter_all!(f_and!([f_id(uat.uuid.to_string().as_str())]));
-
-    state
-        .qe_w_ref
-        .handle_setattribute(
-            client_auth_info.clone(),
-            uat.uuid.to_string(),
-            ATTR_LEGALNAME.to_string(),
-            vec![new_attrs.legal_name],
-            filter.clone(),
-            kopid.eventid,
-        )
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-        .await?;
 
     state
         .qe_w_ref
@@ -280,10 +242,10 @@ pub(crate) async fn view_new_email_entry_partial(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     Extension(_kopid): Extension<KOpId>,
 ) -> axum::response::Result<Response> {
-    let passkey_init_trigger =
+    let add_email_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addEmailSwapped".to_string())]);
     Ok((
-        passkey_init_trigger,
+        add_email_trigger,
         FormModEntryModListPartial {
             can_rw: true,
             r#type: "email".to_string(),
