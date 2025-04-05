@@ -207,3 +207,7 @@ footer {
   height: var(--icon-size);
   transform: rotate(35deg);
 }
+
+.cursor-pointer:hover {
+  cursor: pointer;
+}

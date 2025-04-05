@@ -3,7 +3,7 @@ function rehook_string_list_removers() {
     const buttons = document.getElementsByClassName("kanidm-remove-list-entry");
     for (let i = 0; i < buttons.length; i++) {
         const button = buttons.item(i)
-        if (button.getAttribute("kanidm_hooked") !== null) return
+        if (button.getAttribute("kanidm_hooked") !== null) continue
 
         button.addEventListener("click", (e) => {
             // Expected html nesting: li > div.input-group > button.kanidm-remove-list-entry
