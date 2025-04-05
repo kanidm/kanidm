@@ -19,7 +19,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use kanidm_unix_common::client::DaemonClient;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::unix_config::PamNssConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 include!("../opt/ssh_authorizedkeys.rs");
@@ -44,8 +44,7 @@ async fn main() -> ExitCode {
 
     debug!("Starting authorized keys tool ...");
 
-    let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-    {
+    let cfg = match PamNssConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH) {
         Ok(c) => c,
         Err(e) => {
             error!("Failed to parse {}: {:?}", DEFAULT_CONFIG_PATH, e);

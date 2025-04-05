@@ -1,5 +1,5 @@
 use kanidm_unix_common::client_sync::DaemonClientBlocking;
-use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::unix_config::PamNssConfig;
 use kanidm_unix_common::unix_passwd::{
     read_etc_group_file, read_etc_passwd_file, EtcGroup, EtcUser,
 };
@@ -36,7 +36,7 @@ impl RequestOptions {
     fn connect_to_daemon(self) -> Source {
         match self {
             RequestOptions::Main { config_path } => {
-                let maybe_client = KanidmUnixdConfig::new()
+                let maybe_client = PamNssConfig::new()
                     .read_options_from_optional_config(config_path)
                     .ok()
                     .and_then(|cfg| {

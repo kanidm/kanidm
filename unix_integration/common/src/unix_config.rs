@@ -558,28 +558,28 @@ impl UnixdConfig {
 #[derive(Debug)]
 /// This is the parsed configuration that will be used by pam/nss tools that need fast access to
 /// only the socket and timeout information related to the resolver.
-pub struct KanidmUnixdConfig {
+pub struct PamNssConfig {
     pub sock_path: String,
     // pub conn_timeout: u64,
     pub unix_sock_timeout: u64,
 }
 
-impl Default for KanidmUnixdConfig {
+impl Default for PamNssConfig {
     fn default() -> Self {
-        KanidmUnixdConfig::new()
+        PamNssConfig::new()
     }
 }
 
-impl Display for KanidmUnixdConfig {
+impl Display for PamNssConfig {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "sock_path: {}", self.sock_path)?;
         writeln!(f, "unix_sock_timeout: {}", self.unix_sock_timeout)
     }
 }
 
-impl KanidmUnixdConfig {
+impl PamNssConfig {
     pub fn new() -> Self {
-        KanidmUnixdConfig {
+        PamNssConfig {
             sock_path: DEFAULT_SOCK_PATH.to_string(),
             unix_sock_timeout: DEFAULT_CONN_TIMEOUT * 2,
         }
@@ -646,7 +646,7 @@ impl KanidmUnixdConfig {
             .unwrap_or(self.unix_sock_timeout);
 
         // Now map the values into our config.
-        Ok(KanidmUnixdConfig {
+        Ok(PamNssConfig {
             sock_path: config.sock_path.unwrap_or(self.sock_path),
             unix_sock_timeout,
         })
@@ -660,7 +660,7 @@ impl KanidmUnixdConfig {
             .map(|timeout| timeout * 2);
 
         // Now map the values into our config.
-        Ok(KanidmUnixdConfig {
+        Ok(PamNssConfig {
             sock_path: config.sock_path.unwrap_or(self.sock_path),
             unix_sock_timeout: kanidm_conn_timeout.unwrap_or(self.unix_sock_timeout),
         })

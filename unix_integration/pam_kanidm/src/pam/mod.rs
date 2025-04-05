@@ -36,7 +36,7 @@ use std::convert::TryFrom;
 use std::ffi::CStr;
 
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::unix_config::PamNssConfig;
 
 use crate::core::{self, RequestOptions};
 use crate::pam::constants::*;
@@ -50,8 +50,8 @@ use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt;
 use tracing_subscriber::prelude::*;
 
-pub fn get_cfg() -> Result<KanidmUnixdConfig, PamResultCode> {
-    KanidmUnixdConfig::new()
+pub fn get_cfg() -> Result<PamNssConfig, PamResultCode> {
+    PamNssConfig::new()
         .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
         .map_err(|_| PamResultCode::PAM_SERVICE_ERR)
 }
