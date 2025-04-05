@@ -85,8 +85,9 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
             }
         } else {
             // This can either be the client_addr == connection_addr if there are
-            // no ip address trust sources, or this is the value as reported by haproxy
-            // proxy header.
+            // no ip address trust sources, or this is the value as reported by
+            // proxy protocol header. If the proxy protocol header is used, then
+            // trust_x_forward_for can never have been true so we catch here.
             client_addr.ip()
         };
 
@@ -220,12 +221,12 @@ impl FromRequestParts<ServerState> for DomainInfo {
 
 #[derive(Debug, Clone)]
 pub struct ClientConnInfo {
-    /// This is the address that is *connected* to kanidm right now
+    /// This is the address that is *connected* to Kanidm right now
     /// for this operation.
     #[allow(dead_code)]
     pub connection_addr: SocketAddr,
     /// This is the client address as reported by a remote IP source
-    /// such as x-forward-for or proxy-hdr
+    /// such as x-forward-for or the PROXY protocol header
     pub client_addr: SocketAddr,
     // Only set if the certificate is VALID
     pub client_cert: Option<ClientCertInfo>,

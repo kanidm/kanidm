@@ -122,18 +122,18 @@ async fn client_tls_accept(
     tls_acceptor: SslAcceptor,
     connection_addr: SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
-    trusted_haproxy_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
 ) {
-    let enable_haproxy_hdr = trusted_haproxy_ips
+    let enable_proxy_v2_hdr = trusted_proxy_v2_ips
         .map(|trusted| trusted.contains(&connection_addr.ip()))
         .unwrap_or_default();
 
-    let (stream, client_addr) = if enable_haproxy_hdr {
+    let (stream, client_addr) = if enable_proxy_v2_hdr {
         match ProxyHdrV2::parse_from_read(stream).await {
             Ok((stream, hdr)) => {
                 let remote_socket_addr = match hdr.to_remote_addr() {
                     RemoteAddress::Local => {
-                        debug!("haproxy check - will not contain client data");
+                        debug!("PROXY protocol liveness check - will not contain client data");
                         return;
                     }
                     RemoteAddress::TcpV4 { src, dst: _ } => SocketAddr::from(src),
@@ -186,7 +186,7 @@ async fn ldap_tls_acceptor(
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
     mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-    trusted_haproxy_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
 ) {
     loop {
         tokio::select! {
@@ -199,7 +199,7 @@ async fn ldap_tls_acceptor(
                 match accept_result {
                     Ok((tcpstream, client_socket_addr)) => {
                         let clone_tls_acceptor = tls_acceptor.clone();
-                        tokio::spawn(client_tls_accept(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref, trusted_haproxy_ips.clone()));
+                        tokio::spawn(client_tls_accept(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref, trusted_proxy_v2_ips.clone()));
                     }
                     Err(err) => {
                         warn!(?err, "LDAP acceptor error, continuing");
@@ -249,7 +249,7 @@ pub(crate) async fn create_ldap_server(
     qe_r_ref: &'static QueryServerReadV1,
     rx: broadcast::Receiver<CoreAction>,
     tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-    trusted_haproxy_ips: Option<HashSet<IpAddr>>,
+    trusted_proxy_v2_ips: Option<HashSet<IpAddr>>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
     if address.starts_with(":::") {
         // takes :::xxxx to xxxx
@@ -268,7 +268,7 @@ pub(crate) async fn create_ldap_server(
         );
     })?;
 
-    let trusted_haproxy_ips = trusted_haproxy_ips.map(Arc::new);
+    let trusted_proxy_v2_ips = trusted_proxy_v2_ips.map(Arc::new);
 
     let ldap_acceptor_handle = match opt_ssl_acceptor {
         Some(ssl_acceptor) => {
@@ -280,7 +280,7 @@ pub(crate) async fn create_ldap_server(
                 qe_r_ref,
                 rx,
                 tls_acceptor_reload_rx,
-                trusted_haproxy_ips,
+                trusted_proxy_v2_ips,
             ))
         }
         None => tokio::spawn(ldap_plaintext_acceptor(listener, qe_r_ref, rx)),

@@ -133,16 +133,16 @@ impl Display for LdapAddressInfo {
     }
 }
 
-pub(crate) enum AddressRange {
-    Range(HashSet<IpAddr>),
+pub(crate) enum AddressSet {
+    NonContiguousIpSet(HashSet<IpAddr>),
     All,
 }
 
-impl AddressRange {
+impl AddressSet {
     pub(crate) fn contains(&self, ip_addr: &IpAddr) -> bool {
         match self {
             Self::All => true,
-            Self::Range(range) => range.contains(ip_addr),
+            Self::NonContiguousIpSet(range) => range.contains(ip_addr),
         }
     }
 }
@@ -153,6 +153,8 @@ pub enum HttpAddressInfo {
     None,
     #[serde(rename = "x-forward-for")]
     XForwardFor(HashSet<IpAddr>),
+    // IMPORTANT: This is undocumented, and only exists for backwards compat
+    // with config v1 which has a boolean toggle for this option.
     #[serde(rename = "x-forward-for-all-source-trusted")]
     XForwardForAllSourcesTrusted,
     #[serde(rename = "proxy-v2")]
@@ -160,10 +162,10 @@ pub enum HttpAddressInfo {
 }
 
 impl HttpAddressInfo {
-    pub(crate) fn trusted_x_forward_for(&self) -> Option<AddressRange> {
+    pub(crate) fn trusted_x_forward_for(&self) -> Option<AddressSet> {
         match self {
-            Self::XForwardForAllSourcesTrusted => Some(AddressRange::All),
-            Self::XForwardFor(trusted) => Some(AddressRange::Range(trusted.clone())),
+            Self::XForwardForAllSourcesTrusted => Some(AddressSet::All),
+            Self::XForwardFor(trusted) => Some(AddressSet::NonContiguousIpSet(trusted.clone())),
             _ => None,
         }
     }
