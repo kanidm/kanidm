@@ -17,7 +17,7 @@ use axum_extra::extract::Form;
 use axum_htmx::{HxEvent, HxPushUrl, HxResponseTrigger};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_MAIL};
+use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_MAIL, ATTR_NAME};
 use kanidm_proto::internal::UserAuthToken;
 use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimPerson};
 use kanidm_proto::scim_v1::ScimMail;
@@ -63,9 +63,9 @@ pub(crate) struct SaveProfileQuery {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct CommitSaveProfileQuery {
     #[serde(rename = "account_name")]
-    account_name: String,
+    account_name: Option<String>,
     #[serde(rename = "display_name")]
-    display_name: String,
+    display_name: Option<String>,
     #[serde(rename = "emails[]")]
     emails: Vec<String>,
     #[serde(rename = "new_primary_mail")]
@@ -88,6 +88,7 @@ struct ProfileChangesPartialView {
     primary_mail: Option<String>,
     new_attrs: ProfileAttributes,
     new_primary_mail: Option<String>,
+    emails_are_same: bool,
 }
 
 #[derive(Template, Clone)]
@@ -186,6 +187,8 @@ pub(crate) async fn view_profile_diff_start_save_post(
         .find(|sm| sm.primary)
         .map(|sm| sm.value.clone());
 
+    let emails_are_same = scim_person.mails == new_mails;
+
     let profile_view = ProfileChangesPartialView {
         menu_active_item: ProfileMenuItems::UserProfile,
         can_rw,
@@ -196,6 +199,7 @@ pub(crate) async fn view_profile_diff_start_save_post(
             display_name: query.display_name,
             emails: new_mails,
         },
+        emails_are_same,
         new_primary_mail: query.emails.get(primary_index).cloned(),
     };
 
@@ -219,23 +223,37 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
-    dbg!(&query);
 
     let filter = filter_all!(f_and!([f_id(uat.uuid.to_string().as_str())]));
 
-    state
-        .qe_w_ref
-        .handle_setattribute(
-            client_auth_info.clone(),
-            uat.uuid.to_string(),
-            ATTR_DISPLAYNAME.to_string(),
-            vec![query.display_name],
-            filter.clone(),
-            kopid.eventid,
-        )
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-        .await?;
-
+    if let Some(account_name) = query.account_name {
+        state
+            .qe_w_ref
+            .handle_setattribute(
+                client_auth_info.clone(),
+                uat.uuid.to_string(),
+                ATTR_NAME.to_string(),
+                vec![account_name],
+                filter.clone(),
+                kopid.eventid,
+            )
+            .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
+            .await?;
+    }
+    if let Some(display_name) = query.display_name {
+        state
+            .qe_w_ref
+            .handle_setattribute(
+                client_auth_info.clone(),
+                uat.uuid.to_string(),
+                ATTR_DISPLAYNAME.to_string(),
+                vec![display_name],
+                filter.clone(),
+                kopid.eventid,
+            )
+            .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
+            .await?;
+    }
     let mut emails = query.emails;
     if let Some(primary) = query.new_primary_mail {
         emails.insert(0, primary);
