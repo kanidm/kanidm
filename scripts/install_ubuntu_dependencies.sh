@@ -73,10 +73,6 @@ if [ -z "$(which cargo)" ]; then
     ERROR=1
 fi
 
-if [ $ERROR -eq 0 ] && [ -z "$(which cross)" ]; then
-    echo "You don't have cross installed! Installing it now..."
-    cargo install -f cross
-fi
 if [ $ERROR -eq 0 ] && [ -z "$(which cargo-deb)" ]; then
     echo "You don't have cargo-deb installed! Installing it now..."
     cargo install -f cargo-deb
