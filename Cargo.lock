@@ -3064,6 +3064,8 @@ dependencies = [
  "futures",
  "kanidm_build_profiles",
  "kanidm_proto",
+ "kanidm_utils_users",
+ "selinux",
  "serde",
  "serde_json",
  "serde_with",

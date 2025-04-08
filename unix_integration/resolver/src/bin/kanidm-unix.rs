@@ -18,7 +18,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use kanidm_unix_common::client::DaemonClient;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::unix_config::PamNssConfig;
 use kanidm_unix_common::unix_proto::{
     ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo,
 };
@@ -28,8 +28,7 @@ include!("../opt/tool.rs");
 
 macro_rules! setup_client {
     () => {{
-        let Ok(cfg) =
-            KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH)
+        let Ok(cfg) = PamNssConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH)
         else {
             error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
             return ExitCode::FAILURE;
