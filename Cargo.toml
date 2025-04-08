@@ -173,7 +173,7 @@ dhat = "0.3.3"
 dyn-clone = "^1.0.17"
 fernet = "^0.2.1"
 filetime = "^0.2.24"
-fs4 = "^0.12.0"
+fs4 = "^0.13.0"
 futures = "^0.3.31"
 futures-util = { version = "^0.3.30", features = ["sink"] }
 gix = { version = "0.64.0", default-features = false }

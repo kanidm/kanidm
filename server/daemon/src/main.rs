@@ -465,13 +465,13 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    match &opt.commands {
+    let lock_was_setup = match &opt.commands {
         // we aren't going to touch the DB so we can carry on
         KanidmdOpt::ShowReplicationCertificate { .. }
         | KanidmdOpt::RenewReplicationCertificate { .. }
         | KanidmdOpt::RefreshReplicationConsumer { .. }
         | KanidmdOpt::RecoverAccount { .. }
-        | KanidmdOpt::HealthCheck(_) => (),
+        | KanidmdOpt::HealthCheck(_) => None,
         _ => {
             // Okay - Lets now create our lock and go.
             #[allow(clippy::expect_used)]
@@ -482,24 +482,53 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
 
             let flock = match File::create(&klock_path) {
                 Ok(flock) => flock,
-                Err(e) => {
-                    error!("ERROR: Refusing to start - unable to create kanidmd exclusive lock at {} - {:?}", klock_path.display(), e);
+                Err(err) => {
+                    error!(
+                        "ERROR: Refusing to start - unable to create kanidmd exclusive lock at {}",
+                        klock_path.display()
+                    );
+                    error!(?err);
                     return ExitCode::FAILURE;
                 }
             };
 
             match flock.try_lock_exclusive() {
-                Ok(()) => debug!("Acquired kanidm exclusive lock"),
-                Err(e) => {
-                    error!("ERROR: Refusing to start - unable to lock kanidmd exclusive lock at {} - {:?}", klock_path.display(), e);
+                Ok(true) => debug!("Acquired kanidm exclusive lock"),
+                Ok(false) => {
+                    error!(
+                        "ERROR: Refusing to start - unable to lock kanidmd exclusive lock at {}",
+                        klock_path.display()
+                    );
                     error!("Is another kanidmd process running?");
                     return ExitCode::FAILURE;
                 }
+                Err(err) => {
+                    error!(
+                        "ERROR: Refusing to start - unable to lock kanidmd exclusive lock at {}",
+                        klock_path.display()
+                    );
+                    error!(?err);
+                    return ExitCode::FAILURE;
+                }
             };
+
+            Some(klock_path)
+        }
+    };
+
+    let result_code = kanidm_main(config, opt).await;
+
+    if let Some(klock_path) = lock_was_setup {
+        if let Err(reason) = std::fs::remove_file(&klock_path) {
+            warn!(
+                ?reason,
+                "WARNING: Unable to clean up kanidmd exclusive lock at {}",
+                klock_path.display()
+            );
         }
     }
 
-    kanidm_main(config, opt).await
+    result_code
 }
 
 fn main() -> ExitCode {
