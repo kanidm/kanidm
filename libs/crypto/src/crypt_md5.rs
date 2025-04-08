@@ -8,7 +8,7 @@ const MD5_TRANSPOSE: &[u8] = b"\x0c\x06\x00\x0d\x07\x01\x0e\x08\x02\x0f\x09\x03\
 const CRYPT_HASH64: &[u8] = b"./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 pub fn md5_sha2_hash64_encode(bs: &[u8]) -> String {
-    let ngroups = (bs.len() + 2) / 3;
+    let ngroups = bs.len().div_ceil(3);
     let mut out = String::with_capacity(ngroups * 4);
     for g in 0..ngroups {
         let mut g_idx = g * 3;

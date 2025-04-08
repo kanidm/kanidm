@@ -83,7 +83,7 @@ impl ActorReader {
         // Is this a design flaw? We probably need to know what the state was that we
         // requested to move to?
         match (&self.state, action, result) {
-            (State::Unauthenticated { .. }, TransitionAction::Login, TransitionResult::Ok) => {
+            (State::Unauthenticated, TransitionAction::Login, TransitionResult::Ok) => {
                 self.state = State::Authenticated;
             }
             (State::Authenticated, TransitionAction::ReadSelfMemberOf, TransitionResult::Ok) => {
