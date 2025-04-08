@@ -458,6 +458,16 @@ impl UnixdConfig {
 
     fn apply_from_config_v2(self, config: ConfigV2) -> Result<Self, UnixIntegrationError> {
         let kanidm_config = if let Some(kconfig) = config.kanidm {
+            match &kconfig.pam_allowed_login_groups {
+                None => {
+                    error!("You have a 'kanidm' section in the config but an empty pam_allowed_login_groups set. USERS CANNOT AUTH.")
+                }
+                Some(groups) => {
+                    if groups.is_empty() {
+                        error!("You have a 'kanidm' section in the config but an empty pam_allowed_login_groups set. USERS CANNOT AUTH.");
+                    }
+                }
+            }
             Some(KanidmConfig {
                 conn_timeout: kconfig.conn_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT),
                 request_timeout: kconfig.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
@@ -465,6 +475,9 @@ impl UnixdConfig {
                 map_group: kconfig.map_group,
             })
         } else {
+            error!(
+                "You are using a version 2 config without a 'kanidm' section. USERS CANNOT AUTH."
+            );
             None
         };
 
