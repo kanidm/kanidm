@@ -43,7 +43,7 @@ use tokio_util::codec::{Decoder, Encoder, Framed};
 use walkdir::WalkDir;
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]
-use kanidm_unix_resolver::selinux_util;
+use kanidm_unix_common::selinux_util;
 
 struct TaskCodec;
 
