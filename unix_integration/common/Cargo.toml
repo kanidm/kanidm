@@ -14,7 +14,7 @@ repository = { workspace = true }
 [features]
 default = ["unix"]
 unix = []
-selinux = []
+selinux = ["dep:selinux"]
 tpm = []
 
 [lib]
@@ -36,6 +36,11 @@ tokio = { workspace = true, features = ["time", "net", "macros"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
 tracing = { workspace = true }
+
+selinux = { workspace = true, optional = true }
+
+[target.'cfg(not(target_family = "windows"))'.dependencies]
+kanidm_utils_users = { workspace = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }
