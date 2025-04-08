@@ -268,7 +268,7 @@ tempfile = "3.15.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.36", features = ["formatting", "local-offset"] }
 
-tokio = "^1.43.0"
+tokio = "^1.44.2"
 tokio-openssl = "^0.6.5"
 tokio-util = "^0.7.13"
 
