@@ -21,6 +21,8 @@ ${SUDOCMD} apt-get update &&
         cmake \
         build-essential \
         jq \
+        lld \
+        clang \
         tpm-udev
 
 if [ -z "${PACKAGING}" ]; then
