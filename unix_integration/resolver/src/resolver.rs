@@ -1202,8 +1202,8 @@ impl Resolver {
                 *auth_session = AuthSession::Success;
                 Ok(PamAuthResponse::Success)
             }
-            Ok(AuthResult::SuccessUpdate { mut token }) => {
-                self.set_cache_usertoken(&mut token, hsm_lock.deref_mut())
+            Ok(AuthResult::SuccessUpdate { mut new_token }) => {
+                self.set_cache_usertoken(&mut new_token, hsm_lock.deref_mut())
                     .await?;
                 *auth_session = AuthSession::Success;
 

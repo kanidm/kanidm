@@ -460,23 +460,23 @@ impl IdProvider for KanidmProvider {
 
                 match auth_result {
                     Ok(Some(n_tok)) => {
-                        let mut token = UserToken::from(n_tok);
+                        let mut new_token = UserToken::from(n_tok);
 
                         // Update any keys that may have been in the db in the current
                         // token.
                         if let Some(previous_token) = current_token {
-                            token.extra_keys = previous_token.extra_keys.clone();
+                            new_token.extra_keys = previous_token.extra_keys.clone();
                         }
 
                         // Set any new keys that are relevant from this authentication
-                        token.kanidm_update_cached_password(
+                        new_token.kanidm_update_cached_password(
                             &inner.crypto_policy,
                             cred.as_str(),
                             tpm,
                             &inner.hmac_key,
                         );
 
-                        Ok(AuthResult::SuccessUpdate { token })
+                        Ok(AuthResult::SuccessUpdate { new_token })
                     }
                     Ok(None) => {
                         // TODO: i'm not a huge fan of this rn, but currently the way we handle
@@ -583,11 +583,11 @@ impl IdProvider for KanidmProvider {
 
                 if session_token.kanidm_check_cached_password(cred.as_str(), tpm, &inner.hmac_key) {
                     // Ensure we have either the latest token, or if none, at least the session token.
-                    let token = current_token.unwrap_or(session_token).clone();
+                    let new_token = current_token.unwrap_or(session_token).clone();
 
                     // TODO: We can update the token here and then do lockouts.
 
-                    Ok(AuthResult::SuccessUpdate { token })
+                    Ok(AuthResult::SuccessUpdate { new_token })
                 } else {
                     Ok(AuthResult::Denied)
                 }

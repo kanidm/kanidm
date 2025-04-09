@@ -195,7 +195,7 @@ impl Into<PamAuthResponse> for AuthRequest {
 
 pub enum AuthResult {
     Success,
-    SuccessUpdate { token: UserToken },
+    SuccessUpdate { new_token: UserToken },
     Denied,
     Next(AuthRequest),
 }
