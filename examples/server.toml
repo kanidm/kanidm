@@ -13,16 +13,6 @@ bindaddress = "[::]:443"
 #   Defaults to "" (disabled)
 # ldapbindaddress = "[::]:636"
 #
-#   HTTPS requests can be reverse proxied by a loadbalancer.
-#   To preserve the original IP of the caller, these systems
-#   will often add a header such as "Forwarded" or
-#   "X-Forwarded-For". If set to true, then this header is
-#   respected as the "authoritative" source of the IP of the
-#   connected client. If you are not using a load balancer
-#   then you should leave this value as default.
-#   Defaults to false
-# trust_x_forward_for = false
-#
 #   The path to the kanidm database.
 db_path = "/var/lib/private/kanidm/kanidm.db"
 #
@@ -86,6 +76,32 @@ domain = "idm.example.com"
 #   origin = "https://idm.example.com"
 origin = "https://idm.example.com:8443"
 #
+
+#   HTTPS requests can be reverse proxied by a loadbalancer.
+#   To preserve the original IP of the caller, these systems
+#   will often add a header such as "Forwarded" or
+#   "X-Forwarded-For". Some other proxies can use the PROXY
+#   protocol v2 header.
+#   This setting allows configuration of the range of trusted
+#   IPs which can supply this header information, and which
+#   format the information is provided in.
+#   Defaults to "none" (no trusted sources)
+#   Only one option can be used at a time.
+# [http_client_address_info]
+# proxy-v2 = ["127.0.0.1"]
+#   # OR
+# x-forward-for = ["127.0.0.1"]
+
+#   LDAPS requests can be reverse proxied by a loadbalancer.
+#   To preserve the original IP of the caller, these systems
+#   can add a header such as the PROXY protocol v2 header.
+#   This setting allows configuration of the range of trusted
+#   IPs which can supply this header information, and which
+#   format the information is provided in.
+#   Defaults to "none" (no trusted sources)
+# [ldap_client_address_info]
+# proxy-v2 = ["127.0.0.1"]
+
 [online_backup]
 #   The path to the output folder for online backups
 path = "/var/lib/private/kanidm/backups/"

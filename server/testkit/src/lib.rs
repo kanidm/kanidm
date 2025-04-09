@@ -15,7 +15,7 @@ use kanidm_proto::internal::{Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
 use kanidmd_lib::prelude::{Attribute, NAME_SYSTEM_ADMINS};
-use std::net::TcpStream;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
 use std::sync::atomic::{AtomicU16, Ordering};
 use tokio::task;
 use tracing::error;
@@ -64,6 +64,7 @@ fn port_loop() -> u16 {
 
 pub struct AsyncTestEnvironment {
     pub rsclient: KanidmClient,
+    pub http_sock_addr: SocketAddr,
     pub core_handle: CoreHandle,
     pub ldap_url: Option<Url>,
 }
@@ -86,8 +87,9 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
 
     let ldap_url = if config.ldapbindaddress.is_some() {
         let ldapport = port_loop();
-        config.ldapbindaddress = Some(format!("127.0.0.1:{}", ldapport));
-        Url::parse(&format!("ldap://127.0.0.1:{}", ldapport))
+        let ldap_sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), ldapport);
+        config.ldapbindaddress = Some(ldap_sock_addr.to_string());
+        Url::parse(&format!("ldap://{}", ldap_sock_addr))
             .inspect_err(|err| error!(?err, "ldap address setup"))
             .ok()
     } else {
@@ -95,7 +97,9 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
     };
 
     // Setup the address and origin..
-    config.address = format!("127.0.0.1:{}", port);
+    let http_sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
+
+    config.address = http_sock_addr.to_string();
     config.integration_test_config = Some(int_config);
     config.domain = "localhost".to_string();
     config.origin.clone_from(&addr);
@@ -123,6 +127,7 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
 
     AsyncTestEnvironment {
         rsclient,
+        http_sock_addr,
         core_handle,
         ldap_url,
     }
