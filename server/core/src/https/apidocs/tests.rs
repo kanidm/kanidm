@@ -63,6 +63,14 @@ fn figure_out_if_we_have_all_the_routes() {
         let source_module = relative_filename.split("/").last().unwrap();
         let source_module = source_module.split(".").next().unwrap();
 
+        // If the file is in certain paths, we skip them wholesale.
+        if let Some(parent_path) = entry.path().parent() {
+            if parent_path.ends_with("https/views") {
+                println!("skipping excluded path {}", parent_path.display());
+                continue;
+            }
+        }
+
         let file = std::fs::read_to_string(entry.path()).unwrap();
         for line in file.lines() {
             if line.contains("skip_route_check") {
@@ -84,13 +92,6 @@ fn figure_out_if_we_have_all_the_routes() {
     }
     // now we check the things
     for (module, routes) in found_routes {
-        if ["ui", "cookies"].contains(&module.as_str()) {
-            println!(
-                "We can skip checking {} because it's allow-listed for docs",
-                module
-            );
-            continue;
-        }
         if module == "mod" {
             // TODO: handle this better.
             eprintln!("Skipping module mod because ... reasons");

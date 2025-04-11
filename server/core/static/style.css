@@ -29,6 +29,7 @@ body {
   display: block !important;
 }
 
+
 /*
  * Sidebar
  */
@@ -205,4 +206,8 @@ footer {
   width: var(--icon-size);
   height: var(--icon-size);
   transform: rotate(35deg);
+}
+
+.cursor-pointer:hover {
+  cursor: pointer;
 }
