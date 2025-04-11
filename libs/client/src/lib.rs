@@ -50,6 +50,7 @@ use webauthn_rs_proto::{
     PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse,
 };
 
+mod application;
 mod domain;
 mod group;
 mod oauth;
