@@ -1087,6 +1087,7 @@ pub async fn create_server_core(
                 server_read_ref,
                 broadcast_tx.subscribe(),
                 ldap_tls_acceptor_reload_rx,
+                config.ldap_client_address_info.trusted_proxy_v2(),
             )
             .await?;
             Some(h)
