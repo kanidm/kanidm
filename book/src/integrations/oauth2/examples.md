@@ -660,16 +660,7 @@ To set up OPKSSH to authenticate with Kanidm:
     kanidm system oauth2 update-scope-map opkssh opkssh_users email openid profile groups
     ```
 
-4. OPKSSH currently only supports `RS256` based signatures, so we need to enable
-    support for this algorithm in the client:
-
-    ```sh
-    kanidm system oauth2 warning-enable-legacy-crypto opkssh
-    ```
-
-    ES256 support is tracked [here](https://github.com/openpubkey/opkssh/issues/131).
-
-5. On the SSH server side, as per [offical docs](https://github.com/openpubkey/opkssh?tab=readme-ov-file#server-configuration-1):
+4. On the SSH server side, as per [offical docs](https://github.com/openpubkey/opkssh?tab=readme-ov-file#server-configuration-1):
 
     ```sh
     wget -qO- "https://raw.githubusercontent.com/openpubkey/opkssh/main/scripts/install-linux.sh" | sudo bash
@@ -678,11 +669,11 @@ To set up OPKSSH to authenticate with Kanidm:
     sudo opkssh add user alice@example.com https://idm.example.com/oauth2/openid/opkssh
     ```
 
-6. On the SSH client side, as per [official docs](https://github.com/openpubkey/opkssh?tab=readme-ov-file#custom-openid-providers-authentik-authelia-keycloak-zitadel):
+5. On the SSH client side, as per [official docs](https://github.com/openpubkey/opkssh?tab=readme-ov-file#custom-openid-providers-authentik-authelia-keycloak-zitadel):
 
     ```sh
     # Install OPKSSH
-    curl -LO https://github.com/openpubkey/opkssh/releases/download/v0.4.0/opkssh-linux-amd64
+    curl -LO https://github.com/openpubkey/opkssh/releases/download/v0.5.1/opkssh-linux-amd64
     sudo install opkssh-linux-amd64 /usr/local/bin/opkssh
     rm opkssh-linux-amd64
 
@@ -690,7 +681,7 @@ To set up OPKSSH to authenticate with Kanidm:
     opkssh login --provider=https://idm.example.com/oauth2/openid/opkssh,opkssh
     ```
 
-7. Use SSH as you would normally:
+6. Use SSH as you would normally:
 
     ```sh
     ssh user@your-server-hostname
