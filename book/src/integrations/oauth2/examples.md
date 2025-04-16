@@ -562,7 +562,7 @@ OAuth2 Proxy is a reverse proxy that provides authentication with OpenID Connect
 It is typically used to secure web applications without native OpenID Connect support.
 
 Prepare the environment.
-Due to a [lack of public client support](https://github.com/oauth2-proxy/oauth2-proxy/issues/1714) we have to set it up as a basic client. 
+Due to a [lack of public client support](https://github.com/oauth2-proxy/oauth2-proxy/issues/1714) we have to set it up as a basic client.
 
 ```bash
 kanidm system oauth2 create webapp 'webapp.example.com' 'https://webapp.example.com'
@@ -614,6 +614,88 @@ allowed_groups = ["webapp_admin"]
 # secret from `kanidm system oauth2 show-basic-secret webapp`
 client_secret = "<SECRET>"
 ```
+
+## OPKSSH
+
+[OPKSSH](https://github.com/openpubkey/opkssh) is a tool of the
+[OpenPubkey](https://github.com/openpubkey/openpubkey) project. It enables ssh
+to be used with OpenID Connect allowing SSH access to be managed via identities
+like alice@example.com instead of long-lived SSH keys. It does not replace SSH,
+but instead generates SSH keys on the fly, and augments the verification process
+on the server side.
+
+To set up OPKSSH to authenticate with Kanidm:
+
+1.  Add an email address to your regular Kanidm account, if it doesn't have one
+    already:
+
+    ```sh
+    kanidm person update alice -m alice@example.com
+    ```
+
+2. Create a new Kanidm group for your OPKSSH users (`opkssh_users`), and add your
+    regular account to it:
+
+    ```sh
+    kanidm group create opkssh_users
+    kanidm group add-members opkssh_users alice
+    ```
+
+3. Create a new OAuth2 application configuration in Kanidm (`opkssh`), configure
+    the redirect URL, and scope access to the `opkssh_users` group:
+
+    ```sh
+    # The last argument, the origin parameter, is required, but a dead link.
+    kanidm system oauth2 create-public opkssh opkssh http://localhost:3000
+
+    # Add the specific redirect URIs used by OPKSSH
+    kanidm system oauth2 add-redirect-url opkssh http://localhost:3000/login-callback
+    kanidm system oauth2 add-redirect-url opkssh http://localhost:10001/login-callback
+    kanidm system oauth2 add-redirect-url opkssh http://localhost:11110/login-callback
+
+    # Explicitly allow localhost redirects for this client
+    kanidm system oauth2 enable-localhost-redirects opkssh
+
+    # Map the group created earlier to the required OIDC scopes
+    kanidm system oauth2 update-scope-map opkssh opkssh_users email openid profile groups
+    ```
+
+4. OPKSSH currently only supports `RS256` based signatures, so we need to enable
+    support for this algorithm in the client:
+
+    ```sh
+    kanidm system oauth2 warning-enable-legacy-crypto opkssh
+    ```
+
+    ES256 support is tracked [here](https://github.com/openpubkey/opkssh/issues/131).
+
+5. On the SSH server side, as per [offical docs](https://github.com/openpubkey/opkssh?tab=readme-ov-file#server-configuration-1):
+
+    ```sh
+    wget -qO- "https://raw.githubusercontent.com/openpubkey/opkssh/main/scripts/install-linux.sh" | sudo bash
+    echo "https://idm.example.com/oauth2/openid/opkssh opkssh 24h" | sudo tee -a /etc/opk/providers
+    # where 'user' is the linux user
+    sudo opkssh add user alice@example.com https://idm.example.com/oauth2/openid/opkssh
+    ```
+
+6. On the SSH client side, as per [official docs](https://github.com/openpubkey/opkssh?tab=readme-ov-file#custom-openid-providers-authentik-authelia-keycloak-zitadel):
+
+    ```sh
+    # Install OPKSSH
+    curl -LO https://github.com/openpubkey/opkssh/releases/download/v0.4.0/opkssh-linux-amd64
+    sudo install opkssh-linux-amd64 /usr/local/bin/opkssh
+    rm opkssh-linux-amd64
+
+    # This will open a browser with consent screen
+    opkssh login --provider=https://idm.example.com/oauth2/openid/opkssh,opkssh
+    ```
+
+7. Use SSH as you would normally:
+
+    ```sh
+    ssh user@your-server-hostname
+    ```
+
 
 ## Outline
 
