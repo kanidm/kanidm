@@ -159,7 +159,7 @@ base64 = "^0.22.1"
 base64urlsafedata = "0.5.1"
 bitflags = "^2.8.0"
 bytes = "^1.9.0"
-clap = { version = "^4.5.34", features = ["derive", "env"] }
+clap = { version = "^4.5.36", features = ["derive", "env"] }
 clap_complete = "^4.5.42"
 # Forced by saffron/cron
 chrono = "^0.4.39"
@@ -183,7 +183,7 @@ http = "1.2.0"
 hyper = { version = "1.5.1", features = [
     "full",
 ] } # hyper full includes client/server/http2
-hyper-util = { version = "0.1.10", features = ["server", "tokio"] }
+hyper-util = { version = "0.1.11", features = ["server", "tokio"] }
 idlset = "^0.2.5"
 image = { version = "0.24.9", default-features = false, features = [
     "gif",
@@ -205,7 +205,7 @@ lodepng = "3.11.0"
 lru = "^0.13.0"
 mathru = "^0.13.0"
 md-5 = "0.10.6"
-mimalloc = "0.1.43"
+mimalloc = "0.1.46"
 notify-debouncer-full = { version = "0.5" }
 num_enum = "^0.5.11"
 oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }
@@ -232,8 +232,8 @@ prctl = "1.0.0"
 proc-macro2 = "1.0.93"
 qrcode = "^0.12.0"
 quote = "1"
-rand = "^0.8.5"
-rand_chacha = "0.3.1"
+rand = "^0.9.0"
+rand_chacha = "0.9.0"
 regex = "1.11.0"
 reqwest = { version = "0.12.12", default-features = false, features = [
     "cookies",
@@ -244,7 +244,7 @@ reqwest = { version = "0.12.12", default-features = false, features = [
     "rustls-tls-native-roots-no-provider",
 ] }
 rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
-rustls = { version = "0.23.21", default-features = false, features = [
+rustls = { version = "0.23.26", default-features = false, features = [
     "aws_lc_rs",
 ] }
 
