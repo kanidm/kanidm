@@ -618,10 +618,10 @@ client_secret = "<SECRET>"
 ## OPKSSH
 
 [OPKSSH](https://github.com/openpubkey/opkssh) is a tool of the
-[OpenPubkey](https://github.com/openpubkey/openpubkey) project. It enables ssh
-to be used with OpenID Connect allowing SSH access to be managed via identities
-like alice@example.com instead of long-lived SSH keys. It does not replace SSH,
-but instead generates SSH keys on the fly, and augments the verification process
+[OpenPubkey](https://github.com/openpubkey/openpubkey) project. It enables SSH
+to be used with OpenID Connect allowing access to be managed via identities
+like `alice@example.com` instead of long-lived private keys. It does not replace SSH,
+but instead generates private keys on the fly, and augments the verification process
 on the server side.
 
 To set up OPKSSH to authenticate with Kanidm:
@@ -645,7 +645,7 @@ To set up OPKSSH to authenticate with Kanidm:
     the redirect URL, and scope access to the `opkssh_users` group:
 
     ```sh
-    # The last argument, the origin parameter, is required, but a dead link.
+    # The redirect origin is set to localhost for local callbacks
     kanidm system oauth2 create-public opkssh opkssh http://localhost:3000
 
     # Add the specific redirect URIs used by OPKSSH
@@ -677,7 +677,7 @@ To set up OPKSSH to authenticate with Kanidm:
     sudo install opkssh-linux-amd64 /usr/local/bin/opkssh
     rm opkssh-linux-amd64
 
-    # This will open a browser with consent screen
+    # This will open a browser to login via Kanidm
     opkssh login --provider=https://idm.example.com/oauth2/openid/opkssh,opkssh
     ```
 
