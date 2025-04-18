@@ -660,24 +660,18 @@ To set up OPKSSH to authenticate with Kanidm:
     kanidm system oauth2 update-scope-map opkssh opkssh_users email openid profile groups
     ```
 
-4. On the SSH server side, as per [offical docs](https://github.com/openpubkey/opkssh?tab=readme-ov-file#server-configuration-1):
+4. On the SSH server side, [install opkssh](https://github.com/openpubkey/opkssh#installing-on-a-server)
+    and allow your user to connect via:
 
     ```sh
-    wget -qO- "https://raw.githubusercontent.com/openpubkey/opkssh/main/scripts/install-linux.sh" | sudo bash
-    echo "https://idm.example.com/oauth2/openid/opkssh opkssh 24h" | sudo tee -a /etc/opk/providers
     # where 'user' is the linux user
     sudo opkssh add user alice@example.com https://idm.example.com/oauth2/openid/opkssh
     ```
 
-5. On the SSH client side, as per [official docs](https://github.com/openpubkey/opkssh?tab=readme-ov-file#custom-openid-providers-authentik-authelia-keycloak-zitadel):
+5. On the SSH client side, [install opkssh](https://github.com/openpubkey/opkssh#getting-started)
+    and login via Kanidm:
 
     ```sh
-    # Install OPKSSH
-    curl -LO https://github.com/openpubkey/opkssh/releases/download/v0.5.1/opkssh-linux-amd64
-    sudo install opkssh-linux-amd64 /usr/local/bin/opkssh
-    rm opkssh-linux-amd64
-
-    # This will open a browser to login via Kanidm
     opkssh login --provider=https://idm.example.com/oauth2/openid/opkssh,opkssh
     ```
 
