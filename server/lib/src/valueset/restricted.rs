@@ -205,6 +205,6 @@ mod tests {
     #[test]
     fn test_scim_restricted() {
         let vs: ValueSet = ValueSetRestricted::new("Test".to_string());
-        crate::valueset::scim_json_reflexive(vs, r#""Test""#);
+        crate::valueset::scim_json_reflexive(&vs, r#""Test""#);
     }
 }

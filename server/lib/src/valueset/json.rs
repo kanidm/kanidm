@@ -205,7 +205,7 @@ mod tests {
   "{\"pres\":\"class\"}"
 ]
         "#;
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
+        crate::valueset::scim_json_reflexive(&vs.clone(), data);
 
         // Test that we can parse json values into a valueset.
         // crate::valueset::scim_json_put_reflexive::<ValueSetJsonFilter>(vs, &[])

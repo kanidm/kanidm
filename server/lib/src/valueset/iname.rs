@@ -226,7 +226,7 @@ mod tests {
     #[test]
     fn test_scim_iname() {
         let vs: ValueSet = ValueSetIname::new("stevo");
-        crate::valueset::scim_json_reflexive(vs.clone(), r#""stevo""#);
+        crate::valueset::scim_json_reflexive(&vs.clone(), r#""stevo""#);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetIname>(vs, &[])

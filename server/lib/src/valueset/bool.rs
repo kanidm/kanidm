@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn test_scim_boolean() {
         let vs: ValueSet = ValueSetBool::new(true);
-        crate::valueset::scim_json_reflexive(vs.clone(), "true");
+        crate::valueset::scim_json_reflexive(&vs, "true");
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetBool>(vs, &[])

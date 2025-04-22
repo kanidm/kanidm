@@ -532,7 +532,7 @@ mod tests {
             "142dc7984dd548dd5dacfe2ad30f8473e3217e39b3b6c8d17a0cf6e4e24b02e0"
         ]"#;
 
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
+        crate::valueset::scim_json_reflexive(&vs.clone(), data);
     }
     */
 }

@@ -76,10 +76,10 @@ async fn test_webdriver_user_login(rsclient: &KanidmClient) {
     use fantoccini::Locator;
     use kanidmd_testkit::*;
     use std::time::Duration;
-    login_put_admin_idm_admins(&rsclient).await;
+    login_put_admin_idm_admins(rsclient).await;
 
     create_user_with_all_attrs(
-        &rsclient,
+        rsclient,
         NOT_ADMIN_TEST_USERNAME,
         Some(NOT_ADMIN_TEST_PASSWORD),
     )
@@ -89,7 +89,7 @@ async fn test_webdriver_user_login(rsclient: &KanidmClient) {
 
     handle_error!(
         c,
-        c.goto(&rsclient.get_url().to_string()).await,
+        c.goto(rsclient.get_url().to_string()).await,
         "Couldn't get URL"
     );
 
@@ -207,7 +207,7 @@ async fn test_webdriver_user_login(rsclient: &KanidmClient) {
 
 #[kanidmd_testkit::test]
 async fn test_domain_reset_token_key(rsclient: &KanidmClient) {
-    login_put_admin_idm_admins(&rsclient).await;
+    login_put_admin_idm_admins(rsclient).await;
 
     let token = rsclient.get_token().await.expect("No bearer token present");
 
@@ -220,7 +220,7 @@ async fn test_domain_reset_token_key(rsclient: &KanidmClient) {
 
 #[kanidmd_testkit::test]
 async fn test_idm_domain_set_ldap_basedn(rsclient: &KanidmClient) {
-    login_put_admin_idm_admins(&rsclient).await;
+    login_put_admin_idm_admins(rsclient).await;
     assert!(rsclient
         .idm_domain_set_ldap_basedn("dc=krabsarekool,dc=example,dc=com")
         .await
@@ -233,7 +233,7 @@ async fn test_idm_domain_set_ldap_basedn(rsclient: &KanidmClient) {
 
 #[kanidmd_testkit::test]
 async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: &KanidmClient) {
-    login_put_admin_idm_admins(&rsclient).await;
+    login_put_admin_idm_admins(rsclient).await;
     assert!(rsclient
         .idm_domain_set_ldap_max_queryable_attrs(20)
         .await
@@ -247,7 +247,7 @@ async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: &KanidmClient) {
 #[kanidmd_testkit::test]
 /// Checks that a built-in group idm_all_persons has the "builtin" class as expected.
 async fn test_all_persons_has_builtin_class(rsclient: &KanidmClient) {
-    login_put_admin_idm_admins(&rsclient).await;
+    login_put_admin_idm_admins(rsclient).await;
     let res = rsclient
         .idm_group_get("idm_all_persons")
         .await
@@ -306,7 +306,7 @@ async fn test_all_persons_has_builtin_class(rsclient: &KanidmClient) {
 /// Testing the CLI doing things.
 async fn test_integration_with_assert_cmd(rsclient: KanidmClient) {
     // setup the admin things
-    login_put_admin_idm_admins(&rsclient).await;
+    login_put_admin_idm_admins(rsclient).await;
 
     rsclient
         .idm_person_account_primary_credential_set_password(
@@ -334,13 +334,13 @@ async fn test_integration_with_assert_cmd(rsclient: KanidmClient) {
         assert!(anon_whoami.status.success());
         println!("Output: {:?}", anon_whoami);
 
-        test_cmd_admin(&token_cache_path, &rsclient, "login -D admin");
+        test_cmd_admin(&token_cache_path, rsclient, "login -D admin");
 
         // login as idm_admin
-        test_cmd_idm_admin(&token_cache_path, &rsclient, "login -D idm_admin");
+        test_cmd_idm_admin(&token_cache_path, rsclient, "login -D idm_admin");
         test_cmd_admin_split(
             &token_cache_path,
-            &rsclient,
+            rsclient,
             &[
                 "service-account",
                 "create",
@@ -355,13 +355,13 @@ async fn test_integration_with_assert_cmd(rsclient: KanidmClient) {
 
         test_cmd_admin(
             &token_cache_path,
-            &rsclient,
+            rsclient,
             &format!("service-account get -D admin {}", NOT_ADMIN_TEST_USERNAME),
         );
         // updating the display name
         test_cmd_admin(
             &token_cache_path,
-            &rsclient,
+            rsclient,
             &format!(
                 "service-account update -D admin {} --displayname cheeseballs",
                 NOT_ADMIN_TEST_USERNAME
@@ -370,7 +370,7 @@ async fn test_integration_with_assert_cmd(rsclient: KanidmClient) {
         // updating the email
         test_cmd_admin(
             &token_cache_path,
-            &rsclient,
+            rsclient,
             &format!(
                 "service-account update -D admin {} --mail foo@bar.com",
                 NOT_ADMIN_TEST_USERNAME
@@ -380,7 +380,7 @@ async fn test_integration_with_assert_cmd(rsclient: KanidmClient) {
         // checking the email was changed
         let sad = test_cmd_admin(
             &token_cache_path,
-            &rsclient,
+            rsclient,
             &format!(
                 "service-account get -D admin -o json {}",
                 NOT_ADMIN_TEST_USERNAME

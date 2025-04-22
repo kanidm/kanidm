@@ -17,7 +17,7 @@ static USER_B_NAME: &str = "valid_user_b";
 #[kanidmd_testkit::test]
 async fn test_not_authenticated(rsclient: &KanidmClient) {
     // basically here we try a bit of all the possible combinations while unauthenticated to check it's not working
-    setup_server(&rsclient).await;
+    setup_server(rsclient).await;
     create_user(rsclient, USER_A_NAME).await;
     let _ = rsclient.logout().await;
     let res = rsclient
@@ -47,11 +47,11 @@ async fn test_not_authenticated(rsclient: &KanidmClient) {
 
 #[kanidmd_testkit::test]
 async fn test_non_existing_user_id(rsclient: &KanidmClient) {
-    setup_server(&rsclient).await;
+    setup_server(rsclient).await;
     create_user(rsclient, USER_A_NAME).await;
     create_user(rsclient, USER_B_NAME).await;
     let non_existing_user = "non_existing_user";
-    login_with_user(&rsclient, USER_A_NAME).await;
+    login_with_user(rsclient, USER_A_NAME).await;
     let res: Result<IdentifyUserResponse, kanidm_client::ClientError> = rsclient
         .idm_person_identify_user(non_existing_user, IdentifyUserRequest::Start)
         .await;
@@ -87,9 +87,9 @@ async fn test_non_existing_user_id(rsclient: &KanidmClient) {
 // Each tests is named like `test_{api input}_response_{expected api output}_or_{expected api output}`
 #[kanidmd_testkit::test]
 async fn test_start_response_identity_verification_available(rsclient: &KanidmClient) {
-    setup_server(&rsclient).await;
+    setup_server(rsclient).await;
     create_user(rsclient, USER_A_NAME).await;
-    login_with_user(&rsclient, USER_A_NAME).await;
+    login_with_user(rsclient, USER_A_NAME).await;
 
     let response = rsclient
         .idm_person_identify_user(USER_A_NAME, IdentifyUserRequest::Start)
@@ -106,10 +106,10 @@ async fn test_start_response_identity_verification_available(rsclient: &KanidmCl
 // `Start`, that is WaitForCode or ProvideCode
 #[kanidmd_testkit::test]
 async fn test_start_response_wait_for_code_or_provide_code(rsclient: &KanidmClient) {
-    setup_server(&rsclient).await;
+    setup_server(rsclient).await;
     let user_a_uuid = create_user(rsclient, USER_A_NAME).await;
     let user_b_uuid = create_user(rsclient, USER_B_NAME).await;
-    login_with_user(&rsclient, USER_A_NAME).await;
+    login_with_user(rsclient, USER_A_NAME).await;
     let response = rsclient
         .idm_person_identify_user(USER_B_NAME, IdentifyUserRequest::Start)
         .await;
@@ -130,10 +130,10 @@ async fn test_start_response_wait_for_code_or_provide_code(rsclient: &KanidmClie
 
 #[kanidmd_testkit::test]
 async fn test_provide_code_response_code_failure_or_provide_code(rsclient: &KanidmClient) {
-    setup_server(&rsclient).await;
+    setup_server(rsclient).await;
     let user_a_uuid = create_user(rsclient, USER_A_NAME).await;
     let user_b_uuid = create_user(rsclient, USER_B_NAME).await;
-    login_with_user(&rsclient, USER_A_NAME).await;
+    login_with_user(rsclient, USER_A_NAME).await;
     let response = rsclient
         .idm_person_identify_user(
             USER_B_NAME,
@@ -158,12 +158,12 @@ async fn test_provide_code_response_code_failure_or_provide_code(rsclient: &Kani
 // here we actually test the full idm flow by duplicating the server
 #[kanidmd_testkit::test]
 async fn test_full_identification_flow(rsclient: &KanidmClient) {
-    setup_server(&rsclient).await;
+    setup_server(rsclient).await;
     let user_a_uuid = create_user(rsclient, USER_A_NAME).await;
     let user_b_uuid = create_user(rsclient, USER_B_NAME).await;
     //user A session
     let valid_user_a_client = rsclient;
-    login_with_user(&valid_user_a_client, USER_A_NAME).await;
+    login_with_user(valid_user_a_client, USER_A_NAME).await;
     //user B session
     let valid_user_b_client = valid_user_a_client.new_session().unwrap();
     login_with_user(&valid_user_b_client, USER_B_NAME).await;

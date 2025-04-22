@@ -188,6 +188,6 @@ mod tests {
     #[test]
     fn test_scim_spn() {
         let vs: ValueSet = ValueSetSpn::new(("claire".to_string(), "example.com".to_string()));
-        crate::valueset::scim_json_reflexive(vs, r#""claire@example.com""#);
+        crate::valueset::scim_json_reflexive(&vs, r#""claire@example.com""#);
     }
 }

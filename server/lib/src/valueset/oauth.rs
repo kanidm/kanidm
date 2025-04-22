@@ -898,7 +898,7 @@ mod tests {
     fn test_scim_oauth2_scope() {
         let vs: ValueSet = ValueSetOauthScope::new("fully_sick_scope_m8".to_string());
         let data = r#"["fully_sick_scope_m8"]"#;
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
+        crate::valueset::scim_json_reflexive(&vs.clone(), data);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetOauthScope>(vs, &[])

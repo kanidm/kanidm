@@ -246,7 +246,7 @@ mod tests {
     fn test_scim_utf8() {
         let vs: ValueSet = ValueSetUtf8::new("Test".to_string());
         // Test that the output json matches some known str
-        crate::valueset::scim_json_reflexive(vs.clone(), r#""Test""#);
+        crate::valueset::scim_json_reflexive(&vs.clone(), r#""Test""#);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetUtf8>(vs, &[])

@@ -2417,7 +2417,7 @@ mod tests {
             let lims = Limits::unlimited();
 
             let r = be.search(&lims, &filt);
-            assert!(r.expect("Search failed!").len() == 0);
+            assert!(r.expect("Search failed!").is_empty());
         });
     }
 

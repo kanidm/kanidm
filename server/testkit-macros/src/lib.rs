@@ -44,7 +44,7 @@ pub fn cli_kanidm(_input: TokenStream) -> TokenStream {
             .run()
             .unwrap();
         let mut kanidm = kanidm.command();
-        kanidm.env("KANIDM_URL", &rsclient.get_url().to_string());
+        kanidm.env("KANIDM_URL", rsclient.get_url().to_string());
         kanidm.env("KANIDM_TOKEN_CACHE_PATH", &token_cache_path);
         kanidm
         }

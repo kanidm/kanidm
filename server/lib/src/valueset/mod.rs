@@ -995,7 +995,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
 }
 
 #[cfg(test)]
-pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
+pub(crate) fn scim_json_reflexive(vs: &ValueSet, data: &str) {
     let scim_value = vs.to_scim_value().unwrap().assume_resolved();
 
     let strout = serde_json::to_string_pretty(&scim_value).unwrap();

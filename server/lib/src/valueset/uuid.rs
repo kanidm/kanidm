@@ -422,7 +422,7 @@ mod tests {
 
         let data = r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#;
 
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
+        crate::valueset::scim_json_reflexive(&vs.clone(), data);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetUuid>(vs, &[])

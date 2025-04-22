@@ -381,6 +381,6 @@ mod tests {
   }
 ]
 "#;
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(&vs, data);
     }
 }
