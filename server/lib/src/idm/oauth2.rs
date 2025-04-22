@@ -3101,6 +3101,7 @@ mod tests {
             $code_challenge:expr,
             $scope:expr
         ) => {{
+            #[allow(clippy::unnecessary_to_owned)]
             let scope: BTreeSet<String> = $scope.split(" ").map(|s| s.to_string()).collect();
 
             let auth_req = AuthorisationRequest {

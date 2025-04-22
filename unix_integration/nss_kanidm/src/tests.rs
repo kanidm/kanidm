@@ -71,32 +71,32 @@ impl RequestOptions {
 fn nss_fallback_unavail() {
     let req_opt = RequestOptions::fallback_unavail();
     let Response::Unavail = core::get_all_user_entries(req_opt) else {
-        unreachable!();
+        panic!("unrecoverable");
     };
 
     let req_opt = RequestOptions::fallback_unavail();
     let Response::Unavail = core::get_user_entry_by_uid(0, req_opt) else {
-        unreachable!();
+        panic!("unrecoverable");
     };
 
     let req_opt = RequestOptions::fallback_unavail();
     let Response::Unavail = core::get_user_entry_by_name("root".to_string(), req_opt) else {
-        unreachable!();
+        panic!("unrecoverable");
     };
 
     let req_opt = RequestOptions::fallback_unavail();
     let Response::Unavail = core::get_all_group_entries(req_opt) else {
-        unreachable!();
+        panic!("unrecoverable");
     };
 
     let req_opt = RequestOptions::fallback_unavail();
     let Response::Unavail = core::get_group_entry_by_gid(0, req_opt) else {
-        unreachable!();
+        panic!("unrecoverable");
     };
 
     let req_opt = RequestOptions::fallback_unavail();
     let Response::Unavail = core::get_group_entry_by_name("root".to_string(), req_opt) else {
-        unreachable!();
+        panic!("unrecoverable");
     };
 }
 
@@ -105,7 +105,7 @@ fn nss_fallback_all_user_entries() {
     let req_opt = RequestOptions::fallback_fixture();
 
     let Response::Success(users) = core::get_all_user_entries(req_opt) else {
-        unreachable!();
+        panic!("Failed to get all user entries");
     };
 
     assert_eq!(users.len(), 3);
@@ -129,7 +129,7 @@ fn nss_fallback_all_user_entries() {
 fn nss_fallback_user_entry_by_uid() {
     let req_opt = RequestOptions::fallback_fixture();
     let Response::Success(user) = core::get_user_entry_by_uid(0, req_opt) else {
-        unreachable!();
+        panic!("Failed to get user entry by uid");
     };
 
     assert_eq!(user.name, "root");
@@ -139,7 +139,7 @@ fn nss_fallback_user_entry_by_uid() {
 
     let req_opt = RequestOptions::fallback_fixture();
     let Response::Success(user) = core::get_user_entry_by_uid(1000, req_opt) else {
-        unreachable!();
+        panic!("Failed to get user entry by uid");
     };
 
     assert_eq!(user.name, "tobias");
@@ -149,7 +149,7 @@ fn nss_fallback_user_entry_by_uid() {
 
     let req_opt = RequestOptions::fallback_fixture();
     let Response::NotFound = core::get_user_entry_by_uid(10, req_opt) else {
-        unreachable!();
+        panic!("Wrong result");
     };
 }
 
@@ -157,7 +157,7 @@ fn nss_fallback_user_entry_by_uid() {
 fn nss_fallback_user_entry_by_name() {
     let req_opt = RequestOptions::fallback_fixture();
     let Response::Success(user) = core::get_user_entry_by_name("root".to_string(), req_opt) else {
-        unreachable!();
+        panic!("Failed to get user entry by name");
     };
 
     assert_eq!(user.name, "root");
@@ -167,7 +167,7 @@ fn nss_fallback_user_entry_by_name() {
 
     let req_opt = RequestOptions::fallback_fixture();
     let Response::Success(user) = core::get_user_entry_by_name("ellie".to_string(), req_opt) else {
-        unreachable!();
+        panic!("Failed to get user entry by name");
     };
 
     assert_eq!(user.name, "ellie");
@@ -177,7 +177,7 @@ fn nss_fallback_user_entry_by_name() {
 
     let req_opt = RequestOptions::fallback_fixture();
     let Response::NotFound = core::get_user_entry_by_name("william".to_string(), req_opt) else {
-        unreachable!();
+        panic!("Wrong result");
     };
 }
 
@@ -186,7 +186,7 @@ fn nss_fallback_all_group_entries() {
     let req_opt = RequestOptions::fallback_fixture();
 
     let Response::Success(groups) = core::get_all_group_entries(req_opt) else {
-        unreachable!();
+        panic!("Failed to get all group entries");
     };
 
     assert_eq!(groups.len(), 3);
@@ -207,7 +207,7 @@ fn nss_fallback_all_group_entries() {
 fn nss_fallback_group_entry_by_uid() {
     let req_opt = RequestOptions::fallback_fixture();
     let Response::Success(group) = core::get_group_entry_by_gid(0, req_opt) else {
-        unreachable!();
+        panic!("Failed to get group entry by gid");
     };
 
     assert_eq!(group.name, "root");
@@ -216,7 +216,7 @@ fn nss_fallback_group_entry_by_uid() {
 
     let req_opt = RequestOptions::fallback_fixture();
     let Response::Success(group) = core::get_group_entry_by_gid(1000, req_opt) else {
-        unreachable!();
+        panic!("Failed to get group entry by gid");
     };
 
     assert_eq!(group.name, "tobias");
@@ -225,7 +225,7 @@ fn nss_fallback_group_entry_by_uid() {
 
     let req_opt = RequestOptions::fallback_fixture();
     let Response::NotFound = core::get_group_entry_by_gid(10, req_opt) else {
-        unreachable!();
+        panic!("Wrong result");
     };
 }
 
@@ -234,7 +234,7 @@ fn nss_fallback_group_entry_by_name() {
     let req_opt = RequestOptions::fallback_fixture();
     let Response::Success(group) = core::get_group_entry_by_name("root".to_string(), req_opt)
     else {
-        unreachable!();
+        panic!("Failed to get group entry by name");
     };
 
     assert_eq!(group.name, "root");
@@ -244,7 +244,7 @@ fn nss_fallback_group_entry_by_name() {
     let req_opt = RequestOptions::fallback_fixture();
     let Response::Success(group) = core::get_group_entry_by_name("ellie".to_string(), req_opt)
     else {
-        unreachable!();
+        panic!("Failed to get group entry by name");
     };
 
     assert_eq!(group.name, "ellie");
@@ -253,6 +253,6 @@ fn nss_fallback_group_entry_by_name() {
 
     let req_opt = RequestOptions::fallback_fixture();
     let Response::NotFound = core::get_group_entry_by_name("william".to_string(), req_opt) else {
-        unreachable!();
+        panic!("Wrong result");
     };
 }
