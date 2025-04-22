@@ -126,7 +126,6 @@ libnss = { git = "https://github.com/Firstyear/libnss-rs.git", branch = "2025020
 sshkeys = { git = "https://github.com/Firstyear/rust-sshkeys.git", rev = "3a081cbf7480628223bcb96fc8aaa8c19109d007" }
 
 
-
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core", version = "=1.6.0-dev" }
 kanidmd_lib = { path = "./server/lib", version = "=1.6.0-dev" }
@@ -181,8 +180,7 @@ filetime = "^0.2.24"
 fs4 = "^0.13.0"
 futures = "^0.3.31"
 futures-util = { version = "^0.3.30", features = ["sink"] }
-gix = { version = "0.64.0", default-features = false }
-haproxy-protocol = { version = "0.0.1" }
+gix = { version = "0.71.0", default-features = false }
 hashbrown = { version = "0.14.3", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 http = "1.2.0"
