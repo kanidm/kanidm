@@ -306,4 +306,4 @@ x509-cert = "0.2.5"
 
 zxcvbn = "3.1.0"
 
-nonempty = "0.8.1"
+nonempty = "0.11.0"
