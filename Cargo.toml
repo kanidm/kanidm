@@ -277,7 +277,7 @@ tokio = "^1.44.2"
 tokio-openssl = "^0.6.5"
 tokio-util = "^0.7.13"
 
-toml = "^0.5.11"
+toml = "^0.8.20"
 tracing = { version = "^0.1.41", features = [
     "max_level_trace",
     "release_max_level_debug",

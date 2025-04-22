@@ -77,7 +77,10 @@ pub fn apply_profile() {
         .decode(contents)
         .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
 
-    let profile_cfg: ProfileConfig = toml::from_slice(&data)
+    let data_str = String::from_utf8(data)
+        .unwrap_or_else(|_| panic!("Failed to read profile data to UTF-8 string - {}", profile));
+
+    let profile_cfg: ProfileConfig = toml::from_str(&data_str)
         .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
 
     // We have to setup for our pkg version to be passed into things correctly
