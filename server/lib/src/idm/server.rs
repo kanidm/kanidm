@@ -21,6 +21,7 @@ use tokio::sync::{Mutex, Semaphore};
 use tracing::trace;
 use url::Url;
 use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
+use zxcvbn::{zxcvbn, Score};
 
 use super::event::ReadBackupCodeEvent;
 use super::ldap::{LdapBoundToken, LdapSession};
@@ -1657,18 +1658,14 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         // does the password pass zxcvbn?
 
-        let entropy = zxcvbn::zxcvbn(cleartext, related_inputs).map_err(|e| {
-            admin_error!("zxcvbn check failure (password empty?) {:?}", e);
-            OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(PW_MIN_LENGTH)])
-        })?;
+        let entropy = zxcvbn(cleartext, related_inputs);
 
         // Unix PW's are a single factor, so we enforce good pws
-        if entropy.score() < 4 {
+        if entropy.score() < Score::Four {
             // The password is too week as per:
             // https://docs.rs/zxcvbn/2.0.0/zxcvbn/struct.Entropy.html
             let feedback: zxcvbn::feedback::Feedback = entropy
                 .feedback()
-                .as_ref()
                 .ok_or(OperationError::InvalidState)
                 .cloned()
                 .inspect_err(|err| {

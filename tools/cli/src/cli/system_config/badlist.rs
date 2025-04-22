@@ -5,6 +5,7 @@ use crate::{handle_client_error, PwBadlistOpt};
 use std::fs::File;
 use std::io::Read;
 use tokio::task;
+use zxcvbn::Score;
 
 const CHUNK_SIZE: usize = 1000;
 
@@ -67,10 +68,6 @@ impl PwBadlistOpt {
                 info!("Have {} unique passwords to process", pwset.len());
 
                 // Break the list into chunks per thread availability
-                // let par_count = thread::available_parallelism()
-                //     .expect("Failed to determine available parallelism")
-                //     .get();
-
                 let task_handles: Vec<_> = pwset
                     .chunks(CHUNK_SIZE)
                     .map(|chunk| chunk.to_vec())
@@ -82,18 +79,7 @@ impl PwBadlistOpt {
                                     if v.len() < 10 {
                                         return false;
                                     }
-                                    match zxcvbn::zxcvbn(v.as_str(), &[]) {
-                                        Ok(r) => r.score() >= 4,
-                                        Err(e) => {
-                                            error!(
-                                                "zxcvbn unable to process '{}' - {:?}",
-                                                v.as_str(),
-                                                e
-                                            );
-                                            error!("adding to badlist anyway ...");
-                                            true
-                                        }
-                                    }
+                                    zxcvbn::zxcvbn(v.as_str(), &[]).score() >= Score::Four
                                 })
                                 .map(|s| s.to_string())
                                 .collect::<Vec<_>>();
