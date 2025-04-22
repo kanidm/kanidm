@@ -2,8 +2,8 @@
 
 use crate::prelude::*;
 use hashbrown::HashSet;
-use rand::distributions::{Distribution, Uniform};
-use rand::{thread_rng, Rng};
+use rand::distr::{Distribution, Uniform};
+use rand::{rng, Rng};
 use std::ops::Range;
 
 #[derive(Debug)]
@@ -35,7 +35,7 @@ pub fn uuid_from_duration(d: Duration, sid: Sid) -> Uuid {
 }
 
 pub(crate) fn password_from_random_len(len: u32) -> String {
-    thread_rng()
+    rng()
         .sample_iter(&DistinctAlpha)
         .take(len as usize)
         .collect::<String>()
@@ -52,7 +52,7 @@ pub fn backup_code_from_random() -> HashSet<String> {
 pub fn readable_password_from_random() -> String {
     // 2^112 bits, means we need at least 55^20 to have as many bits of entropy.
     // this leads us to 4 groups of 5 to create 55^20
-    let mut trng = thread_rng();
+    let mut trng = rng();
     format!(
         "{}-{}-{}-{}",
         (&mut trng)
@@ -81,7 +81,7 @@ impl Distribution<char> for DistinctAlpha {
                 abcdefghjkpqrstuvwxyz\
                 0123456789";
 
-        let range = Uniform::new(0, RANGE);
+        let range = Uniform::new(0, RANGE).expect("Failed to get a uniform range");
 
         let n = range.sample(rng);
         GEN_ASCII_STR_CHARSET[n as usize] as char

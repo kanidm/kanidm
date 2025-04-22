@@ -237,8 +237,8 @@ prctl = "1.0.0"
 proc-macro2 = "1.0.93"
 qrcode = "^0.12.0"
 quote = "1"
-rand = "^0.8.5"
-rand_chacha = "0.3.1"
+rand = "0.9.1"
+rand_chacha = "0.9.0"
 regex = "1.11.0"
 reqwest = { version = "0.12.12", default-features = false, features = [
     "cookies",

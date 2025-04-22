@@ -2992,11 +2992,12 @@ fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
 #[cfg(any(feature = "dev-oauth2-device-flow", test))]
 #[allow(dead_code)]
 fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
-    let mut rng = rand::thread_rng();
+    use rand::TryRngCore;
+
+    let mut rng = rand::rng();
     let mut result = [0u8; 16];
     // doing it here because of feature-shenanigans.
-    use rand::Rng;
-    if let Err(err) = rng.try_fill(&mut result) {
+    if let Err(err) = rng.try_fill_bytes(&mut result) {
         error!("Failed to generate device code! {:?}", err);
         return Err(Oauth2Error::ServerError(OperationError::Backend));
     }
@@ -3009,8 +3010,8 @@ fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
 /// Returns (xxx-yyy-zzz, digits) where one's the human-facing code, the other is what we store in the DB.
 fn gen_user_code() -> (String, u32) {
     use rand::Rng;
-    let mut rng = rand::thread_rng();
-    let num: u32 = rng.gen_range(0..=999999999);
+    let mut rng = rand::rng();
+    let num: u32 = rng.random_range(0..=999999999);
     let result = format!("{:09}", num);
     (
         format!("{}-{}-{}", &result[0..3], &result[3..6], &result[6..9]),
