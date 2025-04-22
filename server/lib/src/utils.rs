@@ -80,7 +80,8 @@ impl Distribution<char> for DistinctAlpha {
         const GEN_ASCII_STR_CHARSET: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ\
                 abcdefghjkpqrstuvwxyz\
                 0123456789";
-
+        // TODO: this needs to handle the error, maybe?
+        #[allow(clippy::expect_used)]
         let range = Uniform::new(0, RANGE).expect("Failed to get a uniform range");
 
         let n = range.sample(rng);
