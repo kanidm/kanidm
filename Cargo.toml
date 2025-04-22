@@ -268,7 +268,7 @@ smolset = "^1.3.1"
 sshkey-attest = "^0.5.0"
 sshkeys = "0.3.3"
 svg = "0.13.1"
-syn = { version = "2.0.96", features = ["full"] }
+syn = { version = "2.0.100", features = ["full"] }
 tempfile = "3.15.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.36", features = ["formatting", "local-offset"] }
