@@ -208,9 +208,9 @@ libnss = "^0.8.0"
 libsqlite3-sys = "^0.25.2"
 lodepng = "3.11.0"
 lru = "0.14.0"
-mathru = "^0.13.0"
+mathru = "0.15.5"
 md-5 = "0.10.6"
-mimalloc = "0.1.43"
+mimalloc = "0.1.46"
 notify-debouncer-full = { version = "0.5" }
 num_enum = "0.7.3"
 oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }

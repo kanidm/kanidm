@@ -2361,6 +2361,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "hermit-abi"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d231dfb89cfffdbc30e7fc41579ed6066ad03abda9e567ccafae602b97ec5024"
+
+[[package]]
 name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3385,6 +3391,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "lambert_w"
+version = "1.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "913e1e36ca541d75f384593fa70bf5a5e9f001f2996bfa7926550d921f83baf6"
+dependencies = [
+ "num-complex",
+ "num-traits",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3468,9 +3484,9 @@ checksum = "8355be11b20d696c8f18f6cc018c4e372165b1fa8126cef092399c9951984ffa"
 
 [[package]]
 name = "libmimalloc-sys"
-version = "0.1.40"
+version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07d0e07885d6a754b9c7993f2625187ad694ee985d60f23355ff0e7077261502"
+checksum = "ec9d6fac27761dabcd4ee73571cdb06b7022dc99089acbe5435691edffaac0f4"
 dependencies = [
  "cc",
  "libc",
@@ -3621,11 +3637,26 @@ checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
 
 [[package]]
 name = "mathru"
-version = "0.13.0"
+version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a42bf938e4c9a6ad581cf528d5606eb50c5458ac759ca23719291e2f6499bec"
+checksum = "f3df2d16c016b28cd94248072b6cd8106d8abd7184ec90ea09660c4b7fa989f1"
 dependencies = [
+ "lambert_w",
+ "matrixmultiply",
  "rand 0.8.5",
+]
+
+[[package]]
+name = "matrixmultiply"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9380b911e3e96d10c1f415da0876389aaf1b56759054eeb0de7df940c456ba1a"
+dependencies = [
+ "autocfg",
+ "num_cpus",
+ "once_cell",
+ "rawpointer",
+ "thread-tree",
 ]
 
 [[package]]
@@ -3675,9 +3706,9 @@ dependencies = [
 
 [[package]]
 name = "mimalloc"
-version = "0.1.44"
+version = "0.1.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99585191385958383e13f6b822e6b6d8d9cf928e7d286ceb092da92b43c87bc1"
+checksum = "995942f432bbb4822a7e9c3faa87a695185b0d09273ba85f097b54f4e458f2af"
 dependencies = [
  "libmimalloc-sys",
 ]
@@ -3958,6 +3989,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "num_cpus"
+version = "1.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
+dependencies = [
+ "hermit-abi",
+ "libc",
 ]
 
 [[package]]
@@ -4691,6 +4732,12 @@ checksum = "99d9a13982dcf210057a8a78572b2217b667c3beacbf3a0d8b454f6f82837d38"
 dependencies = [
  "getrandom 0.3.2",
 ]
+
+[[package]]
+name = "rawpointer"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
 
 [[package]]
 name = "redox_syscall"
@@ -5696,6 +5743,15 @@ name = "thousands"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bf63baf9f5039dadc247375c29eb13706706cfde997d0330d05aa63a77d8820"
+
+[[package]]
+name = "thread-tree"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffbd370cb847953a25954d9f63e14824a36113f8c72eecf6eccef5dc4b45d630"
+dependencies = [
+ "crossbeam-channel",
+]
 
 [[package]]
 name = "thread_local"
