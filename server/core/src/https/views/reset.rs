@@ -121,6 +121,7 @@ struct SetUnixCredPartial {
 struct AddSshPublicKeyPartial {
     title_error: Option<String>,
     key_error: Option<String>,
+    key_value: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -902,6 +903,7 @@ pub(crate) async fn view_add_ssh_publickey(
             return Ok((AddSshPublicKeyPartial {
                 title_error: None,
                 key_error: None,
+                key_value: None,
             },)
                 .into_response());
         }
@@ -920,6 +922,7 @@ pub(crate) async fn view_add_ssh_publickey(
                 return Ok((AddSshPublicKeyPartial {
                     title_error: None,
                     key_error: Some("Key cannot be parsed".to_string()),
+                    key_value: Some(new_key.key),
                 },)
                     .into_response());
             }
@@ -965,6 +968,7 @@ pub(crate) async fn view_add_ssh_publickey(
         AddSshPublicKeyPartial {
             title_error,
             key_error,
+            key_value: Some(new_key.key),
         },
     )
         .into_response())
