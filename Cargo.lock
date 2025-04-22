@@ -4752,12 +4752,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "reference-counted-singleton"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5daffa8f5ca827e146485577fa9dba9bd9c6921e06e954ab8f6408c10f753086"
-
-[[package]]
 name = "referencing"
 version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5197,16 +5191,16 @@ dependencies = [
 
 [[package]]
 name = "selinux"
-version = "0.4.6"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0139b2436c81305eb6bda33af151851f75bd62783817b25f44daa371119c30b5"
+checksum = "e37f432dfe840521abd9a72fefdf88ed7ad0f43bbea7d9d1d3d80383e9f4ad13"
 dependencies = [
  "bitflags 2.9.0",
  "libc",
  "once_cell",
- "reference-counted-singleton",
+ "parking_lot",
  "selinux-sys",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
