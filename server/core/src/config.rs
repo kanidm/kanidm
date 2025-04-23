@@ -4,18 +4,18 @@
 //! These components should be "per server". Any "per domain" config should be in the system
 //! or domain entries that are able to be replicated.
 
-use std::fmt::{self, Display};
-use std::fs::File;
-use std::io::Read;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-
+use hashbrown::HashSet;
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
-
 use serde::Deserialize;
 use sketching::LogLevel;
+use std::fmt::{self, Display};
+use std::fs::File;
+use std::io::Read;
+use std::net::IpAddr;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use url::Url;
 
 use crate::repl::config::ReplicationConfiguration;
@@ -98,6 +98,111 @@ pub struct TlsConfiguration {
     pub chain: PathBuf,
     pub key: PathBuf,
     pub client_ca: Option<PathBuf>,
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
+pub enum LdapAddressInfo {
+    #[default]
+    None,
+    #[serde(rename = "proxy-v2")]
+    ProxyV2(HashSet<IpAddr>),
+}
+
+impl LdapAddressInfo {
+    pub fn trusted_proxy_v2(&self) -> Option<HashSet<IpAddr>> {
+        if let Self::ProxyV2(trusted) = self {
+            Some(trusted.clone())
+        } else {
+            None
+        }
+    }
+}
+
+impl Display for LdapAddressInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::None => f.write_str("none"),
+            Self::ProxyV2(trusted) => {
+                f.write_str("proxy-v2 [ ")?;
+                for ip in trusted {
+                    write!(f, "{} ", ip)?;
+                }
+                f.write_str("]")
+            }
+        }
+    }
+}
+
+pub(crate) enum AddressSet {
+    NonContiguousIpSet(HashSet<IpAddr>),
+    All,
+}
+
+impl AddressSet {
+    pub(crate) fn contains(&self, ip_addr: &IpAddr) -> bool {
+        match self {
+            Self::All => true,
+            Self::NonContiguousIpSet(range) => range.contains(ip_addr),
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
+pub enum HttpAddressInfo {
+    #[default]
+    None,
+    #[serde(rename = "x-forward-for")]
+    XForwardFor(HashSet<IpAddr>),
+    // IMPORTANT: This is undocumented, and only exists for backwards compat
+    // with config v1 which has a boolean toggle for this option.
+    #[serde(rename = "x-forward-for-all-source-trusted")]
+    XForwardForAllSourcesTrusted,
+    #[serde(rename = "proxy-v2")]
+    ProxyV2(HashSet<IpAddr>),
+}
+
+impl HttpAddressInfo {
+    pub(crate) fn trusted_x_forward_for(&self) -> Option<AddressSet> {
+        match self {
+            Self::XForwardForAllSourcesTrusted => Some(AddressSet::All),
+            Self::XForwardFor(trusted) => Some(AddressSet::NonContiguousIpSet(trusted.clone())),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn trusted_proxy_v2(&self) -> Option<HashSet<IpAddr>> {
+        if let Self::ProxyV2(trusted) = self {
+            Some(trusted.clone())
+        } else {
+            None
+        }
+    }
+}
+
+impl Display for HttpAddressInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::None => f.write_str("none"),
+
+            Self::XForwardFor(trusted) => {
+                f.write_str("x-forward-for [ ")?;
+                for ip in trusted {
+                    write!(f, "{} ", ip)?;
+                }
+                f.write_str("]")
+            }
+            Self::XForwardForAllSourcesTrusted => {
+                f.write_str("x-forward-for [ ALL SOURCES TRUSTED ]")
+            }
+            Self::ProxyV2(trusted) => {
+                f.write_str("proxy-v2 [ ")?;
+                for ip in trusted {
+                    write!(f, "{} ", ip)?;
+                }
+                f.write_str("]")
+            }
+        }
+    }
 }
 
 /// This is the Server Configuration as read from `server.toml` or environment variables.
@@ -217,7 +322,10 @@ pub struct ServerConfigV2 {
     role: Option<ServerRole>,
     log_level: Option<LogLevel>,
     online_backup: Option<OnlineBackup>,
-    trust_x_forward_for: Option<bool>,
+
+    http_client_address_info: Option<HttpAddressInfo>,
+    ldap_client_address_info: Option<LdapAddressInfo>,
+
     adminbindpath: Option<String>,
     thread_count: Option<usize>,
     maximum_request_size_bytes: Option<usize>,
@@ -490,7 +598,10 @@ pub struct Configuration {
     pub db_fs_type: Option<FsType>,
     pub db_arc_size: Option<usize>,
     pub maximum_request: usize,
-    pub trust_x_forward_for: bool,
+
+    pub http_client_address_info: HttpAddressInfo,
+    pub ldap_client_address_info: LdapAddressInfo,
+
     pub tls_config: Option<TlsConfiguration>,
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
     pub online_backup: Option<OnlineBackup>,
@@ -522,7 +633,8 @@ impl Configuration {
             db_fs_type: None,
             db_arc_size: None,
             maximum_request: 256 * 1024, // 256k
-            trust_x_forward_for: None,
+            http_client_address_info: HttpAddressInfo::default(),
+            ldap_client_address_info: LdapAddressInfo::default(),
             tls_key: None,
             tls_chain: None,
             tls_client_ca: None,
@@ -547,7 +659,8 @@ impl Configuration {
             db_fs_type: None,
             db_arc_size: None,
             maximum_request: 256 * 1024, // 256k
-            trust_x_forward_for: false,
+            http_client_address_info: HttpAddressInfo::default(),
+            ldap_client_address_info: LdapAddressInfo::default(),
             tls_config: None,
             integration_test_config: None,
             online_backup: None,
@@ -587,7 +700,17 @@ impl fmt::Display for Configuration {
             None => write!(f, "arcsize: AUTO, "),
         }?;
         write!(f, "max request size: {}b, ", self.maximum_request)?;
-        write!(f, "trust X-Forwarded-For: {}, ", self.trust_x_forward_for)?;
+        write!(
+            f,
+            "http client address info: {}, ",
+            self.http_client_address_info
+        )?;
+        write!(
+            f,
+            "ldap client address info: {}, ",
+            self.ldap_client_address_info
+        )?;
+
         write!(f, "with TLS: {}, ", self.tls_config.is_some())?;
         match &self.online_backup {
             Some(bck) => write!(
@@ -642,7 +765,8 @@ pub struct ConfigurationBuilder {
     db_fs_type: Option<FsType>,
     db_arc_size: Option<usize>,
     maximum_request: usize,
-    trust_x_forward_for: Option<bool>,
+    http_client_address_info: HttpAddressInfo,
+    ldap_client_address_info: LdapAddressInfo,
     tls_key: Option<PathBuf>,
     tls_chain: Option<PathBuf>,
     tls_client_ca: Option<PathBuf>,
@@ -691,8 +815,8 @@ impl ConfigurationBuilder {
             self.db_arc_size = env_config.db_arc_size;
         }
 
-        if env_config.trust_x_forward_for.is_some() {
-            self.trust_x_forward_for = env_config.trust_x_forward_for;
+        if env_config.trust_x_forward_for == Some(true) {
+            self.http_client_address_info = HttpAddressInfo::XForwardForAllSourcesTrusted;
         }
 
         if env_config.tls_key.is_some() {
@@ -813,8 +937,8 @@ impl ConfigurationBuilder {
             self.db_arc_size = config.db_arc_size;
         }
 
-        if config.trust_x_forward_for.is_some() {
-            self.trust_x_forward_for = config.trust_x_forward_for;
+        if config.trust_x_forward_for == Some(true) {
+            self.http_client_address_info = HttpAddressInfo::XForwardForAllSourcesTrusted;
         }
 
         if config.online_backup.is_some() {
@@ -893,8 +1017,12 @@ impl ConfigurationBuilder {
             self.db_arc_size = config.db_arc_size;
         }
 
-        if config.trust_x_forward_for.is_some() {
-            self.trust_x_forward_for = config.trust_x_forward_for;
+        if let Some(http_client_address_info) = config.http_client_address_info {
+            self.http_client_address_info = http_client_address_info
+        }
+
+        if let Some(ldap_client_address_info) = config.ldap_client_address_info {
+            self.ldap_client_address_info = ldap_client_address_info
         }
 
         if config.online_backup.is_some() {
@@ -930,7 +1058,8 @@ impl ConfigurationBuilder {
             db_fs_type,
             db_arc_size,
             maximum_request,
-            trust_x_forward_for,
+            http_client_address_info,
+            ldap_client_address_info,
             tls_key,
             tls_chain,
             tls_client_ca,
@@ -986,7 +1115,6 @@ impl ConfigurationBuilder {
         let adminbindpath =
             adminbindpath.unwrap_or(env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string());
         let address = bindaddress.unwrap_or(DEFAULT_SERVER_ADDRESS.to_string());
-        let trust_x_forward_for = trust_x_forward_for.unwrap_or_default();
         let output_mode = output_mode.unwrap_or_default();
         let role = role.unwrap_or(ServerRole::WriteReplica);
         let log_level = log_level.unwrap_or_default();
@@ -1000,7 +1128,8 @@ impl ConfigurationBuilder {
             db_fs_type,
             db_arc_size,
             maximum_request,
-            trust_x_forward_for,
+            http_client_address_info,
+            ldap_client_address_info,
             tls_config,
             online_backup,
             domain,
