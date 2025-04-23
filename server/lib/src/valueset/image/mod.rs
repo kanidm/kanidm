@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use crate::valueset::ScimResolveStatus;
 use std::fmt::Display;
+use std::io::Cursor;
 
 use crate::be::dbvalue::DbValueImage;
 use crate::prelude::*;
@@ -37,8 +38,8 @@ pub trait ImageValueThings {
     /// A sha256 of the filename/type/contents
     fn hash_imagevalue(&self) -> String;
 
-    fn get_limits(&self) -> image::io::Limits {
-        let mut limits = image::io::Limits::default();
+    fn get_limits(&self) -> image::Limits {
+        let mut limits = image::Limits::default();
         limits.max_image_height = Some(MAX_IMAGE_HEIGHT);
         limits.max_image_width = Some(MAX_IMAGE_WIDTH);
         limits
@@ -148,7 +149,7 @@ impl ImageValueThings for ImageValue {
 
     /// validate the GIF file contents, and that it's actually a GIF
     fn validate_is_gif(&self) -> Result<(), ImageValidationError> {
-        let Ok(mut decoder) = GifDecoder::new(&self.contents[..]) else {
+        let Ok(mut decoder) = GifDecoder::new(Cursor::new(&self.contents[..])) else {
             return Err(ImageValidationError::InvalidImage(
                 "Failed to parse GIF".to_string(),
             ));
@@ -189,7 +190,7 @@ impl ImageValueThings for ImageValue {
             ));
         }
 
-        let Ok(mut decoder) = WebPDecoder::new(&self.contents[..]) else {
+        let Ok(mut decoder) = WebPDecoder::new(Cursor::new(&self.contents[..])) else {
             return Err(ImageValidationError::InvalidImage(
                 "Failed to parse WebP file".to_string(),
             ));

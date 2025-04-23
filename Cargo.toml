@@ -163,7 +163,7 @@ base64 = "^0.22.1"
 base64urlsafedata = "0.5.1"
 bitflags = "^2.8.0"
 bytes = "^1.9.0"
-clap = { version = "^4.5.34", features = ["derive", "env"] }
+clap = { version = "4.5.37", features = ["derive", "env"] }
 clap_complete = "^4.5.42"
 # Forced by saffron/cron
 chrono = "^0.4.39"
@@ -190,7 +190,7 @@ hyper = { version = "1.5.1", features = [
 ] } # hyper full includes client/server/http2
 hyper-util = { version = "0.1.10", features = ["server", "tokio"] }
 idlset = "^0.2.5"
-image = { version = "0.24.9", default-features = false, features = [
+image = { version = "0.25.6", default-features = false, features = [
     "gif",
     "jpeg",
     "webp",
@@ -203,7 +203,7 @@ lazy_static = "^1.5.0"
 ldap3_client = "^0.5.2"
 ldap3_proto = { version = "^0.5.2", features = ["serde"] }
 
-libc = "^0.2.168"
+libc = "0.2.172"
 libnss = "^0.8.0"
 libsqlite3-sys = "^0.25.2"
 lodepng = "3.11.0"
