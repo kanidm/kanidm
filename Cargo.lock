@@ -3228,7 +3228,7 @@ dependencies = [
  "futures",
  "futures-util",
  "haproxy-protocol",
- "hashbrown 0.14.5",
+ "hashbrown 0.15.2",
  "hyper 1.6.0",
  "hyper-util",
  "kanidm_build_profiles",
