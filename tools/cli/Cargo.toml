@@ -73,6 +73,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
 url = { workspace = true }
+time = { workspace = true }
 
 ## See src/cli/webauthn/mod.rs for which features are
 ## required for which target_os here

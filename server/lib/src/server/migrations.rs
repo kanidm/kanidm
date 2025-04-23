@@ -532,6 +532,78 @@ impl QueryServerWriteTransaction<'_> {
 
         self.reload()?;
 
+        // =========== OAuth2 Cryptography Migration ==============
+
+        debug!("START OAUTH2 MIGRATION");
+
+        // Load all the OAuth2 providers.
+        let all_oauth2_rs_entries = self.internal_search(filter!(f_eq(
+            Attribute::Class,
+            EntryClass::OAuth2ResourceServer.into()
+        )))?;
+
+        if !all_oauth2_rs_entries.is_empty() {
+            let entry_iter = all_oauth2_rs_entries.iter().map(|tgt_entry| {
+                let entry_uuid = tgt_entry.get_uuid();
+                let mut modlist = ModifyList::new_list(vec![
+                    Modify::Present(Attribute::Class, EntryClass::KeyObject.to_value()),
+                    Modify::Present(Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
+                    Modify::Present(Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value()),
+                    // Delete the fernet key, rs256 if any, and the es256 key
+                    Modify::Purged(Attribute::OAuth2RsTokenKey),
+                    Modify::Purged(Attribute::Es256PrivateKeyDer),
+                    Modify::Purged(Attribute::Rs256PrivateKeyDer),
+                ]);
+
+                trace!(?tgt_entry);
+
+                // Import the ES256 Key
+                if let Some(es256_private_der) =
+                    tgt_entry.get_ava_single_private_binary(Attribute::Es256PrivateKeyDer)
+                {
+                    modlist.push_mod(Modify::Present(
+                        Attribute::KeyActionImportJwsEs256,
+                        Value::PrivateBinary(es256_private_der.to_vec()),
+                    ))
+                } else {
+                    warn!("Unable to migrate es256 key");
+                }
+
+                let has_rs256 = tgt_entry
+                    .get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable)
+                    .unwrap_or(false);
+
+                // If there is an rs256 key, import it.
+                // Import the RS256 Key
+                if has_rs256 {
+                    modlist.push_mod(Modify::Present(
+                        Attribute::Class,
+                        EntryClass::KeyObjectJwtEs256.to_value(),
+                    ));
+
+                    if let Some(rs256_private_der) =
+                        tgt_entry.get_ava_single_private_binary(Attribute::Rs256PrivateKeyDer)
+                    {
+                        modlist.push_mod(Modify::Present(
+                            Attribute::KeyActionImportJwsRs256,
+                            Value::PrivateBinary(rs256_private_der.to_vec()),
+                        ))
+                    } else {
+                        warn!("Unable to migrate rs256 key");
+                    }
+                }
+
+                (entry_uuid, modlist)
+            });
+
+            self.internal_batch_modify(entry_iter)?;
+        }
+
+        // Reload for new keys, and updated oauth2
+        self.reload()?;
+
+        // Done!
+
         Ok(())
     }
 

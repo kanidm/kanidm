@@ -1,9 +1,7 @@
 #![deny(warnings)]
-use std::path::Path;
-use std::time::SystemTime;
-
+use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
+use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::constants::{ATTR_GIDNUMBER, KSESSIONID};
-
 use kanidm_proto::internal::{
     ApiToken, CURegState, Filter, ImageValue, Modify, ModifyList, UatPurpose, UserAuthToken,
 };
@@ -13,18 +11,15 @@ use kanidm_proto::v1::{
 };
 use kanidmd_lib::constants::{NAME_IDM_ADMINS, NAME_SYSTEM_ADMINS};
 use kanidmd_lib::credential::totp::Totp;
-
 use kanidmd_lib::prelude::Attribute;
-use tracing::{debug, trace};
-
+use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
+use std::path::Path;
 use std::str::FromStr;
-
-use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
+use std::time::SystemTime;
+use time::OffsetDateTime;
+use tracing::{debug, trace};
 use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
-
-use kanidm_client::{ClientError, KanidmClient};
-use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 
@@ -851,8 +846,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: &KanidmClient) {
 
     assert_eq!(initial_configs.len(), 1);
 
-    // Get the value. Assert we have oauth2_rs_basic_secret,
-    // but can NOT see the token_secret.
+    // Get the value. Assert we have oauth2_rs_basic_secret.
     let oauth2_config = rsclient
         .idm_oauth2_rs_get("test_integration")
         .await
@@ -866,10 +860,6 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: &KanidmClient) {
     assert!(oauth2_config
         .attrs
         .contains_key(Attribute::OAuth2RsBasicSecret.as_str()));
-    // This is present, but redacted.
-    assert!(oauth2_config
-        .attrs
-        .contains_key(Attribute::OAuth2RsTokenKey.as_str()));
 
     // Mod delete the secret/key and check them again.
     // Check we can patch the oauth2_rs_name / oauth2_rs_origin
@@ -880,11 +870,14 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: &KanidmClient) {
             Some("Test Integration"),
             Some("https://new_demo.example.com"),
             true,
-            true,
-            true,
         )
         .await
         .expect("Failed to update config");
+
+    rsclient
+        .idm_oauth2_rs_rotate_keys("test_integration", OffsetDateTime::now_utc())
+        .await
+        .expect("Failed to rotate oauth2 keys");
 
     let oauth2_config_updated = rsclient
         .idm_oauth2_rs_get("test_integration")

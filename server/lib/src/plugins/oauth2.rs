@@ -6,14 +6,14 @@ use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::utils::password_from_random;
 
-pub struct JwsKeygen {}
+pub struct OAuth2 {}
 
-impl Plugin for JwsKeygen {
+impl Plugin for OAuth2 {
     fn id() -> &'static str {
-        "plugin_jws_keygen"
+        "plugin_oauth2"
     }
 
-    #[instrument(level = "debug", name = "jwskeygen_pre_create_transform", skip_all)]
+    #[instrument(level = "debug", name = "oauth2_pre_create_transform", skip_all)]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
@@ -22,7 +22,7 @@ impl Plugin for JwsKeygen {
         Self::modify_inner(qs, cand)
     }
 
-    #[instrument(level = "debug", name = "jwskeygen_pre_modify", skip_all)]
+    #[instrument(level = "debug", name = "oauth2_pre_modify", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
@@ -32,7 +32,7 @@ impl Plugin for JwsKeygen {
         Self::modify_inner(qs, cand)
     }
 
-    #[instrument(level = "debug", name = "jwskeygen_pre_batch_modify", skip_all)]
+    #[instrument(level = "debug", name = "oauth2_pre_batch_modify", skip_all)]
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
@@ -43,52 +43,69 @@ impl Plugin for JwsKeygen {
     }
 }
 
-impl JwsKeygen {
+impl OAuth2 {
     fn modify_inner<T: Clone>(
-        _qs: &mut QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| {
-        if e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerBasic.into()) &&
-            !e.attribute_pres(Attribute::OAuth2RsBasicSecret) {
-                security_info!("regenerating oauth2 basic secret");
-                let v = Value::SecretValue(password_from_random());
-                e.add_ava(Attribute::OAuth2RsBasicSecret, v);
-        }
+        let domain_level = qs.get_domain_version();
 
-        if e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into()) {
-            if !e.attribute_pres(Attribute::OAuth2RsTokenKey) {
-                security_info!("regenerating oauth2 token key");
-                let k = fernet::Fernet::generate_key();
-                let v = Value::new_secret_str(&k);
-                e.add_ava(Attribute::OAuth2RsTokenKey, v);
-            }
-            if !e.attribute_pres(Attribute::Es256PrivateKeyDer) {
-                security_info!("regenerating oauth2 es256 private key");
-                let der = JwsEs256Signer::generate_es256()
-                    .and_then(|jws| jws.private_key_to_der())
-                    .map_err(|e| {
-                        admin_error!(err = ?e, "Unable to generate ES256 JwsSigner private key");
-                        OperationError::CryptographyError
-                    })?;
-                let v = Value::new_privatebinary(&der);
-                e.add_ava(Attribute::Es256PrivateKeyDer, v);
-            }
-            if e.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false)
-                && !e.attribute_pres(Attribute::Rs256PrivateKeyDer) {
-                security_info!("regenerating oauth2 legacy rs256 private key");
-                let der = JwsRs256Signer::generate_legacy_rs256()
-                    .and_then(|jws| jws.private_key_to_der())
-                    .map_err(|e| {
-                        admin_error!(err = ?e, "Unable to generate Legacy RS256 JwsSigner private key");
-                        OperationError::CryptographyError
-                    })?;
-                let v = Value::new_privatebinary(&der);
-                e.add_ava(Attribute::Rs256PrivateKeyDer, v);
-            }
-        }
+        cand.iter_mut()
+            .filter(|entry| {
+                entry.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
+            })
+            .try_for_each(|entry| {
+                // Regenerate the basic secret, if needed
+                if entry.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerBasic.into()) &&
+                    !entry.attribute_pres(Attribute::OAuth2RsBasicSecret) {
+                        security_info!("regenerating oauth2 basic secret");
+                        let v = Value::SecretValue(password_from_random());
+                        entry.add_ava(Attribute::OAuth2RsBasicSecret, v);
+                }
 
-        Ok(())
+            let has_rs256 = entry.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false);
+
+            if domain_level >= DOMAIN_LEVEL_10 {
+                debug!("Generating OAuth2 Key Object");
+                // OAuth2 now requires a KeyObject, configure it now.
+                entry.add_ava(Attribute::Class, EntryClass::KeyObject.to_value());
+                entry.add_ava(Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value());
+                entry.add_ava(Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value());
+                if has_rs256 {
+                    entry.add_ava(Attribute::Class, EntryClass::KeyObjectJwtRs256.to_value());
+                }
+            } else {
+                if !entry.attribute_pres(Attribute::OAuth2RsTokenKey) {
+                    security_info!("regenerating oauth2 token key");
+                    let k = password_from_random();
+                    let v = Value::new_secret_str(&k);
+                    entry.add_ava(Attribute::OAuth2RsTokenKey, v);
+                }
+                if !entry.attribute_pres(Attribute::Es256PrivateKeyDer) {
+                    security_info!("regenerating oauth2 es256 private key");
+                    let der = JwsEs256Signer::generate_es256()
+                        .and_then(|jws| jws.private_key_to_der())
+                        .map_err(|e| {
+                            admin_error!(err = ?e, "Unable to generate ES256 JwsSigner private key");
+                            OperationError::CryptographyError
+                        })?;
+                    let v = Value::new_privatebinary(&der);
+                    entry.add_ava(Attribute::Es256PrivateKeyDer, v);
+                }
+                    if has_rs256 && !entry.attribute_pres(Attribute::Rs256PrivateKeyDer) {
+                    security_info!("regenerating oauth2 legacy rs256 private key");
+                    let der = JwsRs256Signer::generate_legacy_rs256()
+                        .and_then(|jws| jws.private_key_to_der())
+                        .map_err(|e| {
+                            admin_error!(err = ?e, "Unable to generate Legacy RS256 JwsSigner private key");
+                            OperationError::CryptographyError
+                        })?;
+                    let v = Value::new_privatebinary(&der);
+                    entry.add_ava(Attribute::Rs256PrivateKeyDer, v);
+                }
+            }
+
+            Ok(())
         })
     }
 }
@@ -145,7 +162,6 @@ mod tests {
                     .internal_search_uuid(uuid)
                     .expect("failed to get oauth2 config");
                 assert!(e.attribute_pres(Attribute::OAuth2RsBasicSecret));
-                assert!(e.attribute_pres(Attribute::OAuth2RsTokenKey));
             }
         );
     }
@@ -186,8 +202,7 @@ mod tests {
             (
                 Attribute::OAuth2RsBasicSecret,
                 Value::new_secret_str("12345")
-            ),
-            (Attribute::OAuth2RsTokenKey, Value::new_secret_str("12345"))
+            )
         );
 
         let preload = vec![e];
@@ -207,10 +222,8 @@ mod tests {
                     .internal_search_uuid(uuid)
                     .expect("failed to get oauth2 config");
                 assert!(e.attribute_pres(Attribute::OAuth2RsBasicSecret));
-                assert!(e.attribute_pres(Attribute::OAuth2RsTokenKey));
                 // Check the values are different.
                 assert!(e.get_ava_single_secret(Attribute::OAuth2RsBasicSecret) != Some("12345"));
-                assert!(e.get_ava_single_secret(Attribute::OAuth2RsTokenKey) != Some("12345"));
             }
         );
     }

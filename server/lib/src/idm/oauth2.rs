@@ -4,56 +4,48 @@
 //! integrations, which are then able to be used an accessed from the IDM layer
 //! for operations involving OAuth2 authentication processing.
 
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::{BTreeMap, BTreeSet};
-use std::convert::TryFrom;
-use std::fmt;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
-
+use crate::idm::account::Account;
+use crate::idm::server::{
+    IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
+};
+use crate::prelude::*;
+use crate::server::keys::{KeyObject, KeyProvidersTransaction, KeyProvidersWriteTransaction};
+use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 use base64::{engine::general_purpose, Engine as _};
-use hashbrown::HashSet;
-
 pub use compact_jwt::{compact::JwkKeySet, OidcToken};
 use compact_jwt::{
-    crypto::JwsRs256Signer, jws::JwsBuilder, JwsCompact, JwsEs256Signer, JwsSigner,
-    JwsSignerToVerifier, JwsVerifier, OidcClaims, OidcSubject,
+    crypto::{JweA128GCMEncipher, JweA128KWEncipher},
+    jwe::Jwe,
+    jws::JwsBuilder,
+    JweCompact, JwsCompact, OidcClaims, OidcSubject,
 };
 use concread::cowcell::*;
-use fernet::Fernet;
 use hashbrown::HashMap;
+use hashbrown::HashSet;
 use kanidm_proto::constants::*;
-
-// #[cfg(feature = "dev-oauth2-device-flow")]
-// use kanidm_proto::oauth2::OAUTH2_DEVICE_CODE_EXPIRY_SECONDS;
-
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
     OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions, Oauth2Rfc8414MetadataResponse,
     OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, TokenRevokeRequest,
 };
-
 use kanidm_proto::oauth2::{
     AccessTokenType, ClaimType, DeviceAuthorizationResponse, DisplayValue, GrantType,
     IdTokenSignAlg, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
 };
 use openssl::sha;
-
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
+use std::collections::btree_map::Entry as BTreeEntry;
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
 use time::OffsetDateTime;
 use tracing::trace;
 use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 use url::{Host, Origin, Url};
-
-use crate::idm::account::Account;
-use crate::idm::server::{
-    IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
-};
-use crate::prelude::*;
-use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -134,6 +126,8 @@ struct ConsentToken {
     pub client_id: String,
     // Must match the session id of the Uat,
     pub session_id: Uuid,
+    pub expiry: u64,
+
     // So we can ensure that we really match the same uat to prevent confusions.
     pub ident_id: IdentityId,
     // CSRF
@@ -158,9 +152,10 @@ struct ConsentToken {
 struct TokenExchangeCode {
     // We don't need the client_id here, because it's signed with an RS specific
     // key which gives us the assurance that it's the correct combination.
-    // pub uat: UserAuthToken,
     pub account_uuid: Uuid,
     pub session_id: Uuid,
+
+    pub expiry: u64,
 
     // The S256 code challenge.
     #[serde_as(
@@ -359,12 +354,6 @@ impl std::fmt::Debug for OauthRSType {
     }
 }
 
-#[derive(Clone)]
-enum Oauth2JwsSigner {
-    ES256 { signer: JwsEs256Signer },
-    RS256 { signer: JwsRs256Signer },
-}
-
 #[derive(Clone, Debug)]
 struct ClaimValue {
     join: OauthClaimMapJoin,
@@ -398,6 +387,12 @@ impl ClaimValue {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum SignatureAlgo {
+    Es256,
+    Rs256,
+}
+
 #[derive(Clone)]
 pub struct Oauth2RS {
     name: String,
@@ -416,8 +411,8 @@ pub struct Oauth2RS {
     client_scopes: BTreeSet<String>,
     client_sup_scopes: BTreeSet<String>,
     // Our internal exchange encryption material for this rs.
-    token_fernet: Fernet,
-    jws_signer: Oauth2JwsSigner,
+    sign_alg: SignatureAlgo,
+    key_object: Arc<KeyObject>,
 
     // For oidc we also need our issuer url.
     iss: Url,
@@ -486,7 +481,7 @@ impl std::fmt::Debug for Oauth2RS {
 #[derive(Clone)]
 struct Oauth2RSInner {
     origin: Url,
-    fernet: Fernet,
+    consent_key: JweA128KWEncipher,
     rs_set: HashMap<String, Oauth2RS>,
 }
 
@@ -502,31 +497,20 @@ pub struct Oauth2ResourceServersWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, Oauth2RSInner>,
 }
 
-impl TryFrom<(Vec<Arc<EntrySealedCommitted>>, Url, DomainVersion)> for Oauth2ResourceServers {
-    type Error = OperationError;
+impl Oauth2ResourceServers {
+    pub fn new(origin: Url) -> Result<Self, OperationError> {
+        let consent_key = JweA128KWEncipher::generate_ephemeral()
+            .map_err(|_| OperationError::CryptographyError)?;
 
-    fn try_from(
-        value: (Vec<Arc<EntrySealedCommitted>>, Url, DomainVersion),
-    ) -> Result<Self, Self::Error> {
-        let (value, origin, domain_level) = value;
-        let fernet =
-            Fernet::new(&Fernet::generate_key()).ok_or(OperationError::CryptographyError)?;
-        let oauth2rs = Oauth2ResourceServers {
+        Ok(Oauth2ResourceServers {
             inner: CowCell::new(Oauth2RSInner {
                 origin,
-                fernet,
+                consent_key,
                 rs_set: HashMap::new(),
             }),
-        };
-
-        let mut oauth2rs_wr = oauth2rs.write();
-        oauth2rs_wr.reload(value, domain_level)?;
-        oauth2rs_wr.commit();
-        Ok(oauth2rs)
+        })
     }
-}
 
-impl Oauth2ResourceServers {
     pub fn read(&self) -> Oauth2ResourceServersReadTransaction {
         Oauth2ResourceServersReadTransaction {
             inner: self.inner.read(),
@@ -544,6 +528,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
     pub fn reload(
         &mut self,
         value: Vec<Arc<EntrySealedCommitted>>,
+        key_providers: &KeyProvidersWriteTransaction,
         domain_level: DomainVersion,
     ) -> Result<(), OperationError> {
         let rs_set: Result<HashMap<_, _>, _> = value
@@ -552,13 +537,23 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                 let uuid = ent.get_uuid();
                 trace!(?uuid, "Checking OAuth2 configuration");
                 // From each entry, attempt to make an OAuth2 configuration.
-                if !ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into()) {
+                if !ent
+                    .attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
+                {
                     error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     return Err(OperationError::InvalidEntryState);
                 }
 
-                let type_ = if ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerBasic.into()) {
+                let Some(key_object) = key_providers.get_key_object_handle(uuid) else {
+                    error!("OAuth2 rs is missing it's key object!");
+                    return Err(OperationError::InvalidEntryState);
+                };
+
+                let type_ = if ent.attribute_equality(
+                    Attribute::Class,
+                    &EntryClass::OAuth2ResourceServerBasic.into(),
+                ) {
                     let authz_secret = ent
                         .get_ava_single_secret(Attribute::OAuth2RsBasicSecret)
                         .map(str::to_string)
@@ -573,13 +568,16 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                         authz_secret,
                         enable_pkce,
                     }
-                } else if ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerPublic.into()) {
+                } else if ent.attribute_equality(
+                    Attribute::Class,
+                    &EntryClass::OAuth2ResourceServerPublic.into(),
+                ) {
                     let allow_localhost_redirect = ent
                         .get_ava_single_bool(Attribute::OAuth2AllowLocalhostRedirect)
                         .unwrap_or(false);
 
                     OauthRSType::Public {
-                        allow_localhost_redirect
+                        allow_localhost_redirect,
                     }
                 } else {
                     error!("Missing class determining OAuth2 rs type");
@@ -597,7 +595,6 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
 
-
                 // Setup the landing uri and its implied origin, as well as
                 // the supplemental origins.
                 let landing_url = ent
@@ -605,14 +602,17 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     .cloned()
                     .ok_or(OperationError::InvalidValueState)?;
 
-                let maybe_extra_urls = ent.get_ava_set(Attribute::OAuth2RsOrigin).and_then(|s| s.as_url_set());
+                let maybe_extra_urls = ent
+                    .get_ava_set(Attribute::OAuth2RsOrigin)
+                    .and_then(|s| s.as_url_set());
 
                 let len_uris = maybe_extra_urls.map(|s| s.len() + 1).unwrap_or(1);
 
                 // If we are DL8, then strict enforcement is always required.
-                let strict_redirect_uri = cfg!(test) ||
-                    domain_level >= DOMAIN_LEVEL_8 ||
-                    ent.get_ava_single_bool(Attribute::OAuth2StrictRedirectUri)
+                let strict_redirect_uri = cfg!(test)
+                    || domain_level >= DOMAIN_LEVEL_8
+                    || ent
+                        .get_ava_single_bool(Attribute::OAuth2StrictRedirectUri)
                         .unwrap_or(false);
 
                 // The reason we have to allocate this is that we need to do some processing on these
@@ -651,13 +651,6 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     }
                 }
 
-                let token_fernet = ent
-                    .get_ava_single_secret(Attribute::OAuth2RsTokenKey)
-                    .ok_or(OperationError::InvalidValueState)
-                    .and_then(|key| {
-                        Fernet::new(key).ok_or(OperationError::CryptographyError)
-                    })?;
-
                 let scope_maps = ent
                     .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap)
                     .cloned()
@@ -670,38 +663,38 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
 
                 // From our scope maps we can now determine what scopes would be granted to our
                 // client during a client credentials authentication.
-                let (client_scopes, client_sup_scopes) = if let Some(client_member_of) = ent.get_ava_refer(Attribute::MemberOf) {
-                    let client_scopes =
-                        scope_maps
-                        .iter()
-                        .filter_map(|(u, m)| {
-                            if client_member_of.contains(u) {
-                                Some(m.iter())
-                            } else {
-                                None
-                            }
-                        })
-                        .flatten()
-                        .cloned()
-                        .collect::<BTreeSet<_>>();
+                let (client_scopes, client_sup_scopes) =
+                    if let Some(client_member_of) = ent.get_ava_refer(Attribute::MemberOf) {
+                        let client_scopes = scope_maps
+                            .iter()
+                            .filter_map(|(u, m)| {
+                                if client_member_of.contains(u) {
+                                    Some(m.iter())
+                                } else {
+                                    None
+                                }
+                            })
+                            .flatten()
+                            .cloned()
+                            .collect::<BTreeSet<_>>();
 
-                    let client_sup_scopes = sup_scope_maps
-                        .iter()
-                        .filter_map(|(u, m)| {
-                            if client_member_of.contains(u) {
-                                Some(m.iter())
-                            } else {
-                                None
-                            }
-                        })
-                        .flatten()
-                        .cloned()
-                        .collect::<BTreeSet<_>>();
+                        let client_sup_scopes = sup_scope_maps
+                            .iter()
+                            .filter_map(|(u, m)| {
+                                if client_member_of.contains(u) {
+                                    Some(m.iter())
+                                } else {
+                                    None
+                                }
+                            })
+                            .flatten()
+                            .cloned()
+                            .collect::<BTreeSet<_>>();
 
-                    (client_scopes, client_sup_scopes)
-                } else {
-                    (BTreeSet::default(), BTreeSet::default())
-                };
+                        (client_scopes, client_sup_scopes)
+                    } else {
+                        (BTreeSet::default(), BTreeSet::default())
+                    };
 
                 let e_claim_maps = ent
                     .get_ava_set(Attribute::OAuth2RsClaimMap)
@@ -720,23 +713,21 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                             // to be unique.
                             match claim_map.entry(*group_uuid) {
                                 BTreeEntry::Vacant(e) => {
-                                    e.insert(
-                                        vec![
-                                            (
-                                            claim_name.clone(), ClaimValue {
-                                                join: claim_mapping.join(),
-                                                values: claim_values.clone()
-                                            }
-                                            )
-                                        ]
-                                    );
+                                    e.insert(vec![(
+                                        claim_name.clone(),
+                                        ClaimValue {
+                                            join: claim_mapping.join(),
+                                            values: claim_values.clone(),
+                                        },
+                                    )]);
                                 }
                                 BTreeEntry::Occupied(mut e) => {
                                     e.get_mut().push((
-                                            claim_name.clone(), ClaimValue {
-                                                join: claim_mapping.join(),
-                                                values: claim_values.clone()
-                                            }
+                                        claim_name.clone(),
+                                        ClaimValue {
+                                            join: claim_mapping.join(),
+                                            values: claim_values.clone(),
+                                        },
                                     ));
                                 }
                             }
@@ -748,33 +739,13 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     BTreeMap::default()
                 };
 
-                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable);
-                let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false) {
-                    trace!("{}", Attribute::Rs256PrivateKeyDer);
-                    ent
-                        .get_ava_single_private_binary(Attribute::Rs256PrivateKeyDer)
-                        .ok_or(OperationError::InvalidValueState)
-                        .and_then(|key_der| {
-                            JwsRs256Signer::from_rs256_der(key_der)
-                            .map(|signer| Oauth2JwsSigner::RS256 { signer })
-                            .map_err(|e| {
-                                admin_error!(err = ?e, "Unable to load Legacy RS256 JwsSigner from DER");
-                                OperationError::CryptographyError
-                            })
-                        })?
+                let sign_alg = if ent
+                    .get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable)
+                    .unwrap_or(false)
+                {
+                    SignatureAlgo::Rs256
                 } else {
-                    trace!("{}", Attribute::Es256PrivateKeyDer);
-                    ent
-                        .get_ava_single_private_binary(Attribute::Es256PrivateKeyDer)
-                        .ok_or(OperationError::InvalidValueState)
-                        .and_then(|key_der| {
-                            JwsEs256Signer::from_es256_der(key_der)
-                            .map(|signer| Oauth2JwsSigner::ES256 { signer })
-                            .map_err(|e| {
-                                admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
-                                OperationError::CryptographyError
-                            })
-                        })?
+                    SignatureAlgo::Es256
                 };
 
                 let prefer_short_username = ent
@@ -804,33 +775,31 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                 let mut iss = self.inner.origin.clone();
                 iss.set_path(&format!("/oauth2/openid/{name}"));
 
-                let scopes_supported: BTreeSet<String> =
-                scope_maps
+                let scopes_supported: BTreeSet<String> = scope_maps
                     .values()
                     .flat_map(|bts| bts.iter())
-
-                    .chain(
-                        sup_scope_maps
-                            .values()
-                            .flat_map(|bts| bts.iter())
-                    )
-
+                    .chain(sup_scope_maps.values().flat_map(|bts| bts.iter()))
                     .cloned()
                     .collect();
 
-
-                    let device_authorization_endpoint: Option<Url> = match cfg!(feature="dev-oauth2-device-flow") {
+                let device_authorization_endpoint: Option<Url> =
+                    match cfg!(feature = "dev-oauth2-device-flow") {
                         true => {
-                            match ent.get_ava_single_bool(Attribute::OAuth2DeviceFlowEnable).unwrap_or(false) {
-                            true => {
-                                let mut device_authorization_endpoint = self.inner.origin.clone();
-                                device_authorization_endpoint.set_path(uri::OAUTH2_AUTHORISE_DEVICE);
-                                Some(device_authorization_endpoint)
-                            },
-                            false => None
+                            match ent
+                                .get_ava_single_bool(Attribute::OAuth2DeviceFlowEnable)
+                                .unwrap_or(false)
+                            {
+                                true => {
+                                    let mut device_authorization_endpoint =
+                                        self.inner.origin.clone();
+                                    device_authorization_endpoint
+                                        .set_path(uri::OAUTH2_AUTHORISE_DEVICE);
+                                    Some(device_authorization_endpoint)
+                                }
+                                false => None,
                             }
-                        },
-                        false => {None}
+                        }
+                        false => None,
                     };
                 let client_id = name.clone();
                 let rscfg = Oauth2RS {
@@ -847,8 +816,8 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     client_scopes,
                     client_sup_scopes,
                     claim_map,
-                    token_fernet,
-                    jws_signer,
+                    sign_alg,
+                    key_object,
                     iss,
                     authorization_endpoint,
                     token_endpoint,
@@ -919,24 +888,19 @@ impl IdmServerProxyWriteTransaction<'_> {
         // are either signed *or* encrypted, we need to check both options.
 
         let (session_id, expiry, uuid) = if let Ok(jwsc) = JwsCompact::from_str(&revoke_req.token) {
-            let access_token = match &o2rs.jws_signer {
-                Oauth2JwsSigner::ES256 { signer } => signer
-                    .get_verifier()
-                    .and_then(|verifier| verifier.verify(&jwsc)),
-                Oauth2JwsSigner::RS256 { signer } => signer
-                    .get_verifier()
-                    .and_then(|verifier| verifier.verify(&jwsc)),
-            }
-            .map_err(|err| {
-                admin_error!(?err, "Unable to verify access token");
-                Oauth2Error::InvalidRequest
-            })
-            .and_then(|jws| {
-                jws.from_json().map_err(|err| {
-                    admin_error!(?err, "Unable to deserialise access token");
+            let access_token = o2rs
+                .key_object
+                .jws_verify(&jwsc)
+                .map_err(|err| {
+                    admin_error!(?err, "Unable to verify access token");
                     Oauth2Error::InvalidRequest
                 })
-            })?;
+                .and_then(|jws| {
+                    jws.from_json().map_err(|err| {
+                        admin_error!(?err, "Unable to deserialise access token");
+                        Oauth2Error::InvalidRequest
+                    })
+                })?;
 
             let OAuth2RFC9068Token::<_> {
                 sub: uuid,
@@ -948,17 +912,21 @@ impl IdmServerProxyWriteTransaction<'_> {
             (session_id, exp, uuid)
         } else {
             // Assume it's encrypted.
+            let jwe_compact = JweCompact::from_str(&revoke_req.token).map_err(|_| {
+                error!("Failed to deserialise a valid JWE");
+                Oauth2Error::InvalidRequest
+            })?;
 
             let token: Oauth2TokenType = o2rs
-                .token_fernet
-                .decrypt(&revoke_req.token)
+                .key_object
+                .jwe_decrypt(&jwe_compact)
                 .map_err(|_| {
-                    admin_error!("Failed to decrypt token revoke request");
+                    error!("Failed to decrypt token revoke request");
                     Oauth2Error::InvalidRequest
                 })
-                .and_then(|data| {
-                    serde_json::from_slice(&data).map_err(|e| {
-                        admin_error!("Failed to deserialise token - {:?}", e);
+                .and_then(|jwe| {
+                    jwe.from_json().map_err(|err| {
+                        error!(?err, "Failed to deserialise token");
                         Oauth2Error::InvalidRequest
                     })
                 })?;
@@ -1185,19 +1153,23 @@ impl IdmServerProxyWriteTransaction<'_> {
             return Err(OperationError::InvalidSessionState);
         };
 
-        // Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
+        let consent_token_jwe = JweCompact::from_str(consent_token).map_err(|err| {
+            error!(?err, "Consent token is not a valid jwe compact");
+            OperationError::InvalidSessionState
+        })?;
+
         let consent_req: ConsentToken = self
             .oauth2rs
             .inner
-            .fernet
-            .decrypt_at_time(consent_token, Some(300), ct.as_secs())
-            .map_err(|_| {
-                admin_error!("Failed to decrypt consent request");
+            .consent_key
+            .decipher(&consent_token_jwe)
+            .map_err(|err| {
+                error!(?err, "Failed to decrypt consent request");
                 OperationError::CryptographyError
             })
-            .and_then(|data| {
-                serde_json::from_slice(&data).map_err(|e| {
-                    admin_error!(err = ?e, "Failed to deserialise consent request");
+            .and_then(|jwe| {
+                jwe.from_json().map_err(|err| {
+                    error!(?err, "Failed to deserialise consent request");
                     OperationError::SerdeJsonError
                 })
             })?;
@@ -1214,6 +1186,15 @@ impl IdmServerProxyWriteTransaction<'_> {
             return Err(OperationError::InvalidSessionState);
         }
 
+        if consent_req.expiry <= ct.as_secs() {
+            // Token is expired
+            error!("Failed to decrypt consent request");
+            return Err(OperationError::CryptographyError);
+        }
+
+        // The exchange must be performed in the next 60 seconds.
+        let expiry = ct.as_secs() + 60;
+
         // Get the resource server config based on this client_id.
         let o2rs = self
             .oauth2rs
@@ -1227,22 +1208,29 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         // Extract the state, code challenge, redirect_uri
         let xchg_code = TokenExchangeCode {
-            // uat: uat.clone(),
             account_uuid,
             session_id: ident.get_session_id(),
+            expiry,
             code_challenge: consent_req.code_challenge,
             redirect_uri: consent_req.redirect_uri.clone(),
             scopes: consent_req.scopes.clone(),
             nonce: consent_req.nonce,
         };
 
-        // Encrypt the exchange token with the fernet key of the client resource server
-        let code_data = serde_json::to_vec(&xchg_code).map_err(|e| {
-            admin_error!(err = ?e, "Unable to encode xchg_code data");
+        // Encrypt the exchange token
+        let code_data_jwe = Jwe::into_json(&xchg_code).map_err(|err| {
+            error!(?err, "Unable to encode xchg_code data");
             OperationError::SerdeJsonError
         })?;
 
-        let code = o2rs.token_fernet.encrypt_at_time(&code_data, ct.as_secs());
+        let code = o2rs
+            .key_object
+            .jwe_a128gcm_encrypt(&code_data_jwe, ct)
+            .map(|code| code.to_string())
+            .map_err(|err| {
+                error!(?err, "Unable to encrypt xchg_code");
+                OperationError::CryptographyError
+            })?;
 
         // Everything is DONE! Now submit that it's all happy and the user consented correctly.
         // this will let them bypass consent steps in the future.
@@ -1283,20 +1271,30 @@ impl IdmServerProxyWriteTransaction<'_> {
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         // Check the token_req is within the valid time, and correctly signed for
         // this client.
+        let jwe_compact = JweCompact::from_str(token_req_code).map_err(|_| {
+            error!("Failed to deserialise a valid JWE");
+            Oauth2Error::InvalidRequest
+        })?;
 
         let code_xchg: TokenExchangeCode = o2rs
-            .token_fernet
-            .decrypt_at_time(token_req_code, Some(60), ct.as_secs())
+            .key_object
+            .jwe_decrypt(&jwe_compact)
             .map_err(|_| {
                 admin_error!("Failed to decrypt token exchange request");
                 Oauth2Error::InvalidRequest
             })
-            .and_then(|data| {
-                serde_json::from_slice(&data).map_err(|e| {
-                    admin_error!("Failed to deserialise token exchange code - {:?}", e);
+            .and_then(|jwe| {
+                debug!(?jwe);
+                jwe.from_json::<TokenExchangeCode>().map_err(|err| {
+                    error!(?err, "Failed to deserialise token exchange code");
                     Oauth2Error::InvalidRequest
                 })
             })?;
+
+        if code_xchg.expiry <= ct.as_secs() {
+            error!("Expired token exchange request");
+            return Err(Oauth2Error::InvalidRequest);
+        }
 
         // If we have a verifier present, we MUST assert that a code challenge is present!
         // It is worth noting here that code_xchg is *server issued* and encrypted, with
@@ -1380,17 +1378,22 @@ impl IdmServerProxyWriteTransaction<'_> {
         req_scopes: Option<&BTreeSet<String>>,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
+        let jwe_compact = JweCompact::from_str(refresh_token).map_err(|_| {
+            error!("Failed to deserialise a valid JWE");
+            Oauth2Error::InvalidRequest
+        })?;
+
         // Validate the refresh token decrypts and it's expiry is within the valid window.
         let token: Oauth2TokenType = o2rs
-            .token_fernet
-            .decrypt(refresh_token)
+            .key_object
+            .jwe_decrypt(&jwe_compact)
             .map_err(|_| {
                 admin_error!("Failed to decrypt refresh token request");
                 Oauth2Error::InvalidRequest
             })
-            .and_then(|data| {
-                serde_json::from_slice(&data).map_err(|e| {
-                    admin_error!("Failed to deserialise token - {:?}", e);
+            .and_then(|jwe| {
+                jwe.from_json().map_err(|err| {
+                    error!(?err, "Failed to deserialise token");
                     Oauth2Error::InvalidRequest
                 })
             })?;
@@ -1568,14 +1571,19 @@ impl IdmServerProxyWriteTransaction<'_> {
             nbf: iat,
         };
 
-        let access_token_data = serde_json::to_vec(&access_token_raw).map_err(|e| {
-            admin_error!(err = ?e, "Unable to encode token data");
+        let access_token_data = Jwe::into_json(&access_token_raw).map_err(|err| {
+            error!(?err, "Unable to encode token data");
             Oauth2Error::ServerError(OperationError::SerdeJsonError)
         })?;
 
         let access_token = o2rs
-            .token_fernet
-            .encrypt_at_time(&access_token_data, ct.as_secs());
+            .key_object
+            .jwe_a128gcm_encrypt(&access_token_data, ct)
+            .map(|jwe| jwe.to_string())
+            .map_err(|err| {
+                error!(?err, "Unable to encode token data");
+                Oauth2Error::ServerError(OperationError::CryptographyError)
+            })?;
 
         // Write the session to the db
         let session = Value::Oauth2Session(
@@ -1703,13 +1711,19 @@ impl IdmServerProxyWriteTransaction<'_> {
             };
 
             trace!(?oidc);
+            let oidc = JwsBuilder::into_json(&oidc)
+                .map(|builder| builder.build())
+                .map_err(|err| {
+                    admin_error!(?err, "Unable to encode access token data");
+                    Oauth2Error::ServerError(OperationError::InvalidState)
+                })?;
 
-            let jwt_signed = match &o2rs.jws_signer {
-                Oauth2JwsSigner::ES256 { signer } => signer.sign(&oidc),
-                Oauth2JwsSigner::RS256 { signer } => signer.sign(&oidc),
+            let jwt_signed = match o2rs.sign_alg {
+                SignatureAlgo::Es256 => o2rs.key_object.jws_es256_sign(&oidc, ct),
+                SignatureAlgo::Rs256 => o2rs.key_object.jws_rs256_sign(&oidc, ct),
             }
-            .map_err(|e| {
-                admin_error!(err = ?e, "Unable to encode uat data");
+            .map_err(|err| {
+                error!(?err, "Unable to encode oidc token data");
                 Oauth2Error::ServerError(OperationError::InvalidState)
             })?;
 
@@ -1742,14 +1756,14 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         let access_token_data = JwsBuilder::into_json(&access_token_data)
             .map(|builder| builder.set_typ(Some("at+jwt")).build())
-            .map_err(|e| {
-                admin_error!(err = ?e, "Unable to encode access token data");
+            .map_err(|err| {
+                error!(?err, "Unable to encode access token data");
                 Oauth2Error::ServerError(OperationError::InvalidState)
             })?;
 
-        let access_token = match &o2rs.jws_signer {
-            Oauth2JwsSigner::ES256 { signer } => signer.sign(&access_token_data),
-            Oauth2JwsSigner::RS256 { signer } => signer.sign(&access_token_data),
+        let access_token = match o2rs.sign_alg {
+            SignatureAlgo::Es256 => o2rs.key_object.jws_es256_sign(&access_token_data, ct),
+            SignatureAlgo::Rs256 => o2rs.key_object.jws_rs256_sign(&access_token_data, ct),
         }
         .map_err(|e| {
             admin_error!(err = ?e, "Unable to sign access token data");
@@ -1767,14 +1781,19 @@ impl IdmServerProxyWriteTransaction<'_> {
             nonce,
         };
 
-        let refresh_token_data = serde_json::to_vec(&refresh_token_raw).map_err(|e| {
-            admin_error!(err = ?e, "Unable to encode token data");
+        let refresh_token_data = Jwe::into_json(&refresh_token_raw).map_err(|err| {
+            error!(?err, "Unable to encode token data");
             Oauth2Error::ServerError(OperationError::SerdeJsonError)
         })?;
 
         let refresh_token = o2rs
-            .token_fernet
-            .encrypt_at_time(&refresh_token_data, ct.as_secs());
+            .key_object
+            .jwe_a128gcm_encrypt(&refresh_token_data, ct)
+            .map(|jwe| jwe.to_string())
+            .map_err(|err| {
+                error!(?err, "Unable to encrypt token data");
+                Oauth2Error::ServerError(OperationError::CryptographyError)
+            })?;
 
         // Write the session to the db even with the refresh path, we need to do
         // this to update the "not issued before" time.
@@ -1846,15 +1865,20 @@ impl IdmServerProxyWriteTransaction<'_> {
             }
         }
 
-        o2rs.token_fernet
-            .decrypt(token)
-            .map_err(|_| {
-                admin_error!("Failed to decrypt token reflection request");
+        let jwe_compact = JweCompact::from_str(token).map_err(|err| {
+            error!(?err, "Failed to deserialise a valid JWE");
+            OperationError::InvalidSessionState
+        })?;
+
+        o2rs.key_object
+            .jwe_decrypt(&jwe_compact)
+            .map_err(|err| {
+                error!(?err, "Failed to decrypt token reflection request");
                 OperationError::CryptographyError
             })
-            .and_then(|data| {
-                serde_json::from_slice(&data).map_err(|e| {
-                    admin_error!("Failed to deserialise token exchange code - {:?}", e);
+            .and_then(|jwe| {
+                jwe.from_json().map_err(|err| {
+                    error!(?err, "Failed to deserialise token for reflection");
                     OperationError::SerdeJsonError
                 })
             })
@@ -2129,23 +2153,34 @@ impl IdmServerProxyReadTransaction<'_> {
                 );
             }
 
+            // Xchg token expires in
+            let expiry = ct.as_secs() + 60;
+
             // Setup for the permit success
             let xchg_code = TokenExchangeCode {
                 account_uuid,
                 session_id,
+                expiry,
                 code_challenge,
                 redirect_uri: auth_req.redirect_uri.clone(),
                 scopes: granted_scopes.into_iter().collect(),
                 nonce: auth_req.nonce.clone(),
             };
 
-            // Encrypt the exchange token with the fernet key of the client resource server
-            let code_data = serde_json::to_vec(&xchg_code).map_err(|e| {
-                admin_error!(err = ?e, "Unable to encode xchg_code data");
+            // Encrypt the exchange token with the key of the client
+            let code_data_jwe = Jwe::into_json(&xchg_code).map_err(|err| {
+                error!(?err, "Unable to encode xchg_code data");
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
             })?;
 
-            let code = o2rs.token_fernet.encrypt_at_time(&code_data, ct.as_secs());
+            let code = o2rs
+                .key_object
+                .jwe_a128gcm_encrypt(&code_data_jwe, ct)
+                .map(|jwe| jwe.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encrypt xchg_code data");
+                    Oauth2Error::ServerError(OperationError::CryptographyError)
+                })?;
 
             Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {
                 redirect_uri: auth_req.redirect_uri.clone(),
@@ -2180,6 +2215,9 @@ impl IdmServerProxyReadTransaction<'_> {
                 pii_scopes.insert(OAUTH2_SCOPE_SSH_PUBLICKEYS.to_string());
             }
 
+            // Consent token expires in
+            let expiry = ct.as_secs() + 300;
+
             // Subsequent we then return an encrypted session handle which allows
             // the user to indicate their consent to this authorisation.
             //
@@ -2188,6 +2226,7 @@ impl IdmServerProxyReadTransaction<'_> {
             let consent_req = ConsentToken {
                 client_id: auth_req.client_id.clone(),
                 ident_id: ident.get_event_origin_id(),
+                expiry,
                 session_id,
                 state: auth_req.state.clone(),
                 code_challenge,
@@ -2197,16 +2236,21 @@ impl IdmServerProxyReadTransaction<'_> {
                 response_mode,
             };
 
-            let consent_data = serde_json::to_vec(&consent_req).map_err(|e| {
-                admin_error!(err = ?e, "Unable to encode consent data");
+            let consent_jwe = Jwe::into_json(&consent_req).map_err(|err| {
+                error!(?err, "Unable to encode consent data");
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
             })?;
 
             let consent_token = self
                 .oauth2rs
                 .inner
-                .fernet
-                .encrypt_at_time(&consent_data, ct.as_secs());
+                .consent_key
+                .encipher::<JweA128GCMEncipher>(&consent_jwe)
+                .map(|jwe_compact| jwe_compact.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encrypt jwe");
+                    Oauth2Error::ServerError(OperationError::CryptographyError)
+                })?;
 
             Ok(AuthoriseResponse::ConsentRequested {
                 client_name: o2rs.displayname.clone(),
@@ -2224,19 +2268,24 @@ impl IdmServerProxyReadTransaction<'_> {
         consent_token: &str,
         ct: Duration,
     ) -> Result<AuthoriseReject, OperationError> {
+        let jwe_compact = JweCompact::from_str(consent_token).map_err(|_| {
+            error!("Failed to deserialise a valid JWE");
+            OperationError::CryptographyError
+        })?;
+
         // Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
         let consent_req: ConsentToken = self
             .oauth2rs
             .inner
-            .fernet
-            .decrypt_at_time(consent_token, Some(300), ct.as_secs())
+            .consent_key
+            .decipher(&jwe_compact)
             .map_err(|_| {
                 admin_error!("Failed to decrypt consent request");
                 OperationError::CryptographyError
             })
-            .and_then(|data| {
-                serde_json::from_slice(&data).map_err(|e| {
-                    admin_error!(err = ?e, "Failed to deserialise consent request");
+            .and_then(|jwe| {
+                jwe.from_json().map_err(|err| {
+                    error!(?err, "Failed to deserialise consent request");
                     OperationError::SerdeJsonError
                 })
             })?;
@@ -2251,6 +2300,12 @@ impl IdmServerProxyReadTransaction<'_> {
         if consent_req.session_id != ident.get_session_id() {
             security_info!("consent request sessien id does not match the session id of our UAT.");
             return Err(OperationError::InvalidSessionState);
+        }
+
+        if consent_req.expiry <= ct.as_secs() {
+            // Token is expired
+            error!("Failed to decrypt consent request");
+            return Err(OperationError::CryptographyError);
         }
 
         // Get the resource server config based on this client_id.
@@ -2308,24 +2363,19 @@ impl IdmServerProxyReadTransaction<'_> {
         let prefer_short_username = o2rs.prefer_short_username;
 
         if let Ok(jwsc) = JwsCompact::from_str(&intr_req.token) {
-            let access_token = match &o2rs.jws_signer {
-                Oauth2JwsSigner::ES256 { signer } => signer
-                    .get_verifier()
-                    .and_then(|verifier| verifier.verify(&jwsc)),
-                Oauth2JwsSigner::RS256 { signer } => signer
-                    .get_verifier()
-                    .and_then(|verifier| verifier.verify(&jwsc)),
-            }
-            .map_err(|err| {
-                admin_error!(?err, "Unable to verify access token");
-                Oauth2Error::InvalidRequest
-            })
-            .and_then(|jws| {
-                jws.from_json().map_err(|err| {
-                    admin_error!(?err, "Unable to deserialise access token");
+            let access_token = o2rs
+                .key_object
+                .jws_verify(&jwsc)
+                .map_err(|err| {
+                    error!(?err, "Unable to verify access token");
                     Oauth2Error::InvalidRequest
                 })
-            })?;
+                .and_then(|jws| {
+                    jws.from_json().map_err(|err| {
+                        error!(?err, "Unable to deserialise access token");
+                        Oauth2Error::InvalidRequest
+                    })
+                })?;
 
             let OAuth2RFC9068Token::<_> {
                 iss: _,
@@ -2398,16 +2448,21 @@ impl IdmServerProxyReadTransaction<'_> {
                 jti: None,
             })
         } else {
+            let jwe_compact = JweCompact::from_str(&intr_req.token).map_err(|_| {
+                error!("Failed to deserialise a valid JWE");
+                Oauth2Error::InvalidRequest
+            })?;
+
             let token: Oauth2TokenType = o2rs
-                .token_fernet
-                .decrypt(&intr_req.token)
+                .key_object
+                .jwe_decrypt(&jwe_compact)
                 .map_err(|_| {
                     admin_error!("Failed to decrypt token introspection request");
                     Oauth2Error::InvalidRequest
                 })
-                .and_then(|data| {
-                    serde_json::from_slice(&data).map_err(|e| {
-                        admin_error!("Failed to deserialise token - {:?}", e);
+                .and_then(|jwe| {
+                    jwe.from_json().map_err(|err| {
+                        error!(?err, "Failed to deserialise token");
                         Oauth2Error::InvalidRequest
                     })
                 })?;
@@ -2495,24 +2550,19 @@ impl IdmServerProxyReadTransaction<'_> {
             &*(s as *const _)
         };
 
-        let access_token = match &o2rs.jws_signer {
-            Oauth2JwsSigner::ES256 { signer } => signer
-                .get_verifier()
-                .and_then(|verifier| verifier.verify(&token)),
-            Oauth2JwsSigner::RS256 { signer } => signer
-                .get_verifier()
-                .and_then(|verifier| verifier.verify(&token)),
-        }
-        .map_err(|err| {
-            admin_error!(?err, "Unable to verify access token");
-            Oauth2Error::InvalidRequest
-        })
-        .and_then(|jws| {
-            jws.from_json().map_err(|err| {
-                admin_error!(?err, "Unable to deserialise access token");
+        let access_token = o2rs
+            .key_object
+            .jws_verify(&token)
+            .map_err(|err| {
+                error!(?err, "Unable to verify access token");
                 Oauth2Error::InvalidRequest
             })
-        })?;
+            .and_then(|jws| {
+                jws.from_json().map_err(|err| {
+                    error!(?err, "Unable to deserialise access token");
+                    Oauth2Error::InvalidRequest
+                })
+            })?;
 
         let OAuth2RFC9068Token::<_> {
             iss: _,
@@ -2685,9 +2735,9 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let subject_types_supported = vec![SubjectType::Public];
 
-        let id_token_signing_alg_values_supported = match &o2rs.jws_signer {
-            Oauth2JwsSigner::ES256 { .. } => vec![IdTokenSignAlg::ES256],
-            Oauth2JwsSigner::RS256 { .. } => vec![IdTokenSignAlg::RS256],
+        let id_token_signing_alg_values_supported = match &o2rs.sign_alg {
+            SignatureAlgo::Es256 => vec![IdTokenSignAlg::ES256],
+            SignatureAlgo::Rs256 => vec![IdTokenSignAlg::RS256],
         };
 
         let userinfo_signing_alg_values_supported = None;
@@ -2818,15 +2868,18 @@ impl IdmServerProxyReadTransaction<'_> {
             OperationError::NoMatchingEntries
         })?;
 
-        match &o2rs.jws_signer {
-            Oauth2JwsSigner::ES256 { signer } => signer.public_key_as_jwk(),
-            Oauth2JwsSigner::RS256 { signer } => signer.public_key_as_jwk(),
+        // How do we return only the active signing algo types?
+
+        error!(sign_alg = ?o2rs.sign_alg);
+
+        match o2rs.sign_alg {
+            SignatureAlgo::Es256 => o2rs.key_object.jws_es256_jwks(),
+            SignatureAlgo::Rs256 => o2rs.key_object.jws_rs256_jwks(),
         }
-        .map_err(|e| {
-            admin_error!("Unable to retrieve public key for {} - {:?}", o2rs.name, e);
+        .ok_or_else(|| {
+            error!(o2_client = ?o2rs.name, "Unable to retrieve public keys");
             OperationError::InvalidState
         })
-        .map(|jwk| JwkKeySet { keys: vec![jwk] })
     }
 }
 
@@ -4699,11 +4752,11 @@ mod tests {
         );
 
         // Invalid consent token
-        assert!(
+        assert_eq!(
             idms_prox_read
                 .check_oauth2_authorise_reject(&ident, "not a token", ct)
-                .unwrap_err()
-                == OperationError::CryptographyError
+                .unwrap_err(),
+            OperationError::CryptographyError
         );
 
         // Wrong ident

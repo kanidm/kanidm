@@ -83,6 +83,7 @@ impl ValueSetKeyInternal {
                         let id: KeyId = id;
                         let usage = match usage {
                             DbValueKeyUsage::JwsEs256 => KeyUsage::JwsEs256,
+                            DbValueKeyUsage::JwsRs256 => KeyUsage::JwsRs256,
                             DbValueKeyUsage::JweA128GCM => KeyUsage::JweA128GCM,
                         };
                         let status_cid = status_cid.into();
@@ -131,6 +132,7 @@ impl ValueSetKeyInternal {
                     let id: String = id.clone();
                     let usage = match usage {
                         KeyUsage::JwsEs256 => DbValueKeyUsage::JwsEs256,
+                        KeyUsage::JwsRs256 => DbValueKeyUsage::JwsRs256,
                         KeyUsage::JweA128GCM => DbValueKeyUsage::JweA128GCM,
                     };
                     let status_cid = status_cid.into();

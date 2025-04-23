@@ -334,6 +334,10 @@ pub const UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENT_CLASS: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000189");
 pub const UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVE_CLASS: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000190");
+pub const UUID_SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000191");
+pub const UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_RS256: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000192");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

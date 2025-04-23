@@ -1,6 +1,12 @@
 use clap::{builder::PossibleValue, Args, Subcommand, ValueEnum};
 use kanidm_proto::internal::ImageType;
 use std::fmt;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
+
+fn parse_rfc3339(input: &str) -> Result<OffsetDateTime, time::error::Parse > {
+    OffsetDateTime::parse(input, &Rfc3339)
+}
 
 #[derive(Debug, Args)]
 pub struct Named {
@@ -1131,8 +1137,9 @@ pub enum Oauth2Opt {
         group: String,
     },
 
-    #[clap(name = "reset-secrets")]
-    /// Reset the secrets associated to this client
+    #[clap(name = "reset-basic-secret")]
+    /// Reset the client basic secret. You will need to update your client after
+    /// executing this.
     ResetSecrets(Named),
     #[clap(name = "show-basic-secret")]
     /// Show the associated basic secret for this client
@@ -1143,7 +1150,7 @@ pub enum Oauth2Opt {
     /// Set a new display name for a client
     #[clap(name = "set-displayname")]
     SetDisplayname(Oauth2SetDisplayname),
-    /// Set a new name for this client. You may need to update
+    /// Set a new name for this client. You will need to update
     /// your integrated applications after this so that they continue to
     /// function correctly.
     #[clap(name = "set-name")]
@@ -1256,6 +1263,28 @@ pub enum Oauth2Opt {
     #[cfg(feature = "dev-oauth2-device-flow")]
     /// Disable OAuth2 Device Flow authentication
     DeviceFlowDisable(Named),
+    /// Rotate the signing and encryption keys used by this client. The rotation
+    /// will occur at the specified time, or immediately if the time is in the past.
+    /// Past signatures will continue to operate even after a rotation occurs. If you
+    /// have concerns a key is compromised, then you should revoke it instead.
+    #[clap(name = "rotate-cryptographic-keys")]
+    RotateCryptographicKeys {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        name: String,
+        #[clap(value_parser = parse_rfc3339)]
+        rotate_at: OffsetDateTime,
+    },
+    /// Revoke the signing and encryption keys used by this client. This will immediately
+    /// trigger a rotation of the key in question, and signtatures or tokens issued by
+    /// the revoked key will not be considered valid.
+    #[clap(name = "revoke-cryptographic-key")]
+    RevokeCryptographicKey {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        name: String,
+        key_id: String,
+    },
 }
 
 #[derive(Args, Debug)]
