@@ -422,10 +422,10 @@ mod tests {
 
         let data = r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#;
 
-        crate::valueset::scim_json_reflexive(&vs.clone(), data);
+        crate::valueset::scim_json_reflexive(&vs, data);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetUuid>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetUuid>(&vs, &[])
     }
 
     #[qs_test]
@@ -449,12 +449,12 @@ mod tests {
 
         let data = r#"[{"uuid": "4d21d04a-dc0e-42eb-b850-34dd180b107f", "value": "testperson1@example.com"}]"#;
 
-        crate::valueset::scim_json_reflexive_unresolved(&mut write_txn, vs.clone(), data);
+        crate::valueset::scim_json_reflexive_unresolved(&mut write_txn, &vs, data);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive_unresolved::<ValueSetRefer>(
             &mut write_txn,
-            vs,
+            &vs,
             &[],
         );
 

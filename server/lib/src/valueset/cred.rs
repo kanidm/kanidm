@@ -1192,6 +1192,6 @@ mod tests {
         crate::valueset::scim_json_reflexive(&vs, r#""mfa""#);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetCredentialType>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetCredentialType>(&vs, &[])
     }
 }

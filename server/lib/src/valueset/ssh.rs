@@ -247,9 +247,9 @@ mod tests {
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive(&vs.clone(), data);
+        crate::valueset::scim_json_reflexive(&vs, data);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetSshKey>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetSshKey>(&vs, &[])
     }
 }

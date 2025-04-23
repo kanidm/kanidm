@@ -686,7 +686,7 @@ mod tests {
         crate::valueset::scim_json_reflexive(&vs, data);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetEmailAddress>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetEmailAddress>(&vs, &[])
     }
 
     #[test]
@@ -714,6 +714,6 @@ mod tests {
         crate::valueset::scim_json_reflexive(&vs, data);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetAddress>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetAddress>(&vs, &[])
     }
 }

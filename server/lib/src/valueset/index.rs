@@ -183,9 +183,9 @@ mod tests {
     #[test]
     fn test_scim_index() {
         let vs: ValueSet = ValueSetIndex::new(IndexType::Equality);
-        crate::valueset::scim_json_reflexive(&vs.clone(), r#"["EQUALITY"]"#);
+        crate::valueset::scim_json_reflexive(&vs, r#"["EQUALITY"]"#);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetIndex>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetIndex>(&vs, &[])
     }
 }

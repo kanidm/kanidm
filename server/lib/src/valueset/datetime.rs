@@ -213,6 +213,6 @@ mod tests {
         crate::valueset::scim_json_reflexive(&vs, r#""1970-01-01T19:17:00Z""#);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetDateTime>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetDateTime>(&vs, &[])
     }
 }

@@ -3397,7 +3397,7 @@ mod tests {
         assert!(
             matches!(
                 c_status.mfaregstate,
-                MfaRegStateStatus::TotpNameTryAgain(ref val) if val == ""
+                MfaRegStateStatus::TotpNameTryAgain(ref val) if val.is_empty()
             ),
             "{:?}",
             c_status.mfaregstate

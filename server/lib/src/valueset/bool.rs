@@ -188,6 +188,6 @@ mod tests {
         crate::valueset::scim_json_reflexive(&vs, "true");
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetBool>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetBool>(&vs, &[])
     }
 }

@@ -7314,10 +7314,7 @@ mod tests {
             &Url::parse(example_is_not_local)
                 .expect("Failed to parse example.com as a host?")
                 .host()
-                .expect(&format!(
-                    "Couldn't get a host from {}",
-                    example_is_not_local
-                ))
+                .unwrap_or_else(|| panic!("Couldn't get a host from {}", example_is_not_local))
         ));
 
         let test_urls = [
