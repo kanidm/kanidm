@@ -1,18 +1,4 @@
 // use async_trait::async_trait;
-use hashbrown::HashMap;
-use std::fmt::Display;
-use std::num::NonZeroUsize;
-use std::ops::DerefMut;
-use std::path::{Path, PathBuf};
-use std::string::ToString;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
-
-use lru::LruCache;
-use time::OffsetDateTime;
-use tokio::sync::Mutex;
-use uuid::Uuid;
-
 use crate::db::{Cache, Db};
 use crate::idprovider::interface::{
     AuthCredHandler,
@@ -30,13 +16,25 @@ use crate::idprovider::interface::{
 use crate::idprovider::system::{
     Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit, SystemProviderSession,
 };
-use crate::unix_config::{HomeAttr, UidAttr};
+use hashbrown::HashMap;
 use kanidm_unix_common::constants::DEFAULT_SHELL_SEARCH_PATHS;
+use kanidm_unix_common::unix_config::{HomeAttr, UidAttr};
 use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{
     HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse, PamServiceInfo,
     ProviderStatus,
 };
+use lru::LruCache;
+use std::fmt::Display;
+use std::num::NonZeroUsize;
+use std::ops::DerefMut;
+use std::path::{Path, PathBuf};
+use std::string::ToString;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
+use time::OffsetDateTime;
+use tokio::sync::Mutex;
+use uuid::Uuid;
 
 use kanidm_hsm_crypto::BoxedDynTpm;
 
@@ -49,7 +47,6 @@ pub enum AuthSession {
         client: Arc<dyn IdProvider + Sync + Send>,
         account_id: String,
         id: Id,
-        token: Option<Box<UserToken>>,
         cred_handler: AuthCredHandler,
         /// Some authentication operations may need to spawn background tasks. These tasks need
         /// to know when to stop as the caller has disconnected. This receiver allows that, so
@@ -61,7 +58,7 @@ pub enum AuthSession {
         account_id: String,
         id: Id,
         client: Arc<dyn IdProvider + Sync + Send>,
-        token: Box<UserToken>,
+        session_token: Box<UserToken>,
         cred_handler: AuthCredHandler,
     },
     System {
@@ -227,7 +224,7 @@ impl Resolver {
         //  Attempt to search these in the db.
         let mut dbtxn = self.db.write().await;
         let r = dbtxn.get_account(account_id).map_err(|err| {
-            debug!("get_cached_usertoken {:?}", err);
+            debug!(?err, "get_cached_usertoken");
         })?;
 
         drop(dbtxn);
@@ -320,7 +317,12 @@ impl Resolver {
         }
     }
 
-    async fn set_cache_usertoken(&self, token: &mut UserToken) -> Result<(), ()> {
+    async fn set_cache_usertoken(
+        &self,
+        token: &mut UserToken,
+        // This is just for proof that only one write can occur at a time.
+        _tpm: &mut BoxedDynTpm,
+    ) -> Result<(), ()> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
         let offset = ex_time
@@ -453,6 +455,22 @@ impl Resolver {
 
         let mut hsm_lock = self.hsm.lock().await;
 
+        // We need to re-acquire the token now behind the hsmlock - this is so that
+        // we know that as we write the updated token, we know that no one else has
+        // written to this token, since we are now the only task that is allowed
+        // to be in a write phase.
+        let token = if token.is_some() {
+            self.get_cached_usertoken(account_id)
+                .await
+                .map(|(_expired, option_token)| option_token)
+                .map_err(|err| {
+                    debug!(?err, "get_usertoken error");
+                })?
+        } else {
+            // Was already none, leave it that way.
+            None
+        };
+
         let user_get_result = if let Some(tok) = token.as_ref() {
             // Re-use the provider that the token is from.
             match self.client_ids.get(&tok.provider) {
@@ -488,12 +506,11 @@ impl Resolver {
             }
         };
 
-        drop(hsm_lock);
-
         match user_get_result {
             Ok(UserTokenState::Update(mut n_tok)) => {
                 // We have the token!
-                self.set_cache_usertoken(&mut n_tok).await?;
+                self.set_cache_usertoken(&mut n_tok, hsm_lock.deref_mut())
+                    .await?;
                 Ok(Some(n_tok))
             }
             Ok(UserTokenState::NotFound) => {
@@ -960,7 +977,6 @@ impl Resolver {
                             client,
                             account_id: account_id.to_string(),
                             id,
-                            token: Some(Box::new(token)),
                             cred_handler,
                             shutdown_rx,
                         };
@@ -981,7 +997,7 @@ impl Resolver {
                             account_id: account_id.to_string(),
                             id,
                             client,
-                            token: Box::new(token),
+                            session_token: Box::new(token),
                             cred_handler,
                         };
                         Ok((auth_session, next_req.into()))
@@ -1024,7 +1040,6 @@ impl Resolver {
                             client: client.clone(),
                             account_id: account_id.to_string(),
                             id,
-                            token: None,
                             cred_handler,
                             shutdown_rx,
                         };
@@ -1052,19 +1067,32 @@ impl Resolver {
         auth_session: &mut AuthSession,
         pam_next_req: PamAuthRequest,
     ) -> Result<PamAuthResponse, ()> {
+        let mut hsm_lock = self.hsm.lock().await;
+
         let maybe_err = match &mut *auth_session {
             &mut AuthSession::Online {
                 ref client,
                 ref account_id,
-                id: _,
-                token: _,
+                ref id,
                 ref mut cred_handler,
                 ref shutdown_rx,
             } => {
-                let mut hsm_lock = self.hsm.lock().await;
+                // This is not used in the authentication, but is so that any new
+                // extra keys or data on the token are updated correctly if the authentication
+                // requests an update. Since we hold the hsm_lock, no other task can
+                // update this token between now and completion of the fn.
+                let current_token = self
+                    .get_cached_usertoken(id)
+                    .await
+                    .map(|(_expired, option_token)| option_token)
+                    .map_err(|err| {
+                        debug!(?err, "get_usertoken error");
+                    })?;
+
                 let result = client
                     .unix_user_online_auth_step(
                         account_id,
+                        current_token.as_ref(),
                         cred_handler,
                         pam_next_req,
                         hsm_lock.deref_mut(),
@@ -1073,7 +1101,7 @@ impl Resolver {
                     .await;
 
                 match result {
-                    Ok(AuthResult::Success { .. }) => {
+                    Ok(AuthResult::SuccessUpdate { .. } | AuthResult::Success) => {
                         info!(?account_id, "Authentication Success");
                     }
                     Ok(AuthResult::Denied) => {
@@ -1089,17 +1117,29 @@ impl Resolver {
             }
             &mut AuthSession::Offline {
                 ref account_id,
-                id: _,
+                ref id,
                 ref client,
-                ref token,
+                ref session_token,
                 ref mut cred_handler,
             } => {
+                // This is not used in the authentication, but is so that any new
+                // extra keys or data on the token are updated correctly if the authentication
+                // requests an update. Since we hold the hsm_lock, no other task can
+                // update this token between now and completion of the fn.
+                let current_token = self
+                    .get_cached_usertoken(id)
+                    .await
+                    .map(|(_expired, option_token)| option_token)
+                    .map_err(|err| {
+                        debug!(?err, "get_usertoken error");
+                    })?;
+
                 // We are offline, continue. Remember, authsession should have
                 // *everything you need* to proceed here!
-                let mut hsm_lock = self.hsm.lock().await;
                 let result = client
                     .unix_user_offline_auth_step(
-                        token,
+                        current_token.as_ref(),
+                        session_token,
                         cred_handler,
                         pam_next_req,
                         hsm_lock.deref_mut(),
@@ -1107,7 +1147,7 @@ impl Resolver {
                     .await;
 
                 match result {
-                    Ok(AuthResult::Success { .. }) => {
+                    Ok(AuthResult::SuccessUpdate { .. } | AuthResult::Success) => {
                         info!(?account_id, "Authentication Success");
                     }
                     Ok(AuthResult::Denied) => {
@@ -1158,8 +1198,13 @@ impl Resolver {
 
         match maybe_err {
             // What did the provider direct us to do next?
-            Ok(AuthResult::Success { mut token }) => {
-                self.set_cache_usertoken(&mut token).await?;
+            Ok(AuthResult::Success) => {
+                *auth_session = AuthSession::Success;
+                Ok(PamAuthResponse::Success)
+            }
+            Ok(AuthResult::SuccessUpdate { mut new_token }) => {
+                self.set_cache_usertoken(&mut new_token, hsm_lock.deref_mut())
+                    .await?;
                 *auth_session = AuthSession::Success;
 
                 Ok(PamAuthResponse::Success)

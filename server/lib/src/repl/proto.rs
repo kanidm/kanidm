@@ -165,10 +165,10 @@ impl ReplEntryV1 {
                                 // but for now, if it's an empty set in any capacity, we map
                                 // to None and just send the Cid since they have the same result
                                 // on how the entry/attr state looks at each end.
-                                if maybe.len() > 0 {
-                                    Some(maybe.to_db_valueset_v2())
-                                } else {
+                                if maybe.is_empty() {
                                     None
+                                } else {
+                                    Some(maybe.to_db_valueset_v2())
                                 }
                             );
 
@@ -298,10 +298,10 @@ impl ReplIncrementalEntryV1 {
                             let live_attr = live_attrs.get(attr_name);
                             let cid = cid.into();
                             let attr = live_attr.and_then(|maybe| {
-                                if maybe.len() > 0 {
-                                    Some(maybe.to_db_valueset_v2())
-                                } else {
+                                if maybe.is_empty() {
                                     None
+                                } else {
+                                    Some(maybe.to_db_valueset_v2())
                                 }
                             });
 

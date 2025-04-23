@@ -194,7 +194,8 @@ impl Into<PamAuthResponse> for AuthRequest {
 }
 
 pub enum AuthResult {
-    Success { token: UserToken },
+    Success,
+    SuccessUpdate { new_token: UserToken },
     Denied,
     Next(AuthRequest),
 }
@@ -251,6 +252,7 @@ pub trait IdProvider {
     async fn unix_user_online_auth_step(
         &self,
         _account_id: &str,
+        _current_token: Option<&UserToken>,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
         _tpm: &mut tpm::BoxedDynTpm,
@@ -290,7 +292,8 @@ pub trait IdProvider {
     // TPM key.
     async fn unix_user_offline_auth_step(
         &self,
-        _token: &UserToken,
+        _current_token: Option<&UserToken>,
+        _session_token: &UserToken,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
         _tpm: &mut tpm::BoxedDynTpm,

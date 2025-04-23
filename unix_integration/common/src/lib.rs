@@ -26,3 +26,6 @@ pub mod unix_config;
 pub mod unix_passwd;
 #[cfg(target_family = "unix")]
 pub mod unix_proto;
+
+#[cfg(all(target_family = "unix", feature = "selinux"))]
+pub mod selinux_util;

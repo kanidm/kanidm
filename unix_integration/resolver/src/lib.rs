@@ -23,7 +23,3 @@ pub mod db;
 pub mod idprovider;
 #[cfg(target_family = "unix")]
 pub mod resolver;
-#[cfg(all(target_family = "unix", feature = "selinux"))]
-pub mod selinux_util;
-#[cfg(target_family = "unix")]
-pub mod unix_config;

@@ -173,7 +173,7 @@ dhat = "0.3.3"
 dyn-clone = "^1.0.17"
 fernet = "^0.2.1"
 filetime = "^0.2.24"
-fs4 = "^0.12.0"
+fs4 = "^0.13.0"
 futures = "^0.3.31"
 futures-util = { version = "^0.3.30", features = ["sink"] }
 gix = { version = "0.64.0", default-features = false }
@@ -212,7 +212,7 @@ notify-debouncer-full = { version = "0.5" }
 num_enum = "^0.5.11"
 oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
-openssl = "^0.10.70"
+openssl = "^0.10.72"
 
 opentelemetry = { version = "0.27.0" }
 opentelemetry_api = { version = "0.27.0", features = ["logs", "metrics"] }
@@ -270,7 +270,7 @@ tempfile = "3.15.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.36", features = ["formatting", "local-offset"] }
 
-tokio = "^1.43.0"
+tokio = "^1.44.2"
 tokio-openssl = "^0.6.5"
 tokio-util = "^0.7.13"
 
