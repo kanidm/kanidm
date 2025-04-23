@@ -34,7 +34,7 @@ cron = { workspace = true }
 filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
-haproxy-protocol = { workspace = true, features = ["tokio"] }
+haproxy-protocol = { workspace = true }
 hashbrown = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
