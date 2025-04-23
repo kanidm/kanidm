@@ -5406,8 +5406,7 @@ dependencies = [
 [[package]]
 name = "sshkeys"
 version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45287473d24bf7ad9ebad1aff097ad0424c16cd9430549170c3a67c5b05705bd"
+source = "git+https://github.com/Firstyear/rust-sshkeys.git?rev=3a081cbf7480628223bcb96fc8aaa8c19109d007#3a081cbf7480628223bcb96fc8aaa8c19109d007"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
