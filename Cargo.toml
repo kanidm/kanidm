@@ -118,9 +118,11 @@ codegen-units = 256
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
 # sshkey-attest = { path = "../webauthn-rs/sshkey-attest" }
 
-# kanidm-hsm-crypto = { path = "../hsm-crypto" }
-
+# For BSD nss support
 libnss = { git = "https://github.com/Firstyear/libnss-rs.git", branch = "20250207-freebsd" }
+# Allow ssh keys to have comments with spaces.
+sshkeys = { git = "https://github.com/Firstyear/rust-sshkeys.git", rev = "3a081cbf7480628223bcb96fc8aaa8c19109d007" }
+
 
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core", version = "=1.6.0-dev" }
@@ -138,7 +140,7 @@ kanidm_utils_users = { path = "./libs/users", version = "=1.6.0-dev" }
 scim_proto = { path = "./libs/scim_proto", version = "=1.6.0-dev" }
 sketching = { path = "./libs/sketching", version = "=1.6.0-dev" }
 
-anyhow = { version = "1.0.95" }
+anyhow = { version = "1.0.98" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.12.1", features = ["serde", "with-axum"] }
 askama_axum = { version = "0.4.0" }
@@ -159,7 +161,7 @@ base64 = "^0.22.1"
 base64urlsafedata = "0.5.1"
 bitflags = "^2.8.0"
 bytes = "^1.9.0"
-clap = { version = "^4.5.34", features = ["derive", "env"] }
+clap = { version = "4.5.37", features = ["derive", "env"] }
 clap_complete = "^4.5.42"
 # Forced by saffron/cron
 chrono = "^0.4.39"
@@ -176,16 +178,18 @@ filetime = "^0.2.24"
 fs4 = "^0.13.0"
 futures = "^0.3.31"
 futures-util = { version = "^0.3.30", features = ["sink"] }
-gix = { version = "0.64.0", default-features = false }
-hashbrown = { version = "0.14.3", features = ["serde", "inline-more", "ahash"] }
+gix = { version = "0.71.0", default-features = false }
+haproxy-protocol = { version = "0.0.1" }
+hashbrown = { version = "0.15.2", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
 http = "1.2.0"
+http-body-util = "0.1"
 hyper = { version = "1.5.1", features = [
     "full",
 ] } # hyper full includes client/server/http2
 hyper-util = { version = "0.1.10", features = ["server", "tokio"] }
 idlset = "^0.2.5"
-image = { version = "0.24.9", default-features = false, features = [
+image = { version = "0.25.6", default-features = false, features = [
     "gif",
     "jpeg",
     "webp",
@@ -198,16 +202,16 @@ lazy_static = "^1.5.0"
 ldap3_client = "^0.5.2"
 ldap3_proto = { version = "^0.5.2", features = ["serde"] }
 
-libc = "^0.2.168"
+libc = "0.2.172"
 libnss = "^0.8.0"
 libsqlite3-sys = "^0.25.2"
 lodepng = "3.11.0"
-lru = "^0.13.0"
-mathru = "^0.13.0"
+lru = "0.14.0"
+mathru = "0.15.5"
 md-5 = "0.10.6"
-mimalloc = "0.1.43"
+mimalloc = "0.1.46"
 notify-debouncer-full = { version = "0.5" }
-num_enum = "^0.5.11"
+num_enum = "0.7.3"
 oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
 openssl = "^0.10.72"
@@ -229,11 +233,11 @@ tracing-core = "0.1.33"
 peg = "0.8"
 pkg-config = "^0.3.31"
 prctl = "1.0.0"
-proc-macro2 = "1.0.93"
-qrcode = "^0.12.0"
+proc-macro2 = "1.0.95"
+qrcode = "0.14.1"
 quote = "1"
-rand = "^0.8.5"
-rand_chacha = "0.3.1"
+rand = "0.9.1"
+rand_chacha = "0.9.0"
 regex = "1.11.0"
 reqwest = { version = "0.12.12", default-features = false, features = [
     "cookies",
@@ -243,13 +247,13 @@ reqwest = { version = "0.12.12", default-features = false, features = [
     "rustls-tls-native-roots",
     "rustls-tls-native-roots-no-provider",
 ] }
-rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
-rustls = { version = "0.23.21", default-features = false, features = [
+rusqlite = { version = "0.35.0", features = ["array", "bundled"] }
+rustls = { version = "0.23.26", default-features = false, features = [
     "aws_lc_rs",
 ] }
 
 sd-notify = "^0.4.5"
-selinux = "^0.4.6"
+selinux = "^0.5.1"
 serde = "^1.0.217"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.137"
@@ -257,13 +261,13 @@ serde_urlencoded = "^0.7.1"
 serde_with = "3.12.0"
 sha-crypt = "0.5.0"
 sha2 = "0.10.8"
-shellexpand = "^2.1.2"
+shellexpand = "3.1.1"
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
 sshkey-attest = "^0.5.0"
 sshkeys = "0.3.3"
-svg = "0.13.1"
-syn = { version = "2.0.96", features = ["full"] }
+svg = "0.18.0"
+syn = { version = "2.0.100", features = ["full"] }
 tempfile = "3.15.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.36", features = ["formatting", "local-offset"] }
@@ -272,7 +276,7 @@ tokio = "^1.44.2"
 tokio-openssl = "^0.6.5"
 tokio-util = "^0.7.13"
 
-toml = "^0.5.11"
+toml = "^0.8.20"
 tracing = { version = "^0.1.41", features = [
     "max_level_trace",
     "release_max_level_debug",
@@ -299,6 +303,6 @@ walkdir = "2"
 
 x509-cert = "0.2.5"
 
-zxcvbn = "^2.2.2"
+zxcvbn = "3.1.0"
 
-nonempty = "0.8.1"
+nonempty = "0.11.0"

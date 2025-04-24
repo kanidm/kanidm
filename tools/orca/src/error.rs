@@ -8,4 +8,6 @@ pub enum Error {
     Interrupt,
     Crossbeam,
     InvalidState,
+    #[allow(dead_code)]
+    RandomNumber(String),
 }

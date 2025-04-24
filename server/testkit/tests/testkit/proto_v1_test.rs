@@ -1366,7 +1366,7 @@ async fn setup_demo_account_password(
 
 #[kanidmd_testkit::test]
 async fn test_server_credential_update_session_passkey(rsclient: &KanidmClient) {
-    let mut wa = setup_demo_account_passkey(&rsclient).await;
+    let mut wa = setup_demo_account_passkey(rsclient).await;
 
     let res = rsclient
         .auth_passkey_begin("demo_account")
@@ -1690,7 +1690,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: &KanidmClient) {
 
 #[kanidmd_testkit::test]
 async fn test_server_user_auth_reauthentication(rsclient: &KanidmClient) {
-    let mut wa = setup_demo_account_passkey(&rsclient).await;
+    let mut wa = setup_demo_account_passkey(rsclient).await;
 
     let res = rsclient
         .auth_passkey_begin("demo_account")
@@ -1869,12 +1869,12 @@ async fn start_password_session(
 
 #[kanidmd_testkit::test]
 async fn test_server_user_auth_unprivileged(rsclient: &KanidmClient) {
-    let (account_name, account_pass) = setup_demo_account_password(&rsclient)
+    let (account_name, account_pass) = setup_demo_account_password(rsclient)
         .await
         .expect("Failed to setup demo_account");
 
     let uat = start_password_session(
-        &rsclient,
+        rsclient,
         account_name.as_str(),
         account_pass.as_str(),
         false,
@@ -1892,18 +1892,13 @@ async fn test_server_user_auth_unprivileged(rsclient: &KanidmClient) {
 
 #[kanidmd_testkit::test]
 async fn test_server_user_auth_privileged_shortcut(rsclient: &KanidmClient) {
-    let (account_name, account_pass) = setup_demo_account_password(&rsclient)
+    let (account_name, account_pass) = setup_demo_account_password(rsclient)
         .await
         .expect("Failed to setup demo_account");
 
-    let uat = start_password_session(
-        &rsclient,
-        account_name.as_str(),
-        account_pass.as_str(),
-        true,
-    )
-    .await
-    .expect("Failed to start session");
+    let uat = start_password_session(rsclient, account_name.as_str(), account_pass.as_str(), true)
+        .await
+        .expect("Failed to start session");
 
     match uat.purpose {
         UatPurpose::ReadOnly => panic!("Unexpected uat purpose"),

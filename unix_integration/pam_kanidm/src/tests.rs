@@ -121,23 +121,17 @@ impl PamHandler for TestHandler {
     /// Display a message to the user.
     fn message(&self, _prompt: &str) -> PamResult<()> {
         let mut q = self.response_queue.lock().unwrap();
-        match q.pop_front() {
-            e => {
-                eprintln!("{:?}", e);
-                panic!("Invalid event transition");
-            }
-        }
+        let e = q.pop_front();
+        eprintln!("{:?}", e);
+        panic!("Invalid event transition message");
     }
 
     /// Display a device grant request to the user.
     fn message_device_grant(&self, _data: &DeviceAuthorizationResponse) -> PamResult<()> {
         let mut q = self.response_queue.lock().unwrap();
-        match q.pop_front() {
-            e => {
-                eprintln!("{:?}", e);
-                panic!("Invalid event transition");
-            }
-        }
+        let e = q.pop_front();
+        eprintln!("{:?}", e);
+        panic!("Invalid event transition message_device_grant");
     }
 
     /// Request a password from the user.
@@ -154,22 +148,16 @@ impl PamHandler for TestHandler {
 
     fn prompt_for_pin(&self, _msg: Option<&str>) -> PamResult<Option<String>> {
         let mut q = self.response_queue.lock().unwrap();
-        match q.pop_front() {
-            e => {
-                eprintln!("{:?}", e);
-                panic!("Invalid event transition");
-            }
-        }
+        let e = q.pop_front();
+        eprintln!("{:?}", e);
+        panic!("Invalid event transition prompt_for_pin");
     }
 
     fn prompt_for_mfacode(&self) -> PamResult<Option<String>> {
-        let mut q = self.response_queue.lock().unwrap();
-        match q.pop_front() {
-            e => {
-                eprintln!("{:?}", e);
-                panic!("Invalid event transition");
-            }
-        }
+        let mut q = self.response_queue.lock().expect("Failed to lock mutex");
+        let e = q.pop_front();
+        eprintln!("{:?}", e);
+        panic!("Invalid event transition prompt_for_mfacode");
     }
 }
 

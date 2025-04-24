@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::state::{GroupName, Model};
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use serde::de::{value, IntoDeserializer};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -200,8 +200,8 @@ impl ProfileBuilder {
         } = self;
 
         let seed: u64 = seed.unwrap_or_else(|| {
-            let mut rng = thread_rng();
-            rng.gen()
+            let mut rng = rng();
+            rng.random()
         });
 
         //TODO: Allow to specify group properties from the CLI

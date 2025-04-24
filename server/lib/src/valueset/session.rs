@@ -1920,7 +1920,7 @@ mod tests {
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(&vs, data);
     }
 
     #[test]
@@ -1948,6 +1948,6 @@ mod tests {
 ]
         "#;
 
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(&vs, data);
     }
 }

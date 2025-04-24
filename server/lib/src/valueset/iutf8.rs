@@ -227,9 +227,9 @@ mod tests {
     #[test]
     fn test_scim_iutf8() {
         let vs: ValueSet = ValueSetIutf8::new("lowercase string");
-        crate::valueset::scim_json_reflexive(vs.clone(), r#""lowercase string""#);
+        crate::valueset::scim_json_reflexive(&vs, r#""lowercase string""#);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetIutf8>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetIutf8>(&vs, &[])
     }
 }

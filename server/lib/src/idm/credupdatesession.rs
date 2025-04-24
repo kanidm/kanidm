@@ -17,6 +17,7 @@ use webauthn_rs::prelude::{
     AttestedPasskey as AttestedPasskeyV4, AttestedPasskeyRegistration, CreationChallengeResponse,
     Passkey as PasskeyV4, PasskeyRegistration, RegisterPublicKeyCredential, WebauthnError,
 };
+use zxcvbn::{zxcvbn, Score};
 
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
 use crate::credential::{BackupCodes, Credential};
@@ -1663,23 +1664,14 @@ impl IdmServerCredUpdateTransaction<'_> {
         }
 
         // does the password pass zxcvbn?
-        let entropy = zxcvbn::zxcvbn(cleartext, related_inputs).map_err(|e| {
-            admin_error!("zxcvbn check failure (password empty?) {:?}", e);
-            // Return some generic feedback when the password is this bad.
-            PasswordQuality::Feedback(vec![
-                PasswordFeedback::UseAFewWordsAvoidCommonPhrases,
-                PasswordFeedback::AddAnotherWordOrTwo,
-                PasswordFeedback::NoNeedForSymbolsDigitsOrUppercaseLetters,
-            ])
-        })?;
+        let entropy = zxcvbn(cleartext, related_inputs);
 
         // PW's should always be enforced as strong as possible.
-        if entropy.score() < 4 {
+        if entropy.score() < Score::Four {
             // The password is too week as per:
             // https://docs.rs/zxcvbn/2.0.0/zxcvbn/struct.Entropy.html
             let feedback: zxcvbn::feedback::Feedback = entropy
                 .feedback()
-                .as_ref()
                 .ok_or(OperationError::InvalidState)
                 .cloned()
                 .map_err(|e| {
@@ -3405,7 +3397,7 @@ mod tests {
         assert!(
             matches!(
                 c_status.mfaregstate,
-                MfaRegStateStatus::TotpNameTryAgain(ref val) if val == ""
+                MfaRegStateStatus::TotpNameTryAgain(ref val) if val.is_empty()
             ),
             "{:?}",
             c_status.mfaregstate

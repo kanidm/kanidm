@@ -187,7 +187,7 @@ pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> R
                 })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let main_client_index = seeded_rng.gen_range(0..cloned_clients.len());
+        let main_client_index = seeded_rng.random_range(0..cloned_clients.len());
         let main_client = cloned_clients.remove(main_client_index);
         //note that cloned_clients now contains all other clients except the first one
 

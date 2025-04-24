@@ -163,9 +163,9 @@ mod tests {
     #[test]
     fn test_scim_uihint() {
         let vs: ValueSet = ValueSetUiHint::new(UiHint::PosixAccount);
-        crate::valueset::scim_json_reflexive(vs.clone(), r#"["posixaccount"]"#);
+        crate::valueset::scim_json_reflexive(&vs, r#"["posixaccount"]"#);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetUiHint>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetUiHint>(&vs, &[])
     }
 }

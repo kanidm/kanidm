@@ -4,12 +4,19 @@ use crate::schema::Schema;
 
 pub struct TestConfiguration {
     pub domain_level: DomainVersion,
+    // This is literally here to make clippy happy, just leave it alone!
+    // if you don't believe me then remove it and run 'cargo clippy --all-targets' it'll complain
+    // about "struct update has no effect, all the fields in the struct have already been specified"
+    // because the domain_level was set, then we ..Default::default() the "rest"
+    #[allow(dead_code)]
+    pub ignore_this_field: bool,
 }
 
 impl Default for TestConfiguration {
     fn default() -> Self {
         TestConfiguration {
             domain_level: DOMAIN_TGT_LEVEL,
+            ignore_this_field: false,
         }
     }
 }
