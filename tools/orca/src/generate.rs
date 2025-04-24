@@ -4,8 +4,9 @@ use crate::model::ActorRole;
 use crate::profile::Profile;
 use crate::state::{Credential, Flag, Group, GroupName, Person, PreflightState, State};
 use hashbrown::HashMap;
-use rand::distributions::{Alphanumeric, DistString, Uniform};
-use rand::seq::{index, SliceRandom};
+use rand::distr::{Alphanumeric, SampleString, Uniform};
+use rand::seq::{index, IndexedRandom};
+
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
@@ -171,7 +172,8 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
                 let baseline = persons.len() / 3;
                 let inverse = persons.len() - baseline;
                 // Randomly add extra from the inverse
-                let extra = Uniform::new(0, inverse);
+                let extra =
+                    Uniform::new(0, inverse).map_err(|err| Error::RandomNumber(err.to_string()))?;
                 baseline + seeded_rng.sample(extra)
             }
         };

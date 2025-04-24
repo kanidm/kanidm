@@ -10,7 +10,7 @@ async fn test_v1_group_id_patch(rsclient: &KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    create_user(&rsclient, "foo", "foogroup").await;
+    create_user(rsclient, "foo", "foogroup").await;
 
     let post_body = serde_json::json!({"attrs": { ATTR_DESCRIPTION : ["Fancy group change"]}});
 
@@ -31,7 +31,7 @@ async fn test_v1_group_id_attr_post(rsclient: &KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    create_user(&rsclient, "foo", "foogroup").await;
+    create_user(rsclient, "foo", "foogroup").await;
 
     let post_body = serde_json::json!(["foo"]);
 

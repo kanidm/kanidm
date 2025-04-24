@@ -196,9 +196,9 @@ mod tests {
     #[test]
     fn test_scim_uint32() {
         let vs: ValueSet = ValueSetUint32::new(69);
-        crate::valueset::scim_json_reflexive(vs.clone(), "69");
+        crate::valueset::scim_json_reflexive(&vs, "69");
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetUint32>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetUint32>(&vs, &[])
     }
 }

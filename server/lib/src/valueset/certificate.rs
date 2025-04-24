@@ -352,6 +352,6 @@ raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
         assert_eq!(cert.s256, expect_s256);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetCertificate>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetCertificate>(&vs, &[])
     }
 }

@@ -995,7 +995,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
 }
 
 #[cfg(test)]
-pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
+pub(crate) fn scim_json_reflexive(vs: &ValueSet, data: &str) {
     let scim_value = vs.to_scim_value().unwrap().assume_resolved();
 
     let strout = serde_json::to_string_pretty(&scim_value).unwrap();
@@ -1012,25 +1012,27 @@ pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
 #[cfg(test)]
 pub(crate) fn scim_json_reflexive_unresolved(
     write_txn: &mut QueryServerWriteTransaction,
-    vs: ValueSet,
+    vs: &ValueSet,
     data: &str,
 ) {
     let scim_int_value = vs.to_scim_value().unwrap().assume_unresolved();
     let scim_value = write_txn.resolve_scim_interim(scim_int_value).unwrap();
 
-    let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+    let strout = serde_json::to_string_pretty(&scim_value).expect("Failed to serialize");
     eprintln!("{}", strout);
 
-    let json_value: serde_json::Value = serde_json::to_value(&scim_value).unwrap();
+    let json_value: serde_json::Value =
+        serde_json::to_value(&scim_value).expect("Failed to convert to JSON");
 
-    let expect: serde_json::Value = serde_json::from_str(data).unwrap();
+    let expect: serde_json::Value =
+        serde_json::from_str(data).expect("Failed to parse expected JSON");
 
     assert_eq!(json_value, expect);
 }
 
 #[cfg(test)]
 pub(crate) fn scim_json_put_reflexive<T: ValueSetScimPut>(
-    expect_vs: ValueSet,
+    expect_vs: &ValueSet,
     additional_tests: &[(JsonValue, ValueSet)],
 ) {
     let scim_value = expect_vs.to_scim_value().unwrap().assume_resolved();
@@ -1041,7 +1043,7 @@ pub(crate) fn scim_json_put_reflexive<T: ValueSetScimPut>(
     let generic = serde_json::to_value(scim_value).unwrap();
     // Check that we can turn back into a vs from the generic version.
     let vs = T::from_scim_json_put(generic).unwrap().assume_resolved();
-    assert_eq!(&vs, &expect_vs);
+    assert_eq!(&vs, expect_vs);
 
     // For each additional check, assert they work as expected.
     for (jv, expect_vs) in additional_tests {
@@ -1053,7 +1055,7 @@ pub(crate) fn scim_json_put_reflexive<T: ValueSetScimPut>(
 #[cfg(test)]
 pub(crate) fn scim_json_put_reflexive_unresolved<T: ValueSetScimPut>(
     write_txn: &mut QueryServerWriteTransaction,
-    expect_vs: ValueSet,
+    expect_vs: &ValueSet,
     additional_tests: &[(JsonValue, ValueSet)],
 ) {
     let scim_int_value = expect_vs.to_scim_value().unwrap().assume_unresolved();
@@ -1063,7 +1065,7 @@ pub(crate) fn scim_json_put_reflexive_unresolved<T: ValueSetScimPut>(
     // Check that we can turn back into a vs from the generic version.
     let vs_inter = T::from_scim_json_put(generic).unwrap().assume_unresolved();
     let vs = write_txn.resolve_valueset_intermediate(vs_inter).unwrap();
-    assert_eq!(&vs, &expect_vs);
+    assert_eq!(&vs, expect_vs);
 
     // For each additional check, assert they work as expected.
     for (jv, expect_vs) in additional_tests {

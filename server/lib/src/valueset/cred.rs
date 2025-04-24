@@ -1183,15 +1183,15 @@ mod tests {
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(&vs, data);
     }
 
     #[test]
     fn test_scim_credential_type() {
         let vs: ValueSet = ValueSetCredentialType::new(CredentialType::Mfa);
-        crate::valueset::scim_json_reflexive(vs.clone(), r#""mfa""#);
+        crate::valueset::scim_json_reflexive(&vs, r#""mfa""#);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetCredentialType>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetCredentialType>(&vs, &[])
     }
 }

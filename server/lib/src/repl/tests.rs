@@ -705,7 +705,7 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
     assert_eq!(e1_cs, e2_cs);
-    assert!(e1_cs.get_attr_cid(Attribute::Description).is_some());
+    assert!(e1_cs.get_attr_cid(&Attribute::Description).is_some());
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);

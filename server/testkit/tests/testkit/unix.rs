@@ -6,10 +6,10 @@ use kanidmd_testkit::*;
 async fn account_id_unix_token(rsclient: &KanidmClient) {
     login_put_admin_idm_admins(rsclient).await;
 
-    create_user(&rsclient, "group_manager", "idm_group_manage_priv").await;
+    create_user(rsclient, "group_manager", "idm_group_manage_priv").await;
     // create test user without creating new groups
-    create_user(&rsclient, NOT_ADMIN_TEST_USERNAME, NAME_IDM_ADMINS).await;
-    login_account(&rsclient, "group_manager").await;
+    create_user(rsclient, NOT_ADMIN_TEST_USERNAME, NAME_IDM_ADMINS).await;
+    login_account(rsclient, "group_manager").await;
 
     let response = rsclient
         .idm_account_unix_token_get(NOT_ADMIN_TEST_USERNAME)
@@ -32,7 +32,7 @@ async fn account_id_unix_token(rsclient: &KanidmClient) {
         assert!(format!("{:?}", val).contains("400"));
     }
 
-    login_put_admin_idm_admins(&rsclient).await;
+    login_put_admin_idm_admins(rsclient).await;
 
     rsclient
         .idm_person_account_unix_extend(NOT_ADMIN_TEST_USERNAME, None, None)

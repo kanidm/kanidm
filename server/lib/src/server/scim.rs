@@ -186,7 +186,7 @@ mod tests {
 
         match desc {
             ScimValueKanidm::String(gdesc) if gdesc == "Group Description" => {}
-            _ => assert!(false),
+            _ => unreachable!("Expected a string"),
         };
 
         // null removes attr
@@ -201,7 +201,7 @@ mod tests {
                 .expect("Failed to resolve data type");
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");
-        assert!(updated_entry.attrs.get(&Attribute::Description).is_none());
+        assert!(!updated_entry.attrs.contains_key(&Attribute::Description));
 
         // set one
         let put = ScimEntryPutKanidm {
@@ -234,7 +234,7 @@ mod tests {
                     value: "extra_1@example.com".to_string(),
                 }));
             }
-            _ => assert!(false),
+            _ => unreachable!("Expected 1 member"),
         };
 
         // set many
@@ -285,7 +285,7 @@ mod tests {
                     value: "extra_3@example.com".to_string(),
                 }));
             }
-            _ => assert!(false),
+            _ => unreachable!("Expected 3 members"),
         };
 
         // set many with a removal
@@ -333,7 +333,7 @@ mod tests {
                     value: "extra_2@example.com".to_string(),
                 }));
             }
-            _ => assert!(false),
+            _ => unreachable!("Expected 2 members"),
         };
 
         // empty set removes attr
@@ -348,6 +348,6 @@ mod tests {
                 .expect("Failed to resolve data type");
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");
-        assert!(updated_entry.attrs.get(&Attribute::Member).is_none());
+        assert!(!updated_entry.attrs.contains_key(&Attribute::Member));
     }
 }
