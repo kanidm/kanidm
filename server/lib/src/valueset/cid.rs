@@ -193,6 +193,6 @@ mod tests {
         let vs: ValueSet = ValueSetCid::new(Cid::new_zero());
 
         let data = r#""00000000000000000000000000000000-00000000-0000-0000-0000-000000000000""#;
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(&vs, data);
     }
 }

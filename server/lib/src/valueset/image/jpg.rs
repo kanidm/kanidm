@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use image::codecs::jpeg::JpegDecoder;
 use image::ImageDecoder;
 use sketching::*;
@@ -79,9 +81,9 @@ pub fn has_trailer(contents: &Vec<u8>) -> Result<bool, ImageValidationError> {
 pub fn validate_decoding(
     filename: &str,
     contents: &[u8],
-    limits: image::io::Limits,
+    limits: image::Limits,
 ) -> Result<(), ImageValidationError> {
-    let mut decoder = match JpegDecoder::new(contents) {
+    let mut decoder = match JpegDecoder::new(Cursor::new(contents)) {
         Ok(val) => val,
         Err(err) => {
             return Err(ImageValidationError::InvalidImage(format!(

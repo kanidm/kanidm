@@ -694,7 +694,7 @@ mod tests {
 
         for file in PathBuf::from(&examples_dir)
             .canonicalize()
-            .expect(&format!("Can't find examples dir at {}", examples_dir))
+            .unwrap_or_else(|_| panic!("Can't find examples dir at {}", examples_dir))
             .read_dir()
             .expect("Can't read examples dir!")
         {

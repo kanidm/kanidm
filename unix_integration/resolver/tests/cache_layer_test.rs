@@ -1189,7 +1189,7 @@ async fn test_cache_extend_group_members() {
     assert!(groups.iter().any(|group| {
         group.name == "extensible_group"
             && group.members.as_slice()
-                == &[
+                == [
                     "local_account".to_string(),
                     "testaccount1@idm.example.com".to_string(),
                 ]

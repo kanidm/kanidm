@@ -10,7 +10,7 @@ async fn test_v1_person_id_patch(rsclient: &KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    create_user(&rsclient, "foo", "foogroup").await;
+    create_user(rsclient, "foo", "foogroup").await;
 
     let post_body = serde_json::json!({"attrs": { ATTR_MAIL : ["crab@example.com"]}});
 
@@ -31,7 +31,7 @@ async fn test_v1_person_id_ssh_pubkeys_post(rsclient: &KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    create_user(&rsclient, "foo", "foogroup").await;
+    create_user(rsclient, "foo", "foogroup").await;
 
     let post_body = serde_json::json!([
         "ssh-key-tag-goes-here",

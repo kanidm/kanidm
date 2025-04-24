@@ -1209,7 +1209,7 @@ mod tests {
         // Searching a malformed spn shouldn't cause the query to fail
         let sr = SearchRequest {
             msgid: 1,
-            base: format!("dc=example,dc=com"),
+            base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
             filter: LdapFilter::Or(vec![
                 LdapFilter::Equality(Attribute::Name.to_string(), usr_name.to_string()),
@@ -1232,7 +1232,7 @@ mod tests {
 
         let sr = SearchRequest {
             msgid: 1,
-            base: format!("dc=example,dc=com"),
+            base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
             filter: LdapFilter::And(vec![
                 LdapFilter::Equality(Attribute::Name.to_string(), usr_name.to_string()),

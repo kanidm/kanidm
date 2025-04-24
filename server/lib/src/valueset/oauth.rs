@@ -898,10 +898,10 @@ mod tests {
     fn test_scim_oauth2_scope() {
         let vs: ValueSet = ValueSetOauthScope::new("fully_sick_scope_m8".to_string());
         let data = r#"["fully_sick_scope_m8"]"#;
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
+        crate::valueset::scim_json_reflexive(&vs, data);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetOauthScope>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetOauthScope>(&vs, &[])
     }
 
     #[qs_test]
@@ -930,12 +930,12 @@ mod tests {
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive_unresolved(&mut write_txn, vs.clone(), data);
+        crate::valueset::scim_json_reflexive_unresolved(&mut write_txn, &vs, data);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive_unresolved::<ValueSetOauthScopeMap>(
             &mut write_txn,
-            vs,
+            &vs,
             &[],
         );
 
@@ -970,12 +970,12 @@ mod tests {
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive_unresolved(&mut write_txn, vs.clone(), data);
+        crate::valueset::scim_json_reflexive_unresolved(&mut write_txn, &vs, data);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive_unresolved::<ValueSetOauthClaimMap>(
             &mut write_txn,
-            vs,
+            &vs,
             &[],
         );
 

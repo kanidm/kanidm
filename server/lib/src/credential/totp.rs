@@ -145,8 +145,8 @@ impl Totp {
 
     // Create a new token with secure key and algo.
     pub fn generate_secure(step: u64) -> Self {
-        let mut rng = rand::thread_rng();
-        let secret: Vec<u8> = (0..SECRET_SIZE_BYTES).map(|_| rng.gen()).collect();
+        let mut rng = rand::rng();
+        let secret: Vec<u8> = (0..SECRET_SIZE_BYTES).map(|_| rng.random()).collect();
         let algo = TotpAlgo::Sha256;
         let digits = TotpDigits::Six;
         Totp {

@@ -188,9 +188,9 @@ mod tests {
     #[test]
     fn test_scim_syntax() {
         let vs: ValueSet = ValueSetSyntax::new(SyntaxType::Uuid);
-        crate::valueset::scim_json_reflexive(vs.clone(), r#""UUID""#);
+        crate::valueset::scim_json_reflexive(&vs, r#""UUID""#);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetSyntax>(vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetSyntax>(&vs, &[])
     }
 }
