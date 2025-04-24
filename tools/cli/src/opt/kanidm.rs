@@ -594,8 +594,7 @@ pub enum ServiceAccountPosix {
 pub struct PersonUpdateOpt {
     #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[clap(long, short, help = "Set the legal name for the person.",
-    value_parser = clap::builder::NonEmptyStringValueParser::new())]
+    #[clap(long, short, help = "Set the legal name for the person. Use '' to clear.")]
     legalname: Option<String>,
     #[clap(long, short, help = "Set the account name for the person.",
     value_parser = clap::builder::NonEmptyStringValueParser::new())]
