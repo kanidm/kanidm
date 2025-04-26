@@ -65,8 +65,6 @@ RUN <<EOF
     ls -Rla /out/libs-root
 EOF
 
-RUN ls /usr/src/kanidm/target/release/kanidmd
-
 # ======================
 
 FROM scratch
