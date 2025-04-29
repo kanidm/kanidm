@@ -113,6 +113,11 @@ assets = [
         "755",
     ],
     [
+        "target/release/kanidm_ssh_authorizedkeys_direct",
+        "usr/bin/",
+        "755",
+    ],
+    [
         "../../examples/config",
         "usr/share/kanidm/",
         "444",
