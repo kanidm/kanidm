@@ -5,7 +5,11 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
 fn parse_rfc3339(input: &str) -> Result<OffsetDateTime, time::error::Parse > {
-    OffsetDateTime::parse(input, &Rfc3339)
+    if input == "now" {
+        Ok(OffsetDateTime::now_utc())
+    } else {
+        OffsetDateTime::parse(input, &Rfc3339)
+    }
 }
 
 #[derive(Debug, Args)]
@@ -1264,7 +1268,8 @@ pub enum Oauth2Opt {
     /// Disable OAuth2 Device Flow authentication
     DeviceFlowDisable(Named),
     /// Rotate the signing and encryption keys used by this client. The rotation
-    /// will occur at the specified time, or immediately if the time is in the past.
+    /// will occur at the specified time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
+    /// or immediately if the time is set to the value "now".
     /// Past signatures will continue to operate even after a rotation occurs. If you
     /// have concerns a key is compromised, then you should revoke it instead.
     #[clap(name = "rotate-cryptographic-keys")]
