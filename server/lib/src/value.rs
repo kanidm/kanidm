@@ -1251,6 +1251,7 @@ pub struct Oauth2Session {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyUsage {
     JwsEs256,
+    JwsRs256,
     JweA128GCM,
 }
 
@@ -1261,6 +1262,7 @@ impl fmt::Display for KeyUsage {
             "{}",
             match self {
                 KeyUsage::JwsEs256 => "jws_es256",
+                KeyUsage::JwsRs256 => "jws_rs256",
                 KeyUsage::JweA128GCM => "jwe_a128gcm",
             }
         )

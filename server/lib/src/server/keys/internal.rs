@@ -1,24 +1,22 @@
 use super::object::{KeyObject, KeyObjectT};
 use super::KeyId;
 use crate::prelude::*;
-
-use smolset::SmolSet;
-
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
-
+use crate::value::{KeyStatus, KeyUsage};
+use crate::valueset::{KeyInternalData, ValueSetKeyInternal};
 use compact_jwt::compact::{JweAlg, JweCompact, JweEnc};
-use compact_jwt::crypto::{JweA128GCMEncipher, JweA128KWEncipher};
+use compact_jwt::crypto::{
+    JweA128GCMEncipher, JweA128KWEncipher, JwsRs256Signer, JwsRs256Verifier,
+};
 use compact_jwt::jwe::Jwe;
 use compact_jwt::traits::*;
 use compact_jwt::{
-    JwaAlg, Jwk, Jws, JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsSigner, JwsSignerToVerifier,
+    JwaAlg, Jwk, JwkKeySet, Jws, JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsSigner,
+    JwsSignerToVerifier,
 };
-
+use smolset::SmolSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Bound::{Included, Unbounded};
-
-use crate::value::{KeyStatus, KeyUsage};
-use crate::valueset::{KeyInternalData, ValueSetKeyInternal};
+use std::sync::Arc;
 
 pub struct KeyProviderInternal {
     uuid: Uuid,
@@ -61,6 +59,7 @@ impl KeyProviderInternal {
             uuid,
             jws_es256: None,
             jwe_a128gcm: None,
+            jws_rs256: None,
         }))
     }
 
@@ -73,6 +72,7 @@ impl KeyProviderInternal {
         debug!(?uuid, "Loading key object ...");
 
         let mut jws_es256: Option<KeyObjectInternalJwtEs256> = None;
+        let mut jws_rs256: Option<KeyObjectInternalJwtRs256> = None;
         let mut jwe_a128gcm: Option<KeyObjectInternalJweA128GCM> = None;
 
         if let Some(key_internal_map) = entry
@@ -104,6 +104,18 @@ impl KeyProviderInternal {
                             *valid_from,
                         )?;
                     }
+                    KeyUsage::JwsRs256 => {
+                        let jws_rs256_ref =
+                            jws_rs256.get_or_insert_with(KeyObjectInternalJwtRs256::default);
+
+                        jws_rs256_ref.load(
+                            key_id,
+                            *status,
+                            status_cid.clone(),
+                            der,
+                            *valid_from,
+                        )?;
+                    }
                     KeyUsage::JweA128GCM => {
                         let jwe_a128gcm_ref =
                             jwe_a128gcm.get_or_insert_with(KeyObjectInternalJweA128GCM::default);
@@ -125,6 +137,7 @@ impl KeyProviderInternal {
             uuid,
             jws_es256,
             jwe_a128gcm,
+            jws_rs256,
         })))
     }
 
@@ -194,7 +207,7 @@ impl KeyObjectInternalJweA128GCM {
     fn assert_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
         if self.get_valid_cipher(valid_from).is_none() {
             // This means there is no active signing key, so we need to create one.
-            warn!("no active jwe a128gcm found, creating a new one ...");
+            debug!("no active jwe a128gcm found, creating a new one ...");
             self.new_active(valid_from, cid)
         } else {
             Ok(())
@@ -422,7 +435,7 @@ impl KeyObjectInternalJwtEs256 {
     fn assert_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
         if self.get_valid_signer(valid_from).is_none() {
             // This means there is no active signing key, so we need to create one.
-            warn!("no active jwt es256 found, creating a new one ...");
+            debug!("no active jwt es256 found, creating a new one ...");
             self.new_active(valid_from, cid)
         } else {
             Ok(())
@@ -437,8 +450,8 @@ impl KeyObjectInternalJwtEs256 {
     ) -> Result<(), OperationError> {
         let valid_from = valid_from.as_secs();
 
-        for der in import_keys {
-            let signer = JwsEs256Signer::from_es256_der(der).map_err(|err| {
+        for private_der in import_keys {
+            let signer = JwsEs256Signer::from_es256_der(private_der).map_err(|err| {
                 error!(?err, "Unable to load imported es256 DER signer");
                 OperationError::KP0028KeyObjectImportJwsEs256DerInvalid
             })?;
@@ -451,22 +464,19 @@ impl KeyObjectInternalJwtEs256 {
                 OperationError::KP0029KeyObjectSignerToVerifier
             })?;
 
-            let public_der = verifier.public_key_to_der().map_err(|jwt_error| {
-                error!(?jwt_error, "Unable to convert public key to DER");
-                OperationError::KP0030KeyObjectPublicToDer
-            })?;
-
             // We need to use the legacy KID for imported objects
             let kid = signer.get_legacy_kid().to_string();
             debug!(?kid, "imported key");
+
+            self.active.insert(valid_from, signer.clone());
 
             self.all.insert(
                 kid,
                 InternalJwtEs256 {
                     valid_from,
-                    status: InternalJwtEs256Status::Retained {
+                    status: InternalJwtEs256Status::Valid {
                         verifier,
-                        public_der,
+                        private_der: private_der.clone(),
                     },
                     status_cid: cid.clone(),
                 },
@@ -696,6 +706,25 @@ impl KeyObjectInternalJwtEs256 {
         }
     }
 
+    fn public_jwks(&self) -> JwkKeySet {
+        let keys = self
+            .all
+            .iter()
+            .filter_map(|(_, es256)| match &es256.status {
+                InternalJwtEs256Status::Valid { verifier, .. }
+                | InternalJwtEs256Status::Retained { verifier, .. } => verifier
+                    .public_key_as_jwk()
+                    .map_err(|err| {
+                        error!(?err);
+                    })
+                    .ok(),
+                InternalJwtEs256Status::Revoked { .. } => None,
+            })
+            .collect::<Vec<_>>();
+
+        JwkKeySet { keys }
+    }
+
     fn public_jwk(&self, key_id: &str) -> Result<Option<Jwk>, OperationError> {
         if let Some(key_to_check) = self.all.get(key_id) {
             match &key_to_check.status {
@@ -729,10 +758,386 @@ impl KeyObjectInternalJwtEs256 {
 }
 
 #[derive(Clone)]
+enum InternalJwtRs256Status {
+    Valid {
+        verifier: JwsRs256Verifier,
+        private_der: Vec<u8>,
+    },
+    Retained {
+        verifier: JwsRs256Verifier,
+        public_der: Vec<u8>,
+    },
+    Revoked {
+        untrusted_verifier: JwsRs256Verifier,
+        public_der: Vec<u8>,
+    },
+}
+
+#[derive(Clone)]
+struct InternalJwtRs256 {
+    valid_from: u64,
+    status: InternalJwtRs256Status,
+    status_cid: Cid,
+}
+
+#[derive(Default, Clone)]
+struct KeyObjectInternalJwtRs256 {
+    // active signing keys are in a BTreeMap indexed by their valid_from
+    // time so that we can retrieve the active key.
+    //
+    // We don't need to worry about manipulating this at runtime, since any expiry
+    // event will cause the keyObject to reload, which will reflect to this map.
+    active: BTreeMap<u64, JwsRs256Signer>,
+
+    // All keys are stored by their KeyId for fast lookup. Keys internally have a
+    // current status which is checked for signature validation.
+    all: BTreeMap<KeyId, InternalJwtRs256>,
+}
+
+impl KeyObjectInternalJwtRs256 {
+    fn get_valid_signer(&self, time: Duration) -> Option<&JwsRs256Signer> {
+        let ct_secs = time.as_secs();
+
+        self.active
+            .range((Unbounded, Included(ct_secs)))
+            .next_back()
+            .map(|(_time, signer)| signer)
+    }
+
+    fn assert_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        if self.get_valid_signer(valid_from).is_none() {
+            // This means there is no active signing key, so we need to create one.
+            debug!("no active jwt rs256 found, creating a new one ...");
+            self.new_active(valid_from, cid)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn import(
+        &mut self,
+        import_keys: &SmolSet<[Vec<u8>; 1]>,
+        valid_from: Duration,
+        cid: &Cid,
+    ) -> Result<(), OperationError> {
+        let valid_from = valid_from.as_secs();
+
+        for private_der in import_keys {
+            let signer = JwsRs256Signer::from_rs256_der(private_der).map_err(|err| {
+                error!(?err, "Unable to load imported rs256 DER signer");
+                OperationError::KP0045KeyObjectImportJwsRs256DerInvalid
+            })?;
+
+            let verifier = signer.get_verifier().map_err(|jwt_error| {
+                error!(
+                    ?jwt_error,
+                    "Unable to produce jwt rs256 verifier from signer"
+                );
+                OperationError::KP0046KeyObjectSignerToVerifier
+            })?;
+
+            // We need to use the legacy KID for imported objects
+            let kid = signer.get_legacy_kid().to_string();
+            debug!(?kid, "imported key");
+
+            self.active.insert(valid_from, signer.clone());
+
+            self.all.insert(
+                kid,
+                InternalJwtRs256 {
+                    valid_from,
+                    status: InternalJwtRs256Status::Valid {
+                        verifier,
+                        private_der: private_der.clone(),
+                    },
+                    status_cid: cid.clone(),
+                },
+            );
+        }
+
+        Ok(())
+    }
+
+    fn new_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let valid_from = valid_from.as_secs();
+
+        let signer = JwsRs256Signer::generate_legacy_rs256().map_err(|jwt_error| {
+            error!(?jwt_error, "Unable to generate new jwt rs256 signing key");
+            OperationError::KP0048KeyObjectJwtRs256Generation
+        })?;
+
+        let verifier = signer.get_verifier().map_err(|jwt_error| {
+            error!(
+                ?jwt_error,
+                "Unable to produce jwt rs256 verifier from signer"
+            );
+            OperationError::KP0049KeyObjectSignerToVerifier
+        })?;
+
+        let private_der = signer.private_key_to_der().map_err(|jwt_error| {
+            error!(?jwt_error, "Unable to convert signing key to DER");
+            OperationError::KP0050KeyObjectPrivateToDer
+        })?;
+
+        self.active.insert(valid_from, signer.clone());
+
+        let kid = signer.get_kid().to_string();
+
+        self.all.insert(
+            kid,
+            InternalJwtRs256 {
+                valid_from,
+                status: InternalJwtRs256Status::Valid {
+                    // signer,
+                    verifier,
+                    private_der,
+                },
+                status_cid: cid.clone(),
+            },
+        );
+
+        Ok(())
+    }
+
+    fn revoke(&mut self, revoke_key_id: &KeyId, cid: &Cid) -> Result<bool, OperationError> {
+        if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
+            let untrusted_verifier = match &key_to_revoke.status {
+                InternalJwtRs256Status::Valid { verifier, .. }
+                | InternalJwtRs256Status::Retained { verifier, .. } => verifier,
+                InternalJwtRs256Status::Revoked {
+                    untrusted_verifier, ..
+                } => untrusted_verifier,
+            }
+            .clone();
+
+            let public_der = untrusted_verifier
+                .public_key_to_der()
+                .map_err(|jwt_error| {
+                    error!(?jwt_error, "Unable to convert public key to DER");
+                    OperationError::KP0051KeyObjectPublicToDer
+                })?;
+
+            key_to_revoke.status = InternalJwtRs256Status::Revoked {
+                untrusted_verifier,
+                public_der,
+            };
+            key_to_revoke.status_cid = cid.clone();
+
+            let valid_from = key_to_revoke.valid_from;
+
+            // Remove it from the active set.
+            self.active.remove(&valid_from);
+
+            Ok(true)
+        } else {
+            // We didn't revoke anything
+            Ok(false)
+        }
+    }
+
+    fn load(
+        &mut self,
+        id: &str,
+        status: KeyStatus,
+        status_cid: Cid,
+        der: &[u8],
+        valid_from: u64,
+    ) -> Result<(), OperationError> {
+        let id: KeyId = id.to_string();
+
+        let status = match status {
+            KeyStatus::Valid => {
+                let signer = JwsRs256Signer::from_rs256_der(der).map_err(|err| {
+                    error!(?err, ?id, "Unable to load rs256 DER signer");
+                    OperationError::KP0052KeyObjectJwsRs256DerInvalid
+                })?;
+
+                let verifier = signer.get_verifier().map_err(|err| {
+                    error!(?err, "Unable to retrieve verifier from signer");
+                    OperationError::KP0053KeyObjectSignerToVerifier
+                })?;
+
+                self.active.insert(valid_from, signer);
+
+                InternalJwtRs256Status::Valid {
+                    // signer,
+                    verifier,
+                    private_der: der.to_vec(),
+                }
+            }
+            KeyStatus::Retained => {
+                let verifier = JwsRs256Verifier::from_rs256_der(der).map_err(|err| {
+                    error!(?err, ?id, "Unable to load rs256 DER verifier");
+                    OperationError::KP0054KeyObjectJwsRs256DerInvalid
+                })?;
+
+                InternalJwtRs256Status::Retained {
+                    verifier,
+                    public_der: der.to_vec(),
+                }
+            }
+            KeyStatus::Revoked => {
+                let untrusted_verifier = JwsRs256Verifier::from_rs256_der(der).map_err(|err| {
+                    error!(?err, ?id, "Unable to load rs256 DER revoked verifier");
+                    OperationError::KP0055KeyObjectJwsRs256DerInvalid
+                })?;
+
+                InternalJwtRs256Status::Revoked {
+                    untrusted_verifier,
+                    public_der: der.to_vec(),
+                }
+            }
+        };
+
+        let internal_jwt = InternalJwtRs256 {
+            valid_from,
+            status,
+            status_cid,
+        };
+
+        self.all.insert(id, internal_jwt);
+
+        Ok(())
+    }
+
+    fn to_key_iter(&self) -> impl Iterator<Item = (KeyId, KeyInternalData)> + '_ {
+        self.all.iter().map(|(key_id, internal_jwt)| {
+            let usage = KeyUsage::JwsRs256;
+
+            let valid_from = internal_jwt.valid_from;
+            let status_cid = internal_jwt.status_cid.clone();
+
+            let (status, der) = match &internal_jwt.status {
+                InternalJwtRs256Status::Valid { private_der, .. } => {
+                    (KeyStatus::Valid, private_der.clone())
+                }
+                InternalJwtRs256Status::Retained { public_der, .. } => {
+                    (KeyStatus::Retained, public_der.clone())
+                }
+                InternalJwtRs256Status::Revoked { public_der, .. } => {
+                    (KeyStatus::Revoked, public_der.clone())
+                }
+            };
+
+            (
+                key_id.clone(),
+                KeyInternalData {
+                    usage,
+                    valid_from,
+                    der,
+                    status,
+                    status_cid,
+                },
+            )
+        })
+    }
+
+    fn sign<V: JwsSignable>(
+        &self,
+        jws: &V,
+        current_time: Duration,
+    ) -> Result<V::Signed, OperationError> {
+        let Some(signing_key) = self.get_valid_signer(current_time) else {
+            error!("No signing keys available. This may indicate that no keys are valid yet!");
+            return Err(OperationError::KP0061KeyObjectNoActiveSigningKeys);
+        };
+
+        signing_key.sign(jws).map_err(|jwt_err| {
+            error!(?jwt_err, "Unable to sign jws");
+            OperationError::KP0056KeyObjectJwsRs256Signature
+        })
+    }
+
+    fn verify<V: JwsVerifiable>(&self, jwsc: &V) -> Result<V::Verified, OperationError> {
+        let internal_jws = jwsc
+            .kid()
+            .and_then(|kid| {
+                debug!(?kid);
+                self.all.get(kid)
+            })
+            .ok_or_else(|| {
+                error!("JWS is signed by a key that is not present in this KeyObject");
+                for pres_kid in self.all.keys() {
+                    debug!(?pres_kid);
+                }
+                OperationError::KP0057KeyObjectJwsNotAssociated
+            })?;
+
+        match &internal_jws.status {
+            InternalJwtRs256Status::Valid { verifier, .. }
+            | InternalJwtRs256Status::Retained { verifier, .. } => {
+                verifier.verify(jwsc).map_err(|jwt_err| {
+                    error!(?jwt_err, "Failed to verify jws");
+                    OperationError::KP0058KeyObjectJwsInvalid
+                })
+            }
+            InternalJwtRs256Status::Revoked { .. } => {
+                error!("The key used to sign this JWS has been revoked.");
+                Err(OperationError::KP0059KeyObjectJwsKeyRevoked)
+            }
+        }
+    }
+
+    fn public_jwks(&self) -> JwkKeySet {
+        let keys = self
+            .all
+            .iter()
+            .filter_map(|(key_id, rs256)| {
+                error!(?key_id);
+                match &rs256.status {
+                    InternalJwtRs256Status::Valid { verifier, .. }
+                    | InternalJwtRs256Status::Retained { verifier, .. } => verifier
+                        .public_key_as_jwk()
+                        .map_err(|err| {
+                            error!(?err);
+                        })
+                        .ok(),
+                    InternalJwtRs256Status::Revoked { .. } => None,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        JwkKeySet { keys }
+    }
+
+    fn public_jwk(&self, key_id: &str) -> Result<Option<Jwk>, OperationError> {
+        if let Some(key_to_check) = self.all.get(key_id) {
+            match &key_to_check.status {
+                InternalJwtRs256Status::Valid { verifier, .. }
+                | InternalJwtRs256Status::Retained { verifier, .. } => {
+                    verifier.public_key_as_jwk().map(Some).map_err(|err| {
+                        error!(?err, "Unable to construct public JWK.");
+                        OperationError::KP0060KeyObjectJwsPublicJwk
+                    })
+                }
+                InternalJwtRs256Status::Revoked { .. } => Ok(None),
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    #[cfg(test)]
+    fn kid_status(&self, key_id: &KeyId) -> Result<Option<KeyStatus>, OperationError> {
+        if let Some(key_to_check) = self.all.get(key_id) {
+            let status = match &key_to_check.status {
+                InternalJwtRs256Status::Valid { .. } => KeyStatus::Valid,
+                InternalJwtRs256Status::Retained { .. } => KeyStatus::Retained,
+                InternalJwtRs256Status::Revoked { .. } => KeyStatus::Revoked,
+            };
+            Ok(Some(status))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct KeyObjectInternal {
     provider: Arc<KeyProviderInternal>,
     uuid: Uuid,
     jws_es256: Option<KeyObjectInternalJwtEs256>,
+    jws_rs256: Option<KeyObjectInternalJwtRs256>,
     jwe_a128gcm: Option<KeyObjectInternalJweA128GCM>,
     // If you add more types here you need to add these to rotate
     // and revoke.
@@ -769,6 +1174,10 @@ impl KeyObjectT for KeyObjectInternal {
             jws_es256_object.new_active(rotation_time, cid)?;
         }
 
+        if let Some(jws_rs256_object) = &mut self.jws_rs256 {
+            jws_rs256_object.new_active(rotation_time, cid)?;
+        }
+
         if let Some(jwe_a128_gcm) = &mut self.jwe_a128gcm {
             jwe_a128_gcm.new_active(rotation_time, cid)?;
         }
@@ -786,6 +1195,12 @@ impl KeyObjectT for KeyObjectInternal {
 
             if let Some(jws_es256_object) = &mut self.jws_es256 {
                 if jws_es256_object.revoke(revoke_key_id, cid)? {
+                    has_revoked = true;
+                }
+            };
+
+            if let Some(jws_rs256_object) = &mut self.jws_rs256 {
+                if jws_rs256_object.revoke(revoke_key_id, cid)? {
                     has_revoked = true;
                 }
             };
@@ -831,6 +1246,14 @@ impl KeyObjectT for KeyObjectInternal {
                     Err(OperationError::KP0018KeyProviderNoSuchKey)
                 }
             }
+            JwaAlg::RS256 => {
+                if let Some(jws_rs256_object) = &self.jws_rs256 {
+                    jws_rs256_object.verify(jwsc)
+                } else {
+                    error!(provider_uuid = ?self.uuid, "jwt rs256 not available on this provider");
+                    Err(OperationError::KP0018KeyProviderNoSuchKey)
+                }
+            }
             unsupported_alg => {
                 // unsupported rn.
                 error!(provider_uuid = ?self.uuid, ?unsupported_alg, "algorithm not available on this provider");
@@ -839,12 +1262,26 @@ impl KeyObjectT for KeyObjectInternal {
         }
     }
 
-    fn jws_public_jwk(&self, kid: &str) -> Result<Option<Jwk>, OperationError> {
+    fn jws_es256_jwks(&self) -> Option<JwkKeySet> {
+        self.jws_es256
+            .as_ref()
+            .map(|jws_es256_object| jws_es256_object.public_jwks())
+    }
+
+    fn jws_public_jwk(&self, key_id: &str) -> Result<Option<Jwk>, OperationError> {
         if let Some(jws_es256_object) = &self.jws_es256 {
-            jws_es256_object.public_jwk(kid)
-        } else {
-            Ok(None)
+            if let Some(status) = jws_es256_object.public_jwk(key_id)? {
+                return Ok(Some(status));
+            }
         }
+
+        if let Some(jws_rs256_object) = &self.jws_rs256 {
+            if let Some(status) = jws_rs256_object.public_jwk(key_id)? {
+                return Ok(Some(status));
+            }
+        }
+
+        Ok(None)
     }
 
     fn jws_es256_import(
@@ -921,6 +1358,12 @@ impl KeyObjectT for KeyObjectInternal {
             }
         }
 
+        if let Some(jws_rs256_object) = &self.jws_rs256 {
+            if let Some(status) = jws_rs256_object.kid_status(key_id)? {
+                return Ok(Some(status));
+            }
+        }
+
         Ok(None)
     }
 
@@ -933,6 +1376,11 @@ impl KeyObjectT for KeyObjectInternal {
                 self.jwe_a128gcm
                     .iter()
                     .flat_map(|jwe_a128gcm| jwe_a128gcm.to_key_iter()),
+            )
+            .chain(
+                self.jws_rs256
+                    .iter()
+                    .flat_map(|jws_rs256| jws_rs256.to_key_iter()),
             );
         let key_vs = ValueSetKeyInternal::from_key_iter(key_iter)? as ValueSet;
 
@@ -947,6 +1395,46 @@ impl KeyObjectT for KeyObjectInternal {
             ),
             (Attribute::KeyInternalData, key_vs),
         ])
+    }
+
+    fn jws_rs256_import(
+        &mut self,
+        import_keys: &SmolSet<[Vec<u8>; 1]>,
+        valid_from: Duration,
+        cid: &Cid,
+    ) -> Result<(), OperationError> {
+        let koi = self
+            .jws_rs256
+            .get_or_insert_with(KeyObjectInternalJwtRs256::default);
+
+        koi.import(import_keys, valid_from, cid)
+    }
+
+    fn jws_rs256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let koi = self
+            .jws_rs256
+            .get_or_insert_with(KeyObjectInternalJwtRs256::default);
+
+        koi.assert_active(valid_from, cid)
+    }
+
+    fn jws_rs256_sign(
+        &self,
+        jws: &Jws,
+        current_time: Duration,
+    ) -> Result<JwsCompact, OperationError> {
+        if let Some(jws_rs256_object) = &self.jws_rs256 {
+            jws_rs256_object.sign(jws, current_time)
+        } else {
+            error!(provider_uuid = ?self.uuid, "jwt rs256 not available on this provider");
+            Err(OperationError::KP0062KeyProviderNoSuchKey)
+        }
+    }
+
+    fn jws_rs256_jwks(&self) -> Option<JwkKeySet> {
+        self.jws_rs256
+            .as_ref()
+            .map(|jws_rs256_object| jws_rs256_object.public_jwks())
     }
 }
 

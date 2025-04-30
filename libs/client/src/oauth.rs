@@ -1,16 +1,18 @@
 use crate::{ClientError, KanidmClient};
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::constants::{
-    ATTR_DISPLAYNAME, ATTR_ES256_PRIVATE_KEY_DER, ATTR_NAME,
+    ATTR_DISPLAYNAME, ATTR_KEY_ACTION_REVOKE, ATTR_KEY_ACTION_ROTATE, ATTR_NAME,
     ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE, ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
     ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE, ATTR_OAUTH2_PREFER_SHORT_USERNAME,
     ATTR_OAUTH2_RS_BASIC_SECRET, ATTR_OAUTH2_RS_ORIGIN, ATTR_OAUTH2_RS_ORIGIN_LANDING,
-    ATTR_OAUTH2_RS_TOKEN_KEY, ATTR_OAUTH2_STRICT_REDIRECT_URI, ATTR_RS256_PRIVATE_KEY_DER,
+    ATTR_OAUTH2_STRICT_REDIRECT_URI,
 };
 use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin};
 use kanidm_proto::v1::Entry;
 use reqwest::multipart;
 use std::collections::BTreeMap;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use url::Url;
 
 impl KanidmClient {
@@ -84,7 +86,34 @@ impl KanidmClient {
             .await
     }
 
-    #[allow(clippy::too_many_arguments)]
+    pub async fn idm_oauth2_rs_revoke_key(
+        &self,
+        id: &str,
+        key_id: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_post_request(
+            &format!("/v1/oauth2/{}/_attr/{}", id, ATTR_KEY_ACTION_REVOKE),
+            vec![key_id.to_string()],
+        )
+        .await
+    }
+
+    pub async fn idm_oauth2_rs_rotate_keys(
+        &self,
+        id: &str,
+        rotate_at_time: OffsetDateTime,
+    ) -> Result<(), ClientError> {
+        let rfc_3339_str = rotate_at_time.format(&Rfc3339).map_err(|_| {
+            ClientError::InvalidRequest("Unable to format rfc 3339 datetime".into())
+        })?;
+
+        self.perform_post_request(
+            &format!("/v1/oauth2/{}/_attr/{}", id, ATTR_KEY_ACTION_ROTATE),
+            vec![rfc_3339_str],
+        )
+        .await
+    }
+
     pub async fn idm_oauth2_rs_update(
         &self,
         id: &str,
@@ -92,8 +121,6 @@ impl KanidmClient {
         displayname: Option<&str>,
         landing: Option<&str>,
         reset_secret: bool,
-        reset_token_key: bool,
-        reset_sign_key: bool,
     ) -> Result<(), ClientError> {
         let mut update_oauth2_rs = Entry {
             attrs: BTreeMap::new(),
@@ -120,19 +147,6 @@ impl KanidmClient {
             update_oauth2_rs
                 .attrs
                 .insert(ATTR_OAUTH2_RS_BASIC_SECRET.to_string(), Vec::new());
-        }
-        if reset_token_key {
-            update_oauth2_rs
-                .attrs
-                .insert(ATTR_OAUTH2_RS_TOKEN_KEY.to_string(), Vec::new());
-        }
-        if reset_sign_key {
-            update_oauth2_rs
-                .attrs
-                .insert(ATTR_ES256_PRIVATE_KEY_DER.to_string(), Vec::new());
-            update_oauth2_rs
-                .attrs
-                .insert(ATTR_RS256_PRIVATE_KEY_DER.to_string(), Vec::new());
         }
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await

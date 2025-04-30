@@ -1,9 +1,6 @@
 #![deny(warnings)]
-use std::collections::{BTreeMap, BTreeSet};
-use std::convert::TryFrom;
-use std::str::FromStr;
-
 use compact_jwt::{JwkKeySet, JwsEs256Verifier, JwsVerifier, OidcToken, OidcUnverified};
+use kanidm_client::{http::header, KanidmClient, StatusCode};
 use kanidm_proto::constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT};
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::Oauth2ClaimMapJoin;
@@ -14,18 +11,20 @@ use kanidm_proto::oauth2::{
 };
 use kanidmd_lib::constants::NAME_IDM_ALL_ACCOUNTS;
 use kanidmd_lib::prelude::Attribute;
-use oauth2_ext::PkceCodeChallenge;
-use reqwest::header::{HeaderValue, CONTENT_TYPE};
-use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
-use url::{form_urlencoded::parse as query_parse, Url};
-
-use kanidm_client::{http::header, KanidmClient, StatusCode};
 use kanidmd_testkit::{
     assert_no_cache, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, NOT_ADMIN_TEST_EMAIL,
     NOT_ADMIN_TEST_PASSWORD, NOT_ADMIN_TEST_USERNAME, TEST_INTEGRATION_RS_DISPLAY,
     TEST_INTEGRATION_RS_GROUP_ALL, TEST_INTEGRATION_RS_ID, TEST_INTEGRATION_RS_REDIRECT_URL,
     TEST_INTEGRATION_RS_URL,
 };
+use oauth2_ext::PkceCodeChallenge;
+use reqwest::header::{HeaderValue, CONTENT_TYPE};
+use std::collections::{BTreeMap, BTreeSet};
+use std::convert::TryFrom;
+use std::str::FromStr;
+use time::OffsetDateTime;
+use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
+use url::{form_urlencoded::parse as query_parse, Url};
 
 /// Tests an OAuth 2.0 / OpenID confidential client Authorisation Client flow.
 ///
@@ -91,9 +90,14 @@ async fn test_oauth2_openid_basic_flow_impl(
         .expect("Failed to configure account password");
 
     rsclient
-        .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true, true, true)
+        .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true)
         .await
         .expect("Failed to update oauth2 config");
+
+    rsclient
+        .idm_oauth2_rs_rotate_keys(TEST_INTEGRATION_RS_ID, OffsetDateTime::now_utc())
+        .await
+        .expect("Failed to rotate oauth2 keys");
 
     rsclient
         .idm_oauth2_rs_update_scope_map(
@@ -621,7 +625,7 @@ async fn test_oauth2_openid_public_flow_impl(
         .expect("Failed to configure account password");
 
     rsclient
-        .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true, true, true)
+        .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true)
         .await
         .expect("Failed to update oauth2 config");
 

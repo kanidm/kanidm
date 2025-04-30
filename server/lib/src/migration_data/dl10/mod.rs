@@ -105,6 +105,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         // DL10
         SCHEMA_ATTR_DENIED_NAME_DL10.clone().into(),
         SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES.clone().into(),
+        SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256_DL6.clone().into(),
     ]
 }
 
@@ -140,6 +141,7 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         SCHEMA_CLASS_OAUTH2_RS_DL9.clone().into(),
         // DL10
         SCHEMA_CLASS_DOMAIN_INFO_DL10.clone().into(),
+        SCHEMA_CLASS_KEY_OBJECT_JWT_RS256.clone().into(),
     ]
 }
 
@@ -260,8 +262,9 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
         IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8.clone().into(),
         // DL9
-        IDM_ACP_OAUTH2_MANAGE_DL9.clone().into(),
         IDM_ACP_GROUP_MANAGE_DL9.clone().into(),
         IDM_ACP_DOMAIN_ADMIN_DL9.clone().into(),
+        // DL10
+        IDM_ACP_OAUTH2_MANAGE.clone().into(),
     ]
 }

@@ -1,11 +1,10 @@
 use crate::common::OpType;
+use crate::Oauth2ClaimMapJoin;
 use crate::{handle_client_error, Oauth2Opt, OutputMode};
 use anyhow::{Context, Error};
+use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin};
 use std::fs::read;
 use std::process::exit;
-
-use crate::Oauth2ClaimMapJoin;
-use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin};
 
 impl Oauth2Opt {
     pub fn debug(&self) -> bool {
@@ -47,7 +46,9 @@ impl Oauth2Opt {
             | Oauth2Opt::EnableStrictRedirectUri { copt, .. }
             | Oauth2Opt::DisableStrictRedirectUri { copt, .. }
             | Oauth2Opt::AddOrigin { copt, .. }
-            | Oauth2Opt::RemoveOrigin { copt, .. } => copt.debug,
+            | Oauth2Opt::RemoveOrigin { copt, .. }
+            | Oauth2Opt::RotateCryptographicKeys { copt, .. }
+            | Oauth2Opt::RevokeCryptographicKey { copt, .. } => copt.debug,
         }
     }
 
@@ -196,7 +197,7 @@ impl Oauth2Opt {
             Oauth2Opt::ResetSecrets(cbopt) => {
                 let client = cbopt.copt.to_client(OpType::Write).await;
                 match client
-                    .idm_oauth2_rs_update(cbopt.name.as_str(), None, None, None, true, true, true)
+                    .idm_oauth2_rs_update(cbopt.name.as_str(), None, None, None, true)
                     .await
                 {
                     Ok(_) => println!("Success"),
@@ -238,8 +239,6 @@ impl Oauth2Opt {
                         Some(cbopt.displayname.as_str()),
                         None,
                         false,
-                        false,
-                        false,
                     )
                     .await
                 {
@@ -256,8 +255,6 @@ impl Oauth2Opt {
                         None,
                         None,
                         false,
-                        false,
-                        false,
                     )
                     .await
                 {
@@ -268,15 +265,7 @@ impl Oauth2Opt {
             Oauth2Opt::SetLandingUrl { nopt, url } => {
                 let client = nopt.copt.to_client(OpType::Write).await;
                 match client
-                    .idm_oauth2_rs_update(
-                        nopt.name.as_str(),
-                        None,
-                        None,
-                        Some(url.as_str()),
-                        false,
-                        false,
-                        false,
-                    )
+                    .idm_oauth2_rs_update(nopt.name.as_str(), None, None, Some(url.as_str()), false)
                     .await
                 {
                     Ok(_) => println!("Success"),
@@ -516,6 +505,30 @@ impl Oauth2Opt {
                 let client = copt.to_client(OpType::Write).await;
                 match client
                     .idm_oauth2_rs_disable_strict_redirect_uri(name.as_str())
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                }
+            }
+            Oauth2Opt::RotateCryptographicKeys {
+                copt,
+                name,
+                rotate_at,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_rs_rotate_keys(name.as_str(), *rotate_at)
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                }
+            }
+            Oauth2Opt::RevokeCryptographicKey { copt, name, key_id } => {
+                let client = copt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_rs_revoke_key(name.as_str(), key_id.as_str())
                     .await
                 {
                     Ok(_) => println!("Success"),

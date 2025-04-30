@@ -1,28 +1,3 @@
-use std::convert::TryFrom;
-use std::sync::Arc;
-use std::time::Duration;
-
-use kanidm_lib_crypto::CryptoPolicy;
-
-use compact_jwt::{Jwk, JwsCompact};
-use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
-use concread::cowcell::CowCellReadTxn;
-use concread::hashmap::HashMap;
-use kanidm_proto::internal::{
-    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken,
-    UatPurpose, UserAuthToken,
-};
-use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
-use rand::prelude::*;
-use tokio::sync::mpsc::{
-    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
-};
-use tokio::sync::{Mutex, Semaphore};
-use tracing::trace;
-use url::Url;
-use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
-use zxcvbn::{zxcvbn, Score};
-
 use super::event::ReadBackupCodeEvent;
 use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::{softlock::CredSoftLock, Credential};
@@ -38,9 +13,6 @@ use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
     WebauthnCounterIncrement,
 };
-
-#[cfg(test)]
-use crate::idm::event::PasswordChangeEvent;
 use crate::idm::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::event::{
     CredentialStatusEvent, LdapAuthEvent, LdapTokenAuthEvent, RadiusAuthTokenEvent,
@@ -61,6 +33,31 @@ use crate::server::keys::KeyProvidersTransaction;
 use crate::server::DomainInfo;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 use crate::value::{Session, SessionState};
+use compact_jwt::{Jwk, JwsCompact};
+use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
+use concread::cowcell::CowCellReadTxn;
+use concread::hashmap::HashMap;
+use kanidm_lib_crypto::CryptoPolicy;
+use kanidm_proto::internal::{
+    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken,
+    UatPurpose, UserAuthToken,
+};
+use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+use rand::prelude::*;
+use std::convert::TryFrom;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::mpsc::{
+    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
+};
+use tokio::sync::{Mutex, Semaphore};
+use tracing::trace;
+use url::Url;
+use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
+use zxcvbn::{zxcvbn, Score};
+
+#[cfg(test)]
+use crate::idm::event::PasswordChangeEvent;
 
 pub(crate) type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 pub(crate) type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
@@ -158,14 +155,12 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, rp_name, domain_level, oauth2rs_set, application_set) = {
+        let (rp_id, rp_name, application_set) = {
             let mut qs_read = qs.read().await?;
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
-                qs_read.get_domain_version(),
                 // Add a read/reload of all oauth2 configurations.
-                qs_read.get_oauth2rs_set()?,
                 qs_read.get_applications_set()?,
             )
         };
@@ -201,11 +196,10 @@ impl IdmServer {
                 OperationError::InvalidState
             })?;
 
-        let oauth2rs = Oauth2ResourceServers::try_from((oauth2rs_set, origin_url, domain_level))
-            .map_err(|e| {
-                admin_error!("Failed to load oauth2 resource servers - {:?}", e);
-                e
-            })?;
+        let oauth2rs = Oauth2ResourceServers::new(origin_url).map_err(|err| {
+            error!(?err, "Failed to load oauth2 resource servers");
+            err
+        })?;
 
         let applications = LdapApplications::try_from(application_set).map_err(|e| {
             admin_error!("Failed to load ldap applications - {:?}", e);
@@ -2121,6 +2115,12 @@ impl IdmServerProxyWriteTransaction<'_> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
+        // The problem we have here is that we need the qs_write layer to reload *first*
+        // so that things like schema and key objects are ready.
+        self.qs_write.reload()?;
+
+        // Now that's done, let's proceed.
+
         if self.qs_write.get_changed_app() {
             self.qs_write
                 .get_applications_set()
@@ -2128,9 +2128,11 @@ impl IdmServerProxyWriteTransaction<'_> {
         }
         if self.qs_write.get_changed_oauth2() {
             let domain_level = self.qs_write.get_domain_version();
-            self.qs_write
-                .get_oauth2rs_set()
-                .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set, domain_level))?;
+            self.qs_write.get_oauth2rs_set().and_then(|oauth2rs_set| {
+                let key_providers = self.qs_write.get_key_providers();
+                self.oauth2rs
+                    .reload(oauth2rs_set, key_providers, domain_level)
+            })?;
             // Clear the flag to indicate we completed the reload.
             self.qs_write.clear_changed_oauth2();
         }

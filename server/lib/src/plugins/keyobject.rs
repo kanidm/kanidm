@@ -135,11 +135,13 @@ impl KeyObjectManagement {
         qs: &mut QueryServerWriteTransaction,
         cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
-        // Valid from right meow!
+        // New keys will be valid from right meow!
         let valid_from = qs.get_curtime();
         let txn_cid = qs.get_cid().clone();
-
         let key_providers = qs.get_key_providers_mut();
+        // ====================================================================
+        // Transform any found KeyObjects and manage any related key operations
+        // for them
 
         cand.iter_mut()
             .filter(|entry| {
@@ -170,6 +172,14 @@ impl KeyObjectManagement {
                     .and_then(|vs| vs.as_private_binary_set())
                 {
                     key_object.jws_es256_import(import_keys, valid_from, &txn_cid)?;
+                }
+
+                let maybe_import = entry.pop_ava(Attribute::KeyActionImportJwsRs256);
+                if let Some(import_keys) = maybe_import
+                    .as_ref()
+                    .and_then(|vs| vs.as_private_binary_set())
+                {
+                    key_object.jws_rs256_import(import_keys, valid_from, &txn_cid)?;
                 }
 
                 // If revoke. This weird looking let dance is to ensure that the inner hexstring set
@@ -206,6 +216,11 @@ impl KeyObjectManagement {
                     // be present. This differs to rotate, in that the assert verifes we have at least
                     // *one* key that is valid in all conditions.
                     key_object.jws_es256_assert(Duration::ZERO, &txn_cid)?;
+                }
+
+                if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtRs256.into())
+                {
+                    key_object.jws_rs256_assert(Duration::ZERO, &txn_cid)?;
                 }
 
                 if entry

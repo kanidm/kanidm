@@ -692,6 +692,7 @@ pub enum DbValueImage {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum DbValueKeyUsage {
     JwsEs256,
+    JwsRs256,
     JweA128GCM,
 }
 
