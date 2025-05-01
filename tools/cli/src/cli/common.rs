@@ -27,23 +27,24 @@ pub enum ToClientError {
 
 impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
-        let config_path: String = shellexpand::tilde(DEFAULT_CLIENT_CONFIG_PATH_HOME).into_owned();
-
         let instance_name: Option<&str> = self.instance.as_deref();
 
         let client_builder = KanidmClientBuilder::new()
             .read_options_from_optional_instance_config(DEFAULT_CLIENT_CONFIG_PATH, instance_name)
-            .map_err(|e| {
-                error!(
-                    "Failed to parse config ({:?}) -- {:?}",
-                    DEFAULT_CLIENT_CONFIG_PATH, e
+            .or_else(|e| {
+                let home_config_path: std::borrow::Cow<str> =
+                    shellexpand::tilde(DEFAULT_CLIENT_CONFIG_PATH_HOME);
+                debug!(
+                    "Failed to parse default config ({:?}) -- {:?}. Attempting to parse {:?}",
+                    DEFAULT_CLIENT_CONFIG_PATH, e, home_config_path
                 );
-                e
-            })
-            .and_then(|cb| {
-                cb.read_options_from_optional_instance_config(&config_path, instance_name)
+                KanidmClientBuilder::new()
+                    .read_options_from_optional_instance_config(
+                        home_config_path.as_ref(),
+                        instance_name,
+                    )
                     .map_err(|e| {
-                        error!("Failed to parse config ({:?}) -- {:?}", config_path, e);
+                        error!("Failed to parse config ({:?}) -- {:?}", home_config_path, e);
                         e
                     })
             })
