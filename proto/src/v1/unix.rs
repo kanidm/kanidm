@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use sshkeys::{KeyType, KeyTypeKind, PublicKeyKind};
-use std::fmt;
+use std::fmt::{self, Display};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -47,12 +47,13 @@ pub struct UnixGroupToken {
     pub gidnumber: u32,
 }
 
-impl fmt::Display for UnixGroupToken {
+impl Display for UnixGroupToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[ spn: {}, ", self.spn)?;
-        write!(f, "gidnumber: {} ", self.gidnumber)?;
-        write!(f, "name: {}, ", self.name)?;
-        write!(f, "uuid: {} ]", self.uuid)
+        write!(
+            f,
+            "[ spn: {}, gidnumber: {}, name: {}, uuid: {} ]",
+            self.spn, self.gidnumber, self.name, self.uuid
+        )
     }
 }
 
@@ -79,13 +80,14 @@ pub struct UnixUserToken {
     pub valid: bool,
 }
 
-impl fmt::Display for UnixUserToken {
+impl Display for UnixUserToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "---")?;
         writeln!(f, "spn: {}", self.spn)?;
         writeln!(f, "name: {}", self.name)?;
         writeln!(f, "displayname: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;
+        writeln!(f, "gidnumber: {}", self.gidnumber)?;
         match &self.shell {
             Some(s) => writeln!(f, "shell: {}", s)?,
             None => writeln!(f, "shell: <none>")?,
