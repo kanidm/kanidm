@@ -49,10 +49,11 @@ pub struct UnixGroupToken {
 
 impl fmt::Display for UnixGroupToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[ spn: {}, ", self.spn)?;
-        write!(f, "gidnumber: {} ", self.gidnumber)?;
-        write!(f, "name: {}, ", self.name)?;
-        write!(f, "uuid: {} ]", self.uuid)
+        write!(
+            f,
+            "[ spn: {}, gidnumber: {}, name: {}, uuid: {} ]",
+            self.spn, self.gidnumber, self.name, self.uuid
+        )
     }
 }
 
