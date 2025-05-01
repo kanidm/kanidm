@@ -158,6 +158,8 @@ axum = { version = "0.7.9", features = [
     "tokio",
     "tracing",
 ] }
+axum-extra = { version = "0.9.6", features = ["cookie"] }
+axum-macros = "0.4.2"
 axum-htmx = { version = "0.5.0", features = ["serde", "guards"] }
 base32 = "^0.5.1"
 base64 = "^0.22.1"
@@ -176,6 +178,7 @@ csv = "1.3.1"
 dialoguer = "0.11.0"
 dhat = "0.3.3"
 dyn-clone = "^1.0.17"
+enum-iterator = "2.1.0"
 filetime = "^0.2.24"
 fs4 = "^0.13.0"
 futures = "^0.3.31"
@@ -197,7 +200,7 @@ image = { version = "0.25.6", default-features = false, features = [
     "webp",
 ] }
 itertools = "0.14.0"
-enum-iterator = "2.1.0"
+jsonschema = "0.30.0"
 kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }
 # REMOVE this
 lazy_static = "^1.5.0"

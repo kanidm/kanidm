@@ -26,7 +26,7 @@ Kanidm supports:
 - Attested passkeys for high security environments
 - OAuth2/OIDC authentication provider for web SSO
 - Application Portal allowing easy access to linked applications
-- Linux/Unix integration with TPM secured offline authentication
+- Linux/Unix integration with TPM protected offline authentication
 - SSH key distribution to Linux/Unix systems
 - RADIUS for network and VPN authentication
 - Read-only LDAPs gateway for Legacy Systems

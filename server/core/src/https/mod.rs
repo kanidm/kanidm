@@ -577,11 +577,10 @@ where
 {
     debug!(?client_conn_info);
 
-    let svc =
-        axum_server::service::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
-            &mut app,
-            client_conn_info,
-        );
+    let svc = tower::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
+        &mut app,
+        client_conn_info,
+    );
 
     let svc = svc.await.map_err(|e| {
         error!("Failed to build HTTP response: {:?}", e);
