@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use sshkeys::{KeyType, KeyTypeKind, PublicKeyKind};
-use std::fmt;
+use std::fmt::{self, Display};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -47,7 +47,7 @@ pub struct UnixGroupToken {
     pub gidnumber: u32,
 }
 
-impl fmt::Display for UnixGroupToken {
+impl Display for UnixGroupToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -80,7 +80,7 @@ pub struct UnixUserToken {
     pub valid: bool,
 }
 
-impl fmt::Display for UnixUserToken {
+impl Display for UnixUserToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "---")?;
         writeln!(f, "spn: {}", self.spn)?;
