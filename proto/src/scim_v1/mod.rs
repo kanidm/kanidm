@@ -71,7 +71,7 @@ pub enum ScimSchema {
 }
 
 #[serde_as]
-#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Debug, Clone, ToSchema)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ScimMail {
     #[serde(default)]

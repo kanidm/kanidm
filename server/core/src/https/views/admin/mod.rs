@@ -3,7 +3,7 @@ use axum::routing::get;
 use axum::Router;
 use axum_htmx::HxRequestGuardLayer;
 
-mod persons;
+pub(crate) mod persons;
 
 pub fn admin_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
