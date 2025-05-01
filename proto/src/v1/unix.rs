@@ -87,6 +87,7 @@ impl fmt::Display for UnixUserToken {
         writeln!(f, "name: {}", self.name)?;
         writeln!(f, "displayname: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;
+        writeln!(f, "gidnumber: {}", self.gidnumber)?;
         match &self.shell {
             Some(s) => writeln!(f, "shell: {}", s)?,
             None => writeln!(f, "shell: <none>")?,
