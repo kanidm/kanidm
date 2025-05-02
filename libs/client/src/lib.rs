@@ -375,12 +375,15 @@ impl KanidmClientBuilder {
             if let Some(instance_config) = config.instances.remove(instance_name) {
                 self.apply_config_options(instance_config)
             } else {
-                let emsg = format!(
-                    "instance {} does not exist in config file {:?}",
-                    instance_name, config_path
+                info!(
+                    "instance {} does not exist in config file {}",
+                    instance_name,
+                    config_path.as_ref().display()
                 );
-                error!(%emsg);
-                Err(ClientError::ConfigParseIssue(emsg))
+
+                // It's not an error if the instance isn't present, the build step
+                // will fail if there is insufficent information to proceed.
+                Ok(self)
             }
         } else {
             self.apply_config_options(config.default)
