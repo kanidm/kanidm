@@ -1,11 +1,12 @@
 pub(crate) mod dl10;
+pub(crate) mod dl11;
 pub(crate) mod dl8;
 pub(crate) mod dl9;
 
 mod types;
 
 #[cfg(test)]
-pub(crate) use dl10::accounts::BUILTIN_ACCOUNT_ANONYMOUS_DL6 as BUILTIN_ACCOUNT_ANONYMOUS;
+pub(crate) use dl11::accounts::BUILTIN_ACCOUNT_ANONYMOUS_DL6 as BUILTIN_ACCOUNT_ANONYMOUS;
 
 #[cfg(test)]
 use self::types::BuiltinAccount;
