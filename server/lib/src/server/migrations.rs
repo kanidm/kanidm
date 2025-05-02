@@ -61,6 +61,7 @@ impl QueryServer {
                 DOMAIN_LEVEL_9 => write_txn.migrate_domain_8_to_9()?,
                 DOMAIN_LEVEL_10 => write_txn.migrate_domain_9_to_10()?,
                 DOMAIN_LEVEL_11 => write_txn.migrate_domain_10_to_11()?,
+                DOMAIN_LEVEL_12 => write_txn.migrate_domain_11_to_12()?,
                 _ => {
                     error!("Invalid requested domain target level for server bootstrap");
                     debug_assert!(false);
@@ -612,6 +613,77 @@ impl QueryServerWriteTransaction<'_> {
     pub(crate) fn migrate_domain_10_to_11(&mut self) -> Result<(), OperationError> {
         if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_10 {
             error!("Unable to raise domain level from 10 to 11.");
+            return Err(OperationError::MG0004DomainLevelInDevelopment);
+        }
+
+        // =========== Apply changes ==============
+        self.internal_migrate_or_create_batch(
+            "phase 1 - schema attrs",
+            migration_data::dl11::phase_1_schema_attrs(),
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 2 - schema classes",
+            migration_data::dl11::phase_2_schema_classes(),
+        )?;
+
+        // Reload for the new schema.
+        self.reload()?;
+
+        // Since we just loaded in a ton of schema, lets reindex it incase we added
+        // new indexes, or this is a bootstrap and we have no indexes yet.
+        self.reindex(false)?;
+
+        // Set Phase
+        // Indicate the schema is now ready, which allows dyngroups to work when they
+        // are created in the next phase of migrations.
+        self.set_phase(ServerPhase::SchemaReady);
+
+        self.internal_migrate_or_create_batch(
+            "phase 3 - key provider",
+            migration_data::dl11::phase_3_key_provider(),
+        )?;
+
+        // Reload for the new key providers
+        self.reload()?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 4 - system entries",
+            migration_data::dl11::phase_4_system_entries(),
+        )?;
+
+        // Reload for the new system entries
+        self.reload()?;
+
+        // Domain info is now ready and reloaded, we can proceed.
+        self.set_phase(ServerPhase::DomainInfoReady);
+
+        // Bring up the IDM entries.
+        self.internal_migrate_or_create_batch(
+            "phase 5 - builtin admin entries",
+            migration_data::dl11::phase_5_builtin_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 6 - builtin not admin entries",
+            migration_data::dl11::phase_6_builtin_non_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 7 - builtin access control profiles",
+            migration_data::dl11::phase_7_builtin_access_control_profiles(),
+        )?;
+
+        self.reload()?;
+
+        Ok(())
+    }
+
+    /// Migration domain level 11 to 12 (1.8.0)
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_11_to_12(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_11 {
+            error!("Unable to raise domain level from 11 to 12.");
             return Err(OperationError::MG0004DomainLevelInDevelopment);
         }
 
