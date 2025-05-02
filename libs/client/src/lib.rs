@@ -383,7 +383,7 @@ impl KanidmClientBuilder {
 
                 // It's not an error if the instance isn't present, the build step
                 // will fail if there is insufficent information to proceed.
-                return Ok(self);
+                Ok(self)
             }
         } else {
             self.apply_config_options(config.default)
