@@ -68,7 +68,7 @@ tokio-openssl = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 uuid = { workspace = true }
 webauthn-authenticator-rs = { workspace = true }
-jsonschema = "0.29.1"
+jsonschema = { workspace = true }
 
 [package.metadata.cargo-machete]
 ignored = ["escargot", "futures", "kanidm_build_profiles"]

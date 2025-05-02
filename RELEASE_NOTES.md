@@ -14,6 +14,50 @@ report it to our [issue tracker].
 
 ## Release Notes
 
+### 2025-05-01 - Kanidm 1.6.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the
+combined effort of our community and we appreciate their invaluable contributions, comments,
+questions, feedback and support.
+
+You should review our
+[support documentation] as this
+may have important effects on your distribution or upgrades in future.
+
+Before upgrading you should review
+[our upgrade documentation]
+
+#### 1.6.0 Important Changes
+
+- The kanidmd server configuration now supports versions. You should review the example server configuration and update to `version = "2"`.
+
+#### 1.6.0 Release Highlights
+
+- Drop fernet in favour of JWE for OAuth2 tokens (#3577)
+- Allow spaces in ssh key comments
+- Support HAProxy PROXY protocol v2 (#3542)
+- Preserve ssh key content on form validation error (#3574)
+- Harden pam unix resolver to prevent a token update race (#3553)
+- Improve db klock handling (#3551)
+- Unix pam unix config parser (#3533)
+- Improve handling of systemd notify (#3540)
+- Allow versioning of server configs (#3515)
+- Remove the protected plugin in favour of access framework (#3504)
+- Add `max_ber_size` to freeipa sync tool (#3530)
+- Make schema indexing a boolean rather than index type (#3517)
+- Add set-description to group cli (#3511)
+- pam kanidm now acts as a pam unix replacement (#3501)
+- Support rfc2307 in ldap import/sync (3466)
+- Handle incorrect OAuth2 clients that ignore response modes (#3467)
+- Improve idx validation performance (#3459)
+- Improve migration and bootstrapper (#3432)
+- Reduce size of docker container (#3452)
+- Add limits to maximum queryable ldap attributes (#3431)
+- Accept more formats of ldap pwd hashes (#3444, 3458)
+- TOTP Label validation (#3419)
+- Harden denied names against accidental lockouts (#3429)
+- OAuth2 supports redirect uri's with query parameters (#3422)
+
 ### 2025-02-09 - Kanidm 1.5.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the
