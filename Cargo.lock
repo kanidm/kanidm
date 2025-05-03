@@ -652,9 +652,9 @@ checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 
 [[package]]
 name = "cc"
-version = "1.2.20"
+version = "1.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04da6a0d40b948dfc4fa8f5bbf402b0fc1a64a28dbf7d12ffd683550f2c1b63a"
+checksum = "8691782945451c1c383942c4874dbe63814f61cb57ef773cda2972682b7bb3c0"
 dependencies = [
  "shlex",
 ]
@@ -1750,7 +1750,7 @@ dependencies = [
  "gix-utils 0.2.0",
  "itoa",
  "thiserror 2.0.12",
- "winnow 0.7.7",
+ "winnow 0.7.9",
 ]
 
 [[package]]
@@ -1806,7 +1806,7 @@ dependencies = [
  "smallvec",
  "thiserror 2.0.12",
  "unicode-bom",
- "winnow 0.7.7",
+ "winnow 0.7.9",
 ]
 
 [[package]]
@@ -1996,7 +1996,7 @@ dependencies = [
  "itoa",
  "smallvec",
  "thiserror 2.0.12",
- "winnow 0.7.7",
+ "winnow 0.7.9",
 ]
 
 [[package]]
@@ -2080,7 +2080,7 @@ dependencies = [
  "gix-utils 0.2.0",
  "maybe-async",
  "thiserror 2.0.12",
- "winnow 0.7.7",
+ "winnow 0.7.9",
 ]
 
 [[package]]
@@ -2112,7 +2112,7 @@ dependencies = [
  "gix-validate 0.9.4",
  "memmap2",
  "thiserror 2.0.12",
- "winnow 0.7.7",
+ "winnow 0.7.9",
 ]
 
 [[package]]
@@ -2918,9 +2918,9 @@ checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 
 [[package]]
 name = "jiff"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a064218214dc6a10fbae5ec5fa888d80c45d611aba169222fc272072bf7aef6"
+checksum = "27e77966151130221b079bcec80f1f34a9e414fa489d99152a201c07fd2182bc"
 dependencies = [
  "jiff-static",
  "jiff-tzdb-platform",
@@ -2933,9 +2933,9 @@ dependencies = [
 
 [[package]]
 name = "jiff-static"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "199b7932d97e325aff3a7030e141eafe7f2c6268e1d1b24859b753a627f45254"
+checksum = "97265751f8a9a4228476f2fc17874a9e7e70e96b893368e42619880fe143b48a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3116,6 +3116,7 @@ dependencies = [
  "kanidm-hsm-crypto",
  "kanidm_proto",
  "md-5",
+ "md4",
  "openssl",
  "openssl-sys",
  "rand 0.9.1",
@@ -3437,9 +3438,9 @@ dependencies = [
 
 [[package]]
 name = "lambert_w"
-version = "1.2.16"
+version = "1.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d3ad1e8c00546ab82e384e926bf0a645e1026e973a79b73fa9b3e97febf6105"
+checksum = "dc66ddcab7f8a3cc035052b0bb1f9f7f47ac92741b3fe78974bdd356fe023a40"
 dependencies = [
  "num-complex",
  "num-traits",
@@ -3722,6 +3723,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
 dependencies = [
  "cfg-if",
+ "digest",
+]
+
+[[package]]
+name = "md4"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7da5ac363534dce5fabf69949225e174fbf111a498bf0ff794c8ea1fba9f3dda"
+dependencies = [
  "digest",
 ]
 
@@ -6015,7 +6025,7 @@ dependencies = [
  "serde_spanned",
  "toml_datetime",
  "toml_write",
- "winnow 0.7.7",
+ "winnow 0.7.9",
 ]
 
 [[package]]
@@ -7122,9 +7132,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.7.7"
+version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cb8234a863ea0e8cd7284fcdd4f145233eb00fee02bbdd9861aec44e6477bc5"
+checksum = "d9fb597c990f03753e08d3c29efbfcf2019a003b4bf4ba19225c158e1549f0f3"
 dependencies = [
  "memchr",
 ]
