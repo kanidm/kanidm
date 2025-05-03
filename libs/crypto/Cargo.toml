@@ -27,6 +27,7 @@ kanidm-hsm-crypto = { workspace = true }
 openssl-sys = { workspace = true }
 openssl = { workspace = true }
 rand = { workspace = true }
+md4 = { workspace = true }
 sha2 = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true }

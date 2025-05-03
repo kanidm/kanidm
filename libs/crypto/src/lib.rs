@@ -17,9 +17,9 @@ use base64::{alphabet, Engine};
 use base64urlsafedata::Base64UrlSafeData;
 use kanidm_hsm_crypto::{HmacKey, Tpm};
 use kanidm_proto::internal::OperationError;
+use md4::{Digest, Md4};
 use openssl::error::ErrorStack as OpenSSLErrorStack;
-use openssl::hash::{self, MessageDigest};
-use openssl::nid::Nid;
+use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::{Sha1, Sha256, Sha512};
 use rand::Rng;
@@ -1162,20 +1162,11 @@ impl Password {
                     .flat_map(|i| i.into_iter())
                     .collect();
 
-                let dgst = MessageDigest::from_nid(Nid::MD4).ok_or_else(|| {
-                    error!("Unable to access MD4 - fips mode may be enabled, or you may need to activate the legacy provider.");
-                    error!("For more details, see https://wiki.openssl.org/index.php/OpenSSL_3.0#Providers");
-                    CryptoError::Md4Disabled
-                })?;
+                let mut hasher = Md4::new();
+                hasher.update(&clear_utf16le);
+                let chal_key = hasher.finalize();
 
-                hash::hash(dgst, &clear_utf16le)
-                    .map_err(|e| {
-                        debug!(?e);
-                        error!("Unable to digest MD4 - fips mode may be enabled, or you may need to activate the legacy provider.");
-                        error!("For more details, see https://wiki.openssl.org/index.php/OpenSSL_3.0#Providers");
-                        CryptoError::Md4Disabled
-                    })
-                    .map(|chal_key| chal_key.as_ref() == key)
+                Ok(chal_key.as_slice() == key)
             }
             (Kdf::CRYPT_MD5 { s, h }, _) => {
                 let chal_key = crypt_md5::do_md5_crypt(cleartext.as_bytes(), s);
@@ -1481,21 +1472,6 @@ mod tests {
      * this for this test.
      */
 
-    /*
-    #[cfg(openssl3)]
-    fn setup_openssl_legacy_provider() -> openssl::lib_ctx::LibCtx {
-        let ctx = openssl::lib_ctx::LibCtx::new()
-            .expect("Failed to create new library context");
-
-        openssl::provider::Provider::load(Some(&ctx), "legacy")
-            .expect("Failed to setup provider.");
-
-        eprintln!("setup legacy provider maybe??");
-
-        ctx
-    }
-    */
-
     #[test]
     fn test_password_from_ipa_nt_hash() {
         sketching::test_init();
@@ -1505,19 +1481,7 @@ mod tests {
         let r = Password::try_from(im_pw).expect("Failed to parse");
         assert!(r.requires_upgrade());
 
-        match r.verify(password) {
-            Ok(r) => assert!(r),
-            Err(_) =>
-            {
-                #[allow(clippy::panic)]
-                if cfg!(openssl3) {
-                    warn!("To run this test, enable the legacy provider.");
-                } else {
-                    panic!("openssl3 not enabled");
-                }
-            }
-        }
-
+        assert!(r.verify(password).expect("Failed to hash"));
         let im_pw = "ipaNTHash: pS43DjQLcUYhaNF_cd_Vhw==";
         Password::try_from(im_pw).expect("Failed to parse");
     }
@@ -1530,18 +1494,7 @@ mod tests {
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
         assert!(r.requires_upgrade());
-        match r.verify(password) {
-            Ok(r) => assert!(r),
-            Err(_) =>
-            {
-                #[allow(clippy::panic)]
-                if cfg!(openssl3) {
-                    warn!("To run this test, enable the legacy provider.");
-                } else {
-                    panic!("OpenSSL3 feature not enabled")
-                }
-            }
-        }
+        assert!(r.verify(password).expect("Failed to hash"));
     }
 
     #[test]
