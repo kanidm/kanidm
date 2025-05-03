@@ -213,6 +213,7 @@ libsqlite3-sys = "^0.25.2"
 lodepng = "3.11.0"
 lru = "0.14.0"
 mathru = "0.15.5"
+md4 = "0.10.2"
 md-5 = "0.10.6"
 mimalloc = "0.1.46"
 notify-debouncer-full = { version = "0.5" }
