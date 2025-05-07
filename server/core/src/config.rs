@@ -133,7 +133,7 @@ impl Display for LdapAddressInfo {
     }
 }
 
-enum AddressSet {
+pub(crate) enum AddressSet {
     NonContiguousIpSet(HashSet<IpAddr>),
     All,
 }

@@ -16,7 +16,7 @@ use kanidm_proto::scim_v1::{
 };
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
-use utoipa::ToSchema;
+use crate::https::apidocs::response_schema::ScimEntry;
 
 const DEFAULT_SCIM_SYNC_BYTES: usize = 1024 * 1024 * 32;
 
@@ -320,9 +320,7 @@ async fn scim_sync_get(
         .map_err(WebError::from)
 }
 
-// TODO: should have implementation of this
-#[derive(Debug, Clone, ToSchema)]
-pub(crate) struct ScimEntry {}
+
 #[utoipa::path(
     get,
     path = "/scim/v1/Entry/{id}",
