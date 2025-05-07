@@ -1,4 +1,5 @@
 use super::event::ReadBackupCodeEvent;
+
 use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
@@ -142,6 +143,7 @@ impl IdmServer {
         qs: QueryServer,
         origin: &str,
         is_integration_test: bool,
+        current_time: Duration,
     ) -> Result<(IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
         let crypto_policy = if cfg!(test) || is_integration_test {
             CryptoPolicy::danger_test_minimum()
@@ -206,23 +208,30 @@ impl IdmServer {
             e
         })?;
 
-        Ok((
-            IdmServer {
-                session_ticket: Semaphore::new(1),
-                sessions: BptreeMap::new(),
-                softlocks: HashMap::new(),
-                cred_update_sessions: BptreeMap::new(),
-                qs,
-                crypto_policy,
-                async_tx,
-                audit_tx,
-                webauthn,
-                oauth2rs: Arc::new(oauth2rs),
-                applications: Arc::new(applications),
-            },
-            IdmServerDelayed { async_rx },
-            IdmServerAudit { audit_rx },
-        ))
+        let idm_server = IdmServer {
+            session_ticket: Semaphore::new(1),
+            sessions: BptreeMap::new(),
+            softlocks: HashMap::new(),
+            cred_update_sessions: BptreeMap::new(),
+            qs,
+            crypto_policy,
+            async_tx,
+            audit_tx,
+            webauthn,
+            oauth2rs: Arc::new(oauth2rs),
+            applications: Arc::new(applications),
+        };
+        let idm_server_delayed = IdmServerDelayed { async_rx };
+        let idm_server_audit = IdmServerAudit { audit_rx };
+
+        let mut idm_write_txn = idm_server.proxy_write(current_time).await?;
+
+        idm_write_txn.reload_applications()?;
+        idm_write_txn.reload_oauth2()?;
+
+        idm_write_txn.commit()?;
+
+        Ok((idm_server, idm_server_delayed, idm_server_audit))
     }
 
     /// Start an auth txn
@@ -2113,6 +2122,24 @@ impl IdmServerProxyWriteTransaction<'_> {
         }
     }
 
+    fn reload_applications(&mut self) -> Result<(), OperationError> {
+        self.qs_write
+            .get_applications_set()
+            .and_then(|application_set| self.applications.reload(application_set))
+    }
+
+    fn reload_oauth2(&mut self) -> Result<(), OperationError> {
+        let domain_level = self.qs_write.get_domain_version();
+        self.qs_write.get_oauth2rs_set().and_then(|oauth2rs_set| {
+            let key_providers = self.qs_write.get_key_providers();
+            self.oauth2rs
+                .reload(oauth2rs_set, key_providers, domain_level)
+        })?;
+        // Clear the flag to indicate we completed the reload.
+        self.qs_write.clear_changed_oauth2();
+        Ok(())
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
         // The problem we have here is that we need the qs_write layer to reload *first*
@@ -2120,21 +2147,12 @@ impl IdmServerProxyWriteTransaction<'_> {
         self.qs_write.reload()?;
 
         // Now that's done, let's proceed.
-
         if self.qs_write.get_changed_app() {
-            self.qs_write
-                .get_applications_set()
-                .and_then(|application_set| self.applications.reload(application_set))?;
+            self.reload_applications()?;
         }
+
         if self.qs_write.get_changed_oauth2() {
-            let domain_level = self.qs_write.get_domain_version();
-            self.qs_write.get_oauth2rs_set().and_then(|oauth2rs_set| {
-                let key_providers = self.qs_write.get_key_providers();
-                self.oauth2rs
-                    .reload(oauth2rs_set, key_providers, domain_level)
-            })?;
-            // Clear the flag to indicate we completed the reload.
-            self.qs_write.clear_changed_oauth2();
+            self.reload_oauth2()?;
         }
 
         // Commit everything.
