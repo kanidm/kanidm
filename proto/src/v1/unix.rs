@@ -12,6 +12,7 @@ use crate::constants::{ATTR_GROUP, ATTR_LDAP_SSHPUBLICKEY};
 #[allow(dead_code)]
 #[derive(ToSchema)]
 #[schema(as = KeyTypeKind)]
+#[schema(value_type = Object)]
 pub struct KeyTypeKindSchema(KeyTypeKind);
 
 #[derive(ToSchema)]
@@ -21,6 +22,7 @@ pub struct KeyTypeSchema {
     pub short_name: &'static str,
     pub is_cert: bool,
     pub is_sk: bool,
+    #[schema(value_type = Object)]
     pub kind: KeyTypeKind,
     pub plain: &'static str,
 }
@@ -28,12 +30,15 @@ pub struct KeyTypeSchema {
 #[allow(dead_code)]
 #[derive(ToSchema)]
 #[schema(as = PublicKeyKind)]
+#[schema(value_type = Object)]
 pub struct PublicKeyKindSchema(PublicKeyKind);
 
 #[derive(ToSchema)]
 #[schema(as = SshPublicKey)]
 pub struct SshPublicKeySchema {
+    #[schema(value_type = Object)]
     pub key_type: KeyType,
+    #[schema(value_type = Object)]
     pub kind: PublicKeyKind,
     pub comment: Option<String>,
 }
@@ -74,6 +79,7 @@ pub struct UnixUserToken {
     pub uuid: Uuid,
     pub shell: Option<String>,
     pub groups: Vec<UnixGroupToken>,
+    #[schema(value_type = Object)]
     pub sshkeys: Vec<SshPublicKey>,
     // The default value of bool is false.
     #[serde(default)]

@@ -7,8 +7,8 @@ use kanidmd_lib::idm::server::IdmServer;
 use std::sync::Arc;
 
 pub struct QueryServerReadV1 {
-    pub(crate) idms: Arc<IdmServer>,
-    ldap: Arc<LdapServer>,
+    pub idms: Arc<IdmServer>,
+    pub ldap: Arc<LdapServer>,
 }
 
 impl QueryServerReadV1 {
@@ -26,7 +26,8 @@ impl QueryServerReadV1 {
 }
 
 pub struct QueryServerWriteV1 {
-    pub(crate) idms: Arc<IdmServer>,
+    //TODO SUPPORT CHANGE
+    pub idms: Arc<IdmServer>,
 }
 
 impl QueryServerWriteV1 {

@@ -1,4 +1,5 @@
 use askama::Template;
+use askama_web::WebTemplate;
 use axum::extract::{Query, State};
 use axum::http::{StatusCode, Uri};
 use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
@@ -42,21 +43,21 @@ use crate::https::ServerState;
 
 use super::UnrecoverableErrorView;
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "user_settings.html")]
 struct ProfileView {
     navbar_ctx: NavbarCtx,
     profile_partial: CredStatusView,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credentials_reset_form.html")]
 struct ResetCredFormView {
     domain_info: DomainInfoRead,
     wrong_code: bool,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credentials_reset.html")]
 struct CredResetView {
     domain_info: DomainInfoRead,
@@ -64,7 +65,7 @@ struct CredResetView {
     credentials_update_partial: CredResetPartialView,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credentials_status.html")]
 struct CredStatusView {
     domain_info: DomainInfoRead,
@@ -79,7 +80,7 @@ struct SshKey {
     comment: Option<String>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credentials_update_partial.html")]
 struct CredResetPartialView {
     ext_cred_portal: CUExtPortal,
@@ -104,19 +105,19 @@ pub(crate) struct ResetTokenParam {
     token: Option<String>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credential_update_add_password_partial.html")]
 struct AddPasswordPartial {
     check_res: PwdCheckResult,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credential_update_set_unixcred_partial.html")]
 struct SetUnixCredPartial {
     check_res: PwdCheckResult,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credential_update_add_ssh_publickey_partial.html")]
 struct AddSshPublicKeyPartial {
     title_error: Option<String>,
@@ -160,7 +161,7 @@ pub(crate) struct NewTotp {
     ignore_broken_app: bool,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credential_update_add_passkey_partial.html")]
 struct AddPasskeyPartial {
     // Passkey challenge for adding a new passkey
@@ -215,7 +216,7 @@ pub(crate) struct TotpCheck {
     taken_name: Option<String>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credential_update_add_totp_partial.html")]
 struct AddTotpPartial {
     totp_init: Option<TotpInit>,
@@ -691,14 +692,14 @@ pub(crate) async fn view_new_pwd(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-    opt_form: Option<Form<NewPassword>>,
+    opt_form: Result<Form<NewPassword>, axum::extract::rejection::FormRejection>,
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
 
     let new_passwords = match opt_form {
-        None => {
+        Err(_) => {
             return Ok((
                 swapped_handler_trigger,
                 AddPasswordPartial {
@@ -707,7 +708,7 @@ pub(crate) async fn view_new_pwd(
             )
                 .into_response());
         }
-        Some(Form(new_passwords)) => new_passwords,
+        Ok(Form(new_passwords)) => new_passwords,
     };
 
     let pwd_equal = new_passwords.new_password == new_passwords.new_password_check;
@@ -822,14 +823,14 @@ pub(crate) async fn view_set_unixcred(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-    opt_form: Option<Form<NewPassword>>,
+    opt_form: Result<Form<NewPassword>, axum::extract::rejection::FormRejection>,
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
 
     let new_passwords = match opt_form {
-        None => {
+        Err(_) => {
             return Ok((
                 swapped_handler_trigger,
                 SetUnixCredPartial {
@@ -838,7 +839,7 @@ pub(crate) async fn view_set_unixcred(
             )
                 .into_response());
         }
-        Some(Form(new_passwords)) => new_passwords,
+        Ok(Form(new_passwords)) => new_passwords,
     };
 
     let pwd_equal = new_passwords.new_password == new_passwords.new_password_check;
@@ -887,6 +888,7 @@ struct AddSshPublicKeyError {
     title: Option<String>,
 }
 
+#[axum::debug_handler]
 pub(crate) async fn view_add_ssh_publickey(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -894,12 +896,13 @@ pub(crate) async fn view_add_ssh_publickey(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-    opt_form: Option<Form<NewPublicKey>>,
-) -> axum::response::Result<Response> {
+    opt_form: Result<Form<NewPublicKey>, axum::extract::rejection::FormRejection>,
+
+) -> impl IntoResponse {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let new_key = match opt_form {
-        None => {
+        Err(_e) => {
             return Ok((AddSshPublicKeyPartial {
                 title_error: None,
                 key_error: None,
@@ -907,7 +910,7 @@ pub(crate) async fn view_add_ssh_publickey(
             },)
                 .into_response());
         }
-        Some(Form(new_key)) => new_key,
+        Ok(Form(new_key)) => new_key,
     };
 
     let (

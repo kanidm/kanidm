@@ -5,6 +5,7 @@ use crate::https::views::navbar::NavbarCtx;
 use crate::https::views::Urls;
 use crate::https::ServerState;
 use askama::Template;
+use askama_web::WebTemplate;
 use axum::extract::{Path, State};
 use axum::http::Uri;
 use axum::response::{ErrorResponse, IntoResponse, Response};
@@ -34,27 +35,27 @@ const PERSON_ATTRIBUTES: [Attribute; 9] = [
     Attribute::DirectMemberOf,
 ];
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_panel_template.html")]
 pub(crate) struct PersonsView {
     navbar_ctx: NavbarCtx,
     partial: PersonsPartialView,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_persons_partial.html")]
 struct PersonsPartialView {
     persons: Vec<(ScimPerson, ScimEffectiveAccess)>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_panel_template.html")]
 struct PersonView {
     partial: PersonViewPartial,
     navbar_ctx: NavbarCtx,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_person_view_partial.html")]
 struct PersonViewPartial {
     person: ScimPerson,

@@ -16,6 +16,7 @@ use kanidm_proto::scim_v1::{
 };
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
+use utoipa::ToSchema;
 
 const DEFAULT_SCIM_SYNC_BYTES: usize = 1024 * 1024 * 32;
 
@@ -319,6 +320,9 @@ async fn scim_sync_get(
         .map_err(WebError::from)
 }
 
+// TODO: should have implementation of this
+#[derive(Debug, Clone, ToSchema)]
+pub(crate) struct ScimEntry {}
 #[utoipa::path(
     get,
     path = "/scim/v1/Entry/{id}",
@@ -390,23 +394,23 @@ pub fn route_setup() -> Router<ServerState> {
             get(sync_account_get).post(sync_account_post),
         )
         .route(
-            "/v1/sync_account/:id",
+            "/v1/sync_account/{id}",
             get(sync_account_id_get).patch(sync_account_id_patch),
         )
         .route(
-            "/v1/sync_account/:id/_attr/:attr",
+            "/v1/sync_account/{id}/_attr/{attr}",
             get(sync_account_id_attr_get).put(sync_account_id_attr_put),
         )
         .route(
-            "/v1/sync_account/:id/_finalise",
+            "/v1/sync_account/{id}/_finalise",
             get(sync_account_id_finalise_get),
         )
         .route(
-            "/v1/sync_account/:id/_terminate",
+            "/v1/sync_account/{id}/_terminate",
             get(sync_account_id_terminate_get),
         )
         .route(
-            "/v1/sync_account/:id/_sync_token",
+            "/v1/sync_account/{id}/_sync_token",
             post(sync_account_token_post).delete(sync_account_token_delete),
         )
         // https://datatracker.ietf.org/doc/html/rfc7644#section-3.2
@@ -473,11 +477,11 @@ pub fn route_setup() -> Router<ServerState> {
         //  Entry    /Entry/{id}      GET                    Retrieve a generic entry
         //                                                   of any kind from the database.
         //                                                   {id} is any unique id.
-        .route("/scim/v1/Entry/:id", get(scim_entry_id_get))
+        .route("/scim/v1/Entry/{id}", get(scim_entry_id_get))
         //  Person   /Person/{id}     GET                    Retrieve a a person from the
         //                                                   database.
         //                                                   {id} is any unique id.
-        .route("/scim/v1/Person/:id", get(scim_person_id_get))
+        .route("/scim/v1/Person/{id}", get(scim_person_id_get))
         //
         //  Sync     /Sync            GET                    Retrieve the current
         //                                                   sync state associated

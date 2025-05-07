@@ -133,7 +133,9 @@ pub enum CURegState {
     TotpNameTryAgain(String),
     TotpInvalidSha1,
     BackupCodes(Vec<String>),
+    #[schema(value_type = Object)]
     Passkey(CreationChallengeResponse),
+    #[schema(value_type = Object)]
     AttestedPasskey(CreationChallengeResponse),
 }
 
@@ -185,7 +187,7 @@ pub struct CUStatus {
 
     pub unixcred: Option<CredentialDetail>,
     pub unixcred_state: CUCredState,
-
+    #[schema(value_type = Object)]
     pub sshkeys: BTreeMap<String, SshPublicKey>,
     pub sshkeys_state: CUCredState,
 }

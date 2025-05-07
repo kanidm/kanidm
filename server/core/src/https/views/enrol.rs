@@ -1,8 +1,8 @@
 use askama::Template;
-use askama_axum::IntoResponse;
+use askama_web::WebTemplate;
 
 use axum::extract::State;
-use axum::response::Response;
+use axum::response::{IntoResponse, Response};
 use axum::Extension;
 
 use axum_extra::extract::CookieJar;
@@ -23,14 +23,14 @@ use crate::https::views::errors::HtmxError;
 use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 use crate::https::ServerState;
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "user_settings.html")]
 struct ProfileView {
     navbar_ctx: NavbarCtx,
     profile_partial: EnrolDeviceView,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "enrol_device.html")]
 pub(crate) struct EnrolDeviceView {
     menu_active_item: ProfileMenuItems,

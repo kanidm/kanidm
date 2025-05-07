@@ -83,6 +83,7 @@ pub struct ScimMail {
 #[serde(rename_all = "camelCase")]
 pub struct ScimSshPublicKey {
     pub label: String,
+    #[schema(value_type = Object)]
     pub value: SshPublicKey,
 }
 

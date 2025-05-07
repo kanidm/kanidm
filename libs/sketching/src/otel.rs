@@ -5,7 +5,7 @@ use opentelemetry_otlp::{Protocol, WithExportConfig};
 use opentelemetry::{global, trace::TracerProvider as _, KeyValue};
 
 use opentelemetry_sdk::{
-    trace::{Sampler, TracerProvider},
+    trace::{Sampler, TracerProviderBuilder},
     Resource,
 };
 use tracing::Subscriber;
@@ -86,19 +86,27 @@ pub fn start_logging_pipeline(
             // let hostname = hostname.to_string_lossy();
             // let hostname = hostname.to_lowercase();
 
-            let resource = Resource::from_schema_url(
-                [
+            let resource = Resource::builder()
+                .with_schema_url(vec![
                     // TODO: it'd be really nice to be able to set the instance ID here, from the server UUID so we know *which* instance on this host is logging
                     KeyValue::new(SERVICE_NAME, service_name),
                     KeyValue::new(SERVICE_VERSION, version),
                     // TODO: currently marked as an experimental flag, leaving it out for now
                     // KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, hostname),
-                ],
-                SCHEMA_URL,
-            );
+                ], SCHEMA_URL)
+                .build();
+            //     .with_attributes(vec![
+            //         // TODO: it'd be really nice to be able to set the instance ID here, from the server UUID so we know *which* instance on this host is logging
+            //         KeyValue::new(SERVICE_NAME, service_name),
+            //         KeyValue::new(SERVICE_VERSION, version),
+            //         // TODO: currently marked as an experimental flag, leaving it out for now
+            //         // KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, hostname),
+            //     ],
+            //     SCHEMA_URL,
+            // );
 
-            let provider = TracerProvider::builder()
-                .with_batch_exporter(otlp_exporter, opentelemetry_sdk::runtime::Tokio)
+            let provider = TracerProviderBuilder::default()
+                .with_batch_exporter(otlp_exporter)
                 // we want *everything!*
                 .with_sampler(Sampler::AlwaysOn)
                 .with_max_events_per_span(MAX_EVENTS_PER_SPAN)
@@ -137,7 +145,8 @@ pub struct TracingPipelineGuard {}
 
 impl Drop for TracingPipelineGuard {
     fn drop(&mut self) {
-        opentelemetry::global::shutdown_tracer_provider();
+        // TODO: https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry-sdk/CHANGELOG.md how to remove tihs?
+        // opentelemetry::global::shutdown_tracer_provider();
         eprintln!("Logging pipeline completed shutdown");
     }
 }

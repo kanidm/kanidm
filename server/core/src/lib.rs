@@ -38,7 +38,8 @@ mod utils;
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::admin::AdminActor;
-use crate::config::{Configuration, ServerRole};
+//TODO SUPPORT CHANGE
+use crate::config::ServerRole;
 use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::{JwsHs256Signer, JwsSigner};
@@ -1200,3 +1201,470 @@ pub async fn create_server_core(
         handles,
     })
 }
+
+//TODO SUPPORT CHANGE
+pub struct HumanAndIHandle {
+    core: CoreHandle,
+    server_state: ServerState,
+}
+
+impl HumanAndIHandle {
+    pub fn new(core: CoreHandle, server_state: ServerState) -> Self {
+        // make sure every handle is set, including optional ones.
+        
+        Self {
+            core,
+            server_state,
+        }
+    }
+
+    pub fn core(&self) -> &CoreHandle {
+        &self.core
+    }
+
+    pub fn server_state(&self) -> &ServerState {
+        &self.server_state
+    }
+
+}
+
+pub async fn create_server_human_and_i(
+    config: Configuration,
+    config_test: bool,
+) -> Result<HumanAndIHandle, ()> {
+    // Until this point, we probably want to write to the log macro fns.
+    println!("0");
+    let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
+
+    if config.integration_test_config.is_some() {
+        warn!("RUNNING IN INTEGRATION TEST MODE.");
+        warn!("IF YOU SEE THIS IN PRODUCTION YOU MUST CONTACT SUPPORT IMMEDIATELY.");
+    } else if config.tls_config.is_none() {
+        // TLS is great! We won't run without it.
+        error!("Running without TLS is not supported! Quitting!");
+        return Err(());
+    }
+
+    info!(
+        "Starting kanidm with {}configuration: {}",
+        if config_test { "TEST " } else { "" },
+        config
+    );
+    // Setup umask, so that every we touch or create is secure.
+    #[cfg(not(target_family = "windows"))]
+    unsafe {
+        umask(0o0027)
+    };
+
+    // Similar, create a stats task which aggregates statistics from the
+    // server as they come in.
+    let status_ref = StatusActor::start();
+
+    // Setup TLS (if any)
+    let maybe_tls_acceptor = match crypto::setup_tls(&config.tls_config) {
+        Ok(tls_acc) => tls_acc,
+        Err(err) => {
+            error!(?err, "Failed to configure TLS acceptor");
+            return Err(());
+        }
+    };
+
+    let schema = match Schema::new() {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Failed to setup in memory schema: {:?}", e);
+            return Err(());
+        }
+    };
+
+    // Setup the be for the qs.
+    let be = match setup_backend(&config, &schema) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE -> {:?}", e);
+            return Err(());
+        }
+    };
+    // Start the IDM server.
+    let (_qs, idms, mut idms_delayed, mut idms_audit) =
+        match setup_qs_idms(be, schema, &config).await {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Unable to setup query server or idm server -> {:?}", e);
+                return Err(());
+            }
+        };
+
+
+    // Extract any configuration from the IDMS that we may need.
+    // For now we just do this per run, but we need to extract this from the db later.
+    let jws_signer = match JwsHs256Signer::generate_hs256() {
+        Ok(k) => k.set_sign_option_embed_kid(false),
+        Err(e) => {
+            error!("Unable to setup jws signer -> {:?}", e);
+            return Err(());
+        }
+    };
+    println!("1");
+
+    // Any pre-start tasks here.
+    if let Some(itc) = &config.integration_test_config {
+        let Ok(mut idms_prox_write) = idms.proxy_write(duration_from_epoch_now()).await else {
+            error!("Unable to acquire write transaction");
+            return Err(());
+        };
+        // We need to set the admin pw.
+        match idms_prox_write.recover_account(&itc.admin_user, Some(&itc.admin_password)) {
+            Ok(_) => {}
+            Err(e) => {
+                error!(
+                    "Unable to configure INTEGRATION TEST {} account -> {:?}",
+                    &itc.admin_user, e
+                );
+                return Err(());
+            }
+        };
+        // set the idm_admin account password
+        match idms_prox_write.recover_account(&itc.idm_admin_user, Some(&itc.idm_admin_password)) {
+            Ok(_) => {}
+            Err(e) => {
+                error!(
+                    "Unable to configure INTEGRATION TEST {} account -> {:?}",
+                    &itc.idm_admin_user, e
+                );
+                return Err(());
+            }
+        };
+
+        // Add admin to idm_admins to allow tests more flexibility wrt to permissions.
+        // This way our default access controls can be stricter to prevent lateral
+        // movement.
+        match idms_prox_write.qs_write.internal_modify_uuid(
+            UUID_IDM_ADMINS,
+            &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ADMIN)),
+        ) {
+            Ok(_) => {}
+            Err(e) => {
+                error!(
+                    "Unable to configure INTEGRATION TEST admin as member of idm_admins -> {:?}",
+                    e
+                );
+                return Err(());
+            }
+        };
+
+        match idms_prox_write.qs_write.internal_modify_uuid(
+            UUID_IDM_ALL_PERSONS,
+            &ModifyList::new_purge_and_set(
+                Attribute::CredentialTypeMinimum,
+                CredentialType::Any.into(),
+            ),
+        ) {
+            Ok(_) => {}
+            Err(e) => {
+                error!(
+                    "Unable to configure INTEGRATION TEST default credential policy -> {:?}",
+                    e
+                );
+                return Err(());
+            }
+        };
+
+        match idms_prox_write.commit() {
+            Ok(_) => {}
+            Err(e) => {
+                error!("Unable to commit INTEGRATION TEST setup -> {:?}", e);
+                return Err(());
+            }
+        }
+    }
+
+    let ldap = match LdapServer::new(&idms).await {
+        Ok(l) => l,
+        Err(e) => {
+            error!("Unable to start LdapServer -> {:?}", e);
+            return Err(());
+        }
+    };
+    println!("2");
+
+    // Arc the idms and ldap
+    let idms_arc = Arc::new(idms);
+    let ldap_arc = Arc::new(ldap);
+    println!("3");
+
+    // Pass it to the actor for threading.
+    // Start the read query server with the given be path: future config
+    let server_read_ref = QueryServerReadV1::start_static(idms_arc.clone(), ldap_arc.clone());
+    println!("4");
+
+    // Create the server async write entry point.
+    let server_write_ref = QueryServerWriteV1::start_static(idms_arc.clone());
+    println!("5");
+
+    let delayed_handle = task::spawn(async move {
+        let mut buffer = Vec::with_capacity(DELAYED_ACTION_BATCH_SIZE);
+        loop {
+            tokio::select! {
+                added = idms_delayed.recv_many(&mut buffer) => {
+                    if added == 0 {
+                        // Channel has closed, stop the task.
+                        break
+                    }
+                    server_write_ref.handle_delayedaction(&mut buffer).await;
+                }
+                Ok(action) = broadcast_rx.recv() => {
+                    match action {
+                        CoreAction::Shutdown => break,
+                    }
+                }
+            }
+        }
+        info!("Stopped {}", TaskName::DelayedActionActor);
+    });
+    println!("6");
+    let mut broadcast_rx = broadcast_tx.subscribe();
+    println!("7");
+    let auditd_handle = task::spawn(async move {
+        loop {
+            tokio::select! {
+                Ok(action) = broadcast_rx.recv() => {
+                    match action {
+                        CoreAction::Shutdown => break,
+                    }
+                }
+                audit_event = idms_audit.audit_rx().recv() => {
+                    match serde_json::to_string(&audit_event) {
+                        Ok(audit_event) => {
+                            warn!(%audit_event);
+                        }
+                        Err(e) => {
+                            error!(err=?e, "Unable to process audit event to json.");
+                            warn!(?audit_event, json=false);
+                        }
+                    }
+
+                }
+            }
+        }
+        info!("Stopped {}", TaskName::AuditdActor);
+    });
+
+    // Setup a TLS Acceptor Reload trigger.
+    
+    let mut broadcast_rx = broadcast_tx.subscribe();
+    let tls_acceptor_reload_notify = Arc::new(Notify::new());
+    let tls_accepter_reload_task_notify = tls_acceptor_reload_notify.clone();
+    let tls_config = config.tls_config.clone();
+
+    let ldap_configured = config.ldapbindaddress.is_some();
+    let (ldap_tls_acceptor_reload_tx, ldap_tls_acceptor_reload_rx) = mpsc::channel(1);
+    let (http_tls_acceptor_reload_tx, _http_tls_acceptor_reload_rx) = mpsc::channel(1);
+
+    let tls_acceptor_reload_handle = task::spawn(async move {
+        loop {
+            tokio::select! {
+                Ok(action) = broadcast_rx.recv() => {
+                    match action {
+                        CoreAction::Shutdown => break,
+                    }
+                }
+                _ = tls_accepter_reload_task_notify.notified() => {
+                    let tls_acceptor = match crypto::setup_tls(&tls_config) {
+                        Ok(Some(tls_acc)) => tls_acc,
+                        Ok(None) => {
+                            warn!("TLS not configured, ignoring reload request.");
+                            continue;
+                        }
+                        Err(err) => {
+                            error!(?err, "Failed to configure and reload TLS acceptor");
+                            continue;
+                        }
+                    };
+
+                    // We don't log here as the receivers will notify when they have completed
+                    // the reload.
+                    if ldap_configured &&
+                        ldap_tls_acceptor_reload_tx.send(tls_acceptor.clone()).await.is_err() {
+                            error!("ldap tls acceptor did not accept the reload, the server may have failed!");
+                        };
+                    if http_tls_acceptor_reload_tx.send(tls_acceptor.clone()).await.is_err() {
+                        error!("http tls acceptor did not accept the reload, the server may have failed!");
+                        break;
+                    };
+                }
+            }
+        }
+        info!("Stopped {}", TaskName::TlsAcceptorReload);
+    });
+
+    // Setup timed events associated to the write thread
+    let interval_handle = IntervalActor::start(server_write_ref, broadcast_tx.subscribe());
+    // Setup timed events associated to the read thread
+    let maybe_backup_handle = match &config.online_backup {
+        Some(online_backup_config) => {
+            if online_backup_config.enabled {
+                let handle = IntervalActor::start_online_backup(
+                    server_read_ref,
+                    online_backup_config,
+                    broadcast_tx.subscribe(),
+                )?;
+                Some(handle)
+            } else {
+                debug!("Backups disabled");
+                None
+            }
+        }
+        None => {
+            debug!("Online backup not requested, skipping");
+            None
+        }
+    };
+
+    // If we have been requested to init LDAP, configure it now.
+    let maybe_ldap_acceptor_handle = match &config.ldapbindaddress {
+        Some(la) => {
+            let opt_ldap_ssl_acceptor = maybe_tls_acceptor.clone();
+
+            let h = ldaps::create_ldap_server(
+                la.as_str(),
+                opt_ldap_ssl_acceptor,
+                server_read_ref,
+                broadcast_tx.subscribe(),
+                ldap_tls_acceptor_reload_rx,
+                config.ldap_client_address_info.trusted_proxy_v2(),
+            )
+            .await?;
+            Some(h)
+        }
+        None => {
+            debug!("LDAP not requested, skipping");
+            None
+        }
+    };
+
+    // If we have replication configured, setup the listener with its initial replication
+    // map (if any).
+    let (maybe_repl_handle, maybe_repl_ctrl_tx) = match &config.repl_config {
+        Some(rc) => {
+            if !config_test {
+                // ⚠️  only start the sockets and listeners in non-config-test modes.
+                let (h, repl_ctrl_tx) =
+                    repl::create_repl_server(idms_arc.clone(), rc, broadcast_tx.subscribe())
+                        .await?;
+                (Some(h), Some(repl_ctrl_tx))
+            } else {
+                (None, None)
+            }
+        }
+        None => {
+            debug!("Replication not requested, skipping");
+            (None, None)
+        }
+    };
+
+    // let maybe_http_acceptor_handle = if config_test {
+    //     admin_info!("This config rocks! 🪨 ");
+    //     None
+    // } else {
+    //     let h: task::JoinHandle<()> = match https::create_https_server(
+    //         config.clone(),
+    //         jws_signer,
+    //         status_ref,
+    //         server_write_ref,
+    //         server_read_ref,
+    //         broadcast_tx.clone(),
+    //         maybe_tls_acceptor,
+    //         http_tls_acceptor_reload_rx,
+    //     )
+    //     .await
+    //     {
+    //         Ok(h) => h,
+    //         Err(e) => {
+    //             error!("Failed to start HTTPS server -> {:?}", e);
+    //             return Err(());
+    //         }
+    //     };
+    //     if config.role != ServerRole::WriteReplicaNoUI {
+    //         admin_info!("ready to rock! 🪨  UI available at: {}", config.origin);
+    //     } else {
+    //         admin_info!("ready to rock! 🪨 ");
+    //     }
+    //     Some(h)
+    // };
+
+    // If we are NOT in integration test mode, start the admin socket now
+    let maybe_admin_sock_handle = if config.integration_test_config.is_none() {
+        let broadcast_rx = broadcast_tx.subscribe();
+
+        let admin_handle = AdminActor::create_admin_sock(
+            config.adminbindpath.as_str(),
+            server_write_ref,
+            server_read_ref,
+            broadcast_rx,
+            maybe_repl_ctrl_tx,
+        )
+        .await?;
+
+        Some(admin_handle)
+    } else {
+        None
+    };
+
+    let mut handles: Vec<(TaskName, task::JoinHandle<()>)> = vec![
+        (TaskName::IntervalActor, interval_handle),
+        (TaskName::DelayedActionActor, delayed_handle),
+        (TaskName::AuditdActor, auditd_handle),
+        (TaskName::TlsAcceptorReload, tls_acceptor_reload_handle),
+    ];
+
+    if let Some(backup_handle) = maybe_backup_handle {
+        handles.push((TaskName::BackupActor, backup_handle))
+    }
+
+    if let Some(admin_sock_handle) = maybe_admin_sock_handle {
+        handles.push((TaskName::AdminSocket, admin_sock_handle))
+    }
+
+    if let Some(ldap_handle) = maybe_ldap_acceptor_handle {
+        handles.push((TaskName::LdapActor, ldap_handle))
+    }
+
+    // let app = https::create_https_server_human_and_i(
+    //     config.clone(),
+    //     jws_signer,
+    //     status_ref,
+    //     server_write_ref,
+    //     server_read_ref,
+    // ).await.unwrap();
+
+    // if let Some(http_handle) = maybe_http_acceptor_handle {
+    //     handles.push((TaskName::HttpsServer, http_handle))
+    // }
+
+    if let Some(repl_handle) = maybe_repl_handle {
+        handles.push((TaskName::Replication, repl_handle))
+    }
+
+    let core = CoreHandle {
+        clean_shutdown: false,
+        tls_acceptor_reload_notify,
+        tx: broadcast_tx,
+        handles,
+    };
+    let server_state = https::create_https_server_state_human_and_i(
+        config.clone(),
+        jws_signer,
+        &status_ref,
+        &server_write_ref,
+        &server_read_ref,
+    ).await.unwrap();
+    let wrapped = HumanAndIHandle::new(core, server_state);
+
+    Ok(wrapped)
+}
+
+pub use https::create_https_server_human_and_i;
+pub use config::{Configuration, ConfigurationBuilder};
+pub use https::ServerState;
+pub use https::extractors::ClientConnInfo;
