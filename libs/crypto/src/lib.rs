@@ -89,11 +89,11 @@ impl From<OpenSSLErrorStack> for CryptoError {
     fn from(ossl_err: OpenSSLErrorStack) -> Self {
         error!(?ossl_err);
         let code = ossl_err.errors().first().map(|e| e.code()).unwrap_or(0);
-        #[cfg(not(target_family = "windows"))]
+        #[cfg(not(any(target_family = "windows", target_pointer_width = "32")))]
         let result = CryptoError::OpenSSL(code);
 
-        // this is an .into() because on windows it's a u32 not a u64
-        #[cfg(target_family = "windows")]
+        // this is an .into() because on windows or 32bit systems it's a u32 not a u64
+        #[cfg(any(target_family = "windows", target_pointer_width = "32"))]
         let result = CryptoError::OpenSSL(code.into());
 
         result
