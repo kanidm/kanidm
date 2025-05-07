@@ -1,5 +1,5 @@
 IMAGE_BASE ?= kanidm
-IMAGE_VERSION ?= devel
+IMAGE_VERSION ?= latest
 IMAGE_EXT_VERSION ?= $(shell cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "daemon")  | .version')
 CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
