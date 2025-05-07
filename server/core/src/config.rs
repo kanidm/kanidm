@@ -133,8 +133,7 @@ impl Display for LdapAddressInfo {
     }
 }
 
-//TODO SUPPORT CHANGE
-pub enum AddressSet {
+enum AddressSet {
     NonContiguousIpSet(HashSet<IpAddr>),
     All,
 }
@@ -310,35 +309,33 @@ impl ServerConfigUntagged {
 
 #[derive(Debug, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
-//TODO SUPPORT CHANGE
 pub struct ServerConfigV2 {
-    pub domain: Option<String>,
-    pub origin: Option<String>,
-    pub db_path: Option<PathBuf>,
-    pub db_fs_type: Option<kanidm_proto::internal::FsType>,
-    pub tls_chain: Option<PathBuf>,
-    pub tls_key: Option<PathBuf>,
-    pub tls_client_ca: Option<PathBuf>,
-    pub bindaddress: Option<String>,
-    pub ldapbindaddress: Option<String>,
-    pub role: Option<ServerRole>,
-    pub log_level: Option<LogLevel>,
-    pub online_backup: Option<OnlineBackup>,
+    domain: Option<String>,
+    origin: Option<String>,
+    db_path: Option<PathBuf>,
+    db_fs_type: Option<kanidm_proto::internal::FsType>,
+    tls_chain: Option<PathBuf>,
+    tls_key: Option<PathBuf>,
+    tls_client_ca: Option<PathBuf>,
+    bindaddress: Option<String>,
+    ldapbindaddress: Option<String>,
+    role: Option<ServerRole>,
+    log_level: Option<LogLevel>,
+    online_backup: Option<OnlineBackup>,
 
-    pub http_client_address_info: Option<HttpAddressInfo>,
-    pub ldap_client_address_info: Option<LdapAddressInfo>,
+    http_client_address_info: Option<HttpAddressInfo>,
+    ldap_client_address_info: Option<LdapAddressInfo>,
 
-    pub adminbindpath: Option<String>,
-    pub thread_count: Option<usize>,
-    pub maximum_request_size_bytes: Option<usize>,
+    adminbindpath: Option<String>,
+    thread_count: Option<usize>,
+    maximum_request_size_bytes: Option<usize>,
     #[allow(dead_code)]
-    pub db_arc_size: Option<usize>,
+    db_arc_size: Option<usize>,
     #[serde(default)]
     #[serde(rename = "replication")]
-    pub repl_config: Option<ReplicationConfiguration>,
-    pub otel_grpc_url: Option<String>,
+    repl_config: Option<ReplicationConfiguration>,
+    otel_grpc_url: Option<String>,
 }
-
 
 #[derive(Default)]
 pub struct CliConfig {

@@ -1,8 +1,8 @@
+mod apidocs;
 
 pub(crate) mod cache_buster;
 pub(crate) mod errors;
-//TODO SUPPORT CHANGE
-pub(crate) mod extractors;
+mod extractors;
 mod generic;
 mod javascript;
 mod manifest;
@@ -64,17 +64,17 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ServerState {
-    pub status_ref: &'static StatusActor,
-    pub qe_w_ref: &'static QueryServerWriteV1,
-    pub qe_r_ref: &'static QueryServerReadV1,
+    pub(crate) status_ref: &'static StatusActor,
+    pub(crate) qe_w_ref: &'static QueryServerWriteV1,
+    pub(crate) qe_r_ref: &'static QueryServerReadV1,
     // Store the token management parts.
-    pub jws_signer: JwsHs256Signer,
-    pub trust_x_forward_for_ips: Option<Arc<AddressSet>>,
-    pub csp_header: HeaderValue,
-    pub origin: Url,
-    pub domain: String,
+    pub(crate) jws_signer: JwsHs256Signer,
+    pub(crate) trust_x_forward_for_ips: Option<Arc<AddressSet>>,
+    pub(crate) csp_header: HeaderValue,
+    pub(crate) origin: Url,
+    pub(crate) domain: String,
     // This is set to true by default, and is only false on integration tests.
-    pub secure_cookies: bool,
+    pub(crate) secure_cookies: bool,
 }
 
 impl ServerState {
@@ -357,259 +357,6 @@ pub async fn create_https_server(
     }
 }
 
-//TODO SUPPORT CHANGE
-pub async fn create_https_server_state_human_and_i(
-    config: Configuration,
-    jws_signer: JwsHs256Signer,
-    status_ref: &'static StatusActor,
-    qe_w_ref: &'static QueryServerWriteV1,
-    qe_r_ref: &'static QueryServerReadV1,
-    // server_message_tx: broadcast::Sender<CoreAction>,
-    // maybe_tls_acceptor: Option<SslAcceptor>,
-    // tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-) -> Result<ServerState, ()> {
-    let all_js_files = get_js_files(config.role)?;
-
-    let js_directives = all_js_files
-        .into_iter()
-        .map(|f| f.hash)
-        .collect::<Vec<String>>();
-
-    let js_checksums: String = js_directives
-        .iter()
-        .fold(String::new(), |mut output, value| {
-            let _ = write!(output, " 'sha384-{}'", value);
-            output
-        });
-
-    let csp_header = format!(
-        concat!(
-            "default-src 'self'; ",
-            "base-uri 'self' https:; ",
-            "form-action 'self' https:;",
-            "frame-ancestors 'none'; ",
-            "img-src 'self' data:; ",
-            "worker-src 'none'; ",
-            "script-src 'self' 'unsafe-eval'{};",
-        ),
-        js_checksums
-    );
-
-    let csp_header = HeaderValue::from_str(&csp_header).map_err(|err| {
-        error!(?err, "Unable to generate content security policy");
-    })?;
-
-    let trust_x_forward_for_ips = config
-        .http_client_address_info
-        .trusted_x_forward_for()
-        .map(Arc::new);
-
-    let origin = Url::parse(&config.origin)
-        // Should be impossible!
-        .map_err(|err| {
-            error!(?err, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", config.origin);
-        })?;
-
-
-    let state = ServerState {
-        status_ref,
-        qe_w_ref,
-        qe_r_ref,
-        jws_signer,
-        trust_x_forward_for_ips,
-        csp_header,
-        origin,
-        domain: config.domain.clone(),
-        secure_cookies: config.integration_test_config.is_none(),
-    };
-
-    Ok(state)
-}
-
-pub fn create_https_server_human_and_i(
-    config: Configuration,
-    state: &ServerState,
-    // jws_signer: JwsHs256Signer,
-    // status_ref: &'static StatusActor,
-    // qe_w_ref: &'static QueryServerWriteV1,
-    // qe_r_ref: &'static QueryServerReadV1,
-    // server_message_tx: broadcast::Sender<CoreAction>,
-    // maybe_tls_acceptor: Option<SslAcceptor>,
-    // tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-) -> Result<Router, ()> {
-    // let rx = server_message_tx.subscribe();
-
-    // let all_js_files = get_js_files(config.role)?;
-    // set up the CSP headers
-    // script-src 'self'
-    //      'sha384-Zao7ExRXVZOJobzS/uMp0P1jtJz3TTqJU4nYXkdmsjpiVD+/wcwCyX7FGqRIqvIz'
-    //      'sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM';
-
-    // let js_directives = all_js_files
-    //     .into_iter()
-    //     .map(|f| f.hash)
-    //     .collect::<Vec<String>>();
-
-    // let js_checksums: String = js_directives
-    //     .iter()
-    //     .fold(String::new(), |mut output, value| {
-    //         let _ = write!(output, " 'sha384-{}'", value);
-    //         output
-    //     });
-
-    // let csp_header = format!(
-    //     concat!(
-    //         "default-src 'self'; ",
-    //         "base-uri 'self' https:; ",
-    //         "form-action 'self' https:;",
-    //         "frame-ancestors 'none'; ",
-    //         "img-src 'self' data:; ",
-    //         "worker-src 'none'; ",
-    //         "script-src 'self' 'unsafe-eval'{};",
-    //     ),
-    //     js_checksums
-    // );
-
-    // let csp_header = HeaderValue::from_str(&csp_header).map_err(|err| {
-    //     error!(?err, "Unable to generate content security policy");
-    // })?;
-
-    // let trust_x_forward_for_ips = config
-    //     .http_client_address_info
-    //     .trusted_x_forward_for()
-    //     .map(Arc::new);
-
-    // let trusted_proxy_v2_ips = config
-    //     .http_client_address_info
-    //     .trusted_proxy_v2()
-    //     .map(Arc::new);
-
-    // let origin = Url::parse(&config.origin)
-    //     // Should be impossible!
-    //     .map_err(|err| {
-    //         error!(?err, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", config.origin);
-    //     })?;
-
-    
-
-    let static_routes = match config.role {
-        ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
-            Router::new()
-                .route("/ui/images/oauth2/{rs_name}", get(oauth2::oauth2_image_get))
-                .route("/ui/images/domain", get(v1_domain::image_get))
-                .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
-                // Layers only apply to routes that are *already* added, not the ones
-                // added after.
-                .layer(middleware::compression::new())
-                .layer(from_fn(middleware::caching::cache_me_short))
-                .route("/", get(|| async { Redirect::to("/ui") }))
-                .nest("/ui", views::view_router())
-            // Can't compress on anything that changes
-        }
-        ServerRole::WriteReplicaNoUI => Router::new(),
-    };
-    let app = Router::new()
-        .merge(oauth2::route_setup(state.clone()))
-        .merge(v1_scim::route_setup())
-        .merge(v1::route_setup(state.clone()))
-        .route("/robots.txt", get(generic::robots_txt))
-        .route(
-            views::constants::Urls::WellKnownChangePassword.as_ref(),
-            get(generic::redirect_to_update_credentials),
-        );
-
-    let app = match config.role {
-        ServerRole::WriteReplicaNoUI => app,
-        ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
-            let pkg_path = PathBuf::from(env!("KANIDM_SERVER_UI_PKG_PATH"));
-            if !pkg_path.exists() {
-                eprintln!(
-                    "Couldn't find htmx UI package path: ({}), quitting.",
-                    env!("KANIDM_SERVER_UI_PKG_PATH")
-                );
-                std::process::exit(1);
-            }
-            let pkg_router = Router::new()
-                .nest_service("/pkg", ServeDir::new(pkg_path))
-                // TODO: Add in the br precompress
-                .layer(from_fn(middleware::caching::cache_me_short));
-
-            app.merge(pkg_router)
-        }
-    };
-
-    // this sets up the default span which logs the URL etc.
-    let trace_layer = TraceLayer::new_for_http()
-        .make_span_with(trace::DefaultMakeSpanKanidmd::new())
-        // setting these to trace because all they do is print "started processing request", and we are already doing that enough!
-        .on_response(trace::DefaultOnResponseKanidmd::new());
-
-    let app = app
-        .merge(static_routes)
-        .layer(from_fn_with_state(
-            state.clone(),
-            middleware::security_headers::security_headers_layer,
-        ))
-        .layer(from_fn(middleware::version_middleware))
-        .layer(from_fn(
-            middleware::hsts_header::strict_transport_security_layer,
-        ));
-
-    // layer which checks the responses have a content-type of JSON when we're in debug mode
-    #[cfg(any(test, debug_assertions))]
-    let app = app.layer(from_fn(middleware::are_we_json_yet));
-
-    let app = app
-        .route("/status", get(generic::status))
-        // This must be the LAST middleware.
-        // This is because the last middleware here is the first to be entered and the last
-        // to be exited, and this middleware sets up ids' and other bits for for logging
-        // coherence to be maintained.
-        .layer(from_fn(middleware::kopid_middleware))
-        // .merge(apidocs::router())
-        // this MUST be the last layer before with_state else the span never starts and everything breaks.
-        .layer(trace_layer)
-        .with_state(state.clone());
-        // the connect_info bit here lets us pick up the remote address of the client
-        // .into_make_service_with_connect_info::<ClientConnInfo>();
-
-    // let addr = SocketAddr::from_str(&config.address).map_err(|err| {
-    //     error!(
-    //         "Failed to parse address ({:?}) from config: {:?}",
-    //         config.address, err
-    //     );
-    // })?;
-
-    // info!("Starting the web server...");
-
-    // let listener = match TcpListener::bind(addr).await {
-    //     Ok(l) => l,
-    //     Err(err) => {
-    //         error!(?err, "Failed to bind tcp listener");
-    //         return Err(());
-    //     }
-    // };
-
-    // match maybe_tls_acceptor {
-    //     Some(tls_acceptor) => Ok(task::spawn(server_tls_loop(
-    //         tls_acceptor,
-    //         listener,
-    //         app,
-    //         rx,
-    //         server_message_tx,
-    //         tls_acceptor_reload_rx,
-    //         trusted_proxy_v2_ips,
-    //     ))),
-    //     None => Ok(task::spawn(server_plaintext_loop(
-    //         listener,
-    //         app,
-    //         rx,
-    //         trusted_proxy_v2_ips,
-    //     ))),
-    // }
-
-    Ok(app)
-}
 
 async fn server_tls_loop(
     mut tls_acceptor: SslAcceptor,

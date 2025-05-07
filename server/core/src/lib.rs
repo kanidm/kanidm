@@ -38,7 +38,6 @@ mod utils;
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::admin::AdminActor;
-//TODO SUPPORT CHANGE
 use crate::config::ServerRole;
 use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
@@ -1202,7 +1201,7 @@ pub async fn create_server_core(
     })
 }
 
-//TODO SUPPORT CHANGE
+
 pub struct HumanAndIHandle {
     core: CoreHandle,
     server_state: ServerState,

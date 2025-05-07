@@ -26,8 +26,7 @@ impl QueryServerReadV1 {
 }
 
 pub struct QueryServerWriteV1 {
-    //TODO SUPPORT CHANGE
-    pub idms: Arc<IdmServer>,
+    pub(crate) idms: Arc<IdmServer>,
 }
 
 impl QueryServerWriteV1 {

@@ -175,8 +175,7 @@ impl QueryServerWriteV1 {
         skip(self, eventid),
         fields(uuid = ?eventid)
     )]
-    //TODO SUPPORT CHANGE
-    pub async fn handle_admin_recover_account(
+    pub(crate) async fn handle_admin_recover_account(
         &self,
         name: String,
         eventid: Uuid,
