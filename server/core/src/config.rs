@@ -20,24 +20,29 @@ use url::Url;
 
 use crate::repl::config::ReplicationConfiguration;
 
-// Allowed as the large enum is only short lived at startup to the true config
-#[allow(clippy::large_enum_variant)]
-// These structures allow us to move to version tagging of the configuration structure.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
+enum VersionDetection {
+    Version(Version),
+    Legacy,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "version")]
+pub enum Version {
+    #[serde(rename = "2")]
+    V2,
+}
+
+// Allowed as the large enum is only short lived at startup to the true config
+#[allow(clippy::large_enum_variant)]
 pub enum ServerConfigUntagged {
     Version(ServerConfigVersion),
     Legacy(ServerConfig),
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(tag = "version")]
 pub enum ServerConfigVersion {
-    #[serde(rename = "2")]
-    V2 {
-        #[serde(flatten)]
-        values: ServerConfigV2,
-    },
+    V2 { values: ServerConfigV2 },
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -295,8 +300,27 @@ impl ServerConfigUntagged {
             eprintln!("{}", diag);
         })?;
 
-        // if we *can* load the config we'll set config to that.
-        toml::from_str::<ServerConfigUntagged>(contents.as_str()).map_err(|err| {
+        // First, can we detect the config version?
+        let config_version =
+            toml::from_str::<VersionDetection>(contents.as_str()).map_err(|err| {
+                eprintln!(
+                    "Unable to parse config version from '{:?}': {:?}",
+                    config_path.as_ref(),
+                    err
+                );
+                std::io::Error::new(std::io::ErrorKind::InvalidData, err)
+            })?;
+
+        match config_version {
+            VersionDetection::Version(Version::V2) => {
+                toml::from_str::<ServerConfigV2>(contents.as_str())
+                    .map(|values| ServerConfigUntagged::Version(ServerConfigVersion::V2 { values }))
+            }
+            VersionDetection::Legacy => {
+                toml::from_str::<ServerConfig>(contents.as_str()).map(ServerConfigUntagged::Legacy)
+            }
+        }
+        .map_err(|err| {
             eprintln!(
                 "Unable to parse config from '{:?}': {:?}",
                 config_path.as_ref(),
@@ -310,6 +334,8 @@ impl ServerConfigUntagged {
 #[derive(Debug, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ServerConfigV2 {
+    #[allow(dead_code)]
+    version: String,
     domain: Option<String>,
     origin: Option<String>,
     db_path: Option<PathBuf>,
