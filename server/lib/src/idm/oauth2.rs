@@ -525,6 +525,7 @@ impl Oauth2ResourceServers {
 }
 
 impl Oauth2ResourceServersWriteTransaction<'_> {
+    #[instrument(level = "debug", name = "oauth2::reload", skip_all)]
     pub fn reload(
         &mut self,
         value: Vec<Arc<EntrySealedCommitted>>,
