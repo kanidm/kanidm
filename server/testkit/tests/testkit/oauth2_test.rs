@@ -228,14 +228,14 @@ async fn test_oauth2_openid_basic_flow_impl(
     assert_eq!(response.status(), StatusCode::OK);
     assert_no_cache!(response);
 
-    let mut jwk_set: JwkKeySet = response
+    let jwk_set: JwkKeySet = response
         .json()
         .await
         .expect("Failed to access response body");
 
-    let public_jwk = jwk_set.keys.pop().expect("No public key in set!");
+    let public_jwk = jwk_set.keys.get(0).expect("No public key in set!");
 
-    let jws_validator = JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
+    let jws_validator = JwsEs256Verifier::try_from(public_jwk).expect("failed to build validator");
 
     // Step 1 - the Oauth2 Resource Server would send a redirect to the authorisation
     // server, where the url contains a series of authorisation request parameters.
@@ -700,14 +700,14 @@ async fn test_oauth2_openid_public_flow_impl(
     assert_eq!(response.status(), StatusCode::OK);
     assert_no_cache!(response);
 
-    let mut jwk_set: JwkKeySet = response
+    let jwk_set: JwkKeySet = response
         .json()
         .await
         .expect("Failed to access response body");
 
-    let public_jwk = jwk_set.keys.pop().expect("No public key in set!");
+    let public_jwk = jwk_set.keys.get(0).expect("No public key in set!");
 
-    let jws_validator = JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
+    let jws_validator = JwsEs256Verifier::try_from(public_jwk).expect("failed to build validator");
 
     // Step 1 - the Oauth2 Resource Server would send a redirect to the authorisation
     // server, where the url contains a series of authorisation request parameters.
