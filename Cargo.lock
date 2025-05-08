@@ -776,7 +776,7 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 [[package]]
 name = "compact_jwt"
 version = "0.4.3"
-source = "git+https://github.com/Firstyear/compact-jwt.git?rev=b3d2b5700cfe567d384c81df35d25537fbf7f110#b3d2b5700cfe567d384c81df35d25537fbf7f110"
+source = "git+https://github.com/Firstyear/compact-jwt.git?rev=043976842773dd035fe394261347edeb644e3091#043976842773dd035fe394261347edeb644e3091"
 dependencies = [
  "base64 0.21.7",
  "base64urlsafedata",

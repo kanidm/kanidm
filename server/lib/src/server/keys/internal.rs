@@ -451,7 +451,7 @@ impl KeyObjectInternalJwtEs256 {
         let valid_from = valid_from.as_secs();
 
         for private_der in import_keys {
-            let signer = JwsEs256Signer::from_es256_der(private_der).map_err(|err| {
+            let mut signer = JwsEs256Signer::from_es256_der(private_der).map_err(|err| {
                 error!(?err, "Unable to load imported es256 DER signer");
                 OperationError::KP0028KeyObjectImportJwsEs256DerInvalid
             })?;
@@ -467,6 +467,9 @@ impl KeyObjectInternalJwtEs256 {
             // We need to use the legacy KID for imported objects
             let kid = signer.get_legacy_kid().to_string();
             debug!(?kid, "imported key");
+
+            // Indicate to the signer we wish to use the legacy kid for this signer.
+            signer.set_kid(kid.as_str());
 
             self.active.insert(valid_from, signer.clone());
 
@@ -576,10 +579,13 @@ impl KeyObjectInternalJwtEs256 {
 
         let status = match status {
             KeyStatus::Valid => {
-                let signer = JwsEs256Signer::from_es256_der(der).map_err(|err| {
+                let mut signer = JwsEs256Signer::from_es256_der(der).map_err(|err| {
                     error!(?err, ?id, "Unable to load es256 DER signer");
                     OperationError::KP0013KeyObjectJwsEs256DerInvalid
                 })?;
+
+                // Ensure that the signer has a coherent kid
+                signer.set_kid(id.as_str());
 
                 let verifier = signer.get_verifier().map_err(|err| {
                     error!(?err, "Unable to retrieve verifier from signer");
@@ -830,7 +836,7 @@ impl KeyObjectInternalJwtRs256 {
         let valid_from = valid_from.as_secs();
 
         for private_der in import_keys {
-            let signer = JwsRs256Signer::from_rs256_der(private_der).map_err(|err| {
+            let mut signer = JwsRs256Signer::from_rs256_der(private_der).map_err(|err| {
                 error!(?err, "Unable to load imported rs256 DER signer");
                 OperationError::KP0045KeyObjectImportJwsRs256DerInvalid
             })?;
@@ -846,6 +852,9 @@ impl KeyObjectInternalJwtRs256 {
             // We need to use the legacy KID for imported objects
             let kid = signer.get_legacy_kid().to_string();
             debug!(?kid, "imported key");
+
+            // Indicate to the signer we wish to use the legacy kid for this signer.
+            signer.set_kid(kid.as_str());
 
             self.active.insert(valid_from, signer.clone());
 
@@ -955,10 +964,13 @@ impl KeyObjectInternalJwtRs256 {
 
         let status = match status {
             KeyStatus::Valid => {
-                let signer = JwsRs256Signer::from_rs256_der(der).map_err(|err| {
+                let mut signer = JwsRs256Signer::from_rs256_der(der).map_err(|err| {
                     error!(?err, ?id, "Unable to load rs256 DER signer");
                     OperationError::KP0052KeyObjectJwsRs256DerInvalid
                 })?;
+
+                // Ensure that the signer has a coherent kid
+                signer.set_kid(id.as_str());
 
                 let verifier = signer.get_verifier().map_err(|err| {
                     error!(?err, "Unable to retrieve verifier from signer");
