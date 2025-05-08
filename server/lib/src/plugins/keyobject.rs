@@ -198,15 +198,16 @@ impl KeyObjectManagement {
                 if let Some(rotation_time) = entry
                     .pop_ava(Attribute::KeyActionRotate)
                     .and_then(|vs| vs.to_datetime_single())
-                    .and_then(|odt| {
+                    .map(|odt| {
                         let secs = odt.unix_timestamp() as u64;
                         if secs > valid_from.as_secs() {
-                            Some(Duration::from_secs(secs))
+                            Duration::from_secs(secs)
                         } else {
-                            None
+                            valid_from
                         }
                     })
                 {
+                    debug!(?rotation_time, "initiate key rotation");
                     key_object.rotate_keys(rotation_time, &txn_cid)?;
                 }
 
