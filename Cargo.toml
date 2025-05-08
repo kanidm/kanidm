@@ -125,7 +125,7 @@ sshkeys = { git = "https://github.com/Firstyear/rust-sshkeys.git", rev = "3a081c
 # Branch currently carrying some needed rs256 signer patches for jwk handling,
 # as main is currently working to drop openssl and may need more work before
 # we commit to that change here.
-compact_jwt = { git = "https://github.com/Firstyear/compact-jwt.git", rev = "b3d2b5700cfe567d384c81df35d25537fbf7f110" }
+compact_jwt = { git = "https://github.com/Firstyear/compact-jwt.git", rev = "043976842773dd035fe394261347edeb644e3091" }
 
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core", version = "=1.6.1" }
