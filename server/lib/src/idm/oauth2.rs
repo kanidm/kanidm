@@ -553,7 +553,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                 }
 
                 let Some(key_object) = key_providers.get_key_object_handle(uuid) else {
-                    error!("OAuth2 rs is missing it's key object!");
+                    error!("OAuth2 RS is missing its key object!");
                     return Err(OperationError::InvalidEntryState);
                 };
 
