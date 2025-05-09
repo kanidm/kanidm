@@ -38,7 +38,7 @@ mod utils;
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::admin::AdminActor;
-use crate::config::{Configuration, ServerRole};
+use crate::config::ServerRole;
 use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::{JwsHs256Signer, JwsSigner};
@@ -58,6 +58,7 @@ use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::Notify;
 use tokio::task;
+use config::Configuration;
 
 // === internal setup helpers
 

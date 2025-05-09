@@ -1,11 +1,7 @@
 use axum::{
-    async_trait,
-    extract::connect_info::{ConnectInfo, Connected},
-    extract::FromRequestParts,
-    http::{
-        header::HeaderName, header::AUTHORIZATION as AUTHORISATION, request::Parts, StatusCode,
-    },
-    RequestPartsExt,
+    extract::{connect_info::{ConnectInfo, Connected}, FromRequestParts}, http::{
+        header::{HeaderName, AUTHORIZATION as AUTHORISATION}, request::Parts, StatusCode,
+    }, serve::IncomingStream, RequestPartsExt
 };
 
 use axum_extra::extract::cookie::CookieJar;
@@ -17,6 +13,7 @@ use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
 pub use kanidmd_lib::idm::server::DomainInfoRead;
 
 use compact_jwt::JwsCompact;
+use tokio::net::TcpListener;
 use std::str::FromStr;
 
 use std::net::{IpAddr, SocketAddr};
@@ -28,7 +25,6 @@ const X_FORWARDED_FOR_HEADER: HeaderName = HeaderName::from_static(X_FORWARDED_F
 
 pub struct TrustedClientIp(pub IpAddr);
 
-#[async_trait]
 impl FromRequestParts<ServerState> for TrustedClientIp {
     type Rejection = (StatusCode, &'static str);
 
@@ -45,8 +41,8 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
         }) = parts
             .extract::<ConnectInfo<ClientConnInfo>>()
             .await
-            .map_err(|_| {
-                error!("Connect info contains invalid data");
+            .map_err(|e| {
+                error!("Connect info contains invalid data: {:}", e);
                 (
                     StatusCode::BAD_REQUEST,
                     "connect info contains invalid data",
@@ -97,7 +93,6 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
 
 pub struct VerifiedClientInformation(pub ClientAuthInfo);
 
-#[async_trait]
 impl FromRequestParts<ServerState> for VerifiedClientInformation {
     type Rejection = (StatusCode, &'static str);
 
@@ -114,8 +109,8 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
         }) = parts
             .extract::<ConnectInfo<ClientConnInfo>>()
             .await
-            .map_err(|_| {
-                error!("Connect info contains invalid data");
+            .map_err(|e| {
+                error!("Connect info contains invalid data: {:}", e);
                 (
                     StatusCode::BAD_REQUEST,
                     "connect info contains invalid data",
@@ -205,7 +200,6 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
 
 pub struct DomainInfo(pub DomainInfoRead);
 
-#[async_trait]
 impl FromRequestParts<ServerState> for DomainInfo {
     type Rejection = (StatusCode, &'static str);
 
@@ -245,6 +239,19 @@ impl Connected<SocketAddr> for ClientConnInfo {
         ClientConnInfo {
             client_addr: connection_addr,
             connection_addr,
+            client_cert: None,
+        }
+    }
+}
+
+impl Connected<IncomingStream<'_, TcpListener>> for ClientConnInfo {
+    fn connect_info(target: IncomingStream<'_, TcpListener>) -> Self {
+        let local_addr = target.io().local_addr().unwrap();
+        let remote_addr = target.remote_addr();
+
+        ClientConnInfo {
+            client_addr: remote_addr.clone(),
+            connection_addr: local_addr,
             client_cert: None,
         }
     }

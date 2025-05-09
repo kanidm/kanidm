@@ -981,7 +981,7 @@ server.config.yaml:
 GUI:
   authenticator:
     type: OIDC
-    oidc_issuer: https://idm.example.com/oauth2/openid/:client_id:/
+    oidc_issuer: https://idm.example.com/oauth2/openid/{client_id}:/
     oauth_client_id: <client name/>
     oauth_client_secret: <client secret>
 ```

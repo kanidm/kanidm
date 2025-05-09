@@ -1,4 +1,5 @@
 use askama::Template;
+use askama_web::WebTemplate;
 
 use axum::{
     response::Redirect,
@@ -29,7 +30,7 @@ mod oauth2;
 mod profile;
 mod reset;
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "unrecoverable_error.html")]
 struct UnrecoverableErrorView {
     err_code: OperationError,
@@ -38,7 +39,7 @@ struct UnrecoverableErrorView {
     domain_info: DomainInfoRead,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/error_toast.html")]
 struct ErrorToastPartial {
     err_code: OperationError,
@@ -159,7 +160,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use askama_axum::IntoResponse;
+    // use askama_axum::IntoResponse;
+
+    use axum::response::IntoResponse;
 
     use super::*;
     #[tokio::test]

@@ -3,6 +3,7 @@ use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::ServerState;
 use askama::Template;
+use askama_web::WebTemplate;
 use axum::extract::State;
 use axum::response::Response;
 use axum::Extension;
@@ -14,14 +15,14 @@ use super::errors::HtmxError;
 use super::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 use super::navbar::NavbarCtx;
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "user_settings.html")]
 pub(crate) struct ProfileView {
     navbar_ctx: NavbarCtx,
     profile_partial: ProfilePartialView,
 }
 
-#[derive(Template, Clone)]
+#[derive(Template, WebTemplate, Clone)]
 #[template(path = "user_settings_profile_partial.html")]
 struct ProfilePartialView {
     menu_active_item: ProfileMenuItems,

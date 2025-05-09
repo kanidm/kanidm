@@ -44,7 +44,7 @@ introspection.
 ## Kanidm's OAuth2 URLs
 
 Kanidm will expose its OAuth2 APIs at the following URLs, substituting
-`:client_id:` with an OAuth2 client ID.
+`{client_id}:` with an OAuth2 client ID.
 <!-- markdownlint-disable MD033 -->
 
 <dl>
@@ -57,7 +57,7 @@ URL **(recommended)**
 </dt>
 <dd>
 
-`https://idm.example.com/oauth2/openid/:client_id:/.well-known/openid-configuration`
+`https://idm.example.com/oauth2/openid/{client_id}:/.well-known/openid-configuration`
 
 This document includes all the URLs and attributes an app needs to be able to
 authenticate using OIDC with Kanidm, _except_ for the `client_id` and
@@ -79,7 +79,7 @@ URL **(recommended)**
 
 <dd>
 
-`https://idm.example.com/oauth2/openid/:client_id:/.well-known/oauth-authorization-server`
+`https://idm.example.com/oauth2/openid/{client_id}:/.well-known/oauth-authorization-server`
 
 </dd>
 
@@ -91,7 +91,7 @@ URL **(recommended)**
 
 <dd>
 
-`https://idm.example.com/oauth2/openid/:client_id:/.well-known/webfinger`
+`https://idm.example.com/oauth2/openid/{client_id}:/.well-known/webfinger`
 
 See [the WebFinger section](#webfinger) for more details, as there a number of
 caveats for WebFinger clients.
@@ -168,7 +168,7 @@ OpenID Connect Issuer URL
 
 <dd>
 
-`https://idm.example.com/oauth2/openid/:client_id:`
+`https://idm.example.com/oauth2/openid/{client_id}:`
 
 </dd>
 
@@ -180,7 +180,7 @@ OpenID Connect user info
 
 <dd>
 
-`https://idm.example.com/oauth2/openid/:client_id:/userinfo`
+`https://idm.example.com/oauth2/openid/{client_id}:/userinfo`
 
 </dd>
 
@@ -192,7 +192,7 @@ Token signing public key
 
 <dd>
 
-`https://idm.example.com/oauth2/openid/:client_id:/public_key.jwk`
+`https://idm.example.com/oauth2/openid/{client_id}:/public_key.jwk`
 
 </dd>
 
@@ -497,14 +497,14 @@ difficult to use with Kanidm:
 
   You will need a load balancer in front of Kanidm's HTTPS server to send a HTTP
   307 redirect to the appropriate
-  `/oauth2/openid/:client_id:/.well-known/webfinger` URL, *while preserving all
+  `/oauth2/openid/{client_id}:/.well-known/webfinger` URL, *while preserving all
   query parameters*. For example, with Caddy:
 
   ```caddy
   # Match on a prefix, and use {uri} to preserve all query parameters.
   # This only supports *one* client.
   example.com {
-    redir /.well-known/webfinger https://idm.example.com/oauth2/openid/:client_id:{uri} 307
+    redir /.well-known/webfinger https://idm.example.com/oauth2/openid/{client_id}:{uri} 307
   }
   ```
 
