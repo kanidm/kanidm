@@ -43,7 +43,7 @@ fn figure_out_if_we_have_all_the_routes() {
             .unwrap();
     // work our way through the source files in this package looking for routedefs
     let mut found_routes: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
-    let walker = walkdir::WalkDir::new(format!("{}/src", env!("CARGO_MANIFEST_DIR")))
+    let walker = walkdir::WalkDir::new(format!("{}/src/https", env!("CARGO_MANIFEST_DIR")))
         .follow_links(false)
         .into_iter();
 
