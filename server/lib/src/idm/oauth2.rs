@@ -482,7 +482,13 @@ impl std::fmt::Debug for Oauth2RS {
 struct Oauth2RSInner {
     origin: Url,
     consent_key: JweA128KWEncipher,
-    rs_set: HashMap<String, Oauth2RS>,
+    private_rs_set: HashMap<String, Oauth2RS>,
+}
+
+impl Oauth2RSInner {
+    fn rs_set_get(&self, client_id: &str) -> Option<&Oauth2RS> {
+        self.private_rs_set.get(client_id.to_lowercase().as_str())
+    }
 }
 
 pub struct Oauth2ResourceServers {
@@ -506,7 +512,7 @@ impl Oauth2ResourceServers {
             inner: CowCell::new(Oauth2RSInner {
                 origin,
                 consent_key,
-                rs_set: HashMap::new(),
+                private_rs_set: HashMap::new(),
             }),
         })
     }
@@ -841,7 +847,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
             // Delay getting the inner mut (which may clone) until we know we are ok.
             let inner_ref = self.inner.get_mut();
             // Swap them if we are ok
-            std::mem::swap(&mut inner_ref.rs_set, &mut rs_set);
+            std::mem::swap(&mut inner_ref.private_rs_set, &mut rs_set);
         })
     }
 
@@ -866,7 +872,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         let (client_id, secret) = parse_basic_authz(client_authz.as_str())?;
 
         // Get the o2rs for the handle.
-        let o2rs = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set_get(&client_id).ok_or_else(|| {
             admin_warn!("Invalid OAuth2 client_id");
             Oauth2Error::AuthenticationRequired
         })?;
@@ -1067,8 +1073,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         let s = self
             .oauth2rs
             .inner
-            .rs_set
-            .get(client_id)
+            .rs_set_get(client_id)
             .ok_or_else(|| {
                 admin_warn!("Invalid OAuth2 client_id {}", client_id);
                 Oauth2Error::AuthenticationRequired
@@ -1200,8 +1205,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         let o2rs = self
             .oauth2rs
             .inner
-            .rs_set
-            .get(&consent_req.client_id)
+            .rs_set_get(&consent_req.client_id)
             .ok_or_else(|| {
                 admin_error!("Invalid consent request OAuth2 client_id");
                 OperationError::InvalidRequestState
@@ -1853,7 +1857,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         })?;
 
         // Get the o2rs for the handle.
-        let o2rs = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set_get(&client_id).ok_or_else(|| {
             admin_warn!("Invalid OAuth2 client_id");
             OperationError::InvalidSessionState
         })?;
@@ -1942,8 +1946,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let o2rs = self
             .oauth2rs
             .inner
-            .rs_set
-            .get(&auth_req.client_id)
+            .rs_set_get(&auth_req.client_id)
             .ok_or_else(|| {
                 admin_warn!(
                     "Invalid OAuth2 client_id ({}) Have you configured the OAuth2 resource server?",
@@ -2313,8 +2316,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let _o2rs = self
             .oauth2rs
             .inner
-            .rs_set
-            .get(&consent_req.client_id)
+            .rs_set_get(&consent_req.client_id)
             .ok_or_else(|| {
                 admin_error!("Invalid consent request OAuth2 client_id");
                 OperationError::InvalidRequestState
@@ -2342,7 +2344,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let (client_id, secret) = parse_basic_authz(client_authz.as_str())?;
 
         // Get the o2rs for the handle.
-        let o2rs = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set_get(&client_id).ok_or_else(|| {
             admin_warn!("Invalid OAuth2 client_id");
             Oauth2Error::AuthenticationRequired
         })?;
@@ -2542,7 +2544,7 @@ impl IdmServerProxyReadTransaction<'_> {
         // excepting for this idm layer within a single thread, meaning that stripping the
         // lifetime here is safe since we are the sole accessor.
         let o2rs: &Oauth2RS = unsafe {
-            let s = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+            let s = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
                 admin_warn!(
                     "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
                 );
@@ -2642,7 +2644,7 @@ impl IdmServerProxyReadTransaction<'_> {
         &self,
         client_id: &str,
     ) -> Result<Oauth2Rfc8414MetadataResponse, OperationError> {
-        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
             admin_warn!(
                 "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
             );
@@ -2713,7 +2715,7 @@ impl IdmServerProxyReadTransaction<'_> {
         &self,
         client_id: &str,
     ) -> Result<OidcDiscoveryResponse, OperationError> {
-        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
             admin_warn!(
                 "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
             );
@@ -2828,7 +2830,7 @@ impl IdmServerProxyReadTransaction<'_> {
         client_id: &str,
         resource_id: &str,
     ) -> Result<OidcWebfingerResponse, OperationError> {
-        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
             admin_warn!(
                 "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
             );
@@ -2862,7 +2864,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
-        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
             admin_warn!(
                 "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
             );
@@ -3617,7 +3619,7 @@ mod tests {
                 // From the first step.
                 code_verifier,
             },
-            client_id: Some("test_resource_server".to_string()),
+            client_id: Some("Test_Resource_Server".to_string()),
             client_secret: None,
         };
 
