@@ -233,7 +233,7 @@ async fn test_oauth2_openid_basic_flow_impl(
         .await
         .expect("Failed to access response body");
 
-    let public_jwk = jwk_set.keys.get(0).expect("No public key in set!");
+    let public_jwk = jwk_set.keys.first().expect("No public key in set!");
 
     let jws_validator = JwsEs256Verifier::try_from(public_jwk).expect("failed to build validator");
 
@@ -705,7 +705,7 @@ async fn test_oauth2_openid_public_flow_impl(
         .await
         .expect("Failed to access response body");
 
-    let public_jwk = jwk_set.keys.get(0).expect("No public key in set!");
+    let public_jwk = jwk_set.keys.first().expect("No public key in set!");
 
     let jws_validator = JwsEs256Verifier::try_from(public_jwk).expect("failed to build validator");
 
