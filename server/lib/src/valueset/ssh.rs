@@ -263,8 +263,7 @@ mod tests {
         //                         ^ note the è here
         println!("bytes of è {:?}", "è".as_bytes());
         let found_index = ecdsa.find("è").expect("Failed to find è in string");
-        println!("Found index of è: {}", found_index);
-        assert_eq!(found_index, 198);
+        assert_eq!(found_index, 198, "Expected index 198");
         let bad_ssh_error = SshPublicKey::from_string(ecdsa);
 
         assert!(
@@ -273,7 +272,7 @@ mod tests {
             bad_ssh_error
         );
         if let Err(err) = bad_ssh_error {
-            assert_eq!(err.to_string(), "Invalid symbol 195, offset 178.");
+            assert_eq!(err.to_string(), "Invalid symbol 195, offset 178."); // the offset is 178 because the string has a leading key type
         }
     }
 }
