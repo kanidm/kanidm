@@ -283,11 +283,11 @@ async fn repl_run_consumer(
                 changes
             }
             Ok(SupplierResponse::Pong) | Ok(SupplierResponse::Refresh(_)) => {
-                error!("Supplier Response contains invalid State");
+                error!("Supplier Response contains invalid state");
                 return None;
             }
             Err(err) => {
-                error!(?err, "consumer decode error, unable to continue.");
+                error!(?err, "Consumer decode error, unable to continue.");
                 return None;
             }
         }
@@ -307,7 +307,7 @@ async fn repl_run_consumer(
         }) {
             Ok(state) => state,
             Err(err) => {
-                error!(?err, "consumer was not able to apply changes.");
+                error!(?err, "Consumer was not able to apply changes.");
                 return None;
             }
         }
@@ -315,7 +315,7 @@ async fn repl_run_consumer(
 
     match consumer_state {
         ConsumerState::Ok => {
-            debug!("Incremental Replication Success");
+            info!("Incremental Replication Success");
             // return to bypass the failure message.
             return Some(socket_addr);
         }
