@@ -1,0 +1,6 @@
+FROM rust:latest
+
+COPY ./scripts/install_ubuntu_dependencies.sh /tmp/
+RUN /tmp/install_ubuntu_dependencies.sh
+
+WORKDIR /kanidm

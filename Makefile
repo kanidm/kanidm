@@ -368,3 +368,11 @@ publish:
 	cargo publish -p kanidm_client
 	cargo publish -p kanidm_tools
 
+.PHONY: rust_container
+rust_container: # Build and run a container based on the Linux rust base container, with our requirements included
+rust_container:
+	docker build --pull -t kanidm_rust -f scripts/Dockerfile.devcontainer .
+	docker run \
+		--rm -it \
+		--name kanidm \
+		--mount type=bind,source=$(PWD),target=/kanidm -w /kanidm kanidm_rust:latest
