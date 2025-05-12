@@ -45,7 +45,7 @@ fi
 
 # defaults
 KANIDM_CONFIG_FILE="./insecure_server.toml"
-KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
+KANIDM_URL="$(grep origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
 # wait for them to shut down the server if it's running...
