@@ -60,9 +60,11 @@ pub enum AuthCredential {
     Anonymous,
     Password(String),
     Totp(u32),
+    #[schema(value_type = Object)]
     SecurityKey(Box<PublicKeyCredential>),
     BackupCode(String),
     // Should this just be discoverable?
+    #[schema(value_type = Object)]
     Passkey(Box<PublicKeyCredential>),
 }
 
@@ -151,7 +153,9 @@ pub enum AuthAllowed {
     BackupCode,
     Password,
     Totp,
+    #[schema(value_type = Object)]
     SecurityKey(RequestChallengeResponse),
+    #[schema(value_type = Object)]
     Passkey(RequestChallengeResponse),
 }
 

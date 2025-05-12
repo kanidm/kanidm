@@ -29,6 +29,7 @@ pub mod prelude {
     pub use crate::{ScimAttr, ScimComplexAttr, ScimEntry, ScimEntryHeader, ScimMeta, ScimValue};
 }
 
+
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
 #[serde(untagged)]
 pub enum ScimAttr {
@@ -41,7 +42,7 @@ pub enum ScimAttr {
     // this point.
     #[serde(with = "time::serde::rfc3339")]
     DateTime(OffsetDateTime),
-
+    #[schema(value_type = Object)]
     Binary(Base64UrlSafeData),
     Reference(Url),
 }

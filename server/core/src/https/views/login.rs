@@ -7,6 +7,7 @@ use crate::https::{
     ServerState,
 };
 use askama::Template;
+use askama_web::WebTemplate;
 use axum::{
     extract::State,
     response::{IntoResponse, Redirect, Response},
@@ -91,7 +92,7 @@ pub struct LoginDisplayCtx {
     pub error: Option<LoginError>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "login.html")]
 struct LoginView {
     display_ctx: LoginDisplayCtx,
@@ -105,7 +106,7 @@ pub struct Mech<'a> {
     autofocus: bool,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "login_mech_choose.html")]
 struct LoginMechView<'a> {
     display_ctx: LoginDisplayCtx,
@@ -119,7 +120,7 @@ enum LoginTotpError {
     Syntax,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "login_totp.html")]
 struct LoginTotpView {
     display_ctx: LoginDisplayCtx,
@@ -127,20 +128,20 @@ struct LoginTotpView {
     errors: LoginTotpError,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "login_password.html")]
 struct LoginPasswordView {
     display_ctx: LoginDisplayCtx,
     password: String,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "login_backupcode.html")]
 struct LoginBackupCodeView {
     display_ctx: LoginDisplayCtx,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "login_webauthn.html")]
 struct LoginWebauthnView {
     display_ctx: LoginDisplayCtx,
@@ -150,7 +151,7 @@ struct LoginWebauthnView {
     chal: String,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "login_denied.html")]
 struct LoginDeniedView {
     display_ctx: LoginDisplayCtx,
