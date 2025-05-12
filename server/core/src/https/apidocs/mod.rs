@@ -1,5 +1,9 @@
 use axum::{middleware::from_fn, response::Redirect, routing::get, Router};
-use kanidm_proto::{attribute, internal, scim_v1, v1};
+use kanidm_proto::{
+    attribute, internal,
+    scim_v1::{self, client::ScimEntryPostGeneric},
+    v1,
+};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
@@ -211,7 +215,7 @@ impl Modify for SecurityAddon {
         schemas(
             attribute::Attribute,
 
-
+            ScimEntryPostGeneric,
             scim_v1::ScimSyncState,
             scim_v1::ScimSyncRequest,
             scim_v1::ScimSyncRetentionMode,
