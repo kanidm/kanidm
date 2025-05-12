@@ -91,13 +91,6 @@ pub struct ScimEntryPutKanidm {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ScimStrings(#[serde_as(as = "OneOrMany<_, PreferMany>")] pub Vec<String>);
 
-#[derive(Debug, Clone, Deserialize, Default, ToSchema)]
-pub struct ScimEntryPostGeneric {
-    // Create an attribute to contain the following value state.
-    #[serde(flatten)]
-    pub attrs: BTreeMap<Attribute, JsonValue>,
-}
-
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct ScimEntryPutGeneric {
     // id is only used to target the entry in question
