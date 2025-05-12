@@ -343,7 +343,7 @@ impl QueryServerWriteTransaction<'_> {
         }
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn consumer_apply_changes_v1(
         &mut self,
         ctx_domain_version: DomainVersion,
@@ -394,7 +394,7 @@ impl QueryServerWriteTransaction<'_> {
             })?;
 
         // == ⚠️  Below this point we begin to make changes! ==
-        info!(
+        debug!(
             "Proceeding to apply incremental from domain {:?} at level {}",
             ctx_domain_uuid, ctx_domain_version
         );

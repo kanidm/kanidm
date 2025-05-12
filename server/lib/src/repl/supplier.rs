@@ -148,14 +148,14 @@ impl QueryServerReadTransaction<'_> {
             RangeDiffStatus::Ok(ranges) => ranges,
             RangeDiffStatus::Refresh { lag_range } => {
                 error!("Replication - Consumer is lagging and must be refreshed.");
-                info!(?lag_range);
+                debug!(?lag_range);
                 debug!(consumer_ranges = ?ctx_ranges);
                 debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::RefreshRequired);
             }
             RangeDiffStatus::Unwilling { adv_range } => {
                 error!("Replication - Supplier is lagging and must be investigated.");
-                info!(?adv_range);
+                debug!(?adv_range);
                 debug!(consumer_ranges = ?ctx_ranges);
                 debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::UnwillingToSupply);
@@ -165,8 +165,8 @@ impl QueryServerReadTransaction<'_> {
                 adv_range,
             } => {
                 error!("Replication Critical - Consumers are advanced of us, and also lagging! This must be immediately investigated!");
-                info!(?lag_range);
-                info!(?adv_range);
+                debug!(?lag_range);
+                debug!(?adv_range);
                 debug!(consumer_ranges = ?ctx_ranges);
                 debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::UnwillingToSupply);

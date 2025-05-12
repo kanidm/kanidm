@@ -92,7 +92,7 @@ pub(crate) async fn create_repl_server(
     Ok((repl_handle, ctrl_tx))
 }
 
-#[instrument(level = "info", skip_all)]
+#[instrument(level = "debug", skip_all)]
 /// This returns the remote address that worked, so you can try that first next time
 async fn repl_consumer_connect_supplier(
     domain: &str,
@@ -116,7 +116,10 @@ async fn repl_consumer_connect_supplier(
         )
         .await
         {
-            Ok(Ok(tc)) => tc,
+            Ok(Ok(tc)) => {
+                trace!("Connection established to peer on {:?}", sock_addr);
+                tc
+            }
             Ok(Err(err)) => {
                 debug!(?err, "Failed to connect to {}", sock_addr);
                 continue;
@@ -126,8 +129,6 @@ async fn repl_consumer_connect_supplier(
                 continue;
             }
         };
-
-        trace!("Connection established to peer on {:?}", sock_addr);
 
         let mut tlsstream = match Ssl::new(tls_connector.context())
             .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
