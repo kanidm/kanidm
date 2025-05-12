@@ -215,7 +215,7 @@ impl Modify for SecurityAddon {
         schemas(
             attribute::Attribute,
 
-            ScimEntryPostGeneric,
+            scim_v1::client::ScimEntryPostGeneric,
             scim_v1::ScimSyncState,
             scim_v1::ScimSyncRequest,
             scim_v1::ScimSyncRetentionMode,
