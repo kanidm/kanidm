@@ -11,7 +11,6 @@ use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub type ScimSshPublicKeys = Vec<ScimSshPublicKey>;
