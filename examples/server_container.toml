@@ -86,7 +86,7 @@ origin = "https://idm.example.com:8443"
 #   format the information is provided in.
 #   Defaults to "none" (no trusted sources)
 #   Only one option can be used at a time.
-# [http_client_address_info]
+[http_client_address_info]
 # proxy-v2 = ["127.0.0.1"]
 #   # OR
 # x-forward-for = ["127.0.0.1"]
@@ -98,7 +98,7 @@ origin = "https://idm.example.com:8443"
 #   IPs which can supply this header information, and which
 #   format the information is provided in.
 #   Defaults to "none" (no trusted sources)
-# [ldap_client_address_info]
+[ldap_client_address_info]
 # proxy-v2 = ["127.0.0.1"]
 
 [online_backup]
