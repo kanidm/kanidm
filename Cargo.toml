@@ -121,7 +121,7 @@ codegen-units = 256
 # For BSD nss support
 libnss = { git = "https://github.com/Firstyear/libnss-rs.git", branch = "20250207-freebsd" }
 # Allow ssh keys to have comments with spaces.
-sshkeys = { git = "https://github.com/Firstyear/rust-sshkeys.git", rev = "3a081cbf7480628223bcb96fc8aaa8c19109d007" }
+sshkeys = { git = "https://github.com/Firstyear/rust-sshkeys.git", rev = "49cb53232115d3aea86cd059b151e376293805fc" }
 # Branch currently carrying some needed rs256 signer patches for jwk handling,
 # as main is currently working to drop openssl and may need more work before
 # we commit to that change here.
