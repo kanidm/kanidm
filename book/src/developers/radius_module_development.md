@@ -2,10 +2,10 @@
 
 Setting up a dev environment has some extra complexity due to the mono-repo design.
 
-1. Install poetry: `python -m pip install poetry`. This is what we use to manage the packages, and
+1. Install uv: `python -m pip install uv`. This is what we use to manage the packages, and
    allows you to set up virtual python environments easier.
-2. Build the base environment. From within the kanidm_rlm_python directory, run: `poetry install`
-3. Install the `kanidm` python library: `poetry run python -m pip install ../pykanidm`
+2. Build the base environment. From within the kanidm_rlm_python directory, run: `uv sync`
+3. Install the `kanidm` python library: `uv run python -m pip install ../pykanidm`
 4. Start editing!
 
 Most IDEs will be happier if you open the `kanidm_rlm_python` or `pykanidm` directories as the base
