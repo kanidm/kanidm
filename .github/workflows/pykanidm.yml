@@ -28,6 +28,7 @@ jobs:
         run: |
           cd pykanidm
           uv run mypy --strict kanidm tests
+          uv run ty check
       - name: Running Linting
         run: |
           cd pykanidm
