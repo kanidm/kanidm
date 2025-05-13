@@ -45,7 +45,7 @@ fi
 
 # defaults
 KANIDM_CONFIG_FILE="./insecure_server.toml"
-KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
+KANIDM_URL="$(grep origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
 # wait for them to shut down the server if it's running...
@@ -89,7 +89,7 @@ IDM_ADMIN_USER="idm_admin@localhost"
 echo "Resetting the idm_admin user..."
 IDM_ADMIN_PASS_RAW="$(${KANIDMD} recover-account idm_admin -o json 2>&1)"
 IDM_ADMIN_PASS="$(echo "${IDM_ADMIN_PASS_RAW}" | grep password | jq -r .password)"
-if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null " ]; then
+if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null" ]; then
     echo "Failed to reset idm_admin password!"
     echo "Raw output:"
     echo "${IDM_ADMIN_PASS_RAW}"

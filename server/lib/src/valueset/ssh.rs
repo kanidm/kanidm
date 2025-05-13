@@ -252,4 +252,30 @@ mod tests {
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetSshKey>(&vs, &[])
     }
+
+    #[test]
+    /// this is a test case for bad characters in SSH keys
+    fn test_invalid_character() {
+        let ecdsa = concat!("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEÀAAAIbmlzdHA1MjEAAACFBAGyIY7o3B",
+        //                             ^ note the À here
+        "tOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81l",
+        "zPrVSdrYEDldxH9+a86dBZhdm0è15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@a",
+        "methyst");
+        println!("bytes of À {:?}", "À".as_bytes());
+        let found_index = ecdsa.find("À").expect("Failed to find è in string");
+        assert_eq!(found_index, 51, "Expected index 51");
+        let bad_ssh_error = SshPublicKey::from_string(ecdsa);
+
+        assert!(
+            bad_ssh_error.is_err(),
+            "Expected error, but got: {:?}",
+            bad_ssh_error
+        );
+        if let Err(err) = bad_ssh_error {
+            assert_eq!(
+                err.to_string(),
+                format!("Invalid symbol 195, offset {}.", found_index - 20)
+            ); // the offset is 31 because the string has a 20 character leading key type plus the space
+        }
+    }
 }

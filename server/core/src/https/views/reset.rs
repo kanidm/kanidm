@@ -119,9 +119,10 @@ struct SetUnixCredPartial {
 #[derive(Template)]
 #[template(path = "credential_update_add_ssh_publickey_partial.html")]
 struct AddSshPublicKeyPartial {
+    key_title: Option<String>,
     title_error: Option<String>,
-    key_error: Option<String>,
     key_value: Option<String>,
+    key_error: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -901,9 +902,10 @@ pub(crate) async fn view_add_ssh_publickey(
     let new_key = match opt_form {
         None => {
             return Ok((AddSshPublicKeyPartial {
+                key_title: None,
                 title_error: None,
-                key_error: None,
                 key_value: None,
+                key_error: None,
             },)
                 .into_response());
         }
@@ -920,9 +922,10 @@ pub(crate) async fn view_add_ssh_publickey(
         let publickey = match SshPublicKey::from_string(&new_key.key) {
             Err(_) => {
                 return Ok((AddSshPublicKeyPartial {
+                    key_title: Some(new_key.title),
                     title_error: None,
-                    key_error: Some("Key cannot be parsed".to_string()),
                     key_value: Some(new_key.key),
+                    key_error: Some("Key cannot be parsed".to_string()),
                 },)
                     .into_response());
             }
@@ -932,7 +935,7 @@ pub(crate) async fn view_add_ssh_publickey(
             .qe_r_ref
             .handle_idmcredentialupdate(
                 cu_session_token,
-                CURequest::SshPublicKey(new_key.title, publickey),
+                CURequest::SshPublicKey(new_key.title.clone(), publickey),
                 kopid.eventid,
             )
             .await;
@@ -966,6 +969,7 @@ pub(crate) async fn view_add_ssh_publickey(
         status,
         HxPushUrl(Uri::from_static("/ui/reset/add_ssh_publickey")),
         AddSshPublicKeyPartial {
+            key_title: Some(new_key.title),
             title_error,
             key_error,
             key_value: Some(new_key.key),
