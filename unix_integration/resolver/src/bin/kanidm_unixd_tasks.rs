@@ -40,6 +40,7 @@ use tokio::net::UnixStream;
 use tokio::sync::broadcast;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
+use tracing::instrument;
 use walkdir::WalkDir;
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]
@@ -285,6 +286,8 @@ async fn handle_tasks(
 ) {
     let mut reqs = Framed::new(stream, TaskCodec::new());
 
+    debug!("task handler has started ...");
+
     loop {
         tokio::select! {
             _ = ctl_broadcast_rx.recv() => {
@@ -323,6 +326,7 @@ async fn handle_tasks(
                 }
             }
             _ = shadow_broadcast_rx.recv() => {
+                debug!("Received shadow reload event.");
                 // process etc shadow and send it here.
                 match process_etc_passwd_group().await {
                     Ok(etc_db) => {
@@ -331,6 +335,7 @@ async fn handle_tasks(
                             error!(?err, "Unable to communicate to kanidm unixd");
                             break;
                         }
+                        debug!("Shadow reload OK!");
                     }
                     Err(()) => {
                         error!("Unable to process etc db");
@@ -344,6 +349,7 @@ async fn handle_tasks(
     info!("Disconnected from kanidm_unixd ...");
 }
 
+#[instrument(level = "debug", skip_all)]
 async fn process_etc_passwd_group() -> Result<EtcDb, ()> {
     let mut file = File::open("/etc/passwd").await.map_err(|err| {
         error!(?err);
@@ -398,7 +404,7 @@ fn setup_shadow_inotify_watcher(
     shadow_broadcast_tx: broadcast::Sender<bool>,
 ) -> Result<Debouncer<RecommendedWatcher, RecommendedCache>, ExitCode> {
     let watcher = new_debouncer(
-        Duration::from_secs(1),
+        Duration::from_secs(5),
         None,
         move |event: Result<Vec<DebouncedEvent>, _>| {
             let array_of_events = match event {
@@ -540,6 +546,8 @@ async fn main() -> ExitCode {
 
                                     // Immediately trigger that we should reload the shadow files
                                     let _ = shadow_broadcast_tx.send(true);
+
+                                    debug!("Initial notify of shadow reload sent to {} listeners", shadow_broadcast_tx.receiver_count());
 
                                     // Yep! Now let the main handler do it's job.
                                     // If it returns (dc, etc, then we loop and try again).
