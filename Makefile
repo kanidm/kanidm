@@ -257,13 +257,13 @@ clean_book:
 docs/pykanidm/build: ## Build the mkdocs
 docs/pykanidm/build:
 	cd pykanidm && \
-	uv run mkdocs build
+	uv run --group docs mkdocs build
 
 .PHONY: docs/pykanidm/serve
 docs/pykanidm/serve: ## Run the local mkdocs server
 docs/pykanidm/serve:
 	cd pykanidm && \
-	uv run mkdocs serve
+	uv run --group docs mkdocs serve
 
 ########################################################################
 
