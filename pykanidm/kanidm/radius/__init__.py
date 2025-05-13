@@ -49,13 +49,13 @@ def instantiate(_: Any) -> Any:
     if config_path is None:
         logging.error("Failed to find configuration file, checked (%s), quitting!", CONFIG_PATHS)
         sys.exit(1)
-
-    kanidm_client = KanidmClient(config_file=config_path)
-    if kanidm_client.config.auth_token is None:
-        logging.error("You need to specify auth_token in the configuration file!")
-        sys.exit(1)
-    os.environ["KANIDM_CONFIG_FILE"] = config_path.as_posix()
-    logging.info("Config file: %s", config_path.as_posix())
+    else:
+        kanidm_client = KanidmClient(config_file=config_path)
+        if kanidm_client.config.auth_token is None:
+            logging.error("You need to specify auth_token in the configuration file!")
+            sys.exit(1)
+        os.environ["KANIDM_CONFIG_FILE"] = config_path.as_posix()
+        logging.info("Config file: %s", os.environ["KANIDM_CONFIG_FILE"])
     return radiusd.RLM_MODULE_OK
 
 

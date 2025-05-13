@@ -187,7 +187,7 @@ async def test_ssl_untrusted_root_configured() -> None:
     testcert = Path("./tests/badssl_trusted_ca.pem").resolve()
 
     if not testcert.exists():
-        pytest.skip(f"The trusted cert is missing from {testcert}")
+        pytest.skip(f"The trusted cert is missing from {testcert}")  # type: ignore[call-non-callable]
 
     client = KanidmClient(
         uri="https://untrusted-root.badssl.com/",

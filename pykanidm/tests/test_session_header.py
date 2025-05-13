@@ -3,7 +3,7 @@
 import pytest
 
 import aiohttp.client_exceptions
-from testutils import client
+from .testutils import client
 
 from kanidm import KanidmClient
 

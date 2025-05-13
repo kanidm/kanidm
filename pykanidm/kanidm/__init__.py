@@ -12,6 +12,7 @@ import ssl
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
+import aiohttp.client
 from pydantic import ValidationError
 import yarl
 
@@ -528,7 +529,7 @@ class KanidmClient:
         response: ClientResponse[IOauth2Rs] = await self.call_get(endpoint)
         if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get oauth2 resource server: {response.content}")
-        return RawOAuth2Rs(**response.data).as_oauth2_rs
+        return RawOAuth2Rs.model_validate(response.data).as_oauth2_rs
 
     async def oauth2_rs_secret_get(self, rs_name: str) -> str:
         """get an OAuth2 client secret"""
@@ -588,7 +589,7 @@ class KanidmClient:
         response: ClientResponse[IServiceAccount] = await self.call_get(endpoint)
         if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get service account: {response.content}")
-        return RawServiceAccount(**response.data).as_service_account
+        return RawServiceAccount.model_validate(response.data).as_service_account
 
     async def service_account_create(self, name: str, displayname: str) -> ClientResponse[None]:
         """Create a service account"""
@@ -675,7 +676,7 @@ class KanidmClient:
         response: ClientResponse[IGroup] = await self.call_get(endpoint)
         if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get group: {response.content}")
-        return RawGroup(**response.data).as_group
+        return RawGroup.model_validate(response.data).as_group
 
     async def group_create(self, name: str) -> ClientResponse[None]:
         """Create a group"""
@@ -720,7 +721,7 @@ class KanidmClient:
         response: ClientResponse[IPerson] = await self.call_get(endpoint)
         if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get person: {response.content}")
-        return RawPerson(**response.data).as_person
+        return RawPerson.model_validate(response.data).as_person
 
     async def person_account_create(self, name: str, displayname: str) -> ClientResponse[None]:
         """Create a person account"""

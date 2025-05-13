@@ -11,13 +11,13 @@ So far it includes:
 
 TODO: a lot of things.
 
-## Setting up your dev environment.
+## Setting up your dev environment
 
 Setting up a dev environment can be a little complex because of the mono-repo.
 
-1. Install poetry: `python -m pip install poetry`. This is what we use to manage the packages, and
+1. Install uv: `python -m pip install uv`. This is what we use to manage the packages, and
    allows you to set up virtual python environments easier.
-2. Build the base environment. From within the `pykanidm` directory, run: `poetry install` This'll
+2. Build the base environment. From within the `pykanidm` directory, run: `uv sync` This'll
    set up a virtual environment and install all the required packages (and development-related ones)
 3. Start editing!
 

@@ -7,7 +7,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 # pylint: disable=unused-import
-from testutils import client, client_configfile, MockResponse
+from .testutils import client, client_configfile, MockResponse
 
 from kanidm import KanidmClient
 from kanidm.exceptions import AuthCredFailed, AuthInitFailed
@@ -25,9 +25,11 @@ async def test_auth_init(client_configfile: KanidmClient) -> None:
     print("Starting client...")
     print(f"Doing auth_init for {client_configfile.config.username}")
 
-    if client_configfile.config.username is None:
-        pytest.skip("Can't run auth test without a username/password")
-    result = await client_configfile.auth_init(client_configfile.config.username)
+    username = client_configfile.config.username
+
+    if username is None:
+        raise pytest.skip("Can't run auth test without a username/password")  # type: ignore[call-non-callable]
+    result = await client_configfile.auth_init(username)
     print(f"{result=}")
     print(result.model_dump_json())
     assert result.sessionid
@@ -39,9 +41,11 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
     """tests the auth begin step"""
     print(f"Doing auth_init for {client_configfile.config.username}")
 
-    if client_configfile.config.username is None:
-        pytest.skip("Can't run auth test without a username/password")
-    result = await client_configfile.auth_init(client_configfile.config.username)
+    username = client_configfile.config.username
+
+    if username is None:
+        raise pytest.skip("Can't run auth test without a username/password")  # type: ignore[call-non-callable]
+    result = await client_configfile.auth_init(username)
     print(f"{result=}")
     print("Result dict:")
     print(result.model_dump_json())
@@ -60,7 +64,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
     retval = begin_result.data
 
     if retval is None:
-        raise pytest.fail("Failed to do begin_result")
+        raise pytest.fail("Failed to do begin_result")  # type: ignore[call-non-callable]
 
     retval["response"] = begin_result.model_dump()
 
@@ -72,7 +76,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
 async def test_authenticate_flow(client_configfile: KanidmClient) -> None:
     """tests the authenticate() flow"""
     if client_configfile.config.username is None or client_configfile.config.password is None:
-        pytest.skip("Can't run this without a username and password set in the config file")
+        pytest.skip("Can't run this without a username and password set in the config file")  # type: ignore[call-non-callable]
 
     client_configfile.config.auth_token = None
     print(f"Doing client.authenticate for {client_configfile.config.username}")
@@ -96,10 +100,10 @@ async def test_authenticate_anonymous(client_configfile: KanidmClient) -> None:
 async def test_authenticate_flow_fail(client_configfile: KanidmClient) -> None:
     """tests the authenticate() flow with a valid (hopefully) username and invalid password"""
     if not bool(os.getenv("RUN_SCARY_TESTS", None)):
-        pytest.skip(reason="Skipping because env var RUN_SCARY_TESTS isn't set")
+        pytest.skip("Skipping because env var RUN_SCARY_TESTS isn't set")  # type: ignore[call-non-callable]
     print("Starting client...")
     if client_configfile.config.uri is None or client_configfile.config.username is None or client_configfile.config.password is None:
-        pytest.skip("Please ensure you have a username, password and uri in the config")
+        pytest.skip("Please ensure you have a username, password and uri in the config")  # type: ignore[call-non-callable]
     print(f"Doing client.authenticate for {client_configfile.config.username}")
 
     client_configfile.config.auth_token = None

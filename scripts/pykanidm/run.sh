@@ -10,9 +10,9 @@ if [ ! -d ".venv" ]; then
     # shellcheck disable=SC1091
     source .venv/bin/activate
     pip install --upgrade pip
-    pip install poetry pytest ruff mypy black
+    pip install uv
     echo "Installing in virtualenv"
-    pip install -e pykanidm
+    pip install -e .
 fi
 
 # shellcheck disable=SC1091
