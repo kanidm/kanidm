@@ -1,3 +1,3 @@
 # rlm_python
 
-Kandim FreeRADIUS module.
+Kanidm FreeRADIUS module.
