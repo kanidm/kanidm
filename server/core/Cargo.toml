@@ -27,6 +27,7 @@ axum-htmx = { workspace = true }
 axum-extra = { workspace = true }
 axum-macros = { workspace = true }
 bytes = { workspace = true }
+cidr = { workspace = true, features = ["serde"] }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
 cron = { workspace = true }

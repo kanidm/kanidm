@@ -166,6 +166,7 @@ base64 = "^0.22.1"
 base64urlsafedata = "0.5.1"
 bitflags = "^2.8.0"
 bytes = "^1.9.0"
+cidr = "0.3.1"
 clap = { version = "4.5.37", features = ["derive", "env"] }
 clap_complete = "^4.5.42"
 # Forced by saffron/cron

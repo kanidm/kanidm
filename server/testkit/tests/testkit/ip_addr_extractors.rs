@@ -1,3 +1,4 @@
+use cidr::IpCidr;
 use kanidm_client::KanidmClient;
 use kanidm_proto::constants::X_FORWARDED_FOR;
 use kanidmd_core::config::HttpAddressInfo;
@@ -51,7 +52,7 @@ async fn dont_trust_xff_send_header(rsclient: &KanidmClient) {
 // =====================================================
 // *test where we do trust the x-forwarded-for header
 
-#[kanidmd_testkit::test(http_client_address_info = HttpAddressInfo::XForwardFor ( [DEFAULT_IP_ADDRESS].into() ))]
+#[kanidmd_testkit::test(http_client_address_info = HttpAddressInfo::XForwardFor ( [IpCidr::from(DEFAULT_IP_ADDRESS)].into() ))]
 async fn trust_xff_address_set(rsclient: &KanidmClient) {
     inner_test_trust_xff(rsclient).await;
 }
@@ -284,7 +285,7 @@ async fn proxy_v2_make_request(
     Ok(ip_res)
 }
 
-#[kanidmd_testkit::test(with_test_env = true, http_client_address_info = HttpAddressInfo::ProxyV2 ( [DEFAULT_IP_ADDRESS].into() ))]
+#[kanidmd_testkit::test(with_test_env = true, http_client_address_info = HttpAddressInfo::ProxyV2 ( [IpCidr::from(DEFAULT_IP_ADDRESS)].into() ))]
 async fn trust_proxy_v2_address_set(test_env: &AsyncTestEnvironment) {
     // Send with no header - with proxy v2, a header is ALWAYS required
     let proxy_hdr: [u8; 0] = [];
@@ -308,7 +309,7 @@ async fn trust_proxy_v2_address_set(test_env: &AsyncTestEnvironment) {
     assert_eq!(res, IpAddr::V4(Ipv4Addr::new(172, 24, 12, 118)));
 }
 
-#[kanidmd_testkit::test(with_test_env = true, http_client_address_info = HttpAddressInfo::ProxyV2 ( [ IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)) ].into() ))]
+#[kanidmd_testkit::test(with_test_env = true, http_client_address_info = HttpAddressInfo::ProxyV2 ( [ IpCidr::from(Ipv4Addr::new(10, 0, 0, 1)) ].into() ))]
 async fn trust_proxy_v2_untrusted(test_env: &AsyncTestEnvironment) {
     // Send with a valid header, but we aren't a trusted source.
     let proxy_hdr =

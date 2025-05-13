@@ -4,7 +4,7 @@
 //! These components should be "per server". Any "per domain" config should be in the system
 //! or domain entries that are able to be replicated.
 
-use hashbrown::HashSet;
+use cidr::IpCidr;
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
@@ -110,11 +110,11 @@ pub enum LdapAddressInfo {
     #[default]
     None,
     #[serde(rename = "proxy-v2")]
-    ProxyV2(HashSet<IpAddr>),
+    ProxyV2(Vec<IpCidr>),
 }
 
 impl LdapAddressInfo {
-    pub fn trusted_proxy_v2(&self) -> Option<HashSet<IpAddr>> {
+    pub fn trusted_proxy_v2(&self) -> Option<Vec<IpCidr>> {
         if let Self::ProxyV2(trusted) = self {
             Some(trusted.clone())
         } else {
@@ -139,7 +139,7 @@ impl Display for LdapAddressInfo {
 }
 
 pub(crate) enum AddressSet {
-    NonContiguousIpSet(HashSet<IpAddr>),
+    NonContiguousIpSet(Vec<IpCidr>),
     All,
 }
 
@@ -147,7 +147,9 @@ impl AddressSet {
     pub(crate) fn contains(&self, ip_addr: &IpAddr) -> bool {
         match self {
             Self::All => true,
-            Self::NonContiguousIpSet(range) => range.contains(ip_addr),
+            Self::NonContiguousIpSet(range) => {
+                range.iter().any(|ip_cidr| ip_cidr.contains(ip_addr))
+            }
         }
     }
 }
@@ -157,13 +159,13 @@ pub enum HttpAddressInfo {
     #[default]
     None,
     #[serde(rename = "x-forward-for")]
-    XForwardFor(HashSet<IpAddr>),
+    XForwardFor(Vec<IpCidr>),
     // IMPORTANT: This is undocumented, and only exists for backwards compat
     // with config v1 which has a boolean toggle for this option.
     #[serde(rename = "x-forward-for-all-source-trusted")]
     XForwardForAllSourcesTrusted,
     #[serde(rename = "proxy-v2")]
-    ProxyV2(HashSet<IpAddr>),
+    ProxyV2(Vec<IpCidr>),
 }
 
 impl HttpAddressInfo {
@@ -175,7 +177,7 @@ impl HttpAddressInfo {
         }
     }
 
-    pub(crate) fn trusted_proxy_v2(&self) -> Option<HashSet<IpAddr>> {
+    pub(crate) fn trusted_proxy_v2(&self) -> Option<Vec<IpCidr>> {
         if let Self::ProxyV2(trusted) = self {
             Some(trusted.clone())
         } else {
@@ -1168,5 +1170,34 @@ impl ConfigurationBuilder {
             integration_repl_config: None,
             integration_test_config: None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use cidr::{IpCidr, Ipv4Cidr, Ipv6Cidr};
+    use std::net::{Ipv4Addr, Ipv6Addr};
+
+    #[test]
+    fn assert_cidr_parsing_behaviour() {
+        // Assert that we can parse individual hosts, and ranges
+        let parsed_ip_cidr: IpCidr = serde_json::from_str("\"127.0.0.1\"").unwrap();
+        let expect_ip_cidr = IpCidr::from(Ipv4Addr::new(127, 0, 0, 1));
+        assert_eq!(parsed_ip_cidr, expect_ip_cidr);
+
+        let parsed_ip_cidr: IpCidr = serde_json::from_str("\"127.0.0.0/8\"").unwrap();
+        let expect_ip_cidr = IpCidr::from(Ipv4Cidr::new(Ipv4Addr::new(127, 0, 0, 0), 8).unwrap());
+        assert_eq!(parsed_ip_cidr, expect_ip_cidr);
+
+        // Same for ipv6
+        let parsed_ip_cidr: IpCidr = serde_json::from_str("\"2001:0db8::1\"").unwrap();
+        let expect_ip_cidr = IpCidr::from(Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 0x0001));
+        assert_eq!(parsed_ip_cidr, expect_ip_cidr);
+
+        let parsed_ip_cidr: IpCidr = serde_json::from_str("\"2001:0db8::/64\"").unwrap();
+        let expect_ip_cidr = IpCidr::from(
+            Ipv6Cidr::new(Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 0), 64).unwrap(),
+        );
+        assert_eq!(parsed_ip_cidr, expect_ip_cidr);
     }
 }

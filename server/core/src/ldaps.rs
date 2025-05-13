@@ -1,15 +1,15 @@
 use crate::actors::QueryServerReadV1;
 use crate::CoreAction;
+use cidr::IpCidr;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
 use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
-use hashbrown::HashSet;
 use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;
 use ldap3_proto::LdapCodec;
 use openssl::ssl::{Ssl, SslAcceptor};
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -122,10 +122,14 @@ async fn client_tls_accept(
     tls_acceptor: SslAcceptor,
     connection_addr: SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) {
     let enable_proxy_v2_hdr = trusted_proxy_v2_ips
-        .map(|trusted| trusted.contains(&connection_addr.ip()))
+        .map(|trusted| {
+            trusted
+                .iter()
+                .any(|ip_cidr| ip_cidr.contains(&connection_addr.ip()))
+        })
         .unwrap_or_default();
 
     let (stream, client_addr) = if enable_proxy_v2_hdr {
@@ -186,7 +190,7 @@ async fn ldap_tls_acceptor(
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
     mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) {
     loop {
         tokio::select! {
@@ -249,7 +253,7 @@ pub(crate) async fn create_ldap_server(
     qe_r_ref: &'static QueryServerReadV1,
     rx: broadcast::Receiver<CoreAction>,
     tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-    trusted_proxy_v2_ips: Option<HashSet<IpAddr>>,
+    trusted_proxy_v2_ips: Option<Vec<IpCidr>>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
     if address.starts_with(":::") {
         // takes :::xxxx to xxxx
