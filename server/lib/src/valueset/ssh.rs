@@ -257,7 +257,7 @@ mod tests {
     /// this is a test case for bad characters in SSH keys
     fn test_invalid_character() {
         let ecdsa = concat!("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEÀAAAIbmlzdHA1MjEAAACFBAGyIY7o3B",
-        //                             ^ note the À here
+        //                                                                      ^ note the À here
         "tOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81l",
         "zPrVSdrYEDldxH9+a86dBZhdm0è15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@a",
         "methyst");
@@ -277,5 +277,38 @@ mod tests {
                 format!("Invalid symbol 195, offset {}.", found_index - 20)
             ); // the offset is 31 because the string has a 20 character leading key type plus the space
         }
+    }
+
+    #[test]
+    /// this is a test case for bad characters in SSH keys
+    fn test_assert_comments() {
+        // Comment is okay.
+        let ecdsa = concat!("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3B",
+        "tOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81l",
+        "zPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@a",
+        "methyst");
+
+        let _ = SshPublicKey::from_string(ecdsa).unwrap();
+
+        // No comment is okay.
+        let ecdsa = concat!("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3B",
+        "tOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81l",
+        "zPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag==");
+
+        let _ = SshPublicKey::from_string(ecdsa).unwrap();
+
+        // No comment is okay (spaces to end of line)
+        let ecdsa = concat!("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3B",
+        "tOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81l",
+        "zPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag==     ");
+
+        let _ = SshPublicKey::from_string(ecdsa).unwrap();
+
+        // Comment may have spaces
+        let ecdsa = concat!("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3B",
+        "tOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81l",
+        "zPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag==  I'm a giraffe! ");
+
+        let _ = SshPublicKey::from_string(ecdsa).unwrap();
     }
 }
