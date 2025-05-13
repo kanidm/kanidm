@@ -40,7 +40,6 @@ cargo run --bin kanidmd --release server  &
 KANIDMD_PID=$!
 echo "Kanidm PID: ${KANIDMD_PID}"
 
-
 if [ "$(jobs -p | wc -l)" -eq 0 ]; then
     echo "Kanidmd failed to start!"
     exit 1
@@ -49,12 +48,18 @@ fi
 ATTEMPT=0
 
 KANIDM_CONFIG_FILE="./insecure_server.toml"
-KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
+if [ -f "${KANIDM_CONFIG_FILE}" ]; then
+    echo "Found config file ${KANIDM_CONFIG_FILE}"
+else
+    echo "Config file ${KANIDM_CONFIG_FILE} not found!"
+    exit 1
+fi
+KANIDM_URL="$(grep origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
 while true; do
-    echo "Waiting for the server to start... testing ${KANIDM_URL}"
-    curl --cacert "${KANIDM_CA_PATH}" -fs "${KANIDM_URL}/status" >/dev/null && break
+    echo "Waiting for the server to start... testing url '${KANIDM_URL}'"
+    curl --cacert "${KANIDM_CA_PATH}" -f "${KANIDM_URL}/status" >/dev/null && break
     sleep 2
     ATTEMPT="$((ATTEMPT + 1))"
     if [ "${ATTEMPT}" -gt 3 ]; then
