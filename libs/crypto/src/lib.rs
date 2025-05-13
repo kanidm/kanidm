@@ -52,7 +52,6 @@ const PBKDF2_KEY_LEN: usize = 32;
 const PBKDF2_MIN_NIST_KEY_LEN: usize = 32;
 const PBKDF2_SHA1_MIN_KEY_LEN: usize = 19;
 
-const DS_SHA_SALT_LEN: usize = 8;
 const DS_SHA1_HASH_LEN: usize = 20;
 const DS_SHA256_HASH_LEN: usize = 32;
 const DS_SHA512_HASH_LEN: usize = 64;
@@ -618,10 +617,8 @@ impl TryFrom<&str> for Password {
             .or_else(|| value.strip_prefix("{ssha}"))
         {
             let sh = general_purpose::STANDARD.decode(ds_ssha1).map_err(|_| ())?;
-            let (h, s) = sh.split_at(DS_SHA1_HASH_LEN);
-            if s.len() != DS_SHA_SALT_LEN {
-                return Err(());
-            }
+            let (h, s) = sh.split_at_checked(DS_SHA1_HASH_LEN).ok_or(())?;
+
             return Ok(Password {
                 material: Kdf::SSHA1(s.to_vec(), h.to_vec()),
             });
@@ -649,10 +646,8 @@ impl TryFrom<&str> for Password {
             let sh = general_purpose::STANDARD
                 .decode(ds_ssha256)
                 .map_err(|_| ())?;
-            let (h, s) = sh.split_at(DS_SHA256_HASH_LEN);
-            if s.len() != DS_SHA_SALT_LEN {
-                return Err(());
-            }
+            let (h, s) = sh.split_at_checked(DS_SHA256_HASH_LEN).ok_or(())?;
+
             return Ok(Password {
                 material: Kdf::SSHA256(s.to_vec(), h.to_vec()),
             });
@@ -680,10 +675,8 @@ impl TryFrom<&str> for Password {
             let sh = general_purpose::STANDARD
                 .decode(ds_ssha512)
                 .map_err(|_| ())?;
-            let (h, s) = sh.split_at(DS_SHA512_HASH_LEN);
-            if s.len() != DS_SHA_SALT_LEN {
-                return Err(());
-            }
+            let (h, s) = sh.split_at_checked(DS_SHA512_HASH_LEN).ok_or(())?;
+
             return Ok(Password {
                 material: Kdf::SSHA512(s.to_vec(), h.to_vec()),
             });
@@ -1404,9 +1397,15 @@ mod tests {
 
     #[test]
     fn test_password_from_ds_ssha512() {
+        // from #3615
+        let im_pw = "{SSHA512}SvpKVQPfDUw7DbVFLVdhFUj33qx2zwkCNyfdRUEvYTloJt15HDVfhHzx6HLaKFUPBOCa/6D8lDnrybYzW+xSQC2GXBvYpn3ScVEcC+oH20I=";
+        let _r = Password::try_from(im_pw).expect("Failed to parse");
+
+        // Valid hash to import
         let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
         let _r = Password::try_from(im_pw).expect("Failed to parse");
 
+        // allow lower case of the hash type
         let im_pw = "{ssha512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
