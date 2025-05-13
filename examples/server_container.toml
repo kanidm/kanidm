@@ -81,7 +81,7 @@ origin = "https://idm.example.com:8443"
 #   will often add a header such as "Forwarded" or
 #   "X-Forwarded-For". Some other proxies can use the PROXY
 #   protocol v2 header.
-#   This setting allows configuration of the range of trusted
+#   This setting allows configuration of the list of trusted
 #   IPs which can supply this header information, and which
 #   format the information is provided in.
 #   Defaults to "none" (no trusted sources)
@@ -94,7 +94,7 @@ origin = "https://idm.example.com:8443"
 #   LDAPS requests can be reverse proxied by a loadbalancer.
 #   To preserve the original IP of the caller, these systems
 #   can add a header such as the PROXY protocol v2 header.
-#   This setting allows configuration of the range of trusted
+#   This setting allows configuration of the list of trusted
 #   IPs which can supply this header information, and which
 #   format the information is provided in.
 #   Defaults to "none" (no trusted sources)
