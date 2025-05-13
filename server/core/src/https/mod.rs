@@ -29,10 +29,10 @@ use axum::{
     Router,
 };
 use axum_extra::extract::cookie::CookieJar;
+use cidr::IpCidr;
 use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
 use futures::pin_mut;
 use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
-use hashbrown::HashSet;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
@@ -43,7 +43,6 @@ use serde::de::DeserializeOwned;
 use sketching::*;
 use std::fmt::Write;
 use std::io::ErrorKind;
-use std::net::IpAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -363,7 +362,7 @@ async fn server_tls_loop(
     mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
     mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) {
     pin_mut!(listener);
 
@@ -404,7 +403,7 @@ async fn server_plaintext_loop(
     listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     mut rx: broadcast::Receiver<CoreAction>,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) {
     pin_mut!(listener);
 
@@ -438,7 +437,7 @@ pub(crate) async fn handle_conn(
     stream: TcpStream,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     connection_addr: SocketAddr,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) -> Result<(), std::io::Error> {
     let (stream, client_addr) =
         process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
@@ -462,7 +461,7 @@ pub(crate) async fn handle_tls_conn(
     stream: TcpStream,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     connection_addr: SocketAddr,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) -> Result<(), std::io::Error> {
     let (stream, client_addr) =
         process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
@@ -531,10 +530,14 @@ pub(crate) async fn handle_tls_conn(
 async fn process_client_addr(
     stream: TcpStream,
     connection_addr: SocketAddr,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) -> Result<(TcpStream, SocketAddr), std::io::Error> {
     let enable_proxy_v2_hdr = trusted_proxy_v2_ips
-        .map(|trusted| trusted.contains(&connection_addr.ip()))
+        .map(|trusted| {
+            trusted
+                .iter()
+                .any(|ip_cidr| ip_cidr.contains(&connection_addr.ip()))
+        })
         .unwrap_or_default();
 
     let (stream, client_addr) = if enable_proxy_v2_hdr {
