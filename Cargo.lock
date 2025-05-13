@@ -696,6 +696,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cidr"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd1b64030216239a2e7c364b13cd96a2097ebf0dfe5025f2dedee14a23f2ab60"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "clang-sys"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3274,6 +3283,7 @@ dependencies = [
  "axum-macros",
  "bytes",
  "chrono",
+ "cidr",
  "compact_jwt",
  "cron",
  "filetime",
@@ -3383,6 +3393,7 @@ dependencies = [
 name = "kanidmd_testkit"
 version = "1.7.0-dev"
 dependencies = [
+ "cidr",
  "compact_jwt",
  "escargot",
  "fantoccini",
