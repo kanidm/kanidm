@@ -170,7 +170,7 @@ codespell:
 	codespell -c \
 	-D .codespell_dictionary \
 	--ignore-words .codespell_ignore \
-	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
+	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/uv.lock' \
 	--skip='./book/*.js' \
 	--skip='./book/book/*' \
 	--skip='./book/src/images/*' \
@@ -184,21 +184,17 @@ codespell:
 .PHONY: test/pykanidm/pytest
 test/pykanidm/pytest: ## python library testing
 	cd pykanidm && \
-	poetry install && \
-	poetry run pytest -vv
+	uv run pytest -vv
 
 .PHONY: test/pykanidm/lint
 test/pykanidm/lint: ## python library linting
 	cd pykanidm && \
-	poetry install && \
-	poetry run ruff check tests kanidm
+	uv run ruff check tests kanidm
 
 .PHONY: test/pykanidm/mypy
 test/pykanidm/mypy: ## python library type checking
 	cd pykanidm && \
-	poetry install && \
-	echo "Running mypy" && \
-	poetry run mypy --strict tests kanidm
+	uv run mypy --strict tests kanidm
 
 .PHONY: test/pykanidm
 test/pykanidm: ## run the kanidm python module test suite (mypy/lint/pytest)
@@ -261,15 +257,13 @@ clean_book:
 docs/pykanidm/build: ## Build the mkdocs
 docs/pykanidm/build:
 	cd pykanidm && \
-	poetry install && \
-	poetry run mkdocs build
+	uv run mkdocs build
 
 .PHONY: docs/pykanidm/serve
 docs/pykanidm/serve: ## Run the local mkdocs server
 docs/pykanidm/serve:
 	cd pykanidm && \
-	poetry install && \
-	poetry run mkdocs serve
+	uv run mkdocs serve
 
 ########################################################################
 

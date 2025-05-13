@@ -16,7 +16,7 @@ async def client() -> KanidmClient:
             config_file=Path(__file__).parent.parent.parent / "examples/config_localhost",
         )
     except FileNotFoundError as error:
-        raise pytest.skip(f"File not found: {error}")
+        pytest.skip(f"File not found: {error}")  # type: ignore[call-non-callable]
     return client
 
 
@@ -32,7 +32,7 @@ async def test_oauth2_rs_list(client: KanidmClient) -> None:
     password = os.getenv("KANIDM_PASSWORD")
     if password is None:
         print("No KANIDM_PASSWORD env var set for testing")
-        raise pytest.skip("No KANIDM_PASSWORD env var set for testing")
+        pytest.skip("No KANIDM_PASSWORD env var set for testing")  # type: ignore[call-non-callable]
 
     auth_resp = await client.authenticate_password(username, password, update_internal_auth_token=True)
     if auth_resp.state is None:

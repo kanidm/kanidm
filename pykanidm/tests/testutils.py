@@ -2,30 +2,30 @@
 
 from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 from kanidm import KanidmClient
 
 
 @pytest.fixture(scope="function")
-async def client() -> KanidmClient:
+async def client() -> Optional[KanidmClient]:
     """sets up a client with a basic thing"""
     try:
         basicConfig(level=DEBUG)
 
         return KanidmClient(uri="https://idm.example.com")
     except FileNotFoundError:
-        raise pytest.skip("Couldn't find config file...")
+        pytest.skip("Couldn't find config file...")  # type: ignore[call-non-callable]
 
 
 @pytest.fixture(scope="function")
-async def client_configfile() -> KanidmClient:
+async def client_configfile() -> Optional[KanidmClient]:
     """sets up a client from a config file"""
     try:
         return KanidmClient(config_file=Path("~/.config/kanidm"))
     except FileNotFoundError:
-        raise pytest.skip("Couldn't find config file...")
+        pytest.skip("Couldn't find config file...")  # type: ignore[call-non-callable]
 
 
 class MockResponse:
