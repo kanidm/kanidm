@@ -106,4 +106,4 @@ HEALTHCHECK \
     --retries=3 \
     CMD [ "/sbin/kanidmd", "healthcheck", "-c", "/data/server.toml"]
 
-CMD [ "/sbin/kanidmd", "server", "-c", "/data/server.toml"]
+CMD [ "/sbin/kanidmd", "server"]
