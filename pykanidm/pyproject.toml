@@ -1,18 +1,21 @@
-[tool.poetry]
+
+[project]
+authors = [{ name = "James Hodgkinson", email = "james@terminaloutcomes.com" }]
+license = { text = "MPL-2.0" }
+requires-python = "<4.0,>=3.9"
+dependencies = [
+    "toml>=0.10.2",
+    "pydantic>=2.0.0",
+    "aiohttp>=3.8.1",
+    "Authlib>=1.2.0",
+]
 name = "kanidm"
-version = "1.0.1"
 description = "Kanidm client library"
-license = "MPL-2.0"
-
-authors = ["James Hodgkinson <james@terminaloutcomes.com>"]
-
+version = "1.2.0"
 readme = "README.md"
-repository = "https://github.com/kanidm/kanidm"
-homepage = "https://kanidm.com/"
-
-packages = [{ include = "kanidm" }]
 
 keywords = ["kanidm", "idm", "api"]
+
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
@@ -20,40 +23,47 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Operating System :: OS Independent",
 ]
-[tool.poetry.dependencies]
-python = "^3.9"
-toml = "^0.10.2"
-pydantic = ">=2.0.0,<3.0.0"
-aiohttp = "^3.8.1"
-Authlib = "^1.2.0"
 
+[project.urls]
+homepage = "https://kanidm.com/"
+repository = "https://github.com/kanidm/kanidm"
 
-[tool.poetry.group.dev.dependencies]
-ruff = ">=0.5.1,<0.11.10"
-pytest = "^8.3.4"
-mypy = "^1.14.1"
-types-requests = "^2.32.0.20241016"
-pytest-aiohttp = "^1.1.0"
-pytest-mock = "^3.14.0"
-types-toml = "^0.10.8.20240310"
-pylint-pydantic = "^0.3.5"
-coverage = "^7.6.10"
-mkdocs = "^1.6.1"
-mkdocs-material = "^9.6.1"
-mkdocstrings = ">=0.27,<0.30"
-mkdocstrings-python = "^1.13.0"
-pook = "^2.1.3"
+[dependency-groups]
+dev = [
+    "ruff>=0.5.1",
+    "pytest>=8.3.4",
+    "mypy>=1.14.1,<2.0.0",
+    "types-requests>=2.32.0.20241016",
+    "pytest-aiohttp>=1.1.0",
+    "pytest-mock>=3.14.0",
+    "types-toml>=0.10.8.20240310",
+    "pylint-pydantic>=0.3.5",
+    "coverage>=7.6.10",
+    "pook>=2.1.3",
+    "ty>=0.0.0a8",
+]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.13",
+    "mkdocstrings>=0.29.1",
+    "mkdocstrings-python>=1.16.10",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
 
-[tool.pylint.MASTER]
-max-line-length = 150
-disable = "W0511,raise-missing-from"
-extension-pkg-allow-list = "pydantic"
-# https://github.com/samuelcolvin/pydantic/issues/1961#issuecomment-759522422
-load-plugins = "pylint_pydantic,pylint_pytest"
+
+[tool.pdm.build]
+includes = ["kanidm"]
+
+
+# [tool.pylint.MASTER]
+# max-line-length = 150
+# disable = "W0511,raise-missing-from"
+# extension-pkg-allow-list = "pydantic"
+# # https://github.com/samuelcolvin/pydantic/issues/1961#issuecomment-759522422
+# load-plugins = "pylint_pydantic,pylint_pytest"
 
 [tool.ruff]
 line-length = 150
@@ -64,9 +74,9 @@ line-length = 150
     "F811", # pytest fixtures
 ]
 
-
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "network: Tests that require network access and a working backend server",
     "interactive: Requires specific config and a working backend server",
@@ -77,4 +87,6 @@ source = ["kanidm"]
 omit = ["tests"]
 
 [tool.mypy]
+strict = true
 plugins = "pydantic.mypy"
+disable_error_code = "unused-ignore"

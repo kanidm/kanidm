@@ -69,7 +69,7 @@ def test_tokenstuff() -> None:
     info = token_store.token_info("idm_admin")
     print(f"Parsed token: {info}")
     if info is None:
-        pytest.skip()
+        pytest.skip("No token!")  # type: ignore[call-non-callable]
     print(info.expiry_datetime)
     assert (
         datetime(

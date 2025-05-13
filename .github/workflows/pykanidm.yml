@@ -10,32 +10,30 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  tests:
+  python_tests:
     runs-on: ubuntu-latest
+    env:
+      UV_LINK_MODE: "copy"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
-      - name: Install poetry
-        run: pipx install poetry
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'poetry'
+      - name: Install uv
+        run: pip install --root-user-action=ignore  uv
       - name: Running mypy
         run: |
           cd pykanidm
-          python --version
-          poetry install
-          poetry run mypy --strict kanidm tests
+          uv run mypy --strict kanidm tests
+          uv run ty check
       - name: Running Linting
         run: |
           cd pykanidm
-          poetry install
-          poetry run ruff check kanidm tests
+          uv run ruff check kanidm tests
       - name: Running pytest
         run: |
           cd pykanidm
-          poetry install
-          poetry run pytest -v -m 'not network'
+          uv run pytest -v -m 'not network'
