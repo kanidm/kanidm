@@ -68,7 +68,9 @@ impl CredImport {
                     } else {
                         im_pw.len() - 1
                     };
-                    let hint = im_pw.split_at(len).0;
+                    let hint = im_pw.split_at_checked(len)
+                        .map(|(a, _)| a)
+                        .unwrap_or("CORRUPT");
                     let id = e.get_display_id();
 
                     error!(%hint, entry_id = %id, "{} was unable to convert hash format", Attribute::PasswordImport);
@@ -140,7 +142,9 @@ impl CredImport {
                     } else {
                         im_pw.len() - 1
                     };
-                    let hint = im_pw.split_at(len).0;
+                    let hint = im_pw.split_at_checked(len)
+                        .map(|(a, _)| a)
+                        .unwrap_or("CORRUPT");
                     let id = e.get_display_id();
 
                     error!(%hint, entry_id = %id, "{} was unable to convert hash format", Attribute::UnixPasswordImport);
