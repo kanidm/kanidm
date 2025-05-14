@@ -53,7 +53,6 @@ const PBKDF2_KEY_LEN: usize = 32;
 const PBKDF2_MIN_NIST_KEY_LEN: usize = 32;
 const PBKDF2_SHA1_MIN_KEY_LEN: usize = 19;
 
-const DS_SHA_SALT_LEN: usize = 8;
 const DS_SHA1_HASH_LEN: usize = 20;
 const DS_SHA256_HASH_LEN: usize = 32;
 const DS_SHA512_HASH_LEN: usize = 64;
@@ -784,10 +783,10 @@ impl TryFrom<&str> for Password {
                 }
                 "ssha" => {
                     let sh = general_purpose::STANDARD.decode(hash_value)?;
-                    let (h, s) = sh.split_at(DS_SHA1_HASH_LEN);
-                    if s.len() != DS_SHA_SALT_LEN {
-                        return Err(PasswordError::InvalidSaltLength);
-                    }
+                    let (h, s) = sh
+                        .split_at_checked(DS_SHA1_HASH_LEN)
+                        .ok_or(PasswordError::InvalidLength)?;
+
                     Ok(Password {
                         material: Kdf::SSHA1(s.to_vec(), h.to_vec()),
                     })
@@ -803,10 +802,9 @@ impl TryFrom<&str> for Password {
                 }
                 "ssha256" => {
                     let sh = general_purpose::STANDARD.decode(hash_value)?;
-                    let (h, s) = sh.split_at(DS_SHA256_HASH_LEN);
-                    if s.len() != DS_SHA_SALT_LEN {
-                        return Err(PasswordError::InvalidSaltLength);
-                    }
+                    let (h, s) = sh
+                        .split_at_checked(DS_SHA256_HASH_LEN)
+                        .ok_or(PasswordError::InvalidLength)?;
                     Ok(Password {
                         material: Kdf::SSHA256(s.to_vec(), h.to_vec()),
                     })
@@ -822,10 +820,12 @@ impl TryFrom<&str> for Password {
                 }
                 "ssha512" => {
                     let sh = general_purpose::STANDARD.decode(hash_value)?;
-                    let (h, s) = sh.split_at(DS_SHA512_HASH_LEN);
-                    if s.len() != DS_SHA_SALT_LEN {
+                    if sh.len() <= DS_SHA512_HASH_LEN {
                         return Err(PasswordError::InvalidSaltLength);
                     }
+                    let (h, s) = sh
+                        .split_at_checked(DS_SHA512_HASH_LEN)
+                        .ok_or(PasswordError::InvalidLength)?;
                     Ok(Password {
                         material: Kdf::SSHA512(s.to_vec(), h.to_vec()),
                     })
