@@ -38,8 +38,10 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tokio::net::UnixStream;
 use tokio::sync::broadcast;
+use tokio::sync::watch;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
+use tracing::instrument;
 use walkdir::WalkDir;
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]
@@ -277,13 +279,40 @@ fn create_home_directory(
     Ok(())
 }
 
+async fn shadow_reload_task(
+    shadow_data_watch_tx: watch::Sender<EtcDb>,
+    mut shadow_broadcast_rx: broadcast::Receiver<bool>,
+) {
+    debug!("shadow reload task has started ...");
+
+    while shadow_broadcast_rx.recv().await.is_ok() {
+        match process_etc_passwd_group().await {
+            Ok(etc_db) => {
+                shadow_data_watch_tx.send_replace(etc_db);
+                debug!("shadow reload task sent");
+            }
+            Err(()) => {
+                error!("Unable to process etc db");
+                continue;
+            }
+        }
+    }
+
+    debug!("shadow reload task has stopped");
+}
+
 async fn handle_tasks(
     stream: UnixStream,
     ctl_broadcast_rx: &mut broadcast::Receiver<bool>,
-    shadow_broadcast_rx: &mut broadcast::Receiver<bool>,
+    shadow_data_watch_rx: &mut watch::Receiver<EtcDb>,
     cfg: &UnixdConfig,
 ) {
     let mut reqs = Framed::new(stream, TaskCodec::new());
+
+    debug!("task handler has started ...");
+
+    // Immediately trigger that we should reload the shadow files for the new connected handler
+    shadow_data_watch_rx.mark_changed();
 
     loop {
         tokio::select! {
@@ -322,21 +351,19 @@ async fn handle_tasks(
                     }
                 }
             }
-            _ = shadow_broadcast_rx.recv() => {
+            Ok(_) = shadow_data_watch_rx.changed() => {
+                debug!("Received shadow reload event.");
+                let etc_db: EtcDb = {
+                    let etc_db_ref = shadow_data_watch_rx.borrow_and_update();
+                    (*etc_db_ref).clone()
+                };
                 // process etc shadow and send it here.
-                match process_etc_passwd_group().await {
-                    Ok(etc_db) => {
-                        let resp = TaskResponse::NotifyShadowChange(etc_db);
-                        if let Err(err) = reqs.send(resp).await {
-                            error!(?err, "Unable to communicate to kanidm unixd");
-                            break;
-                        }
-                    }
-                    Err(()) => {
-                        error!("Unable to process etc db");
-                        continue
-                    }
+                let resp = TaskResponse::NotifyShadowChange(etc_db);
+                if let Err(err) = reqs.send(resp).await {
+                    error!(?err, "Unable to communicate to kanidm unixd");
+                    break;
                 }
+                debug!("Shadow reload OK!");
             }
         }
     }
@@ -344,6 +371,7 @@ async fn handle_tasks(
     info!("Disconnected from kanidm_unixd ...");
 }
 
+#[instrument(level = "debug", skip_all)]
 async fn process_etc_passwd_group() -> Result<EtcDb, ()> {
     let mut file = File::open("/etc/passwd").await.map_err(|err| {
         error!(?err);
@@ -398,7 +426,7 @@ fn setup_shadow_inotify_watcher(
     shadow_broadcast_tx: broadcast::Sender<bool>,
 ) -> Result<Debouncer<RecommendedWatcher, RecommendedCache>, ExitCode> {
     let watcher = new_debouncer(
-        Duration::from_secs(1),
+        Duration::from_secs(5),
         None,
         move |event: Result<Vec<DebouncedEvent>, _>| {
             let array_of_events = match event {
@@ -518,12 +546,30 @@ async fn main() -> ExitCode {
 
             // This is to broadcast when we need to reload the shadow
             // files.
-            let (shadow_broadcast_tx, mut shadow_broadcast_rx) = broadcast::channel(4);
+            let (shadow_broadcast_tx, shadow_broadcast_rx) = broadcast::channel(4);
 
             let watcher = match setup_shadow_inotify_watcher(shadow_broadcast_tx.clone()) {
                 Ok(w) => w,
                 Err(exit) => return exit,
             };
+
+            // Setup the etcdb watch
+            let etc_db = match process_etc_passwd_group().await {
+                Ok(etc_db) => etc_db,
+                Err(err) => {
+                    warn!(?err, "unable to process /etc/passwd and related files.");
+                    // Return an empty set instead.
+                    EtcDb::default()
+                }
+            };
+
+            let (shadow_data_watch_tx, mut shadow_data_watch_rx) = watch::channel(etc_db);
+
+            let _shadow_task = tokio::spawn(async move {
+                shadow_reload_task(
+                    shadow_data_watch_tx, shadow_broadcast_rx
+                ).await
+            });
 
             let server = tokio::spawn(async move {
                 loop {
@@ -538,12 +584,9 @@ async fn main() -> ExitCode {
                                 Ok(stream) => {
                                     info!("Found kanidm_unixd, waiting for tasks ...");
 
-                                    // Immediately trigger that we should reload the shadow files
-                                    let _ = shadow_broadcast_tx.send(true);
-
                                     // Yep! Now let the main handler do it's job.
                                     // If it returns (dc, etc, then we loop and try again).
-                                    handle_tasks(stream, &mut d_broadcast_rx, &mut shadow_broadcast_rx, &cfg).await;
+                                    handle_tasks(stream, &mut d_broadcast_rx, &mut shadow_data_watch_rx, &cfg).await;
                                     continue;
                                 }
                                 Err(e) => {
