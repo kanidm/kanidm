@@ -3,18 +3,15 @@
 
 [Unit]
 Description=Kanidm Local Tasks
-After=chronyd.service ntpd.service network-online.target kanidm-unixd.service
-Wants=kanidm-unixd.service
+After=chronyd.service ntpd.service network-online.target suspend.target kanidm-unixd.service
+# This prevents starting unixd-tasks before unixd is running and
+# has created the socket necessary for communication.
+ConditionPathExists=/var/run/kanidm-unixd/task_sock
 
 [Service]
 User=root
 Type=notify
 ExecStart=/usr/sbin/kanidm_unixd_tasks
-
-# because kanidm-unixd might have failed for some reason but we need to try again later
-Restart=always
-RestartSec=30
-
 
 CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
 # SystemCallFilter=@aio @basic-io @chown @file-system @io-event @network-io @sync

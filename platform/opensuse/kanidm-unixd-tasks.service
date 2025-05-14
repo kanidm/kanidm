@@ -4,7 +4,9 @@
 [Unit]
 Description=Kanidm Local Tasks
 After=chronyd.service ntpd.service network-online.target suspend.target kanidm-unixd.service
-Wants=kanidm-unixd.service
+# This prevents starting unixd-tasks before unixd is running and
+# has created the socket necessary for communication.
+ConditionPathExists=/var/run/kanidm-unixd/task_sock
 
 [Service]
 User=root
