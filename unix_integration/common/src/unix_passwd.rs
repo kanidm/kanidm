@@ -7,14 +7,14 @@ use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct EtcDb {
     pub users: Vec<EtcUser>,
     pub shadow: Vec<EtcShadow>,
     pub groups: Vec<EtcGroup>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct EtcUser {
     pub name: String,
     pub password: String,
@@ -46,7 +46,7 @@ pub fn read_etc_passwd_file<P: AsRef<Path>>(path: P) -> Result<Vec<EtcUser>, Uni
     parse_etc_passwd(contents.as_slice()).map_err(|_| UnixIntegrationError)
 }
 
-#[derive(PartialEq, Default)]
+#[derive(PartialEq, Default, Clone)]
 pub enum CryptPw {
     Sha256(String),
     Sha512(String),
@@ -102,7 +102,7 @@ impl CryptPw {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Default, Clone)]
 pub struct EtcShadow {
     pub name: String,
     #[serde_as(as = "serde_with::DisplayFromStr")]
@@ -153,7 +153,7 @@ pub fn read_etc_shadow_file<P: AsRef<Path>>(
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct EtcGroup {
     pub name: String,
     pub password: String,
