@@ -311,6 +311,9 @@ async fn handle_tasks(
 
     debug!("task handler has started ...");
 
+    // Immediately trigger that we should reload the shadow files for the new connected handler
+    shadow_data_watch_rx.mark_changed();
+
     loop {
         tokio::select! {
             _ = ctl_broadcast_rx.recv() => {
@@ -568,7 +571,6 @@ async fn main() -> ExitCode {
                 )
             });
 
-
             let server = tokio::spawn(async move {
                 loop {
                     info!("Attempting to connect to kanidm_unixd ...");
@@ -581,11 +583,6 @@ async fn main() -> ExitCode {
                             match connect_res {
                                 Ok(stream) => {
                                     info!("Found kanidm_unixd, waiting for tasks ...");
-
-                                    // Immediately trigger that we should reload the shadow files
-                                    let _ = shadow_broadcast_tx.send(true);
-
-                                    debug!("Initial notify of shadow reload sent to {} listeners", shadow_broadcast_tx.receiver_count());
 
                                     // Yep! Now let the main handler do it's job.
                                     // If it returns (dc, etc, then we loop and try again).
