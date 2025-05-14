@@ -740,6 +740,14 @@ pub static ref SCHEMA_ATTR_APPLICATION_PASSWORD_DL8: SchemaAttribute = SchemaAtt
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_APPLICATION_URL: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_APPLICATION_URL,
+    name: Attribute::ApplicationUrl,
+    description: "The URL of an external application".to_string(),
+    syntax: SyntaxType::Url,
+    ..Default::default()
+};
+
 // === classes ===
 pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
@@ -1104,13 +1112,20 @@ pub static ref SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-pub static ref SCHEMA_CLASS_APPLICATION_DL8: SchemaClass = SchemaClass {
+pub static ref SCHEMA_CLASS_APPLICATION: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_APPLICATION,
     name: EntryClass::Application.into(),
 
     description: "The class representing an application".to_string(),
-    systemmust: vec![Attribute::Name, Attribute::LinkedGroup],
-    systemmay: vec![Attribute::Description],
+    systemmust: vec![Attribute::LinkedGroup],
+    systemmay: vec![
+        Attribute::ApplicationUrl,
+    ],
+    // I think this could change before release - I can see a world
+    // whe we may want an oauth2 application to have application passwords,
+    // or for this to be it's own thing. But service accounts also don't
+    // quite do enough, they have api tokens, but that's all we kind
+    // of want from them?
     systemsupplements: vec![EntryClass::ServiceAccount.into()],
     ..Default::default()
 };
