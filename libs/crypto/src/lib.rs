@@ -523,7 +523,7 @@ macro_rules! ab64_to_b64 {
     }};
 }
 
-/// django passwords look like `algo$salt$hash`
+/// Django passwords look like `algo$salt$hash`
 fn parse_django_password(value: &str) -> Result<Password, PasswordError> {
     let django_pbkdf: Vec<&str> = value.split('$').collect();
     if django_pbkdf.len() != 4 {
@@ -545,33 +545,19 @@ fn parse_django_password(value: &str) -> Result<Password, PasswordError> {
     }
 }
 
-fn parse_ipanthash(value: &str) -> Result<Password, PasswordError> {
-    let nt_md4 = match value.split_once(' ') {
-        Some((_, v)) => v,
-        None => {
-            return Err(PasswordError::InvalidFormat);
-        }
-    };
-
+fn parse_ipanthash(hash_value: &str) -> Result<Password, PasswordError> {
     // Great work.
     let h = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(nt_md4)
-        .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(nt_md4))?;
+        .decode(hash_value)
+        .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(hash_value))?;
 
     Ok(Password {
         material: Kdf::NT_MD4(h),
     })
 }
 
-fn parse_sambantpassword(value: &str) -> Result<Password, PasswordError> {
-    let nt_md4 = match value.split_once(' ') {
-        Some((_, v)) => v,
-        None => {
-            return Err(PasswordError::InvalidFormat);
-        }
-    };
-
-    let h = hex::decode(nt_md4).map_err(|_| PasswordError::ParsingFailed)?;
+fn parse_sambantpassword(hash_value: &str) -> Result<Password, PasswordError> {
+    let h = hex::decode(hash_value).map_err(|_| PasswordError::ParsingFailed)?;
     Ok(Password {
         material: Kdf::NT_MD4(h),
     })
@@ -745,10 +731,10 @@ impl TryFrom<&str> for Password {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if value.starts_with("pbkdf2_sha256$") {
             parse_django_password(value)
-        } else if value.starts_with("ipaNTHash: ") {
-            parse_ipanthash(value)
-        } else if value.starts_with("sambaNTPassword: ") {
-            parse_sambantpassword(value)
+        } else if let Some(hash_value) = value.strip_prefix("ipaNTHash: ") {
+            parse_ipanthash(hash_value)
+        } else if let Some(hash_value) = value.strip_prefix("sambaNTPassword: ") {
+            parse_sambantpassword(hash_value)
         } else if value.starts_with("{") {
             // Test 389ds/openldap formats. Shout outs openldap which sometimes makes these
             // lowercase, so we're making them all lowercase!
