@@ -285,7 +285,7 @@ async fn shadow_reload_task(
 ) {
     debug!("shadow reload task has started ...");
 
-    while let Ok(_) = shadow_broadcast_rx.recv().await {
+    while shadow_broadcast_rx.recv().await.is_ok() {
         match process_etc_passwd_group().await {
             Ok(etc_db) => {
                 shadow_data_watch_tx.send_replace(etc_db);
@@ -568,7 +568,7 @@ async fn main() -> ExitCode {
             let _shadow_task = tokio::spawn(async move {
                 shadow_reload_task(
                     shadow_data_watch_tx, shadow_broadcast_rx
-                )
+                ).await
             });
 
             let server = tokio::spawn(async move {
