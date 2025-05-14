@@ -402,14 +402,14 @@ enum Kdf {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PasswordError {
-    InvalidLength,
-    InvalidFormat,
     Base64Decoding,
+    InvalidFormat,
     InvalidKeyLength,
-    ParsingFailed,
-    NoMatchingDecoder,
+    InvalidLength,
     InvalidSaltLength,
     NoMatchingAlgorithm(String),
+    NoMatchingDecoder,
+    ParsingFailed,
 }
 
 impl From<ParseIntError> for PasswordError {
