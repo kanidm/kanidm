@@ -9,8 +9,9 @@ Wants=nss-user-lookup.target
 # While it seems confusing, we need to be after nscd.service so that the
 # Conflicts will trigger and then automatically stop it.
 Conflicts=nscd.service
-# Upholding ensures that unixd-tasks is not only started but kept running.
-# This allows for a repeatable & fast way of starting unixd-tasks at the right time.
+# `Upholds` like a `Wants` directive ensures that unixd-tasks is started but also 
+# ensures it's kept running. This allows for a repeatable & fast way of starting 
+# unixd-tasks at the right time.
 Upholds=kanidm-unixd-tasks.service
 
 [Service]
