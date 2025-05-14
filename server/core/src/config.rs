@@ -21,17 +21,19 @@ use url::Url;
 use crate::repl::config::ReplicationConfiguration;
 
 #[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum VersionDetection {
-    Version(Version),
-    Legacy,
+struct VersionDetection {
+    #[serde(default)]
+    version: Version,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(tag = "version")]
+#[derive(Debug, Deserialize, Default)]
+// #[serde(tag = "version")]
 pub enum Version {
     #[serde(rename = "2")]
     V2,
+
+    #[default]
+    Legacy,
 }
 
 // Allowed as the large enum is only short lived at startup to the true config
@@ -303,8 +305,9 @@ impl ServerConfigUntagged {
         })?;
 
         // First, can we detect the config version?
-        let config_version =
-            toml::from_str::<VersionDetection>(contents.as_str()).map_err(|err| {
+        let config_version = toml::from_str::<VersionDetection>(contents.as_str())
+            .map(|vd| vd.version)
+            .map_err(|err| {
                 eprintln!(
                     "Unable to parse config version from '{:?}': {:?}",
                     config_path.as_ref(),
@@ -314,11 +317,9 @@ impl ServerConfigUntagged {
             })?;
 
         match config_version {
-            VersionDetection::Version(Version::V2) => {
-                toml::from_str::<ServerConfigV2>(contents.as_str())
-                    .map(|values| ServerConfigUntagged::Version(ServerConfigVersion::V2 { values }))
-            }
-            VersionDetection::Legacy => {
+            Version::V2 => toml::from_str::<ServerConfigV2>(contents.as_str())
+                .map(|values| ServerConfigUntagged::Version(ServerConfigVersion::V2 { values })),
+            Version::Legacy => {
                 toml::from_str::<ServerConfig>(contents.as_str()).map(ServerConfigUntagged::Legacy)
             }
         }
