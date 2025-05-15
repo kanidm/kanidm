@@ -591,7 +591,7 @@ pub trait SchemaTransaction {
                 a_schema.replicated.into() && !a_schema.phantom
             }
             None => {
-                warn!(
+                debug!(
                     "Attribute {} was not found in schema during replication request",
                     attr
                 );
