@@ -643,19 +643,12 @@ pub fn cert_generate_core(config: &Configuration) {
         return;
     }
 
-    let origin = match Url::parse(&config.origin) {
-        Ok(url) => url,
-        Err(e) => {
-            error!(err = ?e, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", config.origin);
+    let origin_domain = match config.origin.domain() {
+        Some(val) => val,
+        None => {
+            error!("origin does not contain a valid domain");
             std::process::exit(1);
         }
-    };
-
-    let origin_domain = if let Some(d) = origin.domain() {
-        d
-    } else {
-        error!("origin does not contain a valid domain");
-        std::process::exit(1);
     };
 
     let cert_root = match tls_key_path.parent() {

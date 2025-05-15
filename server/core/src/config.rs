@@ -229,7 +229,7 @@ pub struct ServerConfig {
     domain: Option<String>,
     /// *REQUIRED* - The user-facing HTTPS URL for this server, eg <https://idm.example.com>
     // TODO  -this should be URL
-    origin: Option<String>,
+    origin: Option<Url>,
     /// File path of the database file
     db_path: Option<PathBuf>,
     /// The filesystem type, either "zfs" or "generic". Defaults to "generic" if unset. I you change this, run a database vacuum.
@@ -340,7 +340,7 @@ pub struct ServerConfigV2 {
     #[allow(dead_code)]
     version: String,
     domain: Option<String>,
-    origin: Option<String>,
+    origin: Option<Url>,
     db_path: Option<PathBuf>,
     db_fs_type: Option<kanidm_proto::internal::FsType>,
     tls_chain: Option<PathBuf>,
@@ -374,7 +374,7 @@ pub struct CliConfig {
 #[derive(Default)]
 pub struct EnvironmentConfig {
     domain: Option<String>,
-    origin: Option<String>,
+    origin: Option<Url>,
     db_path: Option<PathBuf>,
     tls_chain: Option<PathBuf>,
     tls_key: Option<PathBuf>,
@@ -424,7 +424,9 @@ impl EnvironmentConfig {
                     env_config.domain = Some(value.to_string());
                 }
                 "ORIGIN" => {
-                    env_config.origin = Some(value.to_string());
+                    let url = Url::parse(value.as_str())
+                        .map_err(|err| format!("Failed to parse KANIDM_ORIGIN as URL: {}", err))?;
+                    env_config.origin = Some(url);
                 }
                 "DB_PATH" => {
                     env_config.db_path = Some(PathBuf::from(value.to_string()));
@@ -635,7 +637,7 @@ pub struct Configuration {
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
     pub online_backup: Option<OnlineBackup>,
     pub domain: String,
-    pub origin: String,
+    pub origin: Url,
     pub role: ServerRole,
     pub output_mode: ConsoleOutputMode,
     pub log_level: LogLevel,
@@ -679,6 +681,7 @@ impl Configuration {
     }
 
     pub fn new_for_test() -> Self {
+        #[allow(clippy::expect_used)]
         Configuration {
             address: DEFAULT_SERVER_ADDRESS.to_string(),
             ldapbindaddress: None,
@@ -694,7 +697,8 @@ impl Configuration {
             integration_test_config: None,
             online_backup: None,
             domain: "idm.example.com".to_string(),
-            origin: "https://idm.example.com".to_string(),
+            origin: Url::from_str("https://idm.example.com")
+                .expect("Failed to parse built-in string as URL"),
             output_mode: ConsoleOutputMode::default(),
             log_level: LogLevel::default(),
             role: ServerRole::WriteReplica,
@@ -801,7 +805,7 @@ pub struct ConfigurationBuilder {
     tls_client_ca: Option<PathBuf>,
     online_backup: Option<OnlineBackup>,
     domain: Option<String>,
-    origin: Option<String>,
+    origin: Option<Url>,
     role: Option<ServerRole>,
     output_mode: Option<ConsoleOutputMode>,
     log_level: Option<LogLevel>,

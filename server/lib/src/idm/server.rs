@@ -141,7 +141,7 @@ pub struct IdmServerAudit {
 impl IdmServer {
     pub async fn new(
         qs: QueryServer,
-        origin: &str,
+        origin: &Url,
         is_integration_test: bool,
         current_time: Duration,
     ) -> Result<(IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
@@ -168,37 +168,36 @@ impl IdmServer {
         };
 
         // Check that it gels with our origin.
-        let origin_url = Url::parse(origin)
-            .map_err(|_e| {
-                admin_error!("Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", origin);
-                OperationError::InvalidState
+        let valid = origin
+            .domain()
+            .map(|effective_domain| {
+                // We need to prepend the '.' here to ensure that myexample.com != example.com,
+                // rather than just ends with.
+                effective_domain.ends_with(&format!(".{rp_id}")) || effective_domain == rp_id
             })
-            .and_then(|url| {
-                let valid = url.domain().map(|effective_domain| {
-                    // We need to prepend the '.' here to ensure that myexample.com != example.com,
-                    // rather than just ends with.
-                    effective_domain.ends_with(&format!(".{rp_id}"))
-                    || effective_domain == rp_id
-                }).unwrap_or(false);
+            .unwrap_or(false);
 
-                if valid {
-                    Ok(url)
-                } else {
-                    admin_error!("Effective domain (ed) is not a descendent of server domain name (rp_id).");
-                    admin_error!("You must change origin or domain name to be consistent. ded: {:?} - rp_id: {:?}", origin, rp_id);
-                    admin_error!("To change the origin or domain name see: https://kanidm.github.io/kanidm/master/server_configuration.html");
-                    Err(OperationError::InvalidState)
-                }
-            })?;
+        if !valid {
+            admin_error!(
+                "Effective domain (ed) is not a descendent of server domain name (rp_id)."
+            );
+            admin_error!(
+                "You must change origin or domain name to be consistent. ded: {:?} - rp_id: {:?}",
+                origin,
+                rp_id
+            );
+            admin_error!("To change the origin or domain name see: https://kanidm.github.io/kanidm/master/server_configuration.html");
+            return Err(OperationError::InvalidState);
+        };
 
-        let webauthn = WebauthnBuilder::new(&rp_id, &origin_url)
+        let webauthn = WebauthnBuilder::new(&rp_id, origin)
             .and_then(|builder| builder.allow_subdomains(true).rp_name(&rp_name).build())
             .map_err(|e| {
                 admin_error!("Invalid Webauthn Configuration - {:?}", e);
                 OperationError::InvalidState
             })?;
 
-        let oauth2rs = Oauth2ResourceServers::new(origin_url).map_err(|err| {
+        let oauth2rs = Oauth2ResourceServers::new(origin.to_owned()).map_err(|err| {
             error!(?err, "Failed to load oauth2 resource servers");
             err
         })?;
