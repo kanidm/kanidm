@@ -72,27 +72,29 @@ impl KanidmClient {
             .await
     }
 
-    // TODO: the "id" here is actually the *name* not the uuid of the entry...
-    pub async fn idm_oauth2_rs_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/oauth2/{}", id).as_str())
+    pub async fn idm_oauth2_rs_get(&self, client_name: &str) -> Result<Option<Entry>, ClientError> {
+        self.perform_get_request(format!("/v1/oauth2/{}", client_name).as_str())
             .await
     }
 
     pub async fn idm_oauth2_rs_get_basic_secret(
         &self,
-        id: &str,
+        client_name: &str,
     ) -> Result<Option<String>, ClientError> {
-        self.perform_get_request(format!("/v1/oauth2/{}/_basic_secret", id).as_str())
+        self.perform_get_request(format!("/v1/oauth2/{}/_basic_secret", client_name).as_str())
             .await
     }
 
     pub async fn idm_oauth2_rs_revoke_key(
         &self,
-        id: &str,
+        client_name: &str,
         key_id: &str,
     ) -> Result<(), ClientError> {
         self.perform_post_request(
-            &format!("/v1/oauth2/{}/_attr/{}", id, ATTR_KEY_ACTION_REVOKE),
+            &format!(
+                "/v1/oauth2/{}/_attr/{}",
+                client_name, ATTR_KEY_ACTION_REVOKE
+            ),
             vec![key_id.to_string()],
         )
         .await
@@ -100,7 +102,7 @@ impl KanidmClient {
 
     pub async fn idm_oauth2_rs_rotate_keys(
         &self,
-        id: &str,
+        client_name: &str,
         rotate_at_time: OffsetDateTime,
     ) -> Result<(), ClientError> {
         let rfc_3339_str = rotate_at_time.format(&Rfc3339).map_err(|_| {
@@ -108,7 +110,10 @@ impl KanidmClient {
         })?;
 
         self.perform_post_request(
-            &format!("/v1/oauth2/{}/_attr/{}", id, ATTR_KEY_ACTION_ROTATE),
+            &format!(
+                "/v1/oauth2/{}/_attr/{}",
+                client_name, ATTR_KEY_ACTION_ROTATE
+            ),
             vec![rfc_3339_str],
         )
         .await
