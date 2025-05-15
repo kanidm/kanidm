@@ -622,7 +622,7 @@ pub trait SchemaTransaction {
     fn query_attrs_difference(
         &self,
         prev_class: &BTreeSet<&str>,
-        new_class: &BTreeSet<&str>,
+        new_iutf8: &BTreeSet<&str>,
     ) -> Result<(BTreeSet<&str>, BTreeSet<&str>), SchemaError> {
         let schema_classes = self.get_classes();
 
@@ -647,7 +647,7 @@ pub trait SchemaTransaction {
             return Err(SchemaError::InvalidClass(invalid_classes));
         };
 
-        let new_attrs: BTreeSet<&str> = new_class
+        let new_attrs: BTreeSet<&str> = new_iutf8
             .iter()
             .filter_map(|cls| match schema_classes.get(*cls) {
                 Some(x) => Some(x.may_iter()),
@@ -2730,7 +2730,7 @@ mod tests {
                 Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::Class, Value::new_class("zzzzzz"))
+            (Attribute::Class, Value::new_iutf8("zzzzzz"))
         )
         .into_invalid_new();
         assert_eq!(

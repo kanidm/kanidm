@@ -2431,7 +2431,7 @@ mod tests {
 
         let ev2 = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::TestNotAllowed, Value::new_class("notallowed")),
+            (Attribute::TestNotAllowed, Value::new_iutf8("notallowed")),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
@@ -2440,7 +2440,7 @@ mod tests {
 
         let ev3 = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, Value::new_class("notallowed")),
+            (Attribute::Class, Value::new_iutf8("notallowed")),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
