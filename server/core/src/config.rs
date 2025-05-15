@@ -228,7 +228,6 @@ pub struct ServerConfig {
     /// *REQUIRED* - Kanidm Domain, eg `kanidm.example.com`.
     domain: Option<String>,
     /// *REQUIRED* - The user-facing HTTPS URL for this server, eg <https://idm.example.com>
-    // TODO  -this should be URL
     origin: Option<Url>,
     /// File path of the database file
     db_path: Option<PathBuf>,
