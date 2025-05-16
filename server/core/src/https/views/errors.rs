@@ -41,9 +41,8 @@ impl IntoResponse for HtmxError {
                     | OperationError::SessionExpired
                     | OperationError::InvalidSessionState => Redirect::to("/ui").into_response(),
                     OperationError::SystemProtectedObject | OperationError::AccessDenied => {
-                        let trigger = HxResponseTrigger::after_swap([HxEvent::new(
-                            "permissionDenied".to_string(),
-                        )]);
+                        let trigger =
+                            HxResponseTrigger::after_swap([HxEvent::new("permissionDenied")]);
                         (
                             trigger,
                             HxRetarget("main".to_string()),

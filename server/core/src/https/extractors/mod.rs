@@ -1,7 +1,15 @@
 use axum::{
-    extract::{connect_info::{ConnectInfo, Connected}, FromRequestParts}, http::{
-        header::{HeaderName, AUTHORIZATION as AUTHORISATION}, request::Parts, StatusCode,
-    }, serve::IncomingStream, RequestPartsExt
+    extract::{
+        connect_info::{ConnectInfo, Connected},
+        FromRequestParts,
+    },
+    http::{
+        header::{HeaderName, AUTHORIZATION as AUTHORISATION},
+        request::Parts,
+        StatusCode,
+    },
+    serve::IncomingStream,
+    RequestPartsExt,
 };
 
 use axum_extra::extract::cookie::CookieJar;
@@ -13,8 +21,8 @@ use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
 pub use kanidmd_lib::idm::server::DomainInfoRead;
 
 use compact_jwt::JwsCompact;
-use tokio::net::TcpListener;
 use std::str::FromStr;
+use tokio::net::TcpListener;
 
 use std::net::{IpAddr, SocketAddr};
 
@@ -246,11 +254,12 @@ impl Connected<SocketAddr> for ClientConnInfo {
 
 impl Connected<IncomingStream<'_, TcpListener>> for ClientConnInfo {
     fn connect_info(target: IncomingStream<'_, TcpListener>) -> Self {
-        let local_addr = target.io().local_addr().unwrap();
-        let remote_addr = target.remote_addr();
+        // TODO: work out if there's a way to remove this expect
+        #[allow(clippy::expect_used)]
+        let local_addr = target.io().local_addr().expect("Failed to get local addr");
 
         ClientConnInfo {
-            client_addr: remote_addr.clone(),
+            client_addr: *target.remote_addr(),
             connection_addr: local_addr,
             client_cert: None,
         }

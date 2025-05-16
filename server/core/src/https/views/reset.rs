@@ -530,8 +530,7 @@ pub(crate) async fn view_new_passkey(
         .into_response(),
     };
 
-    let passkey_init_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addPasskeySwapped".to_string())]);
+    let passkey_init_trigger = HxResponseTrigger::after_swap([HxEvent::new("addPasskeySwapped")]);
     Ok((
         passkey_init_trigger,
         HxPushUrl(Uri::from_static("/ui/reset/add_passkey")),
@@ -603,8 +602,7 @@ pub(crate) async fn add_totp(
     let cu_session_token = get_cu_session(&jar).await?;
 
     let check_totpcode = u32::from_str(&new_totp_form.check_totpcode).unwrap_or_default();
-    let swapped_handler_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addTotpSwapped".to_string())]);
+    let swapped_handler_trigger = HxResponseTrigger::after_swap([HxEvent::new("addTotpSwapped")]);
 
     // If the user has not provided a name or added only spaces we exit early
     if new_totp_form.name.trim().is_empty() {
@@ -696,7 +694,7 @@ pub(crate) async fn view_new_pwd(
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
+        HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped")]);
 
     let new_passwords = match opt_form {
         Err(_) => {
@@ -827,7 +825,7 @@ pub(crate) async fn view_set_unixcred(
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
+        HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped")]);
 
     let new_passwords = match opt_form {
         Err(_) => {
@@ -897,7 +895,6 @@ pub(crate) async fn view_add_ssh_publickey(
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     opt_form: Result<Form<NewPublicKey>, axum::extract::rejection::FormRejection>,
-
 ) -> impl IntoResponse {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
