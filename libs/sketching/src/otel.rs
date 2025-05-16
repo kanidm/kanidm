@@ -5,7 +5,8 @@ use opentelemetry_otlp::{Protocol, WithExportConfig};
 use opentelemetry::{global, trace::TracerProvider as _, KeyValue};
 
 use opentelemetry_sdk::{
-    trace::{Sampler, TracerProviderBuilder},
+    error::OTelSdkError,
+    trace::{Sampler, SdkTracerProvider, TracerProviderBuilder},
     Resource,
 };
 use tracing::Subscriber;
@@ -38,12 +39,17 @@ use opentelemetry_semantic_conventions::{
 //         .build()
 // }
 
+pub struct LogPipeline {
+    pub subscriber: Box<dyn Subscriber + Send + Sync>,
+    pub tracer_provider: Option<SdkTracerProvider>,
+}
+
 /// This does all the startup things for the logging pipeline
 pub fn start_logging_pipeline(
     otlp_endpoint: &Option<String>,
     log_filter: crate::LogLevel,
     service_name: &'static str,
-) -> Result<Box<dyn Subscriber + Send + Sync>, String> {
+) -> Result<LogPipeline, String> {
     let forest_filter: EnvFilter = EnvFilter::builder()
         .with_default_directive(log_filter.into())
         .from_env_lossy();
@@ -87,23 +93,17 @@ pub fn start_logging_pipeline(
             // let hostname = hostname.to_lowercase();
 
             let resource = Resource::builder()
-                .with_schema_url(vec![
-                    // TODO: it'd be really nice to be able to set the instance ID here, from the server UUID so we know *which* instance on this host is logging
-                    KeyValue::new(SERVICE_NAME, service_name),
-                    KeyValue::new(SERVICE_VERSION, version),
-                    // TODO: currently marked as an experimental flag, leaving it out for now
-                    // KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, hostname),
-                ], SCHEMA_URL)
+                .with_schema_url(
+                    vec![
+                        // TODO: it'd be really nice to be able to set the instance ID here, from the server UUID so we know *which* instance on this host is logging
+                        KeyValue::new(SERVICE_NAME, service_name),
+                        KeyValue::new(SERVICE_VERSION, version),
+                        // TODO: currently marked as an experimental flag, leaving it out for now
+                        // KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, hostname),
+                    ],
+                    SCHEMA_URL,
+                )
                 .build();
-            //     .with_attributes(vec![
-            //         // TODO: it'd be really nice to be able to set the instance ID here, from the server UUID so we know *which* instance on this host is logging
-            //         KeyValue::new(SERVICE_NAME, service_name),
-            //         KeyValue::new(SERVICE_VERSION, version),
-            //         // TODO: currently marked as an experimental flag, leaving it out for now
-            //         // KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, hostname),
-            //     ],
-            //     SCHEMA_URL,
-            // );
 
             let provider = TracerProviderBuilder::default()
                 .with_batch_exporter(otlp_exporter)
@@ -130,23 +130,67 @@ pub fn start_logging_pipeline(
                     provider.tracer("tracing-otel-subscriber"),
                 ));
 
-            Ok(Box::new(registry))
+            Ok(LogPipeline {
+                subscriber: Box::new(registry),
+                tracer_provider: Some(provider),
+            })
         }
         None => {
             let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
-            Ok(Box::new(Registry::default().with(forest_layer)))
+            Ok(LogPipeline {
+                subscriber: Box::new(Registry::default().with(forest_layer)),
+                tracer_provider: None,
+            })
         }
     }
 }
 
 /// This helps with cleanly shutting down the tracing/logging providers when done,
 /// so we don't lose traces.
-pub struct TracingPipelineGuard {}
+pub struct TracingPipelineGuard(pub Option<SdkTracerProvider>);
 
 impl Drop for TracingPipelineGuard {
     fn drop(&mut self) {
-        // TODO: https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry-sdk/CHANGELOG.md how to remove tihs?
-        // opentelemetry::global::shutdown_tracer_provider();
-        eprintln!("Logging pipeline completed shutdown");
+        if let Some(tracer_provider) = &self.0 {
+            // Let's try a final flush...
+            tracer_provider.force_flush().unwrap_or_else(|err| {
+                eprintln!(
+                    "Logging pipeline failed to flush, some logs may have been lost!: {}",
+                    err
+                );
+            });
+            static MAX_LOG_SHUTDOWN_ATTEMPTS: u8 = 3;
+            let mut attempts = 0;
+
+            loop {
+                attempts += 1;
+                match tracer_provider.shutdown() {
+                    Ok(_) => {
+                        eprintln!("Logging pipeline completed shutdown");
+                        break;
+                    }
+                    Err(err) => match err {
+                        OTelSdkError::AlreadyShutdown => break,
+                        OTelSdkError::Timeout(duration) => {
+                            if attempts < MAX_LOG_SHUTDOWN_ATTEMPTS {
+                                eprintln!("Logging pipeline shutdown timed out after {:?}, retrying... attempt {} of {}", duration, attempts, MAX_LOG_SHUTDOWN_ATTEMPTS);
+                            } else {
+                                eprintln!(
+                                    "Logging pipeline shutdown timed out after {:?}, giving up",
+                                    duration
+                                );
+                                break;
+                            }
+                        }
+                        OTelSdkError::InternalFailure(err) => {
+                            eprintln!(
+                                "Logging pipeline shutdown failed with internal error: {}",
+                                err
+                            );
+                        }
+                    },
+                };
+            }
+        }
     }
 }
