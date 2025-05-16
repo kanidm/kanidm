@@ -29,7 +29,6 @@ pub mod prelude {
     pub use crate::{ScimAttr, ScimComplexAttr, ScimEntry, ScimEntryHeader, ScimMeta, ScimValue};
 }
 
-
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
 #[serde(untagged)]
 pub enum ScimAttr {
@@ -171,6 +170,7 @@ pub struct ScimEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub meta: Option<ScimMeta>,
     #[serde(flatten)]
+    #[schema(value_type = Object)]
     pub attrs: BTreeMap<String, ScimValue>,
 }
 

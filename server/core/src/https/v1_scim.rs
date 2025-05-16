@@ -12,11 +12,10 @@ use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 use kanidm_proto::scim_v1::{
-    server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+    server::ScimEntryKanidm, ScimEntry, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
 };
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
-use crate::https::apidocs::response_schema::ScimEntry;
 
 const DEFAULT_SCIM_SYNC_BYTES: usize = 1024 * 1024 * 32;
 
@@ -319,7 +318,6 @@ async fn scim_sync_get(
         .map(Json::from)
         .map_err(WebError::from)
 }
-
 
 #[utoipa::path(
     get,

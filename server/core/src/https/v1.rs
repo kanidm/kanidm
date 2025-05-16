@@ -11,7 +11,6 @@ use compact_jwt::{Jwk, Jws, JwsSigner};
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use std::net::IpAddr;
 use uuid::Uuid;
-use crate::https::apidocs::response_schema::Jwk as JwkResponse;
 
 use kanidm_proto::internal::{
     ApiToken, AppLink, CUIntentToken, CURequest, CUSessionToken, CUStatus, CreateRequest,
@@ -33,7 +32,7 @@ use super::errors::WebError;
 use super::middleware::caching::{cache_me_short, dont_cache_me};
 use super::middleware::KOpId;
 use super::ServerState;
-use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
+use crate::https::apidocs::response_schema::{self, ApiResponseWithout200, DefaultApiResponse};
 use crate::https::extractors::{TrustedClientIp, VerifiedClientInformation};
 
 #[utoipa::path(
@@ -3054,13 +3053,11 @@ pub async fn debug_ipinfo(
     Ok(Json::from(ip_addr))
 }
 
-
-
 #[utoipa::path(
     get,
     path = "/v1/jwk/{key_id}",
     responses(
-        (status=200, body=JwkResponse, content_type="application/json"),
+        (status=200, body=response_schema::Jwk, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -3100,7 +3097,7 @@ fn cacheable_routes(state: ServerState) -> Router<ServerState> {
         .with_state(state)
 }
 
-#[instrument(skip(state))]
+#[instrument(level = "DEBUG", name = "v1_route_setup", skip(state))]
 pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
     Router::new()
         .route("/v1/oauth2", get(super::v1_oauth2::oauth2_get))

@@ -211,7 +211,6 @@ impl Modify for SecurityAddon {
         schemas(
             attribute::Attribute,
 
-
             scim_v1::ScimSyncState,
             scim_v1::ScimSyncRequest,
             scim_v1::ScimSyncRetentionMode,
@@ -295,8 +294,6 @@ impl Modify for SecurityAddon {
             response_schema::BTreeSet,
             // terrible workaround for other things
             response_schema::Result,
-            // terrible workaround for other things
-            response_schema::ScimEntry,
             //  workaround for the fact that BTreeSet can't be represented in JSON
             response_schema::ProtoEntry,
             // terrible workaround for other things

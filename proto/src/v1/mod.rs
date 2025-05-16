@@ -112,6 +112,7 @@ pub struct ApiTokenGenerate {
 /// A limited view of an entry in Kanidm.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default, ToSchema)]
 pub struct Entry {
+    #[schema(value_type=Object)]
     pub attrs: BTreeMap<String, Vec<String>>,
 }
 
