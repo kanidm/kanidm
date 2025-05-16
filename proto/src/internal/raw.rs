@@ -14,10 +14,13 @@ pub enum Filter {
     #[serde(alias = "Pres")]
     Pres(String),
     #[serde(alias = "Or")]
+    #[schema(no_recursion)]
     Or(Vec<Filter>),
     #[serde(alias = "And")]
+    #[schema(no_recursion)]
     And(Vec<Filter>),
     #[serde(alias = "AndNot")]
+    #[schema(no_recursion)]
     AndNot(Box<Filter>),
     #[serde(rename = "self", alias = "Self")]
     SelfUuid,
