@@ -563,7 +563,7 @@ async fn main() -> ExitCode {
     // We need enough backtrace depth to find leak sources if they exist.
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::builder()
-        .file_name(format!("/var/run/kanidm-unixd/heap-{}.json", std::process::id());)
+        .file_name(format!("/var/run/kanidm-unixd/heap-{}.json", std::process::id()))
         .trim_backtraces(Some(40))
         .build();
 
