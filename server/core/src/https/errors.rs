@@ -18,7 +18,7 @@ pub enum WebError {
     /// Something went wrong when doing things.
     OperationError(OperationError),
     InternalServerError(String),
-    OAuth2Error(Oauth2Error),
+    OAuth2(Oauth2Error),
 }
 
 impl From<OperationError> for WebError {
@@ -29,7 +29,7 @@ impl From<OperationError> for WebError {
 
 impl From<Oauth2Error> for WebError {
     fn from(inner: Oauth2Error) -> Self {
-        WebError::OAuth2Error(inner)
+        WebError::OAuth2(inner)
     }
 }
 
@@ -48,7 +48,7 @@ impl WebError {
 impl IntoResponse for WebError {
     fn into_response(self) -> Response {
         match self {
-            WebError::OAuth2Error(error) => {
+            WebError::OAuth2(error) => {
                 if let Oauth2Error::AuthenticationRequired = error {
                     (
                         StatusCode::UNAUTHORIZED,

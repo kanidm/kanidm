@@ -469,7 +469,7 @@ pub async fn oauth2_token_post(
             Json(tok_res),
         )
             .into_response(),
-        Err(e) => WebError::OAuth2Error(e).into_response(),
+        Err(e) => WebError::OAuth2(e).into_response(),
     }
 }
 
@@ -574,7 +574,7 @@ pub async fn oauth2_openid_userinfo_get(
         Some(val) => val,
         None => {
             error!("Bearer Authentication Not Provided");
-            return WebError::OAuth2Error(Oauth2Error::AuthenticationRequired).into_response();
+            return WebError::OAuth2(Oauth2Error::AuthenticationRequired).into_response();
         }
     };
 
@@ -590,7 +590,7 @@ pub async fn oauth2_openid_userinfo_get(
             Json(uir),
         )
             .into_response(),
-        Err(e) => WebError::OAuth2Error(e).into_response(),
+        Err(e) => WebError::OAuth2(e).into_response(),
     }
 }
 
@@ -758,7 +758,7 @@ pub(crate) async fn oauth2_authorise_device_post(
         )
         .await
         .map(Json::from)
-        .map_err(WebError::OAuth2Error)
+        .map_err(WebError::OAuth2)
 }
 
 pub fn route_setup(state: ServerState) -> Router<ServerState> {
