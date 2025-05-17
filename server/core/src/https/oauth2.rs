@@ -747,7 +747,7 @@ pub(crate) async fn oauth2_authorise_device_post(
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Form(form): Form<DeviceFlowForm>,
-) -> Result<Json<DeviceAuthorizationResponse>, WebError::OAuth2Error> {
+) -> Result<Json<DeviceAuthorizationResponse>, WebError> {
     state
         .qe_w_ref
         .handle_oauth2_device_flow_start(
