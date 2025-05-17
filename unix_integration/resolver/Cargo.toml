@@ -16,6 +16,8 @@ default = ["unix"]
 unix = []
 selinux = ["dep:selinux", "kanidm_unix_common/selinux"]
 tpm = ["kanidm-hsm-crypto/tpm", "kanidm_unix_common/tpm"]
+dhat-heap = ["dep:dhat"]
+dhat-ad-hoc = ["dep:dhat"]
 
 [[bin]]
 name = "kanidm_unixd"
@@ -56,6 +58,7 @@ async-trait = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 dialoguer = { workspace = true }
+dhat = { workspace = true, optional = true }
 futures = { workspace = true }
 hashbrown = { workspace = true }
 libc = { workspace = true }
