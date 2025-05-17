@@ -917,13 +917,13 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         // Remove the service account class.
         // Add the person class.
-        let mut new_classes = prev_classes.clone();
-        new_classes.remove(EntryClass::ServiceAccount.into());
-        new_classes.insert(EntryClass::Person.into());
+        let mut new_iutf8es = prev_classes.clone();
+        new_iutf8es.remove(EntryClass::ServiceAccount.into());
+        new_iutf8es.insert(EntryClass::Person.into());
 
         // diff the schema attrs, and remove the ones that are service_account only.
         let (_added, removed) = schema_ref
-            .query_attrs_difference(&prev_classes, &new_classes)
+            .query_attrs_difference(&prev_classes, &new_iutf8es)
             .map_err(|se| {
                 admin_error!("While querying the schema, it reported that requested classes may not be present indicating a possible corruption");
                 OperationError::SchemaViolation(

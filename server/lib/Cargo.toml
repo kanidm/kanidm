@@ -67,8 +67,8 @@ tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
-
 url = { workspace = true, features = ["serde"] }
+utoipa = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 webauthn-rs = { workspace = true, features = [
     "resident-key-support",

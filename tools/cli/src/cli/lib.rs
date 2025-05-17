@@ -469,8 +469,6 @@ mod identify_user_no_tui {
         }
     }
 
-    // TODO: this function is somewhat a duplicate of what can be found in the webui, see https://github.com/kanidm/kanidm/blob/003234c2d0a52146683628156e2a106bf61fe9f4/server/web_ui/src/components/totpdisplay.rs#L83
-    // * should we move it to a common crate or can we just leave it there?
     fn get_ms_left_from_now(step: u128) -> u32 {
         #[allow(clippy::expect_used)]
         let dur = SystemTime::now()

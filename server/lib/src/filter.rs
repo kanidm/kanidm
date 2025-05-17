@@ -1857,14 +1857,14 @@ mod tests {
                     Attribute::Class,
                     EntryClass::TestClass.to_partialvalue()
                 )]),
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
                 f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_pres(Attribute::Class),
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
             ])
         );
 
@@ -1872,20 +1872,20 @@ mod tests {
         filter_optimise_assert!(
             f_and(vec![
                 f_and(vec![
-                    f_eq(Attribute::Class, PartialValue::new_class("foo")),
+                    f_eq(Attribute::Class, PartialValue::new_iutf8("foo")),
                     f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
-                    f_eq(Attribute::Uid, PartialValue::new_class("bar")),
+                    f_eq(Attribute::Uid, PartialValue::new_iutf8("bar")),
                 ]),
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
                 f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
-                f_eq(Attribute::Class, PartialValue::new_class("foo")),
+                f_eq(Attribute::Class, PartialValue::new_iutf8("foo")),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_pres(Attribute::Class),
-                f_eq(Attribute::Uid, PartialValue::new_class("bar")),
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_eq(Attribute::Uid, PartialValue::new_iutf8("bar")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
             ])
         );
 
@@ -1893,14 +1893,14 @@ mod tests {
             f_or(vec![
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_pres(Attribute::Class),
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
                 f_or(vec![f_eq(
                     Attribute::Class,
                     EntryClass::TestClass.to_partialvalue()
                 )]),
             ]),
             f_or(vec![
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
                 f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ])

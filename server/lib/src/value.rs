@@ -650,12 +650,6 @@ impl PartialValue {
         PartialValue::Iname(s.to_lowercase())
     }
 
-    // TODO: take this away
-    #[inline]
-    pub fn new_class(s: &str) -> Self {
-        PartialValue::new_iutf8(s)
-    }
-
     pub fn is_iutf8(&self) -> bool {
         matches!(self, PartialValue::Iutf8(_))
     }
@@ -1529,11 +1523,6 @@ impl Value {
 
     pub fn is_iutf8(&self) -> bool {
         matches!(self, Value::Iutf8(_))
-    }
-
-    #[inline(always)]
-    pub fn new_class(s: &str) -> Self {
-        Value::Iutf8(s.to_lowercase())
     }
 
     pub fn new_attr(s: &str) -> Self {
