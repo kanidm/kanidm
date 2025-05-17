@@ -46,6 +46,7 @@ use time::OffsetDateTime;
 use tracing::trace;
 use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 use url::{Host, Origin, Url};
+use utoipa::ToSchema;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, ToSchema)]
 #[serde(rename_all = "snake_case")]

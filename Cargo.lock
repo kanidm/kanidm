@@ -3340,6 +3340,7 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
+ "utoipa",
  "uuid",
  "webauthn-authenticator-rs",
  "webauthn-rs",
