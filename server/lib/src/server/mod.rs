@@ -1542,6 +1542,8 @@ impl QueryServerReadTransaction<'_> {
             return sc_errs;
         }
 
+        // The schema is now valid, so we load this up
+
         //  * Indexing (req be + sch )
         let idx_errs = self.get_be_txn().verify_indexes();
 
@@ -2038,6 +2040,23 @@ impl QueryServer {
     }
 
     pub async fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+        let current_time = duration_from_epoch_now();
+        // Before we can proceed, command the QS to load schema in full.
+        // IMPORTANT: While we take a write txn, this does no writes to the
+        // actual db, it's only so we can write to the in memory schema
+        // structures.
+        if self
+            .write(current_time)
+            .await
+            .and_then(|mut txn| {
+                txn.force_schema_reload();
+                txn.commit()
+            })
+            .is_err()
+        {
+            return vec![Err(ConsistencyError::Unknown)];
+        };
+
         match self.read().await {
             Ok(mut r_txn) => r_txn.verify(),
             Err(_) => vec![Err(ConsistencyError::Unknown)],
