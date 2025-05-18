@@ -13,6 +13,8 @@ use serde::{de::DeserializeOwned, Serialize};
 use kanidm_hsm_crypto::{LoadableHmacKey, LoadableMachineKey};
 
 const DBV_MAIN: &str = "main";
+// 10MB default to try to limit memory usage
+const CACHE_SIZE: usize = 10 * 1024 * 1024;
 
 #[async_trait]
 pub trait Cache {
@@ -331,11 +333,22 @@ impl DbTxn<'_> {
 
 impl DbTxn<'_> {
     pub fn migrate(&mut self) -> Result<(), CacheError> {
-        self.conn.set_prepared_statement_cache_capacity(16);
-        self.conn
-            .prepare("PRAGMA journal_mode=WAL;")
-            .and_then(|mut wal_stmt| wal_stmt.query([]).map(|_| ()))
-            .map_err(|e| self.sqlite_error("account_t create", &e))?;
+        self.conn.set_prepared_statement_cache_capacity(32);
+
+        // Setup WAL/COW mode.
+        self.conn.pragma_update(
+            None,
+            "journal_mode",
+            "WAL"
+        )
+            .map_err(|e| self.sqlite_error("journal_mode=WAL", &e))?;
+
+        self.conn.pragma_update(
+            None,
+            "cache_size",
+            CACHE_SIZE,
+        )
+            .map_err(|e| self.sqlite_error("cache_size", &e))?;
 
         // This definition can never change.
         self.conn
