@@ -15,7 +15,7 @@ use kanidm_hsm_crypto::{LoadableHmacKey, LoadableMachineKey};
 const DBV_MAIN: &str = "main";
 // This is in *pages* for sqlite. The default page size is 4096 bytes. So to achieve
 // 32MB we need to divide by this.
-const CACHE_SIZE: usize = (32 * 1024 * 1024) / 4096;
+const CACHE_SIZE: usize = 32 * ((1024 * 1024) / 4096);
 
 #[async_trait]
 pub trait Cache {
