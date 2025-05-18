@@ -80,6 +80,27 @@ impl Db {
         })?;
         let _ = unsafe { umask(before) };
 
+        // Setup WAL/COW mode.
+        conn.pragma_update(None, "journal_mode", "WAL")
+            .map_err(|error| {
+                error!(
+                    "sqlite journal_mode=WAL error: {:?} db_path={:?}",
+                    error, path
+                );
+                DbError::Sqlite
+            })?;
+
+        conn.pragma_update(None, "cache_size", CACHE_SIZE)
+            .map_err(|error| {
+                error!(
+                    "sqlite cache_size={} error: {:?} db_path={:?}",
+                    CACHE_SIZE, error, path
+                );
+                DbError::Sqlite
+            })?;
+
+        conn.set_prepared_statement_cache_capacity(32);
+
         Ok(Db {
             conn: Mutex::new(conn),
         })
@@ -333,23 +354,6 @@ impl DbTxn<'_> {
 
 impl DbTxn<'_> {
     pub fn migrate(&mut self) -> Result<(), CacheError> {
-        self.conn.set_prepared_statement_cache_capacity(32);
-
-        // Setup WAL/COW mode.
-        self.conn.pragma_update(
-            None,
-            "journal_mode",
-            "WAL"
-        )
-            .map_err(|e| self.sqlite_error("journal_mode=WAL", &e))?;
-
-        self.conn.pragma_update(
-            None,
-            "cache_size",
-            CACHE_SIZE,
-        )
-            .map_err(|e| self.sqlite_error("cache_size", &e))?;
-
         // This definition can never change.
         self.conn
             .execute(
