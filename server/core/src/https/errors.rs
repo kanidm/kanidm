@@ -18,6 +18,7 @@ pub enum WebError {
     /// Something went wrong when doing things.
     OperationError(OperationError),
     InternalServerError(String),
+    #[schema(value_type=Object)]
     OAuth2(Oauth2Error),
 }
 
