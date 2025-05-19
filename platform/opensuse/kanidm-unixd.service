@@ -1,4 +1,4 @@
-# You should not need to edit this file. Instead, use a drop-in file:
+# You should not need to edit this file. Instead, use a drop-in file by running:
 #   systemctl edit kanidm-unixd.service
 
 [Unit]
@@ -9,6 +9,10 @@ Wants=nss-user-lookup.target
 # While it seems confusing, we need to be after nscd.service so that the
 # Conflicts will trigger and then automatically stop it.
 Conflicts=nscd.service
+# `Upholds` like a `Wants` directive ensures that unixd-tasks is started but also 
+# ensures it's kept running. This allows for a repeatable & fast way of starting 
+# unixd-tasks at the right time.
+Upholds=kanidm-unixd-tasks.service
 
 [Service]
 DynamicUser=yes
@@ -18,12 +22,17 @@ CacheDirectory=kanidm-unixd
 RuntimeDirectory=kanidm-unixd
 StateDirectory=kanidm-unixd
 
+
 Type=notify
 ExecStart=/usr/sbin/kanidm_unixd
 
 ## If you wish to setup an external HSM pin you should set:
 # LoadCredential=hsmpin:/etc/kanidm/kanidm-unixd-hsm-pin
 # Environment=KANIDM_HSM_PIN_PATH=%d/hsmpin
+
+# auth going down is bad, but infinite speedlooping is worse
+Restart=always
+RestartSec=30
 
 # Implied by dynamic user.
 # ProtectHome=
@@ -37,7 +46,6 @@ PrivateTmp=true
 PrivateDevices=false
 # Older versions of systemd require this to be explicitly allowed.
 DeviceAllow=/dev/tpmrm0 rw
-
 ProtectHostname=true
 ProtectClock=true
 ProtectKernelTunables=true
