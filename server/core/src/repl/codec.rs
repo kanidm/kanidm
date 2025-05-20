@@ -84,7 +84,7 @@ impl Encoder<SupplierResponse> for SupplierCodec {
 fn encode_length_checked_json<R: Serialize>(msg: R, dst: &mut BytesMut) -> Result<(), io::Error> {
     // If the outgoing buffer is empty AND greater than our allocation limit, we
     // want to attempt to free space.
-    if dst.len() == 0 && dst.capacity() >= CODEC_BYTESMUT_ALLOCATION_LIMIT {
+    if dst.is_empty() && dst.capacity() >= CODEC_BYTESMUT_ALLOCATION_LIMIT {
         dst.clear();
         let mut buf = BytesMut::with_capacity(CODEC_MIMIMUM_BYTESMUT_ALLOCATION);
         std::mem::swap(&mut buf, dst);

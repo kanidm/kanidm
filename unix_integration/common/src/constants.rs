@@ -28,4 +28,4 @@ pub const DEFAULT_SHELL_SEARCH_PATHS: &[&str] = &["/bin", "/usr/local/bin"];
 pub const CODEC_MIMIMUM_BYTESMUT_ALLOCATION: usize = 64;
 // If the codec buffer exceeds this limit, then we swap the buffer
 // with a fresh one to prevent memory explosions.
-pub const CODEC_BYTESMUT_ALLOCATION_LIMIT: usize = 1 * 1024 * 1024;
+pub const CODEC_BYTESMUT_ALLOCATION_LIMIT: usize = 1024 * 1024;
