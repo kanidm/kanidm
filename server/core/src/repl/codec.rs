@@ -6,7 +6,7 @@ use tokio_util::codec::{Decoder, Encoder};
 use kanidmd_lib::repl::proto::{ReplIncrementalContext, ReplRefreshContext, ReplRuvRange};
 
 // The minimum size of a buffer for the replication codec (1MB)
-pub const CODEC_MIMIMUM_BYTESMUT_ALLOCATION: usize = 1 * 1024 * 1024;
+pub const CODEC_MIMIMUM_BYTESMUT_ALLOCATION: usize = 1024 * 1024;
 // If the codec buffer exceeds this limit, then we swap the buffer
 // with a fresh one to prevent memory explosions.
 pub const CODEC_BYTESMUT_ALLOCATION_LIMIT: usize = 8 * 1024 * 1024;
