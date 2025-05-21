@@ -88,8 +88,7 @@ impl KanidmProvider {
                 IdpError::Tpm
             })?;
 
-        // let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(250));
-        let crypto_policy = CryptoPolicy::minimum();
+        let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(250));
 
         let pam_allow_groups = config.pam_allowed_login_groups.iter().cloned().collect();
 
