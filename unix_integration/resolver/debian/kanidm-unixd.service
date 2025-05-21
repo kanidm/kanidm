@@ -3,12 +3,16 @@
 
 [Unit]
 Description=Kanidm Local Client Resolver
-After=chronyd.service nscd.service ntpd.service network-online.target
+After=chronyd.service nscd.service ntpd.service network-online.target suspend.target
 Before=systemd-user-sessions.service sshd.service nss-user-lookup.target
 Wants=nss-user-lookup.target
 # While it seems confusing, we need to be after nscd.service so that the
 # Conflicts will trigger and then automatically stop it.
 Conflicts=nscd.service
+# `Upholds` like a `Wants` directive ensures that unixd-tasks is started but also 
+# ensures it's kept running. This allows for a repeatable & fast way of starting 
+# unixd-tasks at the right time.
+Upholds=kanidm-unixd-tasks.service
 
 [Service]
 DynamicUser=yes
@@ -21,6 +25,11 @@ StateDirectory=kanidm-unixd
 
 Type=notify
 ExecStart=/usr/sbin/kanidm_unixd
+
+## If you wish to setup an external HSM pin you should set:
+# LoadCredential=hsmpin:/etc/kanidm/kanidm-unixd-hsm-pin
+# Environment=KANIDM_HSM_PIN_PATH=%d/hsmpin
+
 # auth going down is bad, but infinite speedlooping is worse
 Restart=always
 RestartSec=30

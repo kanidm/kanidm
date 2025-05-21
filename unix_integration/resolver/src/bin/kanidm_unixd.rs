@@ -17,7 +17,9 @@ use kanidm_client::KanidmClientBuilder;
 use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_proto::internal::OperationError;
-use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::constants::{
+    CODEC_BYTESMUT_ALLOCATION_LIMIT, CODEC_MIMIMUM_BYTESMUT_ALLOCATION, DEFAULT_CONFIG_PATH,
+};
 use kanidm_unix_common::unix_config::{HsmType, UnixdConfig};
 use kanidm_unix_common::unix_passwd::EtcDb;
 use kanidm_unix_common::unix_proto::{
@@ -38,7 +40,7 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::metadata;
 use std::io;
-use std::io::{Error as IoError, ErrorKind};
+use std::io::Error as IoError;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -54,9 +56,13 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
-#[cfg(not(target_os = "illumos"))]
+#[cfg(not(any(feature = "dhat-heap", target_os = "illumos")))]
 #[global_allocator]
-static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
 
 //=== the codec
 
@@ -77,7 +83,14 @@ impl Decoder for ClientCodec {
         match serde_json::from_slice::<ClientRequest>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
+                // There is no way to free allocation from a BytesMut, so we need to
+                // swap with a new one.
                 src.clear();
+                if src.capacity() >= CODEC_BYTESMUT_ALLOCATION_LIMIT {
+                    let mut empty = BytesMut::with_capacity(CODEC_MIMIMUM_BYTESMUT_ALLOCATION);
+                    std::mem::swap(&mut empty, src);
+                }
+
                 Ok(Some(msg))
             }
             _ => Ok(None),
@@ -92,7 +105,7 @@ impl Encoder<ClientResponse> for ClientCodec {
         trace!("Attempting to send response -> {:?} ...", msg);
         let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "JSON encode error")
+            io::Error::other("JSON encode error")
         })?;
         dst.put(data.as_slice());
         Ok(())
@@ -110,7 +123,13 @@ impl Decoder for TaskCodec {
         match serde_json::from_slice::<TaskResponse>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
+                // There is no way to free allocation from a BytesMut, so we need to
+                // swap with a new one.
                 src.clear();
+                if src.capacity() >= CODEC_BYTESMUT_ALLOCATION_LIMIT {
+                    let mut empty = BytesMut::with_capacity(CODEC_MIMIMUM_BYTESMUT_ALLOCATION);
+                    std::mem::swap(&mut empty, src);
+                }
                 Ok(Some(msg))
             }
             _ => Ok(None),
@@ -125,7 +144,7 @@ impl Encoder<TaskRequestFrame> for TaskCodec {
         debug!("Attempting to send request -> {:?} ...", msg.id);
         let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "JSON encode error")
+            io::Error::other("JSON encode error")
         })?;
         dst.put(data.as_slice());
         Ok(())
@@ -216,7 +235,7 @@ async fn handle_task_client(
 
                     other => {
                         error!("Error -> {:?}", other);
-                        return Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")));
+                        return Err(Box::new(IoError::other("oh no!")));
                     }
                 }
 
@@ -237,8 +256,7 @@ async fn handle_client(
     let _enter = span.enter();
 
     let Ok(ucred) = sock.peer_cred() else {
-        return Err(Box::new(IoError::new(
-            ErrorKind::Other,
+        return Err(Box::new(IoError::other(
             "Unable to verify peer credentials.",
         )));
     };
@@ -476,7 +494,7 @@ async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
     if !PathBuf::from_str(hsm_pin_path)?.exists() {
         let new_pin = AuthValue::generate().map_err(|hsm_err| {
             error!(?hsm_err, "Unable to generate new pin");
-            std::io::Error::new(std::io::ErrorKind::Other, "Unable to generate new pin")
+            std::io::Error::other("Unable to generate new pin")
         })?;
 
         std::fs::write(hsm_pin_path, new_pin)?;
@@ -541,6 +559,16 @@ async fn main() -> ExitCode {
         error!(?code, "CRITICAL: Unable to set prctl flags");
         return ExitCode::FAILURE;
     }
+
+    // We need enough backtrace depth to find leak sources if they exist.
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::builder()
+        .file_name(format!(
+            "/var/cache/kanidm-unixd/heap-{}.json",
+            std::process::id()
+        ))
+        .trim_backtraces(Some(40))
+        .build();
 
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();

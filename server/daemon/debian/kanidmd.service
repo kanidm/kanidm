@@ -23,6 +23,11 @@ ExecStart=/usr/bin/kanidmd server
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 
+# If OOM occurs, request a clean stop
+OOMPolicy=stop
+# Adjust our weight toward *not* being killed under pressure.
+OOMScoreAdjust=-100
+
 NoNewPrivileges=true
 PrivateTmp=true
 PrivateDevices=true

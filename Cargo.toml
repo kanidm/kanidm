@@ -164,7 +164,7 @@ axum-htmx = { version = "0.5.0", features = ["serde", "guards"] }
 base32 = "^0.5.1"
 base64 = "^0.22.1"
 base64urlsafedata = "0.5.1"
-bitflags = "^2.8.0"
+bitflags = "^2.9.1"
 bytes = "^1.9.0"
 cidr = "0.3.1"
 clap = { version = "4.5.38", features = ["derive", "env"] }
