@@ -3199,6 +3199,7 @@ dependencies = [
  "bytes",
  "clap",
  "clap_complete",
+ "dhat",
  "dialoguer",
  "futures",
  "hashbrown 0.15.3",
