@@ -220,12 +220,6 @@ pub async fn create_https_server(
         .trusted_proxy_v2()
         .map(Arc::new);
 
-    let origin = Url::parse(&config.origin)
-        // Should be impossible!
-        .map_err(|err| {
-            error!(?err, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", config.origin);
-        })?;
-
     let state = ServerState {
         status_ref,
         qe_w_ref,
@@ -233,7 +227,7 @@ pub async fn create_https_server(
         jws_signer,
         trust_x_forward_for_ips,
         csp_header,
-        origin,
+        origin: config.origin,
         domain: config.domain.clone(),
         secure_cookies: config.integration_test_config.is_none(),
     };

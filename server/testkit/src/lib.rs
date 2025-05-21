@@ -16,6 +16,7 @@ use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
 use kanidmd_lib::prelude::{Attribute, NAME_SYSTEM_ADMINS};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
+use std::str::FromStr;
 use std::sync::atomic::{AtomicU16, Ordering};
 use tokio::task;
 use tracing::error;
@@ -83,7 +84,9 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
         idm_admin_password: IDM_ADMIN_TEST_PASSWORD.to_string(),
     });
 
-    let addr = format!("http://localhost:{}", port);
+    #[allow(clippy::expect_used)]
+    let addr =
+        Url::from_str(&format!("http://localhost:{}", port)).expect("Failed to parse origin URL");
 
     let ldap_url = if config.ldapbindaddress.is_some() {
         let ldapport = port_loop();
@@ -114,7 +117,7 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
 
     #[allow(clippy::panic)]
     let rsclient = match KanidmClientBuilder::new()
-        .address(addr.clone())
+        .address(addr.to_string())
         .enable_native_ca_roots(false)
         .no_proxy()
         .build()

@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::be::{Backend, BackendConfig};
 use crate::prelude::*;
 use crate::schema::Schema;
@@ -98,7 +100,7 @@ pub async fn setup_idm_test(
 
     IdmServer::new(
         qs,
-        "https://idm.example.com",
+        &Url::from_str("https://idm.example.com").expect("Failed to parse URL"),
         true,
         duration_from_epoch_now(),
     )
