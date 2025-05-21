@@ -56,9 +56,13 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
-#[cfg(not(target_os = "illumos"))]
+#[cfg(not(any(feature = "dhat-heap", target_os = "illumos")))]
 #[global_allocator]
-static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
 
 //=== the codec
 
@@ -555,6 +559,16 @@ async fn main() -> ExitCode {
         error!(?code, "CRITICAL: Unable to set prctl flags");
         return ExitCode::FAILURE;
     }
+
+    // We need enough backtrace depth to find leak sources if they exist.
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::builder()
+        .file_name(format!(
+            "/var/cache/kanidm-unixd/heap-{}.json",
+            std::process::id()
+        ))
+        .trim_backtraces(Some(40))
+        .build();
 
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
