@@ -17,7 +17,9 @@ use kanidm_client::KanidmClientBuilder;
 use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_proto::internal::OperationError;
-use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::constants::{
+    CODEC_BYTESMUT_ALLOCATION_LIMIT, CODEC_MIMIMUM_BYTESMUT_ALLOCATION, DEFAULT_CONFIG_PATH,
+};
 use kanidm_unix_common::unix_config::{HsmType, UnixdConfig};
 use kanidm_unix_common::unix_passwd::EtcDb;
 use kanidm_unix_common::unix_proto::{
@@ -77,7 +79,14 @@ impl Decoder for ClientCodec {
         match serde_json::from_slice::<ClientRequest>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
+                // There is no way to free allocation from a BytesMut, so we need to
+                // swap with a new one.
                 src.clear();
+                if src.capacity() >= CODEC_BYTESMUT_ALLOCATION_LIMIT {
+                    let mut empty = BytesMut::with_capacity(CODEC_MIMIMUM_BYTESMUT_ALLOCATION);
+                    std::mem::swap(&mut empty, src);
+                }
+
                 Ok(Some(msg))
             }
             _ => Ok(None),
@@ -110,7 +119,13 @@ impl Decoder for TaskCodec {
         match serde_json::from_slice::<TaskResponse>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
+                // There is no way to free allocation from a BytesMut, so we need to
+                // swap with a new one.
                 src.clear();
+                if src.capacity() >= CODEC_BYTESMUT_ALLOCATION_LIMIT {
+                    let mut empty = BytesMut::with_capacity(CODEC_MIMIMUM_BYTESMUT_ALLOCATION);
+                    std::mem::swap(&mut empty, src);
+                }
                 Ok(Some(msg))
             }
             _ => Ok(None),

@@ -5,6 +5,12 @@ use tokio_util::codec::{Decoder, Encoder};
 
 use kanidmd_lib::repl::proto::{ReplIncrementalContext, ReplRefreshContext, ReplRuvRange};
 
+// The minimum size of a buffer for the replication codec (1MB)
+pub const CODEC_MIMIMUM_BYTESMUT_ALLOCATION: usize = 1024 * 1024;
+// If the codec buffer exceeds this limit, then we swap the buffer
+// with a fresh one to prevent memory explosions.
+pub const CODEC_BYTESMUT_ALLOCATION_LIMIT: usize = 8 * 1024 * 1024;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ConsumerRequest {
     Ping,
@@ -76,6 +82,14 @@ impl Encoder<SupplierResponse> for SupplierCodec {
 }
 
 fn encode_length_checked_json<R: Serialize>(msg: R, dst: &mut BytesMut) -> Result<(), io::Error> {
+    // If the outgoing buffer is empty AND greater than our allocation limit, we
+    // want to attempt to free space.
+    if dst.is_empty() && dst.capacity() >= CODEC_BYTESMUT_ALLOCATION_LIMIT {
+        dst.clear();
+        let mut buf = BytesMut::with_capacity(CODEC_MIMIMUM_BYTESMUT_ALLOCATION);
+        std::mem::swap(&mut buf, dst);
+    }
+
     // First, if there is anything already in dst, we should split past it.
     let mut work = dst.split_off(dst.len());
 
@@ -176,6 +190,10 @@ fn decode_length_checked_json<T: DeserializeOwned>(
     // Trim to length.
     if src.len() as u64 == req_len {
         src.clear();
+        if src.capacity() >= CODEC_BYTESMUT_ALLOCATION_LIMIT {
+            let mut buf = BytesMut::with_capacity(CODEC_MIMIMUM_BYTESMUT_ALLOCATION);
+            std::mem::swap(&mut buf, src);
+        }
     } else {
         src.advance((8 + req_len) as usize);
     };
