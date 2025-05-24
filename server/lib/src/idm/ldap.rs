@@ -1119,8 +1119,10 @@ mod tests {
 
             let e3 = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::ServiceAccount.to_value()),
                 (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::DisplayName, Value::new_utf8s("Application")),
                 (Attribute::Name, Value::new_iname(app_name)),
                 (Attribute::Uuid, Value::Uuid(app_uuid)),
                 (Attribute::LinkedGroup, Value::Refer(grp_uuid))
@@ -1283,8 +1285,10 @@ mod tests {
 
             let e3 = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::ServiceAccount.to_value()),
                 (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::DisplayName, Value::new_utf8s("Application")),
                 (Attribute::Name, Value::new_iname("testapp1")),
                 (Attribute::Uuid, Value::Uuid(app_uuid)),
                 (Attribute::LinkedGroup, Value::Refer(grp_uuid))
@@ -1456,8 +1460,10 @@ mod tests {
 
             let e4 = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::ServiceAccount.to_value()),
                 (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::DisplayName, Value::new_utf8s("Application")),
                 (Attribute::Name, Value::new_iname(app1_name)),
                 (Attribute::Uuid, Value::Uuid(app1_uuid)),
                 (Attribute::LinkedGroup, Value::Refer(grp1_uuid))
@@ -1465,8 +1471,10 @@ mod tests {
 
             let e5 = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::ServiceAccount.to_value()),
                 (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::DisplayName, Value::new_utf8s("Application")),
                 (Attribute::Name, Value::new_iname(app2_name)),
                 (Attribute::Uuid, Value::Uuid(app2_uuid)),
                 (Attribute::LinkedGroup, Value::Refer(grp2_uuid))
@@ -1651,8 +1659,10 @@ mod tests {
 
             let e3 = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::ServiceAccount.to_value()),
                 (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::DisplayName, Value::new_utf8s("Application")),
                 (Attribute::Name, Value::new_iname(app1_name)),
                 (Attribute::Uuid, Value::Uuid(app1_uuid)),
                 (Attribute::LinkedGroup, Value::Refer(grp1_uuid))
@@ -2693,8 +2703,10 @@ mod tests {
 
             let e3 = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::ServiceAccount.to_value()),
                 (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::DisplayName, Value::new_utf8s("Application")),
                 (Attribute::Name, Value::new_iname(app_name)),
                 (Attribute::Uuid, Value::Uuid(app_uuid)),
                 (Attribute::LinkedGroup, Value::Refer(grp_uuid))
