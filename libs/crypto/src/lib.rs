@@ -411,7 +411,7 @@ pub enum PasswordError {
     // We guess what it is, but don't know how to handle it
     UnsupportedAlgorithm(String),
     // No idea how to decode this password
-    NoDecoderFound,
+    NoDecoderFound(String),
     ParsingFailed,
 }
 
@@ -426,8 +426,8 @@ impl Display for PasswordError {
             PasswordError::UnsupportedAlgorithm(alg) => {
                 write!(f, "Unsupported algorithm: {}", alg)
             }
-            PasswordError::NoDecoderFound => {
-                write!(f, "No decoder found for password in this format")
+            PasswordError::NoDecoderFound(hint) => {
+                write!(f, "No decoder found for password in this format - input started with '{}' - please report it upstream", hint)
             }
             PasswordError::ParsingFailed => write!(f, "Parsing of password failed"),
         }
@@ -838,10 +838,12 @@ impl TryFrom<&str> for Password {
                         material: Kdf::SSHA512(s.to_vec(), h.to_vec()),
                     })
                 }
-                _ => Err(PasswordError::NoDecoderFound),
+                _ => Err(PasswordError::NoDecoderFound(hash_format)),
             }
         } else {
-            Err(PasswordError::NoDecoderFound)
+            Err(PasswordError::NoDecoderFound(
+                value.chars().take(5).collect(),
+            ))
         }
     }
 }
