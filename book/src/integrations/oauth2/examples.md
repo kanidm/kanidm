@@ -536,6 +536,7 @@ You may optionally choose to add:
 
 ```php
 'allow_user_to_change_display_name' => false,
+'allow_user_to_change_email' => false,
 'lost_password_link' => 'disabled',
 ```
 
