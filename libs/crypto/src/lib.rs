@@ -25,6 +25,7 @@ use openssl::sha::{Sha1, Sha256, Sha512};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Display;
 use std::num::ParseIntError;
 use std::time::{Duration, Instant};
 use tracing::{debug, error, trace, warn};
@@ -407,9 +408,30 @@ pub enum PasswordError {
     InvalidKeyLength,
     InvalidLength,
     InvalidSaltLength,
-    NoMatchingAlgorithm(String),
-    NoMatchingDecoder,
+    // We guess what it is, but don't know how to handle it
+    UnsupportedAlgorithm(String),
+    // No idea how to decode this password
+    NoDecoderFound,
     ParsingFailed,
+}
+
+impl Display for PasswordError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PasswordError::Base64Decoding => write!(f, "Base64 decoding failed"),
+            PasswordError::InvalidFormat => write!(f, "Invalid password format"),
+            PasswordError::InvalidKeyLength => write!(f, "Invalid key length for password"),
+            PasswordError::InvalidLength => write!(f, "Invalid length for password"),
+            PasswordError::InvalidSaltLength => write!(f, "Invalid salt length for password"),
+            PasswordError::UnsupportedAlgorithm(alg) => {
+                write!(f, "Unsupported algorithm: {}", alg)
+            }
+            PasswordError::NoDecoderFound => {
+                write!(f, "No decoder found for password in this format")
+            }
+            PasswordError::ParsingFailed => write!(f, "Parsing of password failed"),
+        }
+    }
 }
 
 impl From<ParseIntError> for PasswordError {
@@ -590,7 +612,7 @@ fn parse_crypt(hash_value: &str) -> Result<Password, PasswordError> {
             },
         })
     } else {
-        Err(PasswordError::NoMatchingAlgorithm("crypt".to_string()))
+        Err(PasswordError::UnsupportedAlgorithm("crypt".to_string()))
     }
 }
 
@@ -649,7 +671,7 @@ fn parse_pbkdf2(hash_format: &str, hash_value: &str) -> Result<Password, Passwor
                 })
             }
         }
-        _ => Err(PasswordError::NoMatchingAlgorithm(hash_format.to_string())),
+        _ => Err(PasswordError::UnsupportedAlgorithm(hash_format.to_string())),
     }
 }
 
@@ -664,7 +686,7 @@ fn parse_argon(hash_value: &str) -> Result<Password, PasswordError> {
         }) => {
             if algorithm.as_str() != "argon2id" {
                 error!(alg = %algorithm.as_str(), "Only argon2id is supported");
-                return Err(PasswordError::NoMatchingAlgorithm(algorithm.to_string()));
+                return Err(PasswordError::UnsupportedAlgorithm(algorithm.to_string()));
             }
 
             let version = version.unwrap_or(ARGON2_VERSION);
@@ -816,10 +838,10 @@ impl TryFrom<&str> for Password {
                         material: Kdf::SSHA512(s.to_vec(), h.to_vec()),
                     })
                 }
-                _ => Err(PasswordError::NoMatchingDecoder),
+                _ => Err(PasswordError::NoDecoderFound),
             }
         } else {
-            Err(PasswordError::NoMatchingDecoder)
+            Err(PasswordError::NoDecoderFound)
         }
     }
 }
