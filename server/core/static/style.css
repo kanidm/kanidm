@@ -1,6 +1,13 @@
 :root {
   --totp-width-and-height: 30px;
   --totp-stroke-width: 60px;
+  --navbar-colors-transition:
+    color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  --navbar-colors-transition: none;
 }
 
 html,
@@ -65,9 +72,11 @@ body {
 .navbar-toggle-icon {
   width: 30px;
   height: 30px;
+  transition: var(--navbar-colors-transition);
 }
 nav a.navbar-brand {
   color: var(--bs-navbar-color);
+  transition: var(--navbar-colors-transition);
 }
 
 .kanidm_logo {
