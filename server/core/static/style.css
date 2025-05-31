@@ -62,12 +62,12 @@ body {
 /*
  * Navbar
  */
-.navbar-toggler-icon {
-    width: 30px;
-    height: 30px;
+.navbar-toggle-icon {
+  width: 30px;
+  height: 30px;
 }
 nav a.navbar-brand {
-    color: var(--bs-navbar-color);
+  color: var(--bs-navbar-color);
 }
 
 .kanidm_logo {
