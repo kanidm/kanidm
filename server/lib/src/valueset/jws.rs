@@ -4,6 +4,7 @@ use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
 use base64urlsafedata::Base64UrlSafeData;
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer, JwsSigner};
+use crypto_glue::traits::Zeroizing;
 use hashbrown::HashSet;
 
 #[derive(Debug, Clone)]
@@ -22,7 +23,7 @@ impl ValueSetJwsKeyEs256 {
         self.set.insert(k)
     }
 
-    pub fn from_dbvs2(data: &[Vec<u8>]) -> Result<ValueSet, OperationError> {
+    pub fn from_dbvs2(data: &[Zeroizing<Vec<u8>>]) -> Result<ValueSet, OperationError> {
         let set = data
             .iter()
             .map(|b| {

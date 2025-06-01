@@ -1498,10 +1498,10 @@ impl QueryServerReadTransaction<'_> {
     pub fn scim_search_ext(
         &mut self,
         ident: Identity,
-        filter: ScimFilter,
+        filter: &ScimFilter,
         query: ScimEntryGetQuery,
     ) -> Result<Vec<ScimEntryKanidm>, OperationError> {
-        let filter_intent = Filter::from_scim_ro(&ident, &filter, self)?;
+        let filter_intent = Filter::from_scim_ro(&ident, filter, self)?;
 
         let f_intent_valid = filter_intent
             .validate(self.get_schema())
@@ -3144,7 +3144,7 @@ mod tests {
         );
 
         let base: Vec<ScimEntryKanidm> = server_txn
-            .scim_search_ext(idm_admin_ident, filter, ScimEntryGetQuery::default())
+            .scim_search_ext(idm_admin_ident, &filter, ScimEntryGetQuery::default())
             .unwrap();
 
         assert_eq!(base.len(), 1);

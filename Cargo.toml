@@ -122,10 +122,6 @@ codegen-units = 256
 libnss = { git = "https://github.com/Firstyear/libnss-rs.git", branch = "20250207-freebsd" }
 # Allow ssh keys to have comments with spaces.
 sshkeys = { git = "https://github.com/Firstyear/rust-sshkeys.git", rev = "49cb53232115d3aea86cd059b151e376293805fc" }
-# Branch currently carrying some needed rs256 signer patches for jwk handling,
-# as main is currently working to drop openssl and may need more work before
-# we commit to that change here.
-compact_jwt = { git = "https://github.com/Firstyear/compact-jwt.git", rev = "043976842773dd035fe394261347edeb644e3091" }
 # Allow deferring spans unless they have a child span
 tracing-forest = { git = "https://github.com/Firstyear/tracing-forest.git", rev = "a04c79e049ee31fcc6965091181a5e427196db9b" }
 
@@ -173,10 +169,11 @@ clap = { version = "4.5.40", features = ["derive", "env"] }
 clap_complete = "^4.5.54"
 # Forced by saffron/cron
 chrono = "^0.4.39"
-compact_jwt = { version = "^0.4.2", default-features = false }
+compact_jwt = "^0.5.1-dev"
 concread = "^0.5.5"
 cron = "0.15.0"
 crossbeam = "0.8.4"
+crypto-glue = "^0.1.5"
 csv = "1.3.1"
 dialoguer = "0.11.0"
 dhat = "0.3.3"

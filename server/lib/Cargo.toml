@@ -28,8 +28,9 @@ test = []                   # Enable this for cross-package test features.
 base64 = { workspace = true }
 base64urlsafedata = { workspace = true }
 bitflags = { workspace = true }
-compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto"] }
+compact_jwt = { workspace = true }
 concread = { workspace = true }
+crypto-glue = { workspace = true }
 dhat = { workspace = true, optional = true }
 dyn-clone = { workspace = true }
 # futures-util = { workspace = true }
@@ -93,8 +94,6 @@ whoami = { workspace = true }
 
 [dev-dependencies]
 compact_jwt = { workspace = true, features = [
-    "openssl",
-    "hsm-crypto",
     "unsafe_release_without_verify",
 ] }
 futures = { workspace = true }
