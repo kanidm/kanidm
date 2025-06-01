@@ -2535,7 +2535,7 @@ impl IdmServerProxyReadTransaction<'_> {
     pub fn oauth2_openid_userinfo(
         &mut self,
         client_id: &str,
-        token: JwsCompact,
+        token: &JwsCompact,
         ct: Duration,
     ) -> Result<OidcToken, Oauth2Error> {
         // DANGER: Why do we have to do this? During the use of qs for internal search
@@ -2556,7 +2556,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let access_token = o2rs
             .key_object
-            .jws_verify(&token)
+            .jws_verify(token)
             .map_err(|err| {
                 error!(?err, "Unable to verify access token");
                 Oauth2Error::InvalidRequest
@@ -5216,7 +5216,7 @@ mod tests {
         // Does our access token work with the userinfo endpoint?
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read
-            .oauth2_openid_userinfo("test_resource_server", access_token, ct)
+            .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
             .expect("failed to get userinfo");
 
         assert_eq!(oidc.iss, userinfo.iss);
@@ -5261,7 +5261,7 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let userinfo = idms_prox_read
-            .oauth2_openid_userinfo("test_resource_server", access_token, ct)
+            .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
             .expect("failed to get userinfo");
 
         assert_eq!(oidc.iss, userinfo.iss);
@@ -5363,7 +5363,7 @@ mod tests {
         );
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read
-            .oauth2_openid_userinfo("test_resource_server", access_token, ct)
+            .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
             .expect("failed to get userinfo");
 
         assert_eq!(oidc.s_claims, userinfo.s_claims);
@@ -5457,7 +5457,7 @@ mod tests {
 
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read
-            .oauth2_openid_userinfo("test_resource_server", access_token, ct)
+            .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
             .expect("failed to get userinfo");
 
         // does the userinfo endpoint provide the same groups?
@@ -5585,7 +5585,7 @@ mod tests {
 
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read
-            .oauth2_openid_userinfo("test_resource_server", access_token, ct)
+            .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
             .expect("failed to get userinfo");
 
         // does the userinfo endpoint provide the same groups?
@@ -7016,7 +7016,7 @@ mod tests {
         // Does our access token work with the userinfo endpoint?
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read
-            .oauth2_openid_userinfo("test_resource_server", access_token, ct)
+            .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
             .expect("failed to get userinfo");
 
         assert_eq!(oidc.iss, userinfo.iss);

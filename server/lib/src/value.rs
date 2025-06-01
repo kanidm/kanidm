@@ -5,33 +5,6 @@
 
 #![allow(non_upper_case_globals)]
 
-use std::cmp::Ordering;
-use std::collections::BTreeSet;
-use std::convert::TryFrom;
-use std::fmt;
-use std::fmt::Formatter;
-use std::str::FromStr;
-use std::time::Duration;
-
-#[cfg(test)]
-use base64::{engine::general_purpose, Engine as _};
-use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
-use hashbrown::HashSet;
-use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
-use kanidm_proto::internal::ImageValue;
-use num_enum::TryFromPrimitive;
-use openssl::ec::EcKey;
-use openssl::pkey::Private;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
-use sshkey_attest::proto::PublicKey as SshPublicKey;
-use time::OffsetDateTime;
-use url::Url;
-use uuid::Uuid;
-use webauthn_rs::prelude::{
-    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
-};
-
 use crate::be::dbentry::DbIdentSpn;
 use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
@@ -41,11 +14,37 @@ use crate::server::identity::IdentityId;
 use crate::server::keys::KeyId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
-
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
+use crypto_glue::traits::Zeroizing;
+use hashbrown::HashSet;
+use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
+use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
 use kanidm_proto::v1::UatPurposeStatus;
+use num_enum::TryFromPrimitive;
+use openssl::ec::EcKey;
+use openssl::pkey::Private;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use sshkey_attest::proto::PublicKey as SshPublicKey;
+use std::cmp::Ordering;
+use std::collections::BTreeSet;
+use std::convert::TryFrom;
+use std::fmt;
+use std::fmt::Formatter;
 use std::hash::Hash;
+use std::str::FromStr;
+use std::time::Duration;
+use time::OffsetDateTime;
+use url::Url;
+use uuid::Uuid;
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
+
+#[cfg(test)]
+use base64::{engine::general_purpose, Engine as _};
 
 lazy_static! {
     pub static ref SPN_RE: Regex = {
@@ -1245,6 +1244,7 @@ pub struct Oauth2Session {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyUsage {
     JwsEs256,
+    JwsHs256,
     JwsRs256,
     JweA128GCM,
 }
@@ -1256,6 +1256,7 @@ impl fmt::Display for KeyUsage {
             "{}",
             match self {
                 KeyUsage::JwsEs256 => "jws_es256",
+                KeyUsage::JwsHs256 => "jws_hs256",
                 KeyUsage::JwsRs256 => "jws_rs256",
                 KeyUsage::JweA128GCM => "jwe_a128gcm",
             }
@@ -1349,7 +1350,7 @@ pub enum Value {
         valid_from: u64,
         status: KeyStatus,
         status_cid: Cid,
-        der: Vec<u8>,
+        der: Zeroizing<Vec<u8>>,
     },
 
     HexString(String),

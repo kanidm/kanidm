@@ -2821,7 +2821,7 @@ pub async fn reauth(
         .handle_reauth(client_auth_info, obj, kopid.eventid)
         .await;
     debug!("ReAuth result: {:?}", inter);
-    auth_session_state_management(state, jar, inter)
+    auth_session_state_management(&state, jar, inter)
 }
 
 #[utoipa::path(
@@ -2859,13 +2859,13 @@ pub async fn auth(
         .handle_auth(maybe_sessionid, obj, kopid.eventid, client_auth_info)
         .await;
     debug!("Auth result: {:?}", inter);
-    auth_session_state_management(state, jar, inter)
+    auth_session_state_management(&state, jar, inter)
 }
 
 // Disable on any level except trace to stop leaking tokens
 #[instrument(level = "trace", skip_all)]
 fn auth_session_state_management(
-    state: ServerState,
+    state: &ServerState,
     mut jar: CookieJar,
     inter: Result<AuthResult, OperationError>,
 ) -> Result<Response, WebError> {

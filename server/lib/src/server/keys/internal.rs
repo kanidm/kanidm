@@ -10,9 +10,10 @@ use compact_jwt::crypto::{
 use compact_jwt::jwe::Jwe;
 use compact_jwt::traits::*;
 use compact_jwt::{
-    JwaAlg, Jwk, JwkKeySet, Jws, JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsSigner,
-    JwsSignerToVerifier,
+    JwaAlg, Jwk, JwkKeySet, Jws, JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsHs256Signer,
+    JwsSigner, JwsSignerToVerifier,
 };
+use crypto_glue::{aes128, traits::Zeroizing};
 use smolset::SmolSet;
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet};
@@ -59,6 +60,7 @@ impl KeyProviderInternal {
             provider,
             uuid,
             jws_es256: None,
+            jws_hs256: None,
             jwe_a128gcm: None,
             jws_rs256: None,
         }))
@@ -73,6 +75,7 @@ impl KeyProviderInternal {
         debug!(?uuid, "Loading key object ...");
 
         let mut jws_es256: Option<KeyObjectInternalJwtEs256> = None;
+        let mut jws_hs256: Option<KeyObjectInternalJwtHs256> = None;
         let mut jws_rs256: Option<KeyObjectInternalJwtRs256> = None;
         let mut jwe_a128gcm: Option<KeyObjectInternalJweA128GCM> = None;
 
@@ -98,6 +101,18 @@ impl KeyProviderInternal {
                             jws_es256.get_or_insert_with(KeyObjectInternalJwtEs256::default);
 
                         jws_es256_ref.load(
+                            key_id,
+                            *status,
+                            status_cid.clone(),
+                            der,
+                            *valid_from,
+                        )?;
+                    }
+                    KeyUsage::JwsHs256 => {
+                        let jws_hs256_ref =
+                            jws_hs256.get_or_insert_with(KeyObjectInternalJwtHs256::default);
+
+                        jws_hs256_ref.load(
                             key_id,
                             *status,
                             status_cid.clone(),
@@ -137,6 +152,7 @@ impl KeyProviderInternal {
             provider,
             uuid,
             jws_es256,
+            jws_hs256,
             jwe_a128gcm,
             jws_rs256,
         })))
@@ -161,14 +177,8 @@ impl KeyProviderInternal {
 
 #[derive(Clone)]
 enum InternalJweA128GCMStatus {
-    Valid {
-        cipher: JweA128KWEncipher,
-        key: Vec<u8>,
-    },
-    Retained {
-        cipher: JweA128KWEncipher,
-        key: Vec<u8>,
-    },
+    Valid { cipher: JweA128KWEncipher },
+    Retained { cipher: JweA128KWEncipher },
     Revoked,
 }
 
@@ -217,19 +227,17 @@ impl KeyObjectInternalJweA128GCM {
     fn new_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
         let valid_from = valid_from.as_secs();
 
-        let cipher = JweA128KWEncipher::new().map_err(|jwt_error| {
+        let key = aes128::new_key();
+        /*
+        .map_err(|jwt_error| {
             error!(?jwt_error, "Unable to generate new jwe a128 encryption key");
             OperationError::KP0035KeyObjectJweA128GCMGeneration
         })?;
+        */
 
-        let key = cipher.key_bytes().map_err(|jwt_error| {
-            error!(?jwt_error, "Unable to access new jwe a128 encryption key");
-            OperationError::KP0036KeyObjectPrivateToBytes
-        })?;
-
-        let key = Vec::from(key);
-
-        let kid = cipher.kid().to_string();
+        let mut cipher = JweA128KWEncipher::from(key);
+        cipher.set_sign_option_embed_kid(true);
+        let kid = cipher.get_kid().to_string();
 
         self.active.insert(valid_from, cipher.clone());
 
@@ -237,7 +245,7 @@ impl KeyObjectInternalJweA128GCM {
             kid,
             InternalJweA128GCM {
                 valid_from,
-                status: InternalJweA128GCMStatus::Valid { cipher, key },
+                status: InternalJweA128GCMStatus::Valid { cipher },
                 status_cid: cid.clone(),
             },
         );
@@ -253,13 +261,16 @@ impl KeyObjectInternalJweA128GCM {
             let status_cid = internal_jwe.status_cid.clone();
 
             let (status, der) = match &internal_jwe.status {
-                InternalJweA128GCMStatus::Valid { cipher: _, key } => {
-                    (KeyStatus::Valid, key.clone())
+                InternalJweA128GCMStatus::Valid { cipher } => {
+                    (KeyStatus::Valid, cipher.as_ref().as_slice().to_vec().into())
                 }
-                InternalJweA128GCMStatus::Retained { cipher: _, key } => {
-                    (KeyStatus::Retained, key.clone())
+                InternalJweA128GCMStatus::Retained { cipher } => (
+                    KeyStatus::Retained,
+                    cipher.as_ref().as_slice().to_vec().into(),
+                ),
+                InternalJweA128GCMStatus::Revoked => {
+                    (KeyStatus::Revoked, Zeroizing::new(Vec::with_capacity(0)))
                 }
-                InternalJweA128GCMStatus::Revoked => (KeyStatus::Revoked, Vec::with_capacity(0)),
             };
 
             (
@@ -304,28 +315,30 @@ impl KeyObjectInternalJweA128GCM {
 
         let status = match status {
             KeyStatus::Valid => {
-                let cipher = JweA128KWEncipher::try_from(der).map_err(|err| {
-                    error!(?err, ?id, "Unable to load A128GCM retained cipher");
+                let key = aes128::key_from_slice(der).ok_or_else(|| {
+                    error!(?id, "Unable to load A128GCM retained cipher");
                     OperationError::KP0037KeyObjectImportJweA128GCMInvalid
                 })?;
 
+                let mut cipher = JweA128KWEncipher::from(key);
+                cipher.set_sign_option_embed_kid(true);
+                cipher.set_kid(id.as_str());
+
                 self.active.insert(valid_from, cipher.clone());
 
-                InternalJweA128GCMStatus::Valid {
-                    cipher,
-                    key: der.to_vec(),
-                }
+                InternalJweA128GCMStatus::Valid { cipher }
             }
             KeyStatus::Retained => {
-                let cipher = JweA128KWEncipher::try_from(der).map_err(|err| {
-                    error!(?err, ?id, "Unable to load A128GCM retained cipher");
+                let key = aes128::key_from_slice(der).ok_or_else(|| {
+                    error!(?id, "Unable to load A128GCM retained cipher");
                     OperationError::KP0038KeyObjectImportJweA128GCMInvalid
                 })?;
 
-                InternalJweA128GCMStatus::Retained {
-                    cipher,
-                    key: der.to_vec(),
-                }
+                let mut cipher = JweA128KWEncipher::from(key);
+                cipher.set_sign_option_embed_kid(true);
+                cipher.set_kid(id.as_str());
+
+                InternalJweA128GCMStatus::Retained { cipher }
             }
             KeyStatus::Revoked => InternalJweA128GCMStatus::Revoked,
         };
@@ -389,7 +402,7 @@ enum InternalJwtEs256Status {
     Valid {
         // signer: JwsEs256Signer,
         verifier: JwsEs256Verifier,
-        private_der: Vec<u8>,
+        private_der: Zeroizing<Vec<u8>>,
     },
     Retained {
         verifier: JwsEs256Verifier,
@@ -479,7 +492,7 @@ impl KeyObjectInternalJwtEs256 {
                     valid_from,
                     status: InternalJwtEs256Status::Valid {
                         verifier,
-                        private_der: private_der.clone(),
+                        private_der: private_der.clone().into(),
                     },
                     status_cid: cid.clone(),
                 },
@@ -597,7 +610,7 @@ impl KeyObjectInternalJwtEs256 {
                 InternalJwtEs256Status::Valid {
                     // signer,
                     verifier,
-                    private_der: der.to_vec(),
+                    private_der: der.to_vec().into(),
                 }
             }
             KeyStatus::Retained => {
@@ -647,10 +660,10 @@ impl KeyObjectInternalJwtEs256 {
                     (KeyStatus::Valid, private_der.clone())
                 }
                 InternalJwtEs256Status::Retained { public_der, .. } => {
-                    (KeyStatus::Retained, public_der.clone())
+                    (KeyStatus::Retained, public_der.clone().into())
                 }
                 InternalJwtEs256Status::Revoked { public_der, .. } => {
-                    (KeyStatus::Revoked, public_der.clone())
+                    (KeyStatus::Revoked, public_der.clone().into())
                 }
             };
 
@@ -774,7 +787,7 @@ impl KeyObjectInternalJwtEs256 {
 enum InternalJwtRs256Status {
     Valid {
         verifier: JwsRs256Verifier,
-        private_der: Vec<u8>,
+        private_der: Zeroizing<Vec<u8>>,
     },
     Retained {
         verifier: JwsRs256Verifier,
@@ -864,7 +877,7 @@ impl KeyObjectInternalJwtRs256 {
                     valid_from,
                     status: InternalJwtRs256Status::Valid {
                         verifier,
-                        private_der: private_der.clone(),
+                        private_der: private_der.clone().into(),
                     },
                     status_cid: cid.clone(),
                 },
@@ -878,7 +891,7 @@ impl KeyObjectInternalJwtRs256 {
     fn new_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
         let valid_from = valid_from.as_secs();
 
-        let signer = JwsRs256Signer::generate_legacy_rs256().map_err(|jwt_error| {
+        let signer = JwsRs256Signer::generate_rs256().map_err(|jwt_error| {
             error!(?jwt_error, "Unable to generate new jwt rs256 signing key");
             OperationError::KP0048KeyObjectJwtRs256Generation
         })?;
@@ -982,7 +995,7 @@ impl KeyObjectInternalJwtRs256 {
                 InternalJwtRs256Status::Valid {
                     // signer,
                     verifier,
-                    private_der: der.to_vec(),
+                    private_der: der.to_vec().into(),
                 }
             }
             KeyStatus::Retained => {
@@ -1032,10 +1045,10 @@ impl KeyObjectInternalJwtRs256 {
                     (KeyStatus::Valid, private_der.clone())
                 }
                 InternalJwtRs256Status::Retained { public_der, .. } => {
-                    (KeyStatus::Retained, public_der.clone())
+                    (KeyStatus::Retained, public_der.clone().into())
                 }
                 InternalJwtRs256Status::Revoked { public_der, .. } => {
-                    (KeyStatus::Revoked, public_der.clone())
+                    (KeyStatus::Revoked, public_der.clone().into())
                 }
             };
 
@@ -1163,6 +1176,7 @@ pub struct KeyObjectInternal {
     provider: Arc<KeyProviderInternal>,
     uuid: Uuid,
     jws_es256: Option<KeyObjectInternalJwtEs256>,
+    jws_hs256: Option<KeyObjectInternalJwtHs256>,
     jws_rs256: Option<KeyObjectInternalJwtRs256>,
     jwe_a128gcm: Option<KeyObjectInternalJweA128GCM>,
     // If you add more types here you need to add these to rotate
@@ -1272,6 +1286,14 @@ impl KeyObjectT for KeyObjectInternal {
                     Err(OperationError::KP0018KeyProviderNoSuchKey)
                 }
             }
+            JwaAlg::HS256 => {
+                if let Some(jws_hs256_object) = &self.jws_hs256 {
+                    jws_hs256_object.verify(jwsc)
+                } else {
+                    error!(provider_uuid = ?self.uuid, "jwt hs256 not available on this provider");
+                    Err(OperationError::KP0018KeyProviderNoSuchKey)
+                }
+            }
             JwaAlg::RS256 => {
                 if let Some(jws_rs256_object) = &self.jws_rs256 {
                     jws_rs256_object.verify(jwsc)
@@ -1279,12 +1301,14 @@ impl KeyObjectT for KeyObjectInternal {
                     error!(provider_uuid = ?self.uuid, "jwt rs256 not available on this provider");
                     Err(OperationError::KP0018KeyProviderNoSuchKey)
                 }
-            }
-            unsupported_alg => {
-                // unsupported rn.
-                error!(provider_uuid = ?self.uuid, ?unsupported_alg, "algorithm not available on this provider");
-                Err(OperationError::KP0019KeyProviderUnsupportedAlgorithm)
-            }
+            } // Commented out as currently every JWA alg is reachable
+              /*
+              unsupported_alg => {
+                  // unsupported rn.
+                  error!(provider_uuid = ?self.uuid, ?unsupported_alg, "algorithm not available on this provider");
+                  Err(OperationError::KP0019KeyProviderUnsupportedAlgorithm)
+              }
+              */
         }
     }
 
@@ -1405,6 +1429,11 @@ impl KeyObjectT for KeyObjectInternal {
                     .flat_map(|jwe_a128gcm| jwe_a128gcm.to_key_iter()),
             )
             .chain(
+                self.jws_hs256
+                    .iter()
+                    .flat_map(|jws_hs256| jws_hs256.to_key_iter()),
+            )
+            .chain(
                 self.jws_rs256
                     .iter()
                     .flat_map(|jws_rs256| jws_rs256.to_key_iter()),
@@ -1463,6 +1492,309 @@ impl KeyObjectT for KeyObjectInternal {
         self.jws_rs256
             .as_ref()
             .map(|jws_rs256_object| jws_rs256_object.public_jwks())
+    }
+}
+
+#[derive(Clone)]
+enum InternalJwtHs256Status {
+    Valid { verifier: JwsHs256Signer },
+    Retained { verifier: JwsHs256Signer },
+    Revoked,
+}
+
+#[derive(Clone)]
+struct InternalJwtHs256 {
+    valid_from: u64,
+    status: InternalJwtHs256Status,
+    status_cid: Cid,
+}
+
+#[derive(Default, Clone)]
+struct KeyObjectInternalJwtHs256 {
+    // active signing keys are in a BTreeMap indexed by their valid_from
+    // time so that we can retrieve the active key.
+    //
+    // We don't need to worry about manipulating this at runtime, since any expiry
+    // event will cause the keyObject to reload, which will reflect to this map.
+    active: BTreeMap<u64, JwsHs256Signer>,
+
+    // All keys are stored by their KeyId for fast lookup. Keys internally have a
+    // current status which is checked for signature validation.
+    all: BTreeMap<KeyId, InternalJwtHs256>,
+}
+
+// Needed temporarily until we consume this type in other areas.
+#[allow(dead_code)]
+impl KeyObjectInternalJwtHs256 {
+    fn get_valid_signer(&self, time: Duration) -> Option<&JwsHs256Signer> {
+        let ct_secs = time.as_secs();
+
+        self.active
+            .range((Unbounded, Included(ct_secs)))
+            .next_back()
+            .map(|(_time, signer)| signer)
+    }
+
+    fn assert_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        if self.get_valid_signer(valid_from).is_none() {
+            // This means there is no active signing key, so we need to create one.
+            debug!("no active jwt hs256 found, creating a new one ...");
+            self.new_active(valid_from, cid)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn import(
+        &mut self,
+        import_keys: &SmolSet<[Vec<u8>; 1]>,
+        valid_from: Duration,
+        cid: &Cid,
+    ) -> Result<(), OperationError> {
+        let valid_from = valid_from.as_secs();
+
+        for private_bytes in import_keys {
+            let mut signer = JwsHs256Signer::try_from(private_bytes.as_slice()).map_err(|err| {
+                error!(?err, "Unable to load imported hs256 DER signer");
+                OperationError::KP0063KeyObjectJwsHs256DerInvalid
+            })?;
+
+            let verifier = signer.clone();
+
+            // We need to use the legacy KID for imported objects
+            let kid = signer.get_legacy_kid().to_string();
+            debug!(?kid, "imported key");
+
+            // Indicate to the signer we wish to use the legacy kid for this signer.
+            signer.set_kid(kid.as_str());
+
+            self.active.insert(valid_from, signer.clone());
+
+            self.all.insert(
+                kid,
+                InternalJwtHs256 {
+                    valid_from,
+                    status: InternalJwtHs256Status::Valid { verifier },
+                    status_cid: cid.clone(),
+                },
+            );
+        }
+
+        Ok(())
+    }
+
+    #[instrument(level = "debug", name = "keyobject::jws_hs256::new", skip_all)]
+    fn new_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let valid_from = valid_from.as_secs();
+
+        let signer = JwsHs256Signer::generate_hs256().map_err(|jwt_error| {
+            error!(?jwt_error, "Unable to generate new jwt hs256 signing key");
+            OperationError::KP0065KeyObjectJwtHs256Generation
+        })?;
+
+        let verifier = signer.clone();
+        /*
+        signer.private_key_to_der().map_err(|jwt_error| {
+            error!(?jwt_error, "Unable to convert signing key to DER");
+            OperationError::KP0071KeyObjectPrivateToDer
+        })?;
+        */
+
+        self.active.insert(valid_from, signer.clone());
+
+        // Needed to disambiguate the various traits.
+        let kid = JwsVerifier::get_kid(&signer).to_string();
+
+        self.all.insert(
+            kid,
+            InternalJwtHs256 {
+                valid_from,
+                status: InternalJwtHs256Status::Valid { verifier },
+                status_cid: cid.clone(),
+            },
+        );
+
+        Ok(())
+    }
+
+    fn revoke(&mut self, revoke_key_id: &KeyId, cid: &Cid) -> Result<bool, OperationError> {
+        if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
+            if matches!(&key_to_revoke.status, InternalJwtHs256Status::Revoked) {
+                return Ok(false);
+            }
+
+            key_to_revoke.status_cid = cid.clone();
+            key_to_revoke.status = InternalJwtHs256Status::Revoked;
+
+            let valid_from = key_to_revoke.valid_from;
+
+            // Remove it from the active set.
+            self.active.remove(&valid_from);
+
+            Ok(true)
+        } else {
+            // We didn't revoke anything
+            Ok(false)
+        }
+    }
+
+    fn load(
+        &mut self,
+        id: &str,
+        status: KeyStatus,
+        status_cid: Cid,
+        der: &[u8],
+        valid_from: u64,
+    ) -> Result<(), OperationError> {
+        let id: KeyId = id.to_string();
+
+        let status = match status {
+            KeyStatus::Valid => {
+                let mut signer = JwsHs256Signer::try_from(der).map_err(|err| {
+                    error!(?err, ?id, "Unable to load hs256 DER signer");
+                    OperationError::KP0066KeyObjectJwsHs256DerInvalid
+                })?;
+
+                // Ensure that the signer has a coherent kid
+                signer.set_kid(id.as_str());
+
+                let verifier = signer.clone();
+                /*
+                .get_verifier().map_err(|err| {
+                    error!(?err, "Unable to retrieve verifier from signer");
+                    OperationError::KP0067KeyObjectSignerToVerifier
+                })?;
+                */
+
+                self.active.insert(valid_from, signer);
+
+                InternalJwtHs256Status::Valid { verifier }
+            }
+            KeyStatus::Retained => {
+                let verifier = JwsHs256Signer::try_from(der).map_err(|err| {
+                    error!(?err, ?id, "Unable to load hs256 DER verifier");
+                    OperationError::KP0068KeyObjectJwsHs256DerInvalid
+                })?;
+
+                InternalJwtHs256Status::Retained { verifier }
+            }
+            KeyStatus::Revoked => InternalJwtHs256Status::Revoked,
+        };
+
+        let internal_jwt = InternalJwtHs256 {
+            valid_from,
+            status,
+            status_cid,
+        };
+
+        self.all.insert(id, internal_jwt);
+
+        Ok(())
+    }
+
+    fn to_key_iter(&self) -> impl Iterator<Item = (KeyId, KeyInternalData)> + '_ {
+        self.all.iter().map(|(key_id, internal_jwt)| {
+            let usage = KeyUsage::JwsHs256;
+
+            let valid_from = internal_jwt.valid_from;
+            let status_cid = internal_jwt.status_cid.clone();
+
+            let (status, der) = match &internal_jwt.status {
+                InternalJwtHs256Status::Valid { verifier } => (
+                    KeyStatus::Valid,
+                    verifier.as_ref().as_slice().to_vec().into(),
+                ),
+                InternalJwtHs256Status::Retained { verifier } => (
+                    KeyStatus::Retained,
+                    verifier.as_ref().as_slice().to_vec().into(),
+                ),
+                InternalJwtHs256Status::Revoked => {
+                    (KeyStatus::Revoked, Vec::with_capacity(0).into())
+                }
+            };
+
+            (
+                key_id.clone(),
+                KeyInternalData {
+                    usage,
+                    valid_from,
+                    der,
+                    status,
+                    status_cid,
+                },
+            )
+        })
+    }
+
+    fn sign<V: JwsSignable>(
+        &self,
+        jws: &V,
+        current_time: Duration,
+    ) -> Result<V::Signed, OperationError> {
+        let Some(signing_key) = self.get_valid_signer(current_time) else {
+            error!("No signing keys available. This may indicate that no keys are valid yet!");
+            return Err(OperationError::KP0069KeyObjectNoActiveSigningKeys);
+        };
+
+        signing_key.sign(jws).map_err(|jwt_err| {
+            error!(?jwt_err, "Unable to sign jws");
+            OperationError::KP0070KeyObjectJwsHs256Signature
+        })
+    }
+
+    fn verify<V: JwsVerifiable>(&self, jwsc: &V) -> Result<V::Verified, OperationError> {
+        let internal_jws = jwsc
+            .kid()
+            .and_then(|kid| {
+                debug!(?kid);
+                self.all.get(kid)
+            })
+            .ok_or_else(|| {
+                error!("JWS is signed by a key that is not present in this KeyObject");
+                for pres_kid in self.all.keys() {
+                    debug!(?pres_kid);
+                }
+                OperationError::KP0022KeyObjectJwsNotAssociated
+            })?;
+
+        match &internal_jws.status {
+            InternalJwtHs256Status::Valid { verifier, .. }
+            | InternalJwtHs256Status::Retained { verifier, .. } => {
+                verifier.verify(jwsc).map_err(|jwt_err| {
+                    error!(?jwt_err, "Failed to verify jws");
+                    OperationError::KP0024KeyObjectJwsInvalid
+                })
+            }
+            InternalJwtHs256Status::Revoked => {
+                error!("The key used to sign this JWS has been revoked.");
+                Err(OperationError::KP0023KeyObjectJwsKeyRevoked)
+            }
+        }
+    }
+
+    fn public_jwks(&self) -> JwkKeySet {
+        JwkKeySet {
+            keys: Vec::with_capacity(0),
+        }
+    }
+
+    fn public_jwk(&self, _key_id: &str) -> Result<Option<Jwk>, OperationError> {
+        // Hmac keys can not yield a jwk.
+        Ok(None)
+    }
+
+    #[cfg(test)]
+    fn kid_status(&self, key_id: &KeyId) -> Result<Option<KeyStatus>, OperationError> {
+        if let Some(key_to_check) = self.all.get(key_id) {
+            let status = match &key_to_check.status {
+                InternalJwtHs256Status::Valid { .. } => KeyStatus::Valid,
+                InternalJwtHs256Status::Retained { .. } => KeyStatus::Retained,
+                InternalJwtHs256Status::Revoked { .. } => KeyStatus::Revoked,
+            };
+            Ok(Some(status))
+        } else {
+            Ok(None)
+        }
     }
 }
 
