@@ -12,9 +12,6 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
 use std::time::Duration;
-
-#[cfg(test)]
-use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use hashbrown::HashSet;
 use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
@@ -31,7 +28,7 @@ use uuid::Uuid;
 use webauthn_rs::prelude::{
     AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
 };
-
+use crypto_glue::traits::Zeroizing;
 use crate::be::dbentry::DbIdentSpn;
 use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
@@ -41,11 +38,13 @@ use crate::server::identity::IdentityId;
 use crate::server::keys::KeyId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
-
 use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
 use kanidm_proto::v1::UatPurposeStatus;
 use std::hash::Hash;
+
+#[cfg(test)]
+use base64::{engine::general_purpose, Engine as _};
 
 lazy_static! {
     pub static ref SPN_RE: Regex = {
@@ -1245,6 +1244,7 @@ pub struct Oauth2Session {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyUsage {
     JwsEs256,
+    JwsHs256,
     JwsRs256,
     JweA128GCM,
 }
@@ -1256,6 +1256,7 @@ impl fmt::Display for KeyUsage {
             "{}",
             match self {
                 KeyUsage::JwsEs256 => "jws_es256",
+                KeyUsage::JwsHs256 => "jws_hs256",
                 KeyUsage::JwsRs256 => "jws_rs256",
                 KeyUsage::JweA128GCM => "jwe_a128gcm",
             }
@@ -1349,7 +1350,7 @@ pub enum Value {
         valid_from: u64,
         status: KeyStatus,
         status_cid: Cid,
-        der: Vec<u8>,
+        der: Zeroizing<Vec<u8>>,
     },
 
     HexString(String),
