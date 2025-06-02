@@ -198,7 +198,7 @@ mod tests {
 
         let create = vec![e];
 
-        run_create_test!(Ok(()), preload, create, None, |_| {});
+        run_create_test!(Ok(None), preload, create, None, |_| {});
     }
 
     #[test]

@@ -1,23 +1,27 @@
 use crate::prelude::*;
+use crate::schema::{SchemaAttribute, SchemaTransaction};
 use crate::server::batch_modify::{BatchModifyEvent, ModSetValid};
-use kanidm_proto::scim_v1::client::ScimEntryPutGeneric;
+use crate::server::ValueSetResolveStatus;
+use crate::valueset::*;
+use kanidm_proto::scim_v1::client::{ScimEntryPostGeneric, ScimEntryPutGeneric};
+use kanidm_proto::scim_v1::JsonValue;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ScimEntryPutEvent {
     /// The identity performing the change.
-    pub ident: Identity,
+    pub(crate) ident: Identity,
 
     // future - etags to detect version changes.
     /// The target entry that will be changed
-    pub target: Uuid,
+    pub(crate) target: Uuid,
     /// Update an attribute to contain the following value state.
     /// If the attribute is None, it is removed.
-    pub attrs: BTreeMap<Attribute, Option<ValueSet>>,
+    pub(crate) attrs: BTreeMap<Attribute, Option<ValueSet>>,
 
     /// If an effective access check should be carried out post modification
     /// of the entries
-    pub effective_access_check: bool,
+    pub(crate) effective_access_check: bool,
 }
 
 impl ScimEntryPutEvent {
@@ -45,6 +49,60 @@ impl ScimEntryPutEvent {
             attrs,
             effective_access_check: query.ext_access_check,
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct ScimCreateEvent {
+    pub(crate) ident: Identity,
+    pub(crate) entry: EntryInitNew,
+}
+
+impl ScimCreateEvent {
+    pub fn try_from(
+        ident: Identity,
+        classes: &[EntryClass],
+        entry: ScimEntryPostGeneric,
+        qs: &mut QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        let mut entry = entry
+            .attrs
+            .into_iter()
+            .map(|(attr, json_value)| {
+                qs.resolve_scim_json_post(&attr, json_value)
+                    .map(|kani_value| (attr, kani_value))
+            })
+            .collect::<Result<EntryInitNew, _>>()?;
+
+        let classes = ValueSetIutf8::from_iter(classes.iter().map(|cls| cls.as_ref()))
+            .ok_or(OperationError::SC0027ClassSetInvalid)?;
+
+        entry.set_ava_set(&Attribute::Class, classes);
+
+        Ok(ScimCreateEvent { ident, entry })
+    }
+}
+
+#[derive(Debug)]
+pub struct ScimDeleteEvent {
+    /// The identity performing the change.
+    pub(crate) ident: Identity,
+
+    // future - etags to detect version changes.
+    /// The target entry that will be changed
+    pub(crate) target: Uuid,
+
+    /// The class of the target entry.
+    pub(crate) class: EntryClass,
+}
+
+impl ScimDeleteEvent {
+    pub fn new(ident: Identity, target: Uuid, class: EntryClass) -> Self {
+        ScimDeleteEvent {
+            ident,
+            target,
+            class,
+        }
     }
 }
 
@@ -112,6 +170,251 @@ impl QueryServerWriteTransaction<'_> {
                     // Multiple entries matched, should not be possible!
                     Err(OperationError::UniqueConstraintViolation)
                 }
+            }
+        }
+    }
+
+    pub fn scim_create(
+        &mut self,
+        scim_create: ScimCreateEvent,
+    ) -> Result<ScimEntryKanidm, OperationError> {
+        let ScimCreateEvent { ident, entry } = scim_create;
+
+        let create_event = CreateEvent {
+            ident,
+            entries: vec![entry],
+            return_created_uuids: true,
+        };
+
+        let changed_uuids = self.create(&create_event)?;
+
+        let mut changed_uuids = changed_uuids.ok_or(OperationError::SC0028CreatedUuidsInvalid)?;
+
+        let target = if let Some(target) = changed_uuids.pop() {
+            if !changed_uuids.is_empty() {
+                // Too many results!
+                return Err(OperationError::UniqueConstraintViolation);
+            }
+
+            target
+        } else {
+            // No results!
+            return Err(OperationError::NoMatchingEntries);
+        };
+
+        // Now get the entry. We handle a lot of the errors here nicely,
+        // but if we got to this point, they really can't happen.
+        let filter_intent = filter!(f_and!([f_eq(Attribute::Uuid, PartialValue::Uuid(target))]));
+
+        let f_intent_valid = filter_intent
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let f_valid = f_intent_valid.clone().into_ignore_hidden();
+
+        let se = SearchEvent {
+            ident: create_event.ident,
+            filter: f_valid,
+            filter_orig: f_intent_valid,
+            // Return all attributes
+            attrs: None,
+            effective_access_check: false,
+        };
+
+        let mut vs = self.search_ext(&se)?;
+        match vs.pop() {
+            Some(entry) if vs.is_empty() => entry.to_scim_kanidm(self),
+            _ => {
+                if vs.is_empty() {
+                    Err(OperationError::NoMatchingEntries)
+                } else {
+                    // Multiple entries matched, should not be possible!
+                    Err(OperationError::UniqueConstraintViolation)
+                }
+            }
+        }
+    }
+
+    pub fn scim_delete(&mut self, scim_delete: ScimDeleteEvent) -> Result<(), OperationError> {
+        let ScimDeleteEvent {
+            ident,
+            target,
+            class,
+        } = scim_delete;
+
+        let filter_intent = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target)));
+        let f_intent_valid = filter_intent
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Uuid, PartialValue::Uuid(target)),
+            f_eq(Attribute::Class, class.into())
+        ]));
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let de = DeleteEvent {
+            ident,
+            filter: f_valid,
+            filter_orig: f_intent_valid,
+        };
+
+        self.delete(&de)
+    }
+
+    pub(crate) fn resolve_scim_json_put(
+        &mut self,
+        attr: &Attribute,
+        value: Option<JsonValue>,
+    ) -> Result<Option<ValueSet>, OperationError> {
+        let schema = self.get_schema();
+        // Lookup the attr
+        let Some(schema_a) = schema.get_attributes().get(attr) else {
+            // No attribute of this name exists - fail fast, there is no point to
+            // proceed, as nothing can be satisfied.
+            return Err(OperationError::InvalidAttributeName(attr.to_string()));
+        };
+
+        let Some(value) = value else {
+            // It's a none so the value needs to be unset, and the attr DOES exist in
+            // schema.
+            return Ok(None);
+        };
+
+        self.resolve_scim_json(schema_a, value).map(Some)
+    }
+
+    pub(crate) fn resolve_scim_json_post(
+        &mut self,
+        attr: &Attribute,
+        value: JsonValue,
+    ) -> Result<ValueSet, OperationError> {
+        let schema = self.get_schema();
+        // Lookup the attr
+        let Some(schema_a) = schema.get_attributes().get(attr) else {
+            // No attribute of this name exists - fail fast, there is no point to
+            // proceed, as nothing can be satisfied.
+            return Err(OperationError::InvalidAttributeName(attr.to_string()));
+        };
+
+        self.resolve_scim_json(schema_a, value)
+    }
+
+    fn resolve_scim_json(
+        &mut self,
+        schema_a: &SchemaAttribute,
+        value: JsonValue,
+    ) -> Result<ValueSet, OperationError> {
+        let resolve_status = match schema_a.syntax {
+            SyntaxType::Utf8String => ValueSetUtf8::from_scim_json_put(value),
+            SyntaxType::Utf8StringInsensitive => ValueSetIutf8::from_scim_json_put(value),
+            SyntaxType::Uuid => ValueSetUuid::from_scim_json_put(value),
+            SyntaxType::Boolean => ValueSetBool::from_scim_json_put(value),
+            SyntaxType::SyntaxId => ValueSetSyntax::from_scim_json_put(value),
+            SyntaxType::IndexId => ValueSetIndex::from_scim_json_put(value),
+            SyntaxType::ReferenceUuid => ValueSetRefer::from_scim_json_put(value),
+            SyntaxType::Utf8StringIname => ValueSetIname::from_scim_json_put(value),
+            SyntaxType::NsUniqueId => ValueSetNsUniqueId::from_scim_json_put(value),
+            SyntaxType::DateTime => ValueSetDateTime::from_scim_json_put(value),
+            SyntaxType::EmailAddress => ValueSetEmailAddress::from_scim_json_put(value),
+            SyntaxType::Url => ValueSetUrl::from_scim_json_put(value),
+            SyntaxType::OauthScope => ValueSetOauthScope::from_scim_json_put(value),
+            SyntaxType::OauthScopeMap => ValueSetOauthScopeMap::from_scim_json_put(value),
+            SyntaxType::OauthClaimMap => ValueSetOauthClaimMap::from_scim_json_put(value),
+            SyntaxType::UiHint => ValueSetUiHint::from_scim_json_put(value),
+            SyntaxType::CredentialType => ValueSetCredentialType::from_scim_json_put(value),
+            SyntaxType::Certificate => ValueSetCertificate::from_scim_json_put(value),
+            SyntaxType::SshKey => ValueSetSshKey::from_scim_json_put(value),
+            SyntaxType::Uint32 => ValueSetUint32::from_scim_json_put(value),
+
+            // Not Yet ... if ever
+            // SyntaxType::JsonFilter => ValueSetJsonFilter::from_scim_json_put(value),
+            SyntaxType::JsonFilter => Err(OperationError::InvalidAttribute(
+                "Json Filters are not able to be set.".to_string(),
+            )),
+            // Can't be set currently as these are only internally generated for key-id's
+            // SyntaxType::HexString => ValueSetHexString::from_scim_json_put(value),
+            SyntaxType::HexString => Err(OperationError::InvalidAttribute(
+                "Hex strings are not able to be set.".to_string(),
+            )),
+
+            // Can't be set until we have better error handling in the set paths
+            // SyntaxType::Image => ValueSetImage::from_scim_json_put(value),
+            SyntaxType::Image => Err(OperationError::InvalidAttribute(
+                "Images are not able to be set.".to_string(),
+            )),
+
+            // Can't be set yet, mostly as I'm lazy
+            // SyntaxType::WebauthnAttestationCaList => {
+            //    ValueSetWebauthnAttestationCaList::from_scim_json_put(value)
+            // }
+            SyntaxType::WebauthnAttestationCaList => Err(OperationError::InvalidAttribute(
+                "Webauthn Attestation Ca Lists are not able to be set.".to_string(),
+            )),
+
+            // Syntax types that can not be submitted
+            SyntaxType::Credential => Err(OperationError::InvalidAttribute(
+                "Credentials are not able to be set.".to_string(),
+            )),
+            SyntaxType::SecretUtf8String => Err(OperationError::InvalidAttribute(
+                "Secrets are not able to be set.".to_string(),
+            )),
+            SyntaxType::SecurityPrincipalName => Err(OperationError::InvalidAttribute(
+                "SPNs are not able to be set.".to_string(),
+            )),
+            SyntaxType::Cid => Err(OperationError::InvalidAttribute(
+                "CIDs are not able to be set.".to_string(),
+            )),
+            SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute(
+                "Private Binaries are not able to be set.".to_string(),
+            )),
+            SyntaxType::IntentToken => Err(OperationError::InvalidAttribute(
+                "Intent Tokens are not able to be set.".to_string(),
+            )),
+            SyntaxType::Passkey => Err(OperationError::InvalidAttribute(
+                "Passkeys are not able to be set.".to_string(),
+            )),
+            SyntaxType::AttestedPasskey => Err(OperationError::InvalidAttribute(
+                "Attested Passkeys are not able to be set.".to_string(),
+            )),
+            SyntaxType::Session => Err(OperationError::InvalidAttribute(
+                "Sessions are not able to be set.".to_string(),
+            )),
+            SyntaxType::JwsKeyEs256 => Err(OperationError::InvalidAttribute(
+                "Jws ES256 Private Keys are not able to be set.".to_string(),
+            )),
+            SyntaxType::JwsKeyRs256 => Err(OperationError::InvalidAttribute(
+                "Jws RS256 Private Keys are not able to be set.".to_string(),
+            )),
+            SyntaxType::Oauth2Session => Err(OperationError::InvalidAttribute(
+                "Sessions are not able to be set.".to_string(),
+            )),
+            SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute(
+                "TOTP Secrets are not able to be set.".to_string(),
+            )),
+            SyntaxType::ApiToken => Err(OperationError::InvalidAttribute(
+                "API Tokens are not able to be set.".to_string(),
+            )),
+            SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute(
+                "Audit Strings are not able to be set.".to_string(),
+            )),
+            SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute(
+                "EC Private Keys are not able to be set.".to_string(),
+            )),
+            SyntaxType::KeyInternal => Err(OperationError::InvalidAttribute(
+                "Key Internal Structures are not able to be set.".to_string(),
+            )),
+            SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute(
+                "Application Passwords are not able to be set.".to_string(),
+            )),
+        }?;
+
+        match resolve_status {
+            ValueSetResolveStatus::Resolved(vs) => Ok(vs),
+            ValueSetResolveStatus::NeedsResolution(vs_inter) => {
+                self.resolve_valueset_intermediate(vs_inter)
             }
         }
     }

@@ -233,7 +233,7 @@ mod tests {
         let preload = Vec::with_capacity(0);
 
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,
@@ -286,7 +286,7 @@ mod tests {
         let preload = Vec::with_capacity(0);
 
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,
