@@ -28,6 +28,9 @@ body {
 .was-validated .input-group:has(.form-control:invalid) + .invalid-feedback {
   display: block !important;
 }
+.clientside-feedback {
+  whitespace: pre-line;
+}
 
 /*
  * Sidebar
