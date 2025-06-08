@@ -3,7 +3,7 @@ use serde_with::formats::CommaSeparator;
 use serde_with::{serde_as, DefaultOnNull, StringWithSeparator};
 use std::fmt;
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufRead, Read};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -27,10 +27,14 @@ pub struct EtcUser {
 
 pub fn parse_etc_passwd(bytes: &[u8]) -> Result<Vec<EtcUser>, UnixIntegrationError> {
     use csv::ReaderBuilder;
+
+    let filecontents = strip_comments(bytes);
+
     let mut rdr = ReaderBuilder::new()
         .has_headers(false)
         .delimiter(b':')
-        .from_reader(bytes);
+        .from_reader(filecontents.as_bytes());
+
     rdr.deserialize()
         .map(|result| result.map_err(|_e| UnixIntegrationError))
         .collect::<Result<Vec<EtcUser>, UnixIntegrationError>>()
@@ -126,10 +130,13 @@ pub struct EtcShadow {
 
 pub fn parse_etc_shadow(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationError> {
     use csv::ReaderBuilder;
+
+    let filecontents = strip_comments(bytes);
+
     let mut rdr = ReaderBuilder::new()
         .has_headers(false)
         .delimiter(b':')
-        .from_reader(bytes);
+        .from_reader(filecontents.as_bytes());
     rdr.deserialize()
         .map(|result| {
             result.map_err(|err| {
@@ -167,10 +174,13 @@ pub struct UnixIntegrationError;
 
 pub fn parse_etc_group(bytes: &[u8]) -> Result<Vec<EtcGroup>, UnixIntegrationError> {
     use csv::ReaderBuilder;
+
+    let filecontents = strip_comments(bytes);
+
     let mut rdr = ReaderBuilder::new()
         .has_headers(false)
         .delimiter(b':')
-        .from_reader(bytes);
+        .from_reader(filecontents.as_bytes());
     rdr.deserialize()
         .map(|result| result.map_err(|_e| UnixIntegrationError))
         .collect::<Result<Vec<EtcGroup>, UnixIntegrationError>>()
@@ -184,6 +194,22 @@ pub fn read_etc_group_file<P: AsRef<Path>>(path: P) -> Result<Vec<EtcGroup>, Uni
         .map_err(|_| UnixIntegrationError)?;
 
     parse_etc_group(contents.as_slice()).map_err(|_| UnixIntegrationError)
+}
+
+fn strip_comments(bytes: &[u8]) -> String {
+    bytes
+        .lines()
+        .filter_map(|line| {
+            let line = line.ok()?;
+            let trimmed = line.trim();
+            if !trimmed.is_empty() && !trimmed.starts_with('#') {
+                Some(line)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
@@ -319,6 +345,40 @@ wheel:x:481:admin,testuser
                 password: "x".to_string(),
                 gid: 481,
                 members: vec!["admin".to_string(), "testuser".to_string(),]
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_group_freebsd() {
+        let group_data = r#"wheel:*:0:root,testuser,kanidm"#;
+        let groups = parse_etc_group(group_data.as_bytes()).expect("Failed to parse groups");
+        assert_eq!(
+            groups[0],
+            EtcGroup {
+                name: "wheel".to_string(),
+                password: "*".to_string(),
+                gid: 0,
+                members: vec![
+                    "root".to_string(),
+                    "testuser".to_string(),
+                    "kanidm".to_string()
+                ]
+            }
+        );
+        // empty group
+        let group_data = r#"
+        # $FreeBSD$
+# 
+wheel:*:0:"#;
+        let groups = parse_etc_group(group_data.as_bytes()).expect("Failed to parse groups");
+        assert_eq!(
+            groups[0],
+            EtcGroup {
+                name: "wheel".to_string(),
+                password: "*".to_string(),
+                gid: 0,
+                members: vec![]
             }
         );
     }
