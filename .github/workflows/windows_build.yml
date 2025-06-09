@@ -27,6 +27,9 @@ jobs:
           vcpkg install openssl:x64-windows-static-md
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
       - run: cargo build --locked -p kanidm_client -p kanidm_tools --bin kanidm
