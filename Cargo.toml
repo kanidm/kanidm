@@ -167,8 +167,8 @@ base64urlsafedata = "0.5.1"
 bitflags = "^2.9.1"
 bytes = "^1.9.0"
 cidr = "0.3.1"
-clap = { version = "4.5.38", features = ["derive", "env"] }
-clap_complete = "^4.5.50"
+clap = { version = "4.5.39", features = ["derive", "env"] }
+clap_complete = "^4.5.52"
 # Forced by saffron/cron
 chrono = "^0.4.39"
 compact_jwt = { version = "^0.4.2", default-features = false }
@@ -186,14 +186,14 @@ futures = "^0.3.31"
 futures-util = { version = "^0.3.30", features = ["sink"] }
 gix = { version = "0.71.0", default-features = false }
 haproxy-protocol = { version = "0.0.1" }
-hashbrown = { version = "0.15.2", features = ["serde", "inline-more"] }
+hashbrown = { version = "0.15.4", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
 http = "1.2.0"
 http-body-util = "0.1"
 hyper = { version = "1.5.1", features = [
     "full",
 ] } # hyper full includes client/server/http2
-hyper-util = { version = "0.1.12", features = ["server", "tokio"] }
+hyper-util = { version = "0.1.14", features = ["server", "tokio"] }
 idlset = "^0.2.5"
 image = { version = "0.25.6", default-features = false, features = [
     "gif",
@@ -221,7 +221,7 @@ notify-debouncer-full = { version = "0.5" }
 num_enum = "0.7.3"
 oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
-openssl = "^0.10.72"
+openssl = "^0.10.73"
 
 opentelemetry = { version = "0.27.0" }
 opentelemetry_api = { version = "0.27.0", features = ["logs", "metrics"] }
@@ -235,7 +235,7 @@ opentelemetry-otlp = { version = "0.27.0", default-features = false, features = 
 opentelemetry_sdk = { version = "0.27.0", features = ["rt-tokio"] }
 opentelemetry-semantic-conventions = "0.27.0"
 tracing-opentelemetry = "0.28.0"
-tracing-core = "0.1.33"
+tracing-core = "0.1.34"
 
 peg = "0.8"
 pkg-config = "^0.3.31"
@@ -283,7 +283,7 @@ tokio = "^1.45.1"
 tokio-openssl = "^0.6.5"
 tokio-util = "^0.7.13"
 
-toml = "^0.8.20"
+toml = "^0.8.23"
 tracing = { version = "^0.1.41", features = [
     "max_level_trace",
     "release_max_level_debug",
