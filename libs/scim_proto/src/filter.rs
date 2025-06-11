@@ -743,7 +743,10 @@ mod test {
         assert_eq!(
             scimfilter::parse(r#"name eq """#),
             Ok(ScimFilter::Equal(
-                AttrPath { a: "name".to_string(), s: None },
+                AttrPath {
+                    a: "name".to_string(),
+                    s: None
+                },
                 Value::String("".to_string())
             ))
         );

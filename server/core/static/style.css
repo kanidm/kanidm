@@ -1,6 +1,12 @@
 :root {
   --totp-width-and-height: 30px;
   --totp-stroke-width: 60px;
+  --navbar-colors-transition: color 0.15s ease-in-out,
+    background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  --navbar-colors-transition: none;
 }
 
 html,
@@ -60,37 +66,16 @@ body {
 }
 
 /*
- * Personal Settings sidemenu
- */
-
-/*
  * Navbar
  */
-nav.kanidm_navbar {
-  background-color: var(--bs-navbar-brand-color);
+.navbar-toggle-icon {
+  width: 30px;
+  height: 30px;
+  transition: var(--navbar-colors-transition);
 }
-
-nav a.navbar-brand,
-nav a.nav-link {
-  color: var(--bs-body-bg);
-}
-
-nav a.navbar-brand:hover,
-nav a.nav-link:hover {
-  color: var(--bs-secondary-bg);
-}
-
-/* Bootstrap v5.3.3 fixes for our inverted navbar */
-[data-bs-theme="dark"] nav span.navbar-toggler-icon {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2833, 37, 41, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-}
-
-[data-bs-theme="light"] nav span.navbar-toggler-icon {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28222, 222, 222, 0.9%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-}
-
-footer {
-  background-color: var(--bs-tertiary-bg);
+nav a.navbar-brand {
+  color: var(--bs-navbar-color);
+  transition: var(--navbar-colors-transition);
 }
 
 .kanidm_logo {
