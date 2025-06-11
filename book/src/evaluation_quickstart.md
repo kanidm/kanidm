@@ -18,8 +18,10 @@ docker pull docker.io/kanidm/server:latest
 
 ## Create your configuration
 
-Create `server.toml`. The important parts are the `domain` and `origin`. For this example, if you
-use `localhost` and `https://localhost:8443` this will match later commands.
+Create `server.toml`. The important parts you need to review and change are the `domain` and
+`origin` values. For this example, if you use `domain = localhost` and
+`origin = https://localhost` this will match commands later in the book. If you are using a different
+domain, you should change these values to match your environment.
 
 ```toml
 {{#rustdoc_include ../../examples/server_container.toml}}
