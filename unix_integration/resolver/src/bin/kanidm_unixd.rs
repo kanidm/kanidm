@@ -276,7 +276,7 @@ async fn handle_client(
     drop(_enter);
 
     while let Some(Ok(req)) = reqs.next().await {
-        let span = span!(Level::INFO, "client request", uuid = %conn_id);
+        let span = span!(Level::INFO, "client request", uuid = %conn_id, defer = true);
         let _enter = span.enter();
 
         let resp = match req {
