@@ -256,9 +256,12 @@ peg::parser! {
             ['\n' | ' ' | '\t' | '(' | ')' | '[' | ']' ]
 
         rule value() -> Value =
-            barevalue()
+            quotedvalue() / unquotedvalue()
 
-        rule barevalue() -> Value =
+        rule quotedvalue() -> Value =
+            s:$(['"'] ((['\\'][_]) / (!['"'][_]))* ['"']) {? serde_json::from_str(s).map_err(|_| "invalid json value" ) }
+
+        rule unquotedvalue() -> Value =
             s:$((!operator()[_])*) {? serde_json::from_str(s).map_err(|_| "invalid json value" ) }
 
         pub(crate) rule attrpath() -> AttrPath =
@@ -714,6 +717,34 @@ mod test {
                     a: "d".to_string(),
                     s: None
                 })),
+            ))
+        );
+    }
+
+    #[test]
+    fn test_scimfilter_quoted_values() {
+        assert_eq!(
+            scimfilter::parse(r#"description eq "text ( ) [ ] 'single' \"escaped\" \\\\consecutive\\\\ \/slash\b\f\n\r\t\u0041 and or not eq ne co sw ew gt lt ge le pr true false""#),
+            Ok(ScimFilter::Equal(
+                AttrPath { a: "description".to_string(), s: None },
+                Value::String("text ( ) [ ] 'single' \"escaped\" \\\\consecutive\\\\ /slash\u{08}\u{0C}\n\r\tA and or not eq ne co sw ew gt lt ge le pr true false".to_string())
+            ))
+        );
+    }
+
+    #[test]
+    fn test_scimfilter_quoted_values_incomplete_escape() {
+        let result = scimfilter::parse(r#"name eq "test\""#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_scimfilter_quoted_values_empty() {
+        assert_eq!(
+            scimfilter::parse(r#"name eq """#),
+            Ok(ScimFilter::Equal(
+                AttrPath { a: "name".to_string(), s: None },
+                Value::String("".to_string())
             ))
         );
     }
