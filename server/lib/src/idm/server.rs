@@ -1,5 +1,3 @@
-use super::event::ReadBackupCodeEvent;
-
 use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
@@ -40,8 +38,8 @@ use concread::cowcell::CowCellReadTxn;
 use concread::hashmap::HashMap;
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_proto::internal::{
-    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken,
-    UatPurpose, UserAuthToken,
+    ApiToken, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken, UatPurpose,
+    UserAuthToken,
 };
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use rand::prelude::*;
@@ -1604,24 +1602,6 @@ impl IdmServerProxyReadTransaction<'_> {
             })?;
 
         account.to_credentialstatus()
-    }
-
-    pub fn get_backup_codes(
-        &mut self,
-        rbce: &ReadBackupCodeEvent,
-    ) -> Result<BackupCodesView, OperationError> {
-        let account = self
-            .qs_read
-            .impersonate_search_ext_uuid(rbce.target, &rbce.ident)
-            .and_then(|account_entry| {
-                Account::try_from_entry_reduced(&account_entry, &mut self.qs_read)
-            })
-            .map_err(|e| {
-                admin_error!("Failed to search account {:?}", e);
-                e
-            })?;
-
-        account.to_backupcodesview()
     }
 }
 

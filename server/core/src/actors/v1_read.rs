@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use kanidm_proto::internal::{
-    ApiToken, AppLink, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
-    IdentifyUserRequest, IdentifyUserResponse, ImageValue, OperationError, RadiusAuthToken,
-    SearchRequest, SearchResponse, UserAuthToken,
+    ApiToken, AppLink, CURequest, CUSessionToken, CUStatus, CredentialStatus, IdentifyUserRequest,
+    IdentifyUserResponse, ImageValue, OperationError, RadiusAuthToken, SearchRequest,
+    SearchResponse, UserAuthToken,
 };
 use kanidm_proto::oauth2::OidcWebfingerResponse;
 use kanidm_proto::v1::{
@@ -32,8 +32,8 @@ use kanidmd_lib::{
     idm::account::ListUserAuthTokenEvent,
     idm::credupdatesession::CredentialUpdateSessionToken,
     idm::event::{
-        AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent,
-        UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+        AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, UnixGroupTokenEvent,
+        UnixUserAuthEvent, UnixUserTokenEvent,
     },
     idm::ldap::{LdapBoundToken, LdapResponseState},
     idm::oauth2::{
@@ -1094,51 +1094,6 @@ impl QueryServerReadV1 {
         trace!(?cse, "Begin event");
 
         idms_prox_read.get_credentialstatus(&cse)
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
-    pub async fn handle_idmbackupcodeview(
-        &self,
-        client_auth_info: ClientAuthInfo,
-        uuid_or_name: String,
-        eventid: Uuid,
-    ) -> Result<BackupCodesView, OperationError> {
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await?;
-
-        let ident = idms_prox_read
-            .validate_client_auth_info_to_ident(client_auth_info, ct)
-            .map_err(|e| {
-                error!("Invalid identity: {:?}", e);
-                e
-            })?;
-        let target_uuid = idms_prox_read
-            .qs_read
-            .name_to_uuid(uuid_or_name.as_str())
-            .inspect_err(|err| {
-                error!(?err, "Error resolving id to target");
-            })?;
-
-        // Make an event from the request
-        let rbce = match ReadBackupCodeEvent::from_parts(
-            // &idms_prox_read.qs_read,
-            ident,
-            target_uuid,
-        ) {
-            Ok(s) => s,
-            Err(e) => {
-                error!("Failed to begin backup code read: {:?}", e);
-                return Err(e);
-            }
-        };
-
-        trace!(?rbce, "Begin event");
-
-        idms_prox_read.get_backup_codes(&rbce)
     }
 
     #[instrument(
