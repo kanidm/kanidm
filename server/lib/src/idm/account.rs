@@ -1,9 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
-use kanidm_proto::internal::{
-    BackupCodesView, CredentialStatus, UatPurpose, UiHint, UserAuthToken,
-};
+use kanidm_proto::internal::{CredentialStatus, UatPurpose, UiHint, UserAuthToken};
 use kanidm_proto::v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -652,13 +650,6 @@ impl Account {
                 creds: vec![cred.into()],
             })
             .ok_or(OperationError::NoMatchingAttributes)
-    }
-
-    pub(crate) fn to_backupcodesview(&self) -> Result<BackupCodesView, OperationError> {
-        self.primary
-            .as_ref()
-            .ok_or(OperationError::InvalidState)
-            .and_then(|cred| cred.get_backup_code_view())
     }
 
     pub(crate) fn existing_credential_id_list(&self) -> Option<Vec<CredentialID>> {

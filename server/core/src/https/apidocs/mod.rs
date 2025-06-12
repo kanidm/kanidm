@@ -149,7 +149,6 @@ impl Modify for SecurityAddon {
         super::v1::service_account_id_ssh_pubkeys_tag_get,
         super::v1::service_account_id_ssh_pubkeys_tag_delete,
         super::v1::service_account_id_unix_post,
-        super::v1::account_id_unix_post,
         super::v1::account_id_unix_auth_post,
         super::v1::account_id_unix_token,
         super::v1::account_id_unix_token,
