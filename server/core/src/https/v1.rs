@@ -2010,32 +2010,6 @@ pub async fn service_account_id_unix_post(
 }
 
 #[utoipa::path(
-    post,
-    path = "/v1/account/{id}/_unix",
-    responses(
-        DefaultApiResponse,
-    ),
-    security(("token_jwt" = [])),
-    tag = "v1/account",
-)]
-/// Expects an `AccountUnixExtend` object
-#[instrument(, level = "INFO", skip(id, state, kopid))]
-pub async fn account_id_unix_post(
-    State(state): State<ServerState>,
-    Path(id): Path<String>,
-    Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    Json(obj): Json<AccountUnixExtend>,
-) -> Result<Json<()>, WebError> {
-    state
-        .qe_w_ref
-        .handle_idmaccountunixextend(client_auth_info, id, obj, kopid.eventid)
-        .await
-        .map(Json::from)
-        .map_err(WebError::from)
-}
-
-#[utoipa::path(
     get,post,
     path = "/v1/account/{id}/_unix/_token",
     responses(
