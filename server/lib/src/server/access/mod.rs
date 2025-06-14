@@ -370,8 +370,8 @@ pub trait AccessControlsTransaction<'a> {
         name = "access::search_filter_entry_attributes",
         skip_all
     )]
-    fn search_filter_entry_attributes<'b>(
-        &'b self,
+    fn search_filter_entry_attributes(
+        &self,
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<EntryReducedCommitted>, OperationError> {

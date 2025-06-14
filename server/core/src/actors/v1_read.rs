@@ -1456,7 +1456,7 @@ impl QueryServerReadV1 {
             .proxy_read()
             .await
             .map_err(Oauth2Error::ServerError)?;
-        idms_prox_read.oauth2_openid_userinfo(&client_id, token, ct)
+        idms_prox_read.oauth2_openid_userinfo(&client_id, &token, ct)
     }
 
     #[instrument(

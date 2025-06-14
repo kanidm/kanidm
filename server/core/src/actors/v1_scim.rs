@@ -321,6 +321,8 @@ impl QueryServerReadV1 {
                 error!(?err, "Invalid identity");
             })?;
 
-        idms_prox_read.qs_read.scim_search_ext(ident, filter, query)
+        idms_prox_read
+            .qs_read
+            .scim_search_ext(ident, &filter, query)
     }
 }

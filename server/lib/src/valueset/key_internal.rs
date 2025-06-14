@@ -4,6 +4,7 @@ use crate::server::keys::KeyId;
 use crate::value::{KeyStatus, KeyUsage};
 use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use crypto_glue::traits::Zeroizing;
 use kanidm_proto::scim_v1::server::ScimKeyInternal;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -15,7 +16,7 @@ pub struct KeyInternalData {
     pub valid_from: u64,
     pub status: KeyStatus,
     pub status_cid: Cid,
-    pub der: Vec<u8>,
+    pub der: Zeroizing<Vec<u8>>,
 }
 
 impl fmt::Debug for KeyInternalData {
@@ -41,7 +42,7 @@ impl ValueSetKeyInternal {
         valid_from: u64,
         status: KeyStatus,
         status_cid: Cid,
-        der: Vec<u8>,
+        der: Zeroizing<Vec<u8>>,
     ) -> Box<Self> {
         let map = BTreeMap::from([(
             id,
@@ -83,6 +84,7 @@ impl ValueSetKeyInternal {
                         let id: KeyId = id;
                         let usage = match usage {
                             DbValueKeyUsage::JwsEs256 => KeyUsage::JwsEs256,
+                            DbValueKeyUsage::JwsHs256 => KeyUsage::JwsHs256,
                             DbValueKeyUsage::JwsRs256 => KeyUsage::JwsRs256,
                             DbValueKeyUsage::JweA128GCM => KeyUsage::JweA128GCM,
                         };
@@ -132,6 +134,7 @@ impl ValueSetKeyInternal {
                     let id: String = id.clone();
                     let usage = match usage {
                         KeyUsage::JwsEs256 => DbValueKeyUsage::JwsEs256,
+                        KeyUsage::JwsHs256 => DbValueKeyUsage::JwsHs256,
                         KeyUsage::JwsRs256 => DbValueKeyUsage::JwsRs256,
                         KeyUsage::JweA128GCM => DbValueKeyUsage::JweA128GCM,
                     };
@@ -398,6 +401,7 @@ mod tests {
     use super::{KeyInternalData, ValueSetKeyInternal};
     use crate::prelude::*;
     use crate::value::*;
+    use crypto_glue::traits::Zeroizing;
 
     #[test]
     fn test_valueset_key_internal_purge_trim() {
@@ -406,7 +410,7 @@ mod tests {
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let status_cid = Cid::new_zero();
-        let der = Vec::with_capacity(0);
+        let der = Zeroizing::new(Vec::with_capacity(0));
 
         let mut vs_a: ValueSet =
             ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, status_cid, der);
@@ -441,7 +445,7 @@ mod tests {
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let status_cid = Cid::new_zero();
-        let der = Vec::with_capacity(0);
+        let der = Zeroizing::new(Vec::with_capacity(0));
 
         let mut vs_a: ValueSet = ValueSetKeyInternal::new(
             kid.clone(),
@@ -475,7 +479,7 @@ mod tests {
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let status_cid = Cid::new_zero();
-        let der = Vec::with_capacity(0);
+        let der = Zeroizing::new(Vec::with_capacity(0));
 
         let vs_a: ValueSet = ValueSetKeyInternal::new(
             kid.clone(),
@@ -512,7 +516,7 @@ mod tests {
         let zero_cid = Cid::new_zero();
         let one_cid = Cid::new_count(1);
         let two_cid = Cid::new_count(2);
-        let der = Vec::with_capacity(0);
+        let der = Zeroizing::new(Vec::with_capacity(0));
 
         let kid_2 = "key_2".to_string();
 
@@ -575,7 +579,7 @@ mod tests {
         let zero_cid = Cid::new_zero();
         let one_cid = Cid::new_count(1);
         let two_cid = Cid::new_count(2);
-        let der = Vec::with_capacity(0);
+        let der = Zeroizing::new(Vec::with_capacity(0));
 
         let kid_2 = "key_2".to_string();
 
@@ -636,7 +640,7 @@ mod tests {
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let status_cid = Cid::new_zero();
-        let der = Vec::with_capacity(0);
+        let der = Zeroizing::new(Vec::with_capacity(0));
 
         let vs: ValueSet =
             ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, status_cid, der);
