@@ -17,3 +17,8 @@ additional-js = ["mermaid.min.js", "mermaid-init.js"]
 # mermaid graph rendering, you need mdbook-mermaid
 [preprocessor.mermaid]
 command = "mdbook-mermaid"
+
+# display the version of the documentation
+[preprocessor.version]
+command = """sh -c 'jq ".[1]"; echo $(git log -n 1 --pretty=format:"Last modification on %ad, commit: %h" --date=format:"%d-%m-%Y") > version.md'"""
+before = ['links']
