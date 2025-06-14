@@ -228,12 +228,6 @@ impl KeyObjectInternalJweA128GCM {
         let valid_from = valid_from.as_secs();
 
         let key = aes128::new_key();
-        /*
-        .map_err(|jwt_error| {
-            error!(?jwt_error, "Unable to generate new jwe a128 encryption key");
-            OperationError::KP0035KeyObjectJweA128GCMGeneration
-        })?;
-        */
 
         let mut cipher = JweA128KWEncipher::from(key);
         cipher.set_sign_option_embed_kid(true);
@@ -1593,12 +1587,6 @@ impl KeyObjectInternalJwtHs256 {
         })?;
 
         let verifier = signer.clone();
-        /*
-        signer.private_key_to_der().map_err(|jwt_error| {
-            error!(?jwt_error, "Unable to convert signing key to DER");
-            OperationError::KP0071KeyObjectPrivateToDer
-        })?;
-        */
 
         self.active.insert(valid_from, signer.clone());
 
@@ -1659,12 +1647,6 @@ impl KeyObjectInternalJwtHs256 {
                 signer.set_kid(id.as_str());
 
                 let verifier = signer.clone();
-                /*
-                .get_verifier().map_err(|err| {
-                    error!(?err, "Unable to retrieve verifier from signer");
-                    OperationError::KP0067KeyObjectSignerToVerifier
-                })?;
-                */
 
                 self.active.insert(valid_from, signer);
 
