@@ -519,17 +519,24 @@ OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://idm.example.com/oauth2/openid/<name>";
 
 ## Nextcloud
 
-Install the module [from the nextcloud market place](https://apps.nextcloud.com/apps/user_oidc) - it
+Install `user_oidc` [from the Nextcloud App store](https://apps.nextcloud.com/apps/user_oidc) - it
 can also be found in the Apps section of your deployment as "OpenID Connect user backend".
 
-In Nextcloud's config.php you need to allow connection to remote servers and enable PKCE:
+In the `Administration settings > OpenID Connect` settings menu of Nextcloud, configure the
+discovery URL and client ID and secret.
+
+If your Kanidm server is hosted on a local network top-level domain from RFC 6762 (for example:
+`.home`, `.local`, `.internal`, …) or resolves to a local address, you need to allow remote servers
+with local addresses in Nextcloud's `config.php`:
 
 ```php
 'allow_local_remote_servers' => true,
+```
 
-'user_oidc' => [
-    'use_pkce' => true,
-],
+If you forget this, you may see the following error in logs:
+
+```bash
+Host 172.24.11.129 was not connected to because it violates local access rules
 ```
 
 You may optionally choose to add:
@@ -539,14 +546,6 @@ You may optionally choose to add:
 'allow_user_to_change_email' => false,
 'lost_password_link' => 'disabled',
 ```
-
-If you forget this, you may see the following error in logs:
-
-```bash
-Host 172.24.11.129 was not connected to because it violates local access rules
-```
-
-In the settings menu, configure the discovery URL and client ID and secret.
 
 You can choose to disable other login methods with:
 
