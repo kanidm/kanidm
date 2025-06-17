@@ -41,7 +41,7 @@ doctest = false
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
-compact_jwt = { workspace = true, features = ["openssl"] }
+compact_jwt = { workspace = true }
 dialoguer = { workspace = true }
 libc = { workspace = true }
 kanidm_client = { workspace = true }

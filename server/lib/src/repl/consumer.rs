@@ -335,7 +335,7 @@ impl QueryServerWriteTransaction<'_> {
                 domain_version,
                 domain_patch_level,
                 domain_uuid,
-                ranges,
+                &ranges,
                 schema_entries,
                 meta_entries,
                 entries,
@@ -349,7 +349,7 @@ impl QueryServerWriteTransaction<'_> {
         ctx_domain_version: DomainVersion,
         ctx_domain_patch_level: u32,
         ctx_domain_uuid: Uuid,
-        ctx_ranges: BTreeMap<Uuid, ReplAnchoredCidRange>,
+        ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
         ctx_schema_entries: Vec<ReplIncrementalEntryV1>,
         ctx_meta_entries: Vec<ReplIncrementalEntryV1>,
         ctx_entries: Vec<ReplIncrementalEntryV1>,
@@ -385,7 +385,7 @@ impl QueryServerWriteTransaction<'_> {
         let txn_cid = self.get_cid().clone();
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.incremental_preflight_validate_ruv(&ctx_ranges, &txn_cid)
+        ruv.incremental_preflight_validate_ruv(ctx_ranges, &txn_cid)
             .inspect_err(|err| {
                 error!(
                     ?err,
@@ -457,11 +457,11 @@ impl QueryServerWriteTransaction<'_> {
         // context. Note that we get this in a writeable form!
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.refresh_validate_ruv(&ctx_ranges).inspect_err(|err| {
+        ruv.refresh_validate_ruv(ctx_ranges).inspect_err(|err| {
             error!(?err, "RUV ranges were not rebuilt correctly.");
         })?;
 
-        ruv.refresh_update_ruv(&ctx_ranges).inspect_err(|err| {
+        ruv.refresh_update_ruv(ctx_ranges).inspect_err(|err| {
             error!(?err, "Unable to update RUV with supplier ranges.");
         })?;
 
@@ -485,7 +485,7 @@ impl QueryServerWriteTransaction<'_> {
                 domain_version,
                 domain_devel,
                 domain_uuid,
-                ranges,
+                &ranges,
                 schema_entries,
                 meta_entries,
                 entries,
@@ -554,7 +554,7 @@ impl QueryServerWriteTransaction<'_> {
         ctx_domain_version: DomainVersion,
         ctx_domain_devel: bool,
         ctx_domain_uuid: Uuid,
-        ctx_ranges: BTreeMap<Uuid, ReplAnchoredCidRange>,
+        ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
         ctx_schema_entries: Vec<ReplEntryV1>,
         ctx_meta_entries: Vec<ReplEntryV1>,
         ctx_entries: Vec<ReplEntryV1>,
@@ -676,11 +676,11 @@ impl QueryServerWriteTransaction<'_> {
         // context. Note that we get this in a writeable form!
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.refresh_validate_ruv(&ctx_ranges).inspect_err(|err| {
+        ruv.refresh_validate_ruv(ctx_ranges).inspect_err(|err| {
             error!(?err, "RUV ranges were not rebuilt correctly.");
         })?;
 
-        ruv.refresh_update_ruv(&ctx_ranges).inspect_err(|err| {
+        ruv.refresh_update_ruv(ctx_ranges).inspect_err(|err| {
             error!(?err, "Unable to update RUV with supplier ranges.");
         })?;
 

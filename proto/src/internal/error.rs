@@ -291,6 +291,16 @@ pub enum OperationError {
     KP0061KeyObjectNoActiveSigningKeys,
     KP0062KeyProviderNoSuchKey,
 
+    KP0063KeyObjectJwsHs256DerInvalid,
+    KP0064KeyObjectSignerToVerifier,
+    KP0065KeyObjectJwtHs256Generation,
+    KP0066KeyObjectJwsHs256DerInvalid,
+    KP0067KeyObjectSignerToVerifier,
+    KP0068KeyObjectJwsHs256DerInvalid,
+    KP0069KeyObjectNoActiveSigningKeys,
+    KP0070KeyObjectJwsHs256Signature,
+    KP0071KeyObjectPrivateToDer,
+
     // Plugins
     PL0001GidOverlapsSystemRange,
 
@@ -488,6 +498,18 @@ impl OperationError {
             Self::KP0060KeyObjectJwsPublicJwk => None,
             Self::KP0061KeyObjectNoActiveSigningKeys => None,
             Self::KP0062KeyProviderNoSuchKey => None,
+
+            Self::KP0063KeyObjectJwsHs256DerInvalid => None,
+            Self::KP0064KeyObjectSignerToVerifier => None,
+            Self::KP0065KeyObjectJwtHs256Generation => None,
+
+            Self::KP0066KeyObjectJwsHs256DerInvalid => None,
+            Self::KP0067KeyObjectSignerToVerifier => None,
+            Self::KP0068KeyObjectJwsHs256DerInvalid => None,
+            Self::KP0069KeyObjectNoActiveSigningKeys => None,
+            Self::KP0070KeyObjectJwsHs256Signature => None,
+            Self::KP0071KeyObjectPrivateToDer => None,
+
 
             Self::KU001InitWhileSessionActive => Some("The session was active when the init function was called.".into()),
             Self::KU002ContinueWhileSessionInActive => Some("Attempted to continue auth session while current session is inactive".into()),

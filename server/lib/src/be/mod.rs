@@ -1217,7 +1217,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", name = "be::incremental_prepare", skip_all)]
-    pub fn incremental_prepare<'x>(
+    pub fn incremental_prepare(
         &mut self,
         entry_meta: &[EntryIncrementalNew],
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {

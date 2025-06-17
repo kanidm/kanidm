@@ -94,7 +94,7 @@ impl OAuth2 {
                 }
                     if has_rs256 && !entry.attribute_pres(Attribute::Rs256PrivateKeyDer) {
                     security_info!("regenerating oauth2 legacy rs256 private key");
-                    let der = JwsRs256Signer::generate_legacy_rs256()
+                    let der = JwsRs256Signer::generate_rs256()
                         .and_then(|jws| jws.private_key_to_der())
                         .map_err(|e| {
                             admin_error!(err = ?e, "Unable to generate Legacy RS256 JwsSigner private key");
