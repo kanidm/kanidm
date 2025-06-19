@@ -31,6 +31,7 @@ cidr = { workspace = true, features = ["serde"] }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
 cron = { workspace = true }
+crypto-glue = { workspace = true }
 filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
@@ -49,6 +50,7 @@ openssl = { workspace = true }
 opentelemetry = { workspace = true, features = ["logs"] }
 qrcode = { workspace = true, features = ["svg"] }
 regex = { workspace = true }
+rustls = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
@@ -58,6 +60,7 @@ sshkey-attest = { workspace = true }
 time = { workspace = true, features = ["serde", "std", "local-offset"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl = { workspace = true }
+tokio-rustls = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
 tower = { version = "0.5.2", features = ["tokio-stream", "tracing"] }

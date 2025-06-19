@@ -8,16 +8,14 @@ use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;
 use ldap3_proto::LdapCodec;
-use openssl::ssl::{Ssl, SslAcceptor};
 use std::net::SocketAddr;
-use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
-use tokio_openssl::SslStream;
+use tokio_rustls::TlsAcceptor;
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 struct LdapSession {
@@ -119,7 +117,7 @@ async fn client_process<STREAM>(
 
 async fn client_tls_accept(
     stream: TcpStream,
-    tls_acceptor: SslAcceptor,
+    tls_acceptor: TlsAcceptor,
     connection_addr: SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
@@ -159,22 +157,15 @@ async fn client_tls_accept(
         (stream, connection_addr)
     };
 
-    // Start the event
-    // From the parameters we need to create an SslContext.
-    let mut tlsstream = match Ssl::new(tls_acceptor.context())
-        .and_then(|tls_obj| SslStream::new(tls_obj, stream))
-    {
+    let tlsstream = match tls_acceptor.accept(stream).await {
         Ok(ta) => ta,
         Err(err) => {
             error!(?err, %client_addr, %connection_addr, "LDAP TLS setup error");
             return;
         }
     };
-    if let Err(err) = SslStream::accept(Pin::new(&mut tlsstream)).await {
-        error!(?err, %client_addr, %connection_addr, "LDAP TLS accept error");
-        return;
-    };
 
+    // Start the event handler now that the connection is setup
     tokio::spawn(client_process(
         tlsstream,
         client_addr,
@@ -186,10 +177,10 @@ async fn client_tls_accept(
 /// TLS LDAP Listener, hands off to [client_tls_accept]
 async fn ldap_tls_acceptor(
     listener: TcpListener,
-    mut tls_acceptor: SslAcceptor,
+    mut tls_acceptor: TlsAcceptor,
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
-    mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
+    mut tls_acceptor_reload_rx: mpsc::Receiver<TlsAcceptor>,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) {
     loop {
@@ -249,10 +240,10 @@ async fn ldap_plaintext_acceptor(
 
 pub(crate) async fn create_ldap_server(
     address: &str,
-    opt_ssl_acceptor: Option<SslAcceptor>,
+    opt_ssl_acceptor: Option<TlsAcceptor>,
     qe_r_ref: &'static QueryServerReadV1,
     rx: broadcast::Receiver<CoreAction>,
-    tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
+    tls_acceptor_reload_rx: mpsc::Receiver<TlsAcceptor>,
     trusted_proxy_v2_ips: Option<Vec<IpCidr>>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
     if address.starts_with(":::") {

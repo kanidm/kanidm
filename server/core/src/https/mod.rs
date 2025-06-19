@@ -38,13 +38,11 @@ use hyper_util::rt::{TokioExecutor, TokioIo};
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
-use openssl::ssl::{Ssl, SslAcceptor};
 use serde::de::DeserializeOwned;
 use sketching::*;
 use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::{net::SocketAddr, str::FromStr};
 use tokio::{
@@ -54,7 +52,7 @@ use tokio::{
     sync::mpsc,
     task,
 };
-use tokio_openssl::SslStream;
+use tokio_rustls::TlsAcceptor;
 use tower::Service;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use url::Url;
@@ -170,8 +168,8 @@ pub async fn create_https_server(
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
     server_message_tx: broadcast::Sender<CoreAction>,
-    maybe_tls_acceptor: Option<SslAcceptor>,
-    tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
+    maybe_tls_acceptor: Option<TlsAcceptor>,
+    tls_acceptor_reload_rx: mpsc::Receiver<TlsAcceptor>,
 ) -> Result<task::JoinHandle<()>, ()> {
     let rx = server_message_tx.subscribe();
 
@@ -350,12 +348,12 @@ pub async fn create_https_server(
 }
 
 async fn server_tls_loop(
-    mut tls_acceptor: SslAcceptor,
+    mut tls_acceptor: TlsAcceptor,
     listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
-    mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
+    mut tls_acceptor_reload_rx: mpsc::Receiver<TlsAcceptor>,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) {
     pin_mut!(listener);
@@ -451,7 +449,7 @@ pub(crate) async fn handle_conn(
 
 /// This handles an individual connection.
 pub(crate) async fn handle_tls_conn(
-    acceptor: SslAcceptor,
+    acceptor: TlsAcceptor,
     stream: TcpStream,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     connection_addr: SocketAddr,
@@ -460,65 +458,66 @@ pub(crate) async fn handle_tls_conn(
     let (stream, client_addr) =
         process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
 
+    /*
     let ssl = Ssl::new(acceptor.context()).map_err(|e| {
         error!("Failed to create TLS context: {:?}", e);
         std::io::Error::from(ErrorKind::ConnectionAborted)
     })?;
 
-    let mut tls_stream = SslStream::new(ssl, stream).map_err(|err| {
+    let mut tls_stream = SslStream::new(ssl, stream)
+    .map_err(|err| {
+        error!(?err, "Failed to create TLS stream");
+        std::io::Error::from(ErrorKind::ConnectionAborted)
+    })?;
+    */
+
+    let tls_stream = acceptor.accept(stream).await.map_err(|err| {
         error!(?err, "Failed to create TLS stream");
         std::io::Error::from(ErrorKind::ConnectionAborted)
     })?;
 
-    match SslStream::accept(Pin::new(&mut tls_stream)).await {
-        Ok(_) => {
-            // Process the client cert (if any)
-            let client_cert = if let Some(peer_cert) = tls_stream.ssl().peer_certificate() {
-                // TODO: This is where we should be checking the CRL!!!
+    let maybe_peer_cert = tls_stream
+        .get_ref()
+        .1
+        .peer_certificates()
+        // The first certificate relates to the peer.
+        .and_then(|peer_certs| peer_certs.get(0));
 
-                // Extract the cert from openssl to x509-cert which is a better
-                // parser to handle the various extensions.
+    // Process the client cert (if any)
+    let client_cert = if let Some(peer_cert) = maybe_peer_cert {
+        // TODO: This is where we should be checking the CRL!!!
 
-                let cert_der = peer_cert.to_der().map_err(|ossl_err| {
-                    error!(?ossl_err, "unable to process x509 certificate as DER");
-                    std::io::Error::from(ErrorKind::ConnectionAborted)
-                })?;
+        // Extract the cert from rustls DER to x509-cert which is a better
+        // parser to handle the various extensions.
+        let certificate = Certificate::from_der(&peer_cert).map_err(|ossl_err| {
+            error!(?ossl_err, "unable to process DER certificate to x509");
+            std::io::Error::from(ErrorKind::ConnectionAborted)
+        })?;
 
-                let certificate = Certificate::from_der(&cert_der).map_err(|ossl_err| {
-                    error!(?ossl_err, "unable to process DER certificate to x509");
-                    std::io::Error::from(ErrorKind::ConnectionAborted)
-                })?;
+        let public_key_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
+            error!("subject public key bitstring is not octet aligned");
+            std::io::Error::from(ErrorKind::ConnectionAborted)
+        })?;
 
-                let public_key_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
-                    error!("subject public key bitstring is not octet aligned");
-                    std::io::Error::from(ErrorKind::ConnectionAborted)
-                })?;
+        Some(ClientCertInfo {
+            public_key_s256,
+            certificate,
+        })
+    } else {
+        None
+    };
 
-                Some(ClientCertInfo {
-                    public_key_s256,
-                    certificate,
-                })
-            } else {
-                None
-            };
+    let client_conn_info = ClientConnInfo {
+        connection_addr,
+        client_addr,
+        client_cert,
+    };
 
-            let client_conn_info = ClientConnInfo {
-                connection_addr,
-                client_addr,
-                client_cert,
-            };
+    // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+    // `TokioIo` converts between them.
+    let stream = TokioIo::new(tls_stream);
 
-            // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
-            // `TokioIo` converts between them.
-            let stream = TokioIo::new(tls_stream);
-
-            process_client_hyper(stream, app, client_conn_info).await
-        }
-        Err(error) => {
-            trace!("Failed to handle connection: {:?}", error);
-            Ok(())
-        }
-    }
+    process_client_hyper(stream, app, client_conn_info).await
 }
 
 async fn process_client_addr(
