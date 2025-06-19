@@ -310,9 +310,12 @@ impl IdmServerProxyWriteTransaction<'_> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(gpe.target))),
+                &filter_all!(f_and!([
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(gpe.target)),
+                    f_eq(Attribute::Class, EntryClass::ServiceAccount.into())
+                ])),
                 // Filter as intended (acp)
-                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(gpe.target))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(gpe.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gpe.ident,
