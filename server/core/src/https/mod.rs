@@ -458,19 +458,6 @@ pub(crate) async fn handle_tls_conn(
     let (stream, client_addr) =
         process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
 
-    /*
-    let ssl = Ssl::new(acceptor.context()).map_err(|e| {
-        error!("Failed to create TLS context: {:?}", e);
-        std::io::Error::from(ErrorKind::ConnectionAborted)
-    })?;
-
-    let mut tls_stream = SslStream::new(ssl, stream)
-    .map_err(|err| {
-        error!(?err, "Failed to create TLS stream");
-        std::io::Error::from(ErrorKind::ConnectionAborted)
-    })?;
-    */
-
     let tls_stream = acceptor.accept(stream).await.map_err(|err| {
         error!(?err, "Failed to create TLS stream");
         std::io::Error::from(ErrorKind::ConnectionAborted)
