@@ -102,7 +102,8 @@ codegen-units = 256
 ## with local or git versions. This patch table allows quick uncommenting to achieve that.
 
 # compact_jwt = { path = "../compact-jwt" }
-crypto-glue = { path = "../crypto-glue" }
+# crypto-glue = { path = "../crypto-glue" }
+crypto-glue = { git = "https://github.com/kanidm/crypto-glue.git", branch = "20250619-pkcs8" }
 # concread = { path = "../concread" }
 # idlset = { path = "../idlset" }
 
@@ -255,6 +256,7 @@ reqwest = { version = "0.12.20", default-features = false, features = [
 ] }
 rusqlite = { version = "0.35.0", features = ["array", "bundled"] }
 rustls = { version = "0.23.27", default-features = false, features = [
+    "std",
     "aws_lc_rs",
 ] }
 

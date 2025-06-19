@@ -481,7 +481,7 @@ pub(crate) async fn handle_tls_conn(
         .1
         .peer_certificates()
         // The first certificate relates to the peer.
-        .and_then(|peer_certs| peer_certs.get(0));
+        .and_then(|peer_certs| peer_certs.first());
 
     // Process the client cert (if any)
     let client_cert = if let Some(peer_cert) = maybe_peer_cert {
@@ -489,7 +489,7 @@ pub(crate) async fn handle_tls_conn(
 
         // Extract the cert from rustls DER to x509-cert which is a better
         // parser to handle the various extensions.
-        let certificate = Certificate::from_der(&peer_cert).map_err(|ossl_err| {
+        let certificate = Certificate::from_der(peer_cert).map_err(|ossl_err| {
             error!(?ossl_err, "unable to process DER certificate to x509");
             std::io::Error::from(ErrorKind::ConnectionAborted)
         })?;

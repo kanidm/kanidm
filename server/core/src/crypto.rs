@@ -20,8 +20,9 @@ use crypto_glue::{
     pkcs8::PrivateKeyInfo, rsa::RS256PrivateKey, traits::PublicKeyParts, x509::oiddb::rfc5912,
 };
 use rustls::{
-    pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer},
-    server::ServerConfig,
+    pki_types::{pem::PemObject, CertificateDer, CertificateRevocationListDer, PrivateKeyDer},
+    server::{ServerConfig, WebPkiClientVerifier},
+    RootCertStore,
 };
 use std::fs;
 use std::io::{Read, Write};
@@ -127,42 +128,8 @@ pub fn setup_tls(
         std::io::Error::other(format!("Private key minimums were not met: {:?}", err))
     })?;
 
-    let tls_server_config = ServerConfig::builder()
-        /*
-        .with_client_cert_verifier(
-            client_cert_verifier,
-        )
-        */
-        .with_no_client_auth()
-        .with_single_cert(cert_chain_der, private_key_der)
-        .map_err(|err| {
-            std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
-        })?;
-
-    let tls_acceptor = TlsAcceptor::from(Arc::new(tls_server_config));
-
-    /*
-    // If configured, setup TLS client authentication.
-    if let Some(client_ca) = tls_param.client_ca.as_ref() {
+    let client_cert_verifier = if let Some(client_ca) = tls_param.client_ca.as_ref() {
         info!("Loading client certificates from {}", client_ca.display());
-
-        let verify = SslVerifyMode::PEER;
-        // In future we may add a "require mTLS option" which would necessitate this.
-        // verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);
-        tls_builder.set_verify(verify);
-
-        // When client certs are available, we disable the TLS session cache.
-        // This is so that when the smartcard is *removed* on the client, it forces
-        // the client session to immediately expire.
-        //
-        // https://stackoverflow.com/questions/12393711/session-disconnect-the-client-after-smart-card-is-removed
-        //
-        // Alternately, on logout we need to trigger https://docs.rs/openssl/latest/openssl/ssl/struct.Ssl.html#method.set_ssl_context
-        // with https://docs.rs/openssl/latest/openssl/ssl/struct.Ssl.html#method.ssl_context +
-        // https://docs.rs/openssl/latest/openssl/ssl/struct.SslContextRef.html#method.remove_session
-        //
-        // Or we lower session time outs etc.
-        tls_builder.set_session_cache_mode(SslSessionCacheMode::OFF);
 
         let read_dir = fs::read_dir(client_ca).map_err(|err| {
             std::io::Error::other(format!(
@@ -172,7 +139,11 @@ pub fn setup_tls(
             ))
         })?;
 
-        for cert_dir_ent in read_dir.filter_map(|item| item.ok()).filter(|item| {
+        let dirents: Vec<_> = read_dir.filter_map(|item| item.ok()).collect();
+
+        let mut client_cert_roots = RootCertStore::empty();
+
+        for cert_dir_ent in dirents.iter().filter(|item| {
             item.file_name()
                 .to_str()
                 // Hashed certs end in .0
@@ -180,58 +151,60 @@ pub fn setup_tls(
                 .map(|fname| fname.ends_with(".0"))
                 .unwrap_or_default()
         }) {
-            let mut cert_pem = String::new();
-            fs::File::open(cert_dir_ent.path())
-                .and_then(|mut file| file.read_to_string(&mut cert_pem))
+            let cert_pem = CertificateDer::from_pem_file(cert_dir_ent.path()).map_err(|err| {
+                std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
+            })?;
+
+            client_cert_roots.add(cert_pem).map_err(|err| {
+                std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
+            })?;
+        }
+
+        let mut client_cert_crls = Vec::new();
+
+        for cert_dir_ent in dirents.iter().filter(|item| {
+            item.file_name()
+                .to_str()
+                // Hashed certs end in .0
+                // Hashed crls are .r0
+                .map(|fname| fname.ends_with(".r0"))
+                .unwrap_or_default()
+        }) {
+            let cert_pem = CertificateRevocationListDer::from_pem_file(cert_dir_ent.path())
                 .map_err(|err| {
                     std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
                 })?;
 
-            let cert = X509::from_pem(cert_pem.as_bytes()).map_err(|err| {
-                std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
-            })?;
-
-            let cert_store = tls_builder.cert_store_mut();
-            cert_store.add_cert(cert.clone()).map_err(|err| {
-                std::io::Error::other(format!(
-                    "Failed to load cert store while creating TLS listener: {:?}",
-                    err
-                ))
-            })?;
-            // This tells the client what CA's they should use. It DOES NOT
-            // verify them. That's the job of the cert store above!
-            tls_builder.add_client_ca(&cert).map_err(|err| {
-                std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
-            })?;
+            client_cert_crls.push(cert_pem);
         }
 
-        // TODO: Build our own CRL map HERE!
+        WebPkiClientVerifier::builder(client_cert_roots.into())
+            .with_crls(client_cert_crls)
+            .allow_unauthenticated()
+            .build()
+            .map_err(|err| {
+                std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
+            })?
+    } else {
+        WebPkiClientVerifier::no_client_auth()
+    };
 
-        // Allow dumping client cert chains for dev debugging
-        // In the case this is status=false, should we be dumping these anyway?
-        if enabled!(tracing::Level::TRACE) {
-            tls_builder.set_verify_callback(verify, |status, x509store| {
-                if let Some(current_cert) = x509store.current_cert() {
-                    let cert_text_bytes = current_cert.to_text().unwrap_or_default();
-                    let cert_text = String::from_utf8_lossy(cert_text_bytes.as_slice());
-                    tracing::warn!(client_cert = %cert_text);
-                };
+    // Configure the rustls cryptoprovider. We currently use aws-lc-rc as the
+    // default. We may swap to rustcrypto in future.
+    let provider = rustls::crypto::aws_lc_rs::default_provider().into();
 
-                if let Some(chain) = x509store.chain() {
-                    for cert in chain.iter() {
-                        let cert_text_bytes = cert.to_text().unwrap_or_default();
-                        let cert_text = String::from_utf8_lossy(cert_text_bytes.as_slice());
-                        tracing::warn!(chain_cert = %cert_text);
-                    }
-                }
+    let tls_server_config = ServerConfig::builder_with_provider(provider)
+        .with_safe_default_protocol_versions()
+        .and_then(|builder| {
+            builder
+                .with_client_cert_verifier(client_cert_verifier)
+                .with_single_cert(cert_chain_der, private_key_der)
+        })
+        .map_err(|err| {
+            std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
+        })?;
 
-                status
-            });
-        }
-
-        // End tls_client setup
-    }
-    */
+    let tls_acceptor = TlsAcceptor::from(Arc::new(tls_server_config));
 
     Ok(Some(tls_acceptor))
 }
