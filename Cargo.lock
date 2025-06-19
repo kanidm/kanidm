@@ -1190,8 +1190,9 @@ dependencies = [
 
 [[package]]
 name = "crypto-glue"
-version = "0.1.7"
-source = "git+https://github.com/kanidm/crypto-glue.git?branch=20250619-pkcs8#96fb953686801c004cd379ba1b26763a4e7a4189"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ced4b5f9fc64fbaa14ba7fcb2c95cdc258f985a525f60065e5bb110dfd16021"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -3248,9 +3249,9 @@ dependencies = [
 
 [[package]]
 name = "image-webp"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14d75c7014ddab93c232bc6bb9f64790d3dfd1d605199acd4b40b6d69e691e9f"
+checksum = "f6970fe7a5300b4b42e62c52efa0187540a5bef546c60edaf554ef595d2e6f0b"
 dependencies = [
  "byteorder-lite",
  "quick-error",

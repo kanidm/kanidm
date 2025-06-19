@@ -103,7 +103,6 @@ codegen-units = 256
 
 # compact_jwt = { path = "../compact-jwt" }
 # crypto-glue = { path = "../crypto-glue" }
-crypto-glue = { git = "https://github.com/kanidm/crypto-glue.git", branch = "20250619-pkcs8" }
 # concread = { path = "../concread" }
 # idlset = { path = "../idlset" }
 
@@ -174,7 +173,7 @@ compact_jwt = "^0.5.1-dev"
 concread = "^0.5.5"
 cron = "0.15.0"
 crossbeam = "0.8.4"
-crypto-glue = "^0.1.7"
+crypto-glue = "^0.1.8"
 csv = "1.3.1"
 dialoguer = "0.11.0"
 dhat = "0.3.3"
