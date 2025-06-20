@@ -1,11 +1,21 @@
-use openssl::{
-    pkey::{PKey, Private},
-    ssl::{Ssl, SslAcceptor, SslConnector, SslMethod, SslVerifyMode},
-    x509::{store::X509StoreBuilder, X509},
+use self::codec::{ConsumerRequest, SupplierResponse};
+use crate::CoreAction;
+use config::{RepNodeConfig, ReplicationConfiguration};
+use futures_util::sink::SinkExt;
+use futures_util::stream::StreamExt;
+use kanidmd_lib::prelude::duration_from_epoch_now;
+use kanidmd_lib::prelude::IdmServer;
+use kanidmd_lib::repl::proto::ConsumerState;
+use kanidmd_lib::server::QueryServerTransaction;
+use openssl::x509::X509;
+use rustls::{
+    client::ClientConfig,
+    pki_types::{CertificateDer, PrivateKeyDer, ServerName},
+    server::{ServerConfig, WebPkiClientVerifier},
+    RootCertStore,
 };
 use std::collections::VecDeque;
 use std::net::SocketAddr;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast;
@@ -17,24 +27,11 @@ use tokio::{
     net::{TcpListener, TcpStream},
     task::JoinHandle,
 };
-use tokio_openssl::SslStream;
+use tokio_rustls::{client::TlsStream, TlsAcceptor, TlsConnector};
 use tokio_util::codec::{Framed, FramedRead, FramedWrite};
 use tracing::{error, Instrument};
 use url::Url;
 use uuid::Uuid;
-
-use futures_util::sink::SinkExt;
-use futures_util::stream::StreamExt;
-
-use kanidmd_lib::prelude::duration_from_epoch_now;
-use kanidmd_lib::prelude::IdmServer;
-use kanidmd_lib::repl::proto::ConsumerState;
-use kanidmd_lib::server::QueryServerTransaction;
-
-use crate::CoreAction;
-use config::{RepNodeConfig, ReplicationConfiguration};
-
-use self::codec::{ConsumerRequest, SupplierResponse};
 
 mod codec;
 pub(crate) mod config;
@@ -95,19 +92,20 @@ pub(crate) async fn create_repl_server(
 #[instrument(level = "debug", skip_all)]
 /// This returns the remote address that worked, so you can try that first next time
 async fn repl_consumer_connect_supplier(
-    domain: &str,
+    server_name: &ServerName<'static>,
     sock_addrs: &[SocketAddr],
-    tls_connector: &SslConnector,
+    tls_connector: &TlsConnector,
     consumer_conn_settings: &ConsumerConnSettings,
 ) -> Option<(
     SocketAddr,
-    Framed<SslStream<TcpStream>, codec::ConsumerCodec>,
+    Framed<TlsStream<TcpStream>, codec::ConsumerCodec>,
 )> {
     // This is pretty gnarly, but we need to loop to try out each socket addr.
     for sock_addr in sock_addrs {
         debug!(
             "Attempting to connect to {} replica via {}",
-            domain, sock_addr
+            server_name.to_str(),
+            sock_addr
         );
 
         let tcpstream = match timeout(
@@ -130,19 +128,15 @@ async fn repl_consumer_connect_supplier(
             }
         };
 
-        let mut tlsstream = match Ssl::new(tls_connector.context())
-            .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
+        let tlsstream = match tls_connector
+            .connect(server_name.to_owned(), tcpstream)
+            .await
         {
             Ok(ta) => ta,
             Err(e) => {
                 error!("Replication client TLS setup error, continuing -> {:?}", e);
                 continue;
             }
-        };
-
-        if let Err(e) = SslStream::connect(Pin::new(&mut tlsstream)).await {
-            error!("Replication client TLS accept error, continuing -> {:?}", e);
-            continue;
         };
 
         let supplier_conn = Framed::new(
@@ -164,9 +158,9 @@ async fn repl_consumer_connect_supplier(
 #[instrument(level="info", skip(refresh_coord, tls_connector, idms), fields(uuid=Uuid::new_v4().to_string()))]
 async fn repl_run_consumer_refresh(
     refresh_coord: Arc<Mutex<(bool, mpsc::Sender<()>)>>,
-    domain: &str,
+    server_name: &ServerName<'static>,
     sock_addrs: &[SocketAddr],
-    tls_connector: &SslConnector,
+    tls_connector: &TlsConnector,
     idms: &IdmServer,
     consumer_conn_settings: &ConsumerConnSettings,
 ) -> Result<Option<SocketAddr>, ()> {
@@ -182,10 +176,14 @@ async fn repl_run_consumer_refresh(
     }
 
     // okay, we need to proceed.
-    let (addr, mut supplier_conn) =
-        repl_consumer_connect_supplier(domain, sock_addrs, tls_connector, consumer_conn_settings)
-            .await
-            .ok_or(())?;
+    let (addr, mut supplier_conn) = repl_consumer_connect_supplier(
+        server_name,
+        sock_addrs,
+        tls_connector,
+        consumer_conn_settings,
+    )
+    .await
+    .ok_or(())?;
 
     // If we fail at any point, just RETURN because this leaves the next task to attempt, or
     // the channel drops and that tells the caller this failed.
@@ -239,16 +237,20 @@ async fn repl_run_consumer_refresh(
 
 #[instrument(level="debug", skip(tls_connector, idms), fields(eventid=Uuid::new_v4().to_string()))]
 async fn repl_run_consumer(
-    domain: &str,
+    server_name: &ServerName<'static>,
     sock_addrs: &[SocketAddr],
-    tls_connector: &SslConnector,
+    tls_connector: &TlsConnector,
     automatic_refresh: bool,
     idms: &IdmServer,
     consumer_conn_settings: &ConsumerConnSettings,
 ) -> Option<SocketAddr> {
-    let (socket_addr, mut supplier_conn) =
-        repl_consumer_connect_supplier(domain, sock_addrs, tls_connector, consumer_conn_settings)
-            .await?;
+    let (socket_addr, mut supplier_conn) = repl_consumer_connect_supplier(
+        server_name,
+        sock_addrs,
+        tls_connector,
+        consumer_conn_settings,
+    )
+    .await?;
 
     // Perform incremental.
     let consumer_ruv_range = {
@@ -380,9 +382,11 @@ struct ConsumerConnSettings {
 #[allow(clippy::too_many_arguments)]
 async fn repl_task(
     origin: Url,
-    client_key: PKey<Private>,
-    client_cert: X509,
-    supplier_cert: X509,
+
+    client_key: PrivateKeyDer<'static>,
+    client_cert: CertificateDer<'static>,
+    supplier_cert: CertificateDer<'static>,
+
     consumer_conn_settings: ConsumerConnSettings,
     mut task_rx: broadcast::Receiver<ReplConsumerCtrl>,
     automatic_refresh: bool,
@@ -401,55 +405,37 @@ async fn repl_task(
         }
     };
 
-    // Setup our tls connector.
-    let mut ssl_builder = match SslConnector::builder(SslMethod::tls_client()) {
-        Ok(sb) => sb,
-        Err(err) => {
-            error!(?err, "Unable to configure tls connector");
-            return;
-        }
-    };
-
-    let setup_client_cert = ssl_builder
-        .set_certificate(&client_cert)
-        .and_then(|_| ssl_builder.set_private_key(&client_key))
-        .and_then(|_| ssl_builder.check_private_key());
-    if let Err(err) = setup_client_cert {
-        error!(?err, "Unable to configure client certificate/key");
+    let Ok(server_name) = ServerName::try_from(domain.to_owned()) else {
+        error!("Replica origin does not have a valid domain name, unable to proceed.");
         return;
-    }
+    };
 
     // Add the supplier cert.
     // ⚠️  note that here we need to build a new cert store. This is because
-    // openssl SslConnector adds the default system cert locations with
-    // the call to ::builder and we *don't* want this. We want our certstore
-    // to pin a single certificate!
-    let mut cert_store = match X509StoreBuilder::new() {
-        Ok(csb) => csb,
+    // we want to pin a single certificate!
+    let mut root_cert_store = RootCertStore::empty();
+    if let Err(err) = root_cert_store.add(supplier_cert) {
+        error!(?err, "Replica supplier cert invalid.");
+        return;
+    };
+
+    let provider = rustls::crypto::aws_lc_rs::default_provider().into();
+
+    let tls_client_config = match ClientConfig::builder_with_provider(provider)
+        .with_safe_default_protocol_versions()
+        .and_then(|builder| {
+            builder
+                .with_root_certificates(root_cert_store)
+                .with_client_auth_cert(vec![client_cert], client_key)
+        }) {
+        Ok(ccb) => ccb,
         Err(err) => {
-            error!(?err, "Unable to configure certificate store builder.");
+            error!(?err, "Unable to build TLS client configuration");
             return;
         }
     };
 
-    if let Err(err) = cert_store.add_cert(supplier_cert) {
-        error!(?err, "Unable to add supplier certificate to cert store");
-        return;
-    }
-
-    let cert_store = cert_store.build();
-    ssl_builder.set_cert_store(cert_store);
-
-    // Configure the expected hostname of the remote.
-    let verify_param = ssl_builder.verify_param_mut();
-    if let Err(err) = verify_param.set_host(domain) {
-        error!(?err, "Unable to set domain name for tls peer verification");
-        return;
-    }
-
-    // Assert the expected supplier certificate is correct and has a valid domain san
-    ssl_builder.set_verify(SslVerifyMode::PEER);
-    let tls_connector = ssl_builder.build();
+    let tls_connector = TlsConnector::from(Arc::new(tls_client_config));
 
     let mut repl_interval = interval(consumer_conn_settings.task_poll_interval);
 
@@ -517,7 +503,7 @@ async fn repl_task(
                     ReplConsumerCtrl::Refresh ( refresh_coord ) => {
                         last_working_address = (repl_run_consumer_refresh(
                             refresh_coord,
-                            domain,
+                            &server_name,
                             &sorted_socket_addrs,
                             &tls_connector,
                             &idms,
@@ -530,7 +516,7 @@ async fn repl_task(
             _ = repl_interval.tick() => {
                 // Interval passed, attempt a replication run.
                 repl_run_consumer(
-                    domain,
+                    &server_name,
                     &sorted_socket_addrs,
                     &tls_connector,
                     automatic_refresh,
@@ -550,24 +536,19 @@ async fn handle_repl_conn(
     max_frame_bytes: usize,
     tcpstream: TcpStream,
     client_address: SocketAddr,
-    tls_parms: SslAcceptor,
+    tls_acceptor: TlsAcceptor,
     idms: Arc<IdmServer>,
 ) {
     debug!(?client_address, "replication client connected 🛫");
 
-    let mut tlsstream = match Ssl::new(tls_parms.context())
-        .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
-    {
+    let tlsstream = match tls_acceptor.accept(tcpstream).await {
         Ok(ta) => ta,
         Err(err) => {
             error!(?err, "Replication TLS setup error, disconnecting client");
             return;
         }
     };
-    if let Err(err) = SslStream::accept(Pin::new(&mut tlsstream)).await {
-        error!(?err, "Replication TLS accept error, disconnecting client");
-        return;
-    };
+
     let (r, w) = tokio::io::split(tlsstream);
     let mut r = FramedRead::new(r, codec::SupplierCodec::new(max_frame_bytes));
     let mut w = FramedWrite::new(w, codec::SupplierCodec::new(max_frame_bytes));
@@ -691,7 +672,7 @@ async fn repl_acceptor(
         // Now we can start to re-load configurations and setup our client tasks
         // as well.
 
-        // Get the private key / cert.
+        // Get our private key / cert.
         let res = {
             let ct = duration_from_epoch_now();
             idms.proxy_write(ct).await.and_then(|mut idms_prox_write| {
@@ -716,6 +697,25 @@ async fn repl_acceptor(
             replication_cert_not_after = ?server_cert.not_after(),
         );
 
+        // rustls expects these to be der
+        let Ok(server_key_der) = server_key.private_key_to_der() else {
+            error!("CRITICAL: Unable to convert server key to DER.");
+            sleep(retry_timeout).await;
+            continue;
+        };
+
+        let Ok(server_key_der) = PrivateKeyDer::try_from(server_key_der) else {
+            error!("CRITICAL: Unable to convert server key from DER.");
+            sleep(retry_timeout).await;
+            continue;
+        };
+
+        let Ok(server_cert_der) = server_cert.to_der().map(CertificateDer::from) else {
+            error!("CRITICAL: Unable to convert server cert to DER.");
+            sleep(retry_timeout).await;
+            continue;
+        };
+
         let mut client_certs = Vec::new();
 
         // For each node in the map, either spawn a task to pull from that node,
@@ -728,7 +728,13 @@ async fn repl_acceptor(
                     automatic_refresh: _,
                 }
                 | RepNodeConfig::AllowPull { consumer_cert } => {
-                    client_certs.push(consumer_cert.clone())
+                    let Ok(consumer_cert_der) = consumer_cert.to_der().map(CertificateDer::from)
+                    else {
+                        warn!("WARNING: Unable to convert client cert to DER.");
+                        continue;
+                    };
+
+                    client_certs.push(consumer_cert_der)
                 }
                 RepNodeConfig::Pull {
                     supplier_cert: _,
@@ -745,13 +751,19 @@ async fn repl_acceptor(
                     supplier_cert,
                     automatic_refresh,
                 } => {
+                    let Ok(supplier_cert_der) = supplier_cert.to_der().map(CertificateDer::from)
+                    else {
+                        warn!("WARNING: Unable to convert client cert to DER.");
+                        continue;
+                    };
+
                     let task_rx = task_tx.subscribe();
 
                     let handle: JoinHandle<()> = tokio::spawn(repl_task(
                         origin.clone(),
-                        server_key.clone(),
-                        server_cert.clone(),
-                        supplier_cert.clone(),
+                        server_key_der.clone_key(),
+                        server_cert_der.clone(),
+                        supplier_cert_der.clone(),
                         consumer_conn_settings.clone(),
                         task_rx,
                         *automatic_refresh,
@@ -770,46 +782,57 @@ async fn repl_acceptor(
         //    are absolutely correct!
         //
         // Setup the TLS builder.
-        let mut tls_builder = match SslAcceptor::mozilla_modern_v5(SslMethod::tls()) {
-            Ok(tls_builder) => tls_builder,
-            Err(err) => {
-                error!(?err, "CRITICAL, unable to create SslAcceptorBuilder.");
-                sleep(retry_timeout).await;
-                continue;
-            }
-        };
-
-        // tls_builder.set_keylog_callback(keylog_cb);
-        if let Err(err) = tls_builder
-            .set_certificate(&server_cert)
-            .and_then(|_| tls_builder.set_private_key(&server_key))
-            .and_then(|_| tls_builder.check_private_key())
-        {
-            error!(?err, "CRITICAL, unable to set server_cert and server key.");
-            sleep(retry_timeout).await;
-            continue;
-        };
 
         // ⚠️  CRITICAL - ensure that the cert store only has client certs from
         // the repl map added.
-        let cert_store = tls_builder.cert_store_mut();
+        let mut client_cert_roots = RootCertStore::empty();
+
         for client_cert in client_certs.into_iter() {
-            if let Err(err) = cert_store.add_cert(client_cert.clone()) {
-                error!(?err, "CRITICAL, unable to add client certificates.");
+            if let Err(err) = client_cert_roots.add(client_cert) {
+                error!(?err, "CRITICAL, unable to add client certificate.");
                 sleep(retry_timeout).await;
                 continue;
             }
         }
 
-        // ⚠️  CRITICAL - Both verifications here are needed. PEER requests
-        // the client cert to be sent. FAIL_IF_NO_PEER_CERT triggers an
-        // error if the cert is NOT present. FAIL_IF_NO_PEER_CERT on its own
-        // DOES NOTHING.
-        let mut verify = SslVerifyMode::PEER;
-        verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);
-        tls_builder.set_verify(verify);
+        let client_cert_verifier_result = WebPkiClientVerifier::builder(client_cert_roots.into())
+            // We don't allow clients that lack a certificate to correct.
+            // allow_unauthenticated()
+            .build();
 
-        let tls_acceptor = tls_builder.build();
+        let client_cert_verifier = match client_cert_verifier_result {
+            Ok(ccv) => ccv,
+            Err(err) => {
+                error!(
+                    ?err,
+                    "CRITICAL, unable to configure client certificate verifier."
+                );
+                sleep(retry_timeout).await;
+                continue;
+            }
+        };
+
+        let provider = rustls::crypto::aws_lc_rs::default_provider().into();
+
+        let tls_server_config = match ServerConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .and_then(|builder| {
+                builder
+                    .with_client_cert_verifier(client_cert_verifier)
+                    .with_single_cert(vec![server_cert_der], server_key_der)
+            }) {
+            Ok(tls_server_config) => tls_server_config,
+            Err(err) => {
+                error!(
+                    ?err,
+                    "CRITICAL, unable to create TLS Server Config. Will retry ..."
+                );
+                sleep(retry_timeout).await;
+                continue;
+            }
+        };
+
+        let tls_acceptor = TlsAcceptor::from(Arc::new(tls_server_config));
 
         loop {
             // This is great to diagnose when spans are entered or present and they capture

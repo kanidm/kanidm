@@ -1,9 +1,8 @@
 use bytes::{Buf, BufMut, BytesMut};
+use kanidmd_lib::repl::proto::{ReplIncrementalContext, ReplRefreshContext, ReplRuvRange};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::io;
 use tokio_util::codec::{Decoder, Encoder};
-
-use kanidmd_lib::repl::proto::{ReplIncrementalContext, ReplRefreshContext, ReplRuvRange};
 
 // The minimum size of a buffer for the replication codec (1MB)
 pub const CODEC_MIMIMUM_BYTESMUT_ALLOCATION: usize = 1024 * 1024;
