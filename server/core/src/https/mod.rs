@@ -472,7 +472,8 @@ pub(crate) async fn handle_tls_conn(
 
     // Process the client cert (if any)
     let client_cert = if let Some(peer_cert) = maybe_peer_cert {
-        // TODO: This is where we should be checking the CRL!!!
+        // We don't need to check the CRL here - it's already completed as part of the
+        // TLS connection establishment process.
 
         // Extract the cert from rustls DER to x509-cert which is a better
         // parser to handle the various extensions.
