@@ -127,7 +127,7 @@ The configuration file (which you should mount at `/data/radius.toml`, or specif
 
 ## Moving to Production
 
-To expose this to a Wi-Fi infrastructure, add your NAS in the configuration:
+To expose this to a Wi-Fi infrastructure, add your AP in the configuration:
 
 ```toml
 radius_clients = [
