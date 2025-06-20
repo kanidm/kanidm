@@ -2872,9 +2872,7 @@ impl IdmServerProxyReadTransaction<'_> {
             OperationError::NoMatchingEntries
         })?;
 
-        // How do we return only the active signing algo types?
-
-        error!(sign_alg = ?o2rs.sign_alg);
+        trace!(sign_alg = ?o2rs.sign_alg);
 
         match o2rs.sign_alg {
             SignatureAlgo::Es256 => o2rs.key_object.jws_es256_jwks(),
