@@ -23,6 +23,7 @@ async fn test_ldap_basic_unix_bind(test_env: &AsyncTestEnvironment) {
 #[kanidmd_testkit::test(ldap = true)]
 async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     const APPLICATION_1_NAME: &str = "test_application_1";
+    const APPLICATION_2_NAME: &str = "test_application_2";
 
     // Remember, this isn't the exhaustive test for application password behaviours,
     // those are in the main server. This is just a basic smoke test that the interfaces
@@ -48,7 +49,6 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
         .expect("Failed to create test group");
 
     // Create two applications
-
     let application_1 = ScimEntryApplicationPost {
         name: APPLICATION_1_NAME.to_string(),
         displayname: APPLICATION_1_NAME.to_string(),
@@ -58,25 +58,83 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     let application_entry = idm_admin_rsclient
         .idm_application_create(&application_1)
         .await
-        .expect("Failed to create the user");
+        .expect("Failed to create the application");
+
+    debug!(?application_entry);
+
+    let application_2 = ScimEntryApplicationPost {
+        name: APPLICATION_2_NAME.to_string(),
+        displayname: APPLICATION_2_NAME.to_string(),
+        linked_group: ScimReference::from(TEST_GROUP),
+    };
+
+    let application_entry = idm_admin_rsclient
+        .idm_application_create(&application_2)
+        .await
+        .expect("Failed to create the application");
 
     debug!(?application_entry);
 
     // List, get them.
+    let applications = idm_admin_rsclient
+        .idm_application_list()
+        .await
+        .expect("Failed to list applications.");
+
+    assert_eq!(applications.len(), 2);
 
     // Login as the person
+    let person_rsclient = test_env.rsclient.new_session().unwrap();
+
+    let _ = person_rsclient.logout().await;
+    let res = person_rsclient
+        .auth_simple_password(TEST_PERSON, TEST_PERSON)
+        .await;
+    assert!(res.is_ok());
+
+    // List the applications we can see
+    let applications = person_rsclient
+        .idm_application_list()
+        .await
+        .expect("Failed to list applications");
 
     // Create application passwords
 
+    let application_1_password_create_1 = person_rsclient
+        .idm_application_create_password(
+            APPLICATION_1_NAME,
+            "label_1",
+        )
+        .await
+        .expect("Failed to create application password");
+
+    let application_1_password_create_2 = person_rsclient
+        .idm_application_create_password(
+            APPLICATION_1_NAME,
+            "label_2",
+        )
+        .await
+        .expect("Failed to create application password");
+
+    let application_2_password_create_1 = person_rsclient
+        .idm_application_create_password(
+            APPLICATION_2_NAME,
+            "label_1",
+        )
+        .await
+        .expect("Failed to create application password");
+
     // Check the work.
+
+    // let ldap_url = test_env.ldap_url.as_ref().unwrap();
+    // let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
 
     // Check they can't cross talk.
 
     // Done!
 
-    // let ldap_url = test_env.ldap_url.as_ref().unwrap();
+    // Check removeal of app passwords
 
-    // let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
 
     let result = idm_admin_rsclient
         .idm_application_delete(APPLICATION_1_NAME)
@@ -90,4 +148,5 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     // Check that you can no longer bind.
 
     // They no longer list
+
 }
