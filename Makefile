@@ -4,7 +4,7 @@ IMAGE_EXT_VERSION ?= $(shell cargo metadata --no-deps --format-version 1 | jq -r
 CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 CONTAINER_BUILD_ARGS ?=
-MARKDOWN_FORMAT_ARGS ?= --options-line-width=100
+MARKDOWN_FORMAT_ARGS ?=
 CONTAINER_TOOL ?= docker
 BUILDKIT_PROGRESS ?= plain
 KANIDM_FEATURES ?= ""
@@ -207,21 +207,23 @@ doc: ## Build the rust documentation locally
 doc:
 	cargo doc --document-private-items
 
-.PHONY: doc/format
-doc/format: ## Format docs and the Kanidm book
-	find . -type f  \
+.PHONY: doc/find
+doc/find: ## Find all markdown files in the docs and book directories
+	@find . -type f  \
 		-not -path './target/*' \
 		-not -path './docs/*' \
+		-not -path '*/node_modules/*' \
 		-not -path '*/.venv/*' -not -path './vendor/*'\
 		-not -path '*/.*/*' \
-		-name \*.md \
-		-exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
+		-name '*.md'
+
+.PHONY: doc/format
+doc/format: ## Format docs and the Kanidm book
+	make doc/find | xargs deno fmt --check $(MARKDOWN_FORMAT_ARGS)
 
 .PHONY: doc/format/fix
 doc/format/fix: ## Fix docs and the Kanidm book
-	find . -type f  -not -path './target/*' -not -path '*/.venv/*' -not -path './vendor/*'\
-		-name \*.md \
-		-exec deno fmt  $(MARKDOWN_FORMAT_ARGS) "{}" +
+	make doc/find | xargs  deno fmt  $(MARKDOWN_FORMAT_ARGS)
 
 .PHONY: book
 book: ## Build the Kanidm book
