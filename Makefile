@@ -208,7 +208,7 @@ doc:
 	cargo doc --document-private-items
 
 .PHONY: doc/find
-doc/find: ## Find all markdown files in the docs and book directories
+doc/find: ## Find all markdown files for docs
 	@find . -type f  \
 		-not -path './target/*' \
 		-not -path './docs/*' \
