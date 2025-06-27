@@ -1,18 +1,15 @@
 use super::{QueryServerReadV1, QueryServerWriteV1};
 use kanidm_proto::scim_v1::client::ScimEntryPutGeneric;
 use kanidm_proto::scim_v1::{
-    client::ScimEntryPostGeneric, client::ScimFilter, server::ScimEntryKanidm, ScimEntryGetQuery,
-    ScimSyncRequest, ScimSyncState,
+    client::ScimEntryPostGeneric, client::ScimFilter, server::ScimEntryKanidm,
+    server::ScimListResponse, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
 };
 use kanidmd_lib::idm::scim::{
     GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncUpdateEvent,
 };
-
-use kanidmd_lib::server::scim::{ScimCreateEvent, ScimDeleteEvent};
-
 use kanidmd_lib::idm::server::IdmServerTransaction;
 use kanidmd_lib::prelude::*;
-use kanidmd_lib::server::scim::ScimEntryPutEvent;
+use kanidmd_lib::server::scim::{ScimCreateEvent, ScimDeleteEvent, ScimEntryPutEvent};
 
 impl QueryServerWriteV1 {
     #[instrument(
@@ -343,7 +340,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
         filter: ScimFilter,
         query: ScimEntryGetQuery,
-    ) -> Result<Vec<ScimEntryKanidm>, OperationError> {
+    ) -> Result<ScimListResponse, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read

@@ -43,6 +43,14 @@ pub(super) fn apply_search_access(
         AccessSrchResult::Allow { mut attr } => allow.append(&mut attr),
     };
 
+    match search_applications_filter_entry(ident, entry) {
+        AccessSrchResult::Deny => denied = true,
+        AccessSrchResult::Grant => grant = true,
+        AccessSrchResult::Ignore => {}
+        // AccessSrchResult::Constrain { mut attr } => constrain.append(&mut attr),
+        AccessSrchResult::Allow { mut attr } => allow.append(&mut attr),
+    };
+
     match search_sync_account_filter_entry(ident, entry) {
         AccessSrchResult::Deny => denied = true,
         AccessSrchResult::Grant => grant = true,
@@ -203,6 +211,51 @@ fn search_oauth2_filter_entry(
                         Attribute::Name,
                         Attribute::OAuth2RsOriginLanding,
                         Attribute::Image
+                    ),
+                };
+            }
+            AccessSrchResult::Ignore
+        }
+    }
+}
+
+fn search_applications_filter_entry(
+    ident: &Identity,
+    entry: &Arc<EntrySealedCommitted>,
+) -> AccessSrchResult {
+    match &ident.origin {
+        IdentType::Internal | IdentType::Synch(_) => AccessSrchResult::Ignore,
+        IdentType::User(iuser) => {
+            if iuser.entry.get_uuid() == UUID_ANONYMOUS {
+                debug!("Anonymous can't access application entries, ignoring");
+                return AccessSrchResult::Ignore;
+            }
+
+            let contains_application = entry
+                .get_ava_as_iutf8(Attribute::Class)
+                .map(|set| {
+                    trace!(?set);
+                    set.contains(&EntryClass::Application.to_string())
+                })
+                .unwrap_or(false);
+
+            let contains_application_linked_group = entry
+                .get_ava_single_refer(Attribute::LinkedGroup)
+                .and_then(|group_uuid| ident.get_memberof().map(|mo| mo.contains(&group_uuid)))
+                .unwrap_or(false);
+
+            trace!(?entry);
+
+            if contains_application && contains_application_linked_group {
+                security_debug!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted application access for this entry");
+
+                return AccessSrchResult::Allow {
+                    attr: btreeset!(
+                        Attribute::Class,
+                        Attribute::DisplayName,
+                        Attribute::Uuid,
+                        Attribute::Name,
+                        Attribute::LinkedGroup
                     ),
                 };
             }

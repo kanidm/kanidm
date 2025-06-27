@@ -118,6 +118,14 @@ pub struct ScimEntryApplication {
     pub attrs: BTreeMap<Attribute, JsonValue>,
 }
 
+#[serde_as]
+#[derive(Deserialize, Clone, Debug)]
+pub struct ScimListApplication {
+    pub schemas: Vec<String>,
+    pub total_results: u64,
+    pub resources: Vec<ScimEntryApplication>,
+}
+
 #[derive(Serialize, Debug, Clone)]
 pub struct ScimEntryPutKanidm {
     pub id: Uuid,

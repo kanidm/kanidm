@@ -12,8 +12,8 @@ use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{delete, get, post};
 use axum::{Extension, Json, Router};
 use kanidm_proto::scim_v1::{
-    client::ScimEntryPostGeneric, server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest,
-    ScimSyncState,
+    client::ScimEntryPostGeneric, server::ScimEntryKanidm, server::ScimListResponse,
+    ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
 };
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
@@ -385,6 +385,36 @@ async fn scim_person_id_get(
 }
 
 #[utoipa::path(
+    get,
+    path = "/scim/v1/Application",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_application_get"
+)]
+async fn scim_application_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Query(scim_entry_get_query): Query<ScimEntryGetQuery>,
+) -> Result<Json<ScimListResponse>, WebError> {
+    state
+        .qe_r_ref
+        .scim_entry_search(
+            client_auth_info,
+            kopid.eventid,
+            EntryClass::Application.into(),
+            scim_entry_get_query,
+        )
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
     post,
     path = "/scim/v1/Application",
     request_body = ScimEntryPostGeneric,
@@ -550,7 +580,10 @@ pub fn route_setup() -> Router<ServerState> {
         //
         //  Application   /Application     Post              Create a new application
         //
-        .route("/scim/v1/Application", post(scim_application_post))
+        .route(
+            "/scim/v1/Application",
+            get(scim_application_get).post(scim_application_post),
+        )
         //  Application   /Application/{id}     Delete      Delete the application identified by id
         //
         .route(

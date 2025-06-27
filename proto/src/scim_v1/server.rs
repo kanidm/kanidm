@@ -28,6 +28,15 @@ pub struct ScimEntryKanidm {
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
 }
 
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Serialize, Clone, Debug, Default)]
+pub struct ScimListResponse {
+    pub schemas: Vec<String>,
+    pub total_results: u64,
+    pub resources: Vec<ScimEntryKanidm>,
+}
+
 #[derive(Serialize, Debug, Clone, ToSchema)]
 pub enum ScimAttributeEffectiveAccess {
     /// All attributes on the entry have this permission granted
