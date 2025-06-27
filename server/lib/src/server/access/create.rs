@@ -134,7 +134,6 @@ fn create_filter_entry<'a>(
         // -- Conditions pass -- now verify the attributes.
 
         let entry_name = entry.get_display_id();
-        security_access!(%entry_name, acs = ?accr.acp.acp.name, "entry matches acs");
         // It matches, so now we have to check attrs and classes.
         // Remember, we have to match ALL requested attrs
         // and classes to pass!
@@ -142,19 +141,26 @@ fn create_filter_entry<'a>(
         let allowed_classes: BTreeSet<&str> = accr.acp.classes.iter().map(|s| s.as_str()).collect();
 
         if !create_attrs.is_subset(&allowed_attrs) {
-            security_error!("create_attrs is not a subset of allowed");
-            security_error!("create: {:?} !⊆ allowed: {:?}", create_attrs, allowed_attrs);
+            debug!(%entry_name, acs = ?accr.acp.acp.name, "entry create denied");
+            debug!("create_attrs is not a subset of allowed");
+            debug!("create: {:?} !⊆ allowed: {:?}", create_attrs, allowed_attrs);
             false
         } else if !create_classes.is_subset(&allowed_classes) {
-            security_error!("create_classes is not a subset of allowed");
-            security_error!(
+            debug!(%entry_name, acs = ?accr.acp.acp.name, "entry create denied");
+            debug!("create_classes is not a subset of allowed");
+            debug!(
                 "create: {:?} !⊆ allowed: {:?}",
-                create_classes,
-                allowed_classes
+                create_classes, allowed_classes
             );
             false
         } else {
             // All attribute conditions are now met.
+            info!(%entry_name, acs = ?accr.acp.acp.name, "entry create allowed");
+            debug!("create: {:?} ⊆ allowed: {:?}", create_attrs, allowed_attrs);
+            debug!(
+                "create: {:?} ⊆ allowed: {:?}",
+                create_classes, allowed_classes
+            );
             true
         }
     });

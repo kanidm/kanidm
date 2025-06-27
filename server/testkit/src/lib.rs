@@ -11,7 +11,7 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_proto::internal::{Filter, Modify, ModifyList};
+use kanidm_proto::internal::{CURegState, Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
 use kanidmd_lib::prelude::{Attribute, NAME_SYSTEM_ADMINS};
@@ -21,6 +21,8 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use tokio::task;
 use tracing::error;
 use url::Url;
+use webauthn_authenticator_rs::softpasskey::SoftPasskey;
+use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 pub const ADMIN_TEST_USER: &str = "admin";
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -134,6 +136,71 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
         core_handle,
         ldap_url,
     }
+}
+
+pub async fn setup_account_passkey(
+    rsclient: &KanidmClient,
+    account_name: &str,
+) -> WebauthnAuthenticator<SoftPasskey> {
+    // Create an intent token for them
+    let intent_token = rsclient
+        .idm_person_account_credential_update_intent(account_name, Some(1234))
+        .await
+        .unwrap();
+
+    // Create a new empty session.
+    let rsclient = rsclient.new_session().unwrap();
+
+    // Exchange the intent token
+    let (session_token, _status) = rsclient
+        .idm_account_credential_update_exchange(intent_token.token)
+        .await
+        .unwrap();
+
+    let _status = rsclient
+        .idm_account_credential_update_status(&session_token)
+        .await
+        .unwrap();
+
+    // Setup and update the passkey
+    let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+
+    let status = rsclient
+        .idm_account_credential_update_passkey_init(&session_token)
+        .await
+        .unwrap();
+
+    let passkey_chal = match status.mfaregstate {
+        CURegState::Passkey(c) => Some(c),
+        _ => None,
+    }
+    .expect("Unable to access passkey challenge, invalid state");
+
+    eprintln!("{}", rsclient.get_origin());
+    let passkey_resp = wa
+        .do_registration(rsclient.get_origin().clone(), passkey_chal)
+        .expect("Failed to create soft passkey");
+
+    let label = "Soft Passkey".to_string();
+
+    let status = rsclient
+        .idm_account_credential_update_passkey_finish(&session_token, label, passkey_resp)
+        .await
+        .unwrap();
+
+    assert!(status.can_commit);
+    assert_eq!(status.passkeys.len(), 1);
+
+    // Commit it
+    rsclient
+        .idm_account_credential_update_commit(&session_token)
+        .await
+        .unwrap();
+
+    // Assert it now works.
+    let _ = rsclient.logout().await;
+
+    wa
 }
 
 /// creates a user (username: `id`) and puts them into a group, creating it if need be.
