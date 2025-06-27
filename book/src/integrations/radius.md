@@ -90,14 +90,14 @@ be created and assigned through the group "idm_radius_servers", which is provide
 First, create the service account and add it to the group:
 
 ```bash
-kanidm service-account create --name admin radius_service_account "Radius Service Account"
-kanidm group add-members --name admin idm_radius_servers radius_service_account
+kanidm service-account create --name idm_admin radius_service_account "Radius Service Account" idm_admin
+kanidm group add-members --name idm_admin idm_radius_servers radius_service_account
 ```
 
 Now reset the account password, using the `admin` account:
 
 ```bash
-kanidm service-account api-token generate --name admin radius_service_account
+kanidm service-account api-token generate --name admin radius_service_account radius1
 ```
 
 ## Deploying a RADIUS Container
@@ -127,7 +127,7 @@ The configuration file (which you should mount at `/data/radius.toml`, or specif
 
 ## Moving to Production
 
-To expose this to a Wi-Fi infrastructure, add your NAS in the configuration:
+To expose this to your infrastructure, add your Access Point (AP) or Network Access Server (NAS) in the configuration:
 
 ```toml
 radius_clients = [
