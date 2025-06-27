@@ -1,12 +1,8 @@
 use super::interface::{
-    tpm::{self, structures::{
-    HmacS256Key,
-    StorageKey,
-    }
-    , provider::{
-        Tpm,
-        BoxedDynTpm,
-    }},
+    tpm::{
+        provider::{BoxedDynTpm, TpmHmacS256},
+        structures::{HmacS256Key, LoadableHmacS256Key, StorageKey},
+    },
     AuthCredHandler, AuthRequest, AuthResult, GroupToken, GroupTokenState, Id, IdProvider,
     IdpError, ProviderOrigin, UserToken, UserTokenState,
 };
@@ -25,7 +21,7 @@ use std::collections::BTreeSet;
 use std::time::{Duration, SystemTime};
 use tokio::sync::{broadcast, Mutex};
 
-const KANIDM_HMAC_KEY: &str = "kanidm-hmac-key";
+const KANIDM_HMAC_KEY: &str = "kanidm-hmac-key-v2";
 const KANIDM_PWV1_KEY: &str = "kanidm-pw-v1";
 
 // If the provider is offline, we need to backoff and wait a bit.
@@ -62,8 +58,10 @@ impl KanidmProvider {
         tpm: &mut BoxedDynTpm,
         machine_key: &StorageKey,
     ) -> Result<Self, IdpError> {
+        let tpm_ctx: &mut dyn TpmHmacS256 = &mut **tpm;
+
         // Initially retrieve our HMAC key.
-        let loadable_hmac_key: Option<HmacS256Key> = keystore
+        let loadable_hmac_key: Option<LoadableHmacS256Key> = keystore
             .get_tagged_hsm_key(KANIDM_HMAC_KEY)
             .map_err(|ks_err| {
                 error!(?ks_err);
@@ -73,7 +71,7 @@ impl KanidmProvider {
         let loadable_hmac_key = if let Some(loadable_hmac_key) = loadable_hmac_key {
             loadable_hmac_key
         } else {
-            let loadable_hmac_key = tpm.hmac_key_create(machine_key).map_err(|tpm_err| {
+            let loadable_hmac_key = tpm_ctx.hmac_s256_create(machine_key).map_err(|tpm_err| {
                 error!(?tpm_err);
                 IdpError::Tpm
             })?;
@@ -88,8 +86,8 @@ impl KanidmProvider {
             loadable_hmac_key
         };
 
-        let hmac_key = tpm
-            .hmac_key_load(machine_key, &loadable_hmac_key)
+        let hmac_key = tpm_ctx
+            .hmac_s256_load(machine_key, &loadable_hmac_key)
             .map_err(|tpm_err| {
                 error!(?tpm_err);
                 IdpError::Tpm
@@ -179,9 +177,11 @@ impl UserToken {
         crypto_policy: &CryptoPolicy,
         cred: &str,
         tpm: &mut BoxedDynTpm,
-        hmac_key: &HmacKey,
+        hmac_key: &HmacS256Key,
     ) {
-        let pw = match Password::new_argon2id_hsm(crypto_policy, cred, tpm, hmac_key) {
+        let tpm_ctx: &mut dyn TpmHmacS256 = &mut **tpm;
+
+        let pw = match Password::new_argon2id_hsm(crypto_policy, cred, tpm_ctx, hmac_key) {
             Ok(pw) => pw,
             Err(reason) => {
                 // Clear cached pw.
@@ -215,7 +215,7 @@ impl UserToken {
         &self,
         cred: &str,
         tpm: &mut BoxedDynTpm,
-        hmac_key: &HmacKey,
+        hmac_key: &HmacS256Key,
     ) -> bool {
         let pw_value = match self.extra_keys.get(KANIDM_PWV1_KEY) {
             Some(pw_value) => pw_value,
@@ -241,7 +241,9 @@ impl UserToken {
             }
         };
 
-        pw.verify_ctx(cred, Some((tpm, hmac_key)))
+        let tpm_ctx: &mut dyn TpmHmacS256 = &mut **tpm;
+
+        pw.verify_ctx(cred, Some((tpm_ctx, hmac_key)))
             .unwrap_or_default()
     }
 }
@@ -260,11 +262,7 @@ impl KanidmProviderInternal {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn check_online_right_meow(
-        &mut self,
-        tpm: &mut BoxedDynTpm,
-        now: SystemTime,
-    ) -> bool {
+    async fn check_online_right_meow(&mut self, tpm: &mut BoxedDynTpm, now: SystemTime) -> bool {
         match self.state {
             CacheState::Online => true,
             CacheState::OfflineNextCheck(_) => self.attempt_online(tpm, now).await,

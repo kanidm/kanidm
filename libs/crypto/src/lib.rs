@@ -1303,7 +1303,7 @@ impl Password {
 #[cfg(test)]
 mod tests {
     use kanidm_hsm_crypto::{
-        provider::{SoftTpm, Tpm, TpmHmacS256},
+        provider::{SoftTpm, TpmHmacS256},
         AuthValue,
     };
     use std::convert::TryFrom;
@@ -1553,10 +1553,8 @@ mod tests {
     #[test]
     fn test_password_argon2id_hsm_bind() {
         sketching::test_init();
-        trait TpmWithHmac: Tpm + TpmHmacS256 {}
-        impl<T: Tpm + TpmHmacS256> TpmWithHmac for T {}
 
-        let mut hsm: Box<dyn TpmWithHmac> = Box::new(SoftTpm::default());
+        let mut hsm: Box<dyn TpmHmacS256> = Box::new(SoftTpm::default());
 
         let auth_value = AuthValue::ephemeral().unwrap();
 
@@ -1570,7 +1568,7 @@ mod tests {
             .hmac_s256_load(&machine_key, &loadable_hmac_key)
             .unwrap();
 
-        let ctx: &mut dyn TpmWithHmac = &mut *hsm;
+        let ctx: &mut dyn TpmHmacS256 = &mut *hsm;
 
         let p = CryptoPolicy::minimum();
         let c = Password::new_argon2id_hsm(&p, "password", ctx, &key).unwrap();

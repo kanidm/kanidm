@@ -946,8 +946,6 @@ dependencies = [
 [[package]]
 name = "compact_jwt"
 version = "0.5.2-dev"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aeccfef8dafeba915e3d8f4a6dec2675f114fcd37b1a71a98ce87798599d709f"
 dependencies = [
  "base64 0.21.7",
  "base64urlsafedata",
@@ -3454,9 +3452,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-hsm-crypto"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4af689f5f1049cea403c1be0826b7bbf8e5a40a4fb53b3f4daf3d04260b658d"
+version = "0.3.3"
 dependencies = [
  "crypto-glue",
  "serde",

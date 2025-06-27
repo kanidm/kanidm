@@ -1,15 +1,13 @@
-use std::convert::TryFrom;
-use std::fmt;
 use crate::idprovider::interface::{GroupToken, Id, UserToken};
 use async_trait::async_trait;
+use kanidm_hsm_crypto::structures::{LoadableHmacS256Key, LoadableStorageKey};
 use libc::umask;
 use rusqlite::{Connection, OptionalExtension};
+use serde::{de::DeserializeOwned, Serialize};
+use std::convert::TryFrom;
+use std::fmt;
 use tokio::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
-use serde::{de::DeserializeOwned, Serialize};
-use kanidm_hsm_crypto::structures::{
-    LoadableHmacS256Key, LoadableStorageKey,
-};
 
 const DBV_MAIN: &str = "main";
 // This is in *pages* for sqlite. The default page size is 4096 bytes. So to achieve
@@ -509,7 +507,7 @@ impl DbTxn<'_> {
         Ok(())
     }
 
-    pub fn get_hsm_machine_key(&mut self) -> Result<Option<LoadableMachineKey>, CacheError> {
+    pub fn get_hsm_root_storage_key(&mut self) -> Result<Option<LoadableStorageKey>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_int_t WHERE key = 'mk'")
@@ -530,9 +528,9 @@ impl DbTxn<'_> {
         }
     }
 
-    pub fn insert_hsm_machine_key(
+    pub fn insert_hsm_root_storage_key(
         &mut self,
-        machine_key: &LoadableMachineKey,
+        machine_key: &LoadableStorageKey,
     ) -> Result<(), CacheError> {
         let data = serde_json::to_vec(machine_key).map_err(|e| {
             error!("insert_hsm_machine_key json error -> {:?}", e);
@@ -554,7 +552,7 @@ impl DbTxn<'_> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    pub fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacKey>, CacheError> {
+    pub fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacS256Key>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_int_t WHERE key = 'hmac'")
@@ -575,7 +573,10 @@ impl DbTxn<'_> {
         }
     }
 
-    pub fn insert_hsm_hmac_key(&mut self, hmac_key: &LoadableHmacKey) -> Result<(), CacheError> {
+    pub fn insert_hsm_hmac_key(
+        &mut self,
+        hmac_key: &LoadableHmacS256Key,
+    ) -> Result<(), CacheError> {
         let data = serde_json::to_vec(hmac_key).map_err(|e| {
             error!("insert_hsm_hmac_key json error -> {:?}", e);
             CacheError::SerdeJson

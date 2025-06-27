@@ -1,12 +1,9 @@
 #![deny(warnings)]
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
-use time::OffsetDateTime;
-
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_hsm_crypto::{
+    provider::{BoxedDynTpm, SoftTpm, Tpm},
+    AuthValue,
+};
 use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
 use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
@@ -22,10 +19,14 @@ use kanidm_unix_resolver::resolver::Resolver;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
 use kanidmd_testkit::{is_free_port, PORT_ALLOC};
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
+use time::OffsetDateTime;
 use tokio::task;
 use tracing::log::{debug, trace};
-
-use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 
 const ADMIN_TEST_USER: &str = "admin";
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -117,13 +118,13 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
     let mut dbtxn = db.write().await;
     dbtxn.migrate().expect("Unable to migrate cache db");
 
-    let mut hsm = BoxedDynTpm::new(SoftTpm::new());
+    let mut hsm = BoxedDynTpm::new(SoftTpm::default());
 
     let auth_value = AuthValue::ephemeral().unwrap();
 
-    let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
+    let loadable_machine_key = hsm.root_storage_key_create(&auth_value).unwrap();
     let machine_key = hsm
-        .machine_key_load(&auth_value, &loadable_machine_key)
+        .root_storage_key_load(&auth_value, &loadable_machine_key)
         .unwrap();
 
     let system_provider = SystemProvider::new().unwrap();
