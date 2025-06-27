@@ -132,7 +132,7 @@ kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.7.0-dev" }
 kanidmd_testkit = { path = "./server/testkit", version = "=1.7.0-dev" }
 kanidm_build_profiles = { path = "./libs/profiles", version = "=1.7.0-dev" }
 kanidm_client = { path = "./libs/client", version = "=1.7.0-dev" }
-kanidm-hsm-crypto = "^0.2.0"
+kanidm-hsm-crypto = "^0.3.2"
 kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.7.0-dev" }
 kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.7.0-dev" }
 kanidm_proto = { path = "./proto", version = "=1.7.0-dev" }
@@ -169,7 +169,7 @@ clap = { version = "4.5.40", features = ["derive", "env"] }
 clap_complete = "^4.5.54"
 # Forced by saffron/cron
 chrono = "^0.4.39"
-compact_jwt = "^0.5.1-dev"
+compact_jwt = "^0.5.2-dev"
 concread = "^0.5.5"
 cron = "0.15.0"
 crossbeam = "0.8.4"

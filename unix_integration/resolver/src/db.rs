@@ -1,16 +1,15 @@
 use std::convert::TryFrom;
 use std::fmt;
-
 use crate::idprovider::interface::{GroupToken, Id, UserToken};
 use async_trait::async_trait;
 use libc::umask;
 use rusqlite::{Connection, OptionalExtension};
 use tokio::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
-
 use serde::{de::DeserializeOwned, Serialize};
-
-use kanidm_hsm_crypto::{LoadableHmacKey, LoadableMachineKey};
+use kanidm_hsm_crypto::structures::{
+    LoadableHmacS256Key, LoadableStorageKey,
+};
 
 const DBV_MAIN: &str = "main";
 // This is in *pages* for sqlite. The default page size is 4096 bytes. So to achieve

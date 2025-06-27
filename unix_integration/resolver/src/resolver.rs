@@ -35,9 +35,9 @@ use std::time::{Duration, SystemTime};
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-
-use kanidm_hsm_crypto::BoxedDynTpm;
-
+use kanidm_hsm_crypto::{
+    provider::BoxedDynTpm,
+};
 use tokio::sync::broadcast;
 
 const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
