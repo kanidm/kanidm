@@ -285,6 +285,42 @@ pub fn get_group_entry_by_name(name: String, req_options: RequestOptions) -> Res
     }
 }
 
+pub fn get_group_entries_by_member(member: String, req_options: RequestOptions) -> Response<Vec<Group>> {
+    match req_options.connect_to_daemon() {
+        Source::Daemon(mut daemon_client) => {
+            let req = ClientRequest::NssGroupsByMember(member);
+            daemon_client
+                .call_and_wait(&req, None)
+                .map(|r| match r {
+                    ClientResponse::NssGroups(l) => {
+                        l.into_iter().map(group_from_nssgroup).collect()
+                    }
+                    _ => Vec::new(),
+                })
+                .map(Response::Success)
+                .unwrap_or_else(|_| Response::Success(vec![]))
+        }
+        Source::Fallback { users: _, groups } => {
+            if groups.is_empty() {
+                return Response::Unavail;
+            }
+
+            let membergroups = groups
+                .into_iter()
+                .filter_map(|etcgroup| {
+                    if etcgroup.members.contains(&member) {
+                        Some(group_from_etcgroup(etcgroup))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            Response::Success(membergroups)
+        }
+    }
+}
+
 fn passwd_from_etcuser(etc: EtcUser) -> Passwd {
     Passwd {
         name: etc.name,

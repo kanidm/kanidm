@@ -121,6 +121,7 @@ pub enum ClientRequest {
     NssGroups,
     NssGroupByGid(u32),
     NssGroupByName(String),
+    NssGroupsByMember(String),
     PamAuthenticateInit {
         account_id: String,
         info: PamServiceInfo,
@@ -144,6 +145,7 @@ impl ClientRequest {
             ClientRequest::NssGroups => "NssGroups".to_string(),
             ClientRequest::NssGroupByGid(id) => format!("NssGroupByGid({})", id),
             ClientRequest::NssGroupByName(id) => format!("NssGroupByName({})", id),
+            ClientRequest::NssGroupsByMember(id) => format!("NssGroupsByMember({})", id),
             ClientRequest::PamAuthenticateInit { account_id, info } => format!(
                 "PamAuthenticateInit{{ account_id={} tty={} pam_secvice{} rhost={} }}",
                 account_id,
