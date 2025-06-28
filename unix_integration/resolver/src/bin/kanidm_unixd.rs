@@ -14,7 +14,10 @@ use bytes::{BufMut, BytesMut};
 use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
-use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
+use kanidm_hsm_crypto::{
+    provider::{BoxedDynTpm, SoftTpm, Tpm},
+    AuthValue,
+};
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_proto::internal::OperationError;
 use kanidm_unix_common::constants::{
@@ -507,8 +510,8 @@ async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
 
 #[cfg(feature = "tpm")]
 fn open_tpm(tcti_name: &str) -> Option<BoxedDynTpm> {
-    use kanidm_hsm_crypto::tpm::TpmTss;
-    match TpmTss::new(tcti_name) {
+    use kanidm_hsm_crypto::provider::TssTpm;
+    match TssTpm::new(tcti_name) {
         Ok(tpm) => {
             debug!("opened hw tpm");
             Some(BoxedDynTpm::new(tpm))
@@ -528,8 +531,8 @@ fn open_tpm(_tcti_name: &str) -> Option<BoxedDynTpm> {
 
 #[cfg(feature = "tpm")]
 fn open_tpm_if_possible(tcti_name: &str) -> BoxedDynTpm {
-    use kanidm_hsm_crypto::tpm::TpmTss;
-    match TpmTss::new(tcti_name) {
+    use kanidm_hsm_crypto::provider::TssTpm;
+    match TssTpm::new(tcti_name) {
         Ok(tpm) => {
             debug!("opened hw tpm");
             BoxedDynTpm::new(tpm)
@@ -547,7 +550,7 @@ fn open_tpm_if_possible(tcti_name: &str) -> BoxedDynTpm {
 #[cfg(not(feature = "tpm"))]
 fn open_tpm_if_possible(_tcti_name: &str) -> BoxedDynTpm {
     debug!("opened soft tpm");
-    BoxedDynTpm::new(SoftTpm::new())
+    BoxedDynTpm::new(SoftTpm::default())
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -897,7 +900,7 @@ async fn main() -> ExitCode {
 
             let mut hsm: BoxedDynTpm = match cfg.hsm_type {
                 HsmType::Soft => {
-                    BoxedDynTpm::new(SoftTpm::new())
+                    BoxedDynTpm::new(SoftTpm::default())
                 }
                 HsmType::TpmIfPossible => {
                     open_tpm_if_possible(&cfg.tpm_tcti_name)
@@ -913,11 +916,11 @@ async fn main() -> ExitCode {
             // With the assistance of the DB, setup the HSM and its machine key.
             let mut db_txn = db.write().await;
 
-            let loadable_machine_key = match db_txn.get_hsm_machine_key() {
+            let loadable_machine_key = match db_txn.get_hsm_root_storage_key() {
                 Ok(Some(lmk)) => lmk,
                 Ok(None) => {
                     // No machine key found - create one, and store it.
-                    let loadable_machine_key = match hsm.machine_key_create(&auth_value) {
+                    let loadable_machine_key = match hsm.root_storage_key_create(&auth_value) {
                         Ok(lmk) => lmk,
                         Err(err) => {
                             error!(?err, "Unable to create hsm loadable machine key");
@@ -925,7 +928,7 @@ async fn main() -> ExitCode {
                         }
                     };
 
-                    if let Err(err) = db_txn.insert_hsm_machine_key(&loadable_machine_key) {
+                    if let Err(err) = db_txn.insert_hsm_root_storage_key(&loadable_machine_key) {
                         error!(?err, "Unable to persist hsm loadable machine key");
                         return ExitCode::FAILURE
                     }
@@ -938,7 +941,7 @@ async fn main() -> ExitCode {
                 }
             };
 
-            let machine_key = match hsm.machine_key_load(&auth_value, &loadable_machine_key) {
+            let machine_key = match hsm.root_storage_key_load(&auth_value, &loadable_machine_key) {
                 Ok(mk) => mk,
                 Err(err) => {
                     error!(?err, "Unable to load machine root key - This can occur if you have changed your HSM pin");

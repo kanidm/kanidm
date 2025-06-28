@@ -15,7 +15,7 @@ use base64::engine::general_purpose;
 use base64::engine::GeneralPurpose;
 use base64::{alphabet, Engine};
 use base64urlsafedata::Base64UrlSafeData;
-use kanidm_hsm_crypto::{HmacKey, Tpm};
+use kanidm_hsm_crypto::{provider::TpmHmacS256, structures::HmacS256Key};
 use kanidm_proto::internal::OperationError;
 use md4::{Digest, Md4};
 use openssl::error::ErrorStack as OpenSSLErrorStack;
@@ -934,8 +934,8 @@ impl Password {
     pub fn new_argon2id_hsm(
         policy: &CryptoPolicy,
         cleartext: &str,
-        hsm: &mut dyn Tpm,
-        hmac_key: &HmacKey,
+        hsm: &mut dyn TpmHmacS256,
+        hmac_key: &HmacS256Key,
     ) -> Result<Self, CryptoError> {
         let version = Version::V0x13;
 
@@ -953,10 +953,12 @@ impl Password {
             )
             .map_err(|_| CryptoError::Argon2)
             .and_then(|()| {
-                hsm.hmac(hmac_key, &check_key).map_err(|err| {
-                    error!(?err, "hsm error");
-                    CryptoError::Hsm
-                })
+                hsm.hmac_s256(hmac_key, &check_key)
+                    .map_err(|err| {
+                        error!(?err, "hsm error");
+                        CryptoError::Hsm
+                    })
+                    .map(|hmac_output| hmac_output.into_bytes().to_vec())
             })
             .map(|key| Kdf::TPM_ARGON2ID {
                 m_cost: policy.argon2id_params.m_cost(),
@@ -981,7 +983,7 @@ impl Password {
     pub fn verify_ctx(
         &self,
         cleartext: &str,
-        hsm: Option<(&mut dyn Tpm, &HmacKey)>,
+        hsm: Option<(&mut dyn TpmHmacS256, &HmacS256Key)>,
     ) -> Result<bool, CryptoError> {
         match (&self.material, hsm) {
             (
@@ -1022,14 +1024,14 @@ impl Password {
                         CryptoError::Argon2
                     })
                     .and_then(|()| {
-                        hsm.hmac(hmac_key, &check_key).map_err(|err| {
+                        hsm.hmac_s256(hmac_key, &check_key).map_err(|err| {
                             error!(?err, "hsm error");
                             CryptoError::Hsm
                         })
                     })
                     .map(|hmac_key| {
                         // Actually compare the outputs.
-                        &hmac_key == key
+                        hmac_key.into_bytes().as_slice() == key
                     })
             }
             (Kdf::TPM_ARGON2ID { .. }, None) => {
@@ -1300,8 +1302,10 @@ impl Password {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_hsm_crypto::soft::SoftTpm;
-    use kanidm_hsm_crypto::AuthValue;
+    use kanidm_hsm_crypto::{
+        provider::{SoftTpm, TpmHmacS256},
+        AuthValue,
+    };
     use std::convert::TryFrom;
 
     use crate::*;
@@ -1550,19 +1554,21 @@ mod tests {
     fn test_password_argon2id_hsm_bind() {
         sketching::test_init();
 
-        let mut hsm: Box<dyn Tpm> = Box::new(SoftTpm::new());
+        let mut hsm: Box<dyn TpmHmacS256> = Box::new(SoftTpm::default());
 
         let auth_value = AuthValue::ephemeral().unwrap();
 
-        let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
+        let loadable_machine_key = hsm.root_storage_key_create(&auth_value).unwrap();
         let machine_key = hsm
-            .machine_key_load(&auth_value, &loadable_machine_key)
+            .root_storage_key_load(&auth_value, &loadable_machine_key)
             .unwrap();
 
-        let loadable_hmac_key = hsm.hmac_key_create(&machine_key).unwrap();
-        let key = hsm.hmac_key_load(&machine_key, &loadable_hmac_key).unwrap();
+        let loadable_hmac_key = hsm.hmac_s256_create(&machine_key).unwrap();
+        let key = hsm
+            .hmac_s256_load(&machine_key, &loadable_hmac_key)
+            .unwrap();
 
-        let ctx: &mut dyn Tpm = &mut *hsm;
+        let ctx: &mut dyn TpmHmacS256 = &mut *hsm;
 
         let p = CryptoPolicy::minimum();
         let c = Password::new_argon2id_hsm(&p, "password", ctx, &key).unwrap();
