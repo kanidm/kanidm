@@ -3454,9 +3454,9 @@ dependencies = [
 
 [[package]]
 name = "kanidm-hsm-crypto"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ac8868fdbd2b32aac081b7b5d4b173094c5b60b61d2bcc0740fa504c13f0f63"
+checksum = "c5b3a38360cb864a945dfcfaaf09c9e5fc6f22f8997b226b1f13f65572cef74b"
 dependencies = [
  "crypto-glue",
  "serde",

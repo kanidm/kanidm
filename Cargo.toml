@@ -141,7 +141,7 @@ kanidm_utils_users = { path = "./libs/users", version = "=1.7.0-dev" }
 scim_proto = { path = "./libs/scim_proto", version = "=1.7.0-dev" }
 sketching = { path = "./libs/sketching", version = "=1.7.0-dev" }
 
-kanidm-hsm-crypto = { version = "^0.3.3" }
+kanidm-hsm-crypto = { version = "^0.3.4" }
 
 
 anyhow = { version = "1.0.98" }

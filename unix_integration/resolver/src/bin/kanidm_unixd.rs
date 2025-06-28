@@ -510,8 +510,8 @@ async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
 
 #[cfg(feature = "tpm")]
 fn open_tpm(tcti_name: &str) -> Option<BoxedDynTpm> {
-    use kanidm_hsm_crypto::tpm::TpmTss;
-    match TpmTss::new(tcti_name) {
+    use kanidm_hsm_crypto::provider::TssTpm;
+    match TssTpm::new(tcti_name) {
         Ok(tpm) => {
             debug!("opened hw tpm");
             Some(BoxedDynTpm::new(tpm))
@@ -531,8 +531,8 @@ fn open_tpm(_tcti_name: &str) -> Option<BoxedDynTpm> {
 
 #[cfg(feature = "tpm")]
 fn open_tpm_if_possible(tcti_name: &str) -> BoxedDynTpm {
-    use kanidm_hsm_crypto::tpm::TpmTss;
-    match TpmTss::new(tcti_name) {
+    use kanidm_hsm_crypto::provider::TssTpm;
+    match TssTpm::new(tcti_name) {
         Ok(tpm) => {
             debug!("opened hw tpm");
             BoxedDynTpm::new(tpm)
