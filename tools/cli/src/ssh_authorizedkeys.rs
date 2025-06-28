@@ -104,7 +104,7 @@ async fn main() -> Result<(), ()> {
     client
         .idm_account_get_ssh_pubkeys(opt.account_id.as_str())
         .await
-        .map(|pkeys| pkeys.iter().for_each(|pkey| println!("{}", pkey)))
+        .map(|pkeys| pkeys.iter().for_each(|pkey| println!("{pkey}")))
         .map_err(|e| {
             error!(
                 "Failed to retrieve SSH keys for {} - {:?}",

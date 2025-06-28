@@ -1391,7 +1391,7 @@ pub async fn credential_update_update(
     let scr: CURequest = match serde_json::from_value(cubody[0].clone()) {
         Ok(val) => val,
         Err(err) => {
-            let errmsg = format!("Failed to deserialize CURequest: {:?}", err);
+            let errmsg = format!("Failed to deserialize CURequest: {err:?}");
             error!("{}", errmsg);
             return Err(WebError::InternalServerError(errmsg));
         }
@@ -1400,7 +1400,7 @@ pub async fn credential_update_update(
     let session_token = match serde_json::from_value(cubody[1].clone()) {
         Ok(val) => val,
         Err(err) => {
-            let errmsg = format!("Failed to deserialize session token: {:?}", err);
+            let errmsg = format!("Failed to deserialize session token: {err:?}");
             error!("{}", errmsg);
             return Err(WebError::InternalServerError(errmsg));
         }

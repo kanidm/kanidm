@@ -118,7 +118,7 @@ pub fn png_lodepng_validate(
         }
         Err(err) => {
             // admin_debug!("PNG validation failed for {} {:?}", self.filename, err);
-            Err(ImageValidationError::InvalidImage(format!("{:?}", err)))
+            Err(ImageValidationError::InvalidImage(format!("{err:?}")))
         }
     }
 }
@@ -143,7 +143,7 @@ fn test_png_consume_chunks_until_iend() {
             }
             assert_eq!(buf, &expected);
         }
-        Err(err) => panic!("Error: {:?}", err),
+        Err(err) => panic!("Error: {err:?}"),
     };
 
     // let's make sure it works with a bunch of different length inputs

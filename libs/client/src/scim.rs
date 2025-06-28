@@ -21,7 +21,7 @@ impl KanidmClient {
         name_or_uuid: &str,
         query: Option<ScimEntryGetQuery>,
     ) -> Result<ScimEntryGeneric, ClientError> {
-        self.perform_get_request_query(format!("/scim/v1/Entry/{}", name_or_uuid).as_str(), query)
+        self.perform_get_request_query(format!("/scim/v1/Entry/{name_or_uuid}").as_str(), query)
             .await
     }
 
@@ -31,7 +31,7 @@ impl KanidmClient {
         name_or_uuid: &str,
         query: Option<ScimEntryGetQuery>,
     ) -> Result<ScimEntryGeneric, ClientError> {
-        self.perform_get_request_query(format!("/scim/v1/Person/{}", name_or_uuid).as_str(), query)
+        self.perform_get_request_query(format!("/scim/v1/Person/{name_or_uuid}").as_str(), query)
             .await
     }
 }

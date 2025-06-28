@@ -400,7 +400,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     assert_eq!(tir.client_id.as_deref(), Some(TEST_INTEGRATION_RS_ID));
     assert_eq!(
         tir.username.as_deref(),
-        Some(format!("{}@localhost", NOT_ADMIN_TEST_USERNAME).as_str())
+        Some(format!("{NOT_ADMIN_TEST_USERNAME}@localhost").as_str())
     );
     assert_eq!(tir.token_type, Some(AccessTokenType::Bearer));
     assert!(tir.exp.is_some());
@@ -949,7 +949,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token request.");
-    println!("{:?}", response);
+    println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a bad-auth request
@@ -959,7 +959,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token introspection request.");
-    println!("{:?}", response);
+    println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
@@ -985,7 +985,7 @@ async fn test_oauth2_token_revoke_post(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token request.");
-    println!("{:?}", response);
+    println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a invalid format request on token
@@ -996,7 +996,7 @@ async fn test_oauth2_token_revoke_post(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token request.");
-    println!("{:?}", response);
+    println!("{response:?}");
 
     assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
 
@@ -1008,7 +1008,7 @@ async fn test_oauth2_token_revoke_post(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token request.");
-    println!("{:?}", response);
+    println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a bad-body request on token
@@ -1019,6 +1019,6 @@ async fn test_oauth2_token_revoke_post(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token request.");
-    println!("{:?}", response);
+    println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
 }

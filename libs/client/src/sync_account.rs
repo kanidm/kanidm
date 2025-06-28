@@ -10,7 +10,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_sync_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/sync_account/{}", id).as_str())
+        self.perform_get_request(format!("/v1/sync_account/{id}").as_str())
             .await
     }
 
@@ -26,7 +26,7 @@ impl KanidmClient {
         };
 
         self.perform_put_request(
-            format!("/v1/sync_account/{}/_attr/sync_credential_portal", id).as_str(),
+            format!("/v1/sync_account/{id}/_attr/sync_credential_portal").as_str(),
             m,
         )
         .await
@@ -37,7 +37,7 @@ impl KanidmClient {
         id: &str,
     ) -> Result<Option<Url>, ClientError> {
         self.perform_get_request(
-            format!("/v1/sync_account/{}/_attr/sync_credential_portal", id).as_str(),
+            format!("/v1/sync_account/{id}/_attr/sync_credential_portal").as_str(),
         )
         .await
         .map(|values: Vec<Url>| values.first().cloned())
@@ -50,7 +50,7 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         // let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_put_request(
-            format!("/v1/sync_account/{}/_attr/sync_yield_authority", id).as_str(),
+            format!("/v1/sync_account/{id}/_attr/sync_yield_authority").as_str(),
             &attrs,
         )
         .await
@@ -84,15 +84,12 @@ impl KanidmClient {
         id: &str,
         label: &str,
     ) -> Result<String, ClientError> {
-        self.perform_post_request(
-            format!("/v1/sync_account/{}/_sync_token", id).as_str(),
-            label,
-        )
-        .await
+        self.perform_post_request(format!("/v1/sync_account/{id}/_sync_token").as_str(), label)
+            .await
     }
 
     pub async fn idm_sync_account_destroy_token(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/sync_account/{}/_sync_token", id,).as_str())
+        self.perform_delete_request(format!("/v1/sync_account/{id}/_sync_token",).as_str())
             .await
     }
 
@@ -105,17 +102,17 @@ impl KanidmClient {
             .attrs
             .insert("sync_cookie".to_string(), Vec::with_capacity(0));
 
-        self.perform_patch_request(format!("/v1/sync_account/{}", id).as_str(), update_entry)
+        self.perform_patch_request(format!("/v1/sync_account/{id}").as_str(), update_entry)
             .await
     }
 
     pub async fn idm_sync_account_finalise(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_get_request(format!("/v1/sync_account/{}/_finalise", id).as_str())
+        self.perform_get_request(format!("/v1/sync_account/{id}/_finalise").as_str())
             .await
     }
 
     pub async fn idm_sync_account_terminate(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_get_request(format!("/v1/sync_account/{}/_terminate", id).as_str())
+        self.perform_get_request(format!("/v1/sync_account/{id}/_terminate").as_str())
             .await
     }
 }

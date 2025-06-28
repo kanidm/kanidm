@@ -165,7 +165,7 @@ impl CommonOpt {
                         token_refs.pop()
                     } else {
                         // otherwise let's try the fallback
-                        let filter_username = format!("{}@", filter_username);
+                        let filter_username = format!("{filter_username}@");
                         // Filter for tokens that match the pattern
                         let mut token_refs: Vec<_> = token_instance
                             .tokens()

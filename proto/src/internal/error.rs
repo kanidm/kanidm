@@ -329,14 +329,14 @@ impl PartialEq for OperationError {
 
 impl Display for OperationError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        let mut output = format!("{:?}", self)
+        let mut output = format!("{self:?}")
             .split("::")
             .last()
             .unwrap_or("")
             .to_string();
 
         if let Some(msg) = self.message() {
-            output += &format!(" - {}", msg);
+            output += &format!(" - {msg}");
         };
         f.write_str(&output)
     }
@@ -377,9 +377,9 @@ impl OperationError {
             Self::InvalidReplChangeId => None,
             Self::InvalidAcpState(_) => None,
             Self::InvalidSchemaState(_) => None,
-            Self::InvalidAccountState(val) => Some(format!("Invalid account state: {}", val)),
-            Self::MissingClass(val) => Some(format!("Missing class: {}", val)),
-            Self::MissingAttribute(val) => Some(format!("Missing attribute: {}", val)),
+            Self::InvalidAccountState(val) => Some(format!("Invalid account state: {val}")),
+            Self::MissingClass(val) => Some(format!("Missing class: {val}")),
+            Self::MissingAttribute(val) => Some(format!("Missing attribute: {val}")),
             Self::MissingEntries => None,
             Self::ModifyAssertionFailed => None,
             Self::BackendEngine => None,

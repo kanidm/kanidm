@@ -14,7 +14,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_service_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/service_account/{}", id).as_str())
+        self.perform_get_request(format!("/v1/service_account/{id}").as_str())
             .await
     }
 
@@ -86,7 +86,7 @@ impl KanidmClient {
                 .insert(ATTR_MAIL.to_string(), mail.to_vec());
         }
 
-        self.perform_patch_request(format!("/v1/service_account/{}", id).as_str(), update_entry)
+        self.perform_patch_request(format!("/v1/service_account/{id}").as_str(), update_entry)
             .await
     }
 
@@ -98,7 +98,7 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         let msg: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
         self.perform_post_request(
-            format!("/v1/service_account/{}/_attr/{}", id, attr).as_str(),
+            format!("/v1/service_account/{id}/_attr/{attr}").as_str(),
             msg,
         )
         .await
@@ -111,11 +111,8 @@ impl KanidmClient {
         values: &[&str],
     ) -> Result<(), ClientError> {
         let m: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
-        self.perform_put_request(
-            format!("/v1/service_account/{}/_attr/{}", id, attr).as_str(),
-            m,
-        )
-        .await
+        self.perform_put_request(format!("/v1/service_account/{id}/_attr/{attr}").as_str(), m)
+            .await
     }
 
     pub async fn idm_service_account_get_attr(
@@ -123,7 +120,7 @@ impl KanidmClient {
         id: &str,
         attr: &str,
     ) -> Result<Option<Vec<String>>, ClientError> {
-        self.perform_get_request(format!("/v1/service_account/{}/_attr/{}", id, attr).as_str())
+        self.perform_get_request(format!("/v1/service_account/{id}/_attr/{attr}").as_str())
             .await
     }
 
@@ -132,7 +129,7 @@ impl KanidmClient {
         id: &str,
         attr: &str,
     ) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/service_account/{}/_attr/{}", id, attr).as_str())
+        self.perform_delete_request(format!("/v1/service_account/{id}/_attr/{attr}").as_str())
             .await
     }
 
@@ -144,7 +141,7 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         let sk = (tag.to_string(), pubkey.to_string());
         self.perform_post_request(
-            format!("/v1/service_account/{}/_ssh_pubkeys", id).as_str(),
+            format!("/v1/service_account/{id}/_ssh_pubkeys").as_str(),
             sk,
         )
         .await
@@ -155,10 +152,8 @@ impl KanidmClient {
         id: &str,
         tag: &str,
     ) -> Result<(), ClientError> {
-        self.perform_delete_request(
-            format!("/v1/service_account/{}/_ssh_pubkeys/{}", id, tag).as_str(),
-        )
-        .await
+        self.perform_delete_request(format!("/v1/service_account/{id}/_ssh_pubkeys/{tag}").as_str())
+            .await
     }
 
     pub async fn idm_service_account_unix_extend(
@@ -174,14 +169,14 @@ impl KanidmClient {
             shell: shell.map(str::to_string),
             gidnumber,
         };
-        self.perform_post_request(format!("/v1/service_account/{}/_unix", id).as_str(), ux)
+        self.perform_post_request(format!("/v1/service_account/{id}/_unix").as_str(), ux)
             .await
     }
 
     // TODO: test coverage for this, but there's a weird issue with ACPs on apply
     pub async fn idm_service_account_into_person(&self, id: &str) -> Result<(), ClientError> {
         self.perform_post_request(
-            format!("/v1/service_account/{}/_into_person", id).as_str(),
+            format!("/v1/service_account/{id}/_into_person").as_str(),
             (),
         )
         .await
@@ -192,7 +187,7 @@ impl KanidmClient {
         id: &str,
     ) -> Result<CredentialStatus, ClientError> {
         let res: Result<CredentialStatus, ClientError> = self
-            .perform_get_request(format!("/v1/service_account/{}/_credential/_status", id).as_str())
+            .perform_get_request(format!("/v1/service_account/{id}/_credential/_status").as_str())
             .await;
         res.and_then(|cs| {
             if cs.creds.is_empty() {
@@ -208,9 +203,7 @@ impl KanidmClient {
         id: &str,
     ) -> Result<String, ClientError> {
         let res: Result<String, ClientError> = self
-            .perform_get_request(
-                format!("/v1/service_account/{}/_credential/_generate", id).as_str(),
-            )
+            .perform_get_request(format!("/v1/service_account/{id}/_credential/_generate").as_str())
             .await;
         res.and_then(|pw| {
             if pw.is_empty() {
@@ -226,7 +219,7 @@ impl KanidmClient {
         id: &str,
     ) -> Result<Vec<ApiToken>, ClientError> {
         // This ends up at [kanidmd_core::actors::v1_write::QueryServerWriteV1::handle_service_account_api_token_generate]
-        self.perform_get_request(format!("/v1/service_account/{}/_api_token", id).as_str())
+        self.perform_get_request(format!("/v1/service_account/{id}/_api_token").as_str())
             .await
     }
 
@@ -243,7 +236,7 @@ impl KanidmClient {
             read_write,
         };
         self.perform_post_request(
-            format!("/v1/service_account/{}/_api_token", id).as_str(),
+            format!("/v1/service_account/{id}/_api_token").as_str(),
             new_token,
         )
         .await

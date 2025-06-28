@@ -23,7 +23,7 @@ impl SynchOpt {
             SynchOpt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_sync_account_list().await {
-                    Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
+                    Ok(r) => r.iter().for_each(|ent| println!("{ent}")),
 
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
@@ -31,7 +31,7 @@ impl SynchOpt {
             SynchOpt::Get(nopt) => {
                 let client = nopt.copt.to_client(OpType::Read).await;
                 match client.idm_sync_account_get(nopt.name.as_str()).await {
-                    Ok(Some(e)) => println!("{}", e),
+                    Ok(Some(e)) => println!("{e}"),
                     Ok(None) => println!("No matching entries"),
                     Err(e) => handle_client_error(e, nopt.copt.output_mode),
                 }
@@ -74,7 +74,7 @@ impl SynchOpt {
                     .idm_sync_account_generate_token(account_id, label)
                     .await
                 {
-                    Ok(token) => println!("token: {}", token),
+                    Ok(token) => println!("token: {token}"),
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }

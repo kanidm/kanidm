@@ -141,7 +141,7 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
         ];
 
         for filepath in filelist {
-            match generate_integrity_hash(format!("{}/{}", pkg_path, filepath,)) {
+            match generate_integrity_hash(format!("{pkg_path}/{filepath}",)) {
                 Ok(hash) => {
                     debug!("Integrity hash for {}: {}", filepath, hash);
                     let js = JavaScriptFile { hash };
@@ -187,7 +187,7 @@ pub async fn create_https_server(
     let js_checksums: String = js_directives
         .iter()
         .fold(String::new(), |mut output, value| {
-            let _ = write!(output, " 'sha384-{}'", value);
+            let _ = write!(output, " 'sha384-{value}'");
             output
         });
 

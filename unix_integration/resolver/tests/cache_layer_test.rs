@@ -72,7 +72,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
 
     // Setup the config ...
     let mut config = Configuration::new_for_test();
-    config.address = format!("127.0.0.1:{}", port);
+    config.address = format!("127.0.0.1:{port}");
     config.integration_test_config = Some(int_config);
     config.role = ServerRole::WriteReplicaNoUI;
     config.threads = 1;
@@ -84,7 +84,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
     task::yield_now().await;
 
     // Setup the client, and the address we selected.
-    let addr = format!("http://127.0.0.1:{}", port);
+    let addr = format!("http://127.0.0.1:{port}");
 
     // Run fixtures
     let adminclient = KanidmClientBuilder::new()
@@ -186,7 +186,7 @@ async fn test_fixture(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
-    debug!("auth_simple_password res: {:?}", res);
+    debug!("auth_simple_password res: {res:?}");
     trace!("{:?}", &res);
     assert!(res.is_ok());
     // Create a new account
@@ -904,7 +904,7 @@ async fn test_cache_nxset_group() {
         .filter(|nss_group| nss_group.name == "testgroup1")
         .collect();
 
-    debug!("{:?}", gs);
+    debug!("{gs:?}");
     assert_eq!(gs.len(), 1);
     assert_eq!(gs[0].gid, 30001);
 }

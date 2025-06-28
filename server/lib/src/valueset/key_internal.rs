@@ -558,7 +558,7 @@ mod tests {
 
         let key_internal_map = vs_r.as_key_internal_map().expect("Unable to access map");
 
-        eprintln!("{:?}", key_internal_map);
+        eprintln!("{key_internal_map:?}");
 
         assert_eq!(vs_r.len(), 1);
 
@@ -621,7 +621,7 @@ mod tests {
 
         let key_internal_map = vs_r.as_key_internal_map().expect("Unable to access map");
 
-        eprintln!("{:?}", key_internal_map);
+        eprintln!("{key_internal_map:?}");
 
         assert_eq!(vs_r.len(), 1);
 

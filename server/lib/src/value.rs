@@ -2116,7 +2116,7 @@ impl Value {
             Value::Iname(s) => s.clone(),
             Value::Uuid(u) => u.as_hyphenated().to_string(),
             // We display the tag and fingerprint.
-            Value::SshKey(tag, key) => format!("{}: {}", tag, key),
+            Value::SshKey(tag, key) => format!("{tag}: {key}"),
             Value::Spn(n, r) => format!("{n}@{r}"),
             _ => unreachable!(
                 "You've specified the wrong type for the attribute, got: {:?}",
@@ -2334,17 +2334,17 @@ mod tests {
         assert!(sk1.validate());
         // to proto them
         let psk1 = sk1.to_proto_string_clone();
-        assert_eq!(psk1, format!("tag: {}", ecdsa));
+        assert_eq!(psk1, format!("tag: {ecdsa}"));
 
         let sk2 = Value::new_sshkey_str("tag", ed25519).expect("Invalid ssh key");
         assert!(sk2.validate());
         let psk2 = sk2.to_proto_string_clone();
-        assert_eq!(psk2, format!("tag: {}", ed25519));
+        assert_eq!(psk2, format!("tag: {ed25519}"));
 
         let sk3 = Value::new_sshkey_str("tag", rsa).expect("Invalid ssh key");
         assert!(sk3.validate());
         let psk3 = sk3.to_proto_string_clone();
-        assert_eq!(psk3, format!("tag: {}", rsa));
+        assert_eq!(psk3, format!("tag: {rsa}"));
 
         let sk4 = Value::new_sshkey_str("tag", "ntaouhtnhtnuehtnuhotnuhtneouhtneouh");
         assert!(sk4.is_err());

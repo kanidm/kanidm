@@ -1139,7 +1139,7 @@ fn get_cu_response(
     let spn = cu_status.spn.clone();
     let displayname = cu_status.displayname.clone();
     let (username, _domain) = spn.split_once('@').unwrap_or(("", &spn));
-    let names = format!("{} ({})", displayname, username);
+    let names = format!("{displayname} ({username})");
     let credentials_update_partial = get_cu_partial(cu_status);
 
     if is_logged_in {

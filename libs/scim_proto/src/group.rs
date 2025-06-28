@@ -35,6 +35,6 @@ mod tests {
         tracing::trace!(?g);
 
         let s = serde_json::to_string_pretty(&g).expect("Failed to serialise RFC7643_USER");
-        eprintln!("{}", s);
+        eprintln!("{s}");
     }
 }

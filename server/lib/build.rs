@@ -35,7 +35,7 @@ fn main() {
     }
     for (uuid, count) in uuids {
         if count > 1 {
-            panic!("duplicate UUID: {}", uuid);
+            panic!("duplicate UUID: {uuid}");
         }
     }
 }

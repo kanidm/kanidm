@@ -85,8 +85,7 @@ pub fn check_privkey_minimums(privkey: &PrivateKeyDer<'_>) -> Result<(), String>
 
                     if priv_key_bits < RSA_MIN_KEY_SIZE_BITS as usize {
                         Err(format!(
-                            "TLS RSA key is less than {} bits!",
-                            RSA_MIN_KEY_SIZE_BITS
+                            "TLS RSA key is less than {RSA_MIN_KEY_SIZE_BITS} bits!"
                         ))
                     } else {
                         debug!(
@@ -112,20 +111,18 @@ pub fn setup_tls(
         return Ok(None);
     };
 
-    let cert_iter = CertificateDer::pem_file_iter(&tls_param.chain).map_err(|err| {
-        std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
-    })?;
+    let cert_iter = CertificateDer::pem_file_iter(&tls_param.chain)
+        .map_err(|err| std::io::Error::other(format!("Failed to create TLS listener: {err:?}")))?;
 
-    let cert_chain_der = cert_iter.collect::<Result<Vec<_>, _>>().map_err(|err| {
-        std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
-    })?;
+    let cert_chain_der = cert_iter
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| std::io::Error::other(format!("Failed to create TLS listener: {err:?}")))?;
 
-    let private_key_der = PrivateKeyDer::from_pem_file(&tls_param.key).map_err(|err| {
-        std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
-    })?;
+    let private_key_der = PrivateKeyDer::from_pem_file(&tls_param.key)
+        .map_err(|err| std::io::Error::other(format!("Failed to create TLS listener: {err:?}")))?;
 
     check_privkey_minimums(&private_key_der).map_err(|err| {
-        std::io::Error::other(format!("Private key minimums were not met: {:?}", err))
+        std::io::Error::other(format!("Private key minimums were not met: {err:?}"))
     })?;
 
     let client_cert_verifier = if let Some(client_ca) = tls_param.client_ca.as_ref() {
@@ -152,11 +149,11 @@ pub fn setup_tls(
                 .unwrap_or_default()
         }) {
             let cert_pem = CertificateDer::from_pem_file(cert_dir_ent.path()).map_err(|err| {
-                std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
+                std::io::Error::other(format!("Failed to create TLS listener: {err:?}"))
             })?;
 
             client_cert_roots.add(cert_pem).map_err(|err| {
-                std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
+                std::io::Error::other(format!("Failed to create TLS listener: {err:?}"))
             })?;
         }
 
@@ -172,7 +169,7 @@ pub fn setup_tls(
         }) {
             let cert_pem = CertificateRevocationListDer::from_pem_file(cert_dir_ent.path())
                 .map_err(|err| {
-                    std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
+                    std::io::Error::other(format!("Failed to create TLS listener: {err:?}"))
                 })?;
 
             client_cert_crls.push(cert_pem);
@@ -183,7 +180,7 @@ pub fn setup_tls(
             .allow_unauthenticated()
             .build()
             .map_err(|err| {
-                std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
+                std::io::Error::other(format!("Failed to create TLS listener: {err:?}"))
             })?
     } else {
         WebPkiClientVerifier::no_client_auth()
@@ -200,9 +197,7 @@ pub fn setup_tls(
                 .with_client_cert_verifier(client_cert_verifier)
                 .with_single_cert(cert_chain_der, private_key_der)
         })
-        .map_err(|err| {
-            std::io::Error::other(format!("Failed to create TLS listener: {:?}", err))
-        })?;
+        .map_err(|err| std::io::Error::other(format!("Failed to create TLS listener: {err:?}")))?;
 
     let tls_acceptor = TlsAcceptor::from(Arc::new(tls_server_config));
 
@@ -299,8 +294,7 @@ impl CAConfig {
                 );
                 if self.key_bits < RSA_MIN_KEY_SIZE_BITS {
                     return Err(format!(
-                        "RSA key size must be at least {} bits",
-                        RSA_MIN_KEY_SIZE_BITS
+                        "RSA key size must be at least {RSA_MIN_KEY_SIZE_BITS} bits"
                     ));
                 }
             }
@@ -308,8 +302,7 @@ impl CAConfig {
                 trace!("Generating CA Config for EcKey with {} bits", self.key_bits);
                 if self.key_bits < EC_MIN_KEY_SIZE_BITS {
                     return Err(format!(
-                        "EC key size must be at least {} bits",
-                        EC_MIN_KEY_SIZE_BITS
+                        "EC key size must be at least {EC_MIN_KEY_SIZE_BITS} bits"
                     ));
                 }
             }
@@ -629,12 +622,12 @@ fn test_ca_loader() {
         (KeyType::Ec, 256, false),
     ];
     good_ca_configs.into_iter().for_each(|config| {
-        println!("testing good config {:?}", config);
+        println!("testing good config {config:?}");
         let ca_config = CAConfig::new(config.0, config.1, config.2).unwrap();
         let ca = build_ca(Some(ca_config)).unwrap();
         write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
         let ca_result = load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path());
-        println!("result: {:?}", ca_result);
+        println!("result: {ca_result:?}");
         assert!(ca_result.is_ok());
     });
 

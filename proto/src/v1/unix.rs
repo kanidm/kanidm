@@ -89,15 +89,15 @@ impl Display for UnixUserToken {
         writeln!(f, "uuid: {}", self.uuid)?;
         writeln!(f, "gidnumber: {}", self.gidnumber)?;
         match &self.shell {
-            Some(s) => writeln!(f, "shell: {}", s)?,
+            Some(s) => writeln!(f, "shell: {s}")?,
             None => writeln!(f, "shell: <none>")?,
         }
         self.sshkeys
             .iter()
-            .try_for_each(|s| writeln!(f, "{}: {}", ATTR_LDAP_SSHPUBLICKEY, s))?;
+            .try_for_each(|s| writeln!(f, "{ATTR_LDAP_SSHPUBLICKEY}: {s}"))?;
         self.groups
             .iter()
-            .try_for_each(|g| writeln!(f, "{}: {}", ATTR_GROUP, g))
+            .try_for_each(|g| writeln!(f, "{ATTR_GROUP}: {g}"))
     }
 }
 

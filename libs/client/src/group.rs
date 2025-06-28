@@ -3,25 +3,25 @@ use kanidm_proto::v1::Entry;
 
 impl KanidmClient {
     pub async fn idm_group_search(&self, id: &str) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request(&format!("/v1/group/_search/{}", id))
+        self.perform_get_request(&format!("/v1/group/_search/{id}"))
             .await
     }
 
     pub async fn idm_group_purge_attr(&self, id: &str, attr: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/group/{}/_attr/{}", id, attr).as_str())
+        self.perform_delete_request(format!("/v1/group/{id}/_attr/{attr}").as_str())
             .await
     }
 
     pub async fn group_account_policy_enable(&self, id: &str) -> Result<(), ClientError> {
         self.perform_post_request(
-            &format!("/v1/group/{}/_attr/class", id),
+            &format!("/v1/group/{id}/_attr/class"),
             vec!["account_policy".to_string()],
         )
         .await
     }
 
     pub async fn group_rename(&self, name: &str, new_name: &str) -> Result<(), ClientError> {
-        self.perform_put_request(&format!("/v1/group/{}/_attr/name", name), vec![new_name])
+        self.perform_put_request(&format!("/v1/group/{name}/_attr/name"), vec![new_name])
             .await
     }
 
@@ -31,7 +31,7 @@ impl KanidmClient {
         expiry: u32,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/group/{}/_attr/authsession_expiry", id),
+            &format!("/v1/group/{id}/_attr/authsession_expiry"),
             vec![expiry.to_string()],
         )
         .await
@@ -41,7 +41,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<(), ClientError> {
-        self.perform_delete_request(&format!("/v1/group/{}/_attr/authsession_expiry", id))
+        self.perform_delete_request(&format!("/v1/group/{id}/_attr/authsession_expiry"))
             .await
     }
 
@@ -51,7 +51,7 @@ impl KanidmClient {
         value: &str,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/group/{}/_attr/credential_type_minimum", id),
+            &format!("/v1/group/{id}/_attr/credential_type_minimum"),
             vec![value.to_string()],
         )
         .await
@@ -63,7 +63,7 @@ impl KanidmClient {
         length: u32,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/group/{}/_attr/auth_password_minimum_length", id),
+            &format!("/v1/group/{id}/_attr/auth_password_minimum_length"),
             vec![length.to_string()],
         )
         .await
@@ -74,8 +74,7 @@ impl KanidmClient {
         id: &str,
     ) -> Result<(), ClientError> {
         self.perform_delete_request(&format!(
-            "/v1/group/{}/_attr/auth_password_minimum_length",
-            id
+            "/v1/group/{id}/_attr/auth_password_minimum_length"
         ))
         .await
     }
@@ -86,7 +85,7 @@ impl KanidmClient {
         expiry: u32,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/group/{}/_attr/privilege_expiry", id),
+            &format!("/v1/group/{id}/_attr/privilege_expiry"),
             vec![expiry.to_string()],
         )
         .await
@@ -96,7 +95,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<(), ClientError> {
-        self.perform_delete_request(&format!("/v1/group/{}/_attr/privilege_expiry", id))
+        self.perform_delete_request(&format!("/v1/group/{id}/_attr/privilege_expiry"))
             .await
     }
 
@@ -106,7 +105,7 @@ impl KanidmClient {
         att_ca_list: &str,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/group/{}/_attr/webauthn_attestation_ca_list", id),
+            &format!("/v1/group/{id}/_attr/webauthn_attestation_ca_list"),
             vec![att_ca_list.to_string()],
         )
         .await
@@ -117,8 +116,7 @@ impl KanidmClient {
         id: &str,
     ) -> Result<(), ClientError> {
         self.perform_delete_request(&format!(
-            "/v1/group/{}/_attr/webauthn_attestation_ca_list",
-            id
+            "/v1/group/{id}/_attr/webauthn_attestation_ca_list"
         ))
         .await
     }
@@ -129,7 +127,7 @@ impl KanidmClient {
         maximum: u32,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/group/{}/_attr/limit_search_max_results", id),
+            &format!("/v1/group/{id}/_attr/limit_search_max_results"),
             vec![maximum.to_string()],
         )
         .await
@@ -139,7 +137,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<(), ClientError> {
-        self.perform_delete_request(&format!("/v1/group/{}/_attr/limit_search_max_results", id))
+        self.perform_delete_request(&format!("/v1/group/{id}/_attr/limit_search_max_results"))
             .await
     }
 
@@ -149,7 +147,7 @@ impl KanidmClient {
         maximum: u32,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/group/{}/_attr/limit_search_max_filter_test", id),
+            &format!("/v1/group/{id}/_attr/limit_search_max_filter_test"),
             vec![maximum.to_string()],
         )
         .await
@@ -160,8 +158,7 @@ impl KanidmClient {
         id: &str,
     ) -> Result<(), ClientError> {
         self.perform_delete_request(&format!(
-            "/v1/group/{}/_attr/limit_search_max_filter_test",
-            id
+            "/v1/group/{id}/_attr/limit_search_max_filter_test"
         ))
         .await
     }
@@ -172,7 +169,7 @@ impl KanidmClient {
         allow: bool,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/group/{}/_attr/allow_primary_cred_fallback", id),
+            &format!("/v1/group/{id}/_attr/allow_primary_cred_fallback"),
             vec![allow.to_string()],
         )
         .await
@@ -187,12 +184,12 @@ impl KanidmClient {
         id: &str,
         values: &[T],
     ) -> Result<(), ClientError> {
-        self.perform_put_request(&format!("/v1/group/{}/_attr/mail", id), values)
+        self.perform_put_request(&format!("/v1/group/{id}/_attr/mail"), values)
             .await
     }
 
     pub async fn idm_group_get_mail(&self, id: &str) -> Result<Option<Vec<String>>, ClientError> {
-        self.perform_get_request(&format!("/v1/group/{}/_attr/mail", id))
+        self.perform_get_request(&format!("/v1/group/{id}/_attr/mail"))
             .await
     }
 
@@ -205,10 +202,7 @@ impl KanidmClient {
         id: &str,
         description: &str,
     ) -> Result<(), ClientError> {
-        self.perform_put_request(
-            &format!("/v1/group/{}/_attr/description", id),
-            &[description],
-        )
-        .await
+        self.perform_put_request(&format!("/v1/group/{id}/_attr/description"), &[description])
+            .await
     }
 }

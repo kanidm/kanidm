@@ -424,10 +424,10 @@ impl Display for PasswordError {
             PasswordError::InvalidLength => write!(f, "Invalid length for password"),
             PasswordError::InvalidSaltLength => write!(f, "Invalid salt length for password"),
             PasswordError::UnsupportedAlgorithm(alg) => {
-                write!(f, "Unsupported algorithm: {}", alg)
+                write!(f, "Unsupported algorithm: {alg}")
             }
             PasswordError::NoDecoderFound(hint) => {
-                write!(f, "No decoder found for password in this format - input started with '{}' - please report it upstream", hint)
+                write!(f, "No decoder found for password in this format - input started with '{hint}' - please report it upstream")
             }
             PasswordError::ParsingFailed => write!(f, "Parsing of password failed"),
         }

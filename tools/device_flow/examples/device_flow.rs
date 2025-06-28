@@ -90,14 +90,13 @@ async fn main() -> anyhow::Result<()> {
     // kanidm system oauth2 create-public device_flow device_flow 'https://deviceauth'
     let client = BasicClient::new(ClientId::new("device_code".to_string()))
         .set_token_uri(TokenUrl::from_url(
-            format!("https://localhost:8443{}", OAUTH2_TOKEN_ENDPOINT).parse()?,
+            format!("https://localhost:8443{OAUTH2_TOKEN_ENDPOINT}").parse()?,
         ))
         .set_auth_uri(AuthUrl::from_url(
-            format!("https://localhost:8443{}", OAUTH2_AUTHORISE).parse()?,
+            format!("https://localhost:8443{OAUTH2_AUTHORISE}").parse()?,
         ))
         .set_device_authorization_url(DeviceAuthorizationUrl::new(format!(
-            "https://localhost:8443{}",
-            OAUTH2_AUTHORISE_DEVICE
+            "https://localhost:8443{OAUTH2_AUTHORISE_DEVICE}"
         ))?);
 
     info!("Getting details...");
@@ -123,6 +122,6 @@ async fn main() -> anyhow::Result<()> {
         .exchange_device_access_token(&details)
         .request_async(&http_client, tokio::time::sleep, None)
         .await?;
-    println!("Result: {:?}", token_result);
+    println!("Result: {token_result:?}");
     Ok(())
 }

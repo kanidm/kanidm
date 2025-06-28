@@ -1127,10 +1127,7 @@ pub trait QueryServerTransaction<'a> {
 
                     let joined = str_concat!(claims, ",");
 
-                    v.push(format!(
-                        "{}:{}:{}:{:?}",
-                        claim_name, resolved_id, join_char, joined
-                    ))
+                    v.push(format!("{claim_name}:{resolved_id}:{join_char}:{joined:?}"))
                 }
             }
             Ok(v)
@@ -2389,7 +2386,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let display_name = domain_entry
             .get_ava_single_utf8(Attribute::DomainDisplayName)
             .map(str::to_string)
-            .unwrap_or_else(|| format!("Kanidm {}", domain_name));
+            .unwrap_or_else(|| format!("Kanidm {domain_name}"));
 
         let domain_ldap_allow_unix_pw_bind = domain_entry
             .get_ava_single_bool(Attribute::LdapAllowUnixPwBind)
@@ -3027,7 +3024,7 @@ mod tests {
                 assert_eq!(name.clone(), "idm_people_self_name_write")
             }
             _ => {
-                panic!("expected String, actual {:?}", name_scim);
+                panic!("expected String, actual {name_scim:?}");
             }
         }
 
@@ -3044,10 +3041,7 @@ mod tests {
                 )
             }
             _ => {
-                panic!(
-                    "expected EntryReference, actual {:?}",
-                    entry_managed_by_scim
-                );
+                panic!("expected EntryReference, actual {entry_managed_by_scim:?}");
             }
         }
 
@@ -3063,7 +3057,7 @@ mod tests {
                 )
             }
             _ => {
-                panic!("expected EntryReferences, actual {:?}", members_scim);
+                panic!("expected EntryReferences, actual {members_scim:?}");
             }
         }
     }

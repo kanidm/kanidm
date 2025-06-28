@@ -51,7 +51,7 @@ impl RawOpt {
                             )
                         }
                         OutputMode::Text => {
-                            rset.iter().for_each(|e| println!("{}", e));
+                            rset.iter().for_each(|e| println!("{e}"));
                         }
                     },
                     Err(e) => error!("Error -> {:?}", e),

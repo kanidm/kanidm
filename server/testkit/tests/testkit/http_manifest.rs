@@ -20,7 +20,7 @@ async fn test_https_manifest(rsclient: &KanidmClient) {
             );
         }
     };
-    eprintln!("response: {:#?}", response);
+    eprintln!("response: {response:#?}");
     assert_eq!(response.status(), 200);
 
     eprintln!(

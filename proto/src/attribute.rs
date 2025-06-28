@@ -737,9 +737,7 @@ mod test {
             let attr2 = Attribute::from(attr.as_str());
             assert!(
                 attr == attr2,
-                "Round-trip failed for {} <=> {} check you've implemented a from and to string",
-                attr,
-                attr2
+                "Round-trip failed for {attr} <=> {attr2} check you've implemented a from and to string"
             );
         }
     }

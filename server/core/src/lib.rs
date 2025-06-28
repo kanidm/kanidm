@@ -185,7 +185,7 @@ pub fn dbscan_list_indexes_core(config: &Configuration) {
         Ok(mut idx_list) => {
             idx_list.sort_unstable();
             idx_list.iter().for_each(|idx_name| {
-                println!("{}", idx_name);
+                println!("{idx_name}");
             })
         }
         Err(e) => {
@@ -208,7 +208,7 @@ pub fn dbscan_list_id2entry_core(config: &Configuration) {
         Ok(mut id_list) => {
             id_list.sort_unstable_by_key(|k| k.0);
             id_list.iter().for_each(|(id, value)| {
-                println!("{:>8}: {}", id, value);
+                println!("{id:>8}: {value}");
             })
         }
         Err(e) => {
@@ -236,7 +236,7 @@ pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
         Ok(mut idx_list) => {
             idx_list.sort_unstable_by(|a, b| a.0.cmp(&b.0));
             idx_list.iter().for_each(|(key, value)| {
-                println!("{:>50}: {:?}", key, value);
+                println!("{key:>50}: {value:?}");
             })
         }
         Err(e) => {
@@ -256,7 +256,7 @@ pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
     };
 
     match be_rotxn.get_id2entry(id) {
-        Ok((id, value)) => println!("{:>8}: {}", id, value),
+        Ok((id, value)) => println!("{id:>8}: {value}"),
         Err(e) => {
             error!("Failed to retrieve id2entry value: {:?}", e);
         }
@@ -281,7 +281,7 @@ pub fn dbscan_quarantine_id2entry_core(config: &Configuration, id: u64) {
         .and_then(|_| be_wrtxn.commit())
     {
         Ok(()) => {
-            println!("quarantined - {:>8}", id)
+            println!("quarantined - {id:>8}")
         }
         Err(e) => {
             error!("Failed to quarantine id2entry value: {:?}", e);
@@ -303,7 +303,7 @@ pub fn dbscan_list_quarantined_core(config: &Configuration) {
         Ok(mut id_list) => {
             id_list.sort_unstable_by_key(|k| k.0);
             id_list.iter().for_each(|(id, value)| {
-                println!("{:>8}: {}", id, value);
+                println!("{id:>8}: {value}");
             })
         }
         Err(e) => {
@@ -330,7 +330,7 @@ pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
         .and_then(|_| be_wrtxn.commit())
     {
         Ok(()) => {
-            println!("restored - {:>8}", id)
+            println!("restored - {id:>8}")
         }
         Err(e) => {
             error!("Failed to restore quarantined id2entry value: {:?}", e);
@@ -498,7 +498,7 @@ pub fn vacuum_server_core(config: &Configuration) {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("Failed to setup in memory schema: {:?}", e);
+            eprintln!("Failed to setup in memory schema: {e:?}");
             std::process::exit(1);
         }
     };
@@ -510,7 +510,7 @@ pub fn vacuum_server_core(config: &Configuration) {
     match r {
         Ok(_) => eprintln!("Vacuum Success!"),
         Err(e) => {
-            eprintln!("Vacuum failed: {:?}", e);
+            eprintln!("Vacuum failed: {e:?}");
             std::process::exit(1);
         }
     };
@@ -520,7 +520,7 @@ pub async fn domain_rename_core(config: &Configuration) {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("Failed to setup in memory schema: {:?}", e);
+            eprintln!("Failed to setup in memory schema: {e:?}");
             std::process::exit(1);
         }
     };
@@ -766,7 +766,7 @@ impl CoreHandle {
         // Wait on the handles.
         while let Some((handle_name, handle)) = self.handles.pop() {
             if let Err(error) = handle.await {
-                eprintln!("Task {} failed to finish: {:?}", handle_name, error);
+                eprintln!("Task {handle_name} failed to finish: {error:?}");
             }
         }
 

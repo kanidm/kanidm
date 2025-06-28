@@ -268,7 +268,7 @@ async fn setup_server(rsclient: &KanidmClient) {
 
 async fn create_user(rsclient: &KanidmClient, user: &str) -> String {
     rsclient
-        .idm_person_account_create(user, &format!("dx{}", user))
+        .idm_person_account_create(user, &format!("dx{user}"))
         .await
         .expect("Unable to create person");
 

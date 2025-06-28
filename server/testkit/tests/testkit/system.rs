@@ -20,9 +20,9 @@ async fn test_v1_system_post_attr(rsclient: &KanidmClient) {
             );
         }
     };
-    eprintln!("response: {:#?}", response);
+    eprintln!("response: {response:#?}");
     assert_eq!(response.status(), 422);
 
     let body = response.text().await.unwrap();
-    eprintln!("{}", body);
+    eprintln!("{body}");
 }

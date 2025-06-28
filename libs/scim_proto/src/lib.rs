@@ -188,7 +188,7 @@ mod tests {
         tracing::trace!(?u);
 
         let s = serde_json::to_string_pretty(&u).expect("Failed to serialise RFC7643_USER");
-        eprintln!("{}", s);
+        eprintln!("{s}");
     }
 
     // =========================================================
@@ -267,16 +267,16 @@ mod tests {
     #[test]
     fn parse_enum_b() {
         let x: TestB = serde_json::from_str("10").unwrap();
-        eprintln!("{:?}", x);
+        eprintln!("{x:?}");
 
         let x: TestB = serde_json::from_str("10.5").unwrap();
-        eprintln!("{:?}", x);
+        eprintln!("{x:?}");
 
         let x: TestB = serde_json::from_str(r#""550e8400-e29b-41d4-a716-446655440000""#).unwrap();
-        eprintln!("{:?}", x);
+        eprintln!("{x:?}");
 
         let x: TestB = serde_json::from_str(r#""Value""#).unwrap();
-        eprintln!("{:?}", x);
+        eprintln!("{x:?}");
     }
 
     // In reverse when we serialise, we can simply use untagged on an enum.
@@ -314,12 +314,12 @@ mod tests {
     #[test]
     fn parse_enum_c() {
         let x = serde_json::to_string(&TestC::A).unwrap();
-        eprintln!("{:?}", x);
+        eprintln!("{x:?}");
 
         let x = serde_json::to_string(&TestC::B).unwrap();
-        eprintln!("{:?}", x);
+        eprintln!("{x:?}");
 
         let x = serde_json::to_string(&TestC::Unknown("X".to_string())).unwrap();
-        eprintln!("{:?}", x);
+        eprintln!("{x:?}");
     }
 }

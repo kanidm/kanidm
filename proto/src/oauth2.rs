@@ -270,7 +270,7 @@ impl TryFrom<&str> for AccessTokenType {
             "pop" => Ok(AccessTokenType::PoP),
             "n_a" => Ok(AccessTokenType::NA),
             "dpop" => Ok(AccessTokenType::DPoP),
-            _ => Err(format!("Unknown AccessTokenType: {}", s)),
+            _ => Err(format!("Unknown AccessTokenType: {s}")),
         }
     }
 }
@@ -651,19 +651,19 @@ mod tests {
     fn test_oauth2_access_token_type_serde() {
         for testcase in ["bearer", "Bearer", "BeArEr"] {
             let at: super::AccessTokenType =
-                serde_json::from_str(&format!("\"{}\"", testcase)).expect("Failed to parse");
+                serde_json::from_str(&format!("\"{testcase}\"")).expect("Failed to parse");
             assert_eq!(at, super::AccessTokenType::Bearer);
         }
 
         for testcase in ["dpop", "dPoP", "DPOP", "DPoP"] {
             let at: super::AccessTokenType =
-                serde_json::from_str(&format!("\"{}\"", testcase)).expect("Failed to parse");
+                serde_json::from_str(&format!("\"{testcase}\"")).expect("Failed to parse");
             assert_eq!(at, super::AccessTokenType::DPoP);
         }
 
         {
             let testcase = "cheese";
-            let at = serde_json::from_str::<super::AccessTokenType>(&format!("\"{}\"", testcase));
+            let at = serde_json::from_str::<super::AccessTokenType>(&format!("\"{testcase}\""));
             assert!(at.is_err())
         }
     }

@@ -632,7 +632,7 @@ pub async fn oauth2_token_introspect_post(
                 Ok(val) => val,
                 Err(e) => {
                     admin_warn!("Failed to serialize introspect response: original_data=\"{:?}\" serialization_error=\"{:?}\"", atr, e);
-                    format!("{:?}", atr)
+                    format!("{atr:?}")
                 }
             };
             #[allow(clippy::unwrap_used)]
@@ -661,7 +661,7 @@ pub async fn oauth2_token_introspect_post(
             let body = match serde_json::to_string(&err) {
                 Ok(val) => val,
                 Err(e) => {
-                    format!("{:?}", e)
+                    format!("{e:?}")
                 }
             };
             #[allow(clippy::expect_used)]

@@ -226,12 +226,12 @@ impl Display for UnixdConfig {
         writeln!(f, "default_shell: {}", self.default_shell)?;
         writeln!(f, "home_prefix: {:?}", self.home_prefix)?;
         match self.home_mount_prefix.as_deref() {
-            Some(val) => writeln!(f, "home_mount_prefix: {:?}", val)?,
+            Some(val) => writeln!(f, "home_mount_prefix: {val:?}")?,
             None => writeln!(f, "home_mount_prefix: unset")?,
         }
         writeln!(f, "home_attr: {}", self.home_attr)?;
         match self.home_alias {
-            Some(val) => writeln!(f, "home_alias: {}", val)?,
+            Some(val) => writeln!(f, "home_alias: {val}")?,
             None => writeln!(f, "home_alias: unset")?,
         }
 
@@ -694,19 +694,19 @@ mod tests {
 
         for file in PathBuf::from(&examples_dir)
             .canonicalize()
-            .unwrap_or_else(|_| panic!("Can't find examples dir at {}", examples_dir))
+            .unwrap_or_else(|_| panic!("Can't find examples dir at {examples_dir}"))
             .read_dir()
             .expect("Can't read examples dir!")
         {
             let file = file.unwrap();
             let filename = file.file_name().into_string().unwrap();
             if filename.starts_with("unixd") {
-                print!("Checking that {} parses as a valid config...", filename);
+                print!("Checking that {filename} parses as a valid config...");
 
                 UnixdConfig::new()
                     .read_options_from_optional_config(file.path())
                     .inspect_err(|e| {
-                        println!("Failed to parse: {:?}", e);
+                        println!("Failed to parse: {e:?}");
                     })
                     .expect("Failed to parse!");
                 println!("OK");

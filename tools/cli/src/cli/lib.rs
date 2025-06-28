@@ -43,7 +43,7 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMod
     match response {
         ClientError::Http(status, error, opid) => {
             let error_msg = match &error {
-                Some(msg) => format!(" {:?}", msg),
+                Some(msg) => format!(" {msg:?}"),
                 None => "".to_string(),
             };
             error!("OperationId: {:?}", opid);
@@ -65,7 +65,7 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMod
             std::process::exit(1);
         }
         _ => {
-            eprintln!("{:?}", response);
+            eprintln!("{response:?}");
         }
     };
 }
@@ -101,7 +101,7 @@ impl SelfOpt {
                     Ok(o_ent) => {
                         match o_ent {
                             Some(ent) => {
-                                println!("{}", ent);
+                                println!("{ent}");
                             }
                             None => {
                                 error!("Authentication with cached token failed, can't query information.");
@@ -125,7 +125,7 @@ impl SelfOpt {
                         }
                     }
                     Err(e) => {
-                        println!("Error querying whoami endpoint: {:?}", e); // TODO: add an error ID (internal/web response error, restart or check connectivity)
+                        println!("Error querying whoami endpoint: {e:?}"); // TODO: add an error ID (internal/web response error, restart or check connectivity)
                         return;
                     }
                 };
@@ -271,7 +271,7 @@ mod identify_user_no_tui {
 
     fn server_error(e: &ClientError) {
         eprintln!("Server error!"); // TODO: add an error ID (internal error, restart)
-        eprintln!("{:?}", e);
+        eprintln!("{e:?}");
         println!("Exiting...");
     }
 
@@ -412,7 +412,7 @@ mod identify_user_no_tui {
                     }
                 }
                 IdentifyUserState::DisplayCodeFirst { self_totp, step } => {
-                    println!("Provide the following code when asked: {}", self_totp);
+                    println!("Provide the following code when asked: {self_totp}");
                     let seconds_left = get_ms_left_from_now(step as u128) / 1000;
                     println!("This codes expires in {seconds_left} seconds");
                     let _ = stdout().flush();
@@ -429,7 +429,7 @@ mod identify_user_no_tui {
                             return;
                         },
                         Err(e) => {
-                            eprintln!("An error occurred while trying to read from stderr: {:?}", e); // TODO: add error ID (internal error, restart)
+                            eprintln!("An error occurred while trying to read from stderr: {e:?}"); // TODO: add error ID (internal error, restart)
                             println!("Exiting...");
                             return;
                         },
@@ -438,7 +438,7 @@ mod identify_user_no_tui {
                     state = IdentifyUserState::SubmitCode;
                 }
                 IdentifyUserState::DisplayCodeSecond { self_totp, step } => {
-                    println!("Provide the following code when asked: {}", self_totp);
+                    println!("Provide the following code when asked: {self_totp}");
                     let seconds_left = get_ms_left_from_now(step as u128) / 1000;
                     println!("This codes expires in {seconds_left} seconds!");
                     let _ = stdout().flush();
@@ -459,7 +459,7 @@ mod identify_user_no_tui {
                             return;
                         },
                         Err(e) => {
-                            eprintln!("An error occurred while trying to read from stderr: {:?}", e); // TODO: add error ID (internal error, restart)
+                            eprintln!("An error occurred while trying to read from stderr: {e:?}"); // TODO: add error ID (internal error, restart)
                             println!("Exiting...");
                             return;
                         },

@@ -655,7 +655,7 @@ fn ldap_to_scim_entry(
             .map(str::to_string);
 
         let password_import = if let Some(pw_prefix) = sync_config.person_password_prefix.as_ref() {
-            password_import.map(|s| format!("{}{}", pw_prefix, s))
+            password_import.map(|s| format!("{pw_prefix}{s}"))
         } else {
             password_import
         };
@@ -692,7 +692,7 @@ fn ldap_to_scim_entry(
                 set.into_iter()
                     .enumerate()
                     .map(|(i, value)| ScimSshPubKey {
-                        label: format!("sshpublickey-{}", i),
+                        label: format!("sshpublickey-{i}"),
                         value,
                     })
                     .collect()
@@ -877,7 +877,7 @@ fn main() {
         match EnvFilter::try_new("kanidm_client=debug,kanidm_ldap_sync=debug,ldap3_client=debug") {
             Ok(f) => f,
             Err(e) => {
-                eprintln!("ERROR! Unable to start tracing {:?}", e);
+                eprintln!("ERROR! Unable to start tracing {e:?}");
                 return;
             }
         }

@@ -89,7 +89,7 @@ impl Oauth2Opt {
                                 serde_json::to_string(&r_attrs).expect("Failed to serialise json")
                             );
                         }
-                        OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
+                        OutputMode::Text => r.iter().for_each(|ent| println!("{ent}")),
                     },
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
@@ -97,7 +97,7 @@ impl Oauth2Opt {
             Oauth2Opt::Get(nopt) => {
                 let client = nopt.copt.to_client(OpType::Read).await;
                 match client.idm_oauth2_rs_get(nopt.name.as_str()).await {
-                    Ok(Some(e)) => println!("{}", e),
+                    Ok(Some(e)) => println!("{e}"),
                     Ok(None) => println!("No matching entries"),
                     Err(e) => handle_client_error(e, nopt.copt.output_mode),
                 }
@@ -212,8 +212,8 @@ impl Oauth2Opt {
                 {
                     Ok(Some(secret)) => {
                         match nopt.copt.output_mode {
-                            OutputMode::Text => println!("{}", secret),
-                            OutputMode::Json => println!("{{\"secret\": \"{}\"}}", secret),
+                            OutputMode::Text => println!("{secret}"),
+                            OutputMode::Json => println!("{{\"secret\": \"{secret}\"}}"),
                         }
                         eprintln!("Success");
                     }
@@ -314,7 +314,7 @@ impl Oauth2Opt {
                 let img = match img_res {
                     Ok(img) => img,
                     Err(err) => {
-                        eprintln!("{:?}", err);
+                        eprintln!("{err:?}");
                         return;
                     }
                 };

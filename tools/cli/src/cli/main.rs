@@ -64,7 +64,7 @@ fn main() -> ExitCode {
         {
             Ok(f) => f,
             Err(e) => {
-                eprintln!("ERROR! Unable to start tracing {:?}", e);
+                eprintln!("ERROR! Unable to start tracing {e:?}");
                 return ExitCode::FAILURE;
             }
         }

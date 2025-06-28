@@ -69,7 +69,7 @@ impl IntoResponse for WebError {
                         Ok(val) => val,
                         Err(e) => {
                             warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", err, e);
-                            format!("{:?}", err)
+                            format!("{err:?}")
                         }
                     };
 

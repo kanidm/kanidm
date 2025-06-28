@@ -164,7 +164,7 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                 let json_output = serde_json::json!({
                     "password": password
                 });
-                println!("{}", json_output);
+                println!("{json_output}");
             }
             ConsoleOutputMode::Text => {
                 info!(new_password = ?password)
@@ -172,7 +172,7 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
         },
         Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => match output_mode {
             ConsoleOutputMode::JSON => {
-                println!("{{\"certificate\":\"{}\"}}", cert)
+                println!("{{\"certificate\":\"{cert}\"}}")
             }
             ConsoleOutputMode::Text => {
                 info!(certificate = ?cert)
@@ -185,7 +185,7 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                     let json_output = serde_json::json!({
                         "domain_upgrade_check": report
                     });
-                    println!("{}", json_output);
+                    println!("{json_output}");
                 }
                 ConsoleOutputMode::Text => {
                     let ProtoDomainUpgradeCheckReport {
@@ -265,7 +265,7 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
 
         Some(Ok(AdminTaskResponse::DomainRaise { level })) => match output_mode {
             ConsoleOutputMode::JSON => {
-                eprintln!("{{\"success\":\"{}\"}}", level)
+                eprintln!("{{\"success\":\"{level}\"}}")
             }
             ConsoleOutputMode::Text => {
                 info!("success - raised domain level to {}", level)
@@ -276,7 +276,7 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                 let json_output = serde_json::json!({
                     "domain_info": domain_info
                 });
-                println!("{}", json_output);
+                println!("{json_output}");
             }
             ConsoleOutputMode::Text => {
                 let ProtoDomainInfo {
@@ -389,14 +389,14 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
         "kanidmd",
     ) {
         Err(err) => {
-            eprintln!("Error starting logger - {:} - Bailing on startup!", err);
+            eprintln!("Error starting logger - {err:} - Bailing on startup!");
             return ExitCode::FAILURE;
         }
         Ok(val) => val,
     };
 
     if let Err(err) = tracing::subscriber::set_global_default(sub).map_err(|err| {
-        eprintln!("Error starting logger - {:} - Bailing on startup!", err);
+        eprintln!("Error starting logger - {err:} - Bailing on startup!");
         ExitCode::FAILURE
     }) {
         return err;
@@ -580,7 +580,7 @@ fn main() -> ExitCode {
         match ServerConfigUntagged::new(config_path) {
             Ok(c) => Some(c),
             Err(err) => {
-                eprintln!("ERROR: Configuration Parse Failure: {:?}", err);
+                eprintln!("ERROR: Configuration Parse Failure: {err:?}");
                 return ExitCode::FAILURE;
             }
         }
@@ -592,7 +592,7 @@ fn main() -> ExitCode {
     let envconfig = match EnvironmentConfig::new() {
         Ok(ec) => ec,
         Err(err) => {
-            eprintln!("ERROR: Environment Configuration Parse Failure: {:?}", err);
+            eprintln!("ERROR: Environment Configuration Parse Failure: {err:?}");
             return ExitCode::FAILURE;
         }
     };
@@ -640,7 +640,7 @@ fn main() -> ExitCode {
     let rt = match maybe_rt {
         Ok(rt) => rt,
         Err(err) => {
-            eprintln!("CRITICAL: Unable to start runtime! {:?}", err);
+            eprintln!("CRITICAL: Unable to start runtime! {err:?}");
             return ExitCode::FAILURE;
         }
     };
@@ -1139,9 +1139,9 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                         if error.is_timeout() {
                             format!("Timeout connecting to url={healthcheck_url}")
                         } else if error.is_connect() {
-                            format!("Connection failed: {}", error)
+                            format!("Connection failed: {error}")
                         } else {
-                            format!("Failed to complete healthcheck: {:?}", error)
+                            format!("Failed to complete healthcheck: {error:?}")
                         }
                     };
                     error!("CRITICAL: {error_message}");

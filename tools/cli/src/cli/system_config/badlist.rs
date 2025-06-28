@@ -25,7 +25,7 @@ impl PwBadlistOpt {
                 match client.system_password_badlist_get().await {
                     Ok(list) => {
                         for i in list {
-                            println!("{}", i);
+                            println!("{i}");
                         }
                         eprintln!("--");
                         eprintln!("Success");
@@ -108,7 +108,7 @@ impl PwBadlistOpt {
 
                 if *dryrun {
                     for pw in filt_pwset {
-                        println!("{}", pw);
+                        println!("{pw}");
                     }
                 } else {
                     let client = copt.to_client(OpType::Write).await;

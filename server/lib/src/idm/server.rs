@@ -3848,7 +3848,7 @@ mod tests {
             Err(e) => {
                 error!("A critical error has occurred! {:?}", e);
                 // Should not occur!
-                panic!("A critical error has occurred! {:?}", e);
+                panic!("A critical error has occurred! {e:?}");
             }
         };
 

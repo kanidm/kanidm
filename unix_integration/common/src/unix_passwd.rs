@@ -62,7 +62,7 @@ impl fmt::Display for CryptPw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CryptPw::Invalid => write!(f, "x"),
-            CryptPw::Sha256(s) | CryptPw::Sha512(s) => write!(f, "{}", s),
+            CryptPw::Sha256(s) | CryptPw::Sha512(s) => write!(f, "{s}"),
         }
     }
 }
@@ -140,7 +140,7 @@ pub fn parse_etc_shadow(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationE
     rdr.deserialize()
         .map(|result| {
             result.map_err(|err| {
-                eprintln!("{:?}", err);
+                eprintln!("{err:?}");
                 UnixIntegrationError
             })
         })

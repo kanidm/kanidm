@@ -141,7 +141,7 @@ impl ImageType {
             CONTENT_TYPE_GIF => Ok(ImageType::Gif),
             CONTENT_TYPE_WEBP => Ok(ImageType::Webp),
             CONTENT_TYPE_SVG => Ok(ImageType::Svg),
-            _ => Err(format!("Invalid content type: {}", content_type)),
+            _ => Err(format!("Invalid content type: {content_type}")),
         }
     }
 
@@ -166,8 +166,7 @@ pub struct ImageValue {
 impl TryFrom<&str> for ImageValue {
     type Error = String;
     fn try_from(s: &str) -> Result<Self, String> {
-        serde_json::from_str(s)
-            .map_err(|e| format!("Failed to decode ImageValue from {} - {:?}", s, e))
+        serde_json::from_str(s).map_err(|e| format!("Failed to decode ImageValue from {s} - {e:?}"))
     }
 }
 

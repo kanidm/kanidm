@@ -482,7 +482,7 @@ async fn read_hsm_pin(hsm_pin_path: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     if !PathBuf::from_str(hsm_pin_path)?.exists() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("HSM PIN file '{}' not found", hsm_pin_path),
+            format!("HSM PIN file '{hsm_pin_path}' not found"),
         )
         .into());
     }
@@ -754,11 +754,11 @@ async fn main() -> ExitCode {
                 eprintln!("###################################");
                 eprintln!("Dumping configs:\n###################################");
                 eprintln!("kanidm_unixd config (from {:#?})", &unixd_path);
-                eprintln!("{}", cfg);
+                eprintln!("{cfg}");
                 eprintln!("###################################");
                 if let Some((cb, _)) = client_builder.as_ref() {
                     eprintln!("kanidm client config (from {:#?})", &cfg_path);
-                    eprintln!("{}", cb);
+                    eprintln!("{cb}");
                 }  else {
                     eprintln!("kanidm client: disabled");
                 }

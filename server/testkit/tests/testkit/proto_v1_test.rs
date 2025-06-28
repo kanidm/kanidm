@@ -108,7 +108,7 @@ async fn test_server_search(rsclient: &KanidmClient) {
     // First show we are un-authenticated.
     let pre_res = rsclient.whoami().await;
     // This means it was okay whoami, but no uat attached.
-    println!("Response: {:?}", pre_res);
+    println!("Response: {pre_res:?}");
     assert!(pre_res.unwrap().is_none());
 
     let res = rsclient
@@ -120,10 +120,10 @@ async fn test_server_search(rsclient: &KanidmClient) {
         .search(Filter::Eq(Attribute::Name.to_string(), "admin".to_string()))
         .await
         .unwrap();
-    println!("{:?}", rset);
+    println!("{rset:?}");
     let e = rset.first().unwrap();
     // Check it's admin.
-    println!("{:?}", e);
+    println!("{e:?}");
     let name = e.attrs.get(Attribute::Name.as_str()).unwrap();
     assert_eq!(name, &vec!["admin".to_string()]);
 }
@@ -142,7 +142,7 @@ async fn test_server_rest_group_read(rsclient: &KanidmClient) {
 
     let g = rsclient.idm_group_get(NAME_IDM_ADMINS).await.unwrap();
     assert!(g.is_some());
-    println!("{:?}", g);
+    println!("{g:?}");
 }
 
 #[kanidmd_testkit::test]
@@ -240,14 +240,14 @@ async fn test_server_rest_group_lifecycle(rsclient: &KanidmClient) {
     // Check we can get an exact group
     let g = rsclient.idm_group_get(NAME_IDM_ADMINS).await.unwrap();
     assert!(g.is_some());
-    println!("{:?}", g);
+    println!("{g:?}");
 
     // They should have members
     let members = rsclient
         .idm_group_get_members(NAME_IDM_ADMINS)
         .await
         .unwrap();
-    println!("{:?}", members);
+    println!("{members:?}");
     assert!(
         members
             == Some(vec![
@@ -270,7 +270,7 @@ async fn test_server_rest_account_read(rsclient: &KanidmClient) {
 
     let a = rsclient.idm_service_account_get("admin").await.unwrap();
     assert!(a.is_some());
-    println!("{:?}", a);
+    println!("{a:?}");
 }
 
 #[kanidmd_testkit::test]
@@ -296,14 +296,14 @@ async fn test_server_rest_schema_read(rsclient: &KanidmClient) {
         .await
         .unwrap();
     assert!(a.is_some());
-    println!("{:?}", a);
+    println!("{a:?}");
 
     let c = rsclient
         .idm_schema_classtype_get(Attribute::Account.as_ref())
         .await
         .unwrap();
     assert!(c.is_some());
-    println!("{:?}", c);
+    println!("{c:?}");
 }
 
 // Test resetting a radius cred, and then checking/viewing it.
@@ -361,7 +361,7 @@ async fn test_server_radius_credential_lifecycle(rsclient: &KanidmClient) {
         .unwrap();
 
     // Should be different
-    println!("s1 {} != s2 {}", sec1, sec2);
+    println!("s1 {sec1} != s2 {sec2}");
     assert!(sec1 != sec2);
 
     // Delete it
@@ -458,7 +458,7 @@ async fn test_server_rest_sshkey_lifecycle(rsclient: &KanidmClient) {
     // Post a valid key
     let r2 = rsclient
             .idm_service_account_post_ssh_pubkey("admin", "k1", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst").await;
-    println!("{:?}", r2);
+    println!("{r2:?}");
     assert!(r2.is_ok());
 
     // Get, should have the key
@@ -620,7 +620,7 @@ async fn test_server_rest_posix_lifecycle(rsclient: &KanidmClient) {
         .await
         .unwrap();
 
-    println!("{:?}", r);
+    println!("{r:?}");
     assert_eq!(r.name, "posix_account");
     assert_eq!(r1.name, "posix_account");
     assert_eq!(r2.name, "posix_account");
@@ -647,7 +647,7 @@ async fn test_server_rest_posix_lifecycle(rsclient: &KanidmClient) {
         .await
         .unwrap();
 
-    println!("{:?}", r);
+    println!("{r:?}");
     assert_eq!(r.name, "posix_group");
     assert_eq!(r1.name, "posix_group");
     assert_eq!(r2.name, "posix_group");
@@ -854,7 +854,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: &KanidmClient) {
         .flatten()
         .expect("Failed to retrieve test_integration config");
 
-    eprintln!("{:?}", oauth2_config);
+    eprintln!("{oauth2_config:?}");
 
     // What can we see?
     assert!(oauth2_config
@@ -999,8 +999,8 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: &KanidmClient) {
         .flatten()
         .expect("Failed to retrieve test_integration config");
 
-    eprintln!("{:?}", oauth2_config_updated);
-    eprintln!("{:?}", oauth2_config_updated4);
+    eprintln!("{oauth2_config_updated:?}");
+    eprintln!("{oauth2_config_updated4:?}");
 
     assert_eq!(oauth2_config_updated, oauth2_config_updated4);
 
@@ -1090,7 +1090,7 @@ async fn test_server_credential_update_session_pw(rsclient: &KanidmClient) {
     ]);
 
     let res = rsclient.modify(f, m).await;
-    println!("{:?}", res);
+    println!("{res:?}");
     assert!(res.is_ok());
 }
 
@@ -1514,9 +1514,9 @@ async fn test_server_api_token_lifecycle(rsclient: &KanidmClient) {
         .idm_service_account_update(
             test_service_account_username,
             None,
-            Some(&format!("{}displayzzzz", test_service_account_username)),
+            Some(&format!("{test_service_account_username}displayzzzz")),
             None,
-            Some(&[format!("{}@example.crabs", test_service_account_username)]),
+            Some(&[format!("{test_service_account_username}@example.crabs")]),
         )
         .await
         .is_ok());
@@ -1534,10 +1534,7 @@ async fn test_server_api_token_lifecycle(rsclient: &KanidmClient) {
     dbg!(&res);
     assert!(res.is_ok());
 
-    println!(
-        "testing deletion of service account {}",
-        test_service_account_username
-    );
+    println!("testing deletion of service account {test_service_account_username}");
     assert!(rsclient
         .idm_service_account_delete(test_service_account_username)
         .await
@@ -1792,7 +1789,7 @@ async fn start_password_session(
         .await
     {
         Ok(value) => value,
-        Err(error) => panic!("Failed to post: {:#?}", error),
+        Err(error) => panic!("Failed to post: {error:#?}"),
     };
     assert_eq!(res.status(), 200);
 
@@ -1812,7 +1809,7 @@ async fn start_password_session(
         .await
     {
         Ok(value) => value,
-        Err(error) => panic!("Failed to post: {:#?}", error),
+        Err(error) => panic!("Failed to post: {error:#?}"),
     };
     assert_eq!(res.status(), 200);
 
@@ -1830,7 +1827,7 @@ async fn start_password_session(
         .await
     {
         Ok(value) => value,
-        Err(error) => panic!("Failed to post: {:#?}", error),
+        Err(error) => panic!("Failed to post: {error:#?}"),
     };
     assert_eq!(res.status(), 200);
 

@@ -4,7 +4,7 @@ use kanidm_proto::scim_v1::client::{ScimEntryApplication, ScimEntryApplicationPo
 impl KanidmClient {
     /// Delete an application
     pub async fn idm_application_delete(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/scim/v1/Application/{}", id).as_str())
+        self.perform_delete_request(format!("/scim/v1/Application/{id}").as_str())
             .await
     }
 

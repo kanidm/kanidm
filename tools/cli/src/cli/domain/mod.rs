@@ -40,8 +40,7 @@ impl DomainOpt {
                 new_max_queryable_attrs,
             } => {
                 eprintln!(
-                    "Attempting to set the maximum number of queryable LDAP attributes to: {:?}",
-                    new_max_queryable_attrs
+                    "Attempting to set the maximum number of queryable LDAP attributes to: {new_max_queryable_attrs:?}"
                 );
                 let client = copt.to_client(OpType::Write).await;
                 match client
@@ -53,10 +52,7 @@ impl DomainOpt {
                 }
             }
             DomainOpt::SetLdapBasedn { copt, new_basedn } => {
-                eprintln!(
-                    "Attempting to set the domain's ldap basedn to: {:?}",
-                    new_basedn
-                );
+                eprintln!("Attempting to set the domain's ldap basedn to: {new_basedn:?}");
                 let client = copt.to_client(OpType::Write).await;
                 match client.idm_domain_set_ldap_basedn(new_basedn).await {
                     Ok(_) => println!("Success"),
@@ -86,7 +82,7 @@ impl DomainOpt {
             DomainOpt::Show(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_domain_get().await {
-                    Ok(e) => println!("{}", e),
+                    Ok(e) => println!("{e}"),
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }

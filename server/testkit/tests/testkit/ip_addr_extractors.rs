@@ -209,7 +209,7 @@ async fn proxy_v2_make_request(
     use tokio::io::AsyncWriteExt as _;
     use tokio::net::TcpStream;
 
-    let url = format!("http://{}/v1/debug/ipinfo", http_sock_addr)
+    let url = format!("http://{http_sock_addr}/v1/debug/ipinfo")
         .as_str()
         .parse::<hyper::Uri>()
         .unwrap();
@@ -241,7 +241,7 @@ async fn proxy_v2_make_request(
     // Spawn a task to poll the connection, driving the HTTP state
     tokio::task::spawn(async move {
         if let Err(err) = conn.await {
-            println!("Connection failed: {:?}", err);
+            println!("Connection failed: {err:?}");
         }
     });
 
