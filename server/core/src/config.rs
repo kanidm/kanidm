@@ -132,7 +132,7 @@ impl Display for LdapAddressInfo {
             Self::ProxyV2(trusted) => {
                 f.write_str("proxy-v2 [ ")?;
                 for ip in trusted {
-                    write!(f, "{} ", ip)?;
+                    write!(f, "{ip} ")?;
                 }
                 f.write_str("]")
             }
@@ -196,7 +196,7 @@ impl Display for HttpAddressInfo {
             Self::XForwardFor(trusted) => {
                 f.write_str("x-forward-for [ ")?;
                 for ip in trusted {
-                    write!(f, "{} ", ip)?;
+                    write!(f, "{ip} ")?;
                 }
                 f.write_str("]")
             }
@@ -206,7 +206,7 @@ impl Display for HttpAddressInfo {
             Self::ProxyV2(trusted) => {
                 f.write_str("proxy-v2 [ ")?;
                 for ip in trusted {
-                    write!(f, "{} ", ip)?;
+                    write!(f, "{ip} ")?;
                 }
                 f.write_str("]")
             }
@@ -290,17 +290,17 @@ impl ServerConfigUntagged {
         // see if we can load it from the config file you asked for
         eprintln!("📜 Using config file: {:?}", config_path.as_ref());
         let mut f: File = File::open(config_path.as_ref()).inspect_err(|e| {
-            eprintln!("Unable to open config file [{:?}] 🥺", e);
+            eprintln!("Unable to open config file [{e:?}] 🥺");
             let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-            eprintln!("{}", diag);
+            eprintln!("{diag}");
         })?;
 
         let mut contents = String::new();
 
         f.read_to_string(&mut contents).inspect_err(|e| {
-            eprintln!("unable to read contents {:?}", e);
+            eprintln!("unable to read contents {e:?}");
             let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-            eprintln!("{}", diag);
+            eprintln!("{diag}");
         })?;
 
         // First, can we detect the config version?
@@ -424,7 +424,7 @@ impl EnvironmentConfig {
                 }
                 "ORIGIN" => {
                     let url = Url::parse(value.as_str())
-                        .map_err(|err| format!("Failed to parse KANIDM_ORIGIN as URL: {}", err))?;
+                        .map_err(|err| format!("Failed to parse KANIDM_ORIGIN as URL: {err}"))?;
                     env_config.origin = Some(url);
                 }
                 "DB_PATH" => {
@@ -447,13 +447,13 @@ impl EnvironmentConfig {
                 }
                 "ROLE" => {
                     env_config.role = Some(ServerRole::from_str(&value).map_err(|err| {
-                        format!("Failed to parse KANIDM_ROLE as ServerRole: {}", err)
+                        format!("Failed to parse KANIDM_ROLE as ServerRole: {err}")
                     })?);
                 }
                 "LOG_LEVEL" => {
                     env_config.log_level = LogLevel::from_str(&value)
                         .map_err(|err| {
-                            format!("Failed to parse KANIDM_LOG_LEVEL as LogLevel: {}", err)
+                            format!("Failed to parse KANIDM_LOG_LEVEL as LogLevel: {err}")
                         })
                         .ok();
                 }
@@ -516,7 +516,7 @@ impl EnvironmentConfig {
                 }
                 "REPLICATION_ORIGIN" => {
                     let repl_origin = Url::parse(value.as_str()).map_err(|err| {
-                        format!("Failed to parse KANIDM_REPLICATION_ORIGIN as URL: {}", err)
+                        format!("Failed to parse KANIDM_REPLICATION_ORIGIN as URL: {err}")
                     })?;
                     if let Some(repl) = &mut env_config.repl_config {
                         repl.origin = repl_origin
@@ -713,7 +713,7 @@ impl fmt::Display for Configuration {
         write!(f, "address: {}, ", self.address)?;
         write!(f, "domain: {}, ", self.domain)?;
         match &self.ldapbindaddress {
-            Some(la) => write!(f, "ldap address: {}, ", la),
+            Some(la) => write!(f, "ldap address: {la}, "),
             None => write!(f, "ldap address: disabled, "),
         }?;
         write!(f, "origin: {} ", self.origin)?;
@@ -728,7 +728,7 @@ impl fmt::Display for Configuration {
                 .unwrap_or("MEMORY".to_string())
         )?;
         match self.db_arc_size {
-            Some(v) => write!(f, "arcsize: {}, ", v),
+            Some(v) => write!(f, "arcsize: {v}, "),
             None => write!(f, "arcsize: AUTO, "),
         }?;
         write!(f, "max request size: {}b, ", self.maximum_request)?;

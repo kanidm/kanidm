@@ -113,13 +113,13 @@ fn create_home_directory(
     // mounts
     let home_prefix_path = home_prefix_path
         .canonicalize()
-        .map_err(|e| format!("{:?}", e))?;
+        .map_err(|e| format!("{e:?}"))?;
 
     // This is where the storage is *mounted*. If not set, falls back to the home_prefix.
     let home_mount_prefix_path = home_mount_prefix_path
         .unwrap_or(&home_prefix_path)
         .canonicalize()
-        .map_err(|e| format!("{:?}", e))?;
+        .map_err(|e| format!("{e:?}"))?;
 
     // Does our home_prefix actually exist?
     if !home_prefix_path.exists() || !home_prefix_path.is_dir() || !home_prefix_path.is_absolute() {
@@ -170,7 +170,7 @@ fn create_home_directory(
         if let Err(e) = fs::create_dir_all(&hd_mount_path) {
             let _ = unsafe { umask(before) };
             error!(err = ?e, ?hd_mount_path, "Unable to create directory");
-            return Err(format!("{:?}", e));
+            return Err(format!("{e:?}"));
         }
         let _ = unsafe { umask(before) };
 
@@ -244,7 +244,7 @@ fn create_home_directory(
                 Ok(a) => a,
                 Err(e) => {
                     error!(err = ?e, ?alias_path, "Unable to read alias path metadata");
-                    return Err(format!("{:?}", e));
+                    return Err(format!("{e:?}"));
                 }
             };
 
@@ -252,13 +252,13 @@ fn create_home_directory(
                 // Probably need to update it.
                 if let Err(e) = fs::remove_file(&alias_path) {
                     error!(err = ?e, ?alias_path, "Unable to remove existing alias path");
-                    return Err(format!("{:?}", e));
+                    return Err(format!("{e:?}"));
                 }
 
                 debug!("updating symlink {:?} -> {:?}", alias_path, hd_mount_path);
                 if let Err(e) = symlink(&hd_mount_path, &alias_path) {
                     error!(err = ?e, ?alias_path, "Unable to update alias path");
-                    return Err(format!("{:?}", e));
+                    return Err(format!("{e:?}"));
                 }
             } else {
                 warn!(
@@ -272,7 +272,7 @@ fn create_home_directory(
             debug!("creating symlink {:?} -> {:?}", alias_path, hd_mount_path);
             if let Err(e) = symlink(&hd_mount_path, &alias_path) {
                 error!(err = ?e, ?alias_path, "Unable to create alias path");
-                return Err(format!("{:?}", e));
+                return Err(format!("{e:?}"));
             }
         }
     }

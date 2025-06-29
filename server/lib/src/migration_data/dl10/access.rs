@@ -85,11 +85,11 @@ impl From<BuiltinAcp> for EntryInitNew {
 
         #[allow(clippy::panic)]
         if value.name.is_empty() {
-            panic!("Builtin ACP has no name! {:?}", value);
+            panic!("Builtin ACP has no name! {value:?}");
         }
         #[allow(clippy::panic)]
         if value.classes.is_empty() {
-            panic!("Builtin ACP has no classes! {:?}", value);
+            panic!("Builtin ACP has no classes! {value:?}");
         }
 
         value.classes.iter().for_each(|class| {
@@ -99,7 +99,7 @@ impl From<BuiltinAcp> for EntryInitNew {
         entry.set_ava(Attribute::Name, [Value::new_iname(value.name)]);
 
         if value.uuid >= DYNAMIC_RANGE_MINIMUM_UUID {
-            panic!("Builtin ACP has invalid UUID! {:?}", value);
+            panic!("Builtin ACP has invalid UUID! {value:?}");
         }
 
         entry.set_ava(Attribute::Uuid, [Value::Uuid(value.uuid)]);

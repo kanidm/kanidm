@@ -137,13 +137,13 @@ impl ClientRequest {
     /// Get a safe display version of the request, without credentials.
     pub fn as_safe_string(&self) -> String {
         match self {
-            ClientRequest::SshKey(id) => format!("SshKey({})", id),
+            ClientRequest::SshKey(id) => format!("SshKey({id})"),
             ClientRequest::NssAccounts => "NssAccounts".to_string(),
-            ClientRequest::NssAccountByUid(id) => format!("NssAccountByUid({})", id),
-            ClientRequest::NssAccountByName(id) => format!("NssAccountByName({})", id),
+            ClientRequest::NssAccountByUid(id) => format!("NssAccountByUid({id})"),
+            ClientRequest::NssAccountByName(id) => format!("NssAccountByName({id})"),
             ClientRequest::NssGroups => "NssGroups".to_string(),
-            ClientRequest::NssGroupByGid(id) => format!("NssGroupByGid({})", id),
-            ClientRequest::NssGroupByName(id) => format!("NssGroupByName({})", id),
+            ClientRequest::NssGroupByGid(id) => format!("NssGroupByGid({id})"),
+            ClientRequest::NssGroupByName(id) => format!("NssGroupByName({id})"),
             ClientRequest::PamAuthenticateInit { account_id, info } => format!(
                 "PamAuthenticateInit{{ account_id={} tty={} pam_secvice{} rhost={} }}",
                 account_id,
@@ -153,7 +153,7 @@ impl ClientRequest {
             ),
             ClientRequest::PamAuthenticateStep(_) => "PamAuthenticateStep".to_string(),
             ClientRequest::PamAccountAllowed(id) => {
-                format!("PamAccountAllowed({})", id)
+                format!("PamAccountAllowed({id})")
             }
             ClientRequest::PamAccountBeginSession(_) => "PamAccountBeginSession".to_string(),
             ClientRequest::InvalidateCache => "InvalidateCache".to_string(),

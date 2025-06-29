@@ -16,20 +16,20 @@ async fn account_id_unix_token(rsclient: &KanidmClient) {
         .await;
     assert!(response.is_err());
     if let Err(val) = response {
-        assert!(format!("{:?}", val).contains("404"));
+        assert!(format!("{val:?}").contains("404"));
     }
 
     let response = rsclient.idm_account_unix_token_get("lol").await;
     assert!(response.is_err());
     if let Err(val) = response {
-        assert!(format!("{:?}", val).contains("404"));
+        assert!(format!("{val:?}").contains("404"));
     }
 
     // testing empty results
     let response = rsclient.idm_account_unix_token_get("").await;
     assert!(response.is_err());
     if let Err(val) = response {
-        assert!(format!("{:?}", val).contains("400"));
+        assert!(format!("{val:?}").contains("400"));
     }
 
     login_put_admin_idm_admins(rsclient).await;

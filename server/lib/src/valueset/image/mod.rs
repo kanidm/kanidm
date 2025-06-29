@@ -60,34 +60,29 @@ pub enum ImageValidationError {
 impl Display for ImageValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ImageValidationError::ExceedsMaxWidth => f.write_fmt(format_args!(
-                "Exceeds the maximum width: {}",
-                MAX_IMAGE_WIDTH
-            )),
+            ImageValidationError::ExceedsMaxWidth => {
+                f.write_fmt(format_args!("Exceeds the maximum width: {MAX_IMAGE_WIDTH}"))
+            }
             ImageValidationError::ExceedsMaxHeight => f.write_fmt(format_args!(
-                "Exceeds the maximum height: {}",
-                MAX_IMAGE_HEIGHT
+                "Exceeds the maximum height: {MAX_IMAGE_HEIGHT}"
             )),
-            ImageValidationError::ExceedsMaxFileSize => f.write_fmt(format_args!(
-                "Exceeds maximum file size of {}",
-                MAX_FILE_SIZE
-            )),
+            ImageValidationError::ExceedsMaxFileSize => {
+                f.write_fmt(format_args!("Exceeds maximum file size of {MAX_FILE_SIZE}"))
+            }
             ImageValidationError::InvalidImage(message) => {
                 if !message.is_empty() {
-                    f.write_fmt(format_args!("Invalid Image: {}", message))
+                    f.write_fmt(format_args!("Invalid Image: {message}"))
                 } else {
                     f.write_str("Invalid Image")
                 }
             }
             ImageValidationError::ExceedsMaxDimensions => f.write_fmt(format_args!(
-                "Image exceeds max dimensions of {}x{}",
-                MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT
+                "Image exceeds max dimensions of {MAX_IMAGE_WIDTH}x{MAX_IMAGE_HEIGHT}"
             )),
             ImageValidationError::Acropalypse(message) => {
                 if !message.is_empty() {
                     f.write_fmt(format_args!(
-                        "Image has extra data, is vulnerable to Acropalypse: {}",
-                        message
+                        "Image has extra data, is vulnerable to Acropalypse: {message}"
                     ))
                 } else {
                     f.write_str("Image has extra data, is vulnerable to Acropalypse")

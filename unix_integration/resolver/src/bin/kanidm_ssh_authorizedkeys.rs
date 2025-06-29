@@ -85,7 +85,7 @@ async fn main() -> ExitCode {
     match daemon_client.call(&req, None).await {
         Ok(ClientResponse::SshKeys(sk)) => {
             sk.iter().for_each(|k| {
-                println!("{}", k);
+                println!("{k}");
             });
             ExitCode::SUCCESS
         }

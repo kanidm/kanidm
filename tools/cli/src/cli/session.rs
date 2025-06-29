@@ -494,7 +494,7 @@ async fn process_auth_state(
     };
 
     // Success!
-    println!("Login Success for {}", spn);
+    println!("Login Success for {spn}");
 }
 
 impl LoginOpt {
@@ -604,7 +604,7 @@ impl LogoutOpt {
         let instance_name = &self.copt.instance;
         let n_lookup = instance_name.clone().unwrap_or_default();
         let Some(token_instance) = tokens.instances.get_mut(&n_lookup) else {
-            println!("No sessions for instance {}", n_lookup);
+            println!("No sessions for instance {n_lookup}");
             return;
         };
 
@@ -718,9 +718,9 @@ impl LogoutOpt {
                 error!("Error persisting authentication token store");
                 std::process::exit(1);
             };
-            println!("Removed session for {}", spn);
+            println!("Removed session for {spn}");
         } else {
-            println!("No sessions for {}", spn);
+            println!("No sessions for {spn}");
         }
     }
 }
@@ -748,7 +748,7 @@ impl SessionOpt {
 
                 for (_, uat) in token_instance.valid_uats() {
                     println!("---");
-                    println!("{}", uat);
+                    println!("{uat}");
                 }
             }
             SessionOpt::Cleanup(copt) => {
@@ -773,7 +773,7 @@ impl SessionOpt {
                     std::process::exit(1);
                 };
 
-                println!("Removed {} sessions", change);
+                println!("Removed {change} sessions");
             }
         }
     }

@@ -22,7 +22,7 @@ const PEOPLE_PREFIX: &str = "person";
 
 fn random_name(prefix: &str, rng: &mut ChaCha8Rng) -> String {
     let suffix = Alphanumeric.sample_string(rng, 8).to_lowercase();
-    format!("{}_{}", prefix, suffix)
+    format!("{prefix}_{suffix}")
 }
 
 fn random_password(rng: &mut ChaCha8Rng) -> String {
@@ -112,7 +112,7 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
             .choose(&mut seeded_rng)
             .expect("name set corrupted");
 
-        let display_name = format!("{} {}", given_name, surname);
+        let display_name = format!("{given_name} {surname}");
 
         let username = display_name
             .chars()

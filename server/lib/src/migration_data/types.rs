@@ -54,7 +54,7 @@ impl From<BuiltinAccount> for EntryInitNew {
         entry.add_ava(Attribute::Name, Value::new_iname(value.name));
         #[allow(clippy::panic)]
         if value.uuid >= DYNAMIC_RANGE_MINIMUM_UUID {
-            panic!("Builtin ACP has invalid UUID! {:?}", value);
+            panic!("Builtin ACP has invalid UUID! {value:?}");
         }
         entry.add_ava(Attribute::Uuid, Value::Uuid(value.uuid));
         entry.add_ava(Attribute::Description, Value::new_utf8s(value.description));

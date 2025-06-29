@@ -84,7 +84,7 @@ impl fmt::Display for Diagnosis {
         let indent = match &self.abs_path {
             Ok(abs) => {
                 let abs_str = abs.to_string_lossy();
-                writeln!(f, "canonicalised to: {}", abs_str)?;
+                writeln!(f, "canonicalised to: {abs_str}")?;
                 abs_str.len() + 1
             }
             Err(_) => {

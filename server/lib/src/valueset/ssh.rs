@@ -152,7 +152,7 @@ impl ValueSetT for ValueSetSshKey {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.map.iter().map(|(tag, pk)| format!("{}: {}", tag, pk)))
+        Box::new(self.map.iter().map(|(tag, pk)| format!("{tag}: {pk}")))
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
@@ -268,8 +268,7 @@ mod tests {
 
         assert!(
             bad_ssh_error.is_err(),
-            "Expected error, but got: {:?}",
-            bad_ssh_error
+            "Expected error, but got: {bad_ssh_error:?}"
         );
         if let Err(err) = bad_ssh_error {
             assert_eq!(

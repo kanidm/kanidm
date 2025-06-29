@@ -1771,7 +1771,7 @@ impl KeyObjectInternalJwtHs256 {
             let status = match &key_to_check.status {
                 InternalJwtHs256Status::Valid { .. } => KeyStatus::Valid,
                 InternalJwtHs256Status::Retained { .. } => KeyStatus::Retained,
-                InternalJwtHs256Status::Revoked { .. } => KeyStatus::Revoked,
+                InternalJwtHs256Status::Revoked => KeyStatus::Revoked,
             };
             Ok(Some(status))
         } else {

@@ -31,7 +31,7 @@ async fn check_that_the_swagger_api_loads(rsclient: &kanidm_client::KanidmClient
     let result = compiled.validate(&instance);
     if let Err(errors) = result {
         println!("ERRORS!");
-        println!("{:?}", errors);
+        println!("{errors:?}");
         panic!("Validation errors!");
     }
 }

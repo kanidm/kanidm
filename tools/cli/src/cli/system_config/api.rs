@@ -33,7 +33,7 @@ impl ApiOpt {
                                 Ok(val) => val,
                                 // if it throws an error just trigger false
                                 Err(err) => {
-                                    eprintln!("Failed to get response from user: {:?}", err);
+                                    eprintln!("Failed to get response from user: {err:?}");
                                     false
                                 }
                             };

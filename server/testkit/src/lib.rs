@@ -86,13 +86,13 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
 
     #[allow(clippy::expect_used)]
     let addr =
-        Url::from_str(&format!("http://localhost:{}", port)).expect("Failed to parse origin URL");
+        Url::from_str(&format!("http://localhost:{port}")).expect("Failed to parse origin URL");
 
     let ldap_url = if config.ldapbindaddress.is_some() {
         let ldapport = port_loop();
         let ldap_sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), ldapport);
         config.ldapbindaddress = Some(ldap_sock_addr.to_string());
-        Url::parse(&format!("ldap://{}", ldap_sock_addr))
+        Url::parse(&format!("ldap://{ldap_sock_addr}"))
             .inspect_err(|err| error!(?err, "ldap address setup"))
             .ok()
     } else {
@@ -149,20 +149,20 @@ pub async fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) {
     if rsclient
         .idm_group_get(group_name)
         .await
-        .unwrap_or_else(|_| panic!("Failed to get group {}", group_name))
+        .unwrap_or_else(|_| panic!("Failed to get group {group_name}"))
         .is_none()
     {
         #[allow(clippy::panic)]
         rsclient
             .idm_group_create(group_name, None)
             .await
-            .unwrap_or_else(|_| panic!("Failed to create group {}", group_name));
+            .unwrap_or_else(|_| panic!("Failed to create group {group_name}"));
     }
     #[allow(clippy::panic)]
     rsclient
         .idm_group_add_members(group_name, &[id])
         .await
-        .unwrap_or_else(|_| panic!("Failed to add user {} to group {}", id, group_name));
+        .unwrap_or_else(|_| panic!("Failed to add user {id} to group {group_name}"));
 }
 
 pub async fn create_user_with_all_attrs(
@@ -170,7 +170,7 @@ pub async fn create_user_with_all_attrs(
     id: &str,
     optional_group: Option<&str>,
 ) {
-    let group_format = format!("{}_group", id);
+    let group_format = format!("{id}_group");
     let group_name = optional_group.unwrap_or(&group_format);
 
     create_user(rsclient, id, group_name).await;
@@ -196,7 +196,7 @@ pub async fn add_all_attrs(
         .expect("Failed to extend user group");
 
     for attr in [Attribute::SshPublicKey, Attribute::Mail].into_iter() {
-        println!("Checking writable for {}", attr);
+        println!("Checking writable for {attr}");
         #[allow(clippy::expect_used)]
         let res = is_attr_writable(rsclient, id, attr)
             .await
@@ -230,7 +230,7 @@ pub async fn add_all_attrs(
 }
 
 pub async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: Attribute) -> Option<bool> {
-    println!("writing to attribute: {}", attr);
+    println!("writing to attribute: {attr}");
     match attr {
         Attribute::RadiusSecret => Some(
             rsclient
@@ -276,7 +276,7 @@ pub async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: Attribute
                 .idm_person_account_set_attr(
                     id,
                     Attribute::Mail.as_ref(),
-                    &[&format!("{}@example.com", id)],
+                    &[&format!("{id}@example.com")],
                 )
                 .await
                 .is_ok(),
@@ -310,13 +310,13 @@ pub async fn login_account(rsclient: &KanidmClient, id: &str) {
         .await;
 
     // Setup privs
-    println!("{} logged in", id);
+    println!("{id} logged in");
     assert!(res.is_ok());
 
     let res = rsclient
         .reauth_simple_password(NOT_ADMIN_TEST_PASSWORD)
         .await;
-    println!("{} priv granted for", id);
+    println!("{id} priv granted for");
     assert!(res.is_ok());
 }
 
@@ -340,7 +340,7 @@ pub async fn test_read_attrs(
     attrs: &[Attribute],
     is_readable: bool,
 ) {
-    println!("Test read to {}, is readable: {}", id, is_readable);
+    println!("Test read to {id}, is readable: {is_readable}");
     #[allow(clippy::expect_used)]
     let rset = rsclient
         .search(Filter::Eq(Attribute::Name.to_string(), id.to_string()))
@@ -372,9 +372,9 @@ pub async fn test_write_attrs(
     attrs: &[Attribute],
     is_writeable: bool,
 ) {
-    println!("Test write to {}, is writeable: {}", id, is_writeable);
+    println!("Test write to {id}, is writeable: {is_writeable}");
     for attr in attrs.iter() {
-        println!("Writing to {} - ex {}", attr, is_writeable);
+        println!("Writing to {attr} - ex {is_writeable}");
         #[allow(clippy::unwrap_used)]
         let is_ok = is_attr_writable(rsclient, id, attr.clone()).await.unwrap();
         assert_eq!(is_ok, is_writeable)
@@ -388,7 +388,7 @@ pub async fn test_modify_group(
 ) {
     // need user test created to be added as test part
     for group in group_names.iter() {
-        println!("Testing group: {}", group);
+        println!("Testing group: {group}");
         for attr in [Attribute::Description, Attribute::Name].into_iter() {
             #[allow(clippy::unwrap_used)]
             let is_writable = is_attr_writable(rsclient, group, attr.clone())

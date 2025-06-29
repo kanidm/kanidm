@@ -56,7 +56,7 @@ impl fmt::Display for UserAuthToken {
         writeln!(f, "uuid: {}", self.uuid)?;
         writeln!(f, "display: {}", self.displayname)?;
         if let Some(exp) = self.expiry {
-            writeln!(f, "expiry: {}", exp)?;
+            writeln!(f, "expiry: {exp}")?;
         } else {
             writeln!(f, "expiry: -")?;
         }
@@ -64,7 +64,7 @@ impl fmt::Display for UserAuthToken {
             UatPurpose::ReadOnly => writeln!(f, "purpose: read only")?,
             UatPurpose::ReadWrite {
                 expiry: Some(expiry),
-            } => writeln!(f, "purpose: read write (expiry: {})", expiry)?,
+            } => writeln!(f, "purpose: read write (expiry: {expiry})")?,
             UatPurpose::ReadWrite { expiry: None } => {
                 writeln!(f, "purpose: read write (expiry: none)")?
             }
@@ -137,7 +137,7 @@ impl fmt::Display for ApiToken {
                 )
                 .format(&time::format_description::well_known::Rfc3339)
                 .expect("Failed to format timestamp to RFC3339");
-            writeln!(f, "token expiry: {}", expiry_str)
+            writeln!(f, "token expiry: {expiry_str}")
         } else {
             writeln!(f, "token expiry: never")
         }
@@ -171,7 +171,7 @@ impl fmt::Display for RadiusAuthToken {
         writeln!(f, "secret: {}", self.secret)?;
         self.groups
             .iter()
-            .try_for_each(|g| writeln!(f, "group: {}", g))
+            .try_for_each(|g| writeln!(f, "group: {g}"))
     }
 }
 

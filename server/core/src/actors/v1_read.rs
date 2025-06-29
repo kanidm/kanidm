@@ -200,7 +200,7 @@ impl QueryServerReadV1 {
 
         #[allow(clippy::unwrap_used)]
         let timestamp = now.format(&Rfc3339).unwrap();
-        let dest_file = outpath.join(format!("backup-{}.json", timestamp));
+        let dest_file = outpath.join(format!("backup-{timestamp}.json"));
 
         if dest_file.exists() {
             error!(

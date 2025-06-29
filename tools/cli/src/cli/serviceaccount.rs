@@ -61,7 +61,7 @@ impl ServiceAccountOpt {
                         .await
                     {
                         Ok(cstatus) => {
-                            println!("{}", cstatus);
+                            println!("{cstatus}");
                         }
                         Err(e) => {
                             error!("Error getting credential status -> {:?}", e);
@@ -75,7 +75,7 @@ impl ServiceAccountOpt {
                         .await
                     {
                         Ok(new_pw) => {
-                            println!("Success: {}", new_pw);
+                            println!("Success: {new_pw}");
                         }
                         Err(e) => {
                             error!("Error generating service account credential -> {:?}", e);
@@ -95,7 +95,7 @@ impl ServiceAccountOpt {
                                 println!("No api tokens exist");
                             } else {
                                 for token in tokens {
-                                    println!("token: {}", token);
+                                    println!("token: {token}");
                                 }
                             }
                         }
@@ -156,11 +156,11 @@ impl ServiceAccountOpt {
                                         .unwrap_or("<unknown username>".to_string()),
                                     dest_user: aopts.account_id.clone(),
                                 };
-                                println!("{}", message);
+                                println!("{message}");
                             }
                             OutputMode::Text => {
                                 println!("Success: This token will only be displayed ONCE");
-                                println!("{}", new_token)
+                                println!("{new_token}")
                             }
                         },
                         Err(e) => {
@@ -194,7 +194,7 @@ impl ServiceAccountOpt {
                         .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
                         .await
                     {
-                        Ok(token) => println!("{}", token),
+                        Ok(token) => println!("{token}"),
                         Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
@@ -233,7 +233,7 @@ impl ServiceAccountOpt {
                                 println!("No sessions exist");
                             } else {
                                 for token in tokens {
-                                    println!("token: {}", token);
+                                    println!("token: {token}");
                                 }
                             }
                         }
@@ -272,7 +272,7 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        Ok(pkeys) => pkeys.iter().flatten().for_each(|pkey| println!("{}", pkey)),
+                        Ok(pkeys) => pkeys.iter().flatten().for_each(|pkey| println!("{pkey}")),
                         Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
@@ -305,7 +305,7 @@ impl ServiceAccountOpt {
             ServiceAccountOpt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_service_account_list().await {
-                    Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
+                    Ok(r) => r.iter().for_each(|ent| println!("{ent}")),
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
@@ -355,13 +355,13 @@ impl ServiceAccountOpt {
                     .await
                 {
                     Err(e) => {
-                        modmessage.result = format!("Error -> {:?}", e);
+                        modmessage.result = format!("Error -> {e:?}");
                         modmessage.status = MessageStatus::Failure;
-                        eprintln!("{}", modmessage);
+                        eprintln!("{modmessage}");
                     }
                     Ok(result) => {
                         debug!("{:?}", result);
-                        println!("{}", modmessage);
+                        println!("{modmessage}");
                     }
                 };
             }
@@ -422,7 +422,7 @@ impl ServiceAccountOpt {
                             })
                             .unwrap_or_else(|_| "invalid timestamp".to_string());
 
-                        println!("valid after: {}", t);
+                        println!("valid after: {t}");
                     } else {
                         println!("valid after: any time");
                     }
@@ -438,7 +438,7 @@ impl ServiceAccountOpt {
                                 .unwrap_or(odt.to_string())
                             })
                             .unwrap_or_else(|_| "invalid timestamp".to_string());
-                        println!("expire: {:?}", t);
+                        println!("expire: {t:?}");
                     } else {
                         println!("expire: never");
                     }

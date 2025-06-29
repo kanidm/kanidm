@@ -312,7 +312,7 @@ pub enum CredentialUpdateSessionStatusWarnings {
 
 impl Display for CredentialUpdateSessionStatusWarnings {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

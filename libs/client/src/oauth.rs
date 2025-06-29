@@ -73,7 +73,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_oauth2_rs_get(&self, client_name: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/oauth2/{}", client_name).as_str())
+        self.perform_get_request(format!("/v1/oauth2/{client_name}").as_str())
             .await
     }
 
@@ -81,7 +81,7 @@ impl KanidmClient {
         &self,
         client_name: &str,
     ) -> Result<Option<String>, ClientError> {
-        self.perform_get_request(format!("/v1/oauth2/{}/_basic_secret", client_name).as_str())
+        self.perform_get_request(format!("/v1/oauth2/{client_name}/_basic_secret").as_str())
             .await
     }
 
@@ -91,10 +91,7 @@ impl KanidmClient {
         key_id: &str,
     ) -> Result<(), ClientError> {
         self.perform_post_request(
-            &format!(
-                "/v1/oauth2/{}/_attr/{}",
-                client_name, ATTR_KEY_ACTION_REVOKE
-            ),
+            &format!("/v1/oauth2/{client_name}/_attr/{ATTR_KEY_ACTION_REVOKE}"),
             vec![key_id.to_string()],
         )
         .await
@@ -110,10 +107,7 @@ impl KanidmClient {
         })?;
 
         self.perform_post_request(
-            &format!(
-                "/v1/oauth2/{}/_attr/{}",
-                client_name, ATTR_KEY_ACTION_ROTATE
-            ),
+            &format!("/v1/oauth2/{client_name}/_attr/{ATTR_KEY_ACTION_ROTATE}"),
             vec![rfc_3339_str],
         )
         .await
@@ -153,7 +147,7 @@ impl KanidmClient {
                 .attrs
                 .insert(ATTR_OAUTH2_RS_BASIC_SECRET.to_string(), Vec::new());
         }
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -165,7 +159,7 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         let scopes: Vec<String> = scopes.into_iter().map(str::to_string).collect();
         self.perform_post_request(
-            format!("/v1/oauth2/{}/_scopemap/{}", id, group).as_str(),
+            format!("/v1/oauth2/{id}/_scopemap/{group}").as_str(),
             scopes,
         )
         .await
@@ -176,7 +170,7 @@ impl KanidmClient {
         id: &str,
         group: &str,
     ) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/oauth2/{}/_scopemap/{}", id, group).as_str())
+        self.perform_delete_request(format!("/v1/oauth2/{id}/_scopemap/{group}").as_str())
             .await
     }
 
@@ -188,7 +182,7 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         let scopes: Vec<String> = scopes.into_iter().map(str::to_string).collect();
         self.perform_post_request(
-            format!("/v1/oauth2/{}/_sup_scopemap/{}", id, group).as_str(),
+            format!("/v1/oauth2/{id}/_sup_scopemap/{group}").as_str(),
             scopes,
         )
         .await
@@ -199,7 +193,7 @@ impl KanidmClient {
         id: &str,
         group: &str,
     ) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/oauth2/{}/_sup_scopemap/{}", id, group).as_str())
+        self.perform_delete_request(format!("/v1/oauth2/{id}/_sup_scopemap/{group}").as_str())
             .await
     }
 
@@ -210,7 +204,7 @@ impl KanidmClient {
 
     /// Want to delete the image associated with a resource server? Here's your thing!
     pub async fn idm_oauth2_rs_delete_image(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/oauth2/{}/_image", id).as_str())
+        self.perform_delete_request(format!("/v1/oauth2/{id}/_image").as_str())
             .await
     }
 
@@ -241,7 +235,7 @@ impl KanidmClient {
         // send it
         let response = self
             .client
-            .post(self.make_url(&format!("/v1/oauth2/{}/_image", id)))
+            .post(self.make_url(&format!("/v1/oauth2/{id}/_image")))
             .multipart(form);
 
         let response = {
@@ -284,7 +278,7 @@ impl KanidmClient {
             ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE.to_string(),
             Vec::new(),
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -296,7 +290,7 @@ impl KanidmClient {
             ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE.to_string(),
             vec!["true".to_string()],
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -308,7 +302,7 @@ impl KanidmClient {
             ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE.to_string(),
             vec!["true".to_string()],
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -320,7 +314,7 @@ impl KanidmClient {
             ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE.to_string(),
             vec!["false".to_string()],
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -332,7 +326,7 @@ impl KanidmClient {
             ATTR_OAUTH2_PREFER_SHORT_USERNAME.to_string(),
             vec!["true".to_string()],
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -344,7 +338,7 @@ impl KanidmClient {
             ATTR_OAUTH2_PREFER_SHORT_USERNAME.to_string(),
             vec!["false".to_string()],
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -359,7 +353,7 @@ impl KanidmClient {
             ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT.to_string(),
             vec!["true".to_string()],
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -374,7 +368,7 @@ impl KanidmClient {
             ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT.to_string(),
             vec!["false".to_string()],
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -389,7 +383,7 @@ impl KanidmClient {
             ATTR_OAUTH2_STRICT_REDIRECT_URI.to_string(),
             vec!["true".to_string()],
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -404,7 +398,7 @@ impl KanidmClient {
             ATTR_OAUTH2_STRICT_REDIRECT_URI.to_string(),
             vec!["false".to_string()],
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+        self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
             .await
     }
 
@@ -417,7 +411,7 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         let values: Vec<String> = values.to_vec();
         self.perform_post_request(
-            format!("/v1/oauth2/{}/_claimmap/{}/{}", id, claim_name, group_id).as_str(),
+            format!("/v1/oauth2/{id}/_claimmap/{claim_name}/{group_id}").as_str(),
             values,
         )
         .await
@@ -430,7 +424,7 @@ impl KanidmClient {
         join: Oauth2ClaimMapJoin,
     ) -> Result<(), ClientError> {
         self.perform_post_request(
-            format!("/v1/oauth2/{}/_claimmap/{}", id, claim_name).as_str(),
+            format!("/v1/oauth2/{id}/_claimmap/{claim_name}").as_str(),
             join,
         )
         .await
@@ -443,7 +437,7 @@ impl KanidmClient {
         group_id: &str,
     ) -> Result<(), ClientError> {
         self.perform_delete_request(
-            format!("/v1/oauth2/{}/_claimmap/{}/{}", id, claim_name, group_id).as_str(),
+            format!("/v1/oauth2/{id}/_claimmap/{claim_name}/{group_id}").as_str(),
         )
         .await
     }
@@ -457,7 +451,7 @@ impl KanidmClient {
 
         let url_to_add = &[origin.as_str()];
         self.perform_post_request(
-            format!("/v1/oauth2/{}/_attr/{}", id, ATTR_OAUTH2_RS_ORIGIN).as_str(),
+            format!("/v1/oauth2/{id}/_attr/{ATTR_OAUTH2_RS_ORIGIN}").as_str(),
             url_to_add,
         )
         .await
@@ -470,7 +464,7 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         let url_to_remove = &[origin.as_str()];
         self.perform_delete_request_with_body(
-            format!("/v1/oauth2/{}/_attr/{}", id, ATTR_OAUTH2_RS_ORIGIN).as_str(),
+            format!("/v1/oauth2/{id}/_attr/{ATTR_OAUTH2_RS_ORIGIN}").as_str(),
             url_to_remove,
         )
         .await
@@ -490,7 +484,7 @@ impl KanidmClient {
                     Attribute::OAuth2DeviceFlowEnable.into(),
                     vec![value.to_string()],
                 );
-                self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+                self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
                     .await
             }
             false => {

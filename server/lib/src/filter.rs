@@ -150,27 +150,27 @@ impl fmt::Debug for FilterComp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FilterComp::Eq(attr, pv) => {
-                write!(f, "{} eq {:?}", attr, pv)
+                write!(f, "{attr} eq {pv:?}")
             }
             FilterComp::Cnt(attr, pv) => {
-                write!(f, "{} cnt {:?}", attr, pv)
+                write!(f, "{attr} cnt {pv:?}")
             }
             FilterComp::Stw(attr, pv) => {
-                write!(f, "{} stw {:?}", attr, pv)
+                write!(f, "{attr} stw {pv:?}")
             }
             FilterComp::Enw(attr, pv) => {
-                write!(f, "{} enw {:?}", attr, pv)
+                write!(f, "{attr} enw {pv:?}")
             }
             FilterComp::Pres(attr) => {
-                write!(f, "{} pres", attr)
+                write!(f, "{attr} pres")
             }
             FilterComp::LessThan(attr, pv) => {
-                write!(f, "{} lt {:?}", attr, pv)
+                write!(f, "{attr} lt {pv:?}")
             }
             FilterComp::And(list) => {
                 write!(f, "(")?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " and ")?;
                     }
@@ -180,7 +180,7 @@ impl fmt::Debug for FilterComp {
             FilterComp::Or(list) => {
                 write!(f, "(")?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " or ")?;
                     }
@@ -190,7 +190,7 @@ impl fmt::Debug for FilterComp {
             FilterComp::Inclusion(list) => {
                 write!(f, "(")?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " inc ")?;
                     }
@@ -198,13 +198,13 @@ impl fmt::Debug for FilterComp {
                 write!(f, ")")
             }
             FilterComp::AndNot(inner) => {
-                write!(f, "not ( {:?} )", inner)
+                write!(f, "not ( {inner:?} )")
             }
             FilterComp::SelfUuid => {
                 write!(f, "uuid eq self")
             }
             FilterComp::Invalid(attr) => {
-                write!(f, "invalid ( {:?} )", attr)
+                write!(f, "invalid ( {attr:?} )")
             }
         }
     }
@@ -291,7 +291,7 @@ impl fmt::Debug for FilterResolved {
             FilterResolved::And(list, idx) => {
                 write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " and ")?;
                     }
@@ -301,7 +301,7 @@ impl fmt::Debug for FilterResolved {
             FilterResolved::Or(list, idx) => {
                 write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " or ")?;
                     }
@@ -311,7 +311,7 @@ impl fmt::Debug for FilterResolved {
             FilterResolved::Inclusion(list, idx) => {
                 write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " inc ")?;
                     }
@@ -322,7 +322,7 @@ impl fmt::Debug for FilterResolved {
                 write!(f, "not (s{} {:?})", idx.unwrap_or(NonZeroU8::MAX), inner)
             }
             FilterResolved::Invalid(attr) => {
-                write!(f, "{} inv", attr)
+                write!(f, "{attr} inv")
             }
         }
     }
@@ -378,7 +378,7 @@ pub enum FilterPlan {
 fn fmt_filterplan_set(f: &mut fmt::Formatter<'_>, name: &str, plan: &[FilterPlan]) -> fmt::Result {
     write!(f, "{name}(")?;
     for item in plan {
-        write!(f, "{}, ", item)?;
+        write!(f, "{item}, ")?;
     }
     write!(f, ")")
 }

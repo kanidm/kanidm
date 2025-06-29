@@ -44,15 +44,14 @@ impl TotpSecret {
     pub fn to_uri(&self) -> String {
         let accountname = urlencoding::Encoded(&self.accountname);
         let issuer = urlencoding::Encoded(&self.issuer);
-        let label = format!("{}:{}", issuer, accountname);
+        let label = format!("{issuer}:{accountname}");
         let algo = self.algo.to_string();
         let secret = self.get_secret();
         let period = self.step;
         let digits = self.digits;
 
         format!(
-            "otpauth://totp/{}?secret={}&issuer={}&algorithm={}&digits={}&period={}",
-            label, secret, issuer, algo, digits, period
+            "otpauth://totp/{label}?secret={secret}&issuer={issuer}&algorithm={algo}&digits={digits}&period={period}"
         )
     }
 
@@ -120,7 +119,7 @@ impl fmt::Debug for CURequest {
             CURequest::SshPublicKey(_, _) => "CURequest::SSHKeySubmit",
             CURequest::SshPublicKeyRemove(_) => "CURequest::SSHKeyRemove",
         };
-        writeln!(f, "{}", t)
+        writeln!(f, "{t}")
     }
 }
 
@@ -238,7 +237,7 @@ impl fmt::Display for CredentialDetail {
                 } else {
                     writeln!(f, "passkeys:")?;
                     for label in labels {
-                        writeln!(f, " * {}", label)?;
+                        writeln!(f, " * {label}")?;
                     }
                     write!(f, "")
                 }
@@ -249,7 +248,7 @@ impl fmt::Display for CredentialDetail {
                 if !totp_labels.is_empty() {
                     writeln!(f, "totp:")?;
                     for label in totp_labels {
-                        writeln!(f, " * {}", label)?;
+                        writeln!(f, " * {label}")?;
                     }
                 } else {
                     writeln!(f, "totp: disabled")?;
@@ -267,7 +266,7 @@ impl fmt::Display for CredentialDetail {
                     writeln!(f, " ⚠️  you should re-enroll these to passkeys.")?;
                     writeln!(f, "security keys:")?;
                     for label in wan_labels {
-                        writeln!(f, " * {}", label)?;
+                        writeln!(f, " * {label}")?;
                     }
                     write!(f, "")
                 } else {
@@ -409,8 +408,7 @@ impl fmt::Display for PasswordFeedback {
             }
             PasswordFeedback::TooShort(minlength) => write!(
                 f,
-                "Password was too short, needs to be at least {} characters long.",
-                minlength
+                "Password was too short, needs to be at least {minlength} characters long."
             ),
             PasswordFeedback::UseAFewWordsAvoidCommonPhrases => {
                 write!(f, "Use a few words and avoid common phrases.")
@@ -452,7 +450,7 @@ mod tests {
             digits: 6,
         };
         let s = totp.to_uri();
-        println!("{}", s);
+        println!("{s}");
         assert_eq!(s,"otpauth://totp/blackhats%20australia:william%3A%253A?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
     }
 }

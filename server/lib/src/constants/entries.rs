@@ -170,7 +170,7 @@ impl From<EntryClass> for crate::prelude::AttrString {
 impl Display for EntryClass {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> std::fmt::Result {
         let s: String = (*self).into();
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

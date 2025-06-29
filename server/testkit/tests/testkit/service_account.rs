@@ -22,9 +22,9 @@ async fn test_v1_service_account_id_attr_attr_delete(rsclient: &KanidmClient) {
             );
         }
     };
-    eprintln!("response: {:#?}", response);
+    eprintln!("response: {response:#?}");
     assert_eq!(response.status(), 401);
 
     let body = response.text().await.unwrap();
-    eprintln!("{}", body);
+    eprintln!("{body}");
 }

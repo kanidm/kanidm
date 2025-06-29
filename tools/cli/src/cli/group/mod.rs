@@ -41,7 +41,7 @@ impl GroupOpt {
                                 serde_json::to_string(&r_attrs).expect("Failed to serialise json")
                             );
                         }
-                        OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
+                        OutputMode::Text => r.iter().for_each(|ent| println!("{ent}")),
                     },
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
@@ -57,7 +57,7 @@ impl GroupOpt {
                                 serde_json::to_string(&r_attrs).expect("Failed to serialise json")
                             );
                         }
-                        OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
+                        OutputMode::Text => r.iter().for_each(|ent| println!("{ent}")),
                     },
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
@@ -73,7 +73,7 @@ impl GroupOpt {
                                 serde_json::to_string(&e.attrs).expect("Failed to serialise json")
                             );
                         }
-                        OutputMode::Text => println!("{}", e),
+                        OutputMode::Text => println!("{e}"),
                     },
                     Ok(None) => warn!("No matching group '{}'", gcopt.name.as_str()),
                     Err(e) => handle_client_error(e, gcopt.copt.output_mode),
@@ -115,7 +115,7 @@ impl GroupOpt {
             GroupOpt::ListMembers(gcopt) => {
                 let client = gcopt.copt.to_client(OpType::Read).await;
                 match client.idm_group_get_members(gcopt.name.as_str()).await {
-                    Ok(Some(groups)) => groups.iter().for_each(|m| println!("{:?}", m)),
+                    Ok(Some(groups)) => groups.iter().for_each(|m| println!("{m:?}")),
                     Ok(None) => warn!("No members in group {}", gcopt.name.as_str()),
                     Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                 }
@@ -211,7 +211,7 @@ impl GroupOpt {
 
                 match result {
                     Err(e) => handle_client_error(e, copt.output_mode),
-                    Ok(_) => println!("Successfully renamed group {} to {}", name, new_name),
+                    Ok(_) => println!("Successfully renamed group {name} to {new_name}"),
                 }
             }
             GroupOpt::SetEntryManagedBy {
@@ -227,8 +227,7 @@ impl GroupOpt {
                 {
                     Err(e) => handle_client_error(e, copt.output_mode),
                     Ok(_) => println!(
-                        "Successfully set entry manager to '{}' for group '{}'",
-                        entry_managed_by, name
+                        "Successfully set entry manager to '{entry_managed_by}' for group '{name}'"
                     ),
                 }
             }
@@ -236,7 +235,7 @@ impl GroupOpt {
                 GroupPosix::Show(gcopt) => {
                     let client = gcopt.copt.to_client(OpType::Read).await;
                     match client.idm_group_unix_token_get(gcopt.name.as_str()).await {
-                        Ok(token) => println!("{}", token),
+                        Ok(token) => println!("{token}"),
                         Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                     }
                 }

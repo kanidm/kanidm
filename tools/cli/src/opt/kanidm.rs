@@ -53,11 +53,11 @@ impl OutputMode {
             OutputMode::Json => {
                 println!(
                     "{}",
-                    serde_json::to_string(&input).unwrap_or(format!("{:?}", input))
+                    serde_json::to_string(&input).unwrap_or(format!("{input:?}"))
                 );
             }
             OutputMode::Text => {
-                println!("{}", input);
+                println!("{input}");
             }
         }
     }

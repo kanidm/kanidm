@@ -18,7 +18,7 @@ impl DeniedNamesOpt {
                 match client.system_denied_names_get().await {
                     Ok(list) => {
                         for i in list {
-                            println!("{}", i);
+                            println!("{i}");
                         }
                         eprintln!("--");
                         eprintln!("Success");

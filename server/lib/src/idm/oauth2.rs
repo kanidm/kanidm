@@ -3067,7 +3067,7 @@ fn gen_user_code() -> (String, u32) {
     use rand::Rng;
     let mut rng = rand::rng();
     let num: u32 = rng.random_range(0..=999999999);
-    let result = format!("{:09}", num);
+    let result = format!("{num:09}");
     (
         format!("{}-{}-{}", &result[0..3], &result[3..6], &result[6..9]),
         num,
@@ -4860,8 +4860,7 @@ mod tests {
             discovery.revocation_endpoint
                 == Some(
                     Url::parse(&format!(
-                        "https://idm.example.com{}",
-                        OAUTH2_TOKEN_REVOKE_ENDPOINT
+                        "https://idm.example.com{OAUTH2_TOKEN_REVOKE_ENDPOINT}"
                     ))
                     .unwrap()
                 )
@@ -5060,8 +5059,7 @@ mod tests {
             discovery.revocation_endpoint
                 == Some(
                     Url::parse(&format!(
-                        "https://idm.example.com{}",
-                        OAUTH2_TOKEN_REVOKE_ENDPOINT
+                        "https://idm.example.com{OAUTH2_TOKEN_REVOKE_ENDPOINT}"
                     ))
                     .unwrap()
                 )
@@ -5078,8 +5076,7 @@ mod tests {
             discovery.introspection_endpoint
                 == Some(
                     Url::parse(&format!(
-                        "https://idm.example.com{}",
-                        OAUTH2_TOKEN_INTROSPECT_ENDPOINT
+                        "https://idm.example.com{OAUTH2_TOKEN_INTROSPECT_ENDPOINT}"
                     ))
                     .unwrap()
                 )
@@ -7364,12 +7361,12 @@ mod tests {
 
         // ensure host_is_local isn't true for a non-local host
         let example_is_not_local = "https://example.com/sdfsdf";
-        println!("Ensuring that {} is not local", example_is_not_local);
+        println!("Ensuring that {example_is_not_local} is not local");
         assert!(!host_is_local(
             &Url::parse(example_is_not_local)
                 .expect("Failed to parse example.com as a host?")
                 .host()
-                .unwrap_or_else(|| panic!("Couldn't get a host from {}", example_is_not_local))
+                .unwrap_or_else(|| panic!("Couldn't get a host from {example_is_not_local}"))
         ));
 
         let test_urls = [
@@ -7380,7 +7377,7 @@ mod tests {
         ];
 
         for (url, path) in test_urls.into_iter() {
-            println!("Testing URL: {}", url);
+            println!("Testing URL: {url}");
             let url = Url::parse(url).expect("One of the test values failed!");
             assert!(host_is_local(
                 &url.host().expect("Didn't parse a host out?")
@@ -7416,7 +7413,7 @@ mod tests {
 
         assert!(test_cases.iter().all(|(rs_type, expected)| {
             let actual = rs_type.allow_localhost_redirect();
-            println!("Testing {:?} -> {}", rs_type, expected);
+            println!("Testing {rs_type:?} -> {expected}");
             actual == *expected
         }));
     }

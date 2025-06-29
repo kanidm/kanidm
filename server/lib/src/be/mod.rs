@@ -1740,7 +1740,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 if immediate {
                     count += 1;
                     if count % 2500 == 0 {
-                        eprint!("{}", count);
+                        eprint!("{count}");
                     } else if count % 250 == 0 {
                         eprint!(".");
                     }
