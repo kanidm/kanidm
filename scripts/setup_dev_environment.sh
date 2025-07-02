@@ -9,10 +9,8 @@
 
 set -e
 
-if [ -n "${BUILD_MODE}" ]; then
-    BUILD_MODE="--${BUILD_MODE}"
-else
-    BUILD_MODE=""
+if [ -z "${BUILD_MODE}" ]; then
+    BUILD_MODE="--debug"
 fi
 
 # if they passed --help then output the help
@@ -20,7 +18,7 @@ if [ "${1}" == "--help" ]; then
     echo "Usage: $0 [--remove-db]"
     echo "  --remove-db: remove the existing DB before running"
     echo "  Env vars:"
-    echo " BUILD_MODE - default=debug, set to 'release' to build binaries in release mode"
+    echo " BUILD_MODE - default=--debug, set to '--release' to build binaries in release mode"
     exit 0
 fi
 if [ ! -f run_insecure_dev_server.sh ]; then

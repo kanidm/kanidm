@@ -2,7 +2,7 @@ altnames.cnf
 .DS_Store
 .backup*_test.json
 .backup_test.db
-/target
+**/target/**
 /insecure
 **/*.rs.bk
 test.db

@@ -10,6 +10,7 @@ cleanup() {
 if [ -f openapi.json ]; then
     rm openapi.json
 fi
+
 WORKDIR="$(mktemp -d)"
 echo "Trying to pull openapi.json to ${WORKDIR}"
 curl -sfk https://localhost:8443/docs/v1/openapi.json > "${WORKDIR}/openapi.json" || echo "Failed download"
@@ -31,8 +32,10 @@ echo "Running pythonopenapi/openapi-spec-validator"
 
 docker run \
     --mount "type=bind,src=${WORKDIR}/openapi.json,target=/openapi.json" \
-    --rm pythonopenapi/openapi-spec-validator /openapi.json && \
-    echo "openapi-spec-validator passed"
+    --rm pythonopenapi/openapi-spec-validator /openapi.json || {
+    echo "ERROR: openapi-spec-validator failed. Please check the openapi.json file for issues."
+}
+echo "openapi-spec-validator passed"
 
 
 echo "Running openapitools/openapi-generator-cli"
