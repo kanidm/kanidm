@@ -35,7 +35,7 @@ docker run \
     --rm pythonopenapi/openapi-spec-validator /openapi.json || {
     echo "ERROR: openapi-spec-validator failed. Please check the openapi.json file for issues."
 }
-echo "openapi-spec-validator passed"
+
 
 
 echo "Running openapitools/openapi-generator-cli"
