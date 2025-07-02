@@ -57,7 +57,7 @@ For more details see the
 You can find the name of your 389 Directory Server instance with:
 
 ```bash
-dsconf --list
+dsctl --list
 ```
 
 Using this you can show the current status of the retro changelog plugin to see if you need to
