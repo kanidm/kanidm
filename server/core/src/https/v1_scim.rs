@@ -387,6 +387,7 @@ async fn scim_person_id_get(
 #[utoipa::path(
     post,
     path = "/scim/v1/Application",
+    request_body = ScimEntryPostGeneric,
     responses(
         (status = 200, content_type="application/json", body=ScimEntry),
         ApiResponseWithout200,

@@ -8,10 +8,16 @@
 set -e
 
 WAIT_TIMER=5
-
+if [ -z "${BUILD_MODE}" ]; then
+    BUILD_MODE="--release"
+fi
 
 echo "Building release binaries..."
-cargo build --locked --release --bin kanidm --bin kanidmd
+# shellcheck disable=SC2086
+cargo build --locked $BUILD_MODE --bin kanidm --bin kanidmd --quiet || {
+    echo "Failed to build release binaries, please check the output above."
+    exit 1
+}
 
 if [ -d '.git' ]; then
     echo "You're in the root dir, let's move you!"
@@ -30,13 +36,16 @@ export KANIDM_CONFIG="./insecure_server.toml"
 mkdir -p /tmp/kanidm/client_ca
 
 echo "Generating certificates..."
-cargo run --bin kanidmd --release cert-generate
+# shellcheck disable=SC2086
+cargo run --bin kanidmd $BUILD_MODE cert-generate
 
 echo "Making sure it runs with the DB..."
-cargo run --bin kanidmd --release recover-account idm_admin -o json
+# shellcheck disable=SC2086
+cargo run --bin kanidmd $BUILD_MODE recover-account idm_admin -o json
 
 echo "Running the server..."
-cargo run --bin kanidmd --release server  &
+# shellcheck disable=SC2086
+cargo run --bin kanidmd $BUILD_MODE server  &
 KANIDMD_PID=$!
 echo "Kanidm PID: ${KANIDMD_PID}"
 
@@ -68,7 +77,7 @@ while true; do
     fi
 done
 
-../../scripts/setup_dev_environment.sh
+BUILD_MODE=$BUILD_MODE ../../scripts/setup_dev_environment.sh || kill -9 "${KANIDMD_PID}"
 
 
 if [ -n "$CURRENT_DIR" ]; then
