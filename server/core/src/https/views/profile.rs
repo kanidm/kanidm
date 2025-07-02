@@ -18,6 +18,7 @@ use axum_htmx::{HxEvent, HxPushUrl, HxResponseTrigger};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::internal::{OperationError, UserAuthToken};
+use kanidm_proto::scim_v1::client::{ScimEntryPutGeneric, ScimEntryPutKanidm};
 use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimPerson, ScimValueKanidm};
 use kanidm_proto::scim_v1::ScimMail;
 use serde::Deserialize;
@@ -26,7 +27,6 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use kanidm_proto::scim_v1::client::{ScimEntryPutGeneric, ScimEntryPutKanidm};
 
 #[derive(Template)]
 #[template(path = "user_settings.html")]
@@ -156,7 +156,7 @@ pub(crate) async fn view_profile_diff_start_save_post(
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
     let can_rw = uat.purpose_readwrite_active(time);
-    // TODO: A bit overkill to request scimEffectiveAccess here.
+
     let (scim_person, _) = crate::https::views::admin::persons::get_person_info(
         uat.uuid,
         state,
@@ -241,12 +241,18 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
         })
         .collect::<Vec<_>>();
     if let Some(primary_mail) = query.new_primary_mail {
-        scim_mails.push(ScimMail { primary: true, value: primary_mail })
+        scim_mails.push(ScimMail {
+            primary: true,
+            value: primary_mail,
+        })
     }
     attrs.insert(Attribute::Email, Some(ScimValueKanidm::Mail(scim_mails)));
 
-    let generic = ScimEntryPutGeneric::try_from(ScimEntryPutKanidm { id: uat.uuid, attrs })
-        .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
+    let generic = ScimEntryPutGeneric::try_from(ScimEntryPutKanidm {
+        id: uat.uuid,
+        attrs,
+    })
+    .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
 
     // TODO: Use returned KanidmScimPerson below instead of view_profile_get.
     state
