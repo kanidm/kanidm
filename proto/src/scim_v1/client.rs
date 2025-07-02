@@ -12,6 +12,7 @@ use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub type ScimSshPublicKeys = Vec<ScimSshPublicKey>;
@@ -128,10 +129,11 @@ pub struct ScimEntryPutKanidm {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ScimStrings(#[serde_as(as = "OneOrMany<_, PreferMany>")] pub Vec<String>);
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Default, ToSchema)]
 pub struct ScimEntryPostGeneric {
     /// Create an attribute to contain the following value state.
     #[serde(flatten)]
+    #[schema(value_type = Object, additional_properties = true)]
     pub attrs: BTreeMap<Attribute, JsonValue>,
 }
 
