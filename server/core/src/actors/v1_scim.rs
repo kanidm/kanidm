@@ -250,7 +250,6 @@ impl QueryServerWriteV1 {
             .and_then(|r| idms_prox_write.commit().map(|_| r))
     }
 
-
     #[instrument(
         level = "info",
         skip_all,
@@ -261,20 +260,19 @@ impl QueryServerWriteV1 {
         client_auth_info: ClientAuthInfo,
         eventid: Uuid,
         generic: ScimEntryPutGeneric,
-        effective_access_check: bool,
     ) -> Result<ScimEntryKanidm, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
-            .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
-                e
+            .map_err(|op_err| {
+                admin_error!(err = ?op_err, "Invalid identity");
+                op_err
             })?;
 
-        let mut scim_entry_put_event =
+        let scim_entry_put_event =
             ScimEntryPutEvent::try_from(ident, generic, &mut idms_prox_write.qs_write)?;
-        scim_entry_put_event.effective_access_check = effective_access_check;
+        println!("{scim_entry_put_event:?}");
 
         idms_prox_write.qs_write.scim_put(scim_entry_put_event)
     }

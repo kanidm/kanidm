@@ -132,6 +132,7 @@ impl QueryServerWriteTransaction<'_> {
         let mut modset = ModSetValid::default();
 
         modset.insert(target, mods_valid);
+        dbg!(&modset);
 
         let modify_event = BatchModifyEvent {
             ident: ident.clone(),
@@ -425,6 +426,7 @@ mod tests {
     use super::ScimEntryPutEvent;
     use crate::prelude::*;
     use kanidm_proto::scim_v1::client::ScimEntryPutKanidm;
+    use kanidm_proto::scim_v1::ScimMail;
     use kanidm_proto::scim_v1::server::ScimReference;
 
     #[qs_test]
@@ -473,10 +475,17 @@ mod tests {
 
         assert!(server_txn.internal_create(vec![e1, e2, e3, e4]).is_ok());
 
-        // Set an attr
+        // Set attrs
+        let test_mails = vec![
+            ScimMail { primary: true, value: "test@test.test".to_string() },
+            ScimMail { primary: false, value: "test2@test.test".to_string() },
+        ];
         let put = ScimEntryPutKanidm {
             id: group_uuid,
-            attrs: [(Attribute::Description, Some("Group Description".into()))].into(),
+            attrs: [
+                (Attribute::Description, Some("Group Description".into())),
+                (Attribute::Mail, Some(ScimValueKanidm::Mail(test_mails.clone())))
+            ].into(),
         };
 
         let put_generic = put.try_into().unwrap();
@@ -486,11 +495,19 @@ mod tests {
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");
         let desc = updated_entry.attrs.get(&Attribute::Description).unwrap();
+        let mails = updated_entry.attrs.get(&Attribute::Mail).unwrap();
 
         match desc {
             ScimValueKanidm::String(gdesc) if gdesc == "Group Description" => {}
             _ => unreachable!("Expected a string"),
         };
+
+        let ScimValueKanidm::Mail(mails) = mails else {
+            unreachable!("Expected an email")
+        };
+
+        // asserts emails ⊂ test_mails
+        assert!(mails.iter().all(|mail| test_mails.contains(mail)));
 
         // null removes attr
         let put = ScimEntryPutKanidm {

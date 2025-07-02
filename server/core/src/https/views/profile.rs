@@ -5,6 +5,7 @@ use super::navbar::NavbarCtx;
 use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
+//use crate::https::views::admin::persons::PERSON_ATTRIBUTES;
 use crate::https::ServerState;
 use askama::Template;
 use askama_axum::IntoResponse;
@@ -18,7 +19,7 @@ use axum_htmx::{HxEvent, HxPushUrl, HxResponseTrigger};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::internal::{OperationError, UserAuthToken};
-use kanidm_proto::scim_v1::client::{ScimEntryPutGeneric, ScimEntryPutKanidm};
+use kanidm_proto::scim_v1::client::ScimEntryPutKanidm;
 use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimPerson, ScimValueKanidm};
 use kanidm_proto::scim_v1::ScimMail;
 use serde::Deserialize;
@@ -51,11 +52,11 @@ pub(crate) struct SaveProfileQuery {
     #[serde(rename = "displayname")]
     display_name: String,
     #[serde(rename = "email_index")]
-    emails_indexes: Vec<u16>,
+    emails_indexes: Option<Vec<u16>>,
     #[serde(rename = "emails[]")]
-    emails: Vec<String>,
+    emails: Option<Vec<String>>,
     // radio buttons are used to pick a primary index, remove causes holes, map back into [emails] using [emails_indexes]
-    primary_email_index: u16,
+    primary_email_index: Option<u16>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -65,7 +66,7 @@ pub(crate) struct CommitSaveProfileQuery {
     #[serde(rename = "display_name")]
     display_name: Option<String>,
     #[serde(rename = "emails[]")]
-    emails: Vec<String>,
+    emails: Option<Vec<String>>,
     #[serde(rename = "new_primary_mail")]
     new_primary_mail: Option<String>,
 }
@@ -165,40 +166,59 @@ pub(crate) async fn view_profile_diff_start_save_post(
     )
     .await?;
 
-    let primary_index = query
-        .emails_indexes
-        .iter()
-        .position(|ei| ei == &query.primary_email_index)
-        .unwrap_or(0);
-    let new_mails = query
-        .emails
-        .iter()
-        .enumerate()
-        .map(|(ei, email)| ScimMail {
-            primary: ei == primary_index,
-            value: email.to_string(),
-        })
-        .collect();
-    let old_primary_mail = scim_person
-        .mails
-        .iter()
-        .find(|sm| sm.primary)
-        .map(|sm| sm.value.clone());
+    let profile_view = if let (Some(email_indices), Some(emails), Some(primary_index)) = (
+        query.emails_indexes,
+        query.emails,
+        query.primary_email_index,
+    ) {
+        let primary_index = email_indices
+            .iter()
+            .position(|ei| ei == &primary_index)
+            .unwrap_or(0);
+        let new_mails = emails
+            .iter()
+            .enumerate()
+            .map(|(ei, email)| ScimMail {
+                primary: ei == primary_index,
+                value: email.to_string(),
+            })
+            .collect();
+        let old_primary_mail = scim_person
+            .mails
+            .iter()
+            .find(|sm| sm.primary)
+            .map(|sm| sm.value.clone());
 
-    let emails_are_same = scim_person.mails == new_mails;
+        let emails_are_same = scim_person.mails == new_mails;
 
-    let profile_view = ProfileChangesPartialView {
-        menu_active_item: ProfileMenuItems::UserProfile,
-        can_rw,
-        person: scim_person,
-        primary_mail: old_primary_mail,
-        new_attrs: ProfileAttributes {
-            account_name: query.account_name,
-            display_name: query.display_name,
-            emails: new_mails,
-        },
-        emails_are_same,
-        new_primary_mail: query.emails.get(primary_index).cloned(),
+        ProfileChangesPartialView {
+            menu_active_item: ProfileMenuItems::UserProfile,
+            can_rw,
+            person: scim_person,
+            primary_mail: old_primary_mail,
+            new_attrs: ProfileAttributes {
+                account_name: query.account_name,
+                display_name: query.display_name,
+                emails: new_mails,
+            },
+            emails_are_same,
+            new_primary_mail: emails.get(primary_index).cloned(),
+        }
+    } else {
+        let emails_are_same = scim_person.mails.is_empty();
+        ProfileChangesPartialView {
+            menu_active_item: ProfileMenuItems::UserProfile,
+            can_rw,
+            person: scim_person,
+            primary_mail: None,
+            new_attrs: ProfileAttributes {
+                account_name: query.account_name,
+                display_name: query.display_name,
+                emails: vec![],
+            },
+            emails_are_same,
+            new_primary_mail: None,
+        }
     };
 
     Ok((
@@ -232,32 +252,45 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
             Some(ScimValueKanidm::String(display_name)),
         );
     }
-    let mut scim_mails = query
-        .emails
-        .into_iter()
-        .map(|e| ScimMail {
-            primary: false,
-            value: e,
-        })
-        .collect::<Vec<_>>();
+    let mut scim_mails = if let Some(secondary_mails) = query.emails {
+        secondary_mails
+            .into_iter()
+            .map(|secondary_mail| ScimMail {
+                primary: false,
+                value: secondary_mail,
+            })
+            .collect::<Vec<_>>()
+    } else {
+        vec![]
+    };
     if let Some(primary_mail) = query.new_primary_mail {
         scim_mails.push(ScimMail {
             primary: true,
             value: primary_mail,
         })
     }
-    attrs.insert(Attribute::Email, Some(ScimValueKanidm::Mail(scim_mails)));
+    attrs.insert(
+        Attribute::Mail,
+        if scim_mails.is_empty() {
+            None
+        } else {
+            Some(ScimValueKanidm::Mail(scim_mails))
+        },
+    );
 
-    let generic = ScimEntryPutGeneric::try_from(ScimEntryPutKanidm {
+    let generic = ScimEntryPutKanidm {
         id: uat.uuid,
         attrs,
-    })
+    }
+    .try_into()
     .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
+
+    println!("{generic:?}");
 
     // TODO: Use returned KanidmScimPerson below instead of view_profile_get.
     state
         .qe_w_ref
-        .handle_scim_entry_put(client_auth_info.clone(), kopid.eventid, generic, true)
+        .handle_scim_entry_put(client_auth_info.clone(), kopid.eventid, generic)
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 

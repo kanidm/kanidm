@@ -21,7 +21,7 @@ use kanidmd_lib::idm::ClientAuthInfo;
 use std::str::FromStr;
 use uuid::Uuid;
 
-const PERSON_ATTRIBUTES: [Attribute; 9] = [
+pub const PERSON_ATTRIBUTES: [Attribute; 9] = [
     Attribute::Uuid,
     Attribute::Description,
     Attribute::Name,
