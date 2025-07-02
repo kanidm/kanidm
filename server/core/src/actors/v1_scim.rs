@@ -1,4 +1,5 @@
 use super::{QueryServerReadV1, QueryServerWriteV1};
+use kanidm_proto::scim_v1::client::ScimEntryPutGeneric;
 use kanidm_proto::scim_v1::{
     client::ScimEntryPostGeneric, client::ScimFilter, server::ScimEntryKanidm, ScimEntryGetQuery,
     ScimSyncRequest, ScimSyncState,
@@ -11,6 +12,7 @@ use kanidmd_lib::server::scim::{ScimCreateEvent, ScimDeleteEvent};
 
 use kanidmd_lib::idm::server::IdmServerTransaction;
 use kanidmd_lib::prelude::*;
+use kanidmd_lib::server::scim::ScimEntryPutEvent;
 
 impl QueryServerWriteV1 {
     #[instrument(
@@ -246,6 +248,35 @@ impl QueryServerWriteV1 {
             .qs_write
             .scim_delete(scim_delete_event)
             .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_scim_entry_put(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        generic: ScimEntryPutGeneric,
+        effective_access_check: bool,
+    ) -> Result<ScimEntryKanidm, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let mut scim_entry_put_event =
+            ScimEntryPutEvent::try_from(ident, generic, &mut idms_prox_write.qs_write)?;
+        scim_entry_put_event.effective_access_check = effective_access_check;
+
+        idms_prox_write.qs_write.scim_put(scim_entry_put_event)
     }
 }
 

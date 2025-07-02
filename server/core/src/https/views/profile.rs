@@ -17,18 +17,16 @@ use axum_extra::extract::Form;
 use axum_htmx::{HxEvent, HxPushUrl, HxResponseTrigger};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_MAIL, ATTR_NAME};
-use kanidm_proto::internal::UserAuthToken;
-use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimPerson};
+use kanidm_proto::internal::{OperationError, UserAuthToken};
+use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimPerson, ScimValueKanidm};
 use kanidm_proto::scim_v1::ScimMail;
-use kanidmd_lib::filter::{f_id, Filter};
-use kanidmd_lib::prelude::f_and;
-use kanidmd_lib::prelude::FC;
 use serde::Deserialize;
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
+use kanidm_proto::scim_v1::client::{ScimEntryPutGeneric, ScimEntryPutKanidm};
 
 #[derive(Template)]
 #[template(path = "user_settings.html")]
@@ -224,80 +222,38 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
-    let filter = filter_all!(f_and!([f_id(uat.uuid.to_string().as_str())]));
-
+    let mut attrs = BTreeMap::<Attribute, Option<ScimValueKanidm>>::new();
     if let Some(account_name) = query.account_name {
-        state
-            .qe_w_ref
-            .handle_setattribute(
-                client_auth_info.clone(),
-                uat.uuid.to_string(),
-                ATTR_NAME.to_string(),
-                vec![account_name],
-                filter.clone(),
-                kopid.eventid,
-            )
-            .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-            .await?;
+        attrs.insert(Attribute::Name, Some(ScimValueKanidm::String(account_name)));
     }
     if let Some(display_name) = query.display_name {
-        state
-            .qe_w_ref
-            .handle_setattribute(
-                client_auth_info.clone(),
-                uat.uuid.to_string(),
-                ATTR_DISPLAYNAME.to_string(),
-                vec![display_name],
-                filter.clone(),
-                kopid.eventid,
-            )
-            .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-            .await?;
+        attrs.insert(
+            Attribute::DisplayName,
+            Some(ScimValueKanidm::String(display_name)),
+        );
     }
-    let mut emails = query.emails;
-    if let Some(primary) = query.new_primary_mail {
-        emails.insert(0, primary);
+    let mut scim_mails = query
+        .emails
+        .into_iter()
+        .map(|e| ScimMail {
+            primary: false,
+            value: e,
+        })
+        .collect::<Vec<_>>();
+    if let Some(primary_mail) = query.new_primary_mail {
+        scim_mails.push(ScimMail { primary: true, value: primary_mail })
     }
+    attrs.insert(Attribute::Email, Some(ScimValueKanidm::Mail(scim_mails)));
 
+    let generic = ScimEntryPutGeneric::try_from(ScimEntryPutKanidm { id: uat.uuid, attrs })
+        .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
+
+    // TODO: Use returned KanidmScimPerson below instead of view_profile_get.
     state
         .qe_w_ref
-        .handle_setattribute(
-            client_auth_info.clone(),
-            uat.uuid.to_string(),
-            ATTR_MAIL.to_string(),
-            emails,
-            filter.clone(),
-            kopid.eventid,
-        )
+        .handle_scim_entry_put(client_auth_info.clone(), kopid.eventid, generic, true)
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
-
-    // TODO: These are normally not permitted, user should be prevented from changing non modifiable fields in the UI though
-    // state
-    //     .qe_w_ref
-    //     .handle_setattribute(
-    //         client_auth_info.clone(),
-    //         uat.uuid.to_string(),
-    //         ATTR_EMAIL.to_string(),
-    //         vec![new_attrs.email.unwrap_or("".to_string())],
-    //         filter.clone(),
-    //         kopid.eventid,
-    //     )
-    //     .map_err(|op_err| HtmxError::new(&kopid, op_err))
-    //     .await?;
-    //
-    // state
-    //     .qe_w_ref
-    //     .handle_setattribute(
-    //         client_auth_info.clone(),
-    //         uat.uuid.to_string(),
-    //         ATTR_NAME.to_string(),
-    //         vec![new_attrs.account_name],
-    //         filter.clone(),
-    //         kopid.eventid,
-    //     )
-    //     .map_err(|op_err| HtmxError::new(&kopid, op_err))
-    //     .await?;
 
     // TODO: Calling this here returns the old attributes
     match view_profile_get(
