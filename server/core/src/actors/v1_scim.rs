@@ -272,9 +272,11 @@ impl QueryServerWriteV1 {
 
         let scim_entry_put_event =
             ScimEntryPutEvent::try_from(ident, generic, &mut idms_prox_write.qs_write)?;
-        println!("{scim_entry_put_event:?}");
 
-        idms_prox_write.qs_write.scim_put(scim_entry_put_event)
+        idms_prox_write
+            .qs_write
+            .scim_put(scim_entry_put_event)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
     }
 }
 

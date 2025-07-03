@@ -5,7 +5,6 @@ use super::navbar::NavbarCtx;
 use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
-//use crate::https::views::admin::persons::PERSON_ATTRIBUTES;
 use crate::https::ServerState;
 use askama::Template;
 use askama_axum::IntoResponse;
@@ -110,7 +109,7 @@ pub(crate) async fn view_profile_get(
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
-) -> Result<ProfileView, WebError> {
+) -> Result<Response, WebError> {
     let uat: UserAuthToken = state
         .qe_r_ref
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
@@ -129,16 +128,22 @@ pub(crate) async fn view_profile_get(
 
     let can_rw = uat.purpose_readwrite_active(time);
 
-    Ok(ProfileView {
-        navbar_ctx: NavbarCtx { domain_info },
-
-        profile_partial: ProfilePartialView {
-            menu_active_item: ProfileMenuItems::UserProfile,
-            can_rw,
-            person: scim_person,
-            scim_effective_access,
+    let rehook_email_removal_buttons =
+        HxResponseTrigger::after_swap([HxEvent::new("addEmailSwapped".to_string())]);
+    Ok((
+        rehook_email_removal_buttons,
+        HxPushUrl(Uri::from_static("/ui/profile")),
+        ProfileView {
+            navbar_ctx: NavbarCtx { domain_info },
+            profile_partial: ProfilePartialView {
+                menu_active_item: ProfileMenuItems::UserProfile,
+                can_rw,
+                person: scim_person,
+                scim_effective_access,
+            },
         },
-    })
+    )
+        .into_response())
 }
 
 pub(crate) async fn view_profile_diff_start_save_post(
@@ -166,59 +171,50 @@ pub(crate) async fn view_profile_diff_start_save_post(
     )
     .await?;
 
-    let profile_view = if let (Some(email_indices), Some(emails), Some(primary_index)) = (
-        query.emails_indexes,
-        query.emails,
-        query.primary_email_index,
-    ) {
-        let primary_index = email_indices
-            .iter()
-            .position(|ei| ei == &primary_index)
-            .unwrap_or(0);
-        let new_mails = emails
-            .iter()
-            .enumerate()
-            .map(|(ei, email)| ScimMail {
-                primary: ei == primary_index,
-                value: email.to_string(),
-            })
-            .collect();
-        let old_primary_mail = scim_person
-            .mails
-            .iter()
-            .find(|sm| sm.primary)
-            .map(|sm| sm.value.clone());
+    let new_emails =
+        if let (Some(email_indices), Some(emails)) = (query.emails_indexes, query.emails) {
+            let primary_index = query.primary_email_index.unwrap_or(0);
 
-        let emails_are_same = scim_person.mails == new_mails;
+            let primary_index = email_indices
+                .iter()
+                .position(|ei| ei == &primary_index)
+                .unwrap_or(0);
+            let new_mails = emails
+                .iter()
+                .enumerate()
+                .map(|(ei, email)| ScimMail {
+                    primary: ei == primary_index,
+                    value: email.to_string(),
+                })
+                .collect();
 
-        ProfileChangesPartialView {
-            menu_active_item: ProfileMenuItems::UserProfile,
-            can_rw,
-            person: scim_person,
-            primary_mail: old_primary_mail,
-            new_attrs: ProfileAttributes {
-                account_name: query.account_name,
-                display_name: query.display_name,
-                emails: new_mails,
-            },
-            emails_are_same,
-            new_primary_mail: emails.get(primary_index).cloned(),
-        }
-    } else {
-        let emails_are_same = scim_person.mails.is_empty();
-        ProfileChangesPartialView {
-            menu_active_item: ProfileMenuItems::UserProfile,
-            can_rw,
-            person: scim_person,
-            primary_mail: None,
-            new_attrs: ProfileAttributes {
-                account_name: query.account_name,
-                display_name: query.display_name,
-                emails: vec![],
-            },
-            emails_are_same,
-            new_primary_mail: None,
-        }
+            new_mails
+        } else {
+            vec![]
+        };
+    let emails_are_same = scim_person.mails == new_emails;
+    let primary_mail = scim_person
+        .mails
+        .iter()
+        .find(|sm| sm.primary)
+        .map(|sm| sm.value.clone());
+    let new_primary_mail = new_emails
+        .iter()
+        .find(|sm| sm.primary)
+        .map(|sm| sm.value.clone());
+
+    let profile_view = ProfileChangesPartialView {
+        menu_active_item: ProfileMenuItems::UserProfile,
+        can_rw,
+        person: scim_person,
+        primary_mail,
+        new_attrs: ProfileAttributes {
+            account_name: query.account_name,
+            display_name: query.display_name,
+            emails: new_emails,
+        },
+        new_primary_mail,
+        emails_are_same,
     };
 
     Ok((
@@ -285,8 +281,6 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
     .try_into()
     .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
 
-    println!("{generic:?}");
-
     // TODO: Use returned KanidmScimPerson below instead of view_profile_get.
     state
         .qe_w_ref
@@ -294,7 +288,6 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
-    // TODO: Calling this here returns the old attributes
     match view_profile_get(
         State(state),
         Extension(kopid),

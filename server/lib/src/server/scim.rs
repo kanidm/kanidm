@@ -132,7 +132,6 @@ impl QueryServerWriteTransaction<'_> {
         let mut modset = ModSetValid::default();
 
         modset.insert(target, mods_valid);
-        dbg!(&modset);
 
         let modify_event = BatchModifyEvent {
             ident: ident.clone(),
@@ -426,8 +425,8 @@ mod tests {
     use super::ScimEntryPutEvent;
     use crate::prelude::*;
     use kanidm_proto::scim_v1::client::ScimEntryPutKanidm;
-    use kanidm_proto::scim_v1::ScimMail;
     use kanidm_proto::scim_v1::server::ScimReference;
+    use kanidm_proto::scim_v1::ScimMail;
 
     #[qs_test]
     async fn scim_put_basic(server: &QueryServer) {
@@ -477,15 +476,25 @@ mod tests {
 
         // Set attrs
         let test_mails = vec![
-            ScimMail { primary: true, value: "test@test.test".to_string() },
-            ScimMail { primary: false, value: "test2@test.test".to_string() },
+            ScimMail {
+                primary: true,
+                value: "test@test.test".to_string(),
+            },
+            ScimMail {
+                primary: false,
+                value: "test2@test.test".to_string(),
+            },
         ];
         let put = ScimEntryPutKanidm {
             id: group_uuid,
             attrs: [
                 (Attribute::Description, Some("Group Description".into())),
-                (Attribute::Mail, Some(ScimValueKanidm::Mail(test_mails.clone())))
-            ].into(),
+                (
+                    Attribute::Mail,
+                    Some(ScimValueKanidm::Mail(test_mails.clone())),
+                ),
+            ]
+            .into(),
         };
 
         let put_generic = put.try_into().unwrap();
