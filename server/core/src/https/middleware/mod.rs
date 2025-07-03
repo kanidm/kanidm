@@ -92,6 +92,8 @@ pub async fn ip_address_middleware(
 ) -> Response {
     match ip_address_middleware_inner(&state, &mut request).await {
         Ok(trusted_client_ip) => {
+            // By this point, proxy-v2 AND x-forward-for have resolved, so we can finally display this information.
+            info!(connection_addr = %trusted_client_ip.connection_addr, client_ip_addr = %trusted_client_ip.client_ip_addr);
             request.extensions_mut().insert(trusted_client_ip);
             next.run(request).await
         }
