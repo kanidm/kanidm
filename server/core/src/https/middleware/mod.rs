@@ -1,11 +1,20 @@
+use crate::https::extractors::ClientConnInfo;
+use crate::https::ServerState;
 use axum::{
     body::Body,
+    extract::{connect_info::ConnectInfo, State},
+    http::{header::HeaderName, StatusCode},
     http::{HeaderValue, Request},
     middleware::Next,
     response::Response,
+    RequestExt,
 };
-use kanidm_proto::constants::{KOPID, KVERSION};
+use kanidm_proto::constants::{KOPID, KVERSION, X_FORWARDED_FOR};
+use std::net::IpAddr;
 use uuid::Uuid;
+
+#[allow(clippy::declare_interior_mutable_const)]
+const X_FORWARDED_FOR_HEADER: HeaderName = HeaderName::from_static(X_FORWARDED_FOR);
 
 pub(crate) mod caching;
 pub(crate) mod compression;
@@ -72,4 +81,92 @@ pub async fn kopid_middleware(mut request: Request<Body>, next: Next) -> Respons
         });
 
     response
+}
+
+// This middleware extracts the ip_address and client information, and stores it
+// in the request extensions for future layers to use it.
+pub async fn ip_address_middleware(
+    State(state): State<ServerState>,
+    mut request: Request<Body>,
+    next: Next,
+) -> Response {
+    match ip_address_middleware_inner(&state, &mut request).await {
+        Ok(trusted_client_ip) => {
+            request.extensions_mut().insert(trusted_client_ip);
+            next.run(request).await
+        }
+        Err((status_code, reason)) => {
+            // Worst case, return.
+            let mut response = Response::new(Body::from(reason));
+            *response.status_mut() = status_code;
+            response
+        }
+    }
+}
+
+async fn ip_address_middleware_inner(
+    state: &ServerState,
+    request: &mut Request<Body>,
+) -> Result<ClientConnInfo, (StatusCode, &'static str)> {
+    // Extract the IP and insert it to the request.
+    let ConnectInfo(ClientConnInfo {
+        connection_addr,
+        client_ip_addr,
+        client_cert,
+    }) = request
+        .extract_parts::<ConnectInfo<ClientConnInfo>>()
+        .await
+        .map_err(|_| {
+            error!("Connect info contains invalid data");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "connect info contains invalid data",
+            )
+        })?;
+
+    let connection_ip_addr = connection_addr.ip();
+
+    let trust_x_forward_for = state
+        .trust_x_forward_for_ips
+        .as_ref()
+        .map(|range| range.contains(&connection_ip_addr))
+        .unwrap_or_default();
+
+    let client_ip_addr = if trust_x_forward_for {
+        if let Some(x_forward_for) = request.headers().get(X_FORWARDED_FOR_HEADER) {
+            // X forward for may be comma separated.
+            let first = x_forward_for
+                .to_str()
+                .map(|s|
+                    // Split on an optional comma, return the first result.
+                    s.split(',').next().unwrap_or(s))
+                .map_err(|_| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        "X-Forwarded-For contains invalid data",
+                    )
+                })?;
+
+            first.parse::<IpAddr>().map_err(|_| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    "X-Forwarded-For contains invalid ip addr",
+                )
+            })?
+        } else {
+            client_ip_addr
+        }
+    } else {
+        // This can either be the client_addr == connection_addr if there are
+        // no ip address trust sources, or this is the value as reported by
+        // proxy protocol header. If the proxy protocol header is used, then
+        // trust_x_forward_for can never have been true so we catch here.
+        client_ip_addr
+    };
+
+    Ok(ClientConnInfo {
+        connection_addr,
+        client_ip_addr,
+        client_cert,
+    })
 }

@@ -34,6 +34,8 @@ impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
             method = %request.method(),
             uri = %request.uri(),
             version = ?request.version(),
+            // Defer logging this span until there is child information attached.
+            defer = true,
         )
     }
 }
