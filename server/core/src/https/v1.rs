@@ -1,5 +1,11 @@
 //! The V1 API things!
 
+use super::errors::WebError;
+use super::middleware::caching::{cache_me_short, dont_cache_me};
+use super::middleware::KOpId;
+use super::ServerState;
+use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
+use crate::https::extractors::{ClientConnInfo, VerifiedClientInformation};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, HeaderValue};
 use axum::middleware::from_fn;
@@ -9,9 +15,6 @@ use axum::{Extension, Json, Router};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use compact_jwt::{Jwk, Jws, JwsSigner};
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
-use std::net::IpAddr;
-use uuid::Uuid;
-
 use kanidm_proto::internal::{
     ApiToken, AppLink, CUIntentToken, CURequest, CUSessionToken, CUStatus, CreateRequest,
     CredentialStatus, DeleteRequest, IdentifyUserRequest, IdentifyUserResponse, ModifyRequest,
@@ -27,13 +30,8 @@ use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
-
-use super::errors::WebError;
-use super::middleware::caching::{cache_me_short, dont_cache_me};
-use super::middleware::KOpId;
-use super::ServerState;
-use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
-use crate::https::extractors::{TrustedClientIp, VerifiedClientInformation};
+use std::net::IpAddr;
+use uuid::Uuid;
 
 #[utoipa::path(
     post,
@@ -3022,9 +3020,9 @@ pub async fn auth_valid(
 )]
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,
-    TrustedClientIp(ip_addr): TrustedClientIp,
+    Extension(trusted_client_ip): Extension<ClientConnInfo>,
 ) -> Result<Json<IpAddr>, ()> {
-    Ok(Json::from(ip_addr))
+    Ok(Json::from(trusted_client_ip.client_ip_addr))
 }
 
 #[utoipa::path(
