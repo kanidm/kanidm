@@ -3,7 +3,6 @@
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
 #![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
 #![deny(clippy::unreachable)]
 #![deny(clippy::await_holding_lock)]
@@ -146,21 +145,23 @@ pub async fn setup_account_passkey(
     let intent_token = rsclient
         .idm_person_account_credential_update_intent(account_name, Some(1234))
         .await
-        .unwrap();
+        .expect("Unable to setup account passkey");
 
     // Create a new empty session.
-    let rsclient = rsclient.new_session().unwrap();
+    let rsclient = rsclient
+        .new_session()
+        .expect("Unable to create new client session");
 
     // Exchange the intent token
     let (session_token, _status) = rsclient
         .idm_account_credential_update_exchange(intent_token.token)
         .await
-        .unwrap();
+        .expect("Unable to exchange credential update token");
 
     let _status = rsclient
         .idm_account_credential_update_status(&session_token)
         .await
-        .unwrap();
+        .expect("Unable to check credential update status");
 
     // Setup and update the passkey
     let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
@@ -168,7 +169,7 @@ pub async fn setup_account_passkey(
     let status = rsclient
         .idm_account_credential_update_passkey_init(&session_token)
         .await
-        .unwrap();
+        .expect("Unable to init passkey update");
 
     let passkey_chal = match status.mfaregstate {
         CURegState::Passkey(c) => Some(c),
@@ -186,7 +187,7 @@ pub async fn setup_account_passkey(
     let status = rsclient
         .idm_account_credential_update_passkey_finish(&session_token, label, passkey_resp)
         .await
-        .unwrap();
+        .expect("Unable to finish passkey credential");
 
     assert!(status.can_commit);
     assert_eq!(status.passkeys.len(), 1);
@@ -195,7 +196,7 @@ pub async fn setup_account_passkey(
     rsclient
         .idm_account_credential_update_commit(&session_token)
         .await
-        .unwrap();
+        .expect("Unable to commit credential update");
 
     // Assert it now works.
     let _ = rsclient.logout().await;

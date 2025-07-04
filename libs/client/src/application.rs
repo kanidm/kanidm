@@ -34,7 +34,7 @@ impl KanidmClient {
         query: Option<ScimEntryGetQuery>,
     ) -> Result<ScimEntryApplication, ClientError> {
         self.perform_get_request_query(
-            format!("/scim/v1/Application/{}", name_or_uuid).as_str(),
+            format!("/scim/v1/Application/{name_or_uuid}").as_str(),
             query,
         )
         .await
