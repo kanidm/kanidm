@@ -6,7 +6,7 @@ use axum::{
     http::{header::HeaderName, StatusCode},
     http::{HeaderValue, Request},
     middleware::Next,
-    response::Response,
+    response::{IntoResponse, Response},
     RequestExt,
 };
 use kanidm_proto::constants::{KOPID, KVERSION, X_FORWARDED_FOR};
@@ -97,12 +97,7 @@ pub async fn ip_address_middleware(
             request.extensions_mut().insert(trusted_client_ip);
             next.run(request).await
         }
-        Err((status_code, reason)) => {
-            // Worst case, return.
-            let mut response = Response::new(Body::from(reason));
-            *response.status_mut() = status_code;
-            response
-        }
+        Err(err_status_and_reason) => err_status_and_reason.into_response(),
     }
 }
 
