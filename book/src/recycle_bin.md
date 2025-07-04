@@ -1,22 +1,22 @@
 # Recycle Bin
 
-The recycle bin is a storage of deleted entries from the server. This allows recovery from mistakes
-for a period of time.
+The recycle bin is a storage of deleted entries from the server. This allows recovery from mistakes for a period of
+time.
 
 > [!WARNING]
 >
-> The recycle bin is a best effort - when recovering in some cases not everything can be "put back"
-> the way it was. Be sure to check your entries are valid once they have been revived.
+> The recycle bin is a best effort - when recovering in some cases not everything can be "put back" the way it was. Be
+> sure to check your entries are valid once they have been revived.
 
 ## Where is the Recycle Bin?
 
-The recycle bin is stored as part of your main database - it is included in all backups and
-restores, just like any other data. It is also replicated between all servers.
+The recycle bin is stored as part of your main database - it is included in all backups and restores, just like any
+other data. It is also replicated between all servers.
 
 ## How do Things Get Into the Recycle Bin?
 
-Any delete operation of an entry will cause it to be sent to the recycle bin. No configuration or
-specification is required.
+Any delete operation of an entry will cause it to be sent to the recycle bin. No configuration or specification is
+required.
 
 ## How Long Do Items Stay in the Recycle Bin?
 
@@ -44,10 +44,9 @@ kanidm recycle-bin revive --name admin <uuid>
 
 ## Edge Cases
 
-The recycle bin is a best effort to restore your data - there are some cases where the revived
-entries may not be the same as their were when they were deleted. This generally revolves around
-reference types such as group membership, or when the reference type includes supplemental map data
-such as the OAuth2 scope map type.
+The recycle bin is a best effort to restore your data - there are some cases where the revived entries may not be the
+same as their were when they were deleted. This generally revolves around reference types such as group membership, or
+when the reference type includes supplemental map data such as the OAuth2 scope map type.
 
 An example of this data loss is the following steps:
 
@@ -61,8 +60,8 @@ revive user1
 revive group1
 ```
 
-In this series of steps, due to the way that referential integrity is implemented, the membership of
-user1 in group1 would be lost in this process. To explain why:
+In this series of steps, due to the way that referential integrity is implemented, the membership of user1 in group1
+would be lost in this process. To explain why:
 
 ```bash
 add user1
@@ -74,8 +73,7 @@ revive user1 // re-add groups based on directmemberof (empty set)
 revive group1 // no members
 ```
 
-These issues could be looked at again in the future, but for now we think that deletes of groups is
-rare - we expect recycle bin to save you in "oops" moments, and in a majority of cases you may
-delete a group or a user and then restore them. To handle this series of steps requires extra code
-complexity in how we flag operations. For more, see
+These issues could be looked at again in the future, but for now we think that deletes of groups is rare - we expect
+recycle bin to save you in "oops" moments, and in a majority of cases you may delete a group or a user and then restore
+them. To handle this series of steps requires extra code complexity in how we flag operations. For more, see
 [This issue on github](https://github.com/kanidm/kanidm/issues/177).

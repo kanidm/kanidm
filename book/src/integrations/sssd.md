@@ -1,43 +1,38 @@
 # SSSD
 
-[SSSD](https://sssd.io/) is an alternative [PAM and nsswitch](./pam_and_nsswitch.md) provider that
-is commonly available on Linux.
+[SSSD](https://sssd.io/) is an alternative [PAM and nsswitch](./pam_and_nsswitch.md) provider that is commonly available
+on Linux.
 
 > [!WARNING]
 >
-> SSSD should be considered a "last resort". If possible, always use the native Kanidm pam and
-> nsswitch tools instead.
+> SSSD should be considered a "last resort". If possible, always use the native Kanidm pam and nsswitch tools instead.
 
 ## Limitations
 
-SSSD has many significant limitations compared to Kanidm's native
-[PAM and nsswitch](./pam_and_nsswitch.md) provider.
+SSSD has many significant limitations compared to Kanidm's native [PAM and nsswitch](./pam_and_nsswitch.md) provider.
 
 ### Performance
 
-Kanidm's native provider outperforms SSSD significantly for both online and offline user resolving
-and operations. Because of this, SSSD can cause higher load on the Kanidm server due to its design
-limitations.
+Kanidm's native provider outperforms SSSD significantly for both online and offline user resolving and operations.
+Because of this, SSSD can cause higher load on the Kanidm server due to its design limitations.
 
 ### Features
 
-SSSD is not able to access all of the features of Kanidm, limiting the integration options available
-to you.
+SSSD is not able to access all of the features of Kanidm, limiting the integration options available to you.
 
 ### Security
 
-By default Kanidm uses state of the art cryptographic methods with configurable TPM binding of
-cached local credentials. SSSD uses significantly weaker methods to cache passwords. This means that
-you should not be caching credentials with SSSD, limiting deployment flexibility.
+By default Kanidm uses state of the art cryptographic methods with configurable TPM binding of cached local credentials.
+SSSD uses significantly weaker methods to cache passwords. This means that you should not be caching credentials with
+SSSD, limiting deployment flexibility.
 
-In addition, Kanidm's providers are written in Rust rather than C, meaning they have less surface
-area for attack and compromise. These providers have been through multiple security audits performed
-by the SUSE product security teams.
+In addition, Kanidm's providers are written in Rust rather than C, meaning they have less surface area for attack and
+compromise. These providers have been through multiple security audits performed by the SUSE product security teams.
 
 ## Support
 
-If you choose to use the SSSD provider the Kanidm project will only provide "best effort" for
-compatibility and issue resolution.
+If you choose to use the SSSD provider the Kanidm project will only provide "best effort" for compatibility and issue
+resolution.
 
 ## Configuration
 

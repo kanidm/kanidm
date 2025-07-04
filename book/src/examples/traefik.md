@@ -1,22 +1,21 @@
 # Traefik
 
-Traefik is a flexible HTTP reverse proxy webserver that can be integrated with Docker to allow
-dynamic configuration and to automatically use LetsEncrypt to provide valid TLS certificates. We can
-leverage this in the setup of Kanidm by specifying the configuration of Kanidm and Traefik in the
-same [Docker Compose configuration](https://docs.docker.com/compose/).
+Traefik is a flexible HTTP reverse proxy webserver that can be integrated with Docker to allow dynamic configuration and
+to automatically use LetsEncrypt to provide valid TLS certificates. We can leverage this in the setup of Kanidm by
+specifying the configuration of Kanidm and Traefik in the same
+[Docker Compose configuration](https://docs.docker.com/compose/).
 
 ## Example setup
 
-Create a new directory and copy the following YAML file into it as `docker-compose.yml`. Edit the
-YAML to update the LetsEncrypt account email for your domain and the FQDN where Kanidm will be made
-available. Ensure you adjust this file or Kanidm's configuration to have a matching HTTPS port; the
-line `traefik.http.services.kanidm.loadbalancer.server.port=8443` sets this on the Traefik side.
+Create a new directory and copy the following YAML file into it as `docker-compose.yml`. Edit the YAML to update the
+LetsEncrypt account email for your domain and the FQDN where Kanidm will be made available. Ensure you adjust this file
+or Kanidm's configuration to have a matching HTTPS port; the line
+`traefik.http.services.kanidm.loadbalancer.server.port=8443` sets this on the Traefik side.
 
 > [!NOTE]
 >
-> You will need to generate self-signed certificates for Kanidm, and copy the configuration into the
-> `kanidm_data` volume. Some instructions are available in the "Installing the Server" section of
-> this book.
+> You will need to generate self-signed certificates for Kanidm, and copy the configuration into the `kanidm_data`
+> volume. Some instructions are available in the "Installing the Server" section of this book.
 
 `docker-compose.yml`
 

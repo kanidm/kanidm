@@ -2,9 +2,9 @@
 
 > [!NOTE]
 >
-> Running different release versions will likely present incompatibilities. Ensure you're running
-> matching release versions of client and server binaries. If you have any issues, check that you
-> are running the latest version of Kanidm.
+> Running different release versions will likely present incompatibilities. Ensure you're running matching release
+> versions of client and server binaries. If you have any issues, check that you are running the latest version of
+> Kanidm.
 
 ## From packages
 
@@ -49,9 +49,8 @@ zypper in kanidm-clients
 
 ### macOS - Homebrew
 
-[Kanidm provides a Homebrew cask](https://github.com/kanidm/homebrew-kanidm),
-which lets [Homebrew](https://brew.sh/) build and install the CLI client tools
-from source:
+[Kanidm provides a Homebrew cask](https://github.com/kanidm/homebrew-kanidm), which lets [Homebrew](https://brew.sh/)
+build and install the CLI client tools from source:
 
 ```bash
 brew tap kanidm/kanidm
@@ -60,9 +59,8 @@ brew install kanidm
 
 > [!TIP]
 >
-> **Rust developers:** this formula will install a Rust toolchain with Homebrew,
-> and add it to your `PATH`. *This may interfere with any Rust toolchain
-> you've installed with [`rustup`](https://rustup.rs/).*
+> **Rust developers:** this formula will install a Rust toolchain with Homebrew, and add it to your `PATH`. _This may
+> interfere with any Rust toolchain you've installed with [`rustup`](https://rustup.rs/)._
 >
 > You can unlink Homebrew's Rust toolchain (removing it from your `PATH`) with:
 >
@@ -70,11 +68,10 @@ brew install kanidm
 > brew unlink rust
 > ```
 >
-> Homebrew will always use its version of Rust when building Rust packages, even
-> when it is unlinked.
+> Homebrew will always use its version of Rust when building Rust packages, even when it is unlinked.
 >
-> Alternatively, you may wish to [install the Kanidm CLI with `cargo`](#cargo)
-> instead – this will use whatever Rust toochain you've already installed.
+> Alternatively, you may wish to [install the Kanidm CLI with `cargo`](#cargo) instead – this will use whatever Rust
+> toochain you've already installed.
 
 ### Arch Linux
 
@@ -84,12 +81,11 @@ brew install kanidm
 
 > [!NOTE]
 >
-> Kanidm frequently uses new Rust versions and features, however Fedora and CentOS frequently are
-> behind in Rust releases. As a result, they may not always have the latest Kanidm versions
-> available.
+> Kanidm frequently uses new Rust versions and features, however Fedora and CentOS frequently are behind in Rust
+> releases. As a result, they may not always have the latest Kanidm versions available.
 
-Fedora has limited support through the development repository. You need to add the repository
-metadata into the correct directory:
+Fedora has limited support through the development repository. You need to add the repository metadata into the correct
+directory:
 
 ```bash
 # Fedora
@@ -110,13 +106,12 @@ dnf install kanidm-clients
 
 ### Ubuntu and Debian
 
-See <https://kanidm.github.io/kanidm_ppa/> for nightly-built packages of the current development
-builds, and how to install them.
+See <https://kanidm.github.io/kanidm_ppa/> for nightly-built packages of the current development builds, and how to
+install them.
 
 ## Alpine Linux
 
-Kanidm is available in the
-[Alpine Linux testing repository](https://pkgs.alpinelinux.org/packages?name=kanidm%2A).
+Kanidm is available in the [Alpine Linux testing repository](https://pkgs.alpinelinux.org/packages?name=kanidm%2A).
 
 To install the Kanidm client use:
 
@@ -126,8 +121,8 @@ apk add kanidm-clients
 
 ## Tools Container
 
-In some cases if your distribution does not have native kanidm-client support, and you can't access
-cargo for the install for some reason, you can use the cli tools from a docker container instead.
+In some cases if your distribution does not have native kanidm-client support, and you can't access cargo for the
+install for some reason, you can use the cli tools from a docker container instead.
 
 This is a "last resort" and we don't really recommend this for day to day usage.
 
@@ -156,10 +151,10 @@ alias kanidm="docker run ..."
 
 ## Cargo
 
-The tools are available as a cargo download if you have a rust tool chain available. To install rust
-you should follow the documentation for [rustup](https://rustup.rs/). These will be installed into
-your home directory. To update these, re-run the install command. You will likely need to install
-additional development libraries, specified in the [Developer Guide](developers/).
+The tools are available as a cargo download if you have a rust tool chain available. To install rust you should follow
+the documentation for [rustup](https://rustup.rs/). These will be installed into your home directory. To update these,
+re-run the install command. You will likely need to install additional development libraries, specified in the
+[Developer Guide](developers/).
 
 ```bash
 cargo install kanidm_tools

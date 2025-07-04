@@ -80,8 +80,8 @@ cargo install  --force \
 - [ ] git tag v1.x.0
 - [ ] git push origin 1.x.0 --tags
 
-- [ ] github -> create new release based on tag (not branch) - use tag because then tools will get
-      the tag + patches we apply.
+- [ ] github -> create new release based on tag (not branch) - use tag because then tools will get the tag + patches we
+      apply.
 
 ### Community
 
