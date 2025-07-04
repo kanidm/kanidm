@@ -1,10 +1,10 @@
 ## User Settings Display Web UI
 
-We need a usable centralized location for users to view and manage their own user settings. User
-settings do not envelop credentials, these have their own flow as they are also used in user setup.
+We need a usable centralized location for users to view and manage their own user settings. User settings do not envelop
+credentials, these have their own flow as they are also used in user setup.
 
-- Writing new values requires a writable session -> we will make the user reauthenticate to obtain a
-  temporary profile-update-token when they want to update their user settings.
+- Writing new values requires a writable session -> we will make the user reauthenticate to obtain a temporary
+  profile-update-token when they want to update their user settings.
 - The UI must display and make editable the following categories:
   - user attributes
   - user ssh public-keys
@@ -39,8 +39,8 @@ Attributes should be displayed with
 
 #### Editing attributes
 
-Users must be able to edit attributes individually. Users should be able to see their changes before
-saving them. E.g. via a popup that shows the old vs new value asking to confirm.
+Users must be able to edit attributes individually. Users should be able to see their changes before saving them. E.g.
+via a popup that shows the old vs new value asking to confirm.
 
 #### TODO: Personal Identifiable Information attributes (currently we don't have these attributes)
 
@@ -58,14 +58,13 @@ Ssh public key entries in Kanidm consist of a:
 - label : practically the ID of the key in kanidm
 - value : the public key
 
-A user may want to change their laptop ssh key by updating the value while keeping the label the
-same. // TODO: Should a user be allowed to relabel their kanidm ssh keys ?
+A user may want to change their laptop ssh key by updating the value while keeping the label the same. // TODO: Should a
+user be allowed to relabel their kanidm ssh keys ?
 
 #### Displaying ssh keys
 
-Due to their long length they should be line-wrapped into a text field so the entirety is visible
-when shown. To reduce visible clutter and inconsistent spacing we will put the values into
-collapsible elements.
+Due to their long length they should be line-wrapped into a text field so the entirety is visible when shown. To reduce
+visible clutter and inconsistent spacing we will put the values into collapsible elements.
 
 These collapsed elements must include:
 
@@ -75,34 +74,31 @@ These collapsed elements must include:
 
 #### Editing keys
 
-When editing keys users must be able to add keys, remove keys and update individual key values. Each
-action will be committed immediately, thus proper prompts and icons indicating this must be shown
-(like a floppy disk save icon ?)
+When editing keys users must be able to add keys, remove keys and update individual key values. Each action will be
+committed immediately, thus proper prompts and icons indicating this must be shown (like a floppy disk save icon ?)
 
 ### Credential status
 
-Described in [credential-display.rst](credential-display.rst) Must inform the user of the credential
-update/reset page, since it is very related and might be what they were looking for instead.
+Described in [credential-display.rst](credential-display.rst) Must inform the user of the credential update/reset page,
+since it is very related and might be what they were looking for instead.
 
 ### User groups
 
-Mostly a technical piece of info, should not be in direct view to avoid confusing users. Could be
-displayed in tree form.
+Mostly a technical piece of info, should not be in direct view to avoid confusing users. Could be displayed in tree
+form.
 
 ### User profile HTML Structure
 
-To keep things organised each category will be their own page with a subnavigation bar to navigate
-between them. Since htmx cannot (without extensions) swap new scripts into the <head> on swap during
-boosted navigation, we must do non-boosted navigation to our profile page OR enable some htmx
-extension library.
+To keep things organised each category will be their own page with a subnavigation bar to navigate between them. Since
+htmx cannot (without extensions) swap new scripts into the <head> on swap during boosted navigation, we must do
+non-boosted navigation to our profile page OR enable some htmx extension library.
 
-The same htmx limitation means that all JS for every profile categories must be loaded on all
-profile categories. Because want to use htmx to swap out content on form submission or page
-navigation to represent the new state as this is more efficient than triggering the client to do a
-redirect.
+The same htmx limitation means that all JS for every profile categories must be loaded on all profile categories.
+Because want to use htmx to swap out content on form submission or page navigation to represent the new state as this is
+more efficient than triggering the client to do a redirect.
 
-Every category will get their own Askama template which requires the relevant fields described for
-each category above. And example would be
+Every category will get their own Askama template which requires the relevant fields described for each category above.
+And example would be
 
 ```html
 <!-- /profile_templates/ssh_keys_partial.html -->
@@ -110,14 +106,10 @@ each category above. And example would be
 <!-- TODO: Depending on how we model modifiability of ssh keys this may change -->
 
 (% for ssh_key in ssh_keys %)
-    <!-- Display ssh_key properties with respect to this doc -->
-    (% if ssh_key_is_modifiable %)
-        <!-- more clicky buttons to enable modification/deletion -->
-    (% endif %)
-(% endfor %)
-
-
+<!-- Display ssh_key properties with respect to this doc -->
 (% if ssh_key_is_modifiable %)
+<!-- more clicky buttons to enable modification/deletion -->
+(% endif %) (% endfor %) (% if ssh_key_is_modifiable %)
 <!-- Add ssh_key button -->
 (% endif %)
 ```

@@ -31,5 +31,4 @@ flowchart TD
     LoginFlow --> DeviceGet
     DeviceGet -->|Logged in, Valid Token| ConfirmAccess(User Prompted to authorize)
     ConfirmAccess -->|Confirmed| End(Done!)
-    
 ```
