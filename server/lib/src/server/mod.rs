@@ -33,12 +33,11 @@ use concread::arcache::{ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
-use kanidm_proto::scim_v1::client::ScimFilter;
-use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
-use kanidm_proto::scim_v1::server::ScimOAuth2ScopeMap;
-use kanidm_proto::scim_v1::server::ScimReference;
-use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::ScimEntryGetQuery;
+use kanidm_proto::scim_v1::{
+    client::ScimFilter,
+    server::{ScimListResponse, ScimOAuth2ClaimMap, ScimOAuth2ScopeMap, ScimReference},
+    JsonValue, ScimEntryGetQuery,
+};
 use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -1497,7 +1496,7 @@ impl QueryServerReadTransaction<'_> {
         ident: Identity,
         filter: &ScimFilter,
         query: ScimEntryGetQuery,
-    ) -> Result<Vec<ScimEntryKanidm>, OperationError> {
+    ) -> Result<ScimListResponse, OperationError> {
         let filter_intent = Filter::from_scim_ro(&ident, filter, self)?;
 
         let f_intent_valid = filter_intent
@@ -1520,9 +1519,16 @@ impl QueryServerReadTransaction<'_> {
 
         let vs = self.search_ext(&se)?;
 
-        vs.into_iter()
+        let resources = vs
+            .into_iter()
             .map(|entry| entry.to_scim_kanidm(self))
-            .collect()
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(ScimListResponse {
+            schemas: Vec::with_capacity(0),
+            total_results: resources.len() as u64,
+            resources,
+        })
     }
 }
 
@@ -2653,10 +2659,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use kanidm_proto::scim_v1::client::ScimFilter;
-    use kanidm_proto::scim_v1::server::ScimReference;
-    use kanidm_proto::scim_v1::JsonValue;
-    use kanidm_proto::scim_v1::ScimEntryGetQuery;
+    use kanidm_proto::scim_v1::{
+        client::ScimFilter,
+        server::{ScimListResponse, ScimReference},
+        JsonValue, ScimEntryGetQuery,
+    };
 
     #[qs_test]
     async fn test_name_to_uuid(server: &QueryServer) {
@@ -3137,11 +3144,12 @@ mod tests {
             )),
         );
 
-        let base: Vec<ScimEntryKanidm> = server_txn
+        let base: ScimListResponse = server_txn
             .scim_search_ext(idm_admin_ident, &filter, ScimEntryGetQuery::default())
             .unwrap();
 
-        assert_eq!(base.len(), 1);
-        assert_eq!(base[0].header.id, group_uuid);
+        assert_eq!(base.resources.len(), 1);
+        assert_eq!(base.total_results, 1);
+        assert_eq!(base.resources[0].header.id, group_uuid);
     }
 }

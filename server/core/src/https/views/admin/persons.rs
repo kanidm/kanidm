@@ -14,7 +14,9 @@ use axum_htmx::{HxPushUrl, HxRequest};
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::internal::OperationError;
 use kanidm_proto::scim_v1::client::ScimFilter;
-use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimEntryKanidm, ScimPerson};
+use kanidm_proto::scim_v1::server::{
+    ScimEffectiveAccess, ScimEntryKanidm, ScimListResponse, ScimPerson,
+};
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::idm::ClientAuthInfo;
@@ -152,7 +154,7 @@ async fn get_persons_info(
 ) -> Result<Vec<(ScimPerson, ScimEffectiveAccess)>, WebError> {
     let filter = ScimFilter::Equal(Attribute::Class.into(), EntryClass::Person.into());
 
-    let base: Vec<ScimEntryKanidm> = state
+    let base: ScimListResponse = state
         .qe_r_ref
         .scim_entry_search(
             client_auth_info.clone(),
@@ -167,6 +169,7 @@ async fn get_persons_info(
 
     // TODO: inefficient to sort here
     let mut persons: Vec<_> = base
+        .resources
         .into_iter()
         // TODO: Filtering away unsuccessful entries may not be desired.
         .filter_map(scimentry_into_personinfo)
