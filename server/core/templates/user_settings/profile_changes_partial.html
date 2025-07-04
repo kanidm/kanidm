@@ -50,18 +50,22 @@ Profile Difference
         (% endif %)
         (% if !emails_are_same %)
         <tr>
-            <th scope="row">Primary Emails</th>
-            <td class="text-nowrap">
-                (( primary_mail.clone().unwrap_or("none".to_string()) ))
+            <th scope="row">Primary Email</th>
+            <td class="text-break">
+                <ul class="ps-3 list-unstyled">
+                    <li class="text-nowrap">(( primary_mail.clone().unwrap_or("none".to_string()) ))</li>
+                </ul>
             </td>
-            <td class="text-nowrap">
-                (( new_primary_mail.clone().unwrap_or("none".to_string()) ))
+            <td class="text-break">
+                <ul class="ps-3 list-unstyled">
+                    <li class="text-nowrap">(( new_primary_mail.clone().unwrap_or("none".to_string()) ))</li>
+                </ul>
             </td>
         </tr>
         <tr>
             <th scope="row">Secondary Emails</th>
             <td class="text-break">
-                <ul class="ps-3">
+                <ul class="ps-3 list-unstyled">
                     (% for email in person.mails %)
                     (% if !email.primary %)
                     <li class="text-nowrap">(( email.value ))</li>
@@ -70,7 +74,7 @@ Profile Difference
                 </ul>
             </td>
             <td class="text-break">
-                <ul class="ps-3">
+                <ul class="ps-3 list-unstyled">
                     (% for email in new_attrs.emails %)
                     (% if !email.primary %)
                     <li class="text-nowrap">(( email.value ))</li>

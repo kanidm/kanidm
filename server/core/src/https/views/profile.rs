@@ -171,7 +171,7 @@ pub(crate) async fn view_profile_diff_start_save_post(
     )
     .await?;
 
-    let new_emails =
+    let (new_emails, emails_are_same) =
         if let (Some(email_indices), Some(emails)) = (query.emails_indexes, query.emails) {
             let primary_index = query.primary_email_index.unwrap_or(0);
 
@@ -188,16 +188,19 @@ pub(crate) async fn view_profile_diff_start_save_post(
                 })
                 .collect();
 
-            new_mails
+            let emails_are_same = scim_person.mails == new_mails;
+
+            (new_mails, emails_are_same)
         } else {
-            vec![]
+            (vec![], true)
         };
-    let emails_are_same = scim_person.mails == new_emails;
+
     let primary_mail = scim_person
         .mails
         .iter()
         .find(|sm| sm.primary)
         .map(|sm| sm.value.clone());
+
     let new_primary_mail = new_emails
         .iter()
         .find(|sm| sm.primary)
@@ -239,40 +242,47 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
         .await?;
 
     let mut attrs = BTreeMap::<Attribute, Option<ScimValueKanidm>>::new();
+
     if let Some(account_name) = query.account_name {
         attrs.insert(Attribute::Name, Some(ScimValueKanidm::String(account_name)));
     }
+
     if let Some(display_name) = query.display_name {
         attrs.insert(
             Attribute::DisplayName,
             Some(ScimValueKanidm::String(display_name)),
         );
     }
-    let mut scim_mails = if let Some(secondary_mails) = query.emails {
-        secondary_mails
-            .into_iter()
-            .map(|secondary_mail| ScimMail {
-                primary: false,
-                value: secondary_mail,
-            })
-            .collect::<Vec<_>>()
-    } else {
-        vec![]
-    };
-    if let Some(primary_mail) = query.new_primary_mail {
-        scim_mails.push(ScimMail {
-            primary: true,
-            value: primary_mail,
-        })
-    }
-    attrs.insert(
-        Attribute::Mail,
-        if scim_mails.is_empty() {
-            None
+
+    if query.emails.is_some() || query.new_primary_mail.is_some() {
+        let mut scim_mails = if let Some(secondary_mails) = query.emails {
+            secondary_mails
+                .into_iter()
+                .map(|secondary_mail| ScimMail {
+                    primary: false,
+                    value: secondary_mail,
+                })
+                .collect::<Vec<_>>()
         } else {
-            Some(ScimValueKanidm::Mail(scim_mails))
-        },
-    );
+            vec![]
+        };
+
+        if let Some(primary_mail) = query.new_primary_mail {
+            scim_mails.push(ScimMail {
+                primary: true,
+                value: primary_mail,
+            })
+        }
+
+        attrs.insert(
+            Attribute::Mail,
+            if scim_mails.is_empty() {
+                None
+            } else {
+                Some(ScimValueKanidm::Mail(scim_mails))
+            },
+        );
+    }
 
     let generic = ScimEntryPutKanidm {
         id: uat.uuid,
