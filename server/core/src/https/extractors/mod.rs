@@ -1,99 +1,18 @@
+use crate::https::ServerState;
 use axum::{
     async_trait,
-    extract::connect_info::{ConnectInfo, Connected},
-    extract::FromRequestParts,
-    http::{
-        header::HeaderName, header::AUTHORIZATION as AUTHORISATION, request::Parts, StatusCode,
-    },
-    RequestPartsExt,
+    extract::{connect_info::Connected, FromRequestParts},
+    http::{header::AUTHORIZATION as AUTHORISATION, request::Parts, StatusCode},
 };
-
 use axum_extra::extract::cookie::CookieJar;
-
-use kanidm_proto::constants::X_FORWARDED_FOR;
+use compact_jwt::JwsCompact;
 use kanidm_proto::internal::COOKIE_BEARER_TOKEN;
 use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
-// Re-export
-pub use kanidmd_lib::idm::server::DomainInfoRead;
-
-use compact_jwt::JwsCompact;
+use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
-use std::net::{IpAddr, SocketAddr};
-
-use crate::https::ServerState;
-
-#[allow(clippy::declare_interior_mutable_const)]
-const X_FORWARDED_FOR_HEADER: HeaderName = HeaderName::from_static(X_FORWARDED_FOR);
-
-pub struct TrustedClientIp(pub IpAddr);
-
-#[async_trait]
-impl FromRequestParts<ServerState> for TrustedClientIp {
-    type Rejection = (StatusCode, &'static str);
-
-    // Need to skip all to prevent leaking tokens to logs.
-    #[instrument(level = "debug", skip_all)]
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &ServerState,
-    ) -> Result<Self, Self::Rejection> {
-        let ConnectInfo(ClientConnInfo {
-            connection_addr,
-            client_addr,
-            client_cert: _,
-        }) = parts
-            .extract::<ConnectInfo<ClientConnInfo>>()
-            .await
-            .map_err(|_| {
-                error!("Connect info contains invalid data");
-                (
-                    StatusCode::BAD_REQUEST,
-                    "connect info contains invalid data",
-                )
-            })?;
-
-        let trust_x_forward_for = state
-            .trust_x_forward_for_ips
-            .as_ref()
-            .map(|range| range.contains(&connection_addr.ip()))
-            .unwrap_or_default();
-
-        let ip_addr = if trust_x_forward_for {
-            if let Some(x_forward_for) = parts.headers.get(X_FORWARDED_FOR_HEADER) {
-                // X forward for may be comma separated.
-                let first = x_forward_for
-                    .to_str()
-                    .map(|s|
-                        // Split on an optional comma, return the first result.
-                        s.split(',').next().unwrap_or(s))
-                    .map_err(|_| {
-                        (
-                            StatusCode::BAD_REQUEST,
-                            "X-Forwarded-For contains invalid data",
-                        )
-                    })?;
-
-                first.parse::<IpAddr>().map_err(|_| {
-                    (
-                        StatusCode::BAD_REQUEST,
-                        "X-Forwarded-For contains invalid ip addr",
-                    )
-                })?
-            } else {
-                client_addr.ip()
-            }
-        } else {
-            // This can either be the client_addr == connection_addr if there are
-            // no ip address trust sources, or this is the value as reported by
-            // proxy protocol header. If the proxy protocol header is used, then
-            // trust_x_forward_for can never have been true so we catch here.
-            client_addr.ip()
-        };
-
-        Ok(TrustedClientIp(ip_addr))
-    }
-}
+// Re-export
+pub use kanidmd_lib::idm::server::DomainInfoRead;
 
 pub struct VerifiedClientInformation(pub ClientAuthInfo);
 
@@ -105,56 +24,16 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
     #[instrument(level = "debug", skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
-        state: &ServerState,
+        _state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
-        let ConnectInfo(ClientConnInfo {
-            connection_addr,
-            client_addr,
+        let ClientConnInfo {
+            connection_addr: _,
+            client_ip_addr,
             client_cert,
-        }) = parts
-            .extract::<ConnectInfo<ClientConnInfo>>()
-            .await
-            .map_err(|_| {
-                error!("Connect info contains invalid data");
-                (
-                    StatusCode::BAD_REQUEST,
-                    "connect info contains invalid data",
-                )
-            })?;
-
-        let trust_x_forward_for = state
-            .trust_x_forward_for_ips
-            .as_ref()
-            .map(|range| range.contains(&connection_addr.ip()))
-            .unwrap_or_default();
-
-        let ip_addr = if trust_x_forward_for {
-            if let Some(x_forward_for) = parts.headers.get(X_FORWARDED_FOR_HEADER) {
-                // X forward for may be comma separated.
-                let first = x_forward_for
-                    .to_str()
-                    .map(|s|
-                        // Split on an optional comma, return the first result.
-                        s.split(',').next().unwrap_or(s))
-                    .map_err(|_| {
-                        (
-                            StatusCode::BAD_REQUEST,
-                            "X-Forwarded-For contains invalid data",
-                        )
-                    })?;
-
-                first.parse::<IpAddr>().map_err(|_| {
-                    (
-                        StatusCode::BAD_REQUEST,
-                        "X-Forwarded-For contains invalid ip addr",
-                    )
-                })?
-            } else {
-                client_addr.ip()
-            }
-        } else {
-            client_addr.ip()
-        };
+        } = parts.extensions.remove::<ClientConnInfo>().ok_or((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "request info contains invalid data",
+        ))?;
 
         let (basic_authz, bearer_token) = if let Some(header) = parts.headers.get(AUTHORISATION) {
             if let Some((authz_type, authz_data)) = header
@@ -195,7 +74,7 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
         };
 
         Ok(VerifiedClientInformation(ClientAuthInfo {
-            source: Source::Https(ip_addr),
+            source: Source::Https(client_ip_addr),
             bearer_token,
             basic_authz,
             client_cert,
@@ -227,7 +106,7 @@ pub struct ClientConnInfo {
     pub connection_addr: SocketAddr,
     /// This is the client address as reported by a remote IP source
     /// such as x-forward-for or the PROXY protocol header
-    pub client_addr: SocketAddr,
+    pub client_ip_addr: IpAddr,
     // Only set if the certificate is VALID
     pub client_cert: Option<ClientCertInfo>,
 }
@@ -243,7 +122,7 @@ impl Connected<ClientConnInfo> for ClientConnInfo {
 impl Connected<SocketAddr> for ClientConnInfo {
     fn connect_info(connection_addr: SocketAddr) -> Self {
         ClientConnInfo {
-            client_addr: connection_addr,
+            client_ip_addr: connection_addr.ip(),
             connection_addr,
             client_cert: None,
         }

@@ -44,7 +44,10 @@ use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::{net::SocketAddr, str::FromStr};
+use std::{
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     net::{TcpListener, TcpStream},
@@ -303,6 +306,10 @@ pub async fn create_https_server(
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging
         // coherence to be maintained.
+        .layer(from_fn_with_state(
+            state.clone(),
+            middleware::ip_address_middleware,
+        ))
         .layer(from_fn(middleware::kopid_middleware))
         .merge(apidocs::router())
         // this MUST be the last layer before with_state else the span never starts and everything breaks.
@@ -431,12 +438,12 @@ pub(crate) async fn handle_conn(
     connection_addr: SocketAddr,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) -> Result<(), std::io::Error> {
-    let (stream, client_addr) =
+    let (stream, client_ip_addr) =
         process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
 
     let client_conn_info = ClientConnInfo {
         connection_addr,
-        client_addr,
+        client_ip_addr,
         client_cert: None,
     };
 
@@ -455,7 +462,7 @@ pub(crate) async fn handle_tls_conn(
     connection_addr: SocketAddr,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) -> Result<(), std::io::Error> {
-    let (stream, client_addr) =
+    let (stream, client_ip_addr) =
         process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
 
     let tls_stream = acceptor.accept(stream).await.map_err(|err| {
@@ -497,7 +504,7 @@ pub(crate) async fn handle_tls_conn(
 
     let client_conn_info = ClientConnInfo {
         connection_addr,
-        client_addr,
+        client_ip_addr,
         client_cert,
     };
 
@@ -512,7 +519,7 @@ async fn process_client_addr(
     stream: TcpStream,
     connection_addr: SocketAddr,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
-) -> Result<(TcpStream, SocketAddr), std::io::Error> {
+) -> Result<(TcpStream, IpAddr), std::io::Error> {
     let enable_proxy_v2_hdr = trusted_proxy_v2_ips
         .map(|trusted| {
             trusted
@@ -548,7 +555,7 @@ async fn process_client_addr(
         (stream, connection_addr)
     };
 
-    Ok((stream, client_addr))
+    Ok((stream, client_addr.ip()))
 }
 
 async fn process_client_hyper<T>(
