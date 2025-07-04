@@ -56,6 +56,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/reset", get(reset::view_reset_get))
         .route("/update_credentials", get(reset::view_self_reset_get))
         .route("/profile", get(profile::view_profile_get))
+        .route("/profile/diff", get(profile::view_profile_get))
         .route("/profile/unlock", get(profile::view_profile_unlock_get))
         .route("/logout", get(login::view_logout_get))
         .route("/oauth2", get(oauth2::view_index_get));
@@ -129,6 +130,18 @@ pub fn view_router() -> Router<ServerState> {
         )
         .route("/api/cu_cancel", post(reset::cancel_cred_update))
         .route("/api/cu_commit", post(reset::commit))
+        .route(
+            "/api/user_settings/add_email",
+            get(profile::view_new_email_entry_partial),
+        )
+        .route(
+            "/api/user_settings/edit_profile",
+            post(profile::view_profile_diff_start_save_post),
+        )
+        .route(
+            "/api/user_settings/confirm_profile",
+            post(profile::view_profile_diff_confirm_save_post),
+        )
         .layer(HxRequestGuardLayer::new("/ui"));
 
     let admin_router = admin_router();
