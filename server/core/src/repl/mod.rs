@@ -795,10 +795,13 @@ async fn repl_acceptor(
             }
         }
 
-        let client_cert_verifier_result = WebPkiClientVerifier::builder(client_cert_roots.into())
-            // We don't allow clients that lack a certificate to correct.
-            // allow_unauthenticated()
-            .build();
+        let provider: Arc<_> = rustls::crypto::aws_lc_rs::default_provider().into();
+
+        let client_cert_verifier_result =
+            WebPkiClientVerifier::builder_with_provider(client_cert_roots.into(), provider.clone())
+                // We don't allow clients that lack a certificate to correct.
+                // allow_unauthenticated()
+                .build();
 
         let client_cert_verifier = match client_cert_verifier_result {
             Ok(ccv) => ccv,
@@ -811,8 +814,6 @@ async fn repl_acceptor(
                 continue;
             }
         };
-
-        let provider = rustls::crypto::aws_lc_rs::default_provider().into();
 
         let tls_server_config = match ServerConfig::builder_with_provider(provider)
             .with_safe_default_protocol_versions()
