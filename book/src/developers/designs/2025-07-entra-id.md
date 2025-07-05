@@ -1,12 +1,14 @@
 # Entra ID / Azure AD compatability proposal
 
 A proposal has been made by [SerNET](https://www.sernet.com/) that they wish to invest in the building of an Entra ID /
-Azure AD compatible IDM service.
+Azure AD compatible IDM service. This may be initially supported be EU grant funding.
 
 David Mulder, the creator of the [himmelblau](https://github.com/himmelblau-idm/) project has proposed that Kanidm could
 be the IDM service backend, where an Entra ID compatible authentication module would be added.
 
-Himmelblau and Kanidm already have many connections and projects and collaborators.
+Himmelblau and Kanidm already have many connections and projects and collaborators. As himmelblau is already a working
+client to Entra ID, and Kanidm is a full fledged IDM, this existing collaboration and relationship makes it a natural
+fit that we could work together on this proposal.
 
 In this document, we want to examine the pros, cons, and risks of this proposal.
 
@@ -64,7 +66,7 @@ in Windows is "strongly discouraged" and mostly undocumented. While this proposa
 3rd parties, it doesn't resolve the need to be able to create new authentication modules for Windows client machines.
 
 What we want is Windows to authenticate to Kanidm on our terms. This proposal achieves that in a way that still leaves a
-lot of control with Microsoft.
+lot of control with Microsoft, and we still can't make our own Windows client authentication modules.
 
 ### Regulatory pressure may not eventuate.
 
