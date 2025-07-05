@@ -54,7 +54,7 @@ impl fmt::Debug for AuthState {
 pub(crate) enum PreValidatedTokenStatus {
     #[default]
     None,
-    Valid(UserAuthToken),
+    Valid(Box<UserAuthToken>),
     NotAuthenticated,
     SessionExpired,
 }

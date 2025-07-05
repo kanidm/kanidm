@@ -450,7 +450,7 @@ pub trait IdmServerTransaction<'a> {
         ct: Duration,
     ) -> Result<(), OperationError> {
         let (result, status) = match self.validate_client_auth_info_to_uat(client_auth_info, ct) {
-            Ok(uat) => (Ok(()), PreValidatedTokenStatus::Valid(uat)),
+            Ok(uat) => (Ok(()), PreValidatedTokenStatus::Valid(Box::new(uat))),
             Err(OperationError::NotAuthenticated) => {
                 (Ok(()), PreValidatedTokenStatus::NotAuthenticated)
             }
