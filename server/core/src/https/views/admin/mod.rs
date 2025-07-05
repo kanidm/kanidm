@@ -3,6 +3,7 @@ use axum::routing::get;
 use axum::Router;
 use axum_htmx::HxRequestGuardLayer;
 
+pub(crate) mod groups;
 pub(crate) mod persons;
 
 pub fn admin_router() -> Router<ServerState> {
@@ -11,7 +12,9 @@ pub fn admin_router() -> Router<ServerState> {
         .route(
             "/person/:person_uuid/view",
             get(persons::view_person_view_get),
-        );
+        )
+        .route("/groups", get(groups::view_groups_get))
+        .route("/group/:group_uuid/view", get(groups::view_group_view_get));
 
     let guarded_router = Router::new().layer(HxRequestGuardLayer::new("/ui"));
 

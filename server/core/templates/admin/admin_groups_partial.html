@@ -1,0 +1,23 @@
+(% extends "admin/admin_partial_base.html" %)
+
+(% block groups_item_extra_classes %)active(% endblock %)
+
+(% block admin_page %)
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active" aria-current="page">Group List</li>
+    </ol>
+</nav>
+
+<ul class="list-group">
+    (% for (group, _) in groups %)
+    <li class="list-group-item d-flex flex-row justify-content-between">
+        <div class="d-flex align-items-center">
+            <a href="/ui/admin/group/(( group.uuid ))/view" hx-target="#main">(( group.name ))</a> <span class="text-secondary d-none d-lg-inline-block mx-4">(( group.uuid ))</span>
+        </div>
+        <div class="buttons float-end">
+        </div>
+    </li>
+    (% endfor %)
+</ul>
+(% endblock %)
