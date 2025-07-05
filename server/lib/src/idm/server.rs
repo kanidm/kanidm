@@ -27,6 +27,7 @@ use crate::idm::radius::RadiusAccount;
 use crate::idm::scim::SyncAccount;
 use crate::idm::serviceaccount::ServiceAccount;
 use crate::idm::AuthState;
+use crate::idm::PreValidatedTokenStatus;
 use crate::prelude::*;
 use crate::server::keys::KeyProvidersTransaction;
 use crate::server::DomainInfo;
@@ -409,23 +410,60 @@ pub trait IdmServerTransaction<'a> {
             client_cert,
             bearer_token,
             basic_authz: _,
+            pre_validated_token: _,
         } = client_auth_info;
+
+        // Future - if there is a pre-validated UAT, use that. For now I want to review
+        // all the auth and validation flows to ensure that the UAT path is security
+        // wise equivalent to the other paths. This pre-validation is an "optimisation"
+        // for the web-ui where operations will make a number of api calls, and we don't
+        // want to do redundant work.
 
         match (client_cert, bearer_token) {
             (Some(client_cert_info), _) => {
                 self.client_certificate_to_identity(&client_cert_info, ct, source)
             }
-            (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
-                Token::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct, source),
-                Token::ApiToken(apit, entry) => {
-                    self.process_apit_to_identity(&apit, source, entry, ct)
+            (None, Some(token)) => {
+                match self.validate_and_parse_token_to_identity_token(&token, ct)? {
+                    Token::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct, source),
+                    Token::ApiToken(apit, entry) => {
+                        self.process_apit_to_identity(&apit, source, entry, ct)
+                    }
                 }
-            },
+            }
             (None, None) => {
                 debug!("No client certificate or bearer tokens were supplied");
                 Err(OperationError::NotAuthenticated)
             }
         }
+    }
+
+    /// This function will pre-validate the credentials provided and update the
+    /// ClientAuthInfo structure so that future operations using the same auth
+    /// info will not need to perform all the same checks (time, cryptography, etc).
+    /// However, subsequent callers will still need to load the entry into the
+    /// identity.
+    #[instrument(level = "info", skip_all)]
+    fn pre_validate_client_auth_info(
+        &mut self,
+        client_auth_info: &mut ClientAuthInfo,
+        ct: Duration,
+    ) -> Result<(), OperationError> {
+        let (result, status) = match self.validate_client_auth_info_to_uat(client_auth_info, ct) {
+            Ok(uat) => (Ok(()), PreValidatedTokenStatus::Valid(uat)),
+            Err(OperationError::NotAuthenticated) => {
+                (Ok(()), PreValidatedTokenStatus::NotAuthenticated)
+            }
+            Err(OperationError::SessionExpired) => {
+                (Ok(()), PreValidatedTokenStatus::SessionExpired)
+            }
+            Err(err) => (Err(err), PreValidatedTokenStatus::None),
+        };
+
+        client_auth_info.set_pre_validated_uat(status);
+
+        // The result to bubble up.
+        result
     }
 
     /// This function is not using in authentication flows - it is a reflector of the
@@ -434,27 +472,27 @@ pub trait IdmServerTransaction<'a> {
     #[instrument(level = "info", skip_all)]
     fn validate_client_auth_info_to_uat(
         &mut self,
-        client_auth_info: ClientAuthInfo,
+        client_auth_info: &ClientAuthInfo,
         ct: Duration,
     ) -> Result<UserAuthToken, OperationError> {
-        let ClientAuthInfo {
-            client_cert,
-            bearer_token,
-            source: _,
-            basic_authz: _,
-        } = client_auth_info;
+        // Future - if there is a pre-validated UAT, use that.
 
-        match (client_cert, bearer_token) {
+        match (
+            client_auth_info.client_cert.as_ref(),
+            client_auth_info.bearer_token.as_ref(),
+        ) {
             (Some(client_cert_info), _) => {
-                self.client_certificate_to_user_auth_token(&client_cert_info, ct)
+                self.client_certificate_to_user_auth_token(client_cert_info, ct)
             }
-            (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
-                Token::UserAuthToken(uat) => Ok(uat),
-                Token::ApiToken(_apit, _entry) => {
-                    warn!("Unable to process non user auth token");
-                    Err(OperationError::NotAuthenticated)
+            (None, Some(token)) => {
+                match self.validate_and_parse_token_to_identity_token(token, ct)? {
+                    Token::UserAuthToken(uat) => Ok(uat),
+                    Token::ApiToken(_apit, _entry) => {
+                        warn!("Unable to process non user auth token");
+                        Err(OperationError::NotAuthenticated)
+                    }
                 }
-            },
+            }
             (None, None) => {
                 debug!("No client certificate or bearer tokens were supplied");
                 Err(OperationError::NotAuthenticated)
@@ -462,7 +500,7 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
-    fn validate_and_parse_token_to_token(
+    fn validate_and_parse_token_to_identity_token(
         &mut self,
         jwsu: &JwsCompact,
         ct: Duration,
@@ -1458,7 +1496,7 @@ impl IdmServerAuthTransaction<'_> {
         lae: &LdapTokenAuthEvent,
         ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
-        match self.validate_and_parse_token_to_token(&lae.token, ct)? {
+        match self.validate_and_parse_token_to_identity_token(&lae.token, ct)? {
             Token::UserAuthToken(uat) => {
                 let spn = uat.spn.clone();
                 Ok(Some(LdapBoundToken {
@@ -3860,7 +3898,7 @@ mod tests {
             .proxy_read()
             .await
             .unwrap()
-            .validate_and_parse_token_to_token(&token, ct)
+            .validate_and_parse_token_to_identity_token(&token, ct)
             .expect("Must not fail")
         else {
             panic!("Unexpected auth token type for anonymous auth");

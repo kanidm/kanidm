@@ -46,10 +46,8 @@ pub(crate) async fn view_enrol_get(
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let uat: UserAuthToken = state
-        .qe_r_ref
-        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .await
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
@@ -61,7 +59,7 @@ pub(crate) async fn view_enrol_get(
             domain_info,
             oauth2: None,
             reauth: Some(Reauth {
-                username: uat.spn,
+                username: uat.spn.clone(),
                 purpose: ReauthPurpose::ProfileSettings,
             }),
             error: None,
@@ -78,11 +76,13 @@ pub(crate) async fn view_enrol_get(
         .await);
     }
 
+    let spn = uat.spn.clone();
+
     let cu_intent = state
         .qe_w_ref
         .handle_idmcredentialupdateintent(
             client_auth_info,
-            uat.spn,
+            spn,
             Some(Duration::from_secs(900)),
             kopid.eventid,
         )

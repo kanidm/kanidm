@@ -22,10 +22,14 @@ pub mod scim;
 pub mod server;
 pub mod serviceaccount;
 
+use crate::prelude::OperationError;
 use crate::server::identity::Source;
 use compact_jwt::JwsCompact;
 use kanidm_lib_crypto::{x509_cert::Certificate, Sha256Digest};
-use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+use kanidm_proto::{
+    internal::UserAuthToken,
+    v1::{AuthAllowed, AuthIssueSession, AuthMech},
+};
 use std::fmt;
 
 pub enum AuthState {
@@ -46,12 +50,57 @@ impl fmt::Debug for AuthState {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub(crate) enum PreValidatedTokenStatus {
+    #[default]
+    None,
+    Valid(UserAuthToken),
+    NotAuthenticated,
+    SessionExpired,
+}
+
 #[derive(Debug, Clone)]
 pub struct ClientAuthInfo {
-    pub source: Source,
-    pub client_cert: Option<ClientCertInfo>,
-    pub bearer_token: Option<JwsCompact>,
-    pub basic_authz: Option<String>,
+    pub(crate) source: Source,
+    pub(crate) client_cert: Option<ClientCertInfo>,
+    pub(crate) bearer_token: Option<JwsCompact>,
+    pub(crate) basic_authz: Option<String>,
+    /// we store the prevalidated
+    pre_validated_token: PreValidatedTokenStatus,
+}
+
+impl ClientAuthInfo {
+    pub fn new(
+        source: Source,
+        client_cert: Option<ClientCertInfo>,
+        bearer_token: Option<JwsCompact>,
+        basic_authz: Option<String>,
+    ) -> Self {
+        Self {
+            source,
+            client_cert,
+            bearer_token,
+            basic_authz,
+            pre_validated_token: Default::default(),
+        }
+    }
+
+    pub fn bearer_token(&self) -> Option<&JwsCompact> {
+        self.bearer_token.as_ref()
+    }
+
+    pub fn pre_validated_uat(&self) -> Result<&UserAuthToken, OperationError> {
+        match &self.pre_validated_token {
+            PreValidatedTokenStatus::Valid(uat) => Ok(uat),
+            PreValidatedTokenStatus::None => Err(OperationError::AU0008ClientAuthInfoPrevalidation),
+            PreValidatedTokenStatus::NotAuthenticated => Err(OperationError::NotAuthenticated),
+            PreValidatedTokenStatus::SessionExpired => Err(OperationError::SessionExpired),
+        }
+    }
+
+    pub(crate) fn set_pre_validated_uat(&mut self, status: PreValidatedTokenStatus) {
+        self.pre_validated_token = status
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -68,6 +117,7 @@ impl ClientAuthInfo {
             client_cert: None,
             bearer_token: None,
             basic_authz: None,
+            pre_validated_token: Default::default(),
         }
     }
 }
@@ -80,6 +130,7 @@ impl From<Source> for ClientAuthInfo {
             client_cert: None,
             bearer_token: None,
             basic_authz: None,
+            pre_validated_token: Default::default(),
         }
     }
 }
@@ -92,6 +143,7 @@ impl From<JwsCompact> for ClientAuthInfo {
             client_cert: None,
             bearer_token: Some(value),
             basic_authz: None,
+            pre_validated_token: Default::default(),
         }
     }
 }
@@ -104,6 +156,7 @@ impl From<ClientCertInfo> for ClientAuthInfo {
             client_cert: Some(value),
             bearer_token: None,
             basic_authz: None,
+            pre_validated_token: Default::default(),
         }
     }
 }
@@ -116,6 +169,7 @@ impl From<&str> for ClientAuthInfo {
             client_cert: None,
             bearer_token: None,
             basic_authz: Some(value.to_string()),
+            pre_validated_token: Default::default(),
         }
     }
 }
@@ -131,6 +185,7 @@ impl ClientAuthInfo {
             client_cert: None,
             bearer_token: None,
             basic_authz: Some(value),
+            pre_validated_token: Default::default(),
         }
     }
 }

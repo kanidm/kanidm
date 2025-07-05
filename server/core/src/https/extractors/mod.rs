@@ -24,7 +24,7 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
     #[instrument(level = "debug", skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
-        _state: &ServerState,
+        state: &ServerState,
     ) -> Result<Self, Self::Rejection> {
         let ClientConnInfo {
             connection_addr: _,
@@ -73,12 +73,21 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
             (None, maybe_bearer)
         };
 
-        Ok(VerifiedClientInformation(ClientAuthInfo {
-            source: Source::Https(client_ip_addr),
+        let mut client_auth_info = ClientAuthInfo::new(
+            Source::Https(client_ip_addr),
+            client_cert,
             bearer_token,
             basic_authz,
-            client_cert,
-        }))
+        );
+
+        // now, we want to update the client auth info with the sessions user-auth-token
+        // if any. We ignore errors here as the auth info MAY NOT be a valid token
+        // and so in that case no prevalidation will occur.
+        let _ = state
+            .qe_r_ref
+            .pre_validate_client_auth_info(&mut client_auth_info);
+
+        Ok(VerifiedClientInformation(client_auth_info))
     }
 }
 
