@@ -358,12 +358,11 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
     }
 }
 
-
 #[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
 pub struct ScimGroup {
     pub uuid: Uuid,
-    pub name: String
+    pub name: String,
 }
 
 impl TryFrom<ScimEntryKanidm> for ScimGroup {
@@ -380,14 +379,9 @@ impl TryFrom<ScimEntryKanidm> for ScimGroup {
             })
             .ok_or(())?;
 
-
-        Ok(ScimGroup {
-            uuid,
-            name
-        })
+        Ok(ScimGroup { uuid, name })
     }
 }
-
 
 impl From<bool> for ScimValueKanidm {
     fn from(b: bool) -> Self {
