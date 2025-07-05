@@ -364,6 +364,20 @@ impl QueryServerReadV1 {
         }
     }
 
+    pub async fn pre_validate_client_auth_info(
+        &self,
+        client_auth_info: &mut ClientAuthInfo,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await?;
+        idms_prox_read
+            .pre_validate_client_auth_info(client_auth_info, ct)
+            .map_err(|e| {
+                error!(?e, "Invalid identity");
+                e
+            })
+    }
+
     #[instrument(
         level = "info",
         name = "whoami_uat",
@@ -372,7 +386,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_whoami_uat(
         &self,
-        client_auth_info: ClientAuthInfo,
+        client_auth_info: &ClientAuthInfo,
         eventid: Uuid,
     ) -> Result<UserAuthToken, OperationError> {
         let ct = duration_from_epoch_now();
@@ -1447,7 +1461,7 @@ impl QueryServerReadV1 {
     pub async fn handle_oauth2_openid_userinfo(
         &self,
         client_id: String,
-        token: JwsCompact,
+        token: &JwsCompact,
         eventid: Uuid,
     ) -> Result<OidcToken, Oauth2Error> {
         let ct = duration_from_epoch_now();
@@ -1456,7 +1470,7 @@ impl QueryServerReadV1 {
             .proxy_read()
             .await
             .map_err(Oauth2Error::ServerError)?;
-        idms_prox_read.oauth2_openid_userinfo(&client_id, &token, ct)
+        idms_prox_read.oauth2_openid_userinfo(&client_id, token, ct)
     }
 
     #[instrument(

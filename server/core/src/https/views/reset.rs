@@ -761,11 +761,9 @@ pub(crate) async fn view_self_reset_get(
     DomainInfo(domain_info): DomainInfo,
     mut jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let uat: UserAuthToken = state
-        .qe_r_ref
-        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-        .await?;
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
     let can_rw = uat.purpose_readwrite_active(time);
@@ -773,7 +771,11 @@ pub(crate) async fn view_self_reset_get(
     if can_rw {
         let (cu_session_token, cu_status) = state
             .qe_w_ref
-            .handle_idmcredentialupdate(client_auth_info, uat.uuid.to_string(), kopid.eventid)
+            .handle_idmcredentialupdate(
+                client_auth_info.clone(),
+                uat.uuid.to_string(),
+                kopid.eventid,
+            )
             .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
             .await?;
 
@@ -786,7 +788,7 @@ pub(crate) async fn view_self_reset_get(
             domain_info,
             oauth2: None,
             reauth: Some(Reauth {
-                username: uat.spn,
+                username: uat.spn.clone(),
                 purpose: ReauthPurpose::ProfileSettings,
             }),
             error: None,
