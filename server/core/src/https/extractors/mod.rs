@@ -85,7 +85,8 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
         // and so in that case no prevalidation will occur.
         let _ = state
             .qe_r_ref
-            .pre_validate_client_auth_info(&mut client_auth_info);
+            .pre_validate_client_auth_info(&mut client_auth_info)
+            .await;
 
         Ok(VerifiedClientInformation(client_auth_info))
     }
