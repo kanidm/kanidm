@@ -358,6 +358,37 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
     }
 }
 
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimGroup {
+    pub uuid: Uuid,
+    pub name: String
+}
+
+impl TryFrom<ScimEntryKanidm> for ScimGroup {
+    type Error = ();
+
+    fn try_from(scim_entry: ScimEntryKanidm) -> Result<Self, Self::Error> {
+        let uuid = scim_entry.header.id;
+        let name = scim_entry
+            .attrs
+            .get(&Attribute::Name)
+            .and_then(|v| match v {
+                ScimValueKanidm::String(s) => Some(s.clone()),
+                _ => None,
+            })
+            .ok_or(())?;
+
+
+        Ok(ScimGroup {
+            uuid,
+            name
+        })
+    }
+}
+
+
 impl From<bool> for ScimValueKanidm {
     fn from(b: bool) -> Self {
         Self::Bool(b)
