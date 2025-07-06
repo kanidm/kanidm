@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
@@ -12,15 +13,16 @@ use axum::response::{IntoResponse, Response};
 use axum::Extension;
 use axum_htmx::{HxPushUrl, HxRequest};
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::internal::OperationError;
-use kanidm_proto::scim_v1::client::ScimFilter;
-use kanidm_proto::scim_v1::server::{
-    ScimEffectiveAccess, ScimEntryKanidm, ScimGroup, ScimListResponse,
-};
+use kanidm_proto::internal::{OperationError, UserAuthToken};
+use kanidm_proto::scim_v1::client::{ScimEntryPutKanidm, ScimFilter};
+use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimEntryKanidm, ScimGroup, ScimListResponse, ScimValueKanidm};
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::idm::ClientAuthInfo;
 use std::str::FromStr;
+use axum_extra::extract::Form;
+use futures_util::TryFutureExt;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub const GROUP_ATTRIBUTES: [Attribute; 2] = [Attribute::Uuid, Attribute::Name];
@@ -49,7 +51,14 @@ struct GroupView {
 #[template(path = "admin/admin_group_view_partial.html")]
 struct GroupViewPartial {
     group: ScimGroup,
+    can_rw: bool,
     scim_effective_access: ScimEffectiveAccess,
+}
+
+#[derive(Template)]
+#[template(path= "admin/saved_toast.html")]
+struct SavedToast {
+
 }
 
 pub(crate) async fn view_group_view_get(
@@ -61,9 +70,17 @@ pub(crate) async fn view_group_view_get(
     DomainInfo(domain_info): DomainInfo,
 ) -> axum::response::Result<Response> {
     let (group, scim_effective_access) =
-        get_group_info(uuid, state, &kopid, client_auth_info).await?;
+        get_group_info(uuid, state.clone(), &kopid, client_auth_info.clone()).await?;
+    let uat: UserAuthToken = state
+        .qe_r_ref
+        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
+        .await?;
+    let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
+    let can_rw = uat.purpose_readwrite_active(time);
     let group_partial = GroupViewPartial {
         group,
+        can_rw,
         scim_effective_access,
     };
 
@@ -169,6 +186,43 @@ async fn get_groups_info(
     groups.reverse();
 
     Ok(groups)
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct SaveGroupForm {
+    uuid: Uuid,
+    #[serde(rename = "name")]
+    account_name: String,
+}
+
+pub(crate) async fn edit_group(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    DomainInfo(domain_info): DomainInfo,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    // Form must be the last parameter because it consumes the request body
+    Form(query): Form<SaveGroupForm>,
+) -> axum::response::Result<Response> {
+    let mut attrs = BTreeMap::new();
+    attrs.insert(Attribute::Name, Some(ScimValueKanidm::String(query.account_name)));
+
+    let generic = ScimEntryPutKanidm {
+        id: query.uuid,
+        attrs,
+    }
+        .try_into()
+        .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
+
+    // TODO: Use returned KanidmScimPerson below instead of view_profile_get.
+    state
+        .qe_w_ref
+        .handle_scim_entry_put(client_auth_info.clone(), kopid.eventid, generic)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
+        .await?;
+
+    // return floating notification: saved/failed
+    Ok((SavedToast{}).into_response())
+
 }
 
 fn scimentry_into_groupinfo(
