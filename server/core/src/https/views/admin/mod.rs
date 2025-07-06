@@ -21,10 +21,8 @@ pub fn admin_router() -> Router<ServerState> {
     Router::new().merge(unguarded_router).merge(guarded_router)
 }
 
-
 pub fn admin_api_router() -> Router<ServerState> {
-    let unguarded_router = Router::new()
-        .route("/edit_group", post(groups::edit_group));
+    let unguarded_router = Router::new().route("/edit_group", post(groups::edit_group));
 
     let guarded_router = Router::new().layer(HxRequestGuardLayer::new("/ui"));
 

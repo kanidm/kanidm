@@ -204,12 +204,12 @@ pub async fn view_reauth_to_referer_get(
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
         .await
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
-    let referer = headers.get("Referer")
-        .and_then(|hv| hv.to_str().ok());
+    let referer = headers.get("Referer").and_then(|hv| hv.to_str().ok());
 
-    let redirect = referer
-        .and_then(|some_referer| Uri::from_str(some_referer).ok());
-    let redirect = redirect.as_ref().map(|uri| uri.path())
+    let redirect = referer.and_then(|some_referer| Uri::from_str(some_referer).ok());
+    let redirect = redirect
+        .as_ref()
+        .map(|uri| uri.path())
         .unwrap_or(Urls::Apps.as_ref());
 
     let display_ctx = LoginDisplayCtx {
@@ -222,10 +222,7 @@ pub async fn view_reauth_to_referer_get(
         error: None,
     };
 
-    Ok(
-        view_reauth_get(state, client_auth_info, kopid, jar, redirect, display_ctx)
-            .await,
-    )
+    Ok(view_reauth_get(state, client_auth_info, kopid, jar, redirect, display_ctx).await)
 }
 
 pub async fn view_reauth_get(

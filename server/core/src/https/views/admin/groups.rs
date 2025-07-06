@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
@@ -11,18 +10,21 @@ use axum::extract::{Path, State};
 use axum::http::Uri;
 use axum::response::{IntoResponse, Response};
 use axum::Extension;
+use axum_extra::extract::Form;
 use axum_htmx::{HxPushUrl, HxRequest};
+use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::internal::{OperationError, UserAuthToken};
 use kanidm_proto::scim_v1::client::{ScimEntryPutKanidm, ScimFilter};
-use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimEntryKanidm, ScimGroup, ScimListResponse, ScimValueKanidm};
+use kanidm_proto::scim_v1::server::{
+    ScimEffectiveAccess, ScimEntryKanidm, ScimGroup, ScimListResponse, ScimValueKanidm,
+};
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::idm::ClientAuthInfo;
-use std::str::FromStr;
-use axum_extra::extract::Form;
-use futures_util::TryFutureExt;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::str::FromStr;
 use uuid::Uuid;
 
 pub const GROUP_ATTRIBUTES: [Attribute; 2] = [Attribute::Uuid, Attribute::Name];
@@ -56,10 +58,8 @@ struct GroupViewPartial {
 }
 
 #[derive(Template)]
-#[template(path= "admin/saved_toast.html")]
-struct SavedToast {
-
-}
+#[template(path = "admin/saved_toast.html")]
+struct SavedToast {}
 
 pub(crate) async fn view_group_view_get(
     State(state): State<ServerState>,
@@ -204,14 +204,17 @@ pub(crate) async fn edit_group(
     Form(query): Form<SaveGroupForm>,
 ) -> axum::response::Result<Response> {
     let mut attrs = BTreeMap::new();
-    attrs.insert(Attribute::Name, Some(ScimValueKanidm::String(query.account_name)));
+    attrs.insert(
+        Attribute::Name,
+        Some(ScimValueKanidm::String(query.account_name)),
+    );
 
     let generic = ScimEntryPutKanidm {
         id: query.uuid,
         attrs,
     }
-        .try_into()
-        .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
+    .try_into()
+    .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
 
     // TODO: Use returned KanidmScimPerson below instead of view_profile_get.
     state
@@ -221,8 +224,7 @@ pub(crate) async fn edit_group(
         .await?;
 
     // return floating notification: saved/failed
-    Ok((SavedToast{}).into_response())
-
+    Ok((SavedToast {}).into_response())
 }
 
 fn scimentry_into_groupinfo(

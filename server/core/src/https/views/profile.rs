@@ -328,4 +328,3 @@ pub(crate) async fn view_new_email_entry_partial(
     )
         .into_response())
 }
-
