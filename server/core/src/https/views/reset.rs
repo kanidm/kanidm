@@ -878,7 +878,7 @@ pub(crate) async fn view_set_unixcred(
         status,
         swapped_handler_trigger,
         HxPushUrl(Uri::from_static("/ui/reset/set_unixcred")),
-        AddPasswordPartial { check_res },
+        SetUnixCredPartial { check_res },
     )
         .into_response())
 }
