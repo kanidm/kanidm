@@ -54,7 +54,12 @@ from my understanding.
 By implementing Entra ID as a server, we may find security vulnerabilities in the process that we can disclose to
 Microsoft. This improves the security of authentication for all users of both Entra ID and our reimplementation.
 
-## Cons / Risks
+### Ability to Improve the End Result
+
+Kanidm as a project has high standards for quality, and this will be a positive influence on the potential success and
+security of the project as we can influence the direction in a way that prioritises quality.
+
+## Cons / Risks (To Kanidm)
 
 ### Does not address the underlying issues
 
@@ -67,23 +72,6 @@ in Windows is "strongly discouraged" and mostly undocumented. While this proposa
 
 What we want is Windows to authenticate to Kanidm on our terms. This proposal achieves that in a way that still leaves a
 lot of control with Microsoft, and we still can't make our own Windows client authentication modules.
-
-### Regulatory pressure may not eventuate.
-
-There is a not-insignificant risk that the regulatory pressure may not eventuate, meaning that Windows will not be made
-able to authenticate to 3rd party EntraID services. This would leave us with an interface that we would either need to
-maintain for future hope of that pressure to exist, or an interface that is not as good as a clean room implementation
-could have been.
-
-### Lack of Corporate Interest
-
-While it's possible that we could create an Entra ID compatible server, this may not mean that consumers want to use it.
-This is a similar situation that Samba 4 ADDC has fallen into. Many companies would rather stick with the Microsoft
-ecosystem for their clients and servers, and would not want to mix and match Windows clients with opensource servers.
-This has led to little to no interest (or money) from clients.
-
-If this combines with no ongoing support or maintenance, we would be left supporting a large feature without the
-resources to back or secure it.
 
 ### Elevated risk of Security Issues
 
@@ -103,6 +91,38 @@ development of Entra ID and it's opensource needs.
 As we are not in control of the specification, the user experience is limited to what Microsoft implements. This may
 limit us and what we can do for users. In some cases certain experiences would be impossible, such as the use of the
 Microsoft Authenticator app since that is completely controlled by Microsoft.
+
+## Cons / Risks (To the Project as a Whole)
+
+### Regulatory pressure may not eventuate.
+
+There is a not-insignificant risk that the regulatory pressure may not eventuate, meaning that Windows will not be made
+able to authenticate to 3rd party EntraID services. This would leave us with an interface that we would either need to
+maintain for future hope of that pressure to exist. In previous cases, regulatory pressure has taken years to manifest
+meaning that this is a project for "the long haul".
+
+Additionally, there are ways to deflect pressure, such as Microsoft pointing at ADDC and saying "well you can already,
+self host so we don't need another open spec here".
+
+> IMPORTANT: Microsoft _may_ tie EntraID login to
+> [licensing of Windows editions](https://www.microsoft.com/en-au/microsoft-365/enterprise/microsoft365-plans-and-pricing).
+> We do not want to participate in activity that would allow license violations of Windows, so we need to be careful in
+> this area. This may require changes to Windows in someway.
+
+#### Windows Licensing
+
+This may lead to users who want to use their Windows 11 CALs or Licenses via Entra. We probably don't want to go near
+this for obvious legal reasons. However users may expect this capability since it is what Entra provides today.
+
+### Lack of Corporate Interest
+
+While it's possible that we could create an Entra ID compatible server, this may not mean that consumers want to use it.
+This is a similar situation that Samba 4 ADDC has fallen into. Many companies would rather stick with the Microsoft
+ecosystem for their clients and servers, and would not want to mix and match Windows clients with opensource servers.
+This has led to little to no interest (or money) from clients.
+
+If this combines with no ongoing support or maintenance, we would be left supporting a large feature without the
+resources to back or secure it.
 
 ## Possible Paths Forward
 
@@ -125,3 +145,17 @@ Kanidm server is designed to be layered, and EntraID would not require access to
 gives EntraID compatability the most chance to succeed, because then we can adapt to the needs of EntraID and expose
 high quality interfaces for the project. However this also brings the most maintenance burden. Worst case, EntraID
 support could be removed provided we are disciplined in how the feature is added.
+
+### Make an SSP
+
+Make our own SSP, even though it's "black box". Microsoft are not in support of this and this option poses many
+challenges but it means that any other IDP could then use our SSP framework to integration authentication with Windows.
+
+### Design a Machine Protocol
+
+Rather that implement an SSP, we design a generic opensource Authentication protocol and specification. This way we can
+become an open server implementation of that protocol, and we can request microsoft to make an SSP that implements this.
+
+This way Microsoft still controls the SSP, but we have a protocol/specification that improves upon (and is not limited
+by) what Entra ID does. This however may be a steeper uphill battle, as Microsoft has little reason to implement this,
+and it will be harder to generate regulatory pressure.
