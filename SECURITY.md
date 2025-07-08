@@ -4,9 +4,9 @@ Thanks for taking the time to engage with the project! We believe in the concept
 [coordinated disclosure](https://en.wikipedia.org/wiki/Coordinated_vulnerability_disclosure) and currently expect a 60
 day grace period for resolution of any outstanding issues.
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-You can report security vulnerabilities in two ways:
+You can report a security vulnerability in two ways:
 
 - [Report a vulnerability privately using GitHub security advisories][1]
 
