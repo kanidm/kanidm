@@ -419,7 +419,7 @@ impl OperationError {
     Self::AU0005DelayedProcessFailure => Some("Delaying processing failure, unable to proceed".into()),
     Self::AU0006CredentialMayNotReauthenticate => Some("Credential may not reauthenticate".into()),
     Self::AU0007UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
-    Self::AU0008ClientAuthInfoPrevalidation => Some("Client Authentication Info prevalidation faildid not occur when expected".into()),
+    Self::AU0008ClientAuthInfoPrevalidation => Some("Client Authentication Info prevalidation did not occur when expected".into()),
 
             Self::CU0001WebauthnAttestationNotTrusted => None,
             Self::CU0002WebauthnRegistrationError => None,
