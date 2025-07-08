@@ -125,6 +125,10 @@ pub fn setup_tls(
         std::io::Error::other(format!("Private key minimums were not met: {err:?}"))
     })?;
 
+    // Configure the rustls cryptoprovider. We currently use aws-lc-rc as the
+    // default. We may swap to rustcrypto in future.
+    let provider: Arc<_> = rustls::crypto::aws_lc_rs::default_provider().into();
+
     let client_cert_verifier = if let Some(client_ca) = tls_param.client_ca.as_ref() {
         info!("Loading client certificates from {}", client_ca.display());
 
@@ -175,7 +179,7 @@ pub fn setup_tls(
             client_cert_crls.push(cert_pem);
         }
 
-        WebPkiClientVerifier::builder(client_cert_roots.into())
+        WebPkiClientVerifier::builder_with_provider(client_cert_roots.into(), provider.clone())
             .with_crls(client_cert_crls)
             .allow_unauthenticated()
             .build()
@@ -185,10 +189,6 @@ pub fn setup_tls(
     } else {
         WebPkiClientVerifier::no_client_auth()
     };
-
-    // Configure the rustls cryptoprovider. We currently use aws-lc-rc as the
-    // default. We may swap to rustcrypto in future.
-    let provider = rustls::crypto::aws_lc_rs::default_provider().into();
 
     let tls_server_config = ServerConfig::builder_with_provider(provider)
         .with_safe_default_protocol_versions()
