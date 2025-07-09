@@ -7417,4 +7417,51 @@ mod tests {
             actual == *expected
         }));
     }
+
+    #[idm_test]
+    async fn test_oauth2_auth_with_no_state(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+
+        // == Setup the authorisation request
+        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let scope: BTreeSet<String> = OAUTH2_SCOPE_OPENID
+            .split(" ")
+            .map(|s| s.to_string())
+            .collect();
+
+        let auth_req = AuthorisationRequest {
+            response_type: ResponseType::Code,
+            response_mode: None,
+            client_id: "test_resource_server".to_string(),
+            state: None,
+            pkce_request: Some(PkceRequest {
+                code_challenge: code_challenge.into(),
+                code_challenge_method: CodeChallengeMethod::S256,
+            }),
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            scope,
+            nonce: Some("abcdef".to_string()),
+            oidc_ext: Default::default(),
+            max_age: None,
+            unknown_keys: Default::default(),
+        };
+        println!("{auth_req:?}");
+
+        let consent_request = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .expect("OAuth2 authorisation failed");
+
+        // Should be in the consent phase;
+        let AuthoriseResponse::ConsentRequested { .. } = consent_request else {
+            unreachable!("Expected a ConsentRequested response, got: {consent_request:?}");
+        };
+    }
 }

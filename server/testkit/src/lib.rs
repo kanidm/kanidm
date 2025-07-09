@@ -39,6 +39,7 @@ pub const TEST_INTEGRATION_RS_GROUP_ALL: &str = "idm_all_accounts";
 pub const TEST_INTEGRATION_RS_DISPLAY: &str = "Test Integration";
 pub const TEST_INTEGRATION_RS_URL: &str = "https://demo.example.com";
 pub const TEST_INTEGRATION_RS_REDIRECT_URL: &str = "https://demo.example.com/oauth2/flow";
+pub const TEST_INTEGRATION_STATE_VALUE: &str = "KrabzRc0ol";
 
 pub use testkit_macros::test;
 use tracing::trace;
