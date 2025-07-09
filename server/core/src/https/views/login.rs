@@ -199,11 +199,10 @@ pub async fn view_reauth_to_referer_get(
     headers: HeaderMap,
     jar: CookieJar,
 ) -> Result<Response, HtmxError> {
-    let uat: UserAuthToken = state
-        .qe_r_ref
-        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .await
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
+
     let referer = headers.get("Referer").and_then(|hv| hv.to_str().ok());
 
     let redirect = referer.and_then(|some_referer| Uri::from_str(some_referer).ok());
@@ -216,7 +215,7 @@ pub async fn view_reauth_to_referer_get(
         domain_info,
         oauth2: None,
         reauth: Some(Reauth {
-            username: uat.spn,
+            username: uat.spn.clone(),
             purpose: ReauthPurpose::ProfileSettings,
         }),
         error: None,

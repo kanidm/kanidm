@@ -71,11 +71,10 @@ pub(crate) async fn view_group_view_get(
 ) -> axum::response::Result<Response> {
     let (group, scim_effective_access) =
         get_group_info(uuid, state.clone(), &kopid, client_auth_info.clone()).await?;
-    let uat: UserAuthToken = state
-        .qe_r_ref
-        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-        .await?;
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
+
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
     let can_rw = uat.purpose_readwrite_active(time);
     let group_partial = GroupViewPartial {
