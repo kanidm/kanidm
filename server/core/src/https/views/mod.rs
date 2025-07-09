@@ -27,6 +27,7 @@ mod login;
 mod navbar;
 mod oauth2;
 mod profile;
+mod radius;
 mod reset;
 
 #[derive(Template)]
@@ -58,6 +59,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/profile", get(profile::view_profile_get))
         .route("/profile/diff", get(profile::view_profile_get))
         .route("/profile/unlock", get(profile::view_profile_unlock_get))
+        .route("/radius", get(radius::view_radius_get))
         .route("/logout", get(login::view_logout_get))
         .route("/oauth2", get(oauth2::view_index_get));
 
@@ -117,6 +119,7 @@ pub fn view_router() -> Router<ServerState> {
             "/reset/add_ssh_publickey",
             post(reset::view_add_ssh_publickey),
         )
+        .route("/radius", post(radius::view_radius_post))
         .route("/api/delete_alt_creds", post(reset::remove_alt_creds))
         .route("/api/delete_unixcred", post(reset::remove_unixcred))
         .route("/api/add_totp", post(reset::add_totp))

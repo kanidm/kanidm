@@ -1,0 +1,31 @@
+(% extends "user_settings_partial_base.html" %)
+
+(% block selected_setting_group %)
+RADIUS
+(% endblock %)
+
+(% block settings_window %)
+<div id="radiusUpdateDynamicSection">
+    <div>
+        (% if password_available %)
+        <p><strong>RADIUS Password:</strong> (( radius_password )) </p>
+        <p>
+            <button type="button" class="btn btn-primary"
+                hx-post="/ui/radius"
+                hx-target="div#main">
+                Regenerate RADIUS password
+            </button>
+        </p>
+        (% else %)
+        <p>RADIUS password not generated</p>
+        <p>
+            <button type="button" class="btn btn-primary"
+                hx-post="/ui/radius"
+                hx-target="div#main">
+                Generate RADIUS password
+            </button>
+        </p>
+        (% endif %)
+    </div>
+</div>
+(% endblock %)
