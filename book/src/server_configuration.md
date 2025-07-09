@@ -17,7 +17,7 @@ docs page for your particular build.
 
 > [!WARNING]
 >
-> You MUST set the `domain`, `origin`, `tls_chain` and `tls_path` options via one method or the other, or the server
+> You MUST set the `domain`, `origin`, `tls_chain` and `tls_key` options via one method or the other, or the server
 > cannot start!
 
 The following is a commented example configuration.
