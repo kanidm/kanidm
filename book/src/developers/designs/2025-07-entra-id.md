@@ -20,9 +20,13 @@ to function as a client to Kanidm, this demonstrates that an opensource Entra ID
 With a viable opensource replacement available, this may allow regulatory pressure to be exerted on Microsoft to allow
 open Windows to use third party Entra ID compatible services.
 
-This is important as today Windows is coded to only support Microsofts EntraID services and uses TLS CA pinning to
-ensure that a 3rd party can't MITM this process. This limits Windows authentication options for users to EntraID or on
-prem ADDC.
+This is important as today Windows is coded to only support Microsofts EntraID services. This limits Windows
+authentication options for users to EntraID or on prem ADDC.
+
+However, due to the lack of TLS CA pinning in Windows this means that an initial proof of concept could be made by MITM
+techniques to redirect clients to our implementation.
+
+> NOTE: Microsoft's released Linux Intune clients do perform TLS CA pinning however.
 
 ## Pros
 
@@ -52,7 +56,8 @@ from my understanding.
 ### Potential to find and disclose security risks
 
 By implementing Entra ID as a server, we may find security vulnerabilities in the process that we can disclose to
-Microsoft. This improves the security of authentication for all users of both Entra ID and our reimplementation.
+Microsoft. This improves the security of authentication for all users of both Entra ID and our reimplementation. The
+himmelblau project has already discovered and disclosed a number of these issues.
 
 ### Ability to Improve the End Result
 
@@ -76,7 +81,9 @@ lot of control with Microsoft, and we still can't make our own Windows client au
 ### Elevated risk of Security Issues
 
 Since we did not design the Entra ID protocols, they may have security issues we are not aware of. Additionally these
-protocols are complex and undocumented, and we may make a mistake in their implementation that leads to security issues.
+protocols are complex and the
+[documentation is incomplete](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-oapxbc/2f7d8875-0383-4058-956d-2fb216b44706)
+where it does exist. This may lead us to make a mistake in our reimplementation that leads to security issues.
 
 ### Not in control of specification
 
@@ -85,6 +92,9 @@ can implement them in a minimal and secure manner. By having to implement someon
 what Microsoft do to the letter. This could lead to security issues (as above), but also Microsoft can change the
 specification and server side behaviour at anytime. We would be playing "forever catch up", with no input to the
 development of Entra ID and it's opensource needs.
+
+A suggestion is that we can extend the protocols with more secure techniques for our own use cases in future, but we
+would still need to support the "minimum" viable that Windows does to maintain interop.
 
 ### User Experience
 
@@ -129,7 +139,8 @@ resources to back or secure it.
 ### Do Not Accept the Proposal
 
 This presents the least risk to Kanidm. However, it would mean that sernet may follow other avenues, and if they are
-successful, leaves Kanidm without Windows client support.
+successful, leaves Kanidm without Windows client support. For example, this could result in a Kanidm fork or a new IDM
+based on other projects.
 
 ### Create an External Project that has Swappable Backends
 
