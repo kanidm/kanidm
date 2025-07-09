@@ -7443,7 +7443,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: None,
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.into(),
+                code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
