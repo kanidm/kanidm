@@ -4,6 +4,7 @@ use crate::utils::trigraph_iter;
 use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
 use kanidm_proto::scim_v1::JsonValue;
+use std::cmp::Ordering;
 
 use std::collections::BTreeSet;
 
@@ -185,6 +186,15 @@ impl ValueSetT for ValueSetIname {
         } else {
             debug_assert!(false);
             false
+        }
+    }
+
+    fn cmp(&self, other: &ValueSet) -> Ordering {
+        if let Some(other) = other.as_iname_set() {
+            self.set.cmp(other)
+        } else {
+            debug_assert!(false);
+            Ordering::Equal
         }
     }
 

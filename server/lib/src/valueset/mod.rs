@@ -20,6 +20,7 @@ use openssl::pkey::Private;
 use openssl::pkey::Public;
 use smolset::SmolSet;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use time::OffsetDateTime;
 use webauthn_rs::prelude::AttestationCaList;
@@ -154,6 +155,15 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_>;
 
     fn equal(&self, other: &ValueSet) -> bool;
+
+    fn cmp(&self, _other: &ValueSet) -> Ordering {
+        // IMPORTANT - in the case we attempt to compare the ordering of two value sets
+        // that are different syntaxs or types, the CORRECT and reliable thing to do is
+        // report them as equal such that any sorting function wont rearrange the values.
+        error!("cmp should not be called on {:?}", self.syntax());
+        debug_assert!(false);
+        Ordering::Equal
+    }
 
     fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError>;
 

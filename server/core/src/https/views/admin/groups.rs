@@ -142,6 +142,7 @@ pub async fn get_group_info(
             ScimEntryGetQuery {
                 attributes: Some(Vec::from(GROUP_ATTRIBUTES)),
                 ext_access_check: true,
+                ..Default::default()
             },
         )
         .await?;
@@ -169,20 +170,18 @@ async fn get_groups_info(
             ScimEntryGetQuery {
                 attributes: Some(Vec::from(GROUP_ATTRIBUTES)),
                 ext_access_check: true,
+                sort_by: Some(Attribute::Name),
+                ..Default::default()
             },
         )
         .await?;
 
-    // TODO: inefficient to sort here
-    let mut groups: Vec<_> = base
+    let groups: Vec<_> = base
         .resources
         .into_iter()
         // TODO: Filtering away unsuccessful entries may not be desired.
         .filter_map(scimentry_into_groupinfo)
         .collect();
-
-    groups.sort_by_key(|(sp, _)| sp.uuid);
-    groups.reverse();
 
     Ok(groups)
 }
