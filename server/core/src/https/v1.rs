@@ -182,7 +182,7 @@ pub async fn whoami_uat(
 ) -> Result<Json<UserAuthToken>, WebError> {
     state
         .qe_r_ref
-        .handle_whoami_uat(client_auth_info, kopid.eventid)
+        .handle_whoami_uat(&client_auth_info, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)

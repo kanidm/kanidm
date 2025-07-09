@@ -110,10 +110,7 @@ pub(crate) async fn view_profile_get(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
 ) -> Result<Response, WebError> {
-    let uat: UserAuthToken = state
-        .qe_r_ref
-        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .await?;
+    let uat: &UserAuthToken = client_auth_info.pre_validated_uat()?;
 
     let (scim_person, scim_effective_access) =
         crate::https::views::admin::persons::get_person_info(
@@ -154,11 +151,9 @@ pub(crate) async fn view_profile_diff_start_save_post(
     // Form must be the last parameter because it consumes the request body
     Form(query): Form<SaveProfileQuery>,
 ) -> axum::response::Result<Response> {
-    let uat: UserAuthToken = state
-        .qe_r_ref
-        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-        .await?;
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
     let can_rw = uat.purpose_readwrite_active(time);
@@ -235,11 +230,9 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
     // Form must be the last parameter because it consumes the request body
     Form(query): Form<CommitSaveProfileQuery>,
 ) -> axum::response::Result<Response> {
-    let uat: UserAuthToken = state
-        .qe_r_ref
-        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-        .await?;
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let mut attrs = BTreeMap::<Attribute, Option<ScimValueKanidm>>::new();
 
@@ -345,17 +338,15 @@ pub(crate) async fn view_profile_unlock_get(
     Extension(kopid): Extension<KOpId>,
     jar: CookieJar,
 ) -> Result<Response, HtmxError> {
-    let uat: UserAuthToken = state
-        .qe_r_ref
-        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .await
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let display_ctx = LoginDisplayCtx {
         domain_info,
         oauth2: None,
         reauth: Some(Reauth {
-            username: uat.spn,
+            username: uat.spn.clone(),
             purpose: ReauthPurpose::ProfileSettings,
         }),
         error: None,
