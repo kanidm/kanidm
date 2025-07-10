@@ -25,8 +25,7 @@ pub(crate) struct ProfileView {
 #[template(path = "radius.html")]
 pub(crate) struct RadiusPartialView {
     menu_active_item: ProfileMenuItems,
-    password_available: bool,
-    radius_password: String,
+    radius_password: Option<String>,
 }
 
 pub(crate) async fn view_radius_get(
@@ -72,23 +71,12 @@ pub(crate) async fn view_radius_get(
         .await
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
-    let profile_partial = if let Some(radius_password) = radius_password {
-        RadiusPartialView {
-            menu_active_item: ProfileMenuItems::Radius,
-            password_available: true,
-            radius_password: radius_password,
-        }
-    } else {
-        RadiusPartialView {
-            menu_active_item: ProfileMenuItems::Radius,
-            password_available: false,
-            radius_password: String::new(),
-        }
-    };
-
     Ok(ProfileView {
         navbar_ctx: NavbarCtx { domain_info },
-        profile_partial,
+        profile_partial: RadiusPartialView {
+            menu_active_item: ProfileMenuItems::Radius,
+            radius_password: radius_password,
+        },
     }
     .into_response())
 }
@@ -112,8 +100,7 @@ pub(crate) async fn view_radius_post(
 
     Ok(RadiusPartialView {
         menu_active_item: ProfileMenuItems::Radius,
-        password_available: true,
-        radius_password,
+        radius_password: Some(radius_password),
     }
     .into_response())
 }
