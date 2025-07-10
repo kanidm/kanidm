@@ -56,6 +56,15 @@ impl ScimAttributeEffectiveAccess {
             Self::Allow(set) => set.contains(attr),
         }
     }
+
+    /// Check if the effective access allows ANY of the attributes ([attrs])
+    pub fn check_any(&self, attrs: &BTreeSet<Attribute>) -> bool {
+        match self {
+            Self::Grant => true,
+            Self::Deny => false,
+            Self::Allow(set) => attrs.intersection(set).next().is_some(),
+        }
+    }
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
