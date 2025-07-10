@@ -119,7 +119,7 @@ pub fn view_router() -> Router<ServerState> {
             "/reset/add_ssh_publickey",
             post(reset::view_add_ssh_publickey),
         )
-        .route("/radius", post(radius::view_radius_post))
+        .route("/radius/generate", post(radius::view_radius_post))
         .route("/api/delete_alt_creds", post(reset::remove_alt_creds))
         .route("/api/delete_unixcred", post(reset::remove_unixcred))
         .route("/api/add_totp", post(reset::add_totp))

@@ -11,7 +11,7 @@ RADIUS
         <p><strong>RADIUS Password:</strong> (( radius_password )) </p>
         <p>
             <button type="button" class="btn btn-primary"
-                hx-post="/ui/radius"
+                hx-post="/ui/radius/generate"
                 hx-target="div#main">
                 Regenerate RADIUS password
             </button>
@@ -20,7 +20,7 @@ RADIUS
         <p>RADIUS password not generated</p>
         <p>
             <button type="button" class="btn btn-primary"
-                hx-post="/ui/radius"
+                hx-post="/ui/radius/generate"
                 hx-target="div#main">
                 Generate RADIUS password
             </button>
