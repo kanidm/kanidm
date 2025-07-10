@@ -2,27 +2,62 @@
 
 (% block groups_item_extra_classes %)active(% endblock %)
 
-(% macro string_attr(dispname, name, value, editable, attribute) %)
+(% macro string_attr(dispname, name, value, can_modify_any_attr, attribute) %)
 (% if scim_effective_access.search.check(attribute|as_ref) %)
 <div class="row mt-3">
+    (% if can_rw && can_modify_any_attr %)
+    <label for="group(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0 py-md-2">(( dispname ))</label>
+    (% else %)
     <label for="group(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
+    (% endif %)
     <div class="col-12 col-md-8 col-lg-6">
+        (% if scim_effective_access.modify_present.check(attribute|as_ref) %)
+        <input class="form-control py-0" id="group(( name ))" name="(( name ))" value="(( value ))">
+        (% else %)
         <input readonly class="form-control-plaintext py-0" id="group(( name ))" name="(( name ))" value="(( value ))">
+        (% endif %)
     </div>
 </div>
 (% endif %)
 (% endmacro %)
 
+
 (% block admin_page %)
+(%
+let can_modify_any_attr = scim_effective_access.modify_present.check_any(
+    std::collections::BTreeSet::from(GROUP_ATTRIBUTES)|as_ref)
+%)
+
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="/ui/admin/groups" hx-target="#main">Group List</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Viewing</li>
+        <li class="breadcrumb-item active" aria-current="page">(% if can_rw %)Viewing(% else %)Managing(% endif %) Entry</li>
     </ol>
 </nav>
 
-(% call string_attr("UUID", "uuid", group.uuid, false, Attribute::Uuid) %)
-(% call string_attr("Name", "name", group.name, true, Attribute::Name) %)
+<form id="user_settings_container" class="needs-validation"
+      hx-post="/ui/api/admin/edit_group"
+      hx-swap="beforeend"
+      hx-target=".toast-container"
+      hx-validate="true"
+      hx-ext="bs-validation"
+      novalidate>
 
+    (% if can_modify_any_attr %)
+        (% if can_rw %)
+            <button type="submit" class="btn btn-primary">Save</button>
+        (% else %)
+            <a hx-boost="false" href="/ui/unlock">
+                <button type="button" class="btn btn-secondary">Unlock Edit 🔒</button>
+            </a>
+        (% endif %)
+    (% endif %)
 
+    (% call string_attr("UUID", "uuid", group.uuid, can_modify_any_attr, Attribute::Uuid) %)
+    (% call string_attr("Name", "name", group.name, can_modify_any_attr, Attribute::Name) %)
+
+</form>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+</div>
 (% endblock %)

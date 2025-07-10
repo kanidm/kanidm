@@ -1,6 +1,5 @@
 use super::constants::{ProfileMenuItems, Urls};
 use super::errors::HtmxError;
-use super::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 use super::navbar::NavbarCtx;
 use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
@@ -12,7 +11,6 @@ use axum::extract::{Query, State};
 use axum::http::Uri;
 use axum::response::{Redirect, Response};
 use axum::Extension;
-use axum_extra::extract::cookie::CookieJar;
 use axum_extra::extract::Form;
 use axum_htmx::{HxEvent, HxPushUrl, HxResponseTrigger};
 use futures_util::TryFutureExt;
@@ -329,36 +327,4 @@ pub(crate) async fn view_new_email_entry_partial(
         },
     )
         .into_response())
-}
-
-pub(crate) async fn view_profile_unlock_get(
-    State(state): State<ServerState>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    DomainInfo(domain_info): DomainInfo,
-    Extension(kopid): Extension<KOpId>,
-    jar: CookieJar,
-) -> Result<Response, HtmxError> {
-    let uat: &UserAuthToken = client_auth_info
-        .pre_validated_uat()
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
-
-    let display_ctx = LoginDisplayCtx {
-        domain_info,
-        oauth2: None,
-        reauth: Some(Reauth {
-            username: uat.spn.clone(),
-            purpose: ReauthPurpose::ProfileSettings,
-        }),
-        error: None,
-    };
-
-    Ok(super::login::view_reauth_get(
-        state,
-        client_auth_info,
-        kopid,
-        jar,
-        Urls::Profile.as_ref(),
-        display_ctx,
-    )
-    .await)
 }

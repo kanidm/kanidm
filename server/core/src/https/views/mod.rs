@@ -8,7 +8,7 @@ use axum::{
 
 use axum_htmx::HxRequestGuardLayer;
 
-use crate::https::views::admin::admin_router;
+use crate::https::views::admin::{admin_api_router, admin_router};
 use constants::Urls;
 use kanidmd_lib::{
     idm::server::DomainInfoRead,
@@ -57,7 +57,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/update_credentials", get(reset::view_self_reset_get))
         .route("/profile", get(profile::view_profile_get))
         .route("/profile/diff", get(profile::view_profile_get))
-        .route("/profile/unlock", get(profile::view_profile_unlock_get))
+        .route("/unlock", get(login::view_reauth_to_referer_get))
         .route("/logout", get(login::view_logout_get))
         .route("/oauth2", get(oauth2::view_index_get));
 
@@ -145,10 +145,12 @@ pub fn view_router() -> Router<ServerState> {
         .layer(HxRequestGuardLayer::new("/ui"));
 
     let admin_router = admin_router();
+    let admin_api_router = admin_api_router();
     Router::new()
         .merge(unguarded_router)
         .merge(guarded_router)
         .nest("/admin", admin_router)
+        .nest("/api/admin", admin_api_router)
 }
 
 /// Serde deserialization decorator to map empty Strings to None,
