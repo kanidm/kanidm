@@ -109,35 +109,14 @@ pub(crate) async fn view_radius_post(
         .handle_whoami_uat(&client_auth_info, kopid.eventid)
         .await?;
 
-    state
-        .qe_w_ref
-        .handle_regenerateradius(
-            client_auth_info.clone(),
-            uat.uuid.clone().to_string(),
-            kopid.eventid,
-        )
-        .await?;
-
     let radius_password = state
-        .qe_r_ref
-        .handle_internalradiusread(
-            client_auth_info,
-            uat.uuid.clone().to_string(),
-            kopid.eventid,
-        )
+        .qe_w_ref
+        .handle_regenerateradius(client_auth_info, uat.uuid.to_string(), kopid.eventid)
         .await?;
 
-    if let Some(radius_password) = radius_password {
-        Ok(RadiusPartialView {
-            menu_active_item: ProfileMenuItems::Radius,
-            password_available: true,
-            radius_password,
-        })
-    } else {
-        Ok(RadiusPartialView {
-            menu_active_item: ProfileMenuItems::Radius,
-            password_available: false,
-            radius_password: String::new(),
-        })
-    }
+    Ok(RadiusPartialView {
+        menu_active_item: ProfileMenuItems::Radius,
+        password_available: true,
+        radius_password,
+    })
 }
