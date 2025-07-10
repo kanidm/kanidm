@@ -22,6 +22,7 @@ use serde_with::formats::CommaSeparator;
 use serde_with::{serde_as, skip_serializing_none, StringWithSeparator};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::BTreeMap;
+use std::num::NonZeroU64;
 use std::ops::Not;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -45,15 +46,34 @@ pub struct ScimEntryGeneric {
     pub attrs: BTreeMap<Attribute, JsonValue>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ScimSortOrder {
+    #[default]
+    Ascending,
+    Descending,
+}
+
 /// SCIM Query Parameters used during the get of a single entry
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimEntryGetQuery {
     #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, Attribute>>")]
     pub attributes: Option<Vec<Attribute>>,
     #[serde(default, skip_serializing_if = "<&bool>::not")]
     pub ext_access_check: bool,
+
+    // Sorting per https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.3
+    #[serde(default)]
+    pub sort_by: Option<Attribute>,
+    #[serde(default)]
+    pub sort_order: Option<ScimSortOrder>,
+
+    // Pagination https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.4
+    pub start_index: Option<NonZeroU64>,
+    pub count: Option<NonZeroU64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
@@ -200,6 +220,7 @@ mod tests {
         let q = ScimEntryGetQuery {
             attributes: Some(vec![Attribute::Name]),
             ext_access_check: false,
+            ..Default::default()
         };
 
         let txt = serde_urlencoded::to_string(&q).unwrap();
@@ -208,9 +229,10 @@ mod tests {
         let q = ScimEntryGetQuery {
             attributes: Some(vec![Attribute::Name, Attribute::Spn]),
             ext_access_check: true,
+            ..Default::default()
         };
 
         let txt = serde_urlencoded::to_string(&q).unwrap();
-        assert_eq!(txt, "attributes=name%2Cspn&ext_access_check=true");
+        assert_eq!(txt, "attributes=name%2Cspn&extAccessCheck=true");
     }
 }

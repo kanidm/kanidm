@@ -136,6 +136,7 @@ pub async fn get_person_info(
             ScimEntryGetQuery {
                 attributes: Some(Vec::from(PERSON_ATTRIBUTES)),
                 ext_access_check: true,
+                ..Default::default()
             },
         )
         .await?;
@@ -163,20 +164,18 @@ async fn get_persons_info(
             ScimEntryGetQuery {
                 attributes: Some(Vec::from(PERSON_ATTRIBUTES)),
                 ext_access_check: true,
+                sort_by: Some(Attribute::Name),
+                ..Default::default()
             },
         )
         .await?;
 
-    // TODO: inefficient to sort here
-    let mut persons: Vec<_> = base
+    let persons: Vec<_> = base
         .resources
         .into_iter()
         // TODO: Filtering away unsuccessful entries may not be desired.
         .filter_map(scimentry_into_personinfo)
         .collect();
-
-    persons.sort_by_key(|(sp, _)| sp.uuid);
-    persons.reverse();
 
     Ok(persons)
 }
