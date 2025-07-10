@@ -1,4 +1,3 @@
-use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
@@ -98,21 +97,23 @@ pub(crate) async fn view_radius_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    DomainInfo(_domain_info): DomainInfo,
-) -> Result<RadiusPartialView, WebError> {
-    let uat: UserAuthToken = state
-        .qe_r_ref
-        .handle_whoami_uat(&client_auth_info, kopid.eventid)
-        .await?;
+    DomainInfo(domain_info): DomainInfo,
+) -> axum::response::Result<Response> {
+    let uat_client_auth_info = client_auth_info.clone();
+    let uat: &UserAuthToken = uat_client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let radius_password = state
         .qe_w_ref
         .handle_regenerateradius(client_auth_info, uat.uuid.to_string(), kopid.eventid)
-        .await?;
+        .await
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     Ok(RadiusPartialView {
         menu_active_item: ProfileMenuItems::Radius,
         password_available: true,
         radius_password,
-    })
+    }
+    .into_response())
 }
