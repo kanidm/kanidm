@@ -62,7 +62,7 @@ impl ScimAttributeEffectiveAccess {
         }
     }
 
-    /// Check if the effective access allows ANY of the attributes ([attrs])
+    /// Check if the effective access allows ANY of the attributes
     pub fn check_any(&self, attrs: &BTreeSet<Attribute>) -> bool {
         match self {
             Self::Grant => true,
