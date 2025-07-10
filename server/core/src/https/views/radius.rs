@@ -73,29 +73,25 @@ pub(crate) async fn view_radius_get(
         .await
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
-    if let Some(radius_password) = radius_password {
-        Ok(ProfileView {
-            navbar_ctx: NavbarCtx { domain_info },
-
-            profile_partial: RadiusPartialView {
-                menu_active_item: ProfileMenuItems::Radius,
-                password_available: true,
-                radius_password: radius_password,
-            },
+    let profile_partial = if let Some(radius_password) = radius_password {
+        RadiusPartialView {
+            menu_active_item: ProfileMenuItems::Radius,
+            password_available: true,
+            radius_password: radius_password,
         }
-        .into_response())
     } else {
-        Ok(ProfileView {
-            navbar_ctx: NavbarCtx { domain_info },
-
-            profile_partial: RadiusPartialView {
-                menu_active_item: ProfileMenuItems::Radius,
-                password_available: false,
-                radius_password: String::new(),
-            },
+        RadiusPartialView {
+            menu_active_item: ProfileMenuItems::Radius,
+            password_available: false,
+            radius_password: String::new(),
         }
-        .into_response())
+    };
+
+    Ok(ProfileView {
+        navbar_ctx: NavbarCtx { domain_info },
+        profile_partial,
     }
+    .into_response())
 }
 
 pub(crate) async fn view_radius_post(
