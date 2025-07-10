@@ -10,6 +10,7 @@ use serde_with::OneOrMany;
 use serde_with::{base64, formats, serde_as, skip_serializing_none};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::{BTreeMap, BTreeSet};
+use std::num::NonZeroU64;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -120,9 +121,12 @@ pub struct ScimEntryApplication {
 
 #[serde_as]
 #[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimListApplication {
     pub schemas: Vec<String>,
     pub total_results: u64,
+    pub items_per_page: Option<NonZeroU64>,
+    pub start_index: Option<NonZeroU64>,
     pub resources: Vec<ScimEntryApplication>,
 }
 
