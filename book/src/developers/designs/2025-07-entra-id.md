@@ -15,7 +15,8 @@ In this document, we want to examine the pros, cons, and risks of this proposal.
 ## Goal of the Proposal
 
 The goal would be to add compatibility for Kanidm to allow Himmelblau as an authentication client. If Himmelblau is able
-to function as a client to Kanidm, this demonstrates that an opensource Entra ID replacement is viable.
+to function as a client to Kanidm, then we will be able to extend this to allow Windows to authenticate to Kanidm. This
+demonstrates that an opensource Entra ID alternative is viable.
 
 With a viable opensource replacement available, this may allow regulatory pressure to be exerted on Microsoft to allow
 open Windows to use third party Entra ID compatible services.
@@ -75,8 +76,11 @@ The underlying issue is that making
 in Windows is "strongly discouraged" and mostly undocumented. While this proposal would allow Windows to authenticate to
 3rd parties, it doesn't resolve the need to be able to create new authentication modules for Windows client machines.
 
-What we want is Windows to authenticate to Kanidm on our terms. This proposal achieves that in a way that still leaves a
-lot of control with Microsoft, and we still can't make our own Windows client authentication modules.
+What we want is Windows to authenticate to Kanidm on our terms - we want to create our own Windows authentication module
+based on our own design, rather than having to follow what Microsoft has done for Entra ID. This proposal achieves
+Windows client authentication in a way that leaves control of the specification with Microsoft, there is no guarantee
+that Windows will even gain third party Entra ID server support, and Microsoft could update the specification without
+notice breaking our integrations.
 
 ### Elevated risk of Security Issues
 
@@ -85,13 +89,17 @@ protocols are complex and the
 [documentation is incomplete](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-oapxbc/2f7d8875-0383-4058-956d-2fb216b44706)
 where it does exist. This may lead us to make a mistake in our reimplementation that leads to security issues.
 
+Importantly within this is that to remain compatible with Windows, we would need to do the what Windows expects, so we
+have no room to adjust for improve the protocol - only limit what we may offer to the client. If the core protocol that
+is required for Windows authentication is structurally vulnerable, then we have few choices available to us.
+
 ### Not in control of specification
 
 A valuable part of Kanidm's success has been "nearly complete control" over all specifications we implement, meaning we
 can implement them in a minimal and secure manner. By having to implement someone else's specification, we must follow
 what Microsoft do to the letter. This could lead to security issues (as above), but also Microsoft can change the
-specification and server side behaviour at anytime. We would be playing "forever catch up", with no input to the
-development of Entra ID and it's opensource needs.
+specification and server side behaviour at anytime in a way that can break authentication. We would be playing "forever
+catch up", with potentially no specification, and no input to the development of Entra ID and our needs.
 
 A suggestion is that we can extend the protocols with more secure techniques for our own use cases in future, but we
 would still need to support the "minimum" viable that Windows does to maintain interop.
@@ -100,7 +108,8 @@ would still need to support the "minimum" viable that Windows does to maintain i
 
 As we are not in control of the specification, the user experience is limited to what Microsoft implements. This may
 limit us and what we can do for users. In some cases certain experiences would be impossible, such as the use of the
-Microsoft Authenticator app since that is completely controlled by Microsoft.
+Microsoft Authenticator app since that is completely controlled by Microsoft. This limits what we could offer to Windows
+users/clients.
 
 ## Cons / Risks (To the Project as a Whole)
 
