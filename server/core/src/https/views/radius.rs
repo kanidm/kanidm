@@ -75,7 +75,7 @@ pub(crate) async fn view_radius_get(
         navbar_ctx: NavbarCtx { domain_info },
         profile_partial: RadiusPartialView {
             menu_active_item: ProfileMenuItems::Radius,
-            radius_password: radius_password,
+            radius_password,
         },
     }
     .into_response())
