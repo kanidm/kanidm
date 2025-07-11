@@ -27,7 +27,8 @@ use std::collections::BTreeMap;
 use std::str::FromStr;
 use uuid::Uuid;
 
-pub const GROUP_ATTRIBUTES: [Attribute; 2] = [Attribute::Uuid, Attribute::Name];
+pub const GROUP_ATTRIBUTES: [Attribute; 3] =
+    [Attribute::Uuid, Attribute::Name, Attribute::Description];
 
 #[derive(Template)]
 #[template(path = "admin/admin_panel_template.html")]
@@ -188,9 +189,9 @@ async fn get_groups_info(
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct SaveGroupForm {
-    uuid: Uuid,
     #[serde(rename = "name")]
     account_name: String,
+    description: Option<String>,
 }
 
 pub(crate) async fn edit_group(
@@ -198,6 +199,7 @@ pub(crate) async fn edit_group(
     Extension(kopid): Extension<KOpId>,
     DomainInfo(domain_info): DomainInfo,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(group_uuid): Path<Uuid>,
     // Form must be the last parameter because it consumes the request body
     Form(query): Form<SaveGroupForm>,
 ) -> axum::response::Result<Response> {
@@ -207,14 +209,26 @@ pub(crate) async fn edit_group(
         Some(ScimValueKanidm::String(query.account_name)),
     );
 
+    let (group_info, _) =
+        get_group_info(group_uuid, state.clone(), &kopid, client_auth_info.clone()).await?;
+
+    // query.description can't be Some("") since axum deserializes "" to None.
+    // Also meaning that I can't check if someone wants to unset a field or couldn't set the field.
+    // Thus, I check if there's a difference below to make up for this.
+    if group_info.description != query.description {
+        attrs.insert(
+            Attribute::Description,
+            query.description.map(ScimValueKanidm::String),
+        );
+    }
+
     let generic = ScimEntryPutKanidm {
-        id: query.uuid,
+        id: group_uuid,
         attrs,
     }
     .try_into()
     .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
 
-    // TODO: Use returned KanidmScimPerson below instead of view_profile_get.
     state
         .qe_w_ref
         .handle_scim_entry_put(client_auth_info.clone(), kopid.eventid, generic)
