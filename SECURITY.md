@@ -13,13 +13,11 @@ You can report a security vulnerability in two ways:
 - via email to our core team: [William](mailto:william@blackhats.net.au) and
   [James](mailto:james+kanidm@terminaloutcomes.com)
 
-If you have found an issue where you're not sure whether it is a "real security
-bug", please report it as a security bug. We can re-triage the issue as a
-regular issue if it turns out to not have security impacts.
+If you have found an issue where you're not sure whether it is a "real security bug", please report it as a security
+bug. We can re-triage the issue as a regular issue if it turns out to not have security impacts.
 
-We expect all reports to have been verified by a human before submission.
-Properly triaging and investigating all issues (not just security relevant)
-takes up time, and we are a volunteer-driven project.
+We expect all reports to have been verified by a human before submission. Properly triaging and investigating all issues
+(not just security relevant) takes up time, and we are a volunteer-driven project.
 
 We will endeavour to respond to your request as soon as possible.
 
