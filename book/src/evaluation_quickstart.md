@@ -73,9 +73,17 @@ docker exec -i -t kanidmd \
   kanidmd recover-account idm_admin
 ```
 
-## Setup the client configuration
+## Install the client tools
 
 This happens on your computer, not in the container.
+
+Kanidm relies on locally installed client tools on the client machine for administration. Follow the guide in the [installing client tools](installing_client_tools.html) chapter to install them now.
+
+Client tools are explained more in the [client tools](client_tools.html) chapter, but to complete setup, you will only need to follow the steps below.
+
+## Setup the client tool configuration
+
+After installing the client tools, you will need a simple default config too use them.
 
 ```toml
 # ~/.config/kanidm
