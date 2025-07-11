@@ -7,6 +7,7 @@ use scim_proto::ScimEntryHeader;
 use serde::Serialize;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
 use std::collections::{BTreeMap, BTreeSet};
+use std::num::NonZeroU64;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use url::Url;
@@ -19,6 +20,7 @@ use uuid::Uuid;
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ScimEntryKanidm {
     #[serde(flatten)]
     pub header: ScimEntryHeader,
@@ -31,9 +33,12 @@ pub struct ScimEntryKanidm {
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Serialize, Clone, Debug, Default)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ScimListResponse {
     pub schemas: Vec<String>,
     pub total_results: u64,
+    pub items_per_page: Option<NonZeroU64>,
+    pub start_index: Option<NonZeroU64>,
     pub resources: Vec<ScimEntryKanidm>,
 }
 
@@ -54,6 +59,15 @@ impl ScimAttributeEffectiveAccess {
             Self::Grant => true,
             Self::Deny => false,
             Self::Allow(set) => set.contains(attr),
+        }
+    }
+
+    /// Check if the effective access allows ANY of the attributes
+    pub fn check_any(&self, attrs: &BTreeSet<Attribute>) -> bool {
+        match self {
+            Self::Grant => true,
+            Self::Deny => false,
+            Self::Allow(set) => attrs.intersection(set).next().is_some(),
         }
     }
 }
@@ -238,13 +252,14 @@ pub enum ScimValueKanidm {
     Integer(i64),
     Decimal(f64),
     String(String),
+
+    // Other strong outbound types.
     DateTime(#[serde_as(as = "Rfc3339")] OffsetDateTime),
     Reference(Url),
     Uuid(Uuid),
     EntryReference(ScimReference),
     EntryReferences(Vec<ScimReference>),
 
-    // Other strong outbound types.
     ArrayString(Vec<String>),
     ArrayDateTime(#[serde_as(as = "Vec<Rfc3339>")] Vec<OffsetDateTime>),
     ArrayUuid(Vec<Uuid>),

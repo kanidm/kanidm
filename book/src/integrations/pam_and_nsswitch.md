@@ -118,7 +118,7 @@ testgroup:x:2439676479:testunix
 > [!HINT]
 >
 > Remember to also create a UNIX password with something like
-> `kanidm account posix set_password --name idm_admin demo_user`. Otherwise there will be no credential for the account
+> `kanidm person posix set-password --name idm_admin demo_user`. Otherwise there will be no credential for the account
 > to authenticate with.
 
 ## PAM

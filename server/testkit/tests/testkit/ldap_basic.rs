@@ -166,12 +166,10 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     // Check removeal of app passwords
 
     // Delete the applications
-    let result = idm_admin_rsclient
+    idm_admin_rsclient
         .idm_application_delete(APPLICATION_1_NAME)
         .await
         .expect("Failed to delete the application");
-
-    debug!(?result);
 
     // Check that you can no longer bind.
 
