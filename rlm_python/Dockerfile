@@ -55,11 +55,13 @@ RUN mkdir -p /pkg/pykanidm/
 COPY pykanidm/ /pkg/pykanidm/
 
 # install the package and its dependencies
-RUN python3 -m pip install \
+RUN zypper install -y gcc openssl-devel && \
+    python3 -m pip install \
     --break-system-packages \
     --no-cache-dir \
     --no-warn-script-location \
-    /pkg/pykanidm
+    /pkg/pykanidm && \
+    zypper remove -y gcc openssl-devel
 
 COPY rlm_python/radius_entrypoint.py /radius_entrypoint.py
 
