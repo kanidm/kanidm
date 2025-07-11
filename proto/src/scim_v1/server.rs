@@ -30,6 +30,15 @@ pub struct ScimEntryKanidm {
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
 }
 
+impl ScimEntryKanidm {
+    fn get_string_attr(&self, attr: &Attribute) -> Option<&String> {
+        self.attrs.get(attr).and_then(|v| match v {
+            ScimValueKanidm::String(s) => Some(s),
+            _ => None,
+        })
+    }
+}
+
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Serialize, Clone, Debug, Default)]
@@ -300,39 +309,18 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
     fn try_from(scim_entry: ScimEntryKanidm) -> Result<Self, Self::Error> {
         let uuid = scim_entry.header.id;
         let name = scim_entry
-            .attrs
-            .get(&Attribute::Name)
-            .and_then(|v| match v {
-                ScimValueKanidm::String(s) => Some(s.clone()),
-                _ => None,
-            })
+            .get_string_attr(&Attribute::Name)
+            .cloned()
             .ok_or(())?;
-
         let displayname = scim_entry
-            .attrs
-            .get(&Attribute::DisplayName)
-            .and_then(|v| match v {
-                ScimValueKanidm::String(s) => Some(s.clone()),
-                _ => None,
-            })
+            .get_string_attr(&Attribute::DisplayName)
+            .cloned()
             .ok_or(())?;
-
         let spn = scim_entry
-            .attrs
-            .get(&Attribute::Spn)
-            .and_then(|v| match v {
-                ScimValueKanidm::String(s) => Some(s.clone()),
-                _ => None,
-            })
+            .get_string_attr(&Attribute::Spn)
+            .cloned()
             .ok_or(())?;
-
-        let description = scim_entry
-            .attrs
-            .get(&Attribute::Description)
-            .and_then(|v| match v {
-                ScimValueKanidm::String(s) => Some(s.clone()),
-                _ => None,
-            });
+        let description = scim_entry.get_string_attr(&Attribute::Description).cloned();
 
         let mails = scim_entry
             .attrs
@@ -378,6 +366,7 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
 pub struct ScimGroup {
     pub uuid: Uuid,
     pub name: String,
+    pub description: Option<String>,
 }
 
 impl TryFrom<ScimEntryKanidm> for ScimGroup {
@@ -386,15 +375,16 @@ impl TryFrom<ScimEntryKanidm> for ScimGroup {
     fn try_from(scim_entry: ScimEntryKanidm) -> Result<Self, Self::Error> {
         let uuid = scim_entry.header.id;
         let name = scim_entry
-            .attrs
-            .get(&Attribute::Name)
-            .and_then(|v| match v {
-                ScimValueKanidm::String(s) => Some(s.clone()),
-                _ => None,
-            })
+            .get_string_attr(&Attribute::Name)
+            .cloned()
             .ok_or(())?;
+        let description = scim_entry.get_string_attr(&Attribute::Description).cloned();
 
-        Ok(ScimGroup { uuid, name })
+        Ok(ScimGroup {
+            uuid,
+            name,
+            description,
+        })
     }
 }
 
