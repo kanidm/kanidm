@@ -1,7 +1,7 @@
 # Entra ID / Azure AD compatability proposal
 
 A proposal has been made by [SerNET](https://www.sernet.com/) that they wish to invest in the building of an Entra ID /
-Azure AD compatible IDM service. This may be initially supported be EU grant funding.
+Azure AD compatible IDM service. This may be initially supported by EU grant funding.
 
 David Mulder, the creator of the [himmelblau](https://github.com/himmelblau-idm/) project has proposed that Kanidm could
 be the IDM service backend, where an Entra ID compatible authentication module would be added.
@@ -19,7 +19,7 @@ to function as a client to Kanidm, then we will be able to extend this to allow 
 demonstrates that an opensource Entra ID alternative is viable.
 
 With a viable opensource replacement available, this may allow regulatory pressure to be exerted on Microsoft to allow
-open Windows to use third party Entra ID compatible services.
+Windows to use third party Entra ID compatible services.
 
 This is important as today Windows is coded to only support Microsofts EntraID services. This limits Windows
 authentication options for users to EntraID or on prem ADDC.
