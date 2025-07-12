@@ -88,7 +88,7 @@ After installing the client tools, you will need to create a simple config file 
 ```toml
 # ~/.config/kanidm
 
-uri = "https://localhost:8443"
+uri = "https://localhost"
 verify_ca = false
 ```
 
