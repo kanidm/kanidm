@@ -88,8 +88,8 @@ After installing the client tools, you will need to create a simple config file 
 ```toml
 # ~/.config/kanidm
 
-uri = "https://localhost"
-verify_ca = false
+uri = "https://localhost" #The URL of the server
+verify_ca = false #disables #Whether to verify the Certificate Authority details of the server’s TLS certificate
 ```
 
 ## Check you can login
