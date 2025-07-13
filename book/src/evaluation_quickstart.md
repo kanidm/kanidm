@@ -77,7 +77,7 @@ docker exec -i -t kanidmd \
 
 This happens on your computer, not in the container.
 
-Kanidm requires locally installed client tools on the client machines for administration. Follow the guide in the [installing client tools](installing_client_tools.html) chapter to install them now.
+Kanidm requires locally installed client tools on the system used for administration via the command line. Follow the guide in the [installing client tools](installing_client_tools.html) chapter to install them before continuing.
 
 Client tools are explained more in the [client tools](client_tools.html) chapter, but to complete setup, you will only need to follow the steps below.
 
