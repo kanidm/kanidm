@@ -166,8 +166,8 @@ base64urlsafedata = "0.5.2"
 bitflags = "^2.9.1"
 bytes = "^1.9.0"
 cidr = "0.3.1"
-clap = { version = "4.5.40", features = ["derive", "env"] }
-clap_complete = "^4.5.54"
+clap = { version = "4.5.41", features = ["derive", "env"] }
+clap_complete = "^4.5.55"
 # Forced by saffron/cron
 chrono = "^0.4.39"
 compact_jwt = "^0.5.3-dev"
@@ -193,7 +193,7 @@ http-body-util = "0.1"
 hyper = { version = "1.5.1", features = [
     "full",
 ] } # hyper full includes client/server/http2
-hyper-util = { version = "0.1.14", features = ["server", "tokio"] }
+hyper-util = { version = "0.1.15", features = ["server", "tokio"] }
 idlset = "^0.2.5"
 image = { version = "0.25.6", default-features = false, features = [
     "gif",
@@ -255,7 +255,7 @@ reqwest = { version = "0.12.20", default-features = false, features = [
     "rustls-tls-native-roots-no-provider",
 ] }
 rusqlite = { version = "0.35.0", features = ["array", "bundled"] }
-rustls = { version = "0.23.27", default-features = false, features = [
+rustls = { version = "0.23.29", default-features = false, features = [
     "std",
     "aws_lc_rs",
 ] }
