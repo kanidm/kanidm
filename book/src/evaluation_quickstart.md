@@ -89,7 +89,7 @@ After installing the client tools, you will need to create a simple config file 
 # ~/.config/kanidm
 
 uri = "https://localhost" # The URL of the server
-verify_ca = false #disables #Whether to verify the Certificate Authority details of the server’s TLS certificate
+verify_ca = false # disables TLS certificate verification as your are using a self-signed certificate
 ```
 
 ## Check you can login
