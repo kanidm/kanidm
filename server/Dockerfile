@@ -49,7 +49,6 @@ RUN --mount=type=cache,id=cargo,target=/cargo \
     export SCCACHE_DIR=/sccache && \
     export RUSTC_WRAPPER=/usr/bin/sccache && \
     export CC="/usr/bin/clang" && \
-    cargo install --force --locked bindgen-cli  && \
     cargo build --locked -p daemon ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
