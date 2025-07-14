@@ -83,7 +83,7 @@ Client tools are explained more in the [client tools](client_tools.html) chapter
 
 ## Setup the client tool configuration
 
-After installing the client tools, you will need to create a simple config file to continue.
+After installing the `kanidm` tool, you will need to create a configuration file to continue.
 
 ```toml
 # ~/.config/kanidm
