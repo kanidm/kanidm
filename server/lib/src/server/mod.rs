@@ -1498,6 +1498,8 @@ impl QueryServerReadTransaction<'_> {
         filter: &ScimFilter,
         query: ScimEntryGetQuery,
     ) -> Result<ScimListResponse, OperationError> {
+        // Parse filter here?
+
         let filter_intent = Filter::from_scim_ro(&ident, filter, self)?;
 
         let f_intent_valid = filter_intent

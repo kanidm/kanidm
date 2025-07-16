@@ -33,6 +33,7 @@ mod person;
 mod raw;
 mod recycle;
 mod serviceaccount;
+mod schema;
 mod session;
 mod synch;
 mod system_config;
@@ -182,6 +183,8 @@ impl KanidmClientOpt {
             KanidmClientOpt::Person { commands } => commands.debug(),
             KanidmClientOpt::ServiceAccount { commands } => commands.debug(),
             KanidmClientOpt::Graph(gopt) => gopt.debug(),
+            KanidmClientOpt::Schema { commands: SchemaOpt::Class { commands } } => commands.debug(),
+            KanidmClientOpt::Schema { commands: SchemaOpt::Attribute { commands } } => commands.debug(),
             KanidmClientOpt::System { commands } => commands.debug(),
             KanidmClientOpt::Recycle { commands } => commands.debug(),
             KanidmClientOpt::Version {} => {
@@ -204,6 +207,8 @@ impl KanidmClientOpt {
             KanidmClientOpt::Group { commands } => commands.exec().await,
             KanidmClientOpt::Graph(gops) => gops.exec().await,
             KanidmClientOpt::System { commands } => commands.exec().await,
+            KanidmClientOpt::Schema { commands: SchemaOpt::Class { commands } } => commands.exec().await,
+            KanidmClientOpt::Schema { commands: SchemaOpt::Attribute { commands } } => commands.exec().await,
             KanidmClientOpt::Recycle { commands } => commands.exec().await,
             KanidmClientOpt::Version {} => (),
         }

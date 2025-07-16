@@ -74,6 +74,16 @@ pub struct ScimEntryGetQuery {
     // Pagination https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.4
     pub start_index: Option<NonZeroU64>,
     pub count: Option<NonZeroU64>,
+
+    // This is a generic proto filter, not a strong typed one?
+
+    //
+    // Dear william of tomorrow - you're doing this the wrong way. These types should
+    // turn into the generic,rather than embedding them. Just copy the damn PEG parser
+    // you slack cunt.
+    //
+    pub filter: Option<()>;
+
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]

@@ -474,6 +474,66 @@ async fn scim_application_id_delete(
         .map_err(WebError::from)
 }
 
+#[utoipa::path(
+    get,
+    path = "/scim/v1/Class",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_schema_class_get"
+)]
+async fn scim_schema_class_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Query(scim_entry_get_query): Query<ScimEntryGetQuery>,
+) -> Result<Json<ScimListResponse>, WebError> {
+    state
+        .qe_r_ref
+        .scim_entry_search(
+            client_auth_info,
+            kopid.eventid,
+            EntryClass::ClassType.into(),
+            scim_entry_get_query,
+        )
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    get,
+    path = "/scim/v1/Attribute",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_schema_attribute_get"
+)]
+async fn scim_schema_attribute_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Query(scim_entry_get_query): Query<ScimEntryGetQuery>,
+) -> Result<Json<ScimListResponse>, WebError> {
+    state
+        .qe_r_ref
+        .scim_entry_search(
+            client_auth_info,
+            kopid.eventid,
+            EntryClass::AttributeType.into(),
+            scim_entry_get_query,
+        )
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
 pub fn route_setup() -> Router<ServerState> {
     Router::new()
         .route(
@@ -589,6 +649,18 @@ pub fn route_setup() -> Router<ServerState> {
         .route(
             "/scim/v1/Application/:id",
             delete(scim_application_id_delete),
+        )
+        //  Class      /Class          GET                  List or query Schema Classes
+        //
+        .route(
+            "/scim/v1/Class",
+            get(scim_schema_class_get)
+        )
+        //  Attribute /Attribute          GET               List or query Schema Attributes
+        //
+        .route(
+            "/scim/v1/Attribute",
+            get(scim_schema_attribute_get)
         )
         // Synchronisation routes.
         .route(

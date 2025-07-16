@@ -1570,6 +1570,40 @@ pub enum ApiOpt {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum SchemaClassOpt {
+    /// List all classes
+    List {
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SchemaAttrOpt {
+    /// List all attributes
+    List {
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SchemaOpt {
+    /// Class related operations
+    #[clap(name = "class")]
+    Class {
+        #[clap(subcommand)]
+        commands: SchemaClassOpt
+    },
+    /// Attribute related operations
+    #[clap(name = "attribute", visible_alias = "attr")]
+    Attribute {
+        #[clap(subcommand)]
+        commands: SchemaAttrOpt
+    },
+}
+
+#[derive(Debug, Subcommand)]
 pub enum SystemOpt {
     #[clap(name = "pw-badlist")]
     /// Configure and manage the password badlist entry
@@ -1648,6 +1682,14 @@ pub enum KanidmClientOpt {
     /// Prints graphviz dot file of all groups
     #[clap(name = "graph")]
     Graph(GraphCommonOpt),
+
+    /// Schema management operations
+    #[clap(hide = true)]
+    Schema {
+        #[clap(subcommand)]
+        commands: SchemaOpt,
+    },
+
     /// System configuration operations
     System {
         #[clap(subcommand)]

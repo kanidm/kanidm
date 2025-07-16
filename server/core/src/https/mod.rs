@@ -22,9 +22,9 @@ use crate::CoreAction;
 use axum::{
     body::Body,
     extract::connect_info::IntoMakeServiceWithConnectInfo,
-    http::{HeaderMap, HeaderValue, Request},
+    http::{HeaderMap, HeaderValue, Request, StatusCode},
     middleware::{from_fn, from_fn_with_state},
-    response::Redirect,
+    response::{Redirect, Response, IntoResponse},
     routing::*,
     Router,
 };
@@ -162,6 +162,11 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
         }
     }
     Ok(all_pages)
+}
+
+async fn handler_404() -> Response {
+    (StatusCode::NOT_FOUND, "Route not found")
+        .into_response()
 }
 
 pub async fn create_https_server(
@@ -302,6 +307,8 @@ pub async fn create_https_server(
 
     let app = app
         .route("/status", get(generic::status))
+        // 404 handler
+        .fallback(handler_404)
         // This must be the LAST middleware.
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging

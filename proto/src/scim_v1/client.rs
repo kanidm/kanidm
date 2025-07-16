@@ -130,6 +130,62 @@ pub struct ScimListApplication {
     pub resources: Vec<ScimEntryApplication>,
 }
 
+#[serde_as]
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct ScimEntrySchemaClass {
+    #[serde(flatten)]
+    pub header: ScimEntryHeader,
+
+    // pub name: String,
+    // pub displayname: String,
+    // pub linked_group: Vec<super::ScimReference>,
+
+    #[serde(flatten)]
+    pub attrs: BTreeMap<Attribute, JsonValue>,
+}
+
+#[serde_as]
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimListSchemaClass {
+    pub schemas: Vec<String>,
+    pub total_results: u64,
+    pub items_per_page: Option<NonZeroU64>,
+    pub start_index: Option<NonZeroU64>,
+    pub resources: Vec<ScimEntrySchemaClass>,
+}
+
+#[serde_as]
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct ScimEntrySchemaAttribute {
+    #[serde(flatten)]
+    pub header: ScimEntryHeader,
+
+    pub attributename: String,
+    pub description: String,
+    // To be removed
+    pub multivalue: bool,
+    pub unique: bool,
+    pub syntax: String,
+    // pub linked_group: Vec<super::ScimReference>,
+
+    #[serde(flatten)]
+    pub attrs: BTreeMap<Attribute, JsonValue>,
+}
+
+#[serde_as]
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimListSchemaAttribute {
+    pub schemas: Vec<String>,
+    pub total_results: u64,
+    pub items_per_page: Option<NonZeroU64>,
+    pub start_index: Option<NonZeroU64>,
+    pub resources: Vec<ScimEntrySchemaAttribute>,
+}
+
 #[derive(Serialize, Debug, Clone)]
 pub struct ScimEntryPutKanidm {
     pub id: Uuid,
