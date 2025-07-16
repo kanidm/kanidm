@@ -1,15 +1,24 @@
-IMAGE_BASE ?= kanidm
-IMAGE_VERSION ?= devel
-IMAGE_EXT_VERSION ?= $(shell cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "daemon")  | .version')
-CONTAINER_TOOL_ARGS ?=
-IMAGE_ARCH ?= "linux/amd64,linux/arm64"
-CONTAINER_BUILD_ARGS ?=
-MARKDOWN_FORMAT_ARGS ?=
+# Makefile for Kanidm
+
+
 CONTAINER_TOOL ?= docker
+CONTAINER_TOOL_ARGS ?=
+CONTAINER_BUILD_ARGS ?=
+CONTAINER_IMAGE_BASE ?= kanidm
+CONTAINER_IMAGE_VERSION ?= devel
+CONTAINER_IMAGE_EXT_VERSION ?= $(shell cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "daemon")  | .version')
+# CONTAINER_BUILDX_ACTION is used to specify the action for buildx, e.g., --push or --load
+CONTAINER_BUILDX_ACTION ?= --push
+# CONTAINER_IMAGE_ARCH is used to specify the architectures for multi-arch docker builds
+CONTAINER_IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 BUILDKIT_PROGRESS ?= plain
+
 KANIDM_FEATURES ?= ""
-TESTS ?=
+
+# MARKDOWN_FORMAT_ARGS is used to specify additional arguments for markdown formatting
+MARKDOWN_FORMAT_ARGS ?=
 BOOK_VERSION ?= master
+
 GIT_COMMIT := $(shell git rev-parse HEAD)
 
 .DEFAULT: help
@@ -21,16 +30,16 @@ help:
 .PHONY: config
 config: ## Show makefile config things
 config:
-	@echo "IMAGE_BASE: $(IMAGE_BASE)"
-	@echo "IMAGE_VERSION: $(IMAGE_VERSION)"
-	@echo "IMAGE_EXT_VERSION: $(IMAGE_EXT_VERSION)"
+	@echo "CONTAINER_IMAGE_BASE: $(CONTAINER_IMAGE_BASE)"
+	@echo "CONTAINER_IMAGE_VERSION: $(CONTAINER_IMAGE_VERSION)"
+	@echo "CONTAINER_IMAGE_EXT_VERSION: $(CONTAINER_IMAGE_EXT_VERSION)"
+	@echo "CONTAINER_TOOL: $(CONTAINER_TOOL)"
 	@echo "CONTAINER_TOOL_ARGS: $(CONTAINER_TOOL_ARGS)"
-	@echo "IMAGE_ARCH: $(IMAGE_ARCH)"
+	@echo "CONTAINER_BUILDX_ACTION: $(CONTAINER_BUILDX_ACTION)"
+	@echo "CONTAINER_IMAGE_ARCH: $(CONTAINER_IMAGE_ARCH)"
 	@echo "CONTAINER_BUILD_ARGS: $(CONTAINER_BUILD_ARGS)"
 	@echo "MARKDOWN_FORMAT_ARGS: $(MARKDOWN_FORMAT_ARGS)"
-	@echo "CONTAINER_TOOL: $(CONTAINER_TOOL)"
 	@echo "BUILDKIT_PROGRESS: $(BUILDKIT_PROGRESS)"
-	@echo "TESTS: $(TESTS)"
 	@echo "BOOK_VERSION: $(BOOK_VERSION)"
 	@echo "GIT_COMMIT: $(GIT_COMMIT)"
 
@@ -48,44 +57,44 @@ run_htmx:
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
 buildx/kanidmd:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
-		--pull --push --platform $(IMAGE_ARCH) \
+		--pull $(CONTAINER_BUILDX_ACTION) --platform $(CONTAINER_IMAGE_ARCH) \
 		-f server/Dockerfile \
-		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
-		-t $(IMAGE_BASE)/server:$(IMAGE_EXT_VERSION) \
+		-t $(CONTAINER_IMAGE_BASE)/server:$(CONTAINER_IMAGE_VERSION) \
+		-t $(CONTAINER_IMAGE_BASE)/server:$(CONTAINER_IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=$(KANIDM_FEATURES)" \
 		--compress \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
-		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: buildx/kanidm_tools
 buildx/kanidm_tools: ## Build multiarch kanidm tool images and push to docker hub
 buildx/kanidm_tools:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
-		--pull --push --platform $(IMAGE_ARCH) \
+		--pull $(CONTAINER_BUILDX_ACTION) --platform $(CONTAINER_IMAGE_ARCH) \
 		-f tools/Dockerfile \
-		-t $(IMAGE_BASE)/tools:$(IMAGE_VERSION) \
-		-t $(IMAGE_BASE)/tools:$(IMAGE_EXT_VERSION) \
+		-t $(CONTAINER_IMAGE_BASE)/tools:$(CONTAINER_IMAGE_VERSION) \
+		-t $(CONTAINER_IMAGE_BASE)/tools:$(CONTAINER_IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=$(KANIDM_FEATURES)" \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
-		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: buildx/radiusd
 buildx/radiusd: ## Build multi-arch radius docker images and push to docker hub
 buildx/radiusd:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
-		--pull --push --platform $(IMAGE_ARCH) \
+		--pull $(CONTAINER_BUILDX_ACTION) --platform $(CONTAINER_IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
 		--progress $(BUILDKIT_PROGRESS) \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
-		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
-		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) \
-		-t $(IMAGE_BASE)/radius:$(IMAGE_EXT_VERSION) .
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
+		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) \
+		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_EXT_VERSION) .
 
 .PHONY: buildx
 buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
@@ -94,22 +103,22 @@ buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
 build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
-		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+		-t $(CONTAINER_IMAGE_BASE)/server:$(CONTAINER_IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
-		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: build/orca
 build/orca:	## Build the orca docker image locally
 build/orca:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f tools/orca/Dockerfile \
-		-t $(IMAGE_BASE)/orca:$(IMAGE_VERSION) \
+		-t $(CONTAINER_IMAGE_BASE)/orca:$(CONTAINER_IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=$(KANIDM_FEATURES)" \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
-		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: build/radiusd
@@ -118,8 +127,8 @@ build/radiusd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
 		-f rlm_python/Dockerfile \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
-		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
-		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
+		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) .
 
 .PHONY: build
 build: build/kanidmd build/radiusd
@@ -130,11 +139,11 @@ test/kanidmd:
 	@$(CONTAINER_TOOL) build \
 		$(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
 		--target builder \
-		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder \
+		-t $(CONTAINER_IMAGE_BASE)/server:$(CONTAINER_IMAGE_VERSION)-builder \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
-		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
-	@$(CONTAINER_TOOL) run --rm $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder cargo test
+	@$(CONTAINER_TOOL) run --rm $(CONTAINER_IMAGE_BASE)/server:$(CONTAINER_IMAGE_VERSION)-builder cargo test
 
 .PHONY: test/radiusd
 test/radiusd: ## Run a test radius server
