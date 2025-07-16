@@ -71,7 +71,7 @@ pub enum ProviderOrigin {
     // causes these items to be nixed.
     #[default]
     Ignore,
-    /// Provided by /etc/passwd or /etc/group
+    /// Provided by local files, commonly /etc/passwd, /etc/group and /etc/shadow
     System,
     Kanidm,
 }
