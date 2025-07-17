@@ -504,6 +504,55 @@ wheel:*:0:"#;
     }
 
     #[test]
+    fn test_parse_passwd_freebsd() {
+        let passwd_data = r#" # Comment
+root:*:0:0:Charlie &:/root:/bin/sh
+toor:*:0:0:Bourne-again Superuser:/root:
+daemon:*:1:1:Owner of many system processes:/root:/usr/sbin/nologin
+"#;
+        let users = parse_etc_passwd(passwd_data.as_bytes()).expect("Failed to parse passwd data");
+
+        assert_eq!(
+            users[0],
+            EtcUser {
+                name: "root".to_string(),
+                password: "*".to_string(),
+                uid: 0,
+                gid: 0,
+                gecos: "Charlie &".to_string(),
+                homedir: "/root".to_string(),
+                shell: "/bin/sh".to_string(),
+            }
+        );
+
+        assert_eq!(
+            users[1],
+            EtcUser {
+                name: "toor".to_string(),
+                password: "*".to_string(),
+                uid: 0,
+                gid: 0,
+                gecos: "Bourne-again Superuser".to_string(),
+                homedir: "/root".to_string(),
+                shell: "".to_string(),
+            }
+        );
+
+        assert_eq!(
+            users[2],
+            EtcUser {
+                name: "daemon".to_string(),
+                password: "*".to_string(),
+                uid: 1,
+                gid: 1,
+                gecos: "Owner of many system processes".to_string(),
+                homedir: "/root".to_string(),
+                shell: "/usr/sbin/nologin".to_string(),
+            }
+        );
+    }
+
+    #[test]
     fn test_parse_masterpasswd_freebsd() {
         let master_passwd_data = r#"# $FreeBSD$
 root:$6$U7ePyqmS.jKiqDWG$EFhw5zmkjK1h02QJvefu5RuTryxIhqzUmcFjnofafd2abgHzYuvWdqpyCw/ZfNOSTUAMNiJUcwtCW8SOFwq/i/:0:0::0:0:Charlie &:/root:/bin/sh
