@@ -1197,7 +1197,6 @@ impl FilterComp {
                 let pv = qs.resolve_scim_json_get(a, json_value)?;
                 FilterComp::Eq(a.clone(), pv)
             }
-
             ScimFilter::Contains(ScimAttrPath { a, s: None }, json_value) => {
                 let pv = qs.resolve_scim_json_get(a, json_value)?;
                 FilterComp::Cnt(a.clone(), pv)

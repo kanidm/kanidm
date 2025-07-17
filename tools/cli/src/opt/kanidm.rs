@@ -1576,6 +1576,11 @@ pub enum SchemaClassOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+    Search {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        query: String,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -1584,6 +1589,11 @@ pub enum SchemaAttrOpt {
     List {
         #[clap(flatten)]
         copt: CommonOpt,
+    },
+    Search {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        query: String,
     },
 }
 
