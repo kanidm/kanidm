@@ -6,8 +6,8 @@ use crate::value::Value;
 use crate::valueset::{ValueSet, ValueSetIutf8};
 pub use kanidm_proto::attribute::Attribute;
 use kanidm_proto::constants::*;
-use kanidm_proto::scim_v1::client::ScimFilter;
 use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::ScimFilter;
 
 //TODO: This would do well in the proto lib
 // together with all the other definitions.

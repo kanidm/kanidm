@@ -34,9 +34,8 @@ use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
 use kanidm_proto::scim_v1::{
-    client::ScimFilter,
     server::{ScimListResponse, ScimOAuth2ClaimMap, ScimOAuth2ScopeMap, ScimReference},
-    JsonValue, ScimEntryGetQuery,
+    JsonValue, ScimEntryGetQuery, ScimFilter,
 };
 use std::collections::BTreeSet;
 use std::num::NonZeroU64;
@@ -2719,9 +2718,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 mod tests {
     use crate::prelude::*;
     use kanidm_proto::scim_v1::{
-        client::ScimFilter,
         server::{ScimListResponse, ScimReference},
-        JsonValue, ScimEntryGetQuery,
+        JsonValue, ScimEntryGetQuery, ScimFilter,
     };
     use std::num::NonZeroU64;
 

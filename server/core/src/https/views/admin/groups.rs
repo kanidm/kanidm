@@ -15,11 +15,11 @@ use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::internal::{OperationError, UserAuthToken};
-use kanidm_proto::scim_v1::client::{ScimEntryPutKanidm, ScimFilter};
 use kanidm_proto::scim_v1::server::{
     ScimEffectiveAccess, ScimEntryKanidm, ScimGroup, ScimListResponse, ScimValueKanidm,
 };
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
+use kanidm_proto::scim_v1::{client::ScimEntryPutKanidm, ScimFilter};
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::idm::ClientAuthInfo;
 use serde::{Deserialize, Serialize};

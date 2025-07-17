@@ -24,7 +24,7 @@ use axum::{
     extract::connect_info::IntoMakeServiceWithConnectInfo,
     http::{HeaderMap, HeaderValue, Request, StatusCode},
     middleware::{from_fn, from_fn_with_state},
-    response::{Redirect, Response, IntoResponse},
+    response::{IntoResponse, Redirect, Response},
     routing::*,
     Router,
 };
@@ -165,8 +165,7 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
 }
 
 async fn handler_404() -> Response {
-    (StatusCode::NOT_FOUND, "Route not found")
-        .into_response()
+    (StatusCode::NOT_FOUND, "Route not found").into_response()
 }
 
 pub async fn create_https_server(

@@ -1,15 +1,9 @@
-
-use crate::{
-    handle_client_error,
-    SchemaClassOpt,
-    OpType,
-};
+use crate::{handle_client_error, OpType, SchemaClassOpt};
 
 impl SchemaClassOpt {
     pub fn debug(&self) -> bool {
         match self {
-            Self::List { copt }
-                => copt.debug,
+            Self::List { copt } => copt.debug,
         }
     }
 
@@ -18,9 +12,7 @@ impl SchemaClassOpt {
             Self::List { copt } => {
                 let client = copt.to_client(OpType::Read).await;
 
-                let classes = match client.scim_schema_class_list(
-                    None
-                ).await {
+                let classes = match client.scim_schema_class_list(None).await {
                     Ok(classes) => classes,
                     Err(e) => {
                         handle_client_error(e, copt.output_mode);
@@ -35,4 +27,3 @@ impl SchemaClassOpt {
         }
     }
 }
-

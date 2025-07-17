@@ -258,6 +258,10 @@ pub const LDAP_CLASS_GROUPOFNAMES: &str = "groupofnames";
 // Rust can't deal with this being compiled out, don't try and #[cfg()] them
 pub const TEST_ATTR_NON_EXIST: &str = "non-exist";
 pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
+pub const TEST_ATTR_TEST_ATTR_A: &str = "testattr_a";
+pub const TEST_ATTR_TEST_ATTR_B: &str = "testattr_b";
+pub const TEST_ATTR_TEST_ATTR_C: &str = "testattr_c";
+pub const TEST_ATTR_TEST_ATTR_D: &str = "testattr_d";
 pub const TEST_ATTR_EXTRA: &str = "extra";
 pub const TEST_ATTR_NUMBER: &str = "testattrnumber";
 pub const TEST_ATTR_NOTALLOWED: &str = "notallowed";

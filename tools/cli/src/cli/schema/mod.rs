@@ -1,3 +1,2 @@
-pub mod class;
 pub mod attr;
-
+pub mod class;

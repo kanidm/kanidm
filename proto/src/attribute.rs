@@ -191,6 +191,14 @@ pub enum Attribute {
     NonExist,
     #[cfg(any(debug_assertions, test, feature = "test"))]
     TestAttr,
+    #[cfg(test)]
+    TestAttrA,
+    #[cfg(test)]
+    TestAttrB,
+    #[cfg(test)]
+    TestAttrC,
+    #[cfg(test)]
+    TestAttrD,
     #[cfg(any(debug_assertions, test, feature = "test"))]
     TestNumber,
     #[cfg(any(debug_assertions, test, feature = "test"))]
@@ -423,6 +431,16 @@ impl Attribute {
             Attribute::NonExist => TEST_ATTR_NON_EXIST,
             #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::TestAttr => TEST_ATTR_TEST_ATTR,
+
+            #[cfg(test)]
+            Attribute::TestAttrA => TEST_ATTR_TEST_ATTR_A,
+            #[cfg(test)]
+            Attribute::TestAttrB => TEST_ATTR_TEST_ATTR_B,
+            #[cfg(test)]
+            Attribute::TestAttrC => TEST_ATTR_TEST_ATTR_C,
+            #[cfg(test)]
+            Attribute::TestAttrD => TEST_ATTR_TEST_ATTR_D,
+
             #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::Extra => TEST_ATTR_EXTRA,
             #[cfg(any(debug_assertions, test, feature = "test"))]
@@ -612,6 +630,16 @@ impl Attribute {
             TEST_ATTR_NON_EXIST => Attribute::NonExist,
             #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_TEST_ATTR => Attribute::TestAttr,
+
+            #[cfg(test)]
+            TEST_ATTR_TEST_ATTR_A => Attribute::TestAttrA,
+            #[cfg(test)]
+            TEST_ATTR_TEST_ATTR_B => Attribute::TestAttrB,
+            #[cfg(test)]
+            TEST_ATTR_TEST_ATTR_C => Attribute::TestAttrC,
+            #[cfg(test)]
+            TEST_ATTR_TEST_ATTR_D => Attribute::TestAttrD,
+
             #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_EXTRA => Attribute::Extra,
             #[cfg(any(debug_assertions, test, feature = "test"))]

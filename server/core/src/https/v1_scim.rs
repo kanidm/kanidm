@@ -652,16 +652,10 @@ pub fn route_setup() -> Router<ServerState> {
         )
         //  Class      /Class          GET                  List or query Schema Classes
         //
-        .route(
-            "/scim/v1/Class",
-            get(scim_schema_class_get)
-        )
+        .route("/scim/v1/Class", get(scim_schema_class_get))
         //  Attribute /Attribute          GET               List or query Schema Attributes
         //
-        .route(
-            "/scim/v1/Attribute",
-            get(scim_schema_attribute_get)
-        )
+        .route("/scim/v1/Attribute", get(scim_schema_attribute_get))
         // Synchronisation routes.
         .route(
             "/scim/v1/Sync",

@@ -402,15 +402,18 @@ peg::parser! {
             s:$((!operator()[_])*) {? serde_json::from_str(s).map_err(|_| "invalid json value" ) }
 
         pub(crate) rule attrpath() -> AttrPath =
-            a:attrname() s:subattr()? { AttrPath { a, s } }
+            a:attrname() s:dot_subattr()? { AttrPath { a, s } }
+
+        rule dot_subattr() -> SubAttribute =
+            "." s:subattr() { s }
 
         rule subattr() -> SubAttribute =
-            "." s:attrstring() { SubAttribute::from(s.as_str()) }
+            s:attrstring() { SubAttribute::from(s.as_str()) }
 
         pub(crate) rule attrname() -> Attribute =
             s:attrstring() { Attribute::from(s.as_str()) }
 
-        rule attrstring() -> String =
+        pub(crate) rule attrstring() -> String =
             s:$([ 'a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' ]*) { s.to_string() }
     }
 }
@@ -551,21 +554,12 @@ mod tests {
 
     #[test]
     fn test_scimfilter_attrname() {
-        assert_eq!(
-            scimfilter::attrname("abcd-_"),
-            Ok(Attribute::from("abcd-_"))
-        );
-        assert_eq!(
-            scimfilter::attrname("aB-_CD"),
-            Ok(Attribute::from("aB-_CD"))
-        );
-        assert_eq!(
-            scimfilter::attrname("a1-_23"),
-            Ok(Attribute::from("a1-_23"))
-        );
-        assert!(scimfilter::attrname("-bcd").is_err());
-        assert!(scimfilter::attrname("_bcd").is_err());
-        assert!(scimfilter::attrname("0bcd").is_err());
+        assert_eq!(scimfilter::attrstring("abcd-_"), Ok("abcd-_".to_string()));
+        assert_eq!(scimfilter::attrstring("aB-_CD"), Ok("aB-_CD".to_string()));
+        assert_eq!(scimfilter::attrstring("a1-_23"), Ok("a1-_23".to_string()));
+        assert!(scimfilter::attrstring("-bcd").is_err());
+        assert!(scimfilter::attrstring("_bcd").is_err());
+        assert!(scimfilter::attrstring("0bcd").is_err());
     }
 
     #[test]
@@ -586,10 +580,10 @@ mod tests {
             })
         );
 
-        assert!(scimfilter::attrname("abcd.0").is_err());
-        assert!(scimfilter::attrname("abcd._").is_err());
-        assert!(scimfilter::attrname("abcd,0").is_err());
-        assert!(scimfilter::attrname(".abcd").is_err());
+        assert!(scimfilter::attrname("mail.0").is_err());
+        assert!(scimfilter::attrname("mail._").is_err());
+        assert!(scimfilter::attrname("mail,0").is_err());
+        assert!(scimfilter::attrname(".primary").is_err());
     }
 
     #[test]
@@ -812,11 +806,11 @@ mod tests {
 
     #[test]
     fn test_scimfilter_complex() {
-        let f = scimfilter::parse("emails[type eq \"work\"]");
+        let f = scimfilter::parse("mail[type eq \"work\"]");
         eprintln!("-- {:?}", f);
         assert!(f.is_ok());
 
-        let f = scimfilter::parse("emails[type eq \"work\" and value co \"@example.com\"] or ims[type eq \"xmpp\" and value co \"@foo.com\"]");
+        let f = scimfilter::parse("mail[type eq \"work\" and value co \"@example.com\"] or testattr[type eq \"xmpp\" and value co \"@foo.com\"]");
         eprintln!("{:?}", f);
 
         assert_eq!(
@@ -854,29 +848,30 @@ mod tests {
 
     #[test]
     fn test_scimfilter_precedence_1() {
-        let f = scimfilter::parse("a pr or b pr and c pr or d pr");
+        let f =
+            scimfilter::parse("testattr_a pr or testattr_b pr and testattr_c pr or testattr_d pr");
         eprintln!("{:?}", f);
 
         assert!(
             f == Ok(ScimFilter::Or(
                 Box::new(ScimFilter::Or(
                     Box::new(ScimFilter::Present(AttrPath {
-                        a: Attribute::from("a"),
+                        a: Attribute::from("testattr_a"),
                         s: None
                     })),
                     Box::new(ScimFilter::And(
                         Box::new(ScimFilter::Present(AttrPath {
-                            a: Attribute::from("b"),
+                            a: Attribute::from("testattr_b"),
                             s: None
                         })),
                         Box::new(ScimFilter::Present(AttrPath {
-                            a: Attribute::from("c"),
+                            a: Attribute::from("testattr_c"),
                             s: None
                         })),
                     )),
                 )),
                 Box::new(ScimFilter::Present(AttrPath {
-                    a: Attribute::from("d"),
+                    a: Attribute::from("testattr_d"),
                     s: None
                 }))
             ))
@@ -885,28 +880,29 @@ mod tests {
 
     #[test]
     fn test_scimfilter_precedence_2() {
-        let f = scimfilter::parse("a pr and b pr or c pr and d pr");
+        let f =
+            scimfilter::parse("testattr_a pr and testattr_b pr or testattr_c pr and testattr_d pr");
         eprintln!("{:?}", f);
 
         assert!(
             f == Ok(ScimFilter::Or(
                 Box::new(ScimFilter::And(
                     Box::new(ScimFilter::Present(AttrPath {
-                        a: Attribute::from("a"),
+                        a: Attribute::from("testattr_a"),
                         s: None
                     })),
                     Box::new(ScimFilter::Present(AttrPath {
-                        a: Attribute::from("b"),
+                        a: Attribute::from("testattr_b"),
                         s: None
                     })),
                 )),
                 Box::new(ScimFilter::And(
                     Box::new(ScimFilter::Present(AttrPath {
-                        a: Attribute::from("c"),
+                        a: Attribute::from("testattr_c"),
                         s: None
                     })),
                     Box::new(ScimFilter::Present(AttrPath {
-                        a: Attribute::from("d"),
+                        a: Attribute::from("testattr_d"),
                         s: None
                     })),
                 )),
@@ -916,29 +912,31 @@ mod tests {
 
     #[test]
     fn test_scimfilter_precedence_3() {
-        let f = scimfilter::parse("a pr and (b pr or c pr) and d pr");
+        let f = scimfilter::parse(
+            "testattr_a pr and (testattr_b pr or testattr_c pr) and testattr_d pr",
+        );
         eprintln!("{:?}", f);
 
         assert!(
             f == Ok(ScimFilter::And(
                 Box::new(ScimFilter::And(
                     Box::new(ScimFilter::Present(AttrPath {
-                        a: Attribute::from("a"),
+                        a: Attribute::from("testattr_a"),
                         s: None
                     })),
                     Box::new(ScimFilter::Or(
                         Box::new(ScimFilter::Present(AttrPath {
-                            a: Attribute::from("b"),
+                            a: Attribute::from("testattr_b"),
                             s: None
                         })),
                         Box::new(ScimFilter::Present(AttrPath {
-                            a: Attribute::from("c"),
+                            a: Attribute::from("testattr_c"),
                             s: None
                         })),
                     )),
                 )),
                 Box::new(ScimFilter::Present(AttrPath {
-                    a: Attribute::from("d"),
+                    a: Attribute::from("testattr_d"),
                     s: None
                 })),
             ))
@@ -947,29 +945,31 @@ mod tests {
 
     #[test]
     fn test_scimfilter_precedence_4() {
-        let f = scimfilter::parse("a pr and not (b pr or c pr) and d pr");
+        let f = scimfilter::parse(
+            "testattr_a pr and not (testattr_b pr or testattr_c pr) and testattr_d pr",
+        );
         eprintln!("{:?}", f);
 
         assert!(
             f == Ok(ScimFilter::And(
                 Box::new(ScimFilter::And(
                     Box::new(ScimFilter::Present(AttrPath {
-                        a: Attribute::from("a"),
+                        a: Attribute::from("testattr_a"),
                         s: None
                     })),
                     Box::new(ScimFilter::Not(Box::new(ScimFilter::Or(
                         Box::new(ScimFilter::Present(AttrPath {
-                            a: Attribute::from("b"),
+                            a: Attribute::from("testattr_b"),
                             s: None
                         })),
                         Box::new(ScimFilter::Present(AttrPath {
-                            a: Attribute::from("c"),
+                            a: Attribute::from("testattr_c"),
                             s: None
                         })),
                     )))),
                 )),
                 Box::new(ScimFilter::Present(AttrPath {
-                    a: Attribute::from("d"),
+                    a: Attribute::from("testattr_d"),
                     s: None
                 })),
             ))

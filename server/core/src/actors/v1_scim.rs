@@ -1,8 +1,8 @@
 use super::{QueryServerReadV1, QueryServerWriteV1};
 use kanidm_proto::scim_v1::client::ScimEntryPutGeneric;
 use kanidm_proto::scim_v1::{
-    client::ScimEntryPostGeneric, client::ScimFilter, server::ScimEntryKanidm,
-    server::ScimListResponse, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+    client::ScimEntryPostGeneric, server::ScimEntryKanidm, server::ScimListResponse,
+    ScimEntryGetQuery, ScimFilter, ScimSyncRequest, ScimSyncState,
 };
 use kanidmd_lib::idm::scim::{
     GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncUpdateEvent,

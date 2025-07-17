@@ -1,15 +1,9 @@
-
-use crate::{
-    handle_client_error,
-    SchemaAttrOpt,
-    OpType,
-};
+use crate::{handle_client_error, OpType, SchemaAttrOpt};
 
 impl SchemaAttrOpt {
     pub fn debug(&self) -> bool {
         match self {
-            Self::List { copt }
-                => copt.debug,
+            Self::List { copt } => copt.debug,
         }
     }
 
@@ -18,9 +12,7 @@ impl SchemaAttrOpt {
             Self::List { copt } => {
                 let client = copt.to_client(OpType::Read).await;
 
-                let attrs = match client.scim_schema_attribute_list(
-                    None
-                ).await {
+                let attrs = match client.scim_schema_attribute_list(None).await {
                     Ok(attrs) => attrs,
                     Err(e) => {
                         handle_client_error(e, copt.output_mode);
@@ -36,7 +28,6 @@ impl SchemaAttrOpt {
                     println!("multivalue: {}", attr.multivalue);
                     println!("unique: {}", attr.unique);
                     println!("syntax: {}", attr.syntax);
-
                 }
             }
         }
