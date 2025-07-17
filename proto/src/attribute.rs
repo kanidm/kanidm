@@ -653,9 +653,19 @@ impl From<Attribute> for String {
 pub enum SubAttribute {
     /// Denotes a primary value.
     Primary,
+    /// The type of value
+    Type,
+    /// The data associated to a value
+    Value,
 
     #[cfg(not(test))]
     Custom(AttrString),
+}
+
+impl fmt::Display for SubAttribute {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 impl From<SubAttribute> for AttrString {
@@ -682,6 +692,8 @@ impl SubAttribute {
     pub fn as_str(&self) -> &str {
         match self {
             SubAttribute::Primary => SUB_ATTR_PRIMARY,
+            SubAttribute::Type => SUB_ATTR_TYPE,
+            SubAttribute::Value => SUB_ATTR_VALUE,
             #[cfg(not(test))]
             SubAttribute::Custom(s) => s,
         }
@@ -694,6 +706,8 @@ impl SubAttribute {
         // to limit length of str?
         match value.to_lowercase().as_str() {
             SUB_ATTR_PRIMARY => SubAttribute::Primary,
+            SUB_ATTR_TYPE => SubAttribute::Type,
+            SUB_ATTR_VALUE => SubAttribute::Value,
 
             #[cfg(not(test))]
             _ => SubAttribute::Custom(AttrString::from(value)),
