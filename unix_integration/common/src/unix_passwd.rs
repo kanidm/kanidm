@@ -160,6 +160,7 @@ pub struct EtcShadow {
     pub flag_reserved: Option<u32>,
 }
 
+#[cfg(any(all(target_family = "unix", not(target_os = "freebsd")), test))]
 fn parse_linux_etc_shadow(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationError> {
     use csv::ReaderBuilder;
 
@@ -251,7 +252,8 @@ impl From<EtcMasterPasswd> for EtcShadow {
     }
 }
 
-pub fn parse_etc_master_passwd(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationError> {
+#[cfg(any(all(target_family = "unix", target_os = "freebsd"), test))]
+fn parse_etc_master_passwd(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationError> {
     use csv::ReaderBuilder;
 
     let filecontents = strip_comments(bytes);
