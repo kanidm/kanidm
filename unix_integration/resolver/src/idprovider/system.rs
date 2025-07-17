@@ -57,16 +57,12 @@ struct AgingPolicy {
 
 impl AgingPolicy {
     fn new(
-        change_days: i64,
+        last_change: time::OffsetDateTime,
         days_min_password_age: i64,
         days_max_password_age: Option<i64>,
-
         days_warning_period: i64,
         days_inactivity_period: Option<i64>,
     ) -> Self {
-        // Get the changes days to an absolute.
-        let last_change = OffsetDateTime::UNIX_EPOCH + time::Duration::days(change_days);
-
         let min_password_change = last_change + time::Duration::days(days_min_password_age);
 
         let max_password_change =
@@ -161,19 +157,19 @@ impl SystemProvider {
             let EtcShadow {
                 name,
                 password,
-                epoch_change_days,
+                epoch_change_seconds,
                 days_min_password_age,
                 days_max_password_age,
                 days_warning_period,
                 days_inactivity_period,
-                epoch_expire_date,
+                epoch_expire_seconds,
                 flag_reserved: _,
             } = shadow_entry;
 
             if password.is_valid() {
-                let aging_policy = epoch_change_days.map(|change_days| {
+                let aging_policy = epoch_change_seconds.map(|change_seconds| {
                     AgingPolicy::new(
-                        change_days,
+                        change_seconds,
                         days_min_password_age,
                         days_max_password_age,
                         days_warning_period,
@@ -181,8 +177,7 @@ impl SystemProvider {
                     )
                 });
 
-                let expiration_date = epoch_expire_date
-                    .map(|expire| OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire));
+                let expiration_date = epoch_expire_seconds;
 
                 Some((
                     name,

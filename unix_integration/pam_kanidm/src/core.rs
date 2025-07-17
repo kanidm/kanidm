@@ -349,9 +349,7 @@ pub fn sm_authenticate_fallback<P: PamHandler>(
         }
     };
 
-    let expiration_date = shadow
-        .epoch_expire_date
-        .map(|expire| OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire));
+    let expiration_date = shadow.epoch_expire_seconds;
 
     if let Some(expire) = expiration_date {
         if current_time >= expire {
@@ -471,9 +469,7 @@ pub fn acct_mgmt<P: PamHandler>(
                 }
             };
 
-            let expiration_date = shadow
-                .epoch_expire_date
-                .map(|expire| OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire));
+            let expiration_date = shadow.epoch_expire_seconds;
 
             if let Some(expire) = expiration_date {
                 if current_time >= expire {

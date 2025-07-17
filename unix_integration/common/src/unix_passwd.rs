@@ -105,6 +105,36 @@ impl CryptPw {
     }
 }
 
+mod timestamp_days {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use time::OffsetDateTime;
+
+    /// Serialize an `Option<OffsetDateTime>` as the days from epoch.
+    pub fn serialize<S: Serializer>(
+        option: &Option<OffsetDateTime>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        option
+            .map(|odt| {
+                let difference = odt - OffsetDateTime::UNIX_EPOCH;
+                difference.whole_days()
+            })
+            .serialize(serializer)
+    }
+
+    /// Deserialize an `Option<OffsetDateTime>` from the days since epoch
+    pub fn deserialize<'a, D: Deserializer<'a>>(
+        deserializer: D,
+    ) -> Result<Option<OffsetDateTime>, D::Error> {
+        Option::deserialize(deserializer)?
+            .map(|value| {
+                let difference = time::Duration::days(value);
+                Ok(OffsetDateTime::UNIX_EPOCH + difference)
+            })
+            .transpose()
+    }
+}
+
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Default, Clone)]
 pub struct EtcShadow {
@@ -113,7 +143,8 @@ pub struct EtcShadow {
     pub password: CryptPw,
     // 0 means must change next login.
     // None means all other aging features are disabled
-    pub epoch_change_days: Option<i64>,
+    #[serde(with = "timestamp_days")]
+    pub epoch_change_seconds: Option<time::OffsetDateTime>,
     // 0 means no age
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub days_min_password_age: i64,
@@ -124,11 +155,12 @@ pub struct EtcShadow {
     // Number of days after max_password_age passes where the password can
     // still be accepted such that the user can update their password
     pub days_inactivity_period: Option<i64>,
-    pub epoch_expire_date: Option<i64>,
+    #[serde(with = "timestamp_days")]
+    pub epoch_expire_seconds: Option<time::OffsetDateTime>,
     pub flag_reserved: Option<u32>,
 }
 
-pub fn parse_etc_shadow(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationError> {
+fn parse_linux_etc_shadow(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationError> {
     use csv::ReaderBuilder;
 
     let filecontents = strip_comments(bytes);
@@ -147,6 +179,14 @@ pub fn parse_etc_shadow(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationE
         .collect::<Result<Vec<EtcShadow>, UnixIntegrationError>>()
 }
 
+pub fn parse_etc_shadow(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationError> {
+    #[cfg(all(target_family = "unix", not(target_os = "freebsd")))]
+    return parse_linux_etc_shadow(bytes);
+
+    #[cfg(all(target_family = "unix", target_os = "freebsd"))]
+    return parse_etc_master_passwd(bytes);
+}
+
 pub fn read_etc_shadow_file<P: AsRef<Path>>(
     path: P,
 ) -> Result<Vec<EtcShadow>, UnixIntegrationError> {
@@ -157,6 +197,80 @@ pub fn read_etc_shadow_file<P: AsRef<Path>>(
         .map_err(|_| UnixIntegrationError)?;
 
     parse_etc_shadow(contents.as_slice()).map_err(|_| UnixIntegrationError)
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Default, Clone)]
+pub struct EtcMasterPasswd {
+    pub name: String,
+    #[serde_as(as = "serde_with::DisplayFromStr")]
+    pub password: CryptPw,
+    pub uid: u32,
+    pub gid: u32,
+    pub class: String,
+    #[serde(with = "time::serde::timestamp::option")]
+    pub epoch_change_seconds: Option<time::OffsetDateTime>,
+    #[serde(with = "time::serde::timestamp::option")]
+    pub epoch_expire_seconds: Option<time::OffsetDateTime>,
+    pub gecos: String,
+    pub homedir: String,
+    pub shell: String,
+}
+
+impl From<EtcMasterPasswd> for EtcShadow {
+    fn from(etc_master_passwd: EtcMasterPasswd) -> Self {
+        let EtcMasterPasswd {
+            name,
+            password,
+            epoch_change_seconds,
+            epoch_expire_seconds,
+            ..
+        } = etc_master_passwd;
+
+        let epoch_change_seconds = if epoch_change_seconds == Some(time::OffsetDateTime::UNIX_EPOCH)
+        {
+            None
+        } else {
+            epoch_change_seconds
+        };
+
+        let epoch_expire_seconds = if epoch_expire_seconds == Some(time::OffsetDateTime::UNIX_EPOCH)
+        {
+            None
+        } else {
+            epoch_expire_seconds
+        };
+
+        Self {
+            name,
+            password,
+            epoch_change_seconds,
+            epoch_expire_seconds,
+            ..Default::default()
+        }
+    }
+}
+
+pub fn parse_etc_master_passwd(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationError> {
+    use csv::ReaderBuilder;
+
+    let filecontents = strip_comments(bytes);
+
+    let mut rdr = ReaderBuilder::new()
+        .has_headers(false)
+        .delimiter(b':')
+        .from_reader(filecontents.as_bytes());
+    let records = rdr
+        .deserialize()
+        .map(|result| {
+            result.map_err(|err| {
+                eprintln!("{err:?}");
+                UnixIntegrationError
+            })
+        })
+        .collect::<Result<Vec<EtcMasterPasswd>, UnixIntegrationError>>()?;
+
+    Ok(records.into_iter().map(EtcShadow::from).collect())
 }
 
 #[serde_as]
@@ -275,19 +389,21 @@ admin:$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePME
     #[test]
     fn test_parse_shadow() {
         let shadow =
-            parse_etc_shadow(EXAMPLE_SHADOW.as_bytes()).expect("Failed to parse passwd data");
+            parse_linux_etc_shadow(EXAMPLE_SHADOW.as_bytes()).expect("Failed to parse passwd data");
 
         assert_eq!(
             shadow[0],
             EtcShadow {
                 name: "sshd".to_string(),
                 password: CryptPw::Invalid,
-                epoch_change_days: Some(19978),
+                epoch_change_seconds: Some(
+                    time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(19978)
+                ),
                 days_min_password_age: 0,
                 days_max_password_age: None,
                 days_warning_period: 0,
                 days_inactivity_period: None,
-                epoch_expire_date: None,
+                epoch_expire_seconds: None,
                 flag_reserved: None
             }
         );
@@ -297,12 +413,14 @@ admin:$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePME
             EtcShadow {
                 name: "tss".to_string(),
                 password: CryptPw::Invalid,
-                epoch_change_days: Some(19980),
+                epoch_change_seconds: Some(
+                    time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(19980)
+                ),
                 days_min_password_age: 0,
                 days_max_password_age: None,
                 days_warning_period: 0,
                 days_inactivity_period: None,
-                epoch_expire_date: None,
+                epoch_expire_seconds: None,
                 flag_reserved: None
             }
         );
@@ -310,12 +428,12 @@ admin:$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePME
         assert_eq!(shadow[2], EtcShadow {
             name: "admin".to_string(),
             password: CryptPw::Sha512("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string()),
-            epoch_change_days: Some(19980),
+            epoch_change_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(19980)),
             days_min_password_age: 0,
             days_max_password_age: Some(99999),
             days_warning_period: 7,
             days_inactivity_period: None,
-            epoch_expire_date: None,
+            epoch_expire_seconds: None,
             flag_reserved: None
         });
     }
@@ -379,6 +497,66 @@ wheel:*:0:"#;
                 password: "*".to_string(),
                 gid: 0,
                 members: vec![]
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_masterpasswd_freebsd() {
+        let master_passwd_data = r#"# $FreeBSD$
+root:$6$U7ePyqmS.jKiqDWG$EFhw5zmkjK1h02QJvefu5RuTryxIhqzUmcFjnofafd2abgHzYuvWdqpyCw/ZfNOSTUAMNiJUcwtCW8SOFwq/i/:0:0::0:0:Charlie &:/root:/bin/sh
+toor:*:0:0::0:0:Bourne-again Superuser:/root:
+daemon:*:1:1::0:0:Owner of many system processes:/root:/usr/sbin/nologin
+operator:*:2:5::0:0:System &:/:/usr/sbin/nologin
+bin:*:3:7::0:0:Binaries Commands and Source:/:/usr/sbin/nologin
+tty:*:4:65533::0:0:Tty Sandbox:/:/usr/sbin/nologin
+"#;
+
+        let shadow = parse_etc_master_passwd(master_passwd_data.as_bytes())
+            .expect("Failed to parse freebsd shadow");
+
+        assert_eq!(
+            shadow[0],
+            EtcShadow {
+                name: "root".to_string(),
+                password: CryptPw::Sha512("$6$U7ePyqmS.jKiqDWG$EFhw5zmkjK1h02QJvefu5RuTryxIhqzUmcFjnofafd2abgHzYuvWdqpyCw/ZfNOSTUAMNiJUcwtCW8SOFwq/i/".to_string()),
+                epoch_change_seconds: None,
+                days_min_password_age: 0,
+                days_max_password_age: None,
+                days_warning_period: 0,
+                days_inactivity_period: None,
+                epoch_expire_seconds: None,
+                flag_reserved: None
+            }
+        );
+
+        assert_eq!(
+            shadow[1],
+            EtcShadow {
+                name: "toor".to_string(),
+                password: CryptPw::Invalid,
+                epoch_change_seconds: None,
+                days_min_password_age: 0,
+                days_max_password_age: None,
+                days_warning_period: 0,
+                days_inactivity_period: None,
+                epoch_expire_seconds: None,
+                flag_reserved: None
+            }
+        );
+
+        assert_eq!(
+            shadow[2],
+            EtcShadow {
+                name: "daemon".to_string(),
+                password: CryptPw::Invalid,
+                epoch_change_seconds: None,
+                days_min_password_age: 0,
+                days_max_password_age: None,
+                days_warning_period: 0,
+                days_inactivity_period: None,
+                epoch_expire_seconds: None,
+                flag_reserved: None
             }
         );
     }
