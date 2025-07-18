@@ -1403,7 +1403,7 @@ pub async fn credential_update_update(
             return Err(WebError::InternalServerError(errmsg));
         }
     };
-    debug!("session_token: {:?}", session_token);
+    trace!("session_token: {:?}", session_token);
     debug!("scr: {:?}", scr);
 
     state
