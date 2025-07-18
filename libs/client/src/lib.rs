@@ -55,6 +55,7 @@ mod domain;
 mod group;
 mod oauth;
 mod person;
+mod schema;
 mod scim;
 mod service_account;
 mod sync_account;

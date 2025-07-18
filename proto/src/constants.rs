@@ -226,6 +226,8 @@ pub const ATTR_WEBAUTHN_ATTESTATION_CA_LIST: &str = "webauthn_attestation_ca_lis
 pub const ATTR_ALLOW_PRIMARY_CRED_FALLBACK: &str = "allow_primary_cred_fallback";
 
 pub const SUB_ATTR_PRIMARY: &str = "primary";
+pub const SUB_ATTR_TYPE: &str = "type";
+pub const SUB_ATTR_VALUE: &str = "value";
 
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";
@@ -256,6 +258,10 @@ pub const LDAP_CLASS_GROUPOFNAMES: &str = "groupofnames";
 // Rust can't deal with this being compiled out, don't try and #[cfg()] them
 pub const TEST_ATTR_NON_EXIST: &str = "non-exist";
 pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
+pub const TEST_ATTR_TEST_ATTR_A: &str = "testattr_a";
+pub const TEST_ATTR_TEST_ATTR_B: &str = "testattr_b";
+pub const TEST_ATTR_TEST_ATTR_C: &str = "testattr_c";
+pub const TEST_ATTR_TEST_ATTR_D: &str = "testattr_d";
 pub const TEST_ATTR_EXTRA: &str = "extra";
 pub const TEST_ATTR_NUMBER: &str = "testattrnumber";
 pub const TEST_ATTR_NOTALLOWED: &str = "notallowed";

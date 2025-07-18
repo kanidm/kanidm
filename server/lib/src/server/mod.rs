@@ -34,9 +34,8 @@ use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
 use kanidm_proto::scim_v1::{
-    client::ScimFilter,
     server::{ScimListResponse, ScimOAuth2ClaimMap, ScimOAuth2ScopeMap, ScimReference},
-    JsonValue, ScimEntryGetQuery,
+    JsonValue, ScimEntryGetQuery, ScimFilter,
 };
 use std::collections::BTreeSet;
 use std::num::NonZeroU64;
@@ -957,6 +956,8 @@ pub trait QueryServerTransaction<'a> {
             return Err(OperationError::InvalidAttributeName(attr.to_string()));
         };
 
+        debug!(schema_syntax = ?schema_a.syntax, ?value);
+
         match schema_a.syntax {
             SyntaxType::Utf8String => {
                 let JsonValue::String(value) = value else {
@@ -983,6 +984,21 @@ pub trait QueryServerTransaction<'a> {
 
                 let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                 Ok(PartialValue::Uuid(un))
+            }
+            SyntaxType::Boolean => {
+                let JsonValue::Bool(value) = value else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+                Ok(PartialValue::Bool(*value))
+            }
+            SyntaxType::SyntaxId => {
+                let JsonValue::String(value) = value else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+                let Ok(value) = SyntaxType::try_from(value.as_str()) else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+                Ok(PartialValue::Syntax(value))
             }
             SyntaxType::ReferenceUuid
             | SyntaxType::OauthScopeMap
@@ -1495,10 +1511,18 @@ impl QueryServerReadTransaction<'_> {
     pub fn scim_search_ext(
         &mut self,
         ident: Identity,
-        filter: &ScimFilter,
+        filter: ScimFilter,
         query: ScimEntryGetQuery,
     ) -> Result<ScimListResponse, OperationError> {
-        let filter_intent = Filter::from_scim_ro(&ident, filter, self)?;
+        // Parse filter here?
+
+        let filter = if let Some(user_filter) = query.filter {
+            ScimFilter::And(Box::new(filter), Box::new(user_filter.clone()))
+        } else {
+            filter
+        };
+
+        let filter_intent = Filter::from_scim_ro(&ident, &filter, self)?;
 
         let f_intent_valid = filter_intent
             .validate(self.get_schema())
@@ -2717,9 +2741,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 mod tests {
     use crate::prelude::*;
     use kanidm_proto::scim_v1::{
-        client::ScimFilter,
         server::{ScimListResponse, ScimReference},
-        JsonValue, ScimEntryGetQuery,
+        JsonValue, ScimEntryGetQuery, ScimFilter,
     };
     use std::num::NonZeroU64;
 
@@ -3203,7 +3226,7 @@ mod tests {
         );
 
         let base: ScimListResponse = server_txn
-            .scim_search_ext(idm_admin_ident, &filter, ScimEntryGetQuery::default())
+            .scim_search_ext(idm_admin_ident, filter, ScimEntryGetQuery::default())
             .unwrap();
 
         assert_eq!(base.resources.len(), 1);
@@ -3252,7 +3275,7 @@ mod tests {
         let base: ScimListResponse = server_txn
             .scim_search_ext(
                 idm_admin_ident.clone(),
-                &filter,
+                filter.clone(),
                 ScimEntryGetQuery {
                     sort_by: Some(Attribute::Name),
                     ..Default::default()
@@ -3291,7 +3314,7 @@ mod tests {
         let base: ScimListResponse = server_txn
             .scim_search_ext(
                 idm_admin_ident.clone(),
-                &filter,
+                filter.clone(),
                 ScimEntryGetQuery {
                     count: NonZeroU64::new(1),
                     ..Default::default()
@@ -3318,7 +3341,7 @@ mod tests {
         let base: ScimListResponse = server_txn
             .scim_search_ext(
                 idm_admin_ident,
-                &filter,
+                filter.clone(),
                 ScimEntryGetQuery {
                     sort_by: Some(Attribute::Name),
                     count: NonZeroU64::new(2),
