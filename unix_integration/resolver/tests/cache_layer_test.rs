@@ -946,24 +946,24 @@ async fn test_cache_authenticate_system_account() {
                     name: "testaccount1".to_string(),
                     // The very secure password, "a".
                     password: CryptPw::Sha512("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string()),
-                    epoch_change_days: None,
+                    epoch_change_seconds: None,
                     days_min_password_age: 0,
                     days_max_password_age: Some(1),
                     days_warning_period: 1,
                     days_inactivity_period: None,
-                    epoch_expire_date: Some(380),
+                    epoch_expire_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(380)),
                     flag_reserved: None
                 },
                 EtcShadow {
                     name: "testaccount2".to_string(),
                     // The very secure password, "a".
                     password: CryptPw::Sha512("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string()),
-    epoch_change_days: Some(364),
+                    epoch_change_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(364)),
                     days_min_password_age: 0,
                     days_max_password_age: Some(2),
                     days_warning_period: 1,
                     days_inactivity_period: None,
-                    epoch_expire_date: Some(380),
+                    epoch_expire_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(380)),
                     flag_reserved: None
                 },
             ],

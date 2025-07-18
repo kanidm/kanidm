@@ -18,7 +18,7 @@ use crate::idprovider::system::{
 };
 use hashbrown::HashMap;
 use kanidm_hsm_crypto::provider::BoxedDynTpm;
-use kanidm_unix_common::constants::DEFAULT_SHELL_SEARCH_PATHS;
+use kanidm_unix_common::constants::{DEFAULT_SHELL_SEARCH_PATHS, SYSTEM_SHADOW_PATH};
 use kanidm_unix_common::unix_config::{HomeAttr, UidAttr};
 use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{
@@ -914,7 +914,7 @@ impl Resolver {
             SystemProviderAuthInit::ShadowMissing => {
                 warn!(
                     ?account_id,
-                    "Resolver unable to proceed, /etc/shadow was not accessible."
+                    "Resolver unable to proceed, {SYSTEM_SHADOW_PATH} was not accessible."
                 );
                 return Ok((AuthSession::Denied, PamAuthResponse::Unknown));
             }

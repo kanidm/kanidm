@@ -46,7 +46,7 @@ impl RequestOptions {
                     name: "tobias".to_string(),
                     // The very secure password, 'a'
                     password: CryptPw::from_str("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//").unwrap(),
-                    epoch_expire_date: Some(10),
+                    epoch_expire_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(10)),
                     ..Default::default()
                 },
             ],

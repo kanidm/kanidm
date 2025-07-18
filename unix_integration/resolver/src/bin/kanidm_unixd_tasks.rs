@@ -12,7 +12,9 @@
 
 use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
-use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::constants::{
+    DEFAULT_CONFIG_PATH, SYSTEM_GROUP_PATH, SYSTEM_PASSWD_PATH, SYSTEM_SHADOW_PATH,
+};
 use kanidm_unix_common::unix_config::UnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow, EtcDb};
 use kanidm_unix_common::unix_proto::{
@@ -373,7 +375,7 @@ async fn handle_tasks(
 
 #[instrument(level = "debug", skip_all)]
 async fn process_etc_passwd_group() -> Result<EtcDb, ()> {
-    let mut file = File::open("/etc/passwd").await.map_err(|err| {
+    let mut file = File::open(SYSTEM_PASSWD_PATH).await.map_err(|err| {
         error!(?err);
     })?;
     let mut contents = vec![];
@@ -387,7 +389,7 @@ async fn process_etc_passwd_group() -> Result<EtcDb, ()> {
             error!(?err);
         })?;
 
-    let mut file = File::open("/etc/shadow").await.map_err(|err| {
+    let mut file = File::open(SYSTEM_SHADOW_PATH).await.map_err(|err| {
         error!(?err);
     })?;
     let mut contents = vec![];
@@ -401,7 +403,7 @@ async fn process_etc_passwd_group() -> Result<EtcDb, ()> {
             error!(?err);
         })?;
 
-    let mut file = File::open("/etc/group").await.map_err(|err| {
+    let mut file = File::open(SYSTEM_GROUP_PATH).await.map_err(|err| {
         error!(?err);
     })?;
     let mut contents = vec![];
@@ -444,9 +446,9 @@ fn setup_shadow_inotify_watcher(
             for inode_event in array_of_events.iter() {
                 if !inode_event.kind.is_access()
                     && inode_event.paths.iter().any(|path| {
-                        path == Path::new("/etc/group")
-                            || path == Path::new("/etc/passwd")
-                            || path == Path::new("/etc/shadow")
+                        path == Path::new(SYSTEM_GROUP_PATH)
+                            || path == Path::new(SYSTEM_PASSWD_PATH)
+                            || path == Path::new(SYSTEM_SHADOW_PATH)
                     })
                 {
                     debug!(?inode_event, "Handling inotify modification event");
@@ -557,7 +559,7 @@ async fn main() -> ExitCode {
             let etc_db = match process_etc_passwd_group().await {
                 Ok(etc_db) => etc_db,
                 Err(err) => {
-                    warn!(?err, "unable to process /etc/passwd and related files.");
+                    warn!(?err, "unable to process {SYSTEM_PASSWD_PATH} and related files.");
                     // Return an empty set instead.
                     EtcDb::default()
                 }

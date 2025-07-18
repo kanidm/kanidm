@@ -29,3 +29,12 @@ pub const CODEC_MIMIMUM_BYTESMUT_ALLOCATION: usize = 64;
 // If the codec buffer exceeds this limit, then we swap the buffer
 // with a fresh one to prevent memory explosions.
 pub const CODEC_BYTESMUT_ALLOCATION_LIMIT: usize = 1024 * 1024;
+
+#[cfg(all(target_family = "unix", not(target_os = "freebsd")))]
+pub const SYSTEM_SHADOW_PATH: &str = "/etc/shadow";
+
+#[cfg(all(target_family = "unix", target_os = "freebsd"))]
+pub const SYSTEM_SHADOW_PATH: &str = "/etc/master.passwd";
+
+pub const SYSTEM_PASSWD_PATH: &str = "/etc/passwd";
+pub const SYSTEM_GROUP_PATH: &str = "/etc/group";

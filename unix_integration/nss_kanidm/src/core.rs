@@ -1,4 +1,5 @@
 use kanidm_unix_common::client_sync::DaemonClientBlocking;
+use kanidm_unix_common::constants::{SYSTEM_GROUP_PATH, SYSTEM_PASSWD_PATH};
 use kanidm_unix_common::unix_config::PamNssConfig;
 use kanidm_unix_common::unix_passwd::{
     read_etc_group_file, read_etc_passwd_file, EtcGroup, EtcUser,
@@ -47,9 +48,9 @@ impl RequestOptions {
                 if let Some(client) = maybe_client {
                     Source::Daemon(client)
                 } else {
-                    let users = read_etc_passwd_file("/etc/passwd").unwrap_or_default();
+                    let users = read_etc_passwd_file(SYSTEM_PASSWD_PATH).unwrap_or_default();
 
-                    let groups = read_etc_group_file("/etc/group").unwrap_or_default();
+                    let groups = read_etc_group_file(SYSTEM_GROUP_PATH).unwrap_or_default();
 
                     Source::Fallback { users, groups }
                 }
