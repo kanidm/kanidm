@@ -77,13 +77,7 @@ pub struct ScimEntryGetQuery {
     pub start_index: Option<NonZeroU64>,
     pub count: Option<NonZeroU64>,
 
-    // This is a generic proto filter, not a strong typed one?
-
-    //
-    // Dear william of tomorrow - you're doing this the wrong way. These types should
-    // turn into the generic,rather than embedding them. Just copy the damn PEG parser
-    // you slack cunt.
-    //
+    // Strongly typed filter (rather than generic)
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub filter: Option<ScimFilter>,
 }
