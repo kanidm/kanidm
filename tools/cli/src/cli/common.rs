@@ -383,7 +383,10 @@ pub fn prompt_for_username_get_values(
         Some(value) => {
             let (f_uname, f_token) = value;
             debug!("Using cached token for name {}", f_uname);
-            debug!("Cached token: {}", f_token);
+            debug!(
+                "First ten chars of cached token: {}",
+                &f_token.to_string()[..10]
+            );
             Ok((f_uname.to_string(), f_token.clone()))
         }
         None => {
