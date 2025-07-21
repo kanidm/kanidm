@@ -3597,6 +3597,7 @@ dependencies = [
  "enum-iterator",
  "kanidm_build_profiles",
  "num_enum",
+ "peg",
  "scim_proto",
  "serde",
  "serde_json",

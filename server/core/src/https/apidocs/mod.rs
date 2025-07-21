@@ -81,6 +81,8 @@ impl Modify for SecurityAddon {
         super::v1_scim::scim_application_get,
         super::v1_scim::scim_application_post,
         super::v1_scim::scim_application_id_delete,
+        super::v1_scim::scim_schema_attribute_get,
+        super::v1_scim::scim_schema_class_get,
 
         super::v1::schema_get,
         super::v1::whoami,

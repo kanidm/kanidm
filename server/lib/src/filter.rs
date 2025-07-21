@@ -23,7 +23,7 @@ use hashbrown::HashMap;
 use hashbrown::HashSet;
 use kanidm_proto::constants::ATTR_UUID;
 use kanidm_proto::internal::{Filter as ProtoFilter, OperationError, SchemaError};
-use kanidm_proto::scim_v1::client::{AttrPath as ScimAttrPath, ScimFilter};
+use kanidm_proto::scim_v1::{AttrPath as ScimAttrPath, ScimFilter};
 use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -1197,7 +1197,6 @@ impl FilterComp {
                 let pv = qs.resolve_scim_json_get(a, json_value)?;
                 FilterComp::Eq(a.clone(), pv)
             }
-
             ScimFilter::Contains(ScimAttrPath { a, s: None }, json_value) => {
                 let pv = qs.resolve_scim_json_get(a, json_value)?;
                 FilterComp::Cnt(a.clone(), pv)
