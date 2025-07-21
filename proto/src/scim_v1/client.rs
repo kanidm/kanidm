@@ -164,7 +164,7 @@ pub struct ScimEntrySchemaAttribute {
 
     pub attributename: String,
     pub description: String,
-    // To be removed
+    // TODO: To be removed
     pub multivalue: bool,
     pub unique: bool,
     pub syntax: String,
