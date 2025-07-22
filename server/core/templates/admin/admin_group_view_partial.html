@@ -55,11 +55,8 @@ let can_modify_any_attr = scim_effective_access.modify_present.check_any(
 
     (% call string_attr("UUID", "uuid", group.uuid, can_modify_any_attr, Attribute::Uuid) -%)
     (% call string_attr("Name", "name", group.name, can_modify_any_attr, Attribute::Name) -%)
-    (% if let Some(description) = group.description -%)
-        (% call string_attr("Description", "description", description, can_modify_any_attr, Attribute::Description) -%)
-    (% else -%)
-        (% call string_attr("Description", "description", "", can_modify_any_attr, Attribute::Description) -%)
-    (% endif -%)
+    (% let description = group.description.clone().unwrap_or(String::new()) %)
+    (% call string_attr("Description", "description", description, can_modify_any_attr, Attribute::Description) -%)
 </form>
 
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
