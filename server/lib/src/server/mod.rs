@@ -2672,7 +2672,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn.clear_cache()
     }
 
-    #[instrument(level = "info", name="qswt_commit" skip_all)]
+    #[instrument(level = "debug", name="qswt_commit" skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
         self.reload()?;
 

@@ -18,10 +18,11 @@ use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 use tokio::time::{interval, sleep, timeout};
 use tokio::{
     net::{TcpListener, TcpStream},
@@ -154,8 +155,21 @@ async fn repl_consumer_connect_supplier(
     None
 }
 
+async fn repl_consumer_disconnect_supplier(
+    supplier_conn: Framed<TlsStream<TcpStream>, codec::ConsumerCodec>,
+) {
+    let mut tls_stream = supplier_conn.into_inner();
+    if let Err(tls_err) = tls_stream.shutdown().await {
+        warn!(?tls_err, "Unable to cleanly shutdown TLS client connection");
+    }
+}
+
 /// This returns the socket address that worked, so you can try that first next time
-#[instrument(level="info", skip(refresh_coord, tls_connector, idms), fields(uuid=Uuid::new_v4().to_string()))]
+#[instrument(
+    level="info",
+    skip(refresh_coord, tls_connector, idms, consumer_conn_settings),
+    fields(eventid = Uuid::new_v4().to_string(), server_name = %server_name.to_str())
+)]
 async fn repl_run_consumer_refresh(
     refresh_coord: Arc<Mutex<(bool, mpsc::Sender<()>)>>,
     server_name: &ServerName<'static>,
@@ -167,7 +181,7 @@ async fn repl_run_consumer_refresh(
     // Take the refresh lock. Note that every replication consumer *should* end up here
     // behind this lock, but only one can proceed. This is what we want!
 
-    let mut refresh_coord_guard = refresh_coord.lock().await;
+    let refresh_coord_guard = refresh_coord.lock().await;
 
     // Simple case - task is already done.
     if refresh_coord_guard.0 {
@@ -175,7 +189,7 @@ async fn repl_run_consumer_refresh(
         return Ok(None);
     }
 
-    // okay, we need to proceed.
+    // Okay, we need to proceed. Open the connection.
     let (addr, mut supplier_conn) = repl_consumer_connect_supplier(
         server_name,
         sock_addrs,
@@ -185,6 +199,21 @@ async fn repl_run_consumer_refresh(
     .await
     .ok_or(())?;
 
+    let result =
+        repl_run_consumer_refresh_inner(addr, &mut supplier_conn, refresh_coord_guard, idms).await;
+
+    // disconnect the connection if possible.
+    repl_consumer_disconnect_supplier(supplier_conn).await;
+
+    result
+}
+
+async fn repl_run_consumer_refresh_inner(
+    addr: SocketAddr,
+    supplier_conn: &mut Framed<TlsStream<TcpStream>, codec::ConsumerCodec>,
+    mut refresh_coord_guard: MutexGuard<'_, (bool, mpsc::Sender<()>)>,
+    idms: &IdmServer,
+) -> Result<Option<SocketAddr>, ()> {
     // If we fail at any point, just RETURN because this leaves the next task to attempt, or
     // the channel drops and that tells the caller this failed.
     supplier_conn
@@ -235,7 +264,11 @@ async fn repl_run_consumer_refresh(
     Ok(Some(addr))
 }
 
-#[instrument(level="debug", skip(tls_connector, idms), fields(eventid=Uuid::new_v4().to_string()))]
+#[instrument(
+    level="info",
+    skip(tls_connector, idms, consumer_conn_settings, server_name),
+    fields(eventid = Uuid::new_v4().to_string(), server_name = %server_name.to_str())
+)]
 async fn repl_run_consumer(
     server_name: &ServerName<'static>,
     sock_addrs: &[SocketAddr],
@@ -252,6 +285,20 @@ async fn repl_run_consumer(
     )
     .await?;
 
+    let result =
+        repl_run_consumer_inner(socket_addr, &mut supplier_conn, idms, automatic_refresh).await;
+
+    repl_consumer_disconnect_supplier(supplier_conn).await;
+
+    result
+}
+
+async fn repl_run_consumer_inner(
+    socket_addr: SocketAddr,
+    supplier_conn: &mut Framed<TlsStream<TcpStream>, codec::ConsumerCodec>,
+    idms: &IdmServer,
+    automatic_refresh: bool,
+) -> Option<SocketAddr> {
     // Perform incremental.
     let consumer_ruv_range = {
         let consumer_state = idms
