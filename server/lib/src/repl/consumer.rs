@@ -310,7 +310,7 @@ impl QueryServerWriteTransaction<'_> {
                 Ok(ConsumerState::RefreshRequired)
             }
             ReplIncrementalContext::NoChangesAvailable => {
-                info!("no changes are available");
+                debug!("no changes are available");
                 Ok(ConsumerState::Ok)
             }
             ReplIncrementalContext::RefreshRequired => {
@@ -385,6 +385,8 @@ impl QueryServerWriteTransaction<'_> {
         let txn_cid = self.get_cid().clone();
         let ruv = self.be_txn.get_ruv_write();
 
+        let change_count = ctx_schema_entries.len() + ctx_meta_entries.len() + ctx_entries.len();
+
         ruv.incremental_preflight_validate_ruv(ctx_ranges, &txn_cid)
             .inspect_err(|err| {
                 error!(
@@ -395,13 +397,12 @@ impl QueryServerWriteTransaction<'_> {
 
         // == ⚠️  Below this point we begin to make changes! ==
         debug!(
-            "Proceeding to apply incremental from domain {:?} at level {}",
-            ctx_domain_uuid, ctx_domain_version
+            "Proceeding to apply incremental with {change_count} changes from domain {ctx_domain_uuid:?} at level {ctx_domain_version}"
         );
 
         debug!(?ctx_ranges);
 
-        debug!("Applying schema entries");
+        debug!("Applying {} schema entries", ctx_schema_entries.len());
         // Apply the schema entries first.
         let schema_changed = self
             .consumer_incremental_apply_entries(ctx_schema_entries)
@@ -416,7 +417,7 @@ impl QueryServerWriteTransaction<'_> {
             })?;
         }
 
-        debug!("Applying meta entries");
+        debug!("Applying {} meta entries", ctx_meta_entries.len());
         // Apply meta entries now.
         let meta_changed = self
             .consumer_incremental_apply_entries(ctx_meta_entries)
@@ -434,7 +435,7 @@ impl QueryServerWriteTransaction<'_> {
             })?;
         }
 
-        debug!("Applying all context entries");
+        debug!("Applying {} context entries", ctx_entries.len());
         // Update all other entries now.
         self.consumer_incremental_apply_entries(ctx_entries)
             .inspect_err(|err| {
