@@ -115,7 +115,6 @@ pub fn start_logging_pipeline(
                     tracing_subscriber::filter::LevelFilter::from_level(Level::INFO)
                         .with_filter(t_filter),
                 )
-                .with(tracing_subscriber::fmt::layer())
                 // .with(MetricsLayer::new(meter_provider.clone()))
                 .with(forest_layer)
                 .with(OpenTelemetryLayer::new(
