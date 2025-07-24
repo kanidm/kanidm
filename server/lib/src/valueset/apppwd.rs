@@ -109,7 +109,7 @@ impl ValueSetT for ValueSetApplicationPassword {
                 let mut removed = false;
                 self.map.retain(|_, v| {
                     let prev = v.len();
-                    // Check the innel vec of passwords related to this application.
+                    // Check the inner vec of passwords related to this application.
                     v.retain(|y| y.uuid != *u);
                     let post = v.len();
                     removed |= post < prev;

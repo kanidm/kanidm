@@ -288,14 +288,49 @@ impl QueryServerWriteV1 {
 
         idms_prox_write
             .generate_application_password(&generate_application_password_event)
-            .and_then(|secret| {
+            .and_then(|(secret, uuid)| {
                 idms_prox_write.commit()?;
 
                 Ok(ScimApplicationPassword {
+                    uuid,
                     label: generate_application_password_event.label,
                     secret,
                 })
             })
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn scim_person_application_delete_password(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        uuid_or_name: String,
+        apppwd_id: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                error!(err = ?e, "Error resolving id to target");
+                e
+            })?;
+
+        idms_prox_write
+            .application_password_delete(&ident, target, apppwd_id)
+            .and_then(|()| idms_prox_write.commit())
     }
 
     #[instrument(

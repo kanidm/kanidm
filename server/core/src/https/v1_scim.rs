@@ -9,7 +9,7 @@ use super::ServerState;
 use crate::https::extractors::VerifiedClientInformation;
 use axum::extract::{rejection::JsonRejection, DefaultBodyLimit, Path, Query, State};
 use axum::response::{Html, IntoResponse, Response};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Extension, Json, Router};
 use kanidm_proto::scim_v1::{
     client::ScimEntryPostGeneric,
@@ -414,6 +414,30 @@ async fn scim_person_id_application_create_password(
 
 #[utoipa::path(
     get,
+    path = "/scim/v1/Person/{id}/Application/{apppwd_uuid}",
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_person_id_application_delete_password"
+)]
+async fn scim_person_id_application_delete_password(
+    State(state): State<ServerState>,
+    Path((id, apppwd_id)): Path<(String, Uuid)>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<()>, WebError> {
+    state
+        .qe_w_ref
+        .scim_person_application_delete_password(client_auth_info, kopid.eventid, id, apppwd_id)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    get,
     path = "/scim/v1/Application",
     responses(
         (status = 200, content_type="application/json", body=ScimEntry),
@@ -691,6 +715,10 @@ pub fn route_setup() -> Router<ServerState> {
         .route(
             "/scim/v1/Person/:id/Application/_create_password",
             post(scim_person_id_application_create_password),
+        )
+        .route(
+            "/scim/v1/Person/:id/Application/:apppwd_id",
+            delete(scim_person_id_application_delete_password),
         )
         //
         //  Sync     /Sync            GET                    Retrieve the current

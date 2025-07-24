@@ -3,6 +3,7 @@ use kanidm_proto::scim_v1::{
     client::{ScimEntryApplication, ScimEntryApplicationPost, ScimListApplication},
     ScimApplicationPassword, ScimApplicationPasswordCreate, ScimEntryGetQuery,
 };
+use uuid::Uuid;
 
 impl KanidmClient {
     /// Delete an application
@@ -60,12 +61,19 @@ impl KanidmClient {
         request: &ScimApplicationPasswordCreate,
     ) -> Result<ScimApplicationPassword, ClientError> {
         self.perform_post_request(
-            format!(
-                "/scim/v1/Person/{}/Application/_create_password",
-                name_or_uuid
-            )
-            .as_str(),
+            format!("/scim/v1/Person/{name_or_uuid}/Application/_create_password",).as_str(),
             request,
+        )
+        .await
+    }
+
+    pub async fn idm_application_password_delete(
+        &self,
+        name_or_uuid: &str,
+        password_id: Uuid,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(
+            format!("/scim/v1/Person/{name_or_uuid}/Application/{password_id}",).as_str(),
         )
         .await
     }

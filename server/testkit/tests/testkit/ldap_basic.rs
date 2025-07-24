@@ -249,8 +249,23 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     // Done!
 
     // Check removeal of app passwords
+    person_rsclient
+        .idm_application_password_delete(TEST_PERSON, application_1_password_create_2.uuid)
+        .await
+        .expect("Failed to remove application password");
 
     // Then test it no longer works.
+    let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+    ldap_client
+        .bind(
+            format!(
+                "name={},app={},dc=localhost",
+                TEST_PERSON, APPLICATION_1_NAME
+            ),
+            application_1_password_create_2.secret.clone(),
+        )
+        .await
+        .expect_err("Should not succeed!!");
 
     // Delete the applications
     idm_admin_rsclient
@@ -268,5 +283,5 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
         .await
         .expect_err("Should not succeed!!");
 
-    // They no longer list
+    // Done!!!! Application passwords work!!!
 }
