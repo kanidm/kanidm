@@ -12,8 +12,10 @@ use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 use kanidm_proto::scim_v1::{
-    client::ScimEntryPostGeneric, server::ScimEntryKanidm, server::ScimListResponse,
-    ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+    client::ScimEntryPostGeneric,
+    server::{ScimEntryKanidm, ScimListResponse},
+    ScimApplicationPassword, ScimApplicationPasswordCreate, ScimEntryGetQuery, ScimSyncRequest,
+    ScimSyncState,
 };
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
@@ -386,6 +388,32 @@ async fn scim_person_id_get(
 
 #[utoipa::path(
     get,
+    path = "/scim/v1/Person/{id}/Application/_create_password",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_person_id_application_create_password"
+)]
+async fn scim_person_id_application_create_password(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(request): Json<ScimApplicationPasswordCreate>,
+) -> Result<Json<ScimApplicationPassword>, WebError> {
+    state
+        .qe_w_ref
+        .scim_person_application_create_password(client_auth_info, kopid.eventid, id, request)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    get,
     path = "/scim/v1/Application",
     responses(
         (status = 200, content_type="application/json", body=ScimEntry),
@@ -660,6 +688,10 @@ pub fn route_setup() -> Router<ServerState> {
         //                                                   database.
         //                                                   {id} is any unique id.
         .route("/scim/v1/Person/:id", get(scim_person_id_get))
+        .route(
+            "/scim/v1/Person/:id/Application/_create_password",
+            post(scim_person_id_application_create_password),
+        )
         //
         //  Sync     /Sync            GET                    Retrieve the current
         //                                                   sync state associated

@@ -758,9 +758,10 @@ impl LdapServer {
         }
 
         error!(
-            "Failed to parse bind DN, no captures. Bind DN was {:?})",
-            dn
+            binddn = ?dn,
+            "Failed to parse bind DN - check the basedn and app attribute if present are correct. Examples: name=tobias,app=lounge,{} OR name=ellie,{} OR name=claire,app=table OR name=william ", self.basedn, self.basedn
         );
+
         Err(OperationError::NoMatchingEntries)
     }
 }
