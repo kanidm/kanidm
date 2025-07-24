@@ -119,12 +119,12 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
 
     debug!(?applications);
 
-    /*
-    let _application = person_rsclient
+    let application = person_rsclient
         .idm_application_get(APPLICATION_2_NAME, None)
         .await
         .expect("Failed to list applications");
-    */
+
+    debug!(?application);
 
     // Create application passwords
 

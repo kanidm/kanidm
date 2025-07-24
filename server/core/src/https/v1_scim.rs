@@ -9,7 +9,7 @@ use super::ServerState;
 use crate::https::extractors::VerifiedClientInformation;
 use axum::extract::{rejection::JsonRejection, DefaultBodyLimit, Path, Query, State};
 use axum::response::{Html, IntoResponse, Response};
-use axum::routing::{delete, get, post};
+use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 use kanidm_proto::scim_v1::{
     client::ScimEntryPostGeneric, server::ScimEntryKanidm, server::ScimListResponse,
@@ -458,6 +458,37 @@ async fn scim_application_post(
     ),
     security(("token_jwt" = [])),
     tag = "scim",
+    operation_id = "scim_application_id_get"
+)]
+async fn scim_application_id_get(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<ScimEntryKanidm>, WebError> {
+    state
+        .qe_r_ref
+        .scim_entry_id_get(
+            client_auth_info,
+            kopid.eventid,
+            id,
+            EntryClass::Application,
+            ScimEntryGetQuery::default(),
+        )
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    delete,
+    path = "/scim/v1/Application/{id}",
+    responses(
+        (status = 200, content_type="application/json"),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
     operation_id = "scim_application_id_delete"
 )]
 async fn scim_application_id_delete(
@@ -648,7 +679,7 @@ pub fn route_setup() -> Router<ServerState> {
         //
         .route(
             "/scim/v1/Application/:id",
-            delete(scim_application_id_delete),
+            get(scim_application_id_get).delete(scim_application_id_delete),
         )
         //  Class      /Class          GET                  List or query Schema Classes
         //
