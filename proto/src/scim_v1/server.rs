@@ -107,14 +107,6 @@ pub struct ScimAddress {
     pub country: String,
 }
 
-#[derive(Serialize, Debug, Clone, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ScimApplicationPassword {
-    pub uuid: Uuid,
-    pub application_uuid: Uuid,
-    pub label: String,
-}
-
 #[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]

@@ -1,6 +1,7 @@
 use crate::{ClientError, KanidmClient};
 use kanidm_proto::scim_v1::{
-    client::{ScimEntryApplication, ScimEntryApplicationPost, ScimListApplication},
+    client::{ScimEntryApplication, ScimEntryApplicationPost, ScimListApplication,
+    ScimApplicationPasswordCreate, ScimApplicationPassword},
     ScimEntryGetQuery,
 };
 
@@ -52,16 +53,16 @@ impl KanidmClient {
         )
             .await
     }
+    */
 
-    pub async fn idm_person_create_application_password(
+    pub async fn idm_application_password_create(
         &self,
         name_or_uuid: &str,
-        request: &ScimApplicationPasswordPost,
+        request: &ScimApplicationPasswordCreate,
     ) -> Result<ScimApplicationPassword, ClientError> {
         self.perform_post_request(
             format!("/scim/v1/Person/{}/Application/_create_password", name_or_uuid).as_str()
         , request)
             .await
     }
-    */
 }

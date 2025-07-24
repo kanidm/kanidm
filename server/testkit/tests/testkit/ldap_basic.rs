@@ -119,24 +119,37 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
 
     debug!(?applications);
 
-    let application = person_rsclient
+    let application_1 = person_rsclient
+        .idm_application_get(APPLICATION_1_NAME, None)
+        .await
+        .expect("Failed to get application");
+
+    let application_2 = person_rsclient
         .idm_application_get(APPLICATION_2_NAME, None)
         .await
-        .expect("Failed to list applications");
+        .expect("Failed to get application");
 
-    debug!(?application);
+    debug!(?application_1);
+    debug!(?application_2);
+
+    let application_1_uuid = application_1.header.id;
+    let application_2_uuid = application_2.header.id;
 
     // Create application passwords
+    let create_application_password_req = ScimApplicationPasswordCreate {
+            application_uuid: application_1_uuid,
+            label: "label_1",
+    };
 
-    /*
     let application_1_password_create_1 = person_rsclient
-        .idm_application_create_password(
-            APPLICATION_1_NAME,
-            "label_1",
+        .idm_application_password_create(
+            TEST_PERSON,
+            &create_application_password_req
         )
         .await
         .expect("Failed to create application password");
 
+    /*
     let application_1_password_create_2 = person_rsclient
         .idm_application_create_password(
             APPLICATION_1_NAME,
