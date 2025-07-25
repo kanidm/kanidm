@@ -1,8 +1,12 @@
 # Example OAuth2 Configurations
 
-> [!TIP]
+> [!WARNING]
 >
 > Web applications that authenticate with Kanidm **must** be served over HTTPS.
+
+> [!TIP]
+>
+> More examples can be found in the [Show and tell part](https://github.com/kanidm/kanidm/discussions/categories/show-and-tell) of Kanidm's Github conversations.
 
 ## Apache `mod_auth_openidc`
 
