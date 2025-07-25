@@ -260,7 +260,12 @@ impl IdmServerProxyWriteTransaction<'_> {
             cleartext.as_str(),
             policy,
         )
-        .inspect_err(|err| error!(?err, "Unable to generate application password"))?;
+        .inspect_err(|err| {
+            error!(
+                ?err,
+                "Unable to generate application password. This is a BUG!!!"
+            )
+        })?;
 
         let ap_uuid = ap.uuid;
         let vap = Value::ApplicationPassword(ap);

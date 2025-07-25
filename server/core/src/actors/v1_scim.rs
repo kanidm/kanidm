@@ -265,10 +265,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
-            .map_err(|e| {
-                error!(err = ?e, "Invalid identity");
-                e
-            })?;
+            .inspect_err(|err| error!(?err, "Invalid identity"))?;
 
         let ScimApplicationPasswordCreate {
             application_uuid,
@@ -278,10 +275,7 @@ impl QueryServerWriteV1 {
         let target = idms_prox_write
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
-            .map_err(|e| {
-                error!(err = ?e, "Error resolving id to target");
-                e
-            })?;
+            .inspect_err(|err| error!(?err, "Error resolving id to target"))?;
 
         let generate_application_password_event =
             GenerateApplicationPasswordEvent::from_parts(ident, target, application_uuid, label)?;
@@ -315,18 +309,12 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
-            .map_err(|e| {
-                error!(err = ?e, "Invalid identity");
-                e
-            })?;
+            .inspect_err(|err| error!(?err, "Invalid identity"))?;
 
         let target = idms_prox_write
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
-            .map_err(|e| {
-                error!(err = ?e, "Error resolving id to target");
-                e
-            })?;
+            .inspect_err(|err| error!(?err, "Error resolving id to target"))?;
 
         idms_prox_write
             .application_password_delete(&ident, target, apppwd_id)
