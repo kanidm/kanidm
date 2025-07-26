@@ -389,8 +389,9 @@ async fn scim_person_id_get(
 #[utoipa::path(
     get,
     path = "/scim/v1/Person/{id}/Application/_create_password",
+    request_body = ScimApplicationPasswordCreate,
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type="application/json", body=ScimApplicationPassword),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
