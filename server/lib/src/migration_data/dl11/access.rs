@@ -469,6 +469,7 @@ lazy_static! {
             Attribute::Spn,
             Attribute::Description,
             Attribute::Member,
+            Attribute::MemberOf,
             Attribute::EntryManagedBy,
         ],
         ..Default::default()
@@ -1252,13 +1253,13 @@ lazy_static! {
         name: "idm_acp_all_accounts_posix_read",
         uuid: UUID_IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1,
         description:
-            "Builtin IDM Control for reading minimal posix attrs - applies anonymous and all authenticated accounts.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_ACCOUNTS] ),
+            "Builtin IDM Control for reading minimal posix attrs. Required for services to authenticate unix users.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_UNIX_AUTHENTICATION_READ] ),
         target: BuiltinAcpTarget::Filter( ProtoFilter::And(
             vec![
                 ProtoFilter::Or(vec![
-                    match_class_filter!(EntryClass::Account),
-                    match_class_filter!(EntryClass::Group),
+                    match_class_filter!(EntryClass::PosixAccount),
+                    match_class_filter!(EntryClass::PosixGroup),
                 ]),
                 FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
             ]
@@ -1376,6 +1377,7 @@ lazy_static! {
             Attribute::Spn,
             Attribute::Description,
             Attribute::Member,
+            Attribute::MemberOf,
             Attribute::GidNumber,
         ],
         modify_removed_attrs: vec![
