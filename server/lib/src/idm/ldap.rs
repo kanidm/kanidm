@@ -1186,6 +1186,7 @@ mod tests {
             let e1: Entry<EntryInit, EntryNew> = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
                 (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
                 (Attribute::Class, EntryClass::Person.to_value()),
                 (Attribute::Name, Value::new_iname(usr_name)),
                 (Attribute::Uuid, Value::Uuid(usr_uuid)),
@@ -1194,6 +1195,16 @@ mod tests {
 
             let ct = duration_from_epoch_now();
             let mut server_txn = idms.proxy_write(ct).await.unwrap();
+
+            // Add anonymous to the needed permission groups.
+            server_txn
+                .qs_write
+                .internal_modify_uuid(
+                    UUID_IDM_UNIX_AUTHENTICATION_READ,
+                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                )
+                .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
+
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1])
@@ -1790,6 +1801,16 @@ mod tests {
             );
 
             let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+            // Add anonymous to the needed permission groups.
+            server_txn
+                .qs_write
+                .internal_modify_uuid(
+                    UUID_IDM_UNIX_AUTHENTICATION_READ,
+                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                )
+                .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
+
             let ce = CreateEvent::new_internal(vec![e1]);
             assert!(server_txn
                 .qs_write
@@ -1987,26 +2008,30 @@ mod tests {
                 (Attribute::LoginShell, Value::new_iutf8("/bin/zsh"))
             );
 
-            // Setup an access control for the service account to view mail attrs.
-
             let ct = duration_from_epoch_now();
 
             let mut server_txn = idms.proxy_write(ct).await.unwrap();
+
             let ce = CreateEvent::new_internal(vec![e1, e2]);
             assert!(server_txn.qs_write.create(&ce).is_ok());
 
-            // idm_people_read_priv
-            let me = ModifyEvent::new_internal_invalid(
-                filter!(f_eq(
-                    Attribute::Name,
-                    PartialValue::new_iname("idm_people_pii_read")
-                )),
-                ModifyList::new_list(vec![Modify::Present(
-                    Attribute::Member,
-                    Value::Refer(sa_uuid),
-                )]),
-            );
-            assert!(server_txn.qs_write.modify(&me).is_ok());
+            // Setup an access control for the service account to view mail attrs.
+            server_txn
+                .qs_write
+                .internal_modify_uuid(
+                    UUID_IDM_ACCOUNT_MAIL_READ,
+                    &ModifyList::new_append(Attribute::Member, Value::Refer(sa_uuid)),
+                )
+                .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
+
+            // Allow anonymous to read basic posix attrs.
+            server_txn
+                .qs_write
+                .internal_modify_uuid(
+                    UUID_IDM_UNIX_AUTHENTICATION_READ,
+                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                )
+                .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
             // Issue a token
             // make it purpose = ldap <- currently purpose isn't supported,
@@ -2175,6 +2200,7 @@ mod tests {
             let e1 = entry_init!(
                 (Attribute::Class, EntryClass::Person.to_value()),
                 (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
                 (Attribute::Name, Value::new_iname("testperson1")),
                 (Attribute::Uuid, Value::Uuid(acct_uuid)),
                 (Attribute::Description, Value::new_utf8s("testperson1")),
@@ -2182,6 +2208,16 @@ mod tests {
             );
 
             let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+            // Add anonymous to the needed permission groups.
+            server_txn
+                .qs_write
+                .internal_modify_uuid(
+                    UUID_IDM_UNIX_AUTHENTICATION_READ,
+                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                )
+                .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
+
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1])
@@ -2244,6 +2280,7 @@ mod tests {
             let e1 = entry_init!(
                 (Attribute::Class, EntryClass::Person.to_value()),
                 (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
                 (Attribute::Name, Value::new_iname("testperson1")),
                 (Attribute::Uuid, Value::Uuid(acct_uuid)),
                 (Attribute::Description, Value::new_utf8s("testperson1")),
@@ -2251,6 +2288,16 @@ mod tests {
             );
 
             let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+            // Add anonymous to the needed permission groups.
+            server_txn
+                .qs_write
+                .internal_modify_uuid(
+                    UUID_IDM_UNIX_AUTHENTICATION_READ,
+                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                )
+                .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
+
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1])
@@ -2439,6 +2486,16 @@ mod tests {
             );
 
             let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+            // Add anonymous to the needed permission groups.
+            server_txn
+                .qs_write
+                .internal_modify_uuid(
+                    UUID_IDM_UNIX_AUTHENTICATION_READ,
+                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                )
+                .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
+
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1])
@@ -2547,6 +2604,16 @@ mod tests {
             );
 
             let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+            // Add anonymous to the needed permission groups.
+            server_txn
+                .qs_write
+                .internal_modify_uuid(
+                    UUID_IDM_UNIX_AUTHENTICATION_READ,
+                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                )
+                .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
+
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1])

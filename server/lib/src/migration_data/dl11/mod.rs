@@ -174,10 +174,15 @@ pub fn phase_5_builtin_admin_entries() -> Result<Vec<EntryInitNew>, OperationErr
 
 pub fn phase_6_builtin_non_admin_entries() -> Result<Vec<EntryInitNew>, OperationError> {
     Ok(vec![
+        IDM_ALL_PERSONS.clone().try_into()?,
+        IDM_ALL_ACCOUNTS.clone().try_into()?,
         BUILTIN_GROUP_DOMAIN_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_SCHEMA_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_ACCESS_CONTROL_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_UNIX_ADMINS.clone().try_into()?,
+        BUILTIN_GROUP_IDM_UNIX_AUTHENTICATION_READ_V1
+            .clone()
+            .try_into()?,
         BUILTIN_GROUP_RECYCLE_BIN_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_SERVICE_DESK.clone().try_into()?,
         BUILTIN_GROUP_OAUTH2_ADMINS.clone().try_into()?,
@@ -189,8 +194,6 @@ pub fn phase_6_builtin_non_admin_entries() -> Result<Vec<EntryInitNew>, Operatio
         BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_MAIL_SERVICE_ADMINS_DL8.clone().try_into()?,
         IDM_GROUP_ADMINS_V1.clone().try_into()?,
-        IDM_ALL_PERSONS.clone().try_into()?,
-        IDM_ALL_ACCOUNTS.clone().try_into()?,
         BUILTIN_IDM_RADIUS_SERVERS_V1.clone().try_into()?,
         BUILTIN_IDM_MAIL_SERVERS_DL8.clone().try_into()?,
         BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7
