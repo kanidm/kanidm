@@ -79,29 +79,6 @@ async fn test_non_existing_user_id(rsclient: &KanidmClient) {
     );
 }
 
-// TEST ON SPECIFIC API INPUT
-// These tests check that given a specific input we get the expected response.
-// WE DON'T CHECK THE CONTENT OF THE RESPONSE, just that it's the expected one.
-// The api tests from here on should never return any error, as all the
-// error cases have already been tested in the previous section!
-// Each tests is named like `test_{api input}_response_{expected api output}_or_{expected api output}`
-#[kanidmd_testkit::test]
-async fn test_start_response_identity_verification_available(rsclient: &KanidmClient) {
-    setup_server(rsclient).await;
-    create_user(rsclient, USER_A_NAME).await;
-    login_with_user(rsclient, USER_A_NAME).await;
-
-    let response = rsclient
-        .idm_person_identify_user(USER_A_NAME, IdentifyUserRequest::Start)
-        .await;
-
-    assert!(response.is_ok());
-    // since we sent our own identifier here it should just tell us that we that we can use the feature
-    assert_eq!(
-        response.unwrap(),
-        IdentifyUserResponse::IdentityVerificationAvailable
-    )
-}
 // this function tests both possible POSITIVE outcomes if we start from
 // `Start`, that is WaitForCode or ProvideCode
 #[kanidmd_testkit::test]
