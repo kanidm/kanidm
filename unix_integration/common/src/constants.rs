@@ -17,6 +17,8 @@ pub const DEFAULT_GID_ATTR_MAP: UidAttr = UidAttr::Spn;
 pub const DEFAULT_SELINUX: bool = true;
 pub const DEFAULT_TPM_TCTI_NAME: &str = "device:/dev/tpmrm0";
 pub const DEFAULT_HSM_PIN_PATH: &str = "/var/lib/kanidm-unixd/hsm-pin";
+pub const DEFAULT_KANIDM_SERVICE_ACCOUNT_TOKEN_PATH: &str =
+    env!("KANIDM_RESOLVER_SERVICE_ACCOUNT_TOKEN_PATH");
 
 #[cfg(all(target_family = "unix", not(target_os = "freebsd")))]
 pub const DEFAULT_SHELL_SEARCH_PATHS: &[&str] = &["/bin"];
