@@ -6,7 +6,7 @@
 
 > [!TIP]
 >
-> More examples can be found in the [Show and tell part](https://github.com/kanidm/kanidm/discussions/categories/show-and-tell) of Kanidm's Github conversations.
+> More examples can be found in the [Show and tell category](https://github.com/kanidm/kanidm/discussions/categories/show-and-tell) of Kanidm's GitHub discussions.
 
 ## Apache `mod_auth_openidc`
 
