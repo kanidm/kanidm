@@ -1,8 +1,12 @@
 # Example OAuth2 Configurations
 
-> [!TIP]
+> [!WARNING]
 >
 > Web applications that authenticate with Kanidm **must** be served over HTTPS.
+
+> [!TIP]
+>
+> More examples can be found in the [Show and tell category](https://github.com/kanidm/kanidm/discussions/categories/show-and-tell) of Kanidm's GitHub discussions.
 
 ## Apache `mod_auth_openidc`
 
@@ -13,7 +17,7 @@ include.
 # NB: may be just path, reduces copy-paste
 OIDCRedirectURI /oauth2/callback
 OIDCCryptoPassphrase <random password here>
-OIDCProviderMetadataURL https://kanidm.example.com/oauth2/openid/<client name>/.well-known/openid-configuration
+OIDCProviderMetadataURL https://idm.example.com/oauth2/openid/<client name>/.well-known/openid-configuration
 OIDCScope "openid"
 OIDCUserInfoTokenMethod authz_header
 OIDCClientID <client name>
@@ -106,7 +110,7 @@ To set up a Gitea instance to authenticate with Kanidm:
    - **Client ID (key)**: `gitea`
    - **Client Secret**: [from show-basic-secret above]
    - **OpenID Connect Auto Discovery URL**:
-     `https://kanidm.example.com/oauth2/openid/gitea/.well-known/openid-configuration`
+     `https://idm.example.com/oauth2/openid/gitea/.well-known/openid-configuration`
 
    Alternatively, you can provide the configuration via the CLI:
 
@@ -116,7 +120,7 @@ To set up a Gitea instance to authenticate with Kanidm:
        --name=kanidm \
        --key=gitea \
        --secret=[from show-basic-secret above] \
-       --auto-discover-url=https://kanidm.example.com/oauth2/openid/gitea/.well-known/openid-configuration \
+       --auto-discover-url=https://idm.example.com/oauth2/openid/gitea/.well-known/openid-configuration \
    ```
 
 You should now see a "Sign in with Kanidm" button on your Gitea login page.
@@ -207,14 +211,14 @@ To set up a self-managed GitLab instance to authenticate with Kanidm:
      {
        name: "openid_connect",
        label: "Kanidm",
-       icon: "https://kanidm.example.com/pkg/img/logo-192.png",
+       icon: "https://idm.example.com/pkg/img/logo-192.png",
        args: {
          name: "openid_connect",
          scope: ["openid","profile","email"],
          response_type: "code",
          # Point this at your Kanidm host. "gitlab" is the OAuth2 client ID.
          # Don't include a trailing slash!
-         issuer: "https://kanidm.example.com/oauth2/openid/gitlab",
+         issuer: "https://idm.example.com/oauth2/openid/gitlab",
          discovery: true,
          client_auth_method: "query",
          # Key the GitLab identity by UUID.
@@ -300,7 +304,7 @@ To set up YouTrack (with its built-in JetBrains Hub) to authenticate with Kanidm
    kanidm system oauth2 update-scope-map gitlab gitlab_users email openid profile groups
    ```
 
-4. **(optional)** By default, Kanidm presents the account's full SPN (eg: `your_username@kanidm.example.com`) as its
+4. **(optional)** By default, Kanidm presents the account's full SPN (eg: `your_username@idm.example.com`) as its
    "preferred username".
 
    You can set `youtrack` to use a short username (eg: `your_username`) with:
@@ -317,7 +321,7 @@ To set up YouTrack (with its built-in JetBrains Hub) to authenticate with Kanidm
 7. Click <kbd>New module</kbd> → <kbd>OAuth2</kbd>, and enter the following details:
 
    - Name: `Kanidm`
-   - Authorization URL: `https://kanidm.example.com/ui/oauth2`
+   - Authorization URL: `https://idm.example.com/ui/oauth2`
 
    Click Create, and you'll be taken to the Auth Module's settings page.
 
@@ -378,7 +382,7 @@ To set up YouTrack (with its built-in JetBrains Hub) to authenticate with Kanidm
 
    <dd>
 
-   `https://kanidm.example.com/ui/oauth2`
+   `https://idm.example.com/ui/oauth2`
 
    </dd>
 
@@ -386,7 +390,7 @@ To set up YouTrack (with its built-in JetBrains Hub) to authenticate with Kanidm
 
    <dd>
 
-   `https://kanidm.example.com/oauth2/token`
+   `https://idm.example.com/oauth2/token`
 
    </dd>
 
@@ -394,7 +398,7 @@ To set up YouTrack (with its built-in JetBrains Hub) to authenticate with Kanidm
 
    <dd>
 
-   `https://kanidm.example.com/oauth2/openid/youtrack/userinfo`
+   `https://idm.example.com/oauth2/openid/youtrack/userinfo`
 
    </dd>
 
@@ -711,9 +715,9 @@ To set up a _new_ self-hosted Outline instance to authenticate with Kanidm:
    ```
    OIDC_CLIENT_ID=outline
    OIDC_CLIENT_SECRET=YOUR KANIDM BASIC SECRET HERE
-   OIDC_AUTH_URI=https://kanidm.example.com/ui/oauth2
-   OIDC_TOKEN_URI=https://kanidm.example.com/oauth2/token
-   OIDC_USERINFO_URI=https://kanidm.example.com/oauth2/openid/outline/userinfo
+   OIDC_AUTH_URI=https://idm.example.com/ui/oauth2
+   OIDC_TOKEN_URI=https://idm.example.com/oauth2/token
+   OIDC_USERINFO_URI=https://idm.example.com/oauth2/openid/outline/userinfo
    OIDC_LOGOUT_URI=
    # Prevent redirect loop on logout
    OIDC_DISABLE_REDIRECT=true
@@ -811,7 +815,7 @@ To set up an ownCloud instance to authenticate with Kanidm:
    kanidm system oauth2 update-scope-map owncloud owncloud_users email openid profile groups
    ```
 
-5. **(optional)** By default, Kanidm presents the account's full SPN (eg: `your_username@kanidm.example.com`) as its
+5. **(optional)** By default, Kanidm presents the account's full SPN (eg: `your_username@idm.example.com`) as its
    "preferred username". You can set `owncloud` to use a short username (eg: `your_username`) with:
 
    ```sh
@@ -843,7 +847,7 @@ To set up an ownCloud instance to authenticate with Kanidm:
 
    ```json
    {
-     "provider-url": "https://kanidm.example.com/oauth2/openid/owncloud",
+     "provider-url": "https://idm.example.com/oauth2/openid/owncloud",
      "client-id": "owncloud",
      "client-secret": "YOUR CLIENT SECRET HERE",
      "loginButtonName": "Kanidm",
