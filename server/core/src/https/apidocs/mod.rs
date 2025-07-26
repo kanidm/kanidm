@@ -225,6 +225,8 @@ impl Modify for SecurityAddon {
             scim_v1::ScimValue,
             scim_v1::ScimMeta,
             scim_v1::ScimAttr,
+            scim_v1::ScimApplicationPasswordCreate,
+            scim_v1::ScimApplicationPassword,
             scim_v1::client::ScimEntryPostGeneric,
 
             internal::ApiToken,
