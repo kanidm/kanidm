@@ -139,6 +139,7 @@ struct KanidmConfigV2 {
     pam_allowed_login_groups: Option<Vec<String>>,
     #[serde(default)]
     map_group: Vec<GroupMap>,
+    service_account_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -185,6 +186,7 @@ pub struct KanidmConfig {
     pub request_timeout: u64,
     pub pam_allowed_login_groups: Vec<String>,
     pub map_group: Vec<GroupMap>,
+    pub service_account_token: Option<String>,
 }
 
 #[derive(Debug)]
@@ -368,6 +370,7 @@ impl UnixdConfig {
             request_timeout: config.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
             pam_allowed_login_groups: config.pam_allowed_login_groups.unwrap_or_default(),
             map_group,
+            service_account_token: None,
         });
 
         // Now map the values into our config.
@@ -473,6 +476,7 @@ impl UnixdConfig {
                 request_timeout: kconfig.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
                 pam_allowed_login_groups: kconfig.pam_allowed_login_groups.unwrap_or_default(),
                 map_group: kconfig.map_group,
+                service_account_token: kconfig.service_account_token,
             })
         } else {
             error!(

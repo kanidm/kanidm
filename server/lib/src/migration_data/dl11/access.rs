@@ -1393,66 +1393,6 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_GROUP_MANAGE_DL6: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlCreate,
-            EntryClass::AccessControlDelete,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-            ],
-        name: "idm_acp_group_manage",
-        uuid: UUID_IDM_ACP_GROUP_MANAGE_V1,
-        description: "Builtin IDM Control for creating and deleting groups in the directory",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_GROUP_ADMINS] ),
-         // group which is not in HP, Recycled, Tombstone
-         target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Group),
-            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
-        ])),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Spn,
-            Attribute::Uuid,
-            Attribute::Description,
-            Attribute::Mail,
-            Attribute::Member,
-            Attribute::DynMember,
-            Attribute::EntryManagedBy,
-        ],
-        create_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Description,
-            Attribute::Mail,
-            Attribute::Member,
-            Attribute::EntryManagedBy,
-        ],
-        create_classes: vec![
-            EntryClass::Object,
-            EntryClass::Group,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Name,
-            Attribute::Description,
-            Attribute::Mail,
-            Attribute::Member,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::Name,
-            Attribute::Description,
-            Attribute::Mail,
-            Attribute::Member,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
     pub static ref IDM_ACP_GROUP_MANAGE_DL9: BuiltinAcp = BuiltinAcp{
         classes: vec![
             EntryClass::Object,
@@ -1480,6 +1420,7 @@ lazy_static! {
             Attribute::Description,
             Attribute::Mail,
             Attribute::Member,
+            Attribute::MemberOf,
             Attribute::DynMember,
             Attribute::EntryManagedBy,
         ],
