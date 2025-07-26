@@ -11,4 +11,5 @@ client_config_path = "/etc/kanidm/config"
 # TODO: unixd should migrate to it's own config dir as part of the sparkled migration.
 # No point in doing two back to back migrations.
 resolver_config_path = "/etc/kanidm/unixd"
+resolver_service_account_token_path = "/etc/kanidm/token"
 resolver_unix_shell_path = "/bin/bash"
