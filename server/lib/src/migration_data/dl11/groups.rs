@@ -277,8 +277,8 @@ lazy_static! {
         uuid: UUID_IDM_UNIX_AUTHENTICATION_READ,
         entry_managed_by: Some(UUID_IDM_UNIX_ADMINS),
         members: vec![
-            // This is to maintain compatibility right now, but will CHANGE in future.
-            // UUID_ANONYMOUS,
+            // This is to maintain compatibility right now, but will be removed in future.
+            UUID_ANONYMOUS,
         ],
         ..Default::default()
     };
