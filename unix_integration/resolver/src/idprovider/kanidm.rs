@@ -40,6 +40,7 @@ struct KanidmProviderInternal {
     hmac_key: HmacS256Key,
     crypto_policy: CryptoPolicy,
     pam_allow_groups: BTreeSet<String>,
+    bearer_token_set: bool,
 }
 
 pub struct KanidmProvider {
@@ -50,11 +51,11 @@ pub struct KanidmProvider {
 }
 
 impl KanidmProvider {
-    pub fn new(
+    pub async fn new<'a, 'b>(
         client: KanidmClient,
         config: &KanidmConfig,
         now: SystemTime,
-        keystore: &mut KeyStoreTxn,
+        keystore: &mut KeyStoreTxn<'a, 'b>,
         tpm: &mut BoxedDynTpm,
         machine_key: &StorageKey,
     ) -> Result<Self, IdpError> {
@@ -104,6 +105,12 @@ impl KanidmProvider {
             .map(|GroupMap { local, with }| (local, Id::Name(with)))
             .collect();
 
+        // Set the api token if one is set
+        if let Some(token) = config.service_account_token.clone() {
+            client.set_token(token).await;
+        };
+        let bearer_token_set = config.service_account_token.is_some();
+
         Ok(KanidmProvider {
             inner: Mutex::new(KanidmProviderInternal {
                 state: CacheState::OfflineNextCheck(now),
@@ -111,6 +118,7 @@ impl KanidmProvider {
                 hmac_key,
                 crypto_policy,
                 pam_allow_groups,
+                bearer_token_set,
             }),
             map_group,
         })
@@ -275,7 +283,16 @@ impl KanidmProviderInternal {
         let mut max_attempts = 3;
         while max_attempts > 0 {
             max_attempts -= 1;
-            match self.client.auth_anonymous().await {
+
+            // If a bearer token is set, we don't want to do an auth flow and
+            // remove that. Just do a whoami call, which will tell us the result.
+            let check_online_result = if self.bearer_token_set {
+                self.client.whoami().await.map(|_| ())
+            } else {
+                self.client.auth_anonymous().await
+            };
+
+            match check_online_result {
                 Ok(_uat) => {
                     debug!("provider is now online");
                     self.state = CacheState::Online;
