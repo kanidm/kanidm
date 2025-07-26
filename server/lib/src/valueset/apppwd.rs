@@ -5,7 +5,7 @@ use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
 use std::collections::BTreeMap;
 
-use kanidm_proto::scim_v1::server::ScimApplicationPassword;
+use kanidm_proto::scim_v1::server::ScimApplicationPasswordReference;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetApplicationPassword {
@@ -109,7 +109,7 @@ impl ValueSetT for ValueSetApplicationPassword {
                 let mut removed = false;
                 self.map.retain(|_, v| {
                     let prev = v.len();
-                    // Check the innel vec of passwords related to this application.
+                    // Check the inner vec of passwords related to this application.
                     v.retain(|y| y.uuid != *u);
                     let post = v.len();
                     removed |= post < prev;
@@ -189,7 +189,7 @@ impl ValueSetT for ValueSetApplicationPassword {
             self.map
                 .values()
                 .flatten()
-                .map(|app_pwd| ScimApplicationPassword {
+                .map(|app_pwd| ScimApplicationPasswordReference {
                     uuid: app_pwd.uuid,
                     application_uuid: app_pwd.application,
                     label: app_pwd.label.clone(),

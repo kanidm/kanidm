@@ -758,9 +758,10 @@ impl LdapServer {
         }
 
         error!(
-            "Failed to parse bind DN, no captures. Bind DN was {:?})",
-            dn
+            binddn = ?dn,
+            "Failed to parse bind DN - check the basedn and app attribute if present are correct. Examples: name=tobias,app=lounge,{} OR name=ellie,{} OR name=claire,app=table OR name=william ", self.basedn, self.basedn
         );
+
         Err(OperationError::NoMatchingEntries)
     }
 }
@@ -1338,7 +1339,7 @@ mod tests {
                 app_uuid,
                 "apppwd1".to_string(),
             );
-            pass1 = idms_prox_write
+            (pass1, _) = idms_prox_write
                 .generate_application_password(&ev)
                 .expect("Failed to generate application password");
 
@@ -1347,7 +1348,7 @@ mod tests {
                 app_uuid,
                 "apppwd2".to_string(),
             );
-            pass2 = idms_prox_write
+            (pass2, _) = idms_prox_write
                 .generate_application_password(&ev)
                 .expect("Failed to generate application password");
 
@@ -1360,7 +1361,7 @@ mod tests {
                 app_uuid,
                 "apppwd2".to_string(),
             );
-            pass3 = idms_prox_write
+            (pass3, _) = idms_prox_write
                 .generate_application_password(&ev)
                 .expect("Failed to generate application password");
             assert!(idms_prox_write.commit().is_ok());
@@ -1499,7 +1500,7 @@ mod tests {
                 app1_uuid,
                 "label".to_string(),
             );
-            pass_app1 = idms_prox_write
+            (pass_app1, _) = idms_prox_write
                 .generate_application_password(&ev)
                 .expect("Failed to generate application password");
 
@@ -1510,7 +1511,7 @@ mod tests {
                 app2_uuid,
                 "label".to_string(),
             );
-            pass_app2 = idms_prox_write
+            (pass_app2, _) = idms_prox_write
                 .generate_application_password(&ev)
                 .expect("Failed to generate application password");
 
@@ -1683,7 +1684,7 @@ mod tests {
                 app1_uuid,
                 "label".to_string(),
             );
-            pass_app1 = idms_prox_write
+            (pass_app1, _) = idms_prox_write
                 .generate_application_password(&ev)
                 .expect("Failed to generate application password");
 

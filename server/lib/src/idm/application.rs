@@ -1,8 +1,12 @@
 use super::ldap::{LdapBoundToken, LdapSession};
+use crate::credential::apppwd::ApplicationPassword;
 use crate::idm::account::Account;
 use crate::idm::event::LdapApplicationAuthEvent;
-use crate::idm::server::{IdmServerAuthTransaction, IdmServerTransaction};
+use crate::idm::server::{
+    IdmServerAuthTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
+};
 use crate::prelude::*;
+use crate::utils::readable_password_from_random;
 use concread::cowcell::*;
 use hashbrown::HashMap;
 use kanidm_proto::internal::OperationError;
@@ -237,6 +241,73 @@ impl GenerateApplicationPasswordEvent {
             application,
             label,
         }
+    }
+}
+
+impl IdmServerProxyWriteTransaction<'_> {
+    #[instrument(level = "debug", skip_all)]
+    pub fn generate_application_password(
+        &mut self,
+        ev: &GenerateApplicationPasswordEvent,
+    ) -> Result<(String, Uuid), OperationError> {
+        // This is intended to be read/copied by a human
+        let cleartext = readable_password_from_random();
+        let policy = self.crypto_policy();
+
+        let ap = ApplicationPassword::new(
+            ev.application,
+            ev.label.as_str(),
+            cleartext.as_str(),
+            policy,
+        )
+        .inspect_err(|err| {
+            error!(
+                ?err,
+                "Unable to generate application password. This is a BUG!!!"
+            )
+        })?;
+
+        let ap_uuid = ap.uuid;
+        let vap = Value::ApplicationPassword(ap);
+        let modlist = ModifyList::new_append(Attribute::ApplicationPassword, vap);
+
+        // Apply it
+        self.qs_write
+            .impersonate_modify(
+                // Filter as executed
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(ev.target))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(ev.target))),
+                &modlist,
+                // Provide the event to impersonate
+                &ev.ident,
+            )
+            .inspect_err(|err| error!(?err))
+            .map(|_| (cleartext, ap_uuid))
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn application_password_delete(
+        &mut self,
+        ident: &Identity,
+        target: Uuid,
+        apppwd_id: Uuid,
+    ) -> Result<(), OperationError> {
+        let modlist = ModifyList::new_remove(
+            Attribute::ApplicationPassword,
+            PartialValue::Uuid(apppwd_id),
+        );
+
+        self.qs_write
+            .impersonate_modify(
+                // Filter as executed
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
+                &modlist,
+                ident,
+            )
+            .inspect_err(|err| error!(?err))
     }
 }
 

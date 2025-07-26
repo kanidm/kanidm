@@ -1,9 +1,11 @@
 use super::{QueryServerReadV1, QueryServerWriteV1};
-use kanidm_proto::scim_v1::client::ScimEntryPutGeneric;
 use kanidm_proto::scim_v1::{
-    client::ScimEntryPostGeneric, server::ScimEntryKanidm, server::ScimListResponse,
-    ScimEntryGetQuery, ScimFilter, ScimSyncRequest, ScimSyncState,
+    client::{ScimEntryPostGeneric, ScimEntryPutGeneric},
+    server::{ScimEntryKanidm, ScimListResponse},
+    ScimApplicationPassword, ScimApplicationPasswordCreate, ScimEntryGetQuery, ScimFilter,
+    ScimSyncRequest, ScimSyncState,
 };
+use kanidmd_lib::idm::application::GenerateApplicationPasswordEvent;
 use kanidmd_lib::idm::scim::{
     GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncUpdateEvent,
 };
@@ -245,6 +247,78 @@ impl QueryServerWriteV1 {
             .qs_write
             .scim_delete(scim_delete_event)
             .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn scim_person_application_create_password(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        uuid_or_name: String,
+        request: ScimApplicationPasswordCreate,
+    ) -> Result<ScimApplicationPassword, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .inspect_err(|err| error!(?err, "Invalid identity"))?;
+
+        let ScimApplicationPasswordCreate {
+            application_uuid,
+            label,
+        } = request;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .inspect_err(|err| error!(?err, "Error resolving id to target"))?;
+
+        let generate_application_password_event =
+            GenerateApplicationPasswordEvent::from_parts(ident, target, application_uuid, label)?;
+
+        idms_prox_write
+            .generate_application_password(&generate_application_password_event)
+            .and_then(|(secret, uuid)| {
+                idms_prox_write.commit()?;
+
+                Ok(ScimApplicationPassword {
+                    uuid,
+                    label: generate_application_password_event.label,
+                    secret,
+                })
+            })
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn scim_person_application_delete_password(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        uuid_or_name: String,
+        apppwd_id: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .inspect_err(|err| error!(?err, "Invalid identity"))?;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .inspect_err(|err| error!(?err, "Error resolving id to target"))?;
+
+        idms_prox_write
+            .application_password_delete(&ident, target, apppwd_id)
+            .and_then(|()| idms_prox_write.commit())
     }
 
     #[instrument(
