@@ -1,20 +1,18 @@
+use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
+use crate::idm::server::IdmServerProxyReadTransaction;
 use crate::prelude::*;
-use std::time::SystemTime;
-
+use crate::server::identity::Identity;
+use crate::server::QueryServerTransaction;
 use kanidm_proto::internal::IdentifyUserResponse;
 use openssl::ec::EcKey;
 use openssl::pkey::{PKey, Private, Public};
 use openssl::pkey_ctx::PkeyCtx;
-use sketching::admin_error;
+use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
-use crate::server::QueryServerTransaction;
-use crate::{event::SearchEvent, server::identity::Identity};
-
-use crate::idm::server::IdmServerProxyReadTransaction;
-
-static TOTP_STEP: u64 = 30;
+// This is longer than a normal TOTP step as we expect users to be talking
+// to each other, so it could take a few minutes.
+static TOTP_STEP: u64 = 300;
 
 #[derive(Debug)]
 pub struct IdentifyUserStartEvent {
@@ -58,18 +56,25 @@ impl IdmServerProxyReadTransaction<'_> {
     pub fn handle_identify_user_start(
         &mut self,
         IdentifyUserStartEvent { target, ident }: &IdentifyUserStartEvent,
+        current_time: Duration,
     ) -> Result<IdentifyUserResponse, OperationError> {
-        if let Some(early_response) = self.check_for_early_return_conditions(ident, target)? {
-            return Ok(early_response);
-        }
-        let response = if ident.get_uuid() < Some(*target) {
+        let (ident_entry, target_entry) = match self.get_involved_entries(ident, *target) {
+            Ok(tuple) => tuple,
+            Err(early_response) => return Ok(early_response),
+        };
+
+        let response = if ident_entry.get_uuid() < target_entry.get_uuid() {
             IdentifyUserResponse::WaitForCode
         } else {
-            let totp_secret = self.get_self_totp_secret(target, ident)?;
-            let totp = self.compute_totp(totp_secret)?;
+            let totp_secret = self.get_self_totp(&ident_entry, &target_entry)?;
+
+            let totp_value = totp_secret
+                .do_totp_duration_from_epoch(&current_time)
+                .map_err(|_| OperationError::CryptographyError)?;
+
             IdentifyUserResponse::ProvideCode {
                 step: TOTP_STEP as u32,
-                totp,
+                totp: totp_value,
             }
         };
         Ok(response)
@@ -78,16 +83,22 @@ impl IdmServerProxyReadTransaction<'_> {
     pub fn handle_identify_user_display_code(
         &mut self,
         IdentifyUserDisplayCodeEvent { target, ident }: &IdentifyUserDisplayCodeEvent,
+        current_time: Duration,
     ) -> Result<IdentifyUserResponse, OperationError> {
-        if let Some(early_response) = self.check_for_early_return_conditions(ident, target)? {
-            return Ok(early_response);
-        }
+        let (ident_entry, target_entry) = match self.get_involved_entries(ident, *target) {
+            Ok(tuple) => tuple,
+            Err(early_response) => return Ok(early_response),
+        };
 
-        let totp_secret = self.get_self_totp_secret(target, ident)?;
-        let totp = self.compute_totp(totp_secret)?;
+        let totp_secret = self.get_self_totp(&ident_entry, &target_entry)?;
+
+        let totp_value = totp_secret
+            .do_totp_duration_from_epoch(&current_time)
+            .map_err(|_| OperationError::CryptographyError)?;
+
         Ok(IdentifyUserResponse::ProvideCode {
             step: TOTP_STEP as u32,
-            totp,
+            totp: totp_value,
         })
     }
 
@@ -98,189 +109,125 @@ impl IdmServerProxyReadTransaction<'_> {
             ident,
             code,
         }: &IdentifyUserSubmitCodeEvent,
+        current_time: Duration,
     ) -> Result<IdentifyUserResponse, OperationError> {
-        if let Some(early_response) = self.check_for_early_return_conditions(ident, target)? {
-            return Ok(early_response);
-        }
+        let (ident_entry, target_entry) = match self.get_involved_entries(ident, *target) {
+            Ok(tuple) => tuple,
+            Err(early_response) => return Ok(early_response),
+        };
 
-        let totp_secret = self.get_other_user_totp_secret(target, ident)?;
-        let other_user_totp = self.compute_totp(totp_secret)?;
-        if other_user_totp != *code {
+        let totp_secret = self.get_user_totp(&ident_entry, &target_entry)?;
+
+        if !totp_secret.verify(*code, current_time) {
             return Ok(IdentifyUserResponse::CodeFailure);
         }
+
         // if we are the first it means now it's time to go for ProvideCode, otherwise we just confirm that the code is correct
         // (we know this for a fact as we have already checked that the code is correct)
-        let res = if ident.get_uuid() < Some(*target) {
-            let shared_secret = self.get_self_totp_secret(target, ident)?;
-            let totp = self.compute_totp(shared_secret)?;
+        let response = if ident_entry.get_uuid() < target_entry.get_uuid() {
+            let totp_secret = self.get_self_totp(&ident_entry, &target_entry)?;
+            let totp_value = totp_secret
+                .do_totp_duration_from_epoch(&current_time)
+                .map_err(|_| OperationError::CryptographyError)?;
             IdentifyUserResponse::ProvideCode {
                 step: TOTP_STEP as u32,
-                totp,
+                totp: totp_value,
             }
         } else {
             IdentifyUserResponse::Success
         };
-        Ok(res)
+        Ok(response)
     }
 
     // End of public functions
 
-    fn check_for_early_return_conditions(
+    fn get_involved_entries(
         &mut self,
         ident: &Identity,
-        target: &Uuid,
-    ) -> Result<Option<IdentifyUserResponse>, OperationError> {
-        // here we check that the identify user feature is available before we do anything else
-        if !self.check_if_identify_feature_available(ident)? {
-            return Ok(Some(IdentifyUserResponse::IdentityVerificationUnavailable));
+        target: Uuid,
+    ) -> Result<(Arc<EntrySealedCommitted>, Arc<EntrySealedCommitted>), IdentifyUserResponse> {
+        let Some(ident_entry) = ident.get_user_entry() else {
+            return Err(IdentifyUserResponse::IdentityVerificationUnavailable);
         };
 
-        if !self.is_valid_user_uuid(ident, target)? {
-            return Ok(Some(IdentifyUserResponse::InvalidUserId));
+        let Ok(target_entry) = self.get_partner_entry(target) else {
+            return Err(IdentifyUserResponse::IdentityVerificationUnavailable);
         };
-        // here we check if the user provided their own uuid, if they did we just respond with IdentityVerificationAvailable.
-        if ident.get_uuid().eq(&Some(*target)) {
-            return Ok(Some(IdentifyUserResponse::IdentityVerificationAvailable));
-        };
-        Ok(None)
-    }
 
-    fn check_if_identify_feature_available(
-        &mut self,
-        ident: &Identity,
-    ) -> Result<bool, OperationError> {
-        let search = match SearchEvent::from_whoami_request(ident.clone(), &self.qs_read) {
-            Ok(s) => s,
-            Err(e) => {
-                admin_error!("Failed to generate whoami search event: {:?}", e);
-                return Err(e);
-            }
-        };
-        self.qs_read
-            .search(&search)
-            .and_then(|mut entries| entries.pop().ok_or(OperationError::NoMatchingEntries))
-            .map(
-                |entry| match entry.get_ava_single_eckey_private(Attribute::IdVerificationEcKey) {
-                    Some(key) => key.check_key().is_ok(),
-                    None => false,
-                },
-            )
-    }
-
-    fn is_valid_user_uuid(
-        &mut self,
-        ident: &Identity,
-        target: &Uuid,
-    ) -> Result<bool, OperationError> {
-        let search =
-            match SearchEvent::from_target_uuid_request(ident.clone(), *target, &self.qs_read) {
-                Ok(s) => s,
-                Err(e) => {
-                    admin_error!("Failed to retrieve user with the given UUID: {:?}", e);
-                    return Err(e);
-                }
-            };
-
-        let user_entry = self
-            .qs_read
-            .search(&search)
-            .and_then(|mut entries| entries.pop().ok_or(OperationError::NoMatchingEntries))?;
-
-        match user_entry.get_ava_single_eckey_public(Attribute::IdVerificationEcKey) {
-            Some(key) => Ok(key.check_key().is_ok()),
-            None => Ok(false),
+        if ident_entry.get_uuid() == target_entry.get_uuid() {
+            return Err(IdentifyUserResponse::IdentityVerificationUnavailable);
         }
+
+        if target_entry
+            .get_ava_single_eckey_public(Attribute::IdVerificationEcKey)
+            .is_none()
+        {
+            return Err(IdentifyUserResponse::IdentityVerificationUnavailable);
+        }
+
+        if ident_entry
+            .get_ava_single_eckey_private(Attribute::IdVerificationEcKey)
+            .is_none()
+        {
+            return Err(IdentifyUserResponse::IdentityVerificationUnavailable);
+        }
+
+        Ok((ident_entry, target_entry))
     }
 
-    fn get_user_own_key(&mut self, ident: &Identity) -> Result<EcKey<Private>, OperationError> {
-        let search = match SearchEvent::from_whoami_request(ident.clone(), &self.qs_read) {
-            Ok(s) => s,
-            Err(e) => {
-                admin_error!(
-                    "Failed to retrieve user with the given UUID: {}. \n{:?}",
-                    ident.get_uuid().unwrap_or_default(),
-                    e
-                );
-                return Err(e);
-            }
-        };
-
-        self.qs_read
-            .search(&search)
-            .and_then(|mut entries| entries.pop().ok_or(OperationError::NoMatchingEntries))
-            .and_then(|entry| {
-                match entry.get_ava_single_eckey_private(Attribute::IdVerificationEcKey) {
-                    Some(key) => Ok(key.clone()),
-                    None => Err(OperationError::InvalidAccountState(format!(
-                        "{}'s private key is missing!",
-                        ident.get_uuid().unwrap_or_default()
-                    ))),
-                }
-            })
-    }
-
-    fn get_other_user_public_key(
+    fn get_partner_entry(
         &mut self,
-        target: &Uuid,
-        ident: &Identity,
+        target: Uuid,
+    ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
+        self.qs_read
+            .internal_search_uuid(target)
+            .inspect_err(|err| error!(?err, ?target, "Failed to retrieve entry",))
+    }
+
+    fn get_user_own_key(
+        &mut self,
+        ident_entry: &EntrySealedCommitted,
+    ) -> Result<EcKey<Private>, OperationError> {
+        ident_entry
+            .get_ava_single_eckey_private(Attribute::IdVerificationEcKey)
+            .cloned()
+            .ok_or(OperationError::AU0001InvalidState)
+    }
+
+    fn get_user_public_key(
+        &mut self,
+        target_entry: &EntrySealedCommitted,
     ) -> Result<EcKey<Public>, OperationError> {
-        let search =
-            match SearchEvent::from_target_uuid_request(ident.clone(), *target, &self.qs_read) {
-                Ok(s) => s,
-                Err(e) => {
-                    admin_error!(
-                        "Failed to retrieve user with the given UUID: {}. \n{:?}",
-                        ident.get_uuid().unwrap_or_default(),
-                        e
-                    );
-                    return Err(e);
-                }
-            };
-        self.qs_read
-            .search(&search)
-            .and_then(|mut entries| entries.pop().ok_or(OperationError::NoMatchingEntries))
-            .and_then(|entry| {
-                match entry.get_ava_single_eckey_public(Attribute::IdVerificationEcKey) {
-                    Some(key) => Ok(key.clone()),
-                    None => Err(OperationError::InvalidAccountState(format!(
-                        "{target}'s public key is missing!",
-                    ))),
-                }
-            })
+        target_entry
+            .get_ava_single_eckey_public(Attribute::IdVerificationEcKey)
+            .cloned()
+            .ok_or(OperationError::AU0001InvalidState)
     }
 
-    fn compute_totp(&mut self, totp_secret: Vec<u8>) -> Result<u32, OperationError> {
-        let totp = Totp::new(totp_secret, TOTP_STEP, TotpAlgo::Sha256, TotpDigits::Six);
-        let current_time = SystemTime::now();
-        totp.do_totp(&current_time)
-            .map_err(|_| OperationError::CryptographyError)
-    }
-
-    fn get_self_totp_secret(
+    fn get_self_totp(
         &mut self,
-        target: &Uuid,
-        ident: &Identity,
-    ) -> Result<Vec<u8>, OperationError> {
-        let self_private = self.get_user_own_key(ident)?;
-        let other_user_public_key = self.get_other_user_public_key(target, ident)?;
+        ident_entry: &EntrySealedCommitted,
+        target_entry: &EntrySealedCommitted,
+    ) -> Result<Totp, OperationError> {
+        let self_private = self.get_user_own_key(ident_entry)?;
+        let other_user_public_key = self.get_user_public_key(target_entry)?;
         let mut shared_key = self.derive_shared_key(self_private, other_user_public_key)?;
-        let Some(self_uuid) = ident.get_uuid() else {
-            return Err(OperationError::NotAuthenticated);
-        };
-        shared_key.extend_from_slice(self_uuid.as_bytes());
-        Ok(shared_key)
+        shared_key.extend_from_slice(ident_entry.get_uuid().as_bytes());
+        let totp = Totp::new(shared_key, TOTP_STEP, TotpAlgo::Sha256, TotpDigits::Six);
+        Ok(totp)
     }
 
-    fn get_other_user_totp_secret(
+    fn get_user_totp(
         &mut self,
-        target: &Uuid,
-        ident: &Identity,
-    ) -> Result<Vec<u8>, OperationError> {
-        let self_private = self.get_user_own_key(ident)?;
-        let other_user_public_key = self.get_other_user_public_key(target, ident)?;
+        ident_entry: &EntrySealedCommitted,
+        target_entry: &EntrySealedCommitted,
+    ) -> Result<Totp, OperationError> {
+        let self_private = self.get_user_own_key(ident_entry)?;
+        let other_user_public_key = self.get_user_public_key(target_entry)?;
         let mut shared_key = self.derive_shared_key(self_private, other_user_public_key)?;
-        shared_key.extend_from_slice(target.as_bytes());
-        Ok(shared_key)
+        shared_key.extend_from_slice(target_entry.get_uuid().as_bytes());
+        let totp = Totp::new(shared_key, TOTP_STEP, TotpAlgo::Sha256, TotpDigits::Six);
+        Ok(totp)
     }
 
     fn derive_shared_key(
@@ -325,10 +272,10 @@ mod test {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
-        let self_uuid = Uuid::new_v4();
+        let invalid_user_uuid = Uuid::new_v4();
         let valid_user_uuid = Uuid::new_v4();
 
-        let e1 = create_invalid_user_account(self_uuid);
+        let e1 = create_invalid_user_account(invalid_user_uuid);
 
         let e2 = create_valid_user_account(valid_user_uuid);
 
@@ -340,44 +287,49 @@ mod test {
 
         let ident = idms_prox_read
             .qs_read
-            .internal_search_uuid(self_uuid)
+            .internal_search_uuid(invalid_user_uuid)
             .map(Identity::from_impersonate_entry_readonly)
             .expect("Failed to impersonate identity");
 
-        let res = idms_prox_read
-            .handle_identify_user_start(&IdentifyUserStartEvent::new(self_uuid, ident.clone()));
+        let res = idms_prox_read.handle_identify_user_start(
+            &IdentifyUserStartEvent::new(invalid_user_uuid, ident.clone()),
+            ct,
+        );
 
-        assert!(matches!(
+        assert_eq!(
             res,
             Ok(IdentifyUserResponse::IdentityVerificationUnavailable)
-        ));
+        );
 
-        let res = idms_prox_read.handle_identify_user_start(&IdentifyUserStartEvent::new(
-            valid_user_uuid,
-            ident.clone(),
-        ));
+        let res = idms_prox_read.handle_identify_user_start(
+            &IdentifyUserStartEvent::new(valid_user_uuid, ident.clone()),
+            ct,
+        );
 
-        assert!(matches!(
+        assert_eq!(
             res,
             Ok(IdentifyUserResponse::IdentityVerificationUnavailable)
-        ));
+        );
 
         let res = idms_prox_read.handle_identify_user_display_code(
             &IdentifyUserDisplayCodeEvent::new(valid_user_uuid, ident.clone()),
+            ct,
         );
 
-        assert!(matches!(
+        assert_eq!(
             res,
             Ok(IdentifyUserResponse::IdentityVerificationUnavailable)
-        ));
+        );
+
         let res = idms_prox_read.handle_identify_user_submit_code(
             &IdentifyUserSubmitCodeEvent::new(valid_user_uuid, ident, 123456),
+            ct,
         );
 
-        assert!(matches!(
+        assert_eq!(
             res,
             Ok(IdentifyUserResponse::IdentityVerificationUnavailable)
-        ));
+        );
     }
 
     #[idm_test]
@@ -408,30 +360,44 @@ mod test {
             .map(Identity::from_impersonate_entry_readonly)
             .expect("Failed to impersonate identity");
 
-        let res = idms_prox_read.handle_identify_user_start(&IdentifyUserStartEvent::new(
-            invalid_user_uuid,
-            ident.clone(),
+        let res = idms_prox_read.handle_identify_user_start(
+            &IdentifyUserStartEvent::new(invalid_user_uuid, ident.clone()),
+            ct,
+        );
+
+        assert!(matches!(
+            res,
+            Ok(IdentifyUserResponse::IdentityVerificationUnavailable)
         ));
 
-        assert!(matches!(res, Ok(IdentifyUserResponse::InvalidUserId)));
+        let res = idms_prox_read.handle_identify_user_start(
+            &IdentifyUserStartEvent::new(invalid_user_uuid, ident.clone()),
+            ct,
+        );
 
-        let res = idms_prox_read.handle_identify_user_start(&IdentifyUserStartEvent::new(
-            invalid_user_uuid,
-            ident.clone(),
+        assert!(matches!(
+            res,
+            Ok(IdentifyUserResponse::IdentityVerificationUnavailable)
         ));
-
-        assert!(matches!(res, Ok(IdentifyUserResponse::InvalidUserId)));
 
         let res = idms_prox_read.handle_identify_user_display_code(
             &IdentifyUserDisplayCodeEvent::new(invalid_user_uuid, ident.clone()),
+            ct,
         );
 
-        assert!(matches!(res, Ok(IdentifyUserResponse::InvalidUserId)));
+        assert!(matches!(
+            res,
+            Ok(IdentifyUserResponse::IdentityVerificationUnavailable)
+        ));
         let res = idms_prox_read.handle_identify_user_submit_code(
             &IdentifyUserSubmitCodeEvent::new(invalid_user_uuid, ident, 123456),
+            ct,
         );
 
-        assert!(matches!(res, Ok(IdentifyUserResponse::InvalidUserId)));
+        assert!(matches!(
+            res,
+            Ok(IdentifyUserResponse::IdentityVerificationUnavailable)
+        ));
     }
 
     #[idm_test]
@@ -454,14 +420,14 @@ mod test {
             .map(Identity::from_impersonate_entry_readonly)
             .expect("Failed to impersonate identity");
 
-        let res = idms_prox_read.handle_identify_user_start(&IdentifyUserStartEvent::new(
-            valid_user_a_uuid,
-            ident.clone(),
-        ));
+        let res = idms_prox_read.handle_identify_user_start(
+            &IdentifyUserStartEvent::new(valid_user_a_uuid, ident.clone()),
+            ct,
+        );
 
         assert!(matches!(
             res,
-            Ok(IdentifyUserResponse::IdentityVerificationAvailable)
+            Ok(IdentifyUserResponse::IdentityVerificationUnavailable)
         ));
     }
 
@@ -505,6 +471,7 @@ mod test {
 
         let res_higher_user = idms_prox_read.handle_identify_user_start(
             &IdentifyUserStartEvent::new(lower_user_uuid, higher_user.clone()),
+            ct,
         );
 
         let Ok(IdentifyUserResponse::ProvideCode { totp, .. }) = res_higher_user else {
@@ -513,6 +480,7 @@ mod test {
 
         let res_lower_user_wrong = idms_prox_read.handle_identify_user_submit_code(
             &IdentifyUserSubmitCodeEvent::new(higher_user_uuid, lower_user.clone(), totp + 1),
+            ct,
         );
 
         assert!(matches!(
@@ -522,6 +490,7 @@ mod test {
 
         let res_lower_user_correct = idms_prox_read.handle_identify_user_submit_code(
             &IdentifyUserSubmitCodeEvent::new(higher_user_uuid, lower_user.clone(), totp),
+            ct,
         );
 
         assert!(matches!(
@@ -537,6 +506,7 @@ mod test {
 
         let res_higher_user_2_wrong = idms_prox_read.handle_identify_user_submit_code(
             &IdentifyUserSubmitCodeEvent::new(lower_user_uuid, higher_user.clone(), totp + 1),
+            ct,
         );
 
         assert!(matches!(
@@ -546,6 +516,7 @@ mod test {
 
         let res_higher_user_2_correct = idms_prox_read.handle_identify_user_submit_code(
             &IdentifyUserSubmitCodeEvent::new(lower_user_uuid, higher_user.clone(), totp),
+            ct,
         );
 
         assert!(matches!(
@@ -555,7 +526,6 @@ mod test {
     }
 
     #[idm_test]
-
     async fn test_totps_differ(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
@@ -593,6 +563,7 @@ mod test {
 
         let res_higher_user = idms_prox_read.handle_identify_user_start(
             &IdentifyUserStartEvent::new(lower_user_uuid, higher_user.clone()),
+            ct,
         );
 
         let Ok(IdentifyUserResponse::ProvideCode {
@@ -605,12 +576,14 @@ mod test {
 
         // then we get the lower user code
 
-        let res_lower_user_correct =
-            idms_prox_read.handle_identify_user_submit_code(&IdentifyUserSubmitCodeEvent::new(
+        let res_lower_user_correct = idms_prox_read.handle_identify_user_submit_code(
+            &IdentifyUserSubmitCodeEvent::new(
                 higher_user_uuid,
                 lower_user.clone(),
                 higher_user_totp,
-            ));
+            ),
+            ct,
+        );
 
         if let Ok(IdentifyUserResponse::ProvideCode {
             totp: lower_user_totp,

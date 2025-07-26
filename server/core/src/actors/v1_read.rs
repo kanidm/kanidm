@@ -1003,14 +1003,16 @@ impl QueryServerReadV1 {
             })?;
         match user_request {
             IdentifyUserRequest::Start => idms_prox_read
-                .handle_identify_user_start(&IdentifyUserStartEvent::new(target, ident)),
+                .handle_identify_user_start(&IdentifyUserStartEvent::new(target, ident), ct),
             IdentifyUserRequest::DisplayCode => idms_prox_read.handle_identify_user_display_code(
                 &IdentifyUserDisplayCodeEvent::new(target, ident),
+                ct,
             ),
             IdentifyUserRequest::SubmitCode { other_totp } => idms_prox_read
-                .handle_identify_user_submit_code(&IdentifyUserSubmitCodeEvent::new(
-                    target, ident, other_totp,
-                )),
+                .handle_identify_user_submit_code(
+                    &IdentifyUserSubmitCodeEvent::new(target, ident, other_totp),
+                    ct,
+                ),
         }
     }
 
