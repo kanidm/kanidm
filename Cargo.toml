@@ -178,7 +178,7 @@ crypto-glue = "^0.1.8"
 csv = "1.3.1"
 dialoguer = "0.11.0"
 dhat = "0.3.3"
-dyn-clone = "^1.0.17"
+dyn-clone = "^1.0.20"
 enum-iterator = "2.1.0"
 filetime = "^0.2.24"
 fs4 = "^0.13.0"
@@ -193,7 +193,7 @@ http-body-util = "0.1"
 hyper = { version = "1.5.1", features = [
     "full",
 ] } # hyper full includes client/server/http2
-hyper-util = { version = "0.1.15", features = ["server", "tokio"] }
+hyper-util = { version = "0.1.16", features = ["server", "tokio"] }
 idlset = "^0.2.5"
 image = { version = "0.25.6", default-features = false, features = [
     "gif",
@@ -255,7 +255,7 @@ reqwest = { version = "0.12.20", default-features = false, features = [
     "rustls-tls-native-roots-no-provider",
 ] }
 rusqlite = { version = "0.35.0", features = ["array", "bundled"] }
-rustls = { version = "0.23.29", default-features = false, features = [
+rustls = { version = "0.23.30", default-features = false, features = [
     "std",
     "aws_lc_rs",
 ] }
@@ -280,7 +280,7 @@ tempfile = "3.20.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.36", features = ["formatting", "local-offset"] }
 
-tokio = "^1.46.1"
+tokio = "^1.47.0"
 tokio-openssl = "^0.6.5"
 tokio-rustls = { version = "0.26.2" }
 tokio-util = "^0.7.13"
