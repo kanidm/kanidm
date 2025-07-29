@@ -3691,7 +3691,6 @@ dependencies = [
  "kanidmd_testkit",
  "libc",
  "lru 0.14.0",
- "mimalloc",
  "notify-debouncer-full",
  "prctl",
  "rusqlite",
