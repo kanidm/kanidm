@@ -36,7 +36,6 @@ filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
 haproxy-protocol = { workspace = true, features = ["tokio"] }
-hashbrown = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
 kanidm_proto = { workspace = true }
@@ -59,7 +58,6 @@ sshkeys = { workspace = true }
 sshkey-attest = { workspace = true }
 time = { workspace = true, features = ["serde", "std", "local-offset"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
-tokio-openssl = { workspace = true }
 tokio-rustls = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
