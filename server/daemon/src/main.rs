@@ -10,7 +10,7 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-#[cfg(not(any(feature = "dhat-heap", target_os = "illumos")))]
+#[cfg(all(not(feature = "dhat-heap"), target_os = "linux"))]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
