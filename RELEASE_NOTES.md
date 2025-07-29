@@ -14,6 +14,34 @@ We value your feedback! First, please see our [code of conduct]. If you have que
 
 ## Release Notes
 
+### 2025-08-01 - Kanidm 1.7.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
+
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
+
+Before upgrading you should review [our upgrade documentation]
+
+#### 1.7.0 Release Highlights
+
+- Darkmode UI colour and style improvements (#3593, #3660)
+- OpenSSL removal in favour of rust-cryptography and rustls (#3594, #3687,  )
+- OAuth2 client IDs always process as lowercase (#3605)
+- Test for corrupt unicode in SSH keys (#3618)
+- Accept SSH keys with variable salt lengths (#3629)
+- Move unixd shadow/passwd handling into the tasks daemon (#3631)
+- Reload schema before db verify to prevent incorrect warnings (#3643)
+- Improve unixd and tasks daemon startup coupling (#3638)
+- Reduce unixd memory usage (#3651, #3645, #3754)
+- SCIM API implementation (#3535, #3700, #3725, #3741, #3748)
+- Fix parsing of passwd files with comments in them (#3673)
+- Reduce unixd logging verbosity (#3680)
+- Only allow server side password generation for service accounts (#3688)
+- Fix UI confusion when unix password validation fails (#3719, #3720)
+- Web UI for users to self manage RADIUS passwords (#3728)
+
 ### 2025-05-01 - Kanidm 1.6.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our

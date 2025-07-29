@@ -22,8 +22,8 @@ If you want to host your own authentication service, then Kanidm is for you!
 Kanidm supports:
 
 - Passkeys (WebAuthn) for secure cryptographic authentication
-- Attested passkeys for high security environments
-- OAuth2/OIDC authentication provider for web SSO
+  - Attested passkeys for high security environments
+- OAuth2/OIDC authentication provider for SSO
 - Application Portal allowing easy access to linked applications
 - Linux/Unix integration with TPM protected offline authentication
 - SSH key distribution to Linux/Unix systems

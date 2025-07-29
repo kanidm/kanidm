@@ -38,7 +38,8 @@ use tokio::sync::broadcast;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
+const NXCACHE_SIZE: NonZeroUsize =
+    NonZeroUsize::new(128).expect("Invalid NXCACHE constant at compile time");
 
 pub enum AuthSession {
     Online {
