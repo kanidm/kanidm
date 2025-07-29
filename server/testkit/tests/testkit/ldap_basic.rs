@@ -1,4 +1,7 @@
-use kanidm_proto::scim_v1::client::{ScimEntryApplicationPost, ScimReference};
+use kanidm_proto::scim_v1::{
+    client::{ScimEntryApplicationPost, ScimReference},
+    ScimApplicationPasswordCreate,
+};
 use kanidmd_testkit::{
     setup_account_passkey, AsyncTestEnvironment, IDM_ADMIN_TEST_PASSWORD, IDM_ADMIN_TEST_USER,
 };
@@ -111,6 +114,20 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     let res = person_rsclient.auth_passkey_complete(pkc).await;
     assert!(res.is_ok());
 
+    // We need RW privs, elevate now.
+    let res = person_rsclient
+        .reauth_passkey_begin()
+        .await
+        .expect("Failed to start passkey reauth");
+
+    let pkc = soft_passkey
+        .do_authentication(person_rsclient.get_origin().clone(), res)
+        .map(Box::new)
+        .expect("Failed to authentication with soft passkey");
+
+    let res = person_rsclient.reauth_passkey_complete(pkc).await;
+    assert!(res.is_ok());
+
     // List the applications we can see
     let applications = person_rsclient
         .idm_application_list(None)
@@ -119,51 +136,136 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
 
     debug!(?applications);
 
-    /*
-    let _application = person_rsclient
+    let application_1 = person_rsclient
+        .idm_application_get(APPLICATION_1_NAME, None)
+        .await
+        .expect("Failed to get application");
+
+    let application_2 = person_rsclient
         .idm_application_get(APPLICATION_2_NAME, None)
         .await
-        .expect("Failed to list applications");
-    */
+        .expect("Failed to get application");
+
+    debug!(?application_1);
+    debug!(?application_2);
+
+    let application_1_uuid = application_1.header.id;
+    let application_2_uuid = application_2.header.id;
 
     // Create application passwords
+    let create_application_password_req = ScimApplicationPasswordCreate {
+        application_uuid: application_1_uuid,
+        label: "label_1".to_string(),
+    };
 
-    /*
     let application_1_password_create_1 = person_rsclient
-        .idm_application_create_password(
-            APPLICATION_1_NAME,
-            "label_1",
-        )
+        .idm_application_password_create(TEST_PERSON, &create_application_password_req)
         .await
         .expect("Failed to create application password");
+
+    let create_application_password_req = ScimApplicationPasswordCreate {
+        application_uuid: application_1_uuid,
+        label: "label_2".to_string(),
+    };
 
     let application_1_password_create_2 = person_rsclient
-        .idm_application_create_password(
-            APPLICATION_1_NAME,
-            "label_2",
-        )
+        .idm_application_password_create(TEST_PERSON, &create_application_password_req)
         .await
         .expect("Failed to create application password");
 
+    let create_application_password_req = ScimApplicationPasswordCreate {
+        application_uuid: application_2_uuid,
+        label: "label_3".to_string(),
+    };
+
     let application_2_password_create_1 = person_rsclient
-        .idm_application_create_password(
-            APPLICATION_2_NAME,
-            "label_1",
-        )
+        .idm_application_password_create(TEST_PERSON, &create_application_password_req)
         .await
         .expect("Failed to create application password");
-    */
+
+    debug!(?application_1_password_create_1);
+    debug!(?application_1_password_create_2);
+    debug!(?application_2_password_create_1);
 
     // Check the work.
 
-    // let ldap_url = test_env.ldap_url.as_ref().unwrap();
-    // let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+    let ldap_url = test_env.ldap_url.as_ref().unwrap();
 
-    // Check they can't cross talk.
+    // We can bind as our applications
+    let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+    ldap_client
+        .bind(
+            format!("name={},app={}", TEST_PERSON, APPLICATION_1_NAME),
+            application_1_password_create_1.secret.clone(),
+        )
+        .await
+        .expect("Failed to bind to application 1 as test person");
+
+    let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+    ldap_client
+        .bind(
+            format!(
+                "name={},app={},dc=localhost",
+                TEST_PERSON, APPLICATION_1_NAME
+            ),
+            application_1_password_create_2.secret.clone(),
+        )
+        .await
+        .expect("Failed to bind to application 1 as test person");
+
+    let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+    ldap_client
+        .bind(
+            format!(
+                "name={},app={},dc=localhost",
+                TEST_PERSON, APPLICATION_2_NAME
+            ),
+            application_2_password_create_1.secret.clone(),
+        )
+        .await
+        .expect("Failed to bind to application 1 as test person");
+
+    // == Check they can't cross talk.
+    let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+    // Using application 2 password!!!
+    ldap_client
+        .bind(
+            format!("name={},app={}", TEST_PERSON, APPLICATION_1_NAME),
+            application_2_password_create_1.secret.clone(),
+        )
+        .await
+        .expect_err("Should not succeed!!");
+
+    let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+    // Using application 2 password!!!
+    ldap_client
+        .bind(
+            format!("name={},app={}", TEST_PERSON, APPLICATION_2_NAME),
+            application_1_password_create_1.secret.clone(),
+        )
+        .await
+        .expect_err("Should not succeed!!");
 
     // Done!
 
     // Check removeal of app passwords
+    person_rsclient
+        .idm_application_password_delete(TEST_PERSON, application_1_password_create_2.uuid)
+        .await
+        .expect("Failed to remove application password");
+
+    // Then test it no longer works.
+    let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+    ldap_client
+        .bind(
+            format!(
+                "name={},app={},dc=localhost",
+                TEST_PERSON, APPLICATION_1_NAME
+            ),
+            application_1_password_create_2.secret.clone(),
+        )
+        .await
+        .expect_err("Should not succeed!!");
 
     // Delete the applications
     idm_admin_rsclient
@@ -172,6 +274,14 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
         .expect("Failed to delete the application");
 
     // Check that you can no longer bind.
+    let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+    ldap_client
+        .bind(
+            format!("name={},app={}", TEST_PERSON, APPLICATION_1_NAME),
+            application_1_password_create_1.secret.clone(),
+        )
+        .await
+        .expect_err("Should not succeed!!");
 
-    // They no longer list
+    // Done!!!! Application passwords work!!!
 }

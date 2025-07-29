@@ -1,8 +1,9 @@
 use crate::{ClientError, KanidmClient};
 use kanidm_proto::scim_v1::{
     client::{ScimEntryApplication, ScimEntryApplicationPost, ScimListApplication},
-    ScimEntryGetQuery,
+    ScimApplicationPassword, ScimApplicationPasswordCreate, ScimEntryGetQuery,
 };
+use uuid::Uuid;
 
 impl KanidmClient {
     /// Delete an application
@@ -52,16 +53,28 @@ impl KanidmClient {
         )
             .await
     }
+    */
 
-    pub async fn idm_person_create_application_password(
+    pub async fn idm_application_password_create(
         &self,
         name_or_uuid: &str,
-        request: &ScimApplicationPasswordPost,
+        request: &ScimApplicationPasswordCreate,
     ) -> Result<ScimApplicationPassword, ClientError> {
         self.perform_post_request(
-            format!("/scim/v1/Person/{}/Application/_create_password", name_or_uuid).as_str()
-        , request)
-            .await
+            format!("/scim/v1/Person/{name_or_uuid}/Application/_create_password",).as_str(),
+            request,
+        )
+        .await
     }
-    */
+
+    pub async fn idm_application_password_delete(
+        &self,
+        name_or_uuid: &str,
+        password_id: Uuid,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(
+            format!("/scim/v1/Person/{name_or_uuid}/Application/{password_id}",).as_str(),
+        )
+        .await
+    }
 }

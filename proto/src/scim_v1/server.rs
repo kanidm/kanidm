@@ -109,7 +109,7 @@ pub struct ScimAddress {
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ScimApplicationPassword {
+pub struct ScimApplicationPasswordReference {
     pub uuid: Uuid,
     pub application_uuid: Uuid,
     pub label: String,
@@ -277,7 +277,7 @@ pub enum ScimValueKanidm {
 
     Address(Vec<ScimAddress>),
     Mail(Vec<ScimMail>),
-    ApplicationPassword(Vec<ScimApplicationPassword>),
+    ApplicationPassword(Vec<ScimApplicationPasswordReference>),
     AuditString(Vec<ScimAuditString>),
     SshPublicKey(Vec<ScimSshPublicKey>),
     AuthSession(Vec<ScimAuthSession>),
@@ -460,8 +460,8 @@ impl From<Vec<ScimMail>> for ScimValueKanidm {
     }
 }
 
-impl From<Vec<ScimApplicationPassword>> for ScimValueKanidm {
-    fn from(set: Vec<ScimApplicationPassword>) -> Self {
+impl From<Vec<ScimApplicationPasswordReference>> for ScimValueKanidm {
+    fn from(set: Vec<ScimApplicationPasswordReference>) -> Self {
         Self::ApplicationPassword(set)
     }
 }

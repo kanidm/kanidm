@@ -129,6 +129,21 @@ pub enum ScimOauth2ClaimMapJoinChar {
     JsonArray,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimApplicationPassword {
+    pub uuid: Uuid,
+    pub label: String,
+    pub secret: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimApplicationPasswordCreate {
+    pub application_uuid: Uuid,
+    pub label: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct AttrPath {
     pub a: Attribute,

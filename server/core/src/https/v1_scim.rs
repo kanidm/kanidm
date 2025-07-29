@@ -12,8 +12,10 @@ use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{delete, get, post};
 use axum::{Extension, Json, Router};
 use kanidm_proto::scim_v1::{
-    client::ScimEntryPostGeneric, server::ScimEntryKanidm, server::ScimListResponse,
-    ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+    client::ScimEntryPostGeneric,
+    server::{ScimEntryKanidm, ScimListResponse},
+    ScimApplicationPassword, ScimApplicationPasswordCreate, ScimEntryGetQuery, ScimSyncRequest,
+    ScimSyncState,
 };
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
@@ -386,6 +388,57 @@ async fn scim_person_id_get(
 
 #[utoipa::path(
     get,
+    path = "/scim/v1/Person/{id}/Application/_create_password",
+    request_body = ScimApplicationPasswordCreate,
+    responses(
+        (status = 200, content_type="application/json", body=ScimApplicationPassword),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_person_id_application_create_password"
+)]
+async fn scim_person_id_application_create_password(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(request): Json<ScimApplicationPasswordCreate>,
+) -> Result<Json<ScimApplicationPassword>, WebError> {
+    state
+        .qe_w_ref
+        .scim_person_application_create_password(client_auth_info, kopid.eventid, id, request)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    get,
+    path = "/scim/v1/Person/{id}/Application/{apppwd_uuid}",
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_person_id_application_delete_password"
+)]
+async fn scim_person_id_application_delete_password(
+    State(state): State<ServerState>,
+    Path((id, apppwd_id)): Path<(String, Uuid)>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<()>, WebError> {
+    state
+        .qe_w_ref
+        .scim_person_application_delete_password(client_auth_info, kopid.eventid, id, apppwd_id)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    get,
     path = "/scim/v1/Application",
     responses(
         (status = 200, content_type="application/json", body=ScimEntry),
@@ -443,6 +496,37 @@ async fn scim_application_post(
                 EntryClass::Application,
             ],
             entry_post,
+        )
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    delete,
+    path = "/scim/v1/Application/{id}",
+    responses(
+        (status = 200, content_type="application/json"),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_application_id_get"
+)]
+async fn scim_application_id_get(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<ScimEntryKanidm>, WebError> {
+    state
+        .qe_r_ref
+        .scim_entry_id_get(
+            client_auth_info,
+            kopid.eventid,
+            id,
+            EntryClass::Application,
+            ScimEntryGetQuery::default(),
         )
         .await
         .map(Json::from)
@@ -629,6 +713,14 @@ pub fn route_setup() -> Router<ServerState> {
         //                                                   database.
         //                                                   {id} is any unique id.
         .route("/scim/v1/Person/:id", get(scim_person_id_get))
+        .route(
+            "/scim/v1/Person/:id/Application/_create_password",
+            post(scim_person_id_application_create_password),
+        )
+        .route(
+            "/scim/v1/Person/:id/Application/:apppwd_id",
+            delete(scim_person_id_application_delete_password),
+        )
         //
         //  Sync     /Sync            GET                    Retrieve the current
         //                                                   sync state associated
@@ -648,7 +740,7 @@ pub fn route_setup() -> Router<ServerState> {
         //
         .route(
             "/scim/v1/Application/:id",
-            delete(scim_application_id_delete),
+            get(scim_application_id_get).delete(scim_application_id_delete),
         )
         //  Class      /Class          GET                  List or query Schema Classes
         //
