@@ -57,11 +57,11 @@ impl QueryServer {
             // No domain info was present, so neither was the rest of the IDM. Bring up the
             // full IDM here.
             match domain_target_level {
-                DOMAIN_LEVEL_8 => write_txn.migrate_domain_7_to_8()?,
                 DOMAIN_LEVEL_9 => write_txn.migrate_domain_8_to_9()?,
                 DOMAIN_LEVEL_10 => write_txn.migrate_domain_9_to_10()?,
                 DOMAIN_LEVEL_11 => write_txn.migrate_domain_10_to_11()?,
                 DOMAIN_LEVEL_12 => write_txn.migrate_domain_11_to_12()?,
+                DOMAIN_LEVEL_13 => write_txn.migrate_domain_12_to_13()?,
                 _ => {
                     error!("Invalid requested domain target level for server bootstrap");
                     debug_assert!(false);
@@ -301,75 +301,6 @@ impl QueryServerWriteTransaction<'_> {
             );
             Err(OperationError::InvalidDbState)
         }
-    }
-
-    /// Migration domain level 7 to 8 (1.4.0)
-    #[instrument(level = "info", skip_all)]
-    pub(crate) fn migrate_domain_7_to_8(&mut self) -> Result<(), OperationError> {
-        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_9 {
-            error!("Unable to raise domain level from 8 to 9.");
-            return Err(OperationError::MG0004DomainLevelInDevelopment);
-        }
-
-        // =========== Apply changes ==============
-        self.internal_migrate_or_create_batch(
-            "phase 1 - schema attrs",
-            migration_data::dl8::phase_1_schema_attrs(),
-        )?;
-
-        self.internal_migrate_or_create_batch(
-            "phase 2 - schema classes",
-            migration_data::dl8::phase_2_schema_classes(),
-        )?;
-
-        // Reload for the new schema.
-        self.reload()?;
-
-        // Reindex?
-        self.reindex(false)?;
-
-        // Set Phase
-        self.set_phase(ServerPhase::SchemaReady);
-
-        self.internal_migrate_or_create_batch(
-            "phase 3 - key provider",
-            migration_data::dl8::phase_3_key_provider(),
-        )?;
-
-        // Reload for the new key providers
-        self.reload()?;
-
-        self.internal_migrate_or_create_batch(
-            "phase 4 - system entries",
-            migration_data::dl8::phase_4_system_entries(),
-        )?;
-
-        // Reload for the new system entries
-        self.reload()?;
-
-        // Domain info is now ready and reloaded, we can proceed.
-        self.set_phase(ServerPhase::DomainInfoReady);
-
-        // Bring up the IDM entries.
-        self.internal_migrate_or_create_batch(
-            "phase 5 - builtin admin entries",
-            migration_data::dl8::phase_5_builtin_admin_entries()?,
-        )?;
-
-        self.internal_migrate_or_create_batch(
-            "phase 6 - builtin not admin entries",
-            migration_data::dl8::phase_6_builtin_non_admin_entries()?,
-        )?;
-
-        self.internal_migrate_or_create_batch(
-            "phase 7 - builtin access control profiles",
-            migration_data::dl8::phase_7_builtin_access_control_profiles(),
-        )?;
-
-        // Reload for all new access controls.
-        self.reload()?;
-
-        Ok(())
     }
 
     /// Migration domain level 8 to 9 (1.5.0)
@@ -687,6 +618,77 @@ impl QueryServerWriteTransaction<'_> {
             return Err(OperationError::MG0004DomainLevelInDevelopment);
         }
 
+        // =========== Apply changes ==============
+        self.internal_migrate_or_create_batch(
+            "phase 1 - schema attrs",
+            migration_data::dl12::phase_1_schema_attrs(),
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 2 - schema classes",
+            migration_data::dl12::phase_2_schema_classes(),
+        )?;
+
+        // Reload for the new schema.
+        self.reload()?;
+
+        // Since we just loaded in a ton of schema, lets reindex it incase we added
+        // new indexes, or this is a bootstrap and we have no indexes yet.
+        self.reindex(false)?;
+
+        // Set Phase
+        // Indicate the schema is now ready, which allows dyngroups to work when they
+        // are created in the next phase of migrations.
+        self.set_phase(ServerPhase::SchemaReady);
+
+        self.internal_migrate_or_create_batch(
+            "phase 3 - key provider",
+            migration_data::dl12::phase_3_key_provider(),
+        )?;
+
+        // Reload for the new key providers
+        self.reload()?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 4 - system entries",
+            migration_data::dl12::phase_4_system_entries(),
+        )?;
+
+        // Reload for the new system entries
+        self.reload()?;
+
+        // Domain info is now ready and reloaded, we can proceed.
+        self.set_phase(ServerPhase::DomainInfoReady);
+
+        // Bring up the IDM entries.
+        self.internal_migrate_or_create_batch(
+            "phase 5 - builtin admin entries",
+            migration_data::dl12::phase_5_builtin_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 6 - builtin not admin entries",
+            migration_data::dl12::phase_6_builtin_non_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 7 - builtin access control profiles",
+            migration_data::dl12::phase_7_builtin_access_control_profiles(),
+        )?;
+
+        self.reload()?;
+
+        Ok(())
+    }
+
+    /// Migration domain level 12 to 13 (1.9.0)
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_12_to_13(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_12 {
+            error!("Unable to raise domain level from 12 to 13.");
+            return Err(OperationError::MG0004DomainLevelInDevelopment);
+        }
+
         Ok(())
     }
 
@@ -861,40 +863,6 @@ mod tests {
         }
     }
 
-    #[qs_test(domain_level=DOMAIN_LEVEL_8)]
-    async fn test_migrations_dl8_dl9(server: &QueryServer) {
-        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
-
-        let db_domain_version = write_txn
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("unable to access domain entry")
-            .get_ava_single_uint32(Attribute::Version)
-            .expect("Attribute Version not present");
-
-        assert_eq!(db_domain_version, DOMAIN_LEVEL_8);
-
-        write_txn.commit().expect("Unable to commit");
-
-        // == pre migration verification. ==
-        // check we currently would fail a migration.
-
-        // let mut read_txn = server.read().await.unwrap();
-        // drop(read_txn);
-
-        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
-
-        // Fix any issues
-
-        // == Increase the version ==
-        write_txn
-            .internal_apply_domain_migration(DOMAIN_LEVEL_9)
-            .expect("Unable to set domain level to version 9");
-
-        // post migration verification.
-
-        write_txn.commit().expect("Unable to commit");
-    }
-
     #[qs_test(domain_level=DOMAIN_LEVEL_9)]
     async fn test_migrations_dl9_dl10(server: &QueryServer) {
         let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
@@ -957,6 +925,40 @@ mod tests {
         write_txn
             .internal_apply_domain_migration(DOMAIN_LEVEL_11)
             .expect("Unable to set domain level to version 11");
+
+        // post migration verification.
+
+        write_txn.commit().expect("Unable to commit");
+    }
+
+    #[qs_test(domain_level=DOMAIN_LEVEL_11)]
+    async fn test_migrations_dl11_dl12(server: &QueryServer) {
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_LEVEL_11);
+
+        write_txn.commit().expect("Unable to commit");
+
+        // == pre migration verification. ==
+        // check we currently would fail a migration.
+
+        // let mut read_txn = server.read().await.unwrap();
+        // drop(read_txn);
+
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        // Fix any issues
+
+        // == Increase the version ==
+        write_txn
+            .internal_apply_domain_migration(DOMAIN_LEVEL_12)
+            .expect("Unable to set domain level to version 12");
 
         // post migration verification.
 

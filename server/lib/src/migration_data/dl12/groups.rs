@@ -81,7 +81,7 @@ lazy_static! {
     // of roles. The intent is to allow a pretty generic and correct by default set
     // of these use cases.
     pub static ref BUILTIN_GROUP_SYSTEM_ADMINS_V1: BuiltinGroup = BuiltinGroup {
-        name: "system_admins",
+        name: NAME_SYSTEM_ADMINS,
         description: "Builtin System Administrators Group.",
         uuid: UUID_SYSTEM_ADMINS,
         entry_managed_by: Some(UUID_SYSTEM_ADMINS),
@@ -90,7 +90,7 @@ lazy_static! {
     };
 
     pub static ref BUILTIN_GROUP_IDM_ADMINS_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_admins",
+        name: NAME_IDM_ADMINS,
         description: "Builtin IDM Administrators Group.",
         uuid: UUID_IDM_ADMINS,
         entry_managed_by: Some(UUID_IDM_ADMINS),
@@ -173,7 +173,7 @@ lazy_static! {
 
     /// Builtin IDM Group for granting elevated people (personal data) read permissions.
     pub static ref BUILTIN_GROUP_PEOPLE_PII_READ: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_pii_read",
+        name: NAME_IDM_PEOPLE_PII_READ,
         description: "Builtin IDM Group for granting elevated people (personal data) read permissions.",
         uuid: UUID_IDM_PEOPLE_PII_READ,
         entry_managed_by: Some(UUID_IDM_ADMINS),
@@ -327,7 +327,7 @@ lazy_static! {
     };
 
     pub static ref IDM_ALL_ACCOUNTS: BuiltinGroup = BuiltinGroup {
-        name: "idm_all_accounts",
+        name: NAME_IDM_ALL_ACCOUNTS,
         description: "Builtin IDM dynamic group containing all entries that can authenticate.",
         uuid: UUID_IDM_ALL_ACCOUNTS,
         members: Vec::with_capacity(0),
