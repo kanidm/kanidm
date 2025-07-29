@@ -28,7 +28,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::num::ParseIntError;
 use std::time::{Duration, Instant};
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, warn};
 
 mod crypt_md5;
 pub mod mtls;
@@ -47,7 +47,9 @@ const PBKDF2_SALT_LEN: usize = 24;
 pub const PBKDF2_MIN_NIST_SALT_LEN: usize = 14;
 
 // Min number of rounds for a pbkdf2
-pub const PBKDF2_MIN_NIST_COST: usize = 10000;
+pub const PBKDF2_MIN_NIST_COST: usize = 10_000;
+// Default rounds - owasp recommend 600_000 rounds.
+pub const PBKDF2_DEFAULT_COST: usize = 600_000;
 
 // 32 * u8 -> 256 bits of out.
 const PBKDF2_KEY_LEN: usize = 32;
@@ -201,33 +203,6 @@ impl CryptoPolicy {
     }
 
     pub fn time_target(target_time: Duration) -> Self {
-        const PBKDF2_BENCH_FACTOR: usize = 10;
-
-        let pbkdf2_cost = match Password::bench_pbkdf2(PBKDF2_MIN_NIST_COST * PBKDF2_BENCH_FACTOR) {
-            Some(bt) => {
-                let ubt = bt.as_nanos() as usize;
-
-                // Get the cost per thousand rounds
-                let per_thou = (PBKDF2_MIN_NIST_COST * PBKDF2_BENCH_FACTOR) / 1000;
-                let t_per_thou = ubt / per_thou;
-                trace!("{:010}µs / 1000 rounds", t_per_thou);
-
-                // Now we need the attacker work in nanos
-                let target = target_time.as_nanos() as usize;
-                let r = (target / t_per_thou) * 1000;
-
-                trace!("{}µs target time", target);
-                trace!("Maybe rounds -> {}", r);
-
-                if r < PBKDF2_MIN_NIST_COST {
-                    PBKDF2_MIN_NIST_COST
-                } else {
-                    r
-                }
-            }
-            None => PBKDF2_MIN_NIST_COST,
-        };
-
         // Argon2id has multiple parameters. These all are about *exchanges* that you can
         // request in how the computation is performed.
         //
@@ -341,10 +316,10 @@ impl CryptoPolicy {
             .unwrap_or_default();
 
         let p = CryptoPolicy {
-            pbkdf2_cost,
+            pbkdf2_cost: PBKDF2_DEFAULT_COST,
             argon2id_params,
         };
-        debug!(pbkdf2_cost = %p.pbkdf2_cost, argon2id_m = %p.argon2id_params.m_cost(), argon2id_p = %p.argon2id_params.p_cost(), argon2id_t = %p.argon2id_params.t_cost(), );
+        debug!(argon2id_m = %p.argon2id_params.m_cost(), argon2id_p = %p.argon2id_params.p_cost(), argon2id_t = %p.argon2id_params.t_cost(), );
         p
     }
 }
@@ -849,27 +824,6 @@ impl TryFrom<&str> for Password {
 }
 
 impl Password {
-    fn bench_pbkdf2(pbkdf2_cost: usize) -> Option<Duration> {
-        let mut rng = rand::rng();
-        let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.random()).collect();
-        let input: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.random()).collect();
-        // This is 512 bits of output
-        let mut key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
-
-        let start = Instant::now();
-        pbkdf2_hmac(
-            input.as_slice(),
-            salt.as_slice(),
-            pbkdf2_cost,
-            MessageDigest::sha256(),
-            key.as_mut_slice(),
-        )
-        .ok()?;
-        let end = Instant::now();
-
-        end.checked_duration_since(start)
-    }
-
     fn bench_argon2id(params: Params) -> Option<Duration> {
         let mut rng = rand::rng();
         let salt: Vec<u8> = (0..ARGON2_SALT_LEN).map(|_| rng.random()).collect();

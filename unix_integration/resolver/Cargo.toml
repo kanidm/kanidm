@@ -98,8 +98,8 @@ prctl = { workspace = true }
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 kanidm_utils_users = { workspace = true }
 
-[target.'cfg(not(target_os = "illumos"))'.dependencies]
-mimalloc = { workspace = true }
+# [target.'cfg(not(target_os = "illumos"))'.dependencies]
+# mimalloc = { workspace = true }
 
 [dev-dependencies]
 kanidmd_core = { workspace = true }
