@@ -4,7 +4,7 @@ authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
 ]
-rust-version = "1.80"
+rust-version = "1.87"
 edition = "2021"
 license = "MPL-2.0"
 homepage = "https://github.com/kanidm/kanidm/"
@@ -255,7 +255,7 @@ reqwest = { version = "0.12.20", default-features = false, features = [
     "rustls-tls-native-roots-no-provider",
 ] }
 rusqlite = { version = "0.35.0", features = ["array", "bundled"] }
-rustls = { version = "0.23.30", default-features = false, features = [
+rustls = { version = "0.23.29", default-features = false, features = [
     "std",
     "aws_lc_rs",
 ] }

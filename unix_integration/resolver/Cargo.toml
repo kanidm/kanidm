@@ -14,7 +14,7 @@ repository = { workspace = true }
 [features]
 default = ["unix"]
 unix = []
-selinux = ["dep:selinux", "kanidm_unix_common/selinux"]
+selinux = ["kanidm_unix_common/selinux"]
 tpm = ["kanidm-hsm-crypto/tpm", "kanidm_unix_common/tpm"]
 dhat-heap = ["dep:dhat"]
 dhat-ad-hoc = ["dep:dhat"]
@@ -71,12 +71,10 @@ kanidm_lib_file_permissions = { workspace = true }
 kanidm_unix_common = { workspace = true }
 notify-debouncer-full = { workspace = true }
 rusqlite = { workspace = true }
-selinux = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sketching = { workspace = true }
 time = { workspace = true, features = ["std"] }
-toml = { workspace = true }
 tokio = { workspace = true, features = [
     "rt",
     "fs",
