@@ -244,9 +244,8 @@ pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
     None
 }
 
-pub const IDENTITY_UNAVAILABLE_ERROR_MESSAGE: &str =
-    "The identity verification function is not available at this time.";
-pub const CODE_FAILURE_ERROR_MESSAGE: &str = "The provided code doesn't match, please try again.";
+pub const IDENTITY_UNAVAILABLE_ERROR_MESSAGE: &str = "Identity verification is not available.";
+pub const CODE_FAILURE_ERROR_MESSAGE: &str = "The provided verification code is invalid. Check the code with the other person, and if it remains invalid, they may be attempting to fool you!";
 pub const INVALID_STATE_ERROR_MESSAGE: &str =
     "The user identification flow is in an invalid state 😵😵";
 

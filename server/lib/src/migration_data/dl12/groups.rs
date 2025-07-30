@@ -273,7 +273,7 @@ lazy_static! {
 
     pub static ref BUILTIN_GROUP_IDM_UNIX_AUTHENTICATION_READ_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_unix_authentication_read",
-        description: "Builtin IDM Group allowing service accounts to read and authenticate unix users.",
+        description: "Builtin IDM group allowing service accounts to read and authenticate unix users.",
         uuid: UUID_IDM_UNIX_AUTHENTICATION_READ,
         entry_managed_by: Some(UUID_IDM_UNIX_ADMINS),
         members: vec![

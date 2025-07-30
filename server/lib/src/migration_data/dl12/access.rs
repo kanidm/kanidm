@@ -1253,7 +1253,7 @@ lazy_static! {
         name: "idm_acp_all_accounts_posix_read",
         uuid: UUID_IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1,
         description:
-            "Builtin IDM Control for reading minimal posix attrs. Required for services to authenticate unix users.",
+            "Builtin IDM control for reading minimal POSIX attrs. Required for services to authenticate UNIX users.",
         receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_UNIX_AUTHENTICATION_READ] ),
         target: BuiltinAcpTarget::Filter( ProtoFilter::And(
             vec![

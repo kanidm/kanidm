@@ -38,6 +38,10 @@ You can check the privileged tasks daemon is running with:
 systemctl status kanidm-unixd-tasks
 ```
 
+> [!NOTE]
+>
+> `kanidm-unixd-tasks` is now required, which is a change where it was previously optional.
+
 You can also configure unixd with the file /etc/kanidm/unixd:
 
 > [!NOTE]
