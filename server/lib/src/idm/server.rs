@@ -2721,13 +2721,13 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         // Get the account that will be doing the actual reads.
-        let admin_entry = idms_prox_read
+        let idm_admin_entry = idms_prox_read
             .qs_read
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_IDM_ADMIN)
             .expect("Can't access admin entry.");
 
         let ugte = UnixGroupTokenEvent::new_impersonate(
-            admin_entry.clone(),
+            idm_admin_entry.clone(),
             uuid!("01609135-a1c4-43d5-966b-a28227644445"),
         );
         let tok_g = idms_prox_read
@@ -2751,7 +2751,7 @@ mod tests {
 
         // Show we can get the admin as a unix group token too
         let ugte = UnixGroupTokenEvent::new_impersonate(
-            admin_entry,
+            idm_admin_entry,
             uuid!("00000000-0000-0000-0000-000000000000"),
         );
         let tok_g = idms_prox_read

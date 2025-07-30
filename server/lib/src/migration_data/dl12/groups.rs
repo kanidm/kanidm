@@ -271,6 +271,19 @@ lazy_static! {
         ..Default::default()
     };
 
+    pub static ref BUILTIN_GROUP_IDM_UNIX_AUTHENTICATION_READ_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_unix_authentication_read",
+        description: "Builtin IDM group allowing service accounts to read and authenticate unix users.",
+        uuid: UUID_IDM_UNIX_AUTHENTICATION_READ,
+        entry_managed_by: Some(UUID_IDM_UNIX_ADMINS),
+        members: vec![
+            // This is to maintain compatibility right now, but will CHANGE in future.
+            UUID_ANONYMOUS,
+        ],
+        ..Default::default()
+    };
+
+
     /// Builtin IDM Group for managing client authentication certificates.
     pub static ref BUILTIN_GROUP_CLIENT_CERTIFICATE_ADMINS_DL7: BuiltinGroup = BuiltinGroup {
         name: "idm_client_certificate_admins",

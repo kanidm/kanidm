@@ -26,7 +26,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use time::OffsetDateTime;
 use tokio::task;
-use tracing::log::{debug, trace};
+use tracing::debug;
 
 const ADMIN_TEST_USER: &str = "admin";
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -94,6 +94,35 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
         .build()
         .expect("Failed to build sync client");
 
+    let res = adminclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    debug!("auth_simple_password res: {res:?}");
+    assert!(res.is_ok());
+
+    // Setup a service-account that can access the unix parts.
+    adminclient
+        .idm_service_account_create("unixd_service", "Unixd Service Account", "idm_admins")
+        .await
+        .expect("Unable to create service account");
+
+    adminclient
+        .idm_group_add_members("idm_unix_authentication_read", &["unixd_service"])
+        .await
+        .expect("Unable to add service account to unixd read group");
+
+    let service_api_token = adminclient
+        .idm_service_account_generate_api_token("unixd_service", "accesstoken", None, false)
+        .await
+        .expect("Unable to create service account api token");
+
+    // Now we can disable the anonymous account.
+    adminclient
+        .idm_service_account_set_attr("anonymous", ATTR_ACCOUNT_EXPIRE, &[ACCOUNT_EXPIRE])
+        .await
+        .expect("Failed to disable the anonymous account");
+
+    // Finally execute the test fixtures
     fix_fn(adminclient).await;
 
     let client = KanidmClientBuilder::new()
@@ -139,12 +168,14 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
                 local: "extensible_group".to_string(),
                 with: "testgroup1".to_string(),
             }],
+            service_account_token: Some(service_api_token),
         },
         SystemTime::now(),
         &mut (&mut dbtxn).into(),
         &mut hsm,
         &machine_key,
     )
+    .await
     .unwrap();
 
     drop(machine_key);
@@ -174,7 +205,6 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
 }
 
 /// This is the test fixture. It sets up the following:
-/// - adds admin to idm_admins
 /// - creates a test account (testaccount1)
 /// - extends the test account with posix attrs
 /// - adds a ssh public key to the test account
@@ -183,12 +213,6 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
 /// - extends testgroup1 with posix attrs
 /// - creates two more groups with unix perms (allowed_group, masked_group)
 async fn test_fixture(rsclient: KanidmClient) {
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    debug!("auth_simple_password res: {res:?}");
-    trace!("{:?}", &res);
-    assert!(res.is_ok());
     // Create a new account
     rsclient
         .idm_person_account_create("testaccount1", "Posix Demo Account")

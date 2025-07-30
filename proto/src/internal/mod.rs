@@ -98,7 +98,6 @@ pub enum IdentifyUserResponse {
     WaitForCode,
     Success,
     CodeFailure,
-    InvalidUserId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd, ValueEnum)]

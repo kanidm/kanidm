@@ -244,17 +244,14 @@ pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
     None
 }
 
-pub const IDENTITY_UNAVAILABLE_ERROR_MESSAGE: &str = "The identity verification feature is not enabled for your account, please contact an administrator.";
-pub const CODE_FAILURE_ERROR_MESSAGE: &str = "The provided code doesn't match, please try again.";
-pub const INVALID_USER_ID_ERROR_MESSAGE: &str =
-    "account exists but cannot access the identity verification feature 😕";
+pub const IDENTITY_UNAVAILABLE_ERROR_MESSAGE: &str = "Identity verification is not available.";
+pub const CODE_FAILURE_ERROR_MESSAGE: &str = "The provided verification code is invalid. Check the code with the other person, and if it remains invalid, they may be attempting to fool you!";
 pub const INVALID_STATE_ERROR_MESSAGE: &str =
     "The user identification flow is in an invalid state 😵😵";
 
 mod identify_user_no_tui {
     use crate::{
-        CODE_FAILURE_ERROR_MESSAGE, IDENTITY_UNAVAILABLE_ERROR_MESSAGE,
-        INVALID_STATE_ERROR_MESSAGE, INVALID_USER_ID_ERROR_MESSAGE,
+        CODE_FAILURE_ERROR_MESSAGE, IDENTITY_UNAVAILABLE_ERROR_MESSAGE, INVALID_STATE_ERROR_MESSAGE,
     };
 
     use kanidm_client::{ClientError, KanidmClient};
@@ -353,10 +350,6 @@ mod identify_user_no_tui {
 
                             other_id = Some(other_user_id);
                         }
-                        IdentifyUserResponse::InvalidUserId => {
-                            eprintln!("{other_user_id} {INVALID_USER_ID_ERROR_MESSAGE}");
-                            return;
-                        }
                         _ => {
                             eprintln!("{INVALID_STATE_ERROR_MESSAGE}");
                             return;
@@ -399,13 +392,6 @@ mod identify_user_no_tui {
                         IdentifyUserResponse::Success => {
                             println!(
                                 "{}'s identity has been successfully verified 🎉🎉",
-                                other_id.as_deref().unwrap_or_default()
-                            );
-                            return;
-                        }
-                        IdentifyUserResponse::InvalidUserId => {
-                            eprintln!(
-                                "{} {INVALID_USER_ID_ERROR_MESSAGE}",
                                 other_id.as_deref().unwrap_or_default()
                             );
                             return;

@@ -62,6 +62,7 @@ struct ProfileConfig {
     client_config_path: String,
     resolver_config_path: String,
     resolver_unix_shell_path: String,
+    resolver_service_account_token_path: String,
 }
 
 pub fn apply_profile() {
@@ -144,6 +145,10 @@ pub fn apply_profile() {
     println!(
         "cargo:rustc-env=KANIDM_RESOLVER_CONFIG_PATH={}",
         profile_cfg.resolver_config_path
+    );
+    println!(
+        "cargo:rustc-env=KANIDM_RESOLVER_SERVICE_ACCOUNT_TOKEN_PATH={}",
+        profile_cfg.resolver_service_account_token_path
     );
     println!(
         "cargo:rustc-env=KANIDM_RESOLVER_UNIX_SHELL_PATH={}",

@@ -976,7 +976,7 @@ async fn main() -> ExitCode {
                     &mut (&mut db_txn).into(),
                     &mut hsm,
                     &machine_key
-                ) else {
+                ).await else {
                     error!("Failed to configure Kanidm Provider");
                     return ExitCode::FAILURE
                 };

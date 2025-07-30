@@ -595,6 +595,13 @@ async fn test_server_rest_posix_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient.idm_group_unix_extend("posix_group", None).await;
     assert!(res.is_ok());
 
+    // Add anonymous to the group that is allowed to access posix attrs, as this
+    // role may not always be granted in future.
+    rsclient
+        .idm_group_add_members("idm_unix_authentication_read", &["anonymous"])
+        .await
+        .unwrap();
+
     // Open a new connection as anonymous
     let res = rsclient.auth_anonymous().await;
     assert!(res.is_ok());
