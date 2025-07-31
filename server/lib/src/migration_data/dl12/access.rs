@@ -898,6 +898,8 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::MemberOf,
             Attribute::Spn,
             Attribute::Uuid,
             Attribute::RadiusSecret,
