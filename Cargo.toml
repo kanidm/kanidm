@@ -141,6 +141,8 @@ sketching = { path = "./libs/sketching", version = "=1.7.0" }
 
 kanidm-hsm-crypto = { version = "^0.3.4" }
 
+## temporary!!! until crypto-glue updates.
+sec1 = "0.7.3"
 
 anyhow = { version = "1.0.98" }
 argon2 = { version = "0.5.3", features = ["alloc"] }

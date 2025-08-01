@@ -17,8 +17,9 @@ use openssl::{asn1, bn, hash, pkey};
 // use sketching::*;
 use crate::config::TlsConfiguration;
 use crypto_glue::{
-    pkcs8::PrivateKeyInfo, rsa::RS256PrivateKey, traits::PublicKeyParts, x509::oiddb::rfc5912,
+    pkcs8::PrivateKeyInfo, rsa::RS256PrivateKey, traits::{PublicKeyParts, DecodeDer, Pkcs1DecodeRsaPrivateKey}, x509::oiddb::rfc5912,
 };
+use sec1::EcPrivateKey;
 use rustls::{
     pki_types::{pem::PemObject, CertificateDer, CertificateRevocationListDer, PrivateKeyDer},
     server::{ServerConfig, WebPkiClientVerifier},
@@ -96,6 +97,45 @@ pub fn check_privkey_minimums(privkey: &PrivateKeyDer<'_>) -> Result<(), String>
                     }
                 }
                 _ => Err("TLS Private Key Oids not understood".into()),
+            }
+        }
+        PrivateKeyDer::Sec1(sec1_der) => {
+            // ECDSA only
+            let priv_key = EcPrivateKey::from_der(sec1_der.secret_sec1_der())
+                .map_err(|_err| "Invalid sec1 der".to_string())?;
+
+            match priv_key.parameters
+                .and_then(|params| params.named_curve())
+            {
+                Some(rfc5912::SECP_256_R_1) => {
+                    debug!("The EC private key size is: 256 bits, that's OK!");
+                    Ok(())
+                }
+                Some(rfc5912::SECP_384_R_1) => {
+                    debug!("The EC private key size is: 384 bits, that's OK!");
+                    Ok(())
+                }
+                Some(_) => Err("TLS Private Key Oids not understood".into()),
+                None => Err("TLS Private Key has no oids".into()),
+            }
+        }
+        PrivateKeyDer::Pkcs1(pkcs1_der) => {
+            // RSA only
+            let priv_key = RS256PrivateKey::from_pkcs1_der(pkcs1_der.secret_pkcs1_der())
+                .map_err(|_err| "Invalid pkcs1 der".to_string())?;
+
+            let priv_key_bits = priv_key.size() * 8;
+
+            if priv_key_bits < RSA_MIN_KEY_SIZE_BITS as usize {
+                Err(format!(
+                    "TLS RSA key is less than {RSA_MIN_KEY_SIZE_BITS} bits!"
+                ))
+            } else {
+                debug!(
+                    "The RSA private key size is: {} bits, that's OK!",
+                    priv_key_bits
+                );
+                Ok(())
             }
         }
         _ => Err("TLS Private Key Format not understood".into()),

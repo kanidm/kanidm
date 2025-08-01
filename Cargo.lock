@@ -3757,6 +3757,7 @@ dependencies = [
  "qrcode",
  "regex",
  "rustls",
+ "sec1",
  "serde",
  "serde_json",
  "serde_with",
