@@ -49,6 +49,10 @@ use walkdir::WalkDir;
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use kanidm_unix_common::selinux_util;
 
+// FreeBSD etcdb parsing is currently not supported due to kqueue
+// not being able to watch the files correctly.
+const ETC_DB_NOT_SUPPORTED: bool = cfg!(target_os = "freebsd");
+
 struct TaskCodec;
 
 impl Decoder for TaskCodec {
@@ -550,28 +554,40 @@ async fn main() -> ExitCode {
             // files.
             let (shadow_broadcast_tx, shadow_broadcast_rx) = broadcast::channel(4);
 
-            let watcher = match setup_shadow_inotify_watcher(shadow_broadcast_tx.clone()) {
-                Ok(w) => w,
-                Err(exit) => return exit,
+            let (etc_db, watcher) = if ETC_DB_NOT_SUPPORTED {
+                warn!("Resolving system users from {SYSTEM_PASSWD_PATH} is not supported on this platform.");
+                (EtcDb::default(), None)
+            } else {
+                let watcher = match setup_shadow_inotify_watcher(shadow_broadcast_tx.clone()) {
+                    Ok(w) => w,
+                    Err(exit) => return exit,
+                };
+
+                let etc_db = match process_etc_passwd_group().await {
+                    Ok(etc_db) => etc_db,
+                    Err(err) => {
+                        warn!(?err, "unable to process {SYSTEM_PASSWD_PATH} and related files.");
+                        // Return an empty set instead.
+                        EtcDb::default()
+                    }
+                };
+
+                (etc_db, Some(watcher))
             };
 
-            // Setup the etcdb watch
-            let etc_db = match process_etc_passwd_group().await {
-                Ok(etc_db) => etc_db,
-                Err(err) => {
-                    warn!(?err, "unable to process {SYSTEM_PASSWD_PATH} and related files.");
-                    // Return an empty set instead.
-                    EtcDb::default()
-                }
-            };
-
+            // Setup the etcdb watch - this is similar to a channel, but more suitable for
+            // configs/data as on reload it retains the last version, rather than
+            // dequeueing the data.
             let (shadow_data_watch_tx, mut shadow_data_watch_rx) = watch::channel(etc_db);
 
-            let _shadow_task = tokio::spawn(async move {
-                shadow_reload_task(
-                    shadow_data_watch_tx, shadow_broadcast_rx
-                ).await
-            });
+            let _shadow_task = if watcher.is_some() {
+                Some(tokio::spawn(async move {
+                    shadow_reload_task(
+                        shadow_data_watch_tx, shadow_broadcast_rx
+                    ).await
+                })
+                )
+            } else { None };
 
             let server = tokio::spawn(async move {
                 loop {
