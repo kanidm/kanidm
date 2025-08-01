@@ -547,7 +547,7 @@ basic client.
 ```bash
 kanidm system oauth2 create webapp 'webapp.example.com' 'https://webapp.example.com'
 kanidm system oauth2 add-redirect-url webapp 'https://webapp.example.com/oauth2/callback'
-kanidm system oauth2 update-scope-map webapp email openid
+kanidm system oauth2 update-scope-map webapp webapp_admin email openid
 kanidm system oauth2 get webapp
 kanidm system oauth2 show-basic-secret webapp
 <SECRET>
@@ -585,7 +585,7 @@ scope = "openid email"
 oidc_issuer_url = "https://idm.example.com/oauth2/openid/webapp"
 # client ID from `kanidm system oauth2 create`
 client_id = "webapp"
-# redirect URL from `kanidm system add-redirect-url webapp`
+# redirect URL from `kanidm system oauth2 add-redirect-url webapp`
 redirect_url = "https://webapp.example.com/oauth2/callback"
 # claim name from `kanidm system oauth2 update-claim-map-join`
 oidc_groups_claim = "webapp_group"
