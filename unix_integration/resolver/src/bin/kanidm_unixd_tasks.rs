@@ -303,6 +303,45 @@ async fn shadow_reload_task(
     debug!("shadow reload task has stopped");
 }
 
+async fn handle_shadow_reload(shadow_data_watch_rx: &mut watch::Receiver<EtcDb>) -> TaskResponse {
+    debug!("Received shadow reload event.");
+    let etc_db: EtcDb = {
+        let etc_db_ref = shadow_data_watch_rx.borrow_and_update();
+        (*etc_db_ref).clone()
+    };
+    // process etc shadow and send it here.
+    TaskResponse::NotifyShadowChange(etc_db)
+}
+
+async fn handle_unixd_request(
+    request: Option<Result<TaskRequestFrame, io::Error>>,
+    cfg: &UnixdConfig,
+) -> Result<TaskResponse, ()> {
+    match request {
+        Some(Ok(TaskRequestFrame {
+            id,
+            req: TaskRequest::HomeDirectory(info),
+        })) => {
+            debug!("Received task -> HomeDirectory({:?})", info);
+
+            match create_home_directory(
+                &info,
+                cfg.home_prefix.as_ref(),
+                cfg.home_mount_prefix.as_ref(),
+                cfg.use_etc_skel,
+                cfg.selinux,
+            ) {
+                Ok(()) => Ok(TaskResponse::Success(id)),
+                Err(msg) => Ok(TaskResponse::Error(msg)),
+            }
+        }
+        other => {
+            error!("Error -> got un-handled Request Frame {other:?}");
+            Err(())
+        }
+    }
+}
+
 async fn handle_tasks(
     stream: UnixStream,
     ctl_broadcast_rx: &mut broadcast::Receiver<bool>,
@@ -311,66 +350,49 @@ async fn handle_tasks(
 ) {
     let mut reqs = Framed::new(stream, TaskCodec::new());
 
-    debug!("task handler has started ...");
-
     // Immediately trigger that we should reload the shadow files for the new connected handler
     shadow_data_watch_rx.mark_changed();
 
-    loop {
-        tokio::select! {
-            _ = ctl_broadcast_rx.recv() => {
-                break;
-            }
-            request = reqs.next() => {
-                match request {
-                    Some(Ok(TaskRequestFrame {
-                        id,
-                        req: TaskRequest::HomeDirectory(info),
-                    })) => {
-                        debug!("Received task -> HomeDirectory({:?})", info);
-
-                        let resp = match create_home_directory(
-                            &info,
-                            cfg.home_prefix.as_ref(),
-                            cfg.home_mount_prefix.as_ref(),
-                            cfg.use_etc_skel,
-                            cfg.selinux,
-                        ) {
-                            Ok(()) => TaskResponse::Success(id),
-                            Err(msg) => TaskResponse::Error(msg),
-                        };
-
-                        // Now send a result.
-                        if let Err(err) = reqs.send(resp).await {
-                            error!(?err, "Unable to communicate to kanidm unixd");
-                            break;
-                        }
-                        // All good, loop.
-                    }
-                    other => {
-                        error!("Error -> {:?}", other);
-                        break;
-                    }
-                }
-            }
-            Ok(_) = shadow_data_watch_rx.changed() => {
-                debug!("Received shadow reload event.");
-                let etc_db: EtcDb = {
-                    let etc_db_ref = shadow_data_watch_rx.borrow_and_update();
-                    (*etc_db_ref).clone()
-                };
-                // process etc shadow and send it here.
-                let resp = TaskResponse::NotifyShadowChange(etc_db);
-                if let Err(err) = reqs.send(resp).await {
-                    error!(?err, "Unable to communicate to kanidm unixd");
-                    break;
-                }
-                debug!("Shadow reload OK!");
-            }
-        }
+    // Force the initial reload handle
+    if let Err(e) = reqs
+        .send(handle_shadow_reload(shadow_data_watch_rx).await)
+        .await
+    {
+        error!("Unable to handle shadow reload on connect: {:?}", e);
+        return;
     }
 
-    info!("Disconnected from kanidm_unixd ...");
+    debug!("Task handler loop has started ...");
+
+    loop {
+        let msg = tokio::select! {
+            biased; // tell tokio to poll these in order
+            _ = ctl_broadcast_rx.recv() => {
+                // We received a shutdown signal.
+                debug!("Received shutdown signal, breaking task handler loop ...");
+                return
+            }
+            Ok(_) = shadow_data_watch_rx.changed() => {
+               handle_shadow_reload(shadow_data_watch_rx).await
+            }
+            request = reqs.next() => {
+                match handle_unixd_request(request,  cfg).await {
+                    Ok(response) => {
+                       response
+                    }
+                    Err(_) => {
+                        error!("Error handling request, exiting task handler loop ...");
+                        return;
+                    }
+                }
+            }
+        };
+
+        if let Err(e) = reqs.send(msg).await {
+            error!(?e, "Error sending response to kanidm_unixd");
+            return;
+        }
+    }
 }
 
 #[instrument(level = "debug", skip_all)]
@@ -586,7 +608,7 @@ async fn main() -> ExitCode {
                                 Ok(stream) => {
                                     info!("Found kanidm_unixd, waiting for tasks ...");
 
-                                    // Yep! Now let the main handler do it's job.
+                                    // Yep! Now let the main handler do its job.
                                     // If it returns (dc, etc, then we loop and try again).
                                     handle_tasks(stream, &mut d_broadcast_rx, &mut shadow_data_watch_rx, &cfg).await;
                                     continue;
