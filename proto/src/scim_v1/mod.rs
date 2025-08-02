@@ -735,7 +735,7 @@ mod tests {
     #[test]
     fn test_scimfilter_group() {
         let f = scimfilter::parse("(mail eq \"dcba\")");
-        eprintln!("{:?}", f);
+        eprintln!("{f:?}");
         assert!(
             f == Ok(ScimFilter::Equal(
                 AttrPath {
@@ -750,7 +750,7 @@ mod tests {
     #[test]
     fn test_scimfilter_not() {
         let f = scimfilter::parse("not (mail eq \"dcba\")");
-        eprintln!("{:?}", f);
+        eprintln!("{f:?}");
 
         assert!(
             f == Ok(ScimFilter::Not(Box::new(ScimFilter::Equal(
@@ -766,7 +766,7 @@ mod tests {
     #[test]
     fn test_scimfilter_and() {
         let f = scimfilter::parse("mail eq \"dcba\" and name ne \"1234\"");
-        eprintln!("{:?}", f);
+        eprintln!("{f:?}");
 
         assert!(
             f == Ok(ScimFilter::And(
@@ -791,7 +791,7 @@ mod tests {
     #[test]
     fn test_scimfilter_or() {
         let f = scimfilter::parse("mail eq \"dcba\" or name ne \"1234\"");
-        eprintln!("{:?}", f);
+        eprintln!("{f:?}");
 
         assert!(
             f == Ok(ScimFilter::Or(
@@ -816,11 +816,11 @@ mod tests {
     #[test]
     fn test_scimfilter_complex() {
         let f = scimfilter::parse("mail[type eq \"work\"]");
-        eprintln!("-- {:?}", f);
+        eprintln!("-- {f:?}");
         assert!(f.is_ok());
 
         let f = scimfilter::parse("mail[type eq \"work\" and value co \"@example.com\"] or testattr[type eq \"xmpp\" and value co \"@foo.com\"]");
-        eprintln!("{:?}", f);
+        eprintln!("{f:?}");
 
         assert_eq!(
             f,
@@ -859,7 +859,7 @@ mod tests {
     fn test_scimfilter_precedence_1() {
         let f =
             scimfilter::parse("testattr_a pr or testattr_b pr and testattr_c pr or testattr_d pr");
-        eprintln!("{:?}", f);
+        eprintln!("{f:?}");
 
         assert!(
             f == Ok(ScimFilter::Or(
@@ -891,7 +891,7 @@ mod tests {
     fn test_scimfilter_precedence_2() {
         let f =
             scimfilter::parse("testattr_a pr and testattr_b pr or testattr_c pr and testattr_d pr");
-        eprintln!("{:?}", f);
+        eprintln!("{f:?}");
 
         assert!(
             f == Ok(ScimFilter::Or(
@@ -924,7 +924,7 @@ mod tests {
         let f = scimfilter::parse(
             "testattr_a pr and (testattr_b pr or testattr_c pr) and testattr_d pr",
         );
-        eprintln!("{:?}", f);
+        eprintln!("{f:?}");
 
         assert!(
             f == Ok(ScimFilter::And(
@@ -957,7 +957,7 @@ mod tests {
         let f = scimfilter::parse(
             "testattr_a pr and not (testattr_b pr or testattr_c pr) and testattr_d pr",
         );
-        eprintln!("{:?}", f);
+        eprintln!("{f:?}");
 
         assert!(
             f == Ok(ScimFilter::And(
