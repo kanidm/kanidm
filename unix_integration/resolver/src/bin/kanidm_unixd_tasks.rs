@@ -589,7 +589,7 @@ async fn main() -> ExitCode {
 
             let (shadow_data_watch_tx, mut shadow_data_watch_rx) = watch::channel(etc_db);
 
-            let _shadow_task: tokio::task::JoinHandle<()> = tokio::spawn(async move {
+            let _shadow_task = tokio::spawn(async move {
                 shadow_reload_task(
                     shadow_data_watch_tx, shadow_broadcast_rx
                 ).await
