@@ -9,16 +9,14 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
-use std::collections::BTreeSet;
-use std::sync::Arc;
-
-use hashbrown::{HashMap, HashSet};
-
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::{f_eq, FC};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::{SchemaAttribute, SchemaTransaction};
+use hashbrown::{HashMap, HashSet};
+use std::collections::BTreeSet;
+use std::sync::Arc;
 
 pub struct ReferentialIntegrity;
 
@@ -436,15 +434,14 @@ impl ReferentialIntegrity {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_proto::internal::Filter as ProtoFilter;
-
+    use crate::credential::Credential;
     use crate::event::CreateEvent;
     use crate::prelude::*;
     use crate::value::{AuthType, Oauth2Session, OauthClaimMapJoin, Session, SessionState};
-    use time::OffsetDateTime;
-
-    use crate::credential::Credential;
+    use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
     use kanidm_lib_crypto::CryptoPolicy;
+    use kanidm_proto::internal::Filter as ProtoFilter;
+    use time::OffsetDateTime;
 
     const TEST_TESTGROUP_A_UUID: &str = "d2b496bd-8493-47b7-8142-f568b5cf47ee";
     const TEST_TESTGROUP_B_UUID: &str = "8cef42bc-2cac-43e4-96b3-8f54561885ca";
@@ -1324,5 +1321,72 @@ mod tests {
                     .is_none())
             }
         );
+    }
+
+    // =======================================================================
+    // This section tests behaviour of reference *entries* rather than just
+    // referential ID's. The reason this is different is because reference
+    // entries similar to SQL are cascade deleted. That means we need to
+    // handle this case cleanly when we delete entries that their
+    // referencing entries are also deleted. Similar we need to ensure they
+    // are also revived correctly.
+    //
+    // What is tricky here is the case when you delete a reference entry
+    // intentionally, rather than just the parent entry. In this case you
+    // don't want the manually deleted reference entry to be revived.
+    //
+    // Similar we also need to test when we delete an entry, that if we revive
+    // something that references it, that the operation is rejected as the
+    // reference would then be invalid.
+
+    // TODO: Do I need a way to enforce that ref entries must link to certain
+    // classes on their target entry?
+
+    #[qs_test]
+    async fn test_reference_entry_basic(server: &QueryServer) {
+        // Create
+        let curtime = duration_from_epoch_now();
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        let user_uuid = Uuid::new_v4();
+        let ref_uuid = Uuid::new_v4();
+        let cert_data = Box::new(
+            Certificate::from_pem(TEST_X509_CERT_DATA)
+                .expect("Unable to parse test X509 cert data"),
+        );
+
+        let user_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(user_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        );
+
+        let ref_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClientCertificate.to_value()),
+            (Attribute::Uuid, Value::Uuid(ref_uuid)),
+            (Attribute::Refers, Value::Refer(user_uuid)),
+            (
+                Attribute::Certificate,
+                Value::Certificate(cert_data.clone())
+            )
+        );
+
+        assert!(server_txn
+            .internal_create(vec![user_entry, ref_entry])
+            .is_ok());
+
+        // Delete
+        assert!(server_txn.internal_delete_uuid(user_uuid).is_ok());
+
+        // Assert the referenced cert is gone.
+
+        // Revive
+
+        assert!(server_txn.commit().is_ok());
     }
 }
