@@ -336,7 +336,7 @@ async fn handle_unixd_request(
             }
         }
         other => {
-            error!("Error -> {:?}", other);
+            error!("Error -> got un-handled Request Frame {other:?}");
             Err(())
         }
     }
