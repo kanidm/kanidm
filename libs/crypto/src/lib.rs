@@ -257,19 +257,18 @@ impl CryptoPolicy {
             };
 
             if let Some(ubt) = Password::bench_argon2id(params) {
-                debug!("{}µs - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
+                debug!("{}ns - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
                 // Parameter adjustment
                 if ubt < target_time {
+                    let m_mult = target_time
+                        .as_nanos()
+                        .checked_div(ubt.as_nanos())
+                        .unwrap_or(1);
                     if m_cost < ARGON2_MAX_RAM_KIB {
                         // Help narrow in quicker.
-                        let m_adjust = if target_time
-                            .as_nanos()
-                            .checked_div(ubt.as_nanos())
-                            .unwrap_or(1)
-                            >= 2
-                        {
-                            // Very far from target, double m_cost.
-                            m_cost * 2
+                        let m_adjust = if m_mult >= 2 {
+                            // Far away, multiply up
+                            m_cost * u32::try_from(m_mult).unwrap_or(2)
                         } else {
                             // Close! Increase in a small step
                             m_cost + 1024
@@ -282,19 +281,26 @@ impl CryptoPolicy {
                         };
                         continue;
                     } else if t_cost < ARGON2_MAX_T_COST {
-                        // t=2 with m = 32MB is about the same as t=3 m=20MB, so we want to start with ram
-                        // higher on these iterations. About 12MB appears to be one iteration. We use 8MB
-                        // here though, just to give a little window under that for adjustment.
-                        //
-                        // Similar, once we hit t=4 we just need to have max ram.
-                        t_cost += 1;
-                        // Halve the ram cost.
-                        let m_adjust = m_cost
-                            .checked_sub(ARGON2_TCOST_RAM_ITER_KIB)
-                            .unwrap_or(ARGON2_MIN_RAM_KIB);
+                        // Help narrow in quicker.
+                        if m_mult >= 2 {
+                            // Far away, multiply T next
+                            let t_adjust = t_cost * u32::try_from(m_mult).unwrap_or(2);
+                            t_cost = t_adjust.clamp(ARGON2_MIN_T_COST, ARGON2_MAX_T_COST);
+                        } else {
+                            // t=2 with m = 32MB is about the same as t=3 m=20MB, so we want to start with ram
+                            // higher on these iterations. About 12MB appears to be one iteration. We use 8MB
+                            // here though, just to give a little window under that for adjustment.
+                            //
+                            // Similar, once we hit t=4 we just need to have max ram.
+                            t_cost += 1;
+                            // Halve the ram cost.
+                            let m_adjust = m_cost
+                                .checked_sub(ARGON2_TCOST_RAM_ITER_KIB)
+                                .unwrap_or(ARGON2_MIN_RAM_KIB);
 
-                        // Clamp the value
-                        m_cost = m_adjust.clamp(ARGON2_MIN_RAM_KIB, ARGON2_MAX_RAM_KIB);
+                            // Clamp the value
+                            m_cost = m_adjust.clamp(ARGON2_MIN_RAM_KIB, ARGON2_MAX_RAM_KIB);
+                        }
                         continue;
                     } else {
                         // Unable to proceed, parameters are maxed out.
