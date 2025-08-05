@@ -165,7 +165,7 @@ base64urlsafedata = "0.5.2"
 bitflags = "^2.9.1"
 bytes = "^1.9.0"
 cidr = "0.3.1"
-clap = { version = "4.5.41", features = ["derive", "env"] }
+clap = { version = "4.5.42", features = ["derive", "env"] }
 clap_complete = "^4.5.55"
 # Forced by saffron/cron
 chrono = "^0.4.39"
@@ -254,16 +254,16 @@ reqwest = { version = "0.12.20", default-features = false, features = [
     "rustls-tls-native-roots-no-provider",
 ] }
 rusqlite = { version = "0.35.0", features = ["array", "bundled"] }
-rustls = { version = "0.23.29", default-features = false, features = [
+rustls = { version = "0.23.31", default-features = false, features = [
     "std",
     "aws_lc_rs",
 ] }
 
 sd-notify = "^0.4.5"
-selinux = "^0.5.1"
+selinux = "^0.5.3"
 serde = "^1.0.217"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
-serde_json = "^1.0.141"
+serde_json = "^1.0.142"
 serde_urlencoded = "^0.7.1"
 serde_with = "3.13.0"
 sha-crypt = "0.5.0"
@@ -279,10 +279,10 @@ tempfile = "3.20.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.36", features = ["formatting", "local-offset"] }
 
-tokio = "^1.47.0"
+tokio = "^1.47.1"
 tokio-openssl = "^0.6.5"
 tokio-rustls = { version = "0.26.2" }
-tokio-util = "^0.7.13"
+tokio-util = "^0.7.16"
 
 toml = "^0.8.23"
 tracing = { version = "^0.1.41", features = [
