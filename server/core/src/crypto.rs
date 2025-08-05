@@ -17,9 +17,12 @@ use openssl::{asn1, bn, hash, pkey};
 // use sketching::*;
 use crate::config::TlsConfiguration;
 use crypto_glue::{
-    pkcs8::PrivateKeyInfo, rsa::RS256PrivateKey, traits::{PublicKeyParts, DecodeDer, Pkcs1DecodeRsaPrivateKey}, x509::oiddb::rfc5912,
+    ec::EcPrivateKey,
+    pkcs8::PrivateKeyInfo,
+    rsa::RS256PrivateKey,
+    traits::{DecodeDer, Pkcs1DecodeRsaPrivateKey, PublicKeyParts},
+    x509::oiddb::rfc5912,
 };
-use sec1::EcPrivateKey;
 use rustls::{
     pki_types::{pem::PemObject, CertificateDer, CertificateRevocationListDer, PrivateKeyDer},
     server::{ServerConfig, WebPkiClientVerifier},
@@ -104,9 +107,7 @@ pub fn check_privkey_minimums(privkey: &PrivateKeyDer<'_>) -> Result<(), String>
             let priv_key = EcPrivateKey::from_der(sec1_der.secret_sec1_der())
                 .map_err(|_err| "Invalid sec1 der".to_string())?;
 
-            match priv_key.parameters
-                .and_then(|params| params.named_curve())
-            {
+            match priv_key.parameters.and_then(|params| params.named_curve()) {
                 Some(rfc5912::SECP_256_R_1) => {
                     debug!("The EC private key size is: 256 bits, that's OK!");
                     Ok(())

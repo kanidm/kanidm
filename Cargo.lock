@@ -1174,9 +1174,9 @@ dependencies = [
 
 [[package]]
 name = "crypto-glue"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ced4b5f9fc64fbaa14ba7fcb2c95cdc258f985a525f60065e5bb110dfd16021"
+checksum = "433181d8c51b992ede9f4c5dd76bb6794cc3c412bf7b83acaa01502a1d9c423c"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -3757,7 +3757,6 @@ dependencies = [
  "qrcode",
  "regex",
  "rustls",
- "sec1",
  "serde",
  "serde_json",
  "serde_with",

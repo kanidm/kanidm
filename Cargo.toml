@@ -141,9 +141,6 @@ sketching = { path = "./libs/sketching", version = "=1.8.0-dev" }
 
 kanidm-hsm-crypto = { version = "^0.3.4" }
 
-## temporary!!! until crypto-glue updates.
-sec1 = "0.7.3"
-
 anyhow = { version = "1.0.98" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.12.1", features = ["serde", "with-axum"] }
@@ -176,7 +173,7 @@ compact_jwt = "^0.5.3-dev"
 concread = "^0.5.5"
 cron = "0.15.0"
 crossbeam = "0.8.4"
-crypto-glue = "^0.1.8"
+crypto-glue = "^0.1.9"
 csv = "1.3.1"
 dialoguer = "0.11.0"
 dhat = "0.3.3"
