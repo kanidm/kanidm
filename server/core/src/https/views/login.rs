@@ -982,7 +982,7 @@ async fn view_login_step(
                             username_cookie.make_permanent();
                             jar.add(username_cookie)
                         } else {
-                            jar
+                            cookies::destroy(jar, COOKIE_USERNAME, &state)
                         };
 
                         jar = jar.add(bearer_cookie);

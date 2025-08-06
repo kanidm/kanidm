@@ -195,7 +195,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
     ldap_client
         .bind(
-            format!("name={},app={}", TEST_PERSON, APPLICATION_1_NAME),
+            format!("name={TEST_PERSON},app={APPLICATION_1_NAME}"),
             application_1_password_create_1.secret.clone(),
         )
         .await
@@ -204,10 +204,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
     ldap_client
         .bind(
-            format!(
-                "name={},app={},dc=localhost",
-                TEST_PERSON, APPLICATION_1_NAME
-            ),
+            format!("name={TEST_PERSON},app={APPLICATION_1_NAME},dc=localhost"),
             application_1_password_create_2.secret.clone(),
         )
         .await
@@ -216,10 +213,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
     ldap_client
         .bind(
-            format!(
-                "name={},app={},dc=localhost",
-                TEST_PERSON, APPLICATION_2_NAME
-            ),
+            format!("name={TEST_PERSON},app={APPLICATION_2_NAME},dc=localhost"),
             application_2_password_create_1.secret.clone(),
         )
         .await
@@ -230,7 +224,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     // Using application 2 password!!!
     ldap_client
         .bind(
-            format!("name={},app={}", TEST_PERSON, APPLICATION_1_NAME),
+            format!("name={TEST_PERSON},app={APPLICATION_1_NAME},dc=localhost"),
             application_2_password_create_1.secret.clone(),
         )
         .await
@@ -240,7 +234,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     // Using application 2 password!!!
     ldap_client
         .bind(
-            format!("name={},app={}", TEST_PERSON, APPLICATION_2_NAME),
+            format!("name={TEST_PERSON},app={APPLICATION_2_NAME}"),
             application_1_password_create_1.secret.clone(),
         )
         .await
@@ -258,10 +252,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
     ldap_client
         .bind(
-            format!(
-                "name={},app={},dc=localhost",
-                TEST_PERSON, APPLICATION_1_NAME
-            ),
+            format!("name={TEST_PERSON},app={APPLICATION_1_NAME},dc=localhost"),
             application_1_password_create_2.secret.clone(),
         )
         .await
@@ -277,7 +268,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
     ldap_client
         .bind(
-            format!("name={},app={}", TEST_PERSON, APPLICATION_1_NAME),
+            format!("name={TEST_PERSON},app={APPLICATION_1_NAME},dc=localhost"),
             application_1_password_create_1.secret.clone(),
         )
         .await
