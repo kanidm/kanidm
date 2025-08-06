@@ -121,8 +121,6 @@ codegen-units = 256
 
 # Allow ssh keys to have comments with spaces.
 sshkeys = { git = "https://github.com/dnaeon/rust-sshkeys.git", rev = "d736693769b9c4abebad8050fba92271f3c50226" }
-# Allow deferring spans unless they have a child span
-tracing-forest = { git = "https://github.com/Firstyear/tracing-forest.git", rev = "a04c79e049ee31fcc6965091181a5e427196db9b" }
 
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core", version = "=1.7.0" }
@@ -293,7 +291,7 @@ tracing = { version = "^0.1.41", features = [
     "release_max_level_debug",
 ] }
 tracing-subscriber = { version = "^0.3.19", features = ["env-filter"] }
-tracing-forest = { version = "^0.1.6", features = ["defer"] }
+tracing-forest = { version = "^0.2.0", features = ["defer"] }
 
 url = "^2.5.2"
 urlencoding = "2.1.3"
