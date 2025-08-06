@@ -180,7 +180,7 @@ pub fn setup_tls(
 
     let client_cert_verifier = if let Some(client_ca) = tls_param.client_ca.as_ref() {
         info!(
-            "Loading client ca certificates from {}",
+            "Loading client CA certificates from {}",
             client_ca.display()
         );
 
