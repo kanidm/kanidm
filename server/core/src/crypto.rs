@@ -152,18 +152,26 @@ pub fn setup_tls(
         return Ok(None);
     };
 
-    let cert_iter = CertificateDer::pem_file_iter(&tls_param.chain)
-        .map_err(|err| std::io::Error::other(format!("Failed to create TLS listener: {err:?}")))?;
+    let cert_iter = CertificateDer::pem_file_iter(&tls_param.chain).map_err(|err| {
+        std::io::Error::other(format!(
+            "Failed to create TLS listener. The Certificate Chain could not be parsed: {err:?}"
+        ))
+    })?;
 
     let cert_chain_der = cert_iter
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|err| std::io::Error::other(format!("Failed to create TLS listener: {err:?}")))?;
+        .map_err(|err| std::io::Error::other(format!("Failed to create TLS listener. The Certificate Chain could not be transformed from PEM to DER: {err:?}")))?;
 
-    let private_key_der = PrivateKeyDer::from_pem_file(&tls_param.key)
-        .map_err(|err| std::io::Error::other(format!("Failed to create TLS listener: {err:?}")))?;
+    let private_key_der = PrivateKeyDer::from_pem_file(&tls_param.key).map_err(|err| {
+        std::io::Error::other(format!(
+            "Failed to create TLS listener. The Private Key could not be parsed {err:?}"
+        ))
+    })?;
 
     check_privkey_minimums(&private_key_der).map_err(|err| {
-        std::io::Error::other(format!("Private key minimums were not met: {err:?}"))
+        std::io::Error::other(format!(
+            "Private Key does not meet cryptographic minimum standards: {err:?}"
+        ))
     })?;
 
     // Configure the rustls cryptoprovider. We currently use aws-lc-rc as the
@@ -171,11 +179,14 @@ pub fn setup_tls(
     let provider: Arc<_> = rustls::crypto::aws_lc_rs::default_provider().into();
 
     let client_cert_verifier = if let Some(client_ca) = tls_param.client_ca.as_ref() {
-        info!("Loading client certificates from {}", client_ca.display());
+        info!(
+            "Loading client ca certificates from {}",
+            client_ca.display()
+        );
 
         let read_dir = fs::read_dir(client_ca).map_err(|err| {
             std::io::Error::other(format!(
-                "Failed to create TLS listener while loading client ca from {}: {:?}",
+                "Failed to create TLS listener. An error occured while loading a client ca from {}: {:?}",
                 client_ca.display(),
                 err
             ))
@@ -194,11 +205,11 @@ pub fn setup_tls(
                 .unwrap_or_default()
         }) {
             let cert_pem = CertificateDer::from_pem_file(cert_dir_ent.path()).map_err(|err| {
-                std::io::Error::other(format!("Failed to create TLS listener: {err:?}"))
+                std::io::Error::other(format!("Failed to create TLS listener. A Client CA Certificate could not be parsed: {} {err:?}", cert_dir_ent.path().display()))
             })?;
 
             client_cert_roots.add(cert_pem).map_err(|err| {
-                std::io::Error::other(format!("Failed to create TLS listener: {err:?}"))
+                std::io::Error::other(format!("Failed to create TLS listener. A Client CA Certificate failed to be added to the trusted store: {} {err:?}", cert_dir_ent.path().display()))
             })?;
         }
 
@@ -214,7 +225,7 @@ pub fn setup_tls(
         }) {
             let cert_pem = CertificateRevocationListDer::from_pem_file(cert_dir_ent.path())
                 .map_err(|err| {
-                    std::io::Error::other(format!("Failed to create TLS listener: {err:?}"))
+                    std::io::Error::other(format!("Failed to create TLS listener. A Certificate Revocation List could not be parsed: {} {err:?}", cert_dir_ent.path().display()))
                 })?;
 
             client_cert_crls.push(cert_pem);
@@ -225,7 +236,7 @@ pub fn setup_tls(
             .allow_unauthenticated()
             .build()
             .map_err(|err| {
-                std::io::Error::other(format!("Failed to create TLS listener: {err:?}"))
+                std::io::Error::other(format!("Failed to create TLS listener. The Client Certificate Verifier could not be built: {err:?}"))
             })?
     } else {
         WebPkiClientVerifier::no_client_auth()
@@ -238,7 +249,7 @@ pub fn setup_tls(
                 .with_client_cert_verifier(client_cert_verifier)
                 .with_single_cert(cert_chain_der, private_key_der)
         })
-        .map_err(|err| std::io::Error::other(format!("Failed to create TLS listener: {err:?}")))?;
+        .map_err(|err| std::io::Error::other(format!("Failed to create TLS listener. The TLS Server Configuration could not be built: {err:?}")))?;
 
     let tls_acceptor = TlsAcceptor::from(Arc::new(tls_server_config));
 
