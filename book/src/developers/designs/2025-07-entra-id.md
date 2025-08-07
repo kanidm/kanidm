@@ -27,6 +27,8 @@ authentication options for users to EntraID or on prem ADDC.
 However, due to the lack of TLS CA pinning in Windows this means that an initial proof of concept could be made by MITM
 techniques to redirect clients to our implementation.
 
+Were Microsoft to begin to enforce TLS CA pinning in Windows, this would completely end all further efforts.
+
 > NOTE: Microsoft's released Linux Intune clients do perform TLS CA pinning however.
 
 ## Pros
@@ -34,7 +36,7 @@ techniques to redirect clients to our implementation.
 ### Improved collaboration between Himmeblau and Kanidm
 
 The Himmelblau project uses a lot of Kanidm source code. By having an Entra ID compatible server, we would be able to
-merge and collabore more to "shrink the gap" between our projects. This would also give Himmelblau improved access to
+merge and collaborate more to "shrink the gap" between our projects. This would also give Himmelblau improved access to
 client testing since they would be able to test against a provider.
 
 ### Kanidm gains client machine support
@@ -69,7 +71,7 @@ security of the project as we can influence the direction in a way that prioriti
 
 ### Does not address the underlying issues
 
-To me, this is the most important risk present.
+To me, this is the most significant risk.
 
 The underlying issue is that making
 [3rd party authentication modules](https://learn.microsoft.com/en-us/windows-server/security/windows-authentication/security-support-provider-interface-architecture)
@@ -101,6 +103,10 @@ what Microsoft do to the letter. This could lead to security issues (as above), 
 specification and server side behaviour at anytime in a way that can break authentication. We would be playing "forever
 catch up", with potentially no specification, and no input to the development of Entra ID and our needs.
 
+Evidence already shows that even with a specification, it has been extremely challenging for Samba 4 ADDC to keep up
+with MS ADDC. Without a specification this becomes even more difficult. Since there is no requirement for Entra ID
+to maintain a specification they can also choose to move faster than MS ADDC does.
+
 A suggestion is that we can extend the protocols with more secure techniques for our own use cases in future, but we
 would still need to support the "minimum" viable that Windows does to maintain interop.
 
@@ -119,6 +125,8 @@ There is a not-insignificant risk that the regulatory pressure may not eventuate
 able to authenticate to 3rd party EntraID services. This would leave us with an interface that we would either need to
 maintain for future hope of that pressure to exist. In previous cases, regulatory pressure has taken years to manifest
 meaning that this is a project for "the long haul".
+
+This means that there are many years within which Entra ID can change before that pressure yields results.
 
 Additionally, there are ways to deflect pressure, such as Microsoft pointing at ADDC and saying "well you can already,
 self host so we don't need another open spec here".
@@ -163,13 +171,17 @@ complete control of authentication policy may not be able to exert that via a mi
 This would be where the EntraID apis are natively integrated to Kanidm. This would still be somewhat modular, as the
 Kanidm server is designed to be layered, and EntraID would not require access to the deeper parts of the server. This
 gives EntraID compatability the most chance to succeed, because then we can adapt to the needs of EntraID and expose
-high quality interfaces for the project. However this also brings the most maintenance burden. Worst case, EntraID
-support could be removed provided we are disciplined in how the feature is added.
+high quality interfaces for the project. However this also brings the most maintenance burden and the highest
+risks to the Kanidm project.
 
 ### Make an SSP
 
 Make our own SSP, even though it's "black box". Microsoft are not in support of this and this option poses many
 challenges but it means that any other IDP could then use our SSP framework to integration authentication with Windows.
+
+Making an SSP has the benefit that pursuing this may allow pressure on Microsoft to open up the SSP framework rather
+than trying to make Microsoft open the Entra ID protocol. Given the existing precedents of client side Windows components
+requiring documentation, this may be a better route to follow.
 
 ### Design a Machine Protocol
 
