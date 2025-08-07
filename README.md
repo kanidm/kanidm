@@ -78,7 +78,7 @@ server with a web administration portal. Both LLDAP and Kanidm use the
 
 The primary advantage of Kanidm over LLDAP is its broader built-in feature set, including native support for OAuth2 and
 OIDC. In contrast, LLDAP requires integration with an external portal like Keycloak to provide these features. However,
-LLDAP’s simplicity—offering fewer features—can make it easier to deploy and manage for certain use cases.
+LLDAP’s simplicity — offering fewer features — can make it easier to deploy and manage for certain use cases.
 
 While LLDAP provides a simple Web UI as the main user management interface, Kanidm currently offers administrative
 functionality primarily via its CLI, with its Web UI designed more for user interactions than for administration.
