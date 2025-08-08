@@ -114,7 +114,7 @@ impl KeyProviders {
         }
     }
 
-    pub fn write(&self) -> KeyProvidersWriteTransaction {
+    pub fn write(&self) -> KeyProvidersWriteTransaction<'_> {
         KeyProvidersWriteTransaction {
             inner: self.inner.write(),
         }
@@ -126,7 +126,7 @@ pub trait KeyProvidersTransaction {
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider>;
 
     #[cfg(test)]
-    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef>;
+    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef<'_>>;
 
     fn get_key_object_handle(&self, key_object_uuid: Uuid) -> Option<Arc<KeyObject>>;
 }
@@ -146,7 +146,7 @@ impl KeyProvidersTransaction for KeyProvidersReadTransaction {
     }
 
     #[cfg(test)]
-    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef> {
+    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef<'_>> {
         self.inner
             .deref()
             .objects
@@ -174,7 +174,7 @@ impl KeyProvidersTransaction for KeyProvidersWriteTransaction<'_> {
     }
 
     #[cfg(test)]
-    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef> {
+    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef<'_>> {
         self.inner
             .deref()
             .objects

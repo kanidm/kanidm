@@ -1225,7 +1225,7 @@ impl AccessControls {
         self.acp_resolve_filter_cache.try_quiesce();
     }
 
-    pub fn read(&self) -> AccessControlsReadTransaction {
+    pub fn read(&self) -> AccessControlsReadTransaction<'_> {
         AccessControlsReadTransaction {
             inner: self.inner.read(),
             // acp_related_search_cache: Cell::new(self.acp_related_search_cache.read()),
@@ -1233,7 +1233,7 @@ impl AccessControls {
         }
     }
 
-    pub fn write(&self) -> AccessControlsWriteTransaction {
+    pub fn write(&self) -> AccessControlsWriteTransaction<'_> {
         AccessControlsWriteTransaction {
             inner: self.inner.write(),
             // acp_related_search_cache_wr: self.acp_related_search_cache.write(),
