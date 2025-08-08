@@ -114,7 +114,7 @@ impl LdapApplications {
         }
     }
 
-    pub fn write(&self) -> LdapApplicationsWriteTransaction {
+    pub fn write(&self) -> LdapApplicationsWriteTransaction<'_> {
         LdapApplicationsWriteTransaction {
             inner: self.inner.write(),
         }

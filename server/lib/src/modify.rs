@@ -265,7 +265,7 @@ impl ModifyList<ModifyValid> {
         }
     }
 
-    pub fn iter(&self) -> slice::Iter<Modify> {
+    pub fn iter(&self) -> slice::Iter<'_, Modify> {
         self.mods.iter()
     }
 }
