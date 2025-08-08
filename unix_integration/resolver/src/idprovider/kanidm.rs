@@ -703,7 +703,7 @@ impl IdProvider for KanidmProvider {
 
         if inner.pam_allow_groups.is_empty() {
             // can't allow anything if the group list is zero...
-            warn!("Cannot authenticate users, no allowed groups in configuration!");
+            warn!("NO USERS CAN LOGIN TO THIS SYSTEM! There are no `pam_allowed_login_groups` in configuration!");
             Ok(Some(false))
         } else {
             let user_set: BTreeSet<_> = token
@@ -719,6 +719,10 @@ impl IdProvider for KanidmProvider {
             let intersection_count = user_set.intersection(&inner.pam_allow_groups).count();
             debug!("Number of intersecting groups: {}", intersection_count);
             debug!("User token is valid: {}", token.valid);
+
+            if intersection_count == 0 && token.valid {
+                warn!("The user {} authenticated successfully but is NOT a member of a group defined in `pam_allowed_login_groups`. They have been denied access to this system.", token.spn);
+            }
 
             Ok(Some(intersection_count > 0 && token.valid))
         }
