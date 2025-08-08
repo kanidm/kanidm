@@ -5,7 +5,7 @@ use axum::{
     response::Response,
 };
 
-const HSTS_HEADER: &str = "max-age=86400";
+const HSTS_HEADER: &str = "max-age=63072001"; // 2 years + 1 second
 
 pub async fn strict_transport_security_layer(request: Request<Body>, next: Next) -> Response {
     // wait for the middleware to come back
