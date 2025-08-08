@@ -144,9 +144,10 @@ version = '2'
 [kanidm]
 
 # Defines a set of POSIX groups where membership of any of these groups
-# will be allowed to login via PAM. All POSIX users and groups can be
-# resolved by NSS regardless of PAM login status. You may specify a
-# group's name, SPN or UUID
+# will be authorised to login via PAM. If you are NOT a member of any of
+# these groups you will NOT be able to login.
+# All POSIX users and groups can be resolved by NSS regardless of PAM
+# authorisation status. You may specify a group's name, SPN or UUID
 #
 # Default: empty set (no access allowed)
 
