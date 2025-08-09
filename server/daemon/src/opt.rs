@@ -171,7 +171,9 @@ impl KanidmdParser {
             KanidmdOpt::Server(ref c) => c.config_path.clone(),
             KanidmdOpt::ConfigTest(ref c) => c.config_path.clone(),
             KanidmdOpt::CertGenerate(ref c) => c.config_path.clone(),
-            KanidmdOpt::RecoverAccount { ref commonopts, .. } => commonopts.config_path.clone(),
+            KanidmdOpt::RecoverAccount { ref commonopts, .. } |
+            KanidmdOpt::DisableAccount { ref commonopts, .. }
+                => commonopts.config_path.clone(),
             KanidmdOpt::ShowReplicationCertificate { ref commonopts, .. } => {
                 commonopts.config_path.clone()
             }
@@ -235,6 +237,15 @@ enum KanidmdOpt {
     RecoverAccount {
         #[clap(value_parser)]
         /// The account name to recover credentials for.
+        name: String,
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    #[clap(name = "disable-account")]
+    /// Disable an account so that it can not be used. This can be reset with `recover-account`.
+    DisableAccount {
+        #[clap(value_parser)]
+        /// The account name to disable.
         name: String,
         #[clap(flatten)]
         commonopts: CommonOpt,
