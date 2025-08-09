@@ -36,6 +36,7 @@ filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
 haproxy-protocol = { workspace = true, features = ["tokio"] }
+hashbrown = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
 kanidm_proto = { workspace = true }
@@ -72,6 +73,7 @@ tower-http = { version = "0.6.6", features = [
 ] }
 tracing = { workspace = true, features = ["attributes"] }
 url = { workspace = true, features = ["serde"] }
+nix = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 utoipa = { workspace = true, features = [
     "axum_extras",

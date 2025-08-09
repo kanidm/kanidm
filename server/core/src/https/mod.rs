@@ -34,23 +34,23 @@ use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
 use extractors::ConnectionAddress;
 use futures::pin_mut;
 use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
+use hashbrown::HashMap;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
+use nix::sys::socket::{AddressFamily, SockaddrLike, SockaddrStorage};
 use serde::de::DeserializeOwned;
 use sketching::*;
 use core::convert::{From, Into};
 use std::fmt::Write;
 use std::io::ErrorKind;
-use std::net::Ipv6Addr;
+use std::os::fd::FromRawFd;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::{
-    net::{IpAddr, SocketAddr},
-    str::FromStr,
-};
+use std::net::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
+use std::str::FromStr;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     net::{TcpListener, TcpStream, UnixListener, UnixStream},
@@ -327,16 +327,21 @@ pub async fn create_https_server(
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<ClientConnInfo>();
 
+    let mut provided_listeners = ProvidedListeners::from_env()?;
+
     if config.address.starts_with("/") {
         info!("Starting the web server...");
 
         let path = Path::new(&config.address);
 
-        let listener = match UnixListener::bind(&path) {
-            Ok(l) => l,
-            Err(err) => {
-                error!(?err, "Failed to bind unix listener");
-                return Err(());
+        let listener = match provided_listeners.unix(path) {
+            Some(listener) => listener,
+            None => match UnixListener::bind(path) {
+                Ok(l) => l,
+                Err(err) => {
+                    error!(?err, "Failed to bind unix listener");
+                    return Err(());
+                }
             }
         };
 
@@ -351,11 +356,14 @@ pub async fn create_https_server(
 
         info!("Starting the web server...");
 
-        let listener = match TcpListener::bind(&addr).await {
-            Ok(l) => l,
-            Err(err) => {
-                error!(?err, "Failed to bind tcp listener");
-                return Err(());
+        let listener = match provided_listeners.tcp(&addr) {
+            Some(listener) => listener,
+            None => match TcpListener::bind(&addr).await {
+                Ok(l) => l,
+                Err(err) => {
+                    error!(?err, "Failed to bind tcp listener");
+                    return Err(());
+                }
             }
         };
 
@@ -376,6 +384,108 @@ pub async fn create_https_server(
                 trusted_proxy_v2_ips,
             ))),
         }
+    }
+}
+
+pub struct ProvidedListeners {
+    tcp: HashMap<SocketAddr, TcpListener>,
+    unix: HashMap<PathBuf, UnixListener>,
+}
+
+impl ProvidedListeners {
+    pub fn from_env() -> Result<ProvidedListeners, ()> {
+        let Some(listen_fds) = std::env::var("LISTEN_FDS").ok() else {
+            return Ok(ProvidedListeners {
+                tcp: HashMap::new(),
+                unix: HashMap::new(),
+            });
+        };
+
+        let listen_fds = listen_fds.parse().map_err(|err| {
+            error!(?err, "Failed to parse LISTEN_FDS");
+        })?;
+
+        let mut provided_listeners = ProvidedListeners {
+            tcp: HashMap::with_capacity(listen_fds),
+            unix: HashMap::with_capacity(listen_fds),
+        };
+
+        for index in 0..listen_fds {
+            let raw_fd = (index + 3) as i32;
+            let socket_address: SockaddrStorage = nix::sys::socket::getsockname(raw_fd).map_err(|err| {
+                error!(?err, "Failed to get socket address of fd listener {raw_fd}");
+            })?;
+
+            let Some(family) = socket_address.family() else { continue; };
+
+            match family {
+                AddressFamily::Inet | AddressFamily::Inet6 => {
+                    let address: Option<SocketAddr> = match family {
+                        AddressFamily::Inet => socket_address.as_sockaddr_in()
+                            .map(|address| address.to_owned().into()),
+                        AddressFamily::Inet6 => socket_address.as_sockaddr_in6()
+                            .map(|address| address.to_owned().into()),
+                        _ => None
+                    };
+
+                    let Some(address) = address else { continue; };
+
+                    let address = Self::normalize_ip_any(&address);
+                    let listener = unsafe { std::net::TcpListener::from_raw_fd(raw_fd) };
+
+                    listener.set_nonblocking(true).map_err(|err| {
+                        error!(?err, "Failed to set tcp listener to non blocking for fd {raw_fd}");
+                    })?;
+
+                    let listener = TcpListener::from_std(listener).map_err(|err| {
+                        error!(?err, "Failed to create tcp listener from fd {raw_fd}");
+                    })?;
+
+                    provided_listeners.tcp.insert(address, listener);
+                },
+                AddressFamily::Unix => {
+                    let Some(address) = socket_address.as_unix_addr() else { continue; };
+                    let Some(path) = address.path() else { continue; };
+                    let path = path.to_path_buf();
+                    let listener = unsafe { std::os::unix::net::UnixListener::from_raw_fd(raw_fd) };
+
+                    listener.set_nonblocking(true).map_err(|err| {
+                        error!(?err, "Failed to set unix listener to non blocking for fd {raw_fd}");
+                    })?;
+
+                    let listener = UnixListener::from_std(listener).map_err(|err| {
+                        error!(?err, "Failed to create unix listener from fd {raw_fd}");
+                    })?;
+
+                    provided_listeners.unix.insert(path, listener);
+                },
+                _ => continue,
+            }
+        }
+
+        Ok(provided_listeners)
+    }
+
+    pub fn normalize_ip_any(address: &SocketAddr) -> SocketAddr {
+        const IN6ADDR_ANY: Ipv6Addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
+        const INADDR_ANY: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
+
+        match address {
+            SocketAddr::V6(_) => *address,
+            SocketAddr::V4(v4address) => if *v4address.ip() == INADDR_ANY {
+                SocketAddr::new(IpAddr::V6(IN6ADDR_ANY), v4address.port())
+            } else {
+                *address
+            },
+        }
+    }
+
+    pub fn tcp(&mut self, address: &SocketAddr) -> Option<TcpListener> {
+        self.tcp.remove(&Self::normalize_ip_any(address))
+    }
+
+    pub fn unix(&mut self, path: &Path) -> Option<UnixListener> {
+        self.unix.remove(path)
     }
 }
 

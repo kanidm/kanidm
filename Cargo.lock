@@ -340,7 +340,7 @@ dependencies = [
  "libc",
  "libudev",
  "log",
- "memoffset",
+ "memoffset 0.8.0",
  "openssl",
  "openssl-sys",
  "rand 0.8.5",
@@ -3742,6 +3742,7 @@ dependencies = [
  "futures",
  "futures-util",
  "haproxy-protocol",
+ "hashbrown 0.15.4",
  "hyper 1.6.0",
  "hyper-util",
  "kanidm_build_profiles",
@@ -3752,6 +3753,7 @@ dependencies = [
  "kanidmd_lib",
  "ldap3_proto",
  "libc",
+ "nix",
  "openssl",
  "opentelemetry",
  "qrcode",
@@ -4259,6 +4261,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "memoffset"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
 name = "mimalloc"
 version = "0.1.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4360,6 +4371,7 @@ dependencies = [
  "cfg-if",
  "cfg_aliases",
  "libc",
+ "memoffset 0.9.1",
 ]
 
 [[package]]
