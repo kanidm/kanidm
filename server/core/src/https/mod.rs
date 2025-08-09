@@ -31,6 +31,7 @@ use axum::{
 use axum_extra::extract::cookie::CookieJar;
 use cidr::IpCidr;
 use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
+use extractors::ConnectionAddress;
 use futures::pin_mut;
 use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
 use hyper::body::Incoming;
@@ -40,9 +41,11 @@ use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
 use serde::de::DeserializeOwned;
 use sketching::*;
+use core::convert::{From, Into};
 use std::fmt::Write;
 use std::io::ErrorKind;
-use std::path::PathBuf;
+use std::net::Ipv6Addr;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{
     net::{IpAddr, SocketAddr},
@@ -50,7 +53,7 @@ use std::{
 };
 use tokio::{
     io::{AsyncRead, AsyncWrite},
-    net::{TcpListener, TcpStream},
+    net::{TcpListener, TcpStream, UnixListener, UnixStream},
     sync::broadcast,
     sync::mpsc,
     task,
@@ -324,39 +327,55 @@ pub async fn create_https_server(
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<ClientConnInfo>();
 
-    let addr = SocketAddr::from_str(&config.address).map_err(|err| {
-        error!(
-            "Failed to parse address ({:?}) from config: {:?}",
-            config.address, err
-        );
-    })?;
+    if config.address.starts_with("/") {
+        info!("Starting the web server...");
 
-    info!("Starting the web server...");
+        let path = Path::new(&config.address);
 
-    let listener = match TcpListener::bind(addr).await {
-        Ok(l) => l,
-        Err(err) => {
-            error!(?err, "Failed to bind tcp listener");
-            return Err(());
+        let listener = match UnixListener::bind(&path) {
+            Ok(l) => l,
+            Err(err) => {
+                error!(?err, "Failed to bind unix listener");
+                return Err(());
+            }
+        };
+
+        Ok(task::spawn(server_unix_loop(listener, app, rx)))
+    } else {
+        let addr = SocketAddr::from_str(&config.address).map_err(|err| {
+            error!(
+                "Failed to parse address ({:?}) from config: {:?}",
+                config.address, err
+            );
+        })?;
+
+        info!("Starting the web server...");
+
+        let listener = match TcpListener::bind(&addr).await {
+            Ok(l) => l,
+            Err(err) => {
+                error!(?err, "Failed to bind tcp listener");
+                return Err(());
+            }
+        };
+
+        match maybe_tls_acceptor {
+            Some(tls_acceptor) => Ok(task::spawn(server_tls_loop(
+                tls_acceptor,
+                listener,
+                app,
+                rx,
+                server_message_tx,
+                tls_acceptor_reload_rx,
+                trusted_proxy_v2_ips,
+            ))),
+            None => Ok(task::spawn(server_plaintext_loop_tcp(
+                listener,
+                app,
+                rx,
+                trusted_proxy_v2_ips,
+            ))),
         }
-    };
-
-    match maybe_tls_acceptor {
-        Some(tls_acceptor) => Ok(task::spawn(server_tls_loop(
-            tls_acceptor,
-            listener,
-            app,
-            rx,
-            server_message_tx,
-            tls_acceptor_reload_rx,
-            trusted_proxy_v2_ips,
-        ))),
-        None => Ok(task::spawn(server_plaintext_loop(
-            listener,
-            app,
-            rx,
-            trusted_proxy_v2_ips,
-        ))),
     }
 }
 
@@ -404,7 +423,39 @@ async fn server_tls_loop(
     info!("Stopped {}", super::TaskName::HttpsServer);
 }
 
-async fn server_plaintext_loop(
+async fn server_unix_loop(
+    listener: UnixListener,
+    app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
+    mut rx: broadcast::Receiver<CoreAction>,
+) {
+    pin_mut!(listener);
+
+    loop {
+        tokio::select! {
+            Ok(action) = rx.recv() => {
+                match action {
+                    CoreAction::Shutdown => break,
+                }
+            }
+            accept = listener.accept() => {
+                match accept {
+                    Ok((stream, _)) => {
+                        let app = app.clone();
+                        task::spawn(handle_unix_conn(stream, app));
+                    }
+                    Err(err) => {
+                        error!("Web server exited with {:?}", err);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    info!("Stopped {}", super::TaskName::HttpsServer);
+}
+
+async fn server_plaintext_loop_tcp(
     listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     mut rx: broadcast::Receiver<CoreAction>,
@@ -423,7 +474,7 @@ async fn server_plaintext_loop(
                 match accept {
                     Ok((stream, addr)) => {
                         let app = app.clone();
-                        task::spawn(handle_conn(stream, app, addr, trusted_proxy_v2_ips.clone()));
+                        task::spawn(handle_tcp_conn(stream, app, addr, trusted_proxy_v2_ips.clone()));
                     }
                     Err(err) => {
                         error!("Web server exited with {:?}", err);
@@ -438,17 +489,37 @@ async fn server_plaintext_loop(
 }
 
 /// This handles an individual connection.
-pub(crate) async fn handle_conn(
+pub(crate) async fn handle_tcp_conn(
     stream: TcpStream,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     connection_addr: SocketAddr,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) -> Result<(), std::io::Error> {
     let (stream, client_ip_addr) =
-        process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
+        process_client_addr(stream, ConnectionAddress::Tcp(connection_addr), trusted_proxy_v2_ips).await?;
 
     let client_conn_info = ClientConnInfo {
-        connection_addr,
+        connection_addr: ConnectionAddress::Tcp(connection_addr),
+        client_ip_addr,
+        client_cert: None,
+    };
+
+    // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+    // `TokioIo` converts between them.
+    let stream = TokioIo::new(stream);
+
+    process_client_hyper(stream, app, client_conn_info).await
+}
+
+/// This handles an individual connection.
+pub(crate) async fn handle_unix_conn(
+    stream: UnixStream,
+    app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
+) -> Result<(), std::io::Error> {
+    let (stream, client_ip_addr) = process_client_addr(stream, ConnectionAddress::Unix, None).await?;
+
+    let client_conn_info = ClientConnInfo {
+        connection_addr: ConnectionAddress::Unix,
         client_ip_addr,
         client_cert: None,
     };
@@ -469,7 +540,7 @@ pub(crate) async fn handle_tls_conn(
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) -> Result<(), std::io::Error> {
     let (stream, client_ip_addr) =
-        process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
+        process_client_addr(stream, ConnectionAddress::Tcp(connection_addr), trusted_proxy_v2_ips).await?;
 
     let tls_stream = acceptor.accept(stream).await.map_err(|err| {
         error!(?err, "Failed to create TLS stream");
@@ -509,7 +580,7 @@ pub(crate) async fn handle_tls_conn(
     };
 
     let client_conn_info = ClientConnInfo {
-        connection_addr,
+        connection_addr: ConnectionAddress::Tcp(connection_addr),
         client_ip_addr,
         client_cert,
     };
@@ -521,18 +592,24 @@ pub(crate) async fn handle_tls_conn(
     process_client_hyper(stream, app, client_conn_info).await
 }
 
-async fn process_client_addr(
-    stream: TcpStream,
-    connection_addr: SocketAddr,
+async fn process_client_addr<S>(
+    stream: S,
+    connection_addr: ConnectionAddress,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
-) -> Result<(TcpStream, IpAddr), std::io::Error> {
-    let enable_proxy_v2_hdr = trusted_proxy_v2_ips
-        .map(|trusted| {
-            trusted
-                .iter()
-                .any(|ip_cidr| ip_cidr.contains(&connection_addr.ip()))
-        })
-        .unwrap_or_default();
+) -> Result<(S, IpAddr), std::io::Error>
+where
+    S: tokio::io::AsyncReadExt + std::marker::Unpin,
+{
+     let enable_proxy_v2_hdr = match connection_addr {
+        ConnectionAddress::Unix => false,
+        ConnectionAddress::Tcp(connection_addr) => trusted_proxy_v2_ips
+            .map(|trusted| {
+                trusted
+                    .iter()
+                    .any(|ip_cidr| ip_cidr.contains(&connection_addr.ip()))
+            })
+            .unwrap_or_default()
+    };
 
     let (stream, client_addr) = if enable_proxy_v2_hdr {
         match ProxyHdrV2::parse_from_read(stream).await {
@@ -550,7 +627,7 @@ async fn process_client_addr(
                     }
                 };
 
-                (stream, remote_socket_addr)
+                (stream, remote_socket_addr.ip())
             }
             Err(err) => {
                 error!(?connection_addr, ?err, "Unable to process proxy v2 header");
@@ -558,10 +635,15 @@ async fn process_client_addr(
             }
         }
     } else {
-        (stream, connection_addr)
+        (stream, match connection_addr {
+            // NOTE: To simply codepaths, we simply use IPv6 Localhost as the client ip
+            //       for unix connections here.
+            ConnectionAddress::Unix => IpAddr::V6(Ipv6Addr::LOCALHOST),
+            ConnectionAddress::Tcp(address) => address.ip(),
+        })
     };
 
-    Ok((stream, client_addr.ip()))
+    Ok((stream, client_addr))
 }
 
 async fn process_client_hyper<T>(

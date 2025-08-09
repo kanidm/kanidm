@@ -1,5 +1,6 @@
 use crate::https::extractors::ClientConnInfo;
 use crate::https::ServerState;
+use super::extractors::ConnectionAddress;
 use axum::{
     body::Body,
     extract::{connect_info::ConnectInfo, State},
@@ -121,13 +122,14 @@ async fn ip_address_middleware_inner(
             )
         })?;
 
-    let connection_ip_addr = connection_addr.ip();
-
-    let trust_x_forward_for = state
-        .trust_x_forward_for_ips
-        .as_ref()
-        .map(|range| range.contains(&connection_ip_addr))
-        .unwrap_or_default();
+    let trust_x_forward_for = match connection_addr {
+        ConnectionAddress::Unix => true,
+        ConnectionAddress::Tcp(connection_addr) => state
+            .trust_x_forward_for_ips
+            .as_ref()
+            .map(|range| range.contains(&connection_addr.ip()))
+            .unwrap_or_default()
+    };
 
     let client_ip_addr = if trust_x_forward_for {
         if let Some(x_forward_for) = request.headers().get(X_FORWARDED_FOR_HEADER) {

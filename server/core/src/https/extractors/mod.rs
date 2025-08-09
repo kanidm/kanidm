@@ -10,6 +10,7 @@ use kanidm_proto::internal::COOKIE_BEARER_TOKEN;
 use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
+use std::fmt;
 
 // Re-export
 pub use kanidmd_lib::idm::server::DomainInfoRead;
@@ -109,11 +110,26 @@ impl FromRequestParts<ServerState> for DomainInfo {
 }
 
 #[derive(Debug, Clone)]
+pub enum ConnectionAddress {
+    Unix,
+    Tcp(SocketAddr)
+}
+
+impl fmt::Display for ConnectionAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ConnectionAddress::Unix => write!(f, "unix://"),
+            ConnectionAddress::Tcp(socket_address) => write!(f, "tcp://{socket_address}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ClientConnInfo {
     /// This is the address that is *connected* to Kanidm right now
     /// for this operation.
     #[allow(dead_code)]
-    pub connection_addr: SocketAddr,
+    pub connection_addr: ConnectionAddress,
     /// This is the client address as reported by a remote IP source
     /// such as x-forward-for or the PROXY protocol header
     pub client_ip_addr: IpAddr,
@@ -132,8 +148,8 @@ impl Connected<ClientConnInfo> for ClientConnInfo {
 impl Connected<SocketAddr> for ClientConnInfo {
     fn connect_info(connection_addr: SocketAddr) -> Self {
         ClientConnInfo {
+            connection_addr: ConnectionAddress::Tcp(connection_addr),
             client_ip_addr: connection_addr.ip(),
-            connection_addr,
             client_cert: None,
         }
     }
