@@ -87,6 +87,7 @@ impl KanidmdOpt {
             | KanidmdOpt::RenewReplicationCertificate { commonopts }
             | KanidmdOpt::RefreshReplicationConsumer { commonopts, .. } => commonopts,
             KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
+            KanidmdOpt::DisableAccount { commonopts, .. } => commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
             } => &dopt.commonopts,
@@ -471,6 +472,7 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
         | KanidmdOpt::RenewReplicationCertificate { .. }
         | KanidmdOpt::RefreshReplicationConsumer { .. }
         | KanidmdOpt::RecoverAccount { .. }
+        | KanidmdOpt::DisableAccount { .. }
         | KanidmdOpt::HealthCheck(_) => None,
         _ => {
             // Okay - Lets now create our lock and go.
@@ -929,6 +931,18 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::RecoverAccount {
+                    name: name.to_owned(),
+                },
+                output_mode,
+            )
+            .await;
+        }
+        KanidmdOpt::DisableAccount { name, commonopts } => {
+            info!("Running account disable ...");
+            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            submit_admin_req(
+                config.adminbindpath.as_str(),
+                AdminTaskRequest::DisableAccount {
                     name: name.to_owned(),
                 },
                 output_mode,
