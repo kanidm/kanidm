@@ -483,6 +483,12 @@ pub trait QueryServerTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
+    fn internal_exists_uuid(&mut self, uuid: Uuid) -> Result<bool, OperationError> {
+        let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)));
+        self.internal_exists(filter)
+    }
+
+    #[instrument(level = "debug", skip_all)]
     fn internal_search(
         &mut self,
         filter: Filter<FilterInvalid>,

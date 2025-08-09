@@ -1384,8 +1384,79 @@ mod tests {
         assert!(server_txn.internal_delete_uuid(user_uuid).is_ok());
 
         // Assert the referenced cert is gone.
+        assert!(!server_txn
+            .internal_exists_uuid(ref_uuid)
+            .expect("Unable to check if entry exists"));
+
+        assert!(server_txn.commit().is_ok());
+        // =========== new txn
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        // You can't revive just the cert.
+        assert!(matches!(
+            server_txn.internal_revive_uuid(ref_uuid).unwrap_err(),
+            OperationError::Plugin(PluginError::ReferentialIntegrity(_))
+        ));
+
+        // Roll back
+        drop(server_txn);
 
         // Revive
+        // Assert both the user and the ref are back
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        assert!(server_txn.internal_revive_uuid(user_uuid).is_ok());
+
+        assert!(server_txn
+            .internal_exists_uuid(user_uuid)
+            .expect("Unable to check if entry exists"));
+
+        assert!(server_txn
+            .internal_exists_uuid(ref_uuid)
+            .expect("Unable to check if entry exists"));
+
+        assert!(server_txn.commit().is_ok());
+
+        // ===========================================
+        // Now test when you delete the cert separately to the user,
+        // that when you revive the user the cert stays deleted.
+
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        assert!(server_txn.internal_delete_uuid(ref_uuid).is_ok());
+
+        assert!(server_txn
+            .internal_exists_uuid(user_uuid)
+            .expect("Unable to check if entry exists"));
+        assert!(!server_txn
+            .internal_exists_uuid(ref_uuid)
+            .expect("Unable to check if entry exists"));
+
+        assert!(server_txn.internal_delete_uuid(user_uuid).is_ok());
+
+        assert!(server_txn.commit().is_ok());
+        // =========== new txn
+        let mut server_txn = server.write(curtime).await.unwrap();
+        // You can't revive just the cert.
+        assert!(matches!(
+            server_txn.internal_revive_uuid(ref_uuid).unwrap_err(),
+            OperationError::Plugin(PluginError::ReferentialIntegrity(_))
+        ));
+
+        // Roll back
+        drop(server_txn);
+        // =========== new txn
+        let mut server_txn = server.write(curtime).await.unwrap();
+        assert!(server_txn.internal_revive_uuid(user_uuid).is_ok());
+
+        assert!(server_txn
+            .internal_exists_uuid(user_uuid)
+            .expect("Unable to check if entry exists"));
+
+        // But the cert was NOT revived at the same time!!!
+        assert!(!server_txn
+            .internal_exists_uuid(ref_uuid)
+            .expect("Unable to check if entry exists"));
 
         assert!(server_txn.commit().is_ok());
     }
