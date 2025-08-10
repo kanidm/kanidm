@@ -91,21 +91,21 @@ jobs:
         with:
           fetch-depth: 0
       - name: Download base artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: base
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Download master artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: individualmaster
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Download stable artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: "individual${{ needs.pre_deploy.outputs.latest }}"
           path: ./docs/
