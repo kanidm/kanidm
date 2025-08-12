@@ -10,7 +10,7 @@ pub async fn dont_cache_me(request: Request<Body>, next: Next) -> Response {
     let mut response = next.run(request).await;
     response.headers_mut().insert(
         header::CACHE_CONTROL,
-        HeaderValue::from_static("no-store, no-cache, max-age=0"),
+        HeaderValue::from_static("private, no-store, no-cache, max-age=0"),
     );
     response
         .headers_mut()
