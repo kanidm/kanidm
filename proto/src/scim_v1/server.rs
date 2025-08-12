@@ -40,8 +40,7 @@ impl ScimEntryKanidm {
 
     fn get_scim_refs_attr(&self, attr: &Attribute) -> Option<&Vec<ScimReference>> {
         let option = self.attrs.get(attr);
-        option
-            .and_then(|v| match v {
+        option.and_then(|v| match v {
             ScimValueKanidm::EntryReferences(s) => Some(s),
             _ => None,
         })
@@ -372,7 +371,7 @@ pub struct ScimGroup {
     pub uuid: Uuid,
     pub name: String,
     pub description: Option<String>,
-    pub members: Vec<ScimReference>
+    pub members: Vec<ScimReference>,
 }
 
 impl TryFrom<ScimEntryKanidm> for ScimGroup {

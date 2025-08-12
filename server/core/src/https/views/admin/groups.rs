@@ -63,14 +63,6 @@ struct GroupViewPartial {
     scim_effective_access: ScimEffectiveAccess,
 }
 
-// #[derive(Template)]
-// #[template(path = "admin/admin_group_member_entry_partial.html")]
-// struct GroupMemberEntryPartial {
-//     group_uuid: Uuid,
-//     member_name: String,
-//     can_edit_member: bool,
-// }
-
 #[derive(Template)]
 #[template(
     ext = "html",
@@ -253,8 +245,8 @@ pub(crate) async fn edit_group(
         id: group_uuid,
         attrs,
     }
-        .try_into()
-        .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
+    .try_into()
+    .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
 
     state
         .qe_w_ref
@@ -352,22 +344,27 @@ pub(crate) async fn add_member(
         0
     };
 
-
     if before_len + 1 == after_len {
-        let added_member_scim = state.qe_r_ref.scim_entry_id_get(
-            client_auth_info.clone(),
-            kopid.eventid,
-            query.member.clone(),
-            EntryClass::Object,
-            get_member_query)
+        let added_member_scim = state
+            .qe_r_ref
+            .scim_entry_id_get(
+                client_auth_info.clone(),
+                kopid.eventid,
+                query.member.clone(),
+                EntryClass::Object,
+                get_member_query,
+            )
             .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
             .await?;
 
-        let Some(ScimValueKanidm::String(added_member_spn)) = added_member_scim.attrs.get(&Attribute::Spn) else {
+        let Some(ScimValueKanidm::String(added_member_spn)) =
+            added_member_scim.attrs.get(&Attribute::Spn)
+        else {
             return Ok((ErrorToastPartial {
                 err_code: OperationError::UI0004MemberAlreadyExists,
                 operation_id: kopid.eventid,
-            }).into_response())
+            })
+            .into_response());
         };
         // New entry + saved toast.
         Ok((GroupMemberEntryResponse {
@@ -375,14 +372,14 @@ pub(crate) async fn add_member(
             member_name: added_member_spn.to_string(),
             can_edit_member: true,
         })
-            .into_response())
+        .into_response())
     } else {
         // Duplicate entry toast.
         Ok((ErrorToastPartial {
             err_code: OperationError::UI0004MemberAlreadyExists,
             operation_id: kopid.eventid,
         })
-            .into_response())
+        .into_response())
     }
 }
 

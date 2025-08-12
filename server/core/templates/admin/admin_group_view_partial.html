@@ -25,7 +25,7 @@
 (% block admin_page %)
 (%
 let can_modify_any_attr = scim_effective_access.modify_present.check_any(
-    std::collections::BTreeSet::from(GROUP_ATTRIBUTES)|as_ref)
+std::collections::BTreeSet::from(GROUP_ATTRIBUTES)|as_ref)
 %)
 
 <nav aria-label="breadcrumb">
@@ -53,10 +53,10 @@ let can_modify_any_attr = scim_effective_access.modify_present.check_any(
         (% endif -%)
     (% endif -%)
 
-(% call string_attr("UUID", "uuid", group.uuid, can_modify_any_attr, Attribute::Uuid) -%)
-(% call string_attr("Name", "name", group.name.clone(), can_modify_any_attr, Attribute::Name) -%)
-(% let description = group.description.clone().unwrap_or(String::new()) %)
-(% call string_attr("Description", "description", description, can_modify_any_attr, Attribute::Description) -%)
+    (% call string_attr("UUID", "uuid", group.uuid, can_modify_any_attr, Attribute::Uuid) -%)
+    (% call string_attr("Name", "name", group.name.clone(), can_modify_any_attr, Attribute::Name) -%)
+    (% let description = group.description.clone().unwrap_or(String::new()) %)
+    (% call string_attr("Description", "description", description, can_modify_any_attr, Attribute::Description) -%)
 </form>
     (% if scim_effective_access.search.check(Attribute::Member|as_ref) %)
         (% let can_edit_member = can_rw && scim_effective_access.modify_present.check(Attribute::Member|as_ref) %)
@@ -66,9 +66,11 @@ let can_modify_any_attr = scim_effective_access.modify_present.check_any(
               hx-post="/ui/api/admin/group/(( group.uuid ))/add_member"
               hx-target="#members"
               hx-swap="beforeend">
-            <div class="input-group">
-                <input type="text" id="add-member-input" name="member" placeholder="name or uuid">
-                <button class="btn-primary float-end">Add member</button>
+            <div class="input-group col-12 col-md-8 col-lg-6">
+                <input type="text" class="form-control" id="add-member-input" name="member"
+                       aria-label="Name or uuid of member to add" placeholder="name or uuid"
+                       aria-describedby="add-member-button">
+                <button class="btn btn-primary float-end" id="add-member-button">Add member</button>
             </div>
         </form>
         (% endif %)
