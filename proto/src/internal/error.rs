@@ -310,6 +310,7 @@ pub enum OperationError {
     UI0001ChallengeSerialisation,
     UI0002InvalidState,
     UI0003InvalidOauth2Resume,
+    UI0004MemberAlreadyExists,
 
     // Unixd Things
     KU001InitWhileSessionActive,
@@ -565,12 +566,14 @@ impl OperationError {
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
             Self::UI0003InvalidOauth2Resume => Some("The server attemped to resume OAuth2, but no OAuth2 session is in progress.".into()),
+            Self::UI0004MemberAlreadyExists => Some("The target is already a member.".into()),
             Self::VL0001ValueSshPublicKeyString => None,
             Self::VS0001IncomingReplSshPublicKey => None,
             Self::VS0002CertificatePublicKeyDigest |
             Self::VS0003CertificateDerDecode => Some("Decoding the stored certificate from DER failed.".into()),
             Self::VS0004CertificatePublicKeyDigest |
             Self::VS0005CertificatePublicKeyDigest => Some("The certificates public key is unabled to be digested.".into()),
+
         }
     }
 }

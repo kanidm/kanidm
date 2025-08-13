@@ -22,7 +22,13 @@ pub fn admin_router() -> Router<ServerState> {
 }
 
 pub fn admin_api_router() -> Router<ServerState> {
-    let unguarded_router = Router::new().route("/group/:group_uuid", post(groups::edit_group));
+    let unguarded_router = Router::new()
+        .route("/group/:group_uuid", post(groups::edit_group))
+        .route("/group/:group_uuid/add_member", post(groups::add_member))
+        .route(
+            "/group/:group_uuid/remove_member",
+            post(groups::remove_member),
+        );
 
     let guarded_router = Router::new().layer(HxRequestGuardLayer::new("/ui"));
 

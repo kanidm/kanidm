@@ -37,6 +37,14 @@ impl ScimEntryKanidm {
             _ => None,
         })
     }
+
+    fn get_scim_refs_attr(&self, attr: &Attribute) -> Option<&Vec<ScimReference>> {
+        let option = self.attrs.get(attr);
+        option.and_then(|v| match v {
+            ScimValueKanidm::EntryReferences(s) => Some(s),
+            _ => None,
+        })
+    }
 }
 
 #[serde_as]
@@ -332,12 +340,8 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
             .unwrap_or_default();
 
         let groups = scim_entry
-            .attrs
-            .get(&Attribute::DirectMemberOf)
-            .and_then(|v| match v {
-                ScimValueKanidm::EntryReferences(v) => Some(v.clone()),
-                _ => None,
-            })
+            .get_scim_refs_attr(&Attribute::DirectMemberOf)
+            .cloned()
             .unwrap_or_default();
 
         let managed_by = scim_entry
@@ -367,6 +371,7 @@ pub struct ScimGroup {
     pub uuid: Uuid,
     pub name: String,
     pub description: Option<String>,
+    pub members: Vec<ScimReference>,
 }
 
 impl TryFrom<ScimEntryKanidm> for ScimGroup {
@@ -379,11 +384,16 @@ impl TryFrom<ScimEntryKanidm> for ScimGroup {
             .cloned()
             .ok_or(())?;
         let description = scim_entry.get_string_attr(&Attribute::Description).cloned();
+        let members = scim_entry
+            .get_scim_refs_attr(&Attribute::Member)
+            .cloned()
+            .unwrap_or_default();
 
         Ok(ScimGroup {
             uuid,
             name,
             description,
+            members,
         })
     }
 }

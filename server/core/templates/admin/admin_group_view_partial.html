@@ -25,7 +25,7 @@
 (% block admin_page %)
 (%
 let can_modify_any_attr = scim_effective_access.modify_present.check_any(
-    std::collections::BTreeSet::from(GROUP_ATTRIBUTES)|as_ref)
+std::collections::BTreeSet::from(GROUP_ATTRIBUTES)|as_ref)
 %)
 
 <nav aria-label="breadcrumb">
@@ -54,11 +54,36 @@ let can_modify_any_attr = scim_effective_access.modify_present.check_any(
     (% endif -%)
 
     (% call string_attr("UUID", "uuid", group.uuid, can_modify_any_attr, Attribute::Uuid) -%)
-    (% call string_attr("Name", "name", group.name, can_modify_any_attr, Attribute::Name) -%)
+    (% call string_attr("Name", "name", group.name.clone(), can_modify_any_attr, Attribute::Name) -%)
     (% let description = group.description.clone().unwrap_or(String::new()) %)
     (% call string_attr("Description", "description", description, can_modify_any_attr, Attribute::Description) -%)
 </form>
+    (% if scim_effective_access.search.check(Attribute::Member|as_ref) %)
+        (% let can_edit_member = can_rw && scim_effective_access.modify_present.check(Attribute::Member|as_ref) %)
+        <label class="mt-3 fw-bold">Members</label>
+        (% if can_edit_member %)
+        <form hx-boost="true"
+              hx-post="/ui/api/admin/group/(( group.uuid ))/add_member"
+              hx-target="#members"
+              hx-swap="beforeend">
+            <div class="input-group col-12 col-md-8 col-lg-6">
+                <input type="text" class="form-control" id="add-member-input" name="member"
+                       aria-label="Name or uuid of member to add" placeholder="name or uuid"
+                       aria-describedby="add-member-button">
+                <button class="btn btn-primary float-end" id="add-member-button">Add member</button>
+            </div>
+        </form>
+        (% endif %)
+        <ol class="list-group col-12 col-md-8 col-lg-6" id="members">
+            (% for member in group.members %)
+                (% let member_name = member.value.clone() %)
+                (% let group_uuid = group.uuid.clone() %)
+                (% include "admin_group_member_entry_partial.html" %)
+            (% endfor %)
+        </ol>
+    (% endif %)
 
-<div class="toast-container position-fixed bottom-0 end-0 p-3">
+
+<div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3">
 </div>
 (% endblock %)
