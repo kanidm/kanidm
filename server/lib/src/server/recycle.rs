@@ -163,6 +163,12 @@ impl QueryServerWriteTransaction<'_> {
             }
         }
 
+        // From the pre_candidate set, find all related entries that also need to
+        // be revived at the same time.
+
+        // debug_assert!(false);
+
+
         // clone the writeable entries.
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()

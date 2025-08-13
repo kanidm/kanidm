@@ -83,11 +83,20 @@ impl ReferentialIntegrity {
         Ok(missing)
     }
 
+    /// This function performs two actions. It needs to cleanup any reference entries that should
+    /// be removed (aka delete cascade) as a related entry has been removed. Second, it needs to
+    /// remove dangling references from entries that are still alive. Importantly, we need to perform
+    /// these actions in *order* so that reference entries that relate to something retain their
+    /// references to their related entry, so that revival of those entries works as we expect.
     fn remove_references(
         qs: &mut QueryServerWriteTransaction,
         uuids: Vec<Uuid>,
     ) -> Result<(), OperationError> {
         trace!(?uuids);
+
+        // What would be the best way to delete these ....
+        debug_assert!(false);
+
 
         // Find all reference types in the schema
         let schema = qs.get_schema();
@@ -1341,6 +1350,8 @@ mod tests {
 
     // TODO: Do I need a way to enforce that ref entries must link to certain
     // classes on their target entry?
+
+    // TODO: Ensure that ref entries can't point at other ref entries.
 
     #[qs_test]
     async fn test_reference_entry_basic(server: &QueryServer) {
