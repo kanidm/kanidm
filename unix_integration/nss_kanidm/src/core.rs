@@ -77,7 +77,7 @@ pub fn get_all_user_entries(req_options: RequestOptions) -> Response<Vec<Passwd>
             let req = ClientRequest::NssAccounts;
 
             daemon_client
-                .call_and_wait(&req, None)
+                .call_and_wait(req, None)
                 .map(|r| match r {
                     ClientResponse::NssAccounts(l) => {
                         l.into_iter().map(passwd_from_nssuser).collect()
@@ -104,7 +104,7 @@ pub fn get_user_entry_by_uid(uid: libc::uid_t, req_options: RequestOptions) -> R
         Source::Daemon(mut daemon_client) => {
             let req = ClientRequest::NssAccountByUid(uid);
             daemon_client
-                .call_and_wait(&req, None)
+                .call_and_wait(req, None)
                 .map(|r| match r {
                     ClientResponse::NssAccount(opt) => opt
                         .map(passwd_from_nssuser)
@@ -144,7 +144,7 @@ pub fn get_user_entry_by_name(name: String, req_options: RequestOptions) -> Resp
         Source::Daemon(mut daemon_client) => {
             let req = ClientRequest::NssAccountByName(name);
             daemon_client
-                .call_and_wait(&req, None)
+                .call_and_wait(req, None)
                 .map(|r| match r {
                     ClientResponse::NssAccount(opt) => opt
                         .map(passwd_from_nssuser)
@@ -184,7 +184,7 @@ pub fn get_all_group_entries(req_options: RequestOptions) -> Response<Vec<Group>
         Source::Daemon(mut daemon_client) => {
             let req = ClientRequest::NssGroups;
             daemon_client
-                .call_and_wait(&req, None)
+                .call_and_wait(req, None)
                 .map(|r| match r {
                     ClientResponse::NssGroups(l) => {
                         l.into_iter().map(group_from_nssgroup).collect()
@@ -211,7 +211,7 @@ pub fn get_group_entry_by_gid(gid: libc::gid_t, req_options: RequestOptions) -> 
         Source::Daemon(mut daemon_client) => {
             let req = ClientRequest::NssGroupByGid(gid);
             daemon_client
-                .call_and_wait(&req, None)
+                .call_and_wait(req, None)
                 .map(|r| match r {
                     ClientResponse::NssGroup(opt) => opt
                         .map(group_from_nssgroup)
@@ -251,7 +251,7 @@ pub fn get_group_entry_by_name(name: String, req_options: RequestOptions) -> Res
         Source::Daemon(mut daemon_client) => {
             let req = ClientRequest::NssGroupByName(name);
             daemon_client
-                .call_and_wait(&req, None)
+                .call_and_wait(req, None)
                 .map(|r| match r {
                     ClientResponse::NssGroup(opt) => opt
                         .map(group_from_nssgroup)

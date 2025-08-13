@@ -1,52 +1,14 @@
-use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
 use std::error::Error;
 use std::io::Error as IoError;
 use tokio::net::UnixStream;
 // use tokio::runtime::Builder;
+use crate::json_codec::JsonCodec;
+use crate::unix_proto::{ClientRequest, ClientResponse};
 use tokio::time::{self, Duration};
 use tokio_util::codec::Framed;
-use tokio_util::codec::{Decoder, Encoder};
 
-use crate::unix_proto::{ClientRequest, ClientResponse};
-
-struct ClientCodec;
-
-impl Decoder for ClientCodec {
-    type Error = IoError;
-    type Item = ClientResponse;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_json::from_slice::<ClientResponse>(src) {
-            Ok(msg) => {
-                // Clear the buffer for the next message.
-                src.clear();
-                Ok(Some(msg))
-            }
-            _ => Ok(None),
-        }
-    }
-}
-
-impl Encoder<&ClientRequest> for ClientCodec {
-    type Error = IoError;
-
-    fn encode(&mut self, msg: &ClientRequest, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let data = serde_json::to_vec(msg).map_err(|e| {
-            error!("socket encoding error -> {:?}", e);
-            IoError::other("JSON encode error")
-        })?;
-        debug!("Attempting to send request -> {}", msg.as_safe_string());
-        dst.put(data.as_slice());
-        Ok(())
-    }
-}
-
-impl ClientCodec {
-    fn new() -> Self {
-        ClientCodec
-    }
-}
+type ClientCodec = JsonCodec<ClientResponse, ClientRequest>;
 
 pub struct DaemonClient {
     req_stream: Framed<UnixStream, ClientCodec>,
@@ -63,7 +25,7 @@ impl DaemonClient {
             );
         })?;
 
-        let req_stream = Framed::new(stream, ClientCodec::new());
+        let req_stream = Framed::new(stream, ClientCodec::default());
 
         trace!("connected");
 
@@ -73,7 +35,7 @@ impl DaemonClient {
         })
     }
 
-    async fn call_inner(&mut self, req: &ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
+    async fn call_inner(&mut self, req: ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
         self.req_stream.send(req).await?;
         self.req_stream.flush().await?;
         trace!("flushed, waiting ...");
@@ -91,7 +53,7 @@ impl DaemonClient {
 
     pub async fn call(
         &mut self,
-        req: &ClientRequest,
+        req: ClientRequest,
         timeout: Option<u64>,
     ) -> Result<ClientResponse, Box<dyn Error>> {
         let sleep = time::sleep(Duration::from_secs(timeout.unwrap_or(self.default_timeout)));
