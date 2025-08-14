@@ -110,8 +110,9 @@ impl DaemonClientBlocking {
                 Ok(0) => {
                     if read_started {
                         debug!("read_started true, no bytes read");
-                        // We're done, no more bytes.
-                        // break;
+                        // We're done, no more bytes. This will now
+                        // fall through to the codec decode to double
+                        // check this assertion.
                     } else {
                         debug!("Waiting ...");
                         // Still can wait ...
