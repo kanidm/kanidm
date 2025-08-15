@@ -317,6 +317,7 @@ async fn handle_unixd_request(
     request: Option<Result<TaskRequestFrame, io::Error>>,
     cfg: &UnixdConfig,
 ) -> Result<TaskResponse, ()> {
+    debug!("Received unixd event.");
     match request {
         Some(Ok(TaskRequestFrame {
             id,
@@ -353,15 +354,6 @@ async fn handle_tasks(
     // Immediately trigger that we should reload the shadow files for the new connected handler
     shadow_data_watch_rx.mark_changed();
 
-    // Force the initial reload handle
-    if let Err(e) = reqs
-        .send(handle_shadow_reload(shadow_data_watch_rx).await)
-        .await
-    {
-        error!("Unable to handle shadow reload on connect: {:?}", e);
-        return;
-    }
-
     debug!("Task handler loop has started ...");
 
     loop {
@@ -372,8 +364,9 @@ async fn handle_tasks(
                 debug!("Received shutdown signal, breaking task handler loop ...");
                 return
             }
+            // We bias to *sending* messages in tasks.
             Ok(_) = shadow_data_watch_rx.changed() => {
-               handle_shadow_reload(shadow_data_watch_rx).await
+                handle_shadow_reload(shadow_data_watch_rx).await
             }
             request = reqs.next() => {
                 match handle_unixd_request(request,  cfg).await {

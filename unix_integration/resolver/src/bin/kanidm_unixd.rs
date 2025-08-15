@@ -10,7 +10,6 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use bytes::{BufMut, BytesMut};
 use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
@@ -20,9 +19,8 @@ use kanidm_hsm_crypto::{
 };
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_proto::internal::OperationError;
-use kanidm_unix_common::constants::{
-    CODEC_BYTESMUT_ALLOCATION_LIMIT, CODEC_MIMIMUM_BYTESMUT_ALLOCATION, DEFAULT_CONFIG_PATH,
-};
+use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::json_codec::JsonCodec;
 use kanidm_unix_common::unix_config::{HsmType, UnixdConfig};
 use kanidm_unix_common::unix_passwd::EtcDb;
 use kanidm_unix_common::unix_proto::{
@@ -42,7 +40,6 @@ use sketching::tracing_forest::{self};
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::metadata;
-use std::io;
 use std::io::Error as IoError;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
@@ -57,7 +54,7 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
-use tokio_util::codec::{Decoder, Encoder, Framed};
+use tokio_util::codec::Framed;
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -68,86 +65,6 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 struct AsyncTaskRequest {
     task_req: TaskRequest,
     task_chan: oneshot::Sender<()>,
-}
-
-#[derive(Default)]
-struct ClientCodec;
-
-impl Decoder for ClientCodec {
-    type Error = io::Error;
-    type Item = ClientRequest;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        trace!("Attempting to decode request ...");
-        match serde_json::from_slice::<ClientRequest>(src) {
-            Ok(msg) => {
-                // Clear the buffer for the next message.
-                // There is no way to free allocation from a BytesMut, so we need to
-                // swap with a new one.
-                src.clear();
-                if src.capacity() >= CODEC_BYTESMUT_ALLOCATION_LIMIT {
-                    let mut empty = BytesMut::with_capacity(CODEC_MIMIMUM_BYTESMUT_ALLOCATION);
-                    std::mem::swap(&mut empty, src);
-                }
-
-                Ok(Some(msg))
-            }
-            _ => Ok(None),
-        }
-    }
-}
-
-impl Encoder<ClientResponse> for ClientCodec {
-    type Error = io::Error;
-
-    fn encode(&mut self, msg: ClientResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        trace!("Attempting to send response -> {:?} ...", msg);
-        let data = serde_json::to_vec(&msg).map_err(|e| {
-            error!("socket encoding error -> {:?}", e);
-            io::Error::other("JSON encode error")
-        })?;
-        dst.put(data.as_slice());
-        Ok(())
-    }
-}
-
-#[derive(Default)]
-struct TaskCodec;
-
-impl Decoder for TaskCodec {
-    type Error = io::Error;
-    type Item = TaskResponse;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_json::from_slice::<TaskResponse>(src) {
-            Ok(msg) => {
-                // Clear the buffer for the next message.
-                // There is no way to free allocation from a BytesMut, so we need to
-                // swap with a new one.
-                src.clear();
-                if src.capacity() >= CODEC_BYTESMUT_ALLOCATION_LIMIT {
-                    let mut empty = BytesMut::with_capacity(CODEC_MIMIMUM_BYTESMUT_ALLOCATION);
-                    std::mem::swap(&mut empty, src);
-                }
-                Ok(Some(msg))
-            }
-            _ => Ok(None),
-        }
-    }
-}
-
-impl Encoder<TaskRequestFrame> for TaskCodec {
-    type Error = io::Error;
-
-    fn encode(&mut self, msg: TaskRequestFrame, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        debug!("Attempting to send request -> {:?} ...", msg.id);
-        let data = serde_json::to_vec(&msg).map_err(|e| {
-            error!("socket encoding error -> {:?}", e);
-            io::Error::other("JSON encode error")
-        })?;
-        dst.put(data.as_slice());
-        Ok(())
-    }
 }
 
 /// Pass this a file path and it'll look for the file and remove it if it's there.
@@ -174,15 +91,44 @@ async fn handle_task_client(
     // setup the codec, this is to the unix socket which the task daemon
     // connected to us with.
     let mut last_task_id: u64 = 0;
-    let mut task_handles = BTreeMap::new();
+    let mut task_handles: BTreeMap<u64, oneshot::Sender<()>> = BTreeMap::new();
 
-    let mut framed_stream = Framed::new(stream, TaskCodec);
+    let codec: JsonCodec<TaskResponse, TaskRequestFrame> = JsonCodec::default();
+
+    let mut framed_stream = Framed::new(stream, codec);
 
     loop {
         tokio::select! {
+            biased; // tell tokio to poll these in order
             // We have been commanded to stop operation.
             _ = broadcast_rx.recv() => {
                 return Ok(())
+            }
+            // We bias to *reading* messages in the resolver.
+            response = framed_stream.next() => {
+                // Process incoming messages. They may be out of order.
+                match response {
+                    Some(Ok(TaskResponse::Success(task_id))) => {
+                        debug!("Task was acknowledged and completed.");
+
+                        if let Some(handle) = task_handles.remove(&task_id) {
+                            // Send a result back via the one-shot
+                            // Ignore if it fails.
+                            let _ = handle.send(());
+                        }
+                        // If the ID was unregistered, ignore.
+                    }
+                    Some(Ok(TaskResponse::NotifyShadowChange(etc_db))) => {
+                        let _ = notify_shadow_change_tx.send(etc_db).await;
+                    }
+                    // Other things ....
+                    // Some(Ok(TaskResponse::ReloadSystemIds))
+
+                    other => {
+                        error!("Error -> {:?}", other);
+                        return Err(Box::new(IoError::other("oh no!")));
+                    }
+                }
             }
             task_request = task_channel_rx.recv() => {
                 let Some(AsyncTaskRequest {
@@ -212,34 +158,6 @@ async fn handle_task_client(
                 }
                 // Task sent
             }
-
-            response = framed_stream.next() => {
-                // Process incoming messages. They may be out of order.
-                match response {
-                    Some(Ok(TaskResponse::Success(task_id))) => {
-                        debug!("Task was acknowledged and completed.");
-
-                        if let Some(handle) = task_handles.remove(&task_id) {
-                            // Send a result back via the one-shot
-                            // Ignore if it fails.
-                            let _ = handle.send(());
-                        }
-                        // If the ID was unregistered, ignore.
-                    }
-                    Some(Ok(TaskResponse::NotifyShadowChange(etc_db))) => {
-                        let _ = notify_shadow_change_tx.send(etc_db).await;
-                    }
-                    // Other things ....
-                    // Some(Ok(TaskResponse::ReloadSystemIds))
-
-                    other => {
-                        error!("Error -> {:?}", other);
-                        return Err(Box::new(IoError::other("oh no!")));
-                    }
-                }
-
-            }
-
         }
     }
 }
@@ -262,7 +180,9 @@ async fn handle_client(
 
     debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
-    let mut reqs = Framed::new(sock, ClientCodec);
+    let codec: JsonCodec<ClientRequest, ClientResponse> = JsonCodec::default();
+
+    let mut reqs = Framed::new(sock, codec);
     let mut pam_auth_session_state = None;
 
     // Setup a broadcast channel so that if we have an unexpected disconnection, we can
