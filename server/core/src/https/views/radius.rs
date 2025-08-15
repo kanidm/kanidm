@@ -72,7 +72,7 @@ pub(crate) async fn view_radius_get(
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     Ok(ProfileView {
-        navbar_ctx: NavbarCtx { domain_info },
+        navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
         profile_partial: RadiusPartialView {
             menu_active_item: ProfileMenuItems::Radius,
             radius_password,

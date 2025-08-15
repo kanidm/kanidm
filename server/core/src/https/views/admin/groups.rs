@@ -114,7 +114,7 @@ pub(crate) async fn view_group_view_get(
             push_url,
             GroupView {
                 partial: group_partial,
-                navbar_ctx: NavbarCtx { domain_info },
+                navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
             },
         )
             .into_response()
@@ -128,8 +128,11 @@ pub(crate) async fn view_groups_get(
     DomainInfo(domain_info): DomainInfo,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> axum::response::Result<Response> {
-    let groups = get_groups_info(state, &kopid, client_auth_info).await?;
+    let groups = get_groups_info(state, &kopid, client_auth_info.clone()).await?;
     let groups_partial = GroupsPartialView { groups };
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let push_url = HxPushUrl(Uri::from_static("/ui/admin/groups"));
     Ok(if is_htmx {
@@ -138,7 +141,7 @@ pub(crate) async fn view_groups_get(
         (
             push_url,
             GroupsView {
-                navbar_ctx: NavbarCtx { domain_info },
+                navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
                 partial: groups_partial,
             },
         )
