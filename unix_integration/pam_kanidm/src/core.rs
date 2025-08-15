@@ -138,7 +138,7 @@ pub fn sm_authenticate_connected<P: PamHandler>(
     let mut req = ClientRequest::PamAuthenticateInit { account_id, info };
 
     loop {
-        let client_response = match daemon_client.call_and_wait(&req, timeout) {
+        let client_response = match daemon_client.call_and_wait(req, timeout) {
             Ok(r) => r,
             Err(err) => {
                 // Something unrecoverable occurred, bail and stop everything
@@ -418,7 +418,7 @@ pub fn acct_mgmt<P: PamHandler>(
     match req_opt.connect_to_daemon() {
         Source::Daemon(mut daemon_client) => {
             let req = ClientRequest::PamAccountAllowed(account_id);
-            match daemon_client.call_and_wait(&req, None) {
+            match daemon_client.call_and_wait(req, None) {
                 Ok(r) => match r {
                     ClientResponse::PamStatus(Some(true)) => {
                         debug!("PamResultCode::PAM_SUCCESS");
@@ -500,7 +500,7 @@ pub fn sm_open_session<P: PamHandler>(
         Source::Daemon(mut daemon_client) => {
             let req = ClientRequest::PamAccountBeginSession(account_id);
 
-            match daemon_client.call_and_wait(&req, None) {
+            match daemon_client.call_and_wait(req, None) {
                 Ok(ClientResponse::Ok) => {
                     debug!("PAM_SUCCESS");
                     PamResultCode::PAM_SUCCESS

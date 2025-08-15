@@ -104,7 +104,7 @@ async fn main() -> ExitCode {
                 },
             };
             loop {
-                match daemon_client.call(&req, None).await {
+                match daemon_client.call(req, None).await {
                     Ok(r) => match r {
                         ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Success) => {
                             println!("auth success!");
@@ -165,7 +165,7 @@ async fn main() -> ExitCode {
 
             let sereq = ClientRequest::PamAccountAllowed(account_id);
 
-            match daemon_client.call(&sereq, None).await {
+            match daemon_client.call(sereq, None).await {
                 Ok(r) => match r {
                     ClientResponse::PamStatus(Some(true)) => {
                         println!("account success!");
@@ -199,7 +199,7 @@ async fn main() -> ExitCode {
 
             let req = ClientRequest::ClearCache;
 
-            match daemon_client.call(&req, None).await {
+            match daemon_client.call(req, None).await {
                 Ok(r) => match r {
                     ClientResponse::Ok => info!("success"),
                     _ => {
@@ -220,7 +220,7 @@ async fn main() -> ExitCode {
 
             let req = ClientRequest::InvalidateCache;
 
-            match daemon_client.call(&req, None).await {
+            match daemon_client.call(req, None).await {
                 Ok(r) => match r {
                     ClientResponse::Ok => info!("success"),
                     _ => {
@@ -240,7 +240,7 @@ async fn main() -> ExitCode {
             let mut daemon_client = setup_client!();
             let req = ClientRequest::Status;
 
-            match daemon_client.call(&req, None).await {
+            match daemon_client.call(req, None).await {
                 Ok(r) => match r {
                     ClientResponse::ProviderStatus(results) => {
                         for provider in results {
