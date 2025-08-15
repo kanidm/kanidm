@@ -1922,7 +1922,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok(cleartext)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self))]
     pub fn disable_account(&mut self, name: &str) -> Result<(), OperationError> {
         // name to uuid
         let target = self.qs_write.name_to_uuid(name).inspect_err(|err| {
