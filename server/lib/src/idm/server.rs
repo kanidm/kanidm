@@ -1882,9 +1882,8 @@ impl IdmServerProxyWriteTransaction<'_> {
         cleartext: Option<&str>,
     ) -> Result<String, OperationError> {
         // name to uuid
-        let target = self.qs_write.name_to_uuid(name).map_err(|e| {
-            admin_error!(?e, "name to uuid failed");
-            e
+        let target = self.qs_write.name_to_uuid(name).inspect_err(|err| {
+            error!(?err, "name to uuid failed");
         })?;
 
         let cleartext = cleartext
@@ -1892,13 +1891,17 @@ impl IdmServerProxyWriteTransaction<'_> {
             .unwrap_or_else(password_from_random);
 
         let ncred = Credential::new_generatedpassword_only(self.crypto_policy, &cleartext)
-            .map_err(|e| {
-                admin_error!("Unable to generate password mod {:?}", e);
-                e
+            .inspect_err(|err| {
+                error!(?err, "unable to generate password modification");
             })?;
         let vcred = Value::new_credential("primary", ncred);
-        // We need to remove other credentials too.
+        let v_valid_from = Value::new_datetime_epoch(self.qs_write.get_curtime());
+
         let modlist = ModifyList::new_list(vec![
+            // Ensure the account is valid from *now*, and that the expiry is unset.
+            m_purge(Attribute::AccountExpire),
+            Modify::Present(Attribute::AccountValidFrom, v_valid_from),
+            // We need to remove other credentials too.
             m_purge(Attribute::PassKeys),
             m_purge(Attribute::PrimaryCredential),
             Modify::Present(Attribute::PrimaryCredential, vcred),
@@ -1912,12 +1915,41 @@ impl IdmServerProxyWriteTransaction<'_> {
                 &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
                 &modlist,
             )
-            .map_err(|e| {
-                request_error!(error = ?e);
-                e
+            .inspect_err(|err| {
+                error!(?err);
             })?;
 
         Ok(cleartext)
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub fn disable_account(&mut self, name: &str) -> Result<(), OperationError> {
+        // name to uuid
+        let target = self.qs_write.name_to_uuid(name).inspect_err(|err| {
+            error!(?err, "name to uuid failed");
+        })?;
+
+        let v_expire = Value::new_datetime_epoch(self.qs_write.get_curtime());
+
+        let modlist = ModifyList::new_list(vec![
+            // Ensure that the account has no validity, and the expiry is now.
+            m_purge(Attribute::AccountValidFrom),
+            Modify::Present(Attribute::AccountExpire, v_expire),
+        ]);
+
+        trace!(?modlist, "processing change");
+
+        self.qs_write
+            .internal_modify(
+                // Filter as executed
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
+                &modlist,
+            )
+            .inspect_err(|err| {
+                error!(?err);
+            })?;
+
+        Ok(())
     }
 
     #[instrument(level = "debug", skip_all)]
