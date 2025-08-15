@@ -6,6 +6,10 @@ use kanidm_proto::v1::{AccountUnixExtend, Entry, SingleStringRequest, UatStatus}
 use uuid::Uuid;
 
 use crate::{ClientError, KanidmClient};
+use kanidm_proto::scim_v1::PatchRequest;
+use serde_json::Value;
+
+use tracing::trace;
 
 impl KanidmClient {
     pub async fn idm_person_account_list(&self) -> Result<Vec<Entry>, ClientError> {
@@ -284,6 +288,18 @@ impl KanidmClient {
             .attrs
             .insert(ATTR_CERTIFICATE.to_string(), vec![pem_data.to_string()]);
         self.perform_post_request(format!("/v1/person/{id}/_certificate").as_str(), new_cert)
+            .await
+    }
+
+    pub async fn idm_person_account_patch(
+        &self,
+        id: &str,
+        patch_request: PatchRequest,
+    ) -> Result<(), ClientError> {
+        if patch_request.operations.is_empty() {
+            return Ok(());
+        }
+        self.perform_patch_request_scim(format!("/v1/person/{}", id).as_str(), patch_request)
             .await
     }
 }
