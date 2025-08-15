@@ -105,7 +105,8 @@ lazy_static! {
     /// this regex validates for valid emails.
     pub static ref VALIDATE_EMAIL_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new(r"^[a-zA-Z0-9.!#$%&'*+=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid singleline regex found")
+        Regex::new(r"^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+            .expect("Invalid singleline regex found")
     };
 
     // Formerly checked with
