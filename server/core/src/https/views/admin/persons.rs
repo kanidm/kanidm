@@ -12,7 +12,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Extension;
 use axum_htmx::{HxPushUrl, HxRequest};
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::internal::OperationError;
+use kanidm_proto::internal::{OperationError, UserAuthToken};
 use kanidm_proto::scim_v1::server::{
     ScimEffectiveAccess, ScimEntryKanidm, ScimListResponse, ScimPerson,
 };
@@ -71,11 +71,14 @@ pub(crate) async fn view_person_view_get(
     DomainInfo(domain_info): DomainInfo,
 ) -> axum::response::Result<Response> {
     let (person, scim_effective_access) =
-        get_person_info(uuid, state, &kopid, client_auth_info).await?;
+        get_person_info(uuid, state, &kopid, client_auth_info.clone()).await?;
     let person_partial = PersonViewPartial {
         person,
         scim_effective_access,
     };
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let path_string = format!("/ui/admin/person/{uuid}/view");
     let uri = Uri::from_str(path_string.as_str())
@@ -88,7 +91,7 @@ pub(crate) async fn view_person_view_get(
             push_url,
             PersonView {
                 partial: person_partial,
-                navbar_ctx: NavbarCtx { domain_info },
+                navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
             },
         )
             .into_response()
@@ -102,9 +105,11 @@ pub(crate) async fn view_persons_get(
     DomainInfo(domain_info): DomainInfo,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> axum::response::Result<Response> {
-    let persons = get_persons_info(state, &kopid, client_auth_info).await?;
+    let persons = get_persons_info(state, &kopid, client_auth_info.clone()).await?;
     let persons_partial = PersonsPartialView { persons };
-
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
     let push_url = HxPushUrl(Uri::from_static("/ui/admin/persons"));
     Ok(if is_htmx {
         (push_url, persons_partial).into_response()
@@ -112,7 +117,7 @@ pub(crate) async fn view_persons_get(
         (
             push_url,
             PersonsView {
-                navbar_ctx: NavbarCtx { domain_info },
+                navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
                 partial: persons_partial,
             },
         )

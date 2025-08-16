@@ -7,7 +7,7 @@ use axum::{
 };
 use axum_htmx::HxPushUrl;
 
-use kanidm_proto::internal::AppLink;
+use kanidm_proto::internal::{AppLink, UserAuthToken};
 
 use super::constants::Urls;
 use super::navbar::NavbarCtx;
@@ -38,18 +38,21 @@ pub(crate) async fn view_apps_get(
     // Because this is the route where the login page can land, we need to actually alter
     // our response as a result. If the user comes here directly we need to render the full
     // page, otherwise we need to render the partial.
-
     let app_links = state
         .qe_r_ref
-        .handle_list_applinks(client_auth_info, kopid.eventid)
+        .handle_list_applinks(client_auth_info.clone(), kopid.eventid)
         .await
         .map_err(|old| HtmxError::new(&kopid, old, domain_info.clone()))?;
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let apps_partial = AppsPartialView { apps: app_links };
 
+    println!("{:?}", &uat.ui_hints);
     Ok({
         let apps_view = AppsView {
-            navbar_ctx: NavbarCtx { domain_info },
+            navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
 
             apps_partial,
         };

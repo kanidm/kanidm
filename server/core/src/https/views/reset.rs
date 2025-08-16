@@ -779,7 +779,7 @@ pub(crate) async fn view_self_reset_get(
             .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
             .await?;
 
-        let cu_resp = get_cu_response(domain_info, cu_status, true);
+        let cu_resp = get_cu_response(uat, domain_info, cu_status, true);
 
         jar = add_cu_cookie(jar, &state, cu_session_token);
         Ok((jar, cu_resp).into_response())
@@ -996,6 +996,9 @@ pub(crate) async fn view_reset_get(
         .handle_auth_valid(client_auth_info.clone(), kopid.eventid)
         .await
         .is_ok();
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     if let Some(cookie) = cookie {
         // We already have a session
@@ -1029,7 +1032,8 @@ pub(crate) async fn view_reset_get(
         };
 
         // CU Session cookie is okay
-        let cu_resp = get_cu_response(domain_info, cu_status, is_logged_in);
+        let cu_resp = get_cu_response(uat, domain_info, cu_status, is_logged_in);
+
         Ok(cu_resp)
     } else if let Some(token) = params.token {
         // We have a reset token and want to create a new session
@@ -1039,7 +1043,7 @@ pub(crate) async fn view_reset_get(
             .await
         {
             Ok((cu_session_token, cu_status)) => {
-                let cu_resp = get_cu_response(domain_info, cu_status, is_logged_in);
+                let cu_resp = get_cu_response(uat, domain_info, cu_status, is_logged_in);
 
                 jar = add_cu_cookie(jar, &state, cu_session_token);
                 Ok((jar, cu_resp).into_response())
@@ -1134,6 +1138,7 @@ fn get_cu_partial_response(cu_status: CUStatus) -> Response {
 }
 
 fn get_cu_response(
+    uat: &UserAuthToken,
     domain_info: DomainInfoRead,
     cu_status: CUStatus,
     is_logged_in: bool,
@@ -1155,7 +1160,7 @@ fn get_cu_response(
         (
             HxPushUrl(Uri::from_static(Urls::UpdateCredentials.as_ref())),
             ProfileView {
-                navbar_ctx: NavbarCtx { domain_info },
+                navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
                 profile_partial: cred_status_view,
             },
         )
