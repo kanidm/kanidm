@@ -1900,6 +1900,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         let modlist = ModifyList::new_list(vec![
             // Ensure the account is valid from *now*, and that the expiry is unset.
             m_purge(Attribute::AccountExpire),
+            m_purge(Attribute::AccountValidFrom),
             Modify::Present(Attribute::AccountValidFrom, v_valid_from),
             // We need to remove other credentials too.
             m_purge(Attribute::PassKeys),
@@ -1934,6 +1935,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         let modlist = ModifyList::new_list(vec![
             // Ensure that the account has no validity, and the expiry is now.
             m_purge(Attribute::AccountValidFrom),
+            m_purge(Attribute::AccountExpire),
             Modify::Present(Attribute::AccountExpire, v_expire),
         ]);
 
