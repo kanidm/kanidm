@@ -89,9 +89,9 @@ directory:
 
 ```bash
 # Fedora
-wget https://download.opensuse.org/repositories/network:/idm/Fedora_38/network:idm.repo
-# Centos Stream 9
-wget https://download.opensuse.org/repositories/network:/idm/CentOS_9_Stream/network:idm.repo
+wget https://download.opensuse.org/repositories/network:/idm/Fedora_$(rpm -E %fedora)/network:idm.repo
+# Centos Stream
+wget https://download.opensuse.org/repositories/network:/idm/CentOS_$(rpm -E %rhel)_Stream/network:idm.repo
 ```
 
 You can then install with:
