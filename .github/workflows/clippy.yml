@@ -17,7 +17,7 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
       - name: Install dependencies
@@ -37,7 +37,7 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
       - name: "Run cargo fmt"

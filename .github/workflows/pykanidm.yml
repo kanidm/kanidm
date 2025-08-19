@@ -15,7 +15,7 @@ jobs:
     env:
       UV_LINK_MODE: "copy"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
       - name: Set up Python 3.10
