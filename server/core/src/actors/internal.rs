@@ -189,6 +189,23 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
+        skip(self, eventid),
+        fields(uuid = ?eventid)
+    )]
+    pub(crate) async fn handle_admin_disable_account(
+        &self,
+        name: String,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        idms_prox_write.disable_account(name.as_str())?;
+
+        idms_prox_write.commit()
+    }
+
+    #[instrument(
+        level = "info",
         skip_all,
         fields(uuid = ?eventid)
     )]

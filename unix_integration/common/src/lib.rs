@@ -27,5 +27,7 @@ pub mod unix_passwd;
 #[cfg(target_family = "unix")]
 pub mod unix_proto;
 
+pub mod json_codec;
+
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 pub mod selinux_util;

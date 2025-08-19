@@ -63,7 +63,7 @@ else
     echo "Config file ${KANIDM_CONFIG_FILE} not found!"
     exit 1
 fi
-KANIDM_URL="$(grep origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
+KANIDM_URL="$(grep -E '^origin.*https' "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
 while true; do
