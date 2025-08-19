@@ -129,7 +129,7 @@ pub(crate) async fn view_profile_get(
         rehook_email_removal_buttons,
         HxPushUrl(Uri::from_static("/ui/profile")),
         ProfileView {
-            navbar_ctx: NavbarCtx { domain_info },
+            navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
             profile_partial: ProfilePartialView {
                 menu_active_item: ProfileMenuItems::UserProfile,
                 can_rw,

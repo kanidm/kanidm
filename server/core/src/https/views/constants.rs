@@ -33,6 +33,7 @@ pub(crate) enum Urls {
     Ui,
     WellKnownChangePassword,
     Radius,
+    Admin,
 }
 
 impl AsRef<str> for Urls {
@@ -48,6 +49,7 @@ impl AsRef<str> for Urls {
             Self::Ui => "/ui",
             Self::WellKnownChangePassword => "/.well-known/change-password",
             Self::Radius => "/ui/radius",
+            Self::Admin => "/ui/admin/persons",
         }
     }
 }

@@ -81,7 +81,7 @@ pub(crate) async fn view_enrol_get(
     let cu_intent = state
         .qe_w_ref
         .handle_idmcredentialupdateintent(
-            client_auth_info,
+            client_auth_info.clone(),
             spn,
             Some(Duration::from_secs(900)),
             kopid.eventid,
@@ -104,7 +104,7 @@ pub(crate) async fn view_enrol_get(
     };
 
     Ok(ProfileView {
-        navbar_ctx: NavbarCtx { domain_info },
+        navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
 
         profile_partial: EnrolDeviceView {
             menu_active_item: ProfileMenuItems::EnrolDevice,
