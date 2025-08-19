@@ -1241,6 +1241,9 @@ fn display_warnings(warnings: &[CURegWarning]) {
                     "The passkey you attempted to register did not provide user verification, please ensure a PIN or equivalent is set."
                 );
             }
+            CURegWarning::NoValidCredentials => {
+                println!("Your account has no valid authentication registered - please create at least one credential to proceed.");
+            }
         }
     }
 }

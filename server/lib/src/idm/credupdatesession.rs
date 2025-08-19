@@ -267,6 +267,17 @@ impl CredentialUpdateSession {
             }
         }
 
+        // We only check this if we were able to proceed to a commit state. That way we don't warn needlessly.
+        if can_proceed
+            && self.attested_passkeys.is_empty()
+            && self.passkeys.is_empty()
+            && self.primary.is_none()
+        {
+            // The user has no credentials to login to their account with, we can not proceed!
+            can_proceed = false;
+            warnings.push(CredentialUpdateSessionStatusWarnings::NoValidCredentials)
+        }
+
         (can_proceed, warnings)
     }
 }
@@ -308,6 +319,7 @@ pub enum CredentialUpdateSessionStatusWarnings {
     Unsatisfiable,
     WebauthnAttestationUnsatisfiable,
     WebauthnUserVerificationRequired,
+    NoValidCredentials,
 }
 
 impl Display for CredentialUpdateSessionStatusWarnings {
@@ -333,6 +345,9 @@ impl From<CredentialUpdateSessionStatusWarnings> for CURegWarning {
             }
             CredentialUpdateSessionStatusWarnings::WebauthnUserVerificationRequired => {
                 CURegWarning::WebauthnUserVerificationRequired
+            }
+            CredentialUpdateSessionStatusWarnings::NoValidCredentials => {
+                CURegWarning::NoValidCredentials
             }
         }
     }
@@ -3064,10 +3079,11 @@ mod tests {
 
         let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::Passkey);
 
-        let r2 = idms_auth
+        let ar = idms_auth
             .auth(&auth_begin, ct, Source::Internal.into())
-            .await;
-        let ar = r2.unwrap();
+            .await
+            .inspect_err(|err| error!(?err))
+            .ok()?;
         let AuthResult { sessionid, state } = ar;
 
         trace!(?state);
@@ -3084,7 +3100,8 @@ mod tests {
 
         let resp = wa
             .do_authentication(origin, rcr)
-            .expect("failed to use softtoken to authenticate");
+            .inspect_err(|err| error!(?err))
+            .ok()?;
 
         let passkey_step = AuthEvent::cred_step_passkey(sessionid, resp);
 
@@ -3163,7 +3180,6 @@ mod tests {
             .expect("Failed to get the current session status.");
 
         trace!(?c_status);
-
         assert!(c_status.primary.is_none());
 
         // Test initially creating a credential.
@@ -3197,14 +3213,13 @@ mod tests {
             .expect("Failed to delete the primary cred");
         trace!(?c_status);
         assert!(c_status.primary.is_none());
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+        // Can't delete, would be the last credential!
+        assert!(!c_status.can_commit);
 
         drop(cutxn);
-        commit_session(idms, ct, cust).await;
-
-        // Must fail now!
-        assert!(check_testperson_password(idms, idms_delayed, test_pw, ct)
-            .await
-            .is_none());
     }
 
     #[idm_test]
@@ -3296,7 +3311,11 @@ mod tests {
             matches!(err, OperationError::PasswordQuality(details) if details == vec!(PasswordFeedback::BadListed))
         );
 
-        assert!(c_status.can_commit);
+        // There are no credentials so we can't proceed.
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+        assert!(!c_status.can_commit);
 
         drop(cutxn);
     }
@@ -3844,6 +3863,7 @@ mod tests {
         idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
 
         let (cust, _) = setup_test_session(idms, ct).await;
         let cutxn = idms.cred_update_transaction().await.unwrap();
@@ -3884,10 +3904,26 @@ mod tests {
         assert!(c_status.primary.is_none());
         assert!(c_status.passkeys.is_empty());
 
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+        assert!(!c_status.can_commit);
+
+        // For now, set a password to allow saving.
+        let c_status = cutxn
+            .credential_primary_set_password(&cust, ct, test_pw)
+            .expect("Failed to update the primary cred password");
+
+        // Could proceed now!
+        assert!(c_status.can_commit);
+        assert!(!c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
-        // Must fail now!
+        // Must fail now as the passkeys were removed!!!
         assert!(
             check_testperson_passkey(idms, idms_delayed, &mut wa, origin, ct)
                 .await
@@ -4067,8 +4103,11 @@ mod tests {
         assert!(c_status.primary.is_none());
         assert!(c_status.passkeys.is_empty());
 
-        drop(cutxn);
-        commit_session(idms, ct, cust).await;
+        // Since there are no credentials we can't proceed anyway.
+        assert!(!c_status.can_commit);
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
     }
 
     // Assert we can't create "just" a password when mfa is required.
@@ -4262,16 +4301,28 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         // Create the attested soft token we will use in this test.
-        let (soft_token_valid, ca_root) = SoftToken::new(true).unwrap();
-        let mut wa_token_valid = WebauthnAuthenticator::new(soft_token_valid);
+        let (soft_token_valid_a, ca_root_a) = SoftToken::new(true).unwrap();
+        let mut wa_token_valid = WebauthnAuthenticator::new(soft_token_valid_a);
+
+        // We need a second for when we rotate the token.
+        let (soft_token_valid_b, ca_root_b) = SoftToken::new(true).unwrap();
+        let mut wa_token_valid_b = WebauthnAuthenticator::new(soft_token_valid_b);
 
         // Create it's associated policy.
         let mut att_ca_builder = AttestationCaListBuilder::new();
         att_ca_builder
             .insert_device_x509(
-                ca_root,
+                ca_root_a,
                 softtoken::AAGUID,
-                "softtoken".to_string(),
+                "softtoken_a".to_string(),
+                Default::default(),
+            )
+            .unwrap();
+        att_ca_builder
+            .insert_device_x509(
+                ca_root_b,
+                softtoken::AAGUID,
+                "softtoken_b".to_string(),
                 Default::default(),
             )
             .unwrap();
@@ -4309,10 +4360,12 @@ mod tests {
 
         trace!(?c_status);
         assert!(c_status.attested_passkeys.is_empty());
-        assert_eq!(
-            c_status.attested_passkeys_allowed_devices,
-            vec!["softtoken".to_string()]
-        );
+        assert!(c_status
+            .attested_passkeys_allowed_devices
+            .contains(&"softtoken_a".to_string()));
+        assert!(c_status
+            .attested_passkeys_allowed_devices
+            .contains(&"softtoken_b".to_string()));
 
         // -------------------------------------------------------
         // Unable to add an passkey when attestation is requested.
@@ -4437,10 +4490,43 @@ mod tests {
         assert!(c_status.passkeys.is_empty());
         assert!(c_status.attested_passkeys.is_empty());
 
+        // Removed every passkey, you can't proceed!!!!
+        assert!(!c_status.can_commit);
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+
+        // Add a new, but differenter passkey
+        let c_status = cutxn
+            .credential_attested_passkey_init(&cust, ct)
+            .expect("Failed to initiate attested passkey registration");
+
+        let passkey_chal = match c_status.mfaregstate {
+            MfaRegStateStatus::AttestedPasskey(c) => Some(c),
+            _ => None,
+        }
+        .expect("Unable to access passkey challenge, invalid state");
+
+        // Note this is the second token, not the first.
+        let passkey_resp = wa_token_valid_b
+            .do_registration(origin.clone(), passkey_chal)
+            .expect("Failed to create soft passkey");
+
+        // Finish the registration
+        let label = "softtoken".to_string();
+        let c_status = cutxn
+            .credential_attested_passkey_finish(&cust, ct, label, &passkey_resp)
+            .expect("Failed to initiate passkey registration");
+
+        assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+        trace!(?c_status);
+        assert_eq!(c_status.attested_passkeys.len(), 1);
+
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
-        // Must fail now!
+        // Must fail now, note we use the first token to auth here which we deleted from
+        // the clients credentials.
         assert!(
             check_testperson_passkey(idms, idms_delayed, &mut wa_token_valid, origin, ct)
                 .await
@@ -4460,8 +4546,10 @@ mod tests {
         let (soft_token_1, ca_root_1) = SoftToken::new(true).unwrap();
         let mut wa_token_1 = WebauthnAuthenticator::new(soft_token_1);
 
-        let (_soft_token_2, ca_root_2) = SoftToken::new(true).unwrap();
+        let (soft_token_2, ca_root_2) = SoftToken::new(true).unwrap();
+        let mut wa_token_2 = WebauthnAuthenticator::new(soft_token_2);
 
+        // This is the original policy that we enroll.
         let mut att_ca_builder = AttestationCaListBuilder::new();
         att_ca_builder
             .insert_device_x509(
@@ -4488,7 +4576,7 @@ mod tests {
 
         assert!(idms_prox_write.commit().is_ok());
 
-        // Setup the policy for later that lacks token 2.
+        // Setup the policy for later that lacks token 1.
         let mut att_ca_builder = AttestationCaListBuilder::new();
         att_ca_builder
             .insert_device_x509(
@@ -4520,7 +4608,7 @@ mod tests {
             .do_registration(origin.clone(), passkey_chal)
             .expect("Failed to create soft passkey");
 
-        // Finish the registration
+        // Finish the registration of token 1
         let label = "softtoken".to_string();
         let c_status = cutxn
             .credential_attested_passkey_finish(&cust, ct, label, &passkey_resp)
@@ -4556,7 +4644,7 @@ mod tests {
 
         assert!(idms_prox_write.commit().is_ok());
 
-        // Auth fail
+        // Auth fail, the CA is no longer valid.
         assert!(
             check_testperson_passkey(idms, idms_delayed, &mut wa_token_1, origin.clone(), ct)
                 .await
@@ -4582,14 +4670,53 @@ mod tests {
         trace!(?c_status);
         assert!(c_status.attested_passkeys.is_empty());
 
+        // But we can't commit:
+        assert!(!c_status.can_commit);
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+
+        // -------------------------------------------------------
+        // Now enroll the new token.
+        let c_status = cutxn
+            .credential_attested_passkey_init(&cust, ct)
+            .expect("Failed to initiate attested passkey registration");
+
+        let passkey_chal = match c_status.mfaregstate {
+            MfaRegStateStatus::AttestedPasskey(c) => Some(c),
+            _ => None,
+        }
+        .expect("Unable to access passkey challenge, invalid state");
+
+        let passkey_resp = wa_token_2
+            .do_registration(origin.clone(), passkey_chal)
+            .expect("Failed to create soft passkey");
+
+        // Finish the registration of token 1
+        let label = "softtoken".to_string();
+        let c_status = cutxn
+            .credential_attested_passkey_finish(&cust, ct, label, &passkey_resp)
+            .expect("Failed to initiate passkey registration");
+
+        assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+        trace!(?c_status);
+        assert_eq!(c_status.attested_passkeys.len(), 1);
+
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
-        // Auth fail
+        // Auth fail with the first token still
         assert!(
             check_testperson_passkey(idms, idms_delayed, &mut wa_token_1, origin.clone(), ct)
                 .await
                 .is_none()
+        );
+
+        // But the new token works.
+        assert!(
+            check_testperson_passkey(idms, idms_delayed, &mut wa_token_2, origin.clone(), ct)
+                .await
+                .is_some()
         );
     }
 
@@ -4730,8 +4857,21 @@ mod tests {
             .expect("Failed to get the current session status.");
 
         trace!(?c_status);
-
         assert!(c_status.unixcred.is_none());
+
+        // There are no credentials so we can't proceed.
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+        assert!(!c_status.can_commit);
+        // User needs at least one credential else they can't save.
+        let c_status = cutxn
+            .credential_primary_set_password(&cust, ct, test_pw)
+            .expect("Failed to update the primary cred password");
+        assert!(c_status.can_commit);
+        assert!(!c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
 
         // Test initially creating a credential.
         //   - pw first
@@ -4776,6 +4916,7 @@ mod tests {
 
     #[idm_test]
     async fn credential_update_sshkeys(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
         let sshkey_valid_1 =
             SshPublicKey::from_string(SSHKEY_VALID_1).expect("Invalid SSHKEY_VALID_1");
         let sshkey_valid_2 =
@@ -4790,6 +4931,18 @@ mod tests {
         let c_status = cutxn
             .credential_update_status(&cust, ct)
             .expect("Failed to get the current session status.");
+
+        // There are no credentials so we can't proceed.
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+        assert!(!c_status.can_commit);
+        // User needs at least one credential else they can't save.
+        let c_status = cutxn
+            .credential_primary_set_password(&cust, ct, test_pw)
+            .expect("Failed to update the primary cred password");
+
+        // Ready to proceed with ssh keys
 
         trace!(?c_status);
 
@@ -4848,5 +5001,57 @@ mod tests {
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
+    }
+
+    // Assert we need at least one credential on the accoutn to save.
+    #[idm_test]
+    async fn credential_update_at_least_one_credential(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let (cust, _) = setup_test_session(idms, ct).await;
+
+        let cutxn = idms.cred_update_transaction().await.unwrap();
+
+        // Get the credential status - this should tell
+        // us the details of the credentials, as well as
+        // if they are ready and valid to commit?
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+
+        assert!(c_status.primary.is_none());
+        // There are no credentials so we can't proceed.
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+        assert!(!c_status.can_commit);
+
+        // Test initially creating a credential.
+        let c_status = cutxn
+            .credential_primary_set_password(&cust, ct, test_pw)
+            .expect("Failed to update the primary cred password");
+
+        // Could proceed now!
+        assert!(c_status.can_commit);
+        assert!(!c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+
+        // But if we remove it, back to square 1.
+        let c_status = cutxn
+            .credential_primary_delete(&cust, ct)
+            .expect("Failed to remove the primary credential");
+
+        // There are no credentials so we can't proceed.
+        assert!(c_status
+            .warnings
+            .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
+        assert!(!c_status.can_commit);
     }
 }

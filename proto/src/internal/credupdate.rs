@@ -165,6 +165,7 @@ pub enum CURegWarning {
     Unsatisfiable,
     WebauthnAttestationUnsatisfiable,
     WebauthnUserVerificationRequired,
+    NoValidCredentials,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
