@@ -10,11 +10,11 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
 use kanidm_unix_common::constants::{
     DEFAULT_CONFIG_PATH, SYSTEM_GROUP_PATH, SYSTEM_PASSWD_PATH, SYSTEM_SHADOW_PATH,
 };
+use kanidm_unix_common::json_codec::JsonCodec;
 use kanidm_unix_common::unix_config::UnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow, EtcDb};
 use kanidm_unix_common::unix_proto::{
@@ -42,50 +42,12 @@ use tokio::net::UnixStream;
 use tokio::sync::broadcast;
 use tokio::sync::watch;
 use tokio::time;
-use tokio_util::codec::{Decoder, Encoder, Framed};
+use tokio_util::codec::Framed;
 use tracing::instrument;
 use walkdir::WalkDir;
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use kanidm_unix_common::selinux_util;
-
-struct TaskCodec;
-
-impl Decoder for TaskCodec {
-    type Error = io::Error;
-    type Item = TaskRequestFrame;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_json::from_slice::<TaskRequestFrame>(src) {
-            Ok(msg) => {
-                // Clear the buffer for the next message.
-                src.clear();
-                Ok(Some(msg))
-            }
-            _ => Ok(None),
-        }
-    }
-}
-
-impl Encoder<TaskResponse> for TaskCodec {
-    type Error = io::Error;
-
-    fn encode(&mut self, msg: TaskResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        debug!("Attempting to send request -> {:?} ...", msg);
-        let data = serde_json::to_vec(&msg).map_err(|e| {
-            error!("socket encoding error -> {:?}", e);
-            io::Error::other("JSON encode error")
-        })?;
-        dst.put(data.as_slice());
-        Ok(())
-    }
-}
-
-impl TaskCodec {
-    fn new() -> Self {
-        TaskCodec
-    }
-}
 
 fn chown(path: &Path, gid: u32) -> Result<(), String> {
     let path_os = CString::new(path.as_os_str().as_bytes())
@@ -349,7 +311,9 @@ async fn handle_tasks(
     shadow_data_watch_rx: &mut watch::Receiver<EtcDb>,
     cfg: &UnixdConfig,
 ) {
-    let mut reqs = Framed::new(stream, TaskCodec::new());
+    let codec: JsonCodec<TaskRequestFrame, TaskResponse> = JsonCodec::default();
+
+    let mut reqs = Framed::new(stream, codec);
 
     // Immediately trigger that we should reload the shadow files for the new connected handler
     shadow_data_watch_rx.mark_changed();
