@@ -86,6 +86,7 @@ pub enum CryptoError {
     Argon2Version,
     Argon2Parameters,
     Crypt,
+    InvalidServerName,
 }
 
 impl From<OpenSSLErrorStack> for CryptoError {
