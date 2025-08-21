@@ -439,7 +439,7 @@ fn setup_shadow_inotify_watcher(
             if path_of_interest_was_changed {
                 let _ = shadow_broadcast_tx.send(true);
             } else {
-                debug!(?array_of_events, "IGNORED");
+                trace!(?array_of_events, "IGNORED");
             }
         },
     )
