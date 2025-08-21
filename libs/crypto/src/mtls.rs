@@ -79,9 +79,11 @@ pub fn build_self_signed_server_and_client_identity(
     };
 
     let subject_alt_name = match server_name {
-        ServerName::DnsName(_) => SubjectAlternativeName::new().dns(domain_name)
+        ServerName::DnsName(_) => SubjectAlternativeName::new()
+            .dns(domain_name)
             .build(&cert_builder.x509v3_context(None, None))?,
-        ServerName::IpAddress(_) => SubjectAlternativeName::new().ip(domain_name)
+        ServerName::IpAddress(_) => SubjectAlternativeName::new()
+            .ip(domain_name)
             .build(&cert_builder.x509v3_context(None, None))?,
         _ => return Err(CryptoError::InvalidServerName),
     };
