@@ -1,5 +1,4 @@
 use crate::CryptoError;
-
 use openssl::asn1;
 use openssl::bn;
 use openssl::ec;
@@ -14,7 +13,7 @@ use openssl::x509::extension::SubjectAlternativeName;
 use openssl::x509::extension::SubjectKeyIdentifier;
 use openssl::x509::X509NameBuilder;
 use openssl::x509::X509;
-
+use rustls::pki_types::ServerName;
 use uuid::Uuid;
 
 /// Gets an [ec::EcGroup] for P-256
@@ -74,9 +73,18 @@ pub fn build_self_signed_server_and_client_identity(
         SubjectKeyIdentifier::new().build(&cert_builder.x509v3_context(None, None))?;
     cert_builder.append_extension(subject_key_identifier)?;
 
-    let subject_alt_name = SubjectAlternativeName::new()
-        .dns(domain_name)
-        .build(&cert_builder.x509v3_context(None, None))?;
+    // How does rustls interpret this name?
+    let Ok(server_name) = ServerName::try_from(domain_name.to_owned()) else {
+        return Err(CryptoError::InvalidServerName);
+    };
+
+    let subject_alt_name = match server_name {
+        ServerName::DnsName(_) => SubjectAlternativeName::new().dns(domain_name)
+            .build(&cert_builder.x509v3_context(None, None))?,
+        ServerName::IpAddress(_) => SubjectAlternativeName::new().ip(domain_name)
+            .build(&cert_builder.x509v3_context(None, None))?,
+        _ => return Err(CryptoError::InvalidServerName),
+    };
 
     cert_builder.append_extension(subject_alt_name)?;
 
