@@ -206,7 +206,7 @@ impl CredentialUpdateSession {
     // Vec of the issues with the current session so that UI's can highlight properly how to proceed.
     fn can_commit(&self) -> (bool, Vec<CredentialUpdateSessionStatusWarnings>) {
         let mut warnings = Vec::with_capacity(0);
-        let mut can_proceed = true;
+        let mut can_commit = true;
 
         let cred_type_min = self.resolved_account_policy.credential_policy();
 
@@ -223,7 +223,7 @@ impl CredentialUpdateSession {
                     // parts.
                     .unwrap_or(false)
                 {
-                    can_proceed = false;
+                    can_commit = false;
                     warnings.push(CredentialUpdateSessionStatusWarnings::MfaRequired);
                 }
             }
@@ -231,14 +231,14 @@ impl CredentialUpdateSession {
                 // NOTE: Technically this is unreachable, but we keep it for correctness.
                 // Primary can't be set at all.
                 if self.primary.is_some() {
-                    can_proceed = false;
+                    can_commit = false;
                     warnings.push(CredentialUpdateSessionStatusWarnings::PasskeyRequired);
                 }
             }
             CredentialType::AttestedPasskey => {
                 // Also unreachable - during these sessions, there will be no values present here.
                 if !self.passkeys.is_empty() || self.primary.is_some() {
-                    can_proceed = false;
+                    can_commit = false;
                     warnings.push(CredentialUpdateSessionStatusWarnings::AttestedPasskeyRequired);
                 }
             }
@@ -248,14 +248,14 @@ impl CredentialUpdateSession {
                     || !self.passkeys.is_empty()
                     || self.primary.is_some()
                 {
-                    can_proceed = false;
+                    can_commit = false;
                     warnings
                         .push(CredentialUpdateSessionStatusWarnings::AttestedResidentKeyRequired);
                 }
             }
             CredentialType::Invalid => {
                 // special case, must always deny all changes.
-                can_proceed = false;
+                can_commit = false;
                 warnings.push(CredentialUpdateSessionStatusWarnings::Unsatisfiable)
             }
         }
@@ -268,17 +268,17 @@ impl CredentialUpdateSession {
         }
 
         // We only check this if we were able to proceed to a commit state. That way we don't warn needlessly.
-        if can_proceed
+        if can_commit
             && self.attested_passkeys.is_empty()
             && self.passkeys.is_empty()
             && self.primary.is_none()
         {
             // The user has no credentials to login to their account with, we can not proceed!
-            can_proceed = false;
+            can_commit = false;
             warnings.push(CredentialUpdateSessionStatusWarnings::NoValidCredentials)
         }
 
-        (can_proceed, warnings)
+        (can_commit, warnings)
     }
 }
 
