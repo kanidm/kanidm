@@ -1003,7 +1003,8 @@ async fn repl_acceptor(
                             } else {
                                 // TLS is not setup, generally due to no accepted/trusted client
                                 // certs being present. Drop the connection.
-                                warn!("ignoring connection when tls_acceptor is not available");
+                                warn!("Ignoring replication connection when tls_acceptor is not available.");
+                                warn!("This occurs because you have not configured this server with trusted partner certificates.");
                             }
                         }
                         Err(e) => {
