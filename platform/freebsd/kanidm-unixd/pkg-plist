@@ -7,7 +7,8 @@ libexec/kanidm_unixd
 libexec/kanidm_unixd_tasks
 @dir(kanidm,kanidm,755) %%ETCDIR%%
 @sample(kanidm,kanidm,640) %%ETCDIR%%/unixd.sample
-%%ETCDIR/unixd-safe-default.sample
-@dir(kanidm,kanidm,750) /var/cache/kanidm-unixd
+%%ETCDIR%%/unixd-safe-default.sample
+@dir /var/lib
 @dir(kanidm,kanidm,750) /var/lib/kanidm-unixd
+@dir(kanidm,kanidm,750) /var/cache/kanidm-unixd
 @dir(kanidm,kanidm,750) /var/run/kanidm-unixd
