@@ -4,7 +4,7 @@ PKGNAMESUFFIX=	-server
 
 COMMENT=	Simple & secure identity management platform (server)
 
-RUN_DEPENDS=	security/kanidm-client
+RUN_DEPENDS=	kanidm:security/kanidm-client
 
 USE_RC_SUBR=	kanidmd
 

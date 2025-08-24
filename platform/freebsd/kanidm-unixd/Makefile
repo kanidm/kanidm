@@ -4,7 +4,7 @@ PKGNAMESUFFIX=	-unixd
 
 COMMENT=	Simple & secure identity management platform (unixd integration)
 
-RUN_DEPENDS=	security/kanidm-client
+RUN_DEPENDS=	kanidm:security/kanidm-client
 
 USE_RC_SUBR=	kanidm_unixd kanidm_unixd_tasks
 
