@@ -1,7 +1,7 @@
 sbin/kanidmd
 sbin/kanidm-ipa-sync
 sbin/kanidm-ldap-sync
-@sample(kanidm,kanidm,644) %%ETCDIR%%/server.toml.sample
+@sample(kanidm,kanidm,640) %%ETCDIR%%/server.toml.sample
 @sample(kanidm,kanidm,640) %%ETCDIR%%/ipa-sync.sample
 @sample(kanidm,kanidm,640) %%ETCDIR%%/ldap-sync.sample
 %%DATADIR%%/ui/hpkg/external/base64.js

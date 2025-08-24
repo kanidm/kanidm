@@ -20,10 +20,28 @@ load_rc_config $name
 : ${kanidmd_enable:="NO"}
 : ${kanidmd_user:="kanidm"}
 : ${kanidmd_group:="kanidm"}
+: ${kanidmd_log:="/var/log/kanidmd.log"}
+: ${kanidmd_config:="/usr/local/etc/kanidm/server.toml"}
 
+command="/usr/sbin/daemon"
+task="/usr/local/sbin/kanidmd"
 pidfile="/var/run/kanidmd/kanidmd.pid"
-command=/usr/sbin/daemon
-command_args="-p /var/run/kanidmd/kanidmd.pid -T ${name} ${procname} server --config=/usr/local/etc/kanidm/server.toml"
-procname=/usr/local/sbin/${name}
+procname="${task}"
+
+command_args="-p ${pidfile} -T ${name} -o ${kanidmd_log} ${task} server --config=${kanidmd_config}"
+
+start_precmd="${name}_prestart"
+
+kanidmd_prestart() {
+	if [ ! -f "${kanidmd_log}" ]; then
+		touch "${kanidmd_log}"
+		chown ${kanidmd_user}:${kanidmd_group} "${kanidmd_log}"
+		chmod 640 "${kanidmd_log}"
+	fi
+
+	if [ ! -d "/var/run/kanidmd" ] ; then
+		install -d -o ${kanidmd_user} -g ${kanidmd_group} "/var/run/kanidmd"
+	fi
+}
 
 run_rc_command "$1"
