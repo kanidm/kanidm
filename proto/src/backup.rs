@@ -50,7 +50,7 @@ impl From<String> for BackupCompression {
     fn from(s: String) -> Self {
         match s.to_lowercase().as_str() {
             "gzip" => BackupCompression::Gzip,
-            "nocompression" => BackupCompression::NoCompression,
+            "none" | "nocompression" => BackupCompression::NoCompression,
             _ => {
                 eprintln!(
                     "Unknown compression type '{}', defaulting to {}",
