@@ -1,4 +1,4 @@
-use crate::common::{OpType, ToClientError};
+use crate::common::ToClientError;
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
@@ -12,7 +12,7 @@ use compact_jwt::{
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
 use kanidm_client::{ClientError, KanidmClient};
-use kanidm_proto::constants::CLIENT_TOKEN_CACHE;
+use kanidm_proto::cli::OpType;
 use kanidm_proto::internal::UserAuthToken;
 use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState};
 #[cfg(target_family = "unix")]
@@ -21,7 +21,7 @@ use webauthn_authenticator_rs::prelude::RequestChallengeResponse;
 
 use crate::common::prompt_for_username_get_username;
 use crate::webauthn::get_authenticator;
-use crate::{CommonOpt, LoginOpt, LogoutOpt, ReauthOpt, SessionOpt};
+use crate::{KanidmClientParser, LoginOpt, LogoutOpt, SessionOpt};
 
 use serde::{Deserialize, Serialize};
 
@@ -114,15 +114,6 @@ impl TokenStore {
         let n_lookup = name.clone().unwrap_or_default();
 
         self.instances.get_mut(&n_lookup)
-    }
-}
-
-impl CommonOpt {
-    fn get_token_cache_path(&self) -> String {
-        match self.token_cache_path.clone() {
-            None => CLIENT_TOKEN_CACHE.to_string(),
-            Some(val) => val.clone(),
-        }
     }
 }
 
@@ -341,7 +332,7 @@ async fn do_securitykey(
     client.auth_step_securitykey_complete(auth).await
 }
 
-async fn process_auth_state(
+pub(crate) async fn process_auth_state(
     mut allowed: Vec<AuthAllowed>,
     mut client: KanidmClient,
     maybe_password: &Option<String>,
@@ -498,13 +489,9 @@ async fn process_auth_state(
 }
 
 impl LoginOpt {
-    pub fn debug(&self) -> bool {
-        self.copt.debug
-    }
-
-    pub async fn exec(&self) {
-        let client = self.copt.to_unauth_client();
-        let username = match self.copt.username.as_deref() {
+    pub async fn exec(&self, opt: KanidmClientParser) {
+        let client = opt.to_unauth_client();
+        let username = match opt.username.as_deref() {
             Some(val) => val,
             None => {
                 error!("Please specify a username with -D <USERNAME> to login.");
@@ -560,49 +547,19 @@ impl LoginOpt {
                 std::process::exit(1);
             });
 
-        let instance_name = &self.copt.instance;
-
         // We now have the first auth state, so we can proceed until complete.
-        process_auth_state(allowed, client, &self.password, instance_name).await;
-    }
-}
-
-impl ReauthOpt {
-    pub fn debug(&self) -> bool {
-        self.copt.debug
-    }
-
-    pub(crate) async fn inner(&self, client: KanidmClient) {
-        let instance_name = &self.copt.instance;
-
-        let allowed = client.reauth_begin().await.unwrap_or_else(|e| {
-            error!("Error during reauthentication begin phase: {:?}", e);
-            std::process::exit(1);
-        });
-
-        process_auth_state(allowed, client, &None, instance_name).await;
-    }
-
-    pub async fn exec(&self) {
-        let client = self.copt.to_client(OpType::Read).await;
-        // This is to break a recursion loop in re-auth with to_client
-        self.inner(client).await
+        process_auth_state(allowed, client, &opt.password, &opt.instance).await;
     }
 }
 
 impl LogoutOpt {
-    pub fn debug(&self) -> bool {
-        self.copt.debug
-    }
-
-    pub async fn exec(&self) {
-        let mut tokens = read_tokens(&self.copt.get_token_cache_path()).unwrap_or_else(|_| {
+    pub async fn exec(&self, opt: KanidmClientParser) {
+        let mut tokens = read_tokens(&opt.get_token_cache_path()).unwrap_or_else(|_| {
             error!("Error retrieving authentication token store");
             std::process::exit(1);
         });
 
-        let instance_name = &self.copt.instance;
-        let n_lookup = instance_name.clone().unwrap_or_default();
+        let n_lookup = opt.instance.clone().unwrap_or_default();
         let Some(token_instance) = tokens.instances.get_mut(&n_lookup) else {
             println!("No sessions for instance {n_lookup}");
             return;
@@ -611,14 +568,14 @@ impl LogoutOpt {
         let spn: String = if self.local_only {
             // For now we just remove this from the token store.
             let mut _tmp_username = String::new();
-            match &self.copt.username {
+            match &opt.username {
                 Some(value) => value.clone(),
                 None => {
                     // check if we're in a tty
                     if std::io::stdin().is_terminal() {
                         match prompt_for_username_get_username(
-                            &self.copt.get_token_cache_path(),
-                            instance_name,
+                            &opt.get_token_cache_path(),
+                            &opt.instance,
                         ) {
                             Ok(value) => value,
                             Err(msg) => {
@@ -633,7 +590,7 @@ impl LogoutOpt {
                 }
             }
         } else {
-            let client = match self.copt.try_to_client(OpType::Read).await {
+            let client = match opt.try_to_client(OpType::Read).await {
                 Ok(c) => c,
                 Err(ToClientError::NeedLogin(_)) => {
                     // There are no session tokens, so return a success.
@@ -714,35 +671,29 @@ impl LogoutOpt {
         // Remove our old one
         if token_instance.tokens.remove(&spn).is_some() {
             // write them out.
-            if let Err(_e) = write_tokens(&tokens, &self.copt.get_token_cache_path()) {
+            if let Err(_e) = write_tokens(&tokens, &opt.get_token_cache_path()) {
                 error!("Error persisting authentication token store");
                 std::process::exit(1);
             };
-            println!("Removed session for {spn}");
+            opt.output_mode
+                .print_message(format!("Removed session for {spn}"));
         } else {
-            println!("No sessions for {spn}");
+            opt.output_mode
+                .print_message(format!("No sessions for {spn}"));
         }
     }
 }
 
 impl SessionOpt {
-    pub fn debug(&self) -> bool {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
-            SessionOpt::List(dopt) | SessionOpt::Cleanup(dopt) => dopt.debug,
-        }
-    }
-
-    pub async fn exec(&self) {
-        match self {
-            SessionOpt::List(copt) => {
-                let token_store = read_tokens(&copt.get_token_cache_path()).unwrap_or_else(|_| {
+            SessionOpt::List => {
+                let token_store = read_tokens(&opt.get_token_cache_path()).unwrap_or_else(|_| {
                     error!("Error retrieving authentication token store");
                     std::process::exit(1);
                 });
 
-                let instance_name = &copt.instance;
-
-                let Some(token_instance) = token_store.instances(instance_name) else {
+                let Some(token_instance) = token_store.instances(&opt.instance) else {
                     return;
                 };
 
@@ -751,14 +702,14 @@ impl SessionOpt {
                     println!("{uat}");
                 }
             }
-            SessionOpt::Cleanup(copt) => {
+            SessionOpt::Cleanup => {
                 let mut token_store =
-                    read_tokens(&copt.get_token_cache_path()).unwrap_or_else(|_| {
+                    read_tokens(&opt.get_token_cache_path()).unwrap_or_else(|_| {
                         error!("Error retrieving authentication token store");
                         std::process::exit(1);
                     });
 
-                let instance_name = &copt.instance;
+                let instance_name = &opt.instance;
 
                 let Some(token_instance) = token_store.instances_mut(instance_name) else {
                     error!("No tokens for instance");
@@ -768,7 +719,7 @@ impl SessionOpt {
                 let now = time::OffsetDateTime::now_utc();
                 let change = token_instance.cleanup(now);
 
-                if let Err(_e) = write_tokens(&token_store, &copt.get_token_cache_path()) {
+                if let Err(_e) = write_tokens(&token_store, &opt.get_token_cache_path()) {
                     error!("Error persisting authentication token store");
                     std::process::exit(1);
                 };

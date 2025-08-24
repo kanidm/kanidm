@@ -33,7 +33,7 @@ async fn signal_handler(opt: KanidmClientParser) -> ExitCode {
     let mut signal_pipe = signal(SignalKind::pipe()).expect("Invalid Signal");
 
     tokio::select! {
-        _ = opt.commands.exec() => {
+        _ = opt.exec() => {
             ExitCode::SUCCESS
         }
         _ = signal_quit.recv() => {
@@ -59,7 +59,7 @@ fn main() -> ExitCode {
 
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
 
-    let filter_layer = if opt.commands.debug() {
+    let filter_layer = if opt.debug {
         match EnvFilter::try_new("kanidm=debug,kanidm_client=debug,webauthn=debug,kanidm_cli=debug")
         {
             Ok(f) => f,

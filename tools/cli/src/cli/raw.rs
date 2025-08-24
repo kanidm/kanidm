@@ -1,4 +1,4 @@
-use crate::common::OpType;
+use kanidm_proto::cli::OpType;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::File;
@@ -9,7 +9,7 @@ use kanidm_proto::internal::{Filter, Modify, ModifyList};
 use kanidm_proto::v1::Entry;
 use serde::de::DeserializeOwned;
 
-use crate::{OutputMode, RawOpt};
+use crate::{KanidmClientParser, OutputMode, RawOpt};
 
 fn read_file<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, Box<dyn Error>> {
     let f = File::open(path)?;
@@ -19,19 +19,10 @@ fn read_file<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, Box<dyn 
 }
 
 impl RawOpt {
-    pub fn debug(&self) -> bool {
-        match self {
-            RawOpt::Search(sopt) => sopt.commonopts.debug,
-            RawOpt::Create(copt) => copt.commonopts.debug,
-            RawOpt::Modify(mopt) => mopt.commonopts.debug,
-            RawOpt::Delete(dopt) => dopt.commonopts.debug,
-        }
-    }
-
-    pub async fn exec(&self) {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
             RawOpt::Search(sopt) => {
-                let client = sopt.commonopts.to_client(OpType::Read).await;
+                let client = opt.to_client(OpType::Read).await;
 
                 let filter: Filter = match serde_json::from_str(sopt.filter.as_str()) {
                     Ok(f) => f,
@@ -42,7 +33,7 @@ impl RawOpt {
                 };
 
                 match client.search(filter).await {
-                    Ok(rset) => match sopt.commonopts.output_mode {
+                    Ok(rset) => match opt.output_mode {
                         #[allow(clippy::expect_used)]
                         OutputMode::Json => {
                             println!(
@@ -58,7 +49,7 @@ impl RawOpt {
                 }
             }
             RawOpt::Create(copt) => {
-                let client = copt.commonopts.to_client(OpType::Write).await;
+                let client = opt.to_client(OpType::Write).await;
                 // Read the file?
                 let r_entries: Vec<BTreeMap<String, Vec<String>>> = match read_file(&copt.file) {
                     Ok(r) => r,
@@ -75,7 +66,7 @@ impl RawOpt {
                 }
             }
             RawOpt::Modify(mopt) => {
-                let client = mopt.commonopts.to_client(OpType::Write).await;
+                let client = opt.to_client(OpType::Write).await;
                 // Read the file?
                 let filter: Filter = match serde_json::from_str(mopt.filter.as_str()) {
                     Ok(f) => f,
@@ -99,7 +90,7 @@ impl RawOpt {
                 }
             }
             RawOpt::Delete(dopt) => {
-                let client = dopt.commonopts.to_client(OpType::Write).await;
+                let client = opt.to_client(OpType::Write).await;
                 let filter: Filter = match serde_json::from_str(dopt.filter.as_str()) {
                     Ok(f) => f,
                     Err(e) => {
