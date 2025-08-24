@@ -1,0 +1,52 @@
+sbin/kanidmd
+sbin/kanidm-ipa-sync
+sbin/kanidm-ldap-sync
+@sample(kanidm,kanidm,644) %%ETCDIR%%/server.toml.sample
+@sample(kanidm,kanidm,640) %%ETCDIR%%/ipa-sync.sample
+@sample(kanidm,kanidm,640) %%ETCDIR%%/ldap-sync.sample
+%%DATADIR%%/ui/hpkg/external/base64.js
+%%DATADIR%%/ui/hpkg/external/bootstrap.bundle.min.js
+%%DATADIR%%/ui/hpkg/external/bootstrap.bundle.min.js.map
+%%DATADIR%%/ui/hpkg/external/bootstrap.min.css
+%%DATADIR%%/ui/hpkg/external/bootstrap.min.css.map
+%%DATADIR%%/ui/hpkg/external/confetti.js
+%%DATADIR%%/ui/hpkg/external/forms.js
+%%DATADIR%%/ui/hpkg/external/htmx.min.1.9.12.js
+%%DATADIR%%/ui/hpkg/external/htmx_bs_validation.js
+%%DATADIR%%/ui/hpkg/img/apple-touch-icon.png
+%%DATADIR%%/ui/hpkg/img/favicon.png
+%%DATADIR%%/ui/hpkg/img/icon-accounts.svg
+%%DATADIR%%/ui/hpkg/img/icon-accounts.svg.br
+%%DATADIR%%/ui/hpkg/img/icon-groups.svg
+%%DATADIR%%/ui/hpkg/img/icon-groups.svg.br
+%%DATADIR%%/ui/hpkg/img/icon-oauth2.svg
+%%DATADIR%%/ui/hpkg/img/icon-oauth2.svg.br
+%%DATADIR%%/ui/hpkg/img/icon-person.svg
+%%DATADIR%%/ui/hpkg/img/icon-person.svg.br
+%%DATADIR%%/ui/hpkg/img/icon-robot.svg
+%%DATADIR%%/ui/hpkg/img/icon-robot.svg.br
+%%DATADIR%%/ui/hpkg/img/icons/building-lock.svg
+%%DATADIR%%/ui/hpkg/img/icons/key.svg
+%%DATADIR%%/ui/hpkg/img/icons/person.svg
+%%DATADIR%%/ui/hpkg/img/icons/phone-flip.svg
+%%DATADIR%%/ui/hpkg/img/icons/shield-lock.svg
+%%DATADIR%%/ui/hpkg/img/icons/wifi.svg
+%%DATADIR%%/ui/hpkg/img/kani-waving.svg
+%%DATADIR%%/ui/hpkg/img/logo-180.png
+%%DATADIR%%/ui/hpkg/img/logo-192.png
+%%DATADIR%%/ui/hpkg/img/logo-256.png
+%%DATADIR%%/ui/hpkg/img/logo-512.png
+%%DATADIR%%/ui/hpkg/img/logo-square.svg
+%%DATADIR%%/ui/hpkg/img/logo-square.svg.br
+%%DATADIR%%/ui/hpkg/img/logo.svg
+%%DATADIR%%/ui/hpkg/modules/cred_update.mjs
+%%DATADIR%%/ui/hpkg/pkhtml.js
+%%DATADIR%%/ui/hpkg/style.css
+%%DATADIR%%/ui/hpkg/style.js
+@dir %%DATADIR%%/ui/hpkg/external
+@dir %%DATADIR%%/ui/hpkg
+@dir %%DATADIR%%/ui
+@dir %%DATADIR%%
+@dir(kanidm,kanidm,750) %%ETCDIR%%
+@dir(kanidm,kanidm,750) %%DBDIR%%
+@dir(kanidm,kanidm,755) /var/run/kanidmd

@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# PROVIDE: kanidmd
+# REQUIRE: LOGIN
+# KEYWORD: shutdown
+#
+# Add these lines to /etc/rc.conf.local or /etc/rc.conf
+# to enable this service:
+#
+# kanidm_unixd_enable (bool):	Set to NO by default.
+#				Set it to YES to enable kanidm_unixd.
+
+. /etc/rc.subr
+
+name=kanidmd
+rcvar=kanidmd_enable
+
+load_rc_config $name
+
+: ${kanidmd_enable:="NO"}
+: ${kanidmd_user:="kanidm"}
+: ${kanidmd_group:="kanidm"}
+
+pidfile="/var/run/kanidmd/kanidmd.pid"
+command=/usr/sbin/daemon
+command_args="-p /var/run/kanidmd/kanidmd.pid -T ${name} ${procname} server --config=/usr/local/etc/kanidm/server.toml"
+procname=/usr/local/sbin/${name}
+
+run_rc_command "$1"
