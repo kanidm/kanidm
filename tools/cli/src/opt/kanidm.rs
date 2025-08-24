@@ -25,11 +25,21 @@ pub struct DebugOpt {
     pub debug: bool,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 /// The CLI output mode, either text or json, falls back to text if you ask for something other than text/json
 pub enum OutputMode {
+    #[default]
     Text,
     Json,
+}
+
+impl Into<clap::builder::OsStr> for OutputMode {
+    fn into(self) -> clap::builder::OsStr {
+        match self {
+            OutputMode::Text => "text".into(),
+            OutputMode::Json => "json".into(),
+        }
+    }
 }
 
 impl std::str::FromStr for OutputMode {
@@ -1456,14 +1466,8 @@ pub struct KanidmClientParser {
         global = true
     )]
     pub ca_path: Option<PathBuf>,
-    /// Log format (still in very early development)
-    #[clap(
-        short,
-        long = "output",
-        env = "KANIDM_OUTPUT",
-        default_value = "text",
-        global = true
-    )]
+    /// Log format
+    #[clap(short, long = "output", env = "KANIDM_OUTPUT", global = true, default_value=OutputMode::default())]
     output_mode: OutputMode,
     /// Skip hostname verification
     #[clap(
