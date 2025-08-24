@@ -128,6 +128,8 @@ impl IntervalActor {
             return Err(());
         }
 
+        let backup_compression = online_backup_config.compression;
+
         let handle = tokio::spawn(async move {
             for next_time in cron_expr.upcoming(Utc) {
                 // We add 1 second to the `wait_time` in order to get "even" timestampes
@@ -150,6 +152,7 @@ impl IntervalActor {
                                 OnlineBackupEvent::new(),
                                 &outpath,
                                 versions,
+                                backup_compression,
                             )
                             .await
                         {

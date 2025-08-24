@@ -3,6 +3,10 @@ struct BackupOpt {
     #[clap(value_parser)]
     /// Output path for the backup content.
     path: PathBuf,
+
+    /// Compression method
+    #[clap(short = 'C', long, env = "KANIDM_BACKUP_COMPRESSION")]
+    compression: Option<String>,
 }
 
 #[derive(Debug, Args)]
