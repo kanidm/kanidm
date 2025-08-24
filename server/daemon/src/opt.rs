@@ -120,7 +120,7 @@ struct KanidmdParser {
     #[command(subcommand)]
     commands: KanidmdOpt,
 
-    #[clap(short, long, env = "KANIDMD_CONFIG", global = true)]
+    #[clap(short, long, env = "KANIDM_CONFIG", global = true)]
     config_path: Option<PathBuf>,
 
     /// Output formatting
