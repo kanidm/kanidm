@@ -1496,8 +1496,13 @@ pub struct KanidmClientParser {
     value_parser = clap::builder::NonEmptyStringValueParser::new())]
     token_cache_path: Option<String>,
 
-    #[clap(short, long, env = "KANIDM_PASSWORD", hide = true,
-    value_parser = clap::builder::NonEmptyStringValueParser::new())]
+    #[clap(
+        short,
+        long,
+        env = "KANIDM_PASSWORD",
+        hide = true,
+        global = true,
+        value_parser = clap::builder::NonEmptyStringValueParser::new())]
     /// Supply a password to the login option
     password: Option<String>,
 }
