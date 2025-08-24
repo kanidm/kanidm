@@ -50,7 +50,7 @@ async fn signal_handler(opt: KanidmClientParser) -> ExitCode {
 
 #[cfg(target_family = "windows")]
 async fn signal_handler(opt: KanidmClientParser) -> ExitCode {
-    opt.commands.exec().await;
+    opt.exec().await;
     ExitCode::SUCCESS
 }
 
