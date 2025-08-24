@@ -119,3 +119,6 @@ schedule = "00 22 * * *"
 #   at the beginning and the year at the end)
 #   Number of backups to keep (default 7)
 # versions = 7
+
+# Compression can either be "gzip" or "nocompression", will compress the backups on disk if specified.
+compression = "gzip"
