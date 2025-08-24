@@ -33,9 +33,9 @@ pub enum OutputMode {
     Json,
 }
 
-impl Into<clap::builder::OsStr> for OutputMode {
-    fn into(self) -> clap::builder::OsStr {
-        match self {
+impl From<OutputMode> for clap::builder::OsStr {
+    fn from(output_mode: OutputMode) -> Self {
+        match output_mode {
             OutputMode::Text => "text".into(),
             OutputMode::Json => "json".into(),
         }
