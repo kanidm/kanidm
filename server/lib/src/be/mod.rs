@@ -25,6 +25,7 @@ use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::internal::{ConsistencyError, OperationError};
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::prelude::*;
 use std::io::Read;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
@@ -32,6 +33,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{trace, trace_span};
 use uuid::Uuid;
+
+use flate2::write::GzEncoder;
+use flate2::Compression;
 
 pub(crate) mod dbentry;
 pub(crate) mod dbrepl;
@@ -1003,18 +1007,15 @@ pub trait BackendTransaction {
                 }),
             BackupCompression::Gzip => {
                 let writer = std::fs::File::create(dst_path).map_err(|e| {
-                    admin_error!(?e, "tokio::fs::File::create error");
+                    admin_error!(?e, "File::create error creating {}", dst_path.display());
                     OperationError::FsError
                 })?;
 
-                use flate2::write::GzEncoder;
-                use flate2::Compression;
-                use std::io::prelude::*;
-                let mut encoder = GzEncoder::new(writer, Compression::default());
+                let mut encoder = GzEncoder::new(writer, Compression::best());
                 encoder
                     .write_all(serialized_entries_str.as_bytes())
                     .map_err(|e| {
-                        admin_error!(?e, "gzip compression error");
+                        admin_error!(?e, "Gzip compression error writing backup");
                         OperationError::FsError
                     })?;
                 Ok(())
