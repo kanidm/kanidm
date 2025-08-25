@@ -42,6 +42,7 @@ use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::{JwsHs256Signer, JwsSigner};
+use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::internal::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
 use kanidmd_lib::idm::ldap::LdapServer;
@@ -338,7 +339,7 @@ pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
     };
 }
 
-pub fn backup_server_core(config: &Configuration, dst_path: &Path) {
+pub fn backup_server_core(config: &Configuration, dst_path: &Path, compression: BackupCompression) {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
@@ -363,7 +364,7 @@ pub fn backup_server_core(config: &Configuration, dst_path: &Path) {
         }
     };
 
-    let r = be_ro_txn.backup(dst_path);
+    let r = be_ro_txn.backup(dst_path, compression);
     match r {
         Ok(_) => info!("Backup success!"),
         Err(e) => {

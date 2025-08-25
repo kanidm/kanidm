@@ -15,6 +15,10 @@ struct BackupOpt {
     path: PathBuf,
     #[clap(flatten)]
     commonopts: CommonOpt,
+
+    /// Compression method
+    #[clap(short = 'C', long, env = "KANIDM_BACKUP_COMPRESSION")]
+    compression: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -48,14 +52,14 @@ enum DomainSettingsCmds {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
-    /// ⚠️  Do not use this command unless directed by a project member. ⚠️ 
+    /// ⚠️  Do not use this command unless directed by a project member. ⚠️
     /// - Raise the functional level of this domain to the maximum available.
     #[clap(name = "raise")]
     Raise {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
-    /// ⚠️  Do not use this command unless directed by a project member. ⚠️ 
+    /// ⚠️  Do not use this command unless directed by a project member. ⚠️
     /// - Rerun migrations of this domains database, optionally nominating the level
     ///   to start from.
     #[clap(name = "remigrate")]
@@ -171,9 +175,8 @@ impl KanidmdParser {
             KanidmdOpt::Server(ref c) => c.config_path.clone(),
             KanidmdOpt::ConfigTest(ref c) => c.config_path.clone(),
             KanidmdOpt::CertGenerate(ref c) => c.config_path.clone(),
-            KanidmdOpt::RecoverAccount { ref commonopts, .. } |
-            KanidmdOpt::DisableAccount { ref commonopts, .. }
-                => commonopts.config_path.clone(),
+            KanidmdOpt::RecoverAccount { ref commonopts, .. }
+            | KanidmdOpt::DisableAccount { ref commonopts, .. } => commonopts.config_path.clone(),
             KanidmdOpt::ShowReplicationCertificate { ref commonopts, .. } => {
                 commonopts.config_path.clone()
             }
@@ -207,7 +210,9 @@ impl KanidmdParser {
             KanidmdOpt::DomainSettings { ref commands } => match commands {
                 DomainSettingsCmds::Show { ref commonopts } => commonopts.config_path.clone(),
                 DomainSettingsCmds::Change { ref commonopts } => commonopts.config_path.clone(),
-                DomainSettingsCmds::UpgradeCheck { ref commonopts } => commonopts.config_path.clone(),
+                DomainSettingsCmds::UpgradeCheck { ref commonopts } => {
+                    commonopts.config_path.clone()
+                }
                 DomainSettingsCmds::Raise { ref commonopts } => commonopts.config_path.clone(),
                 DomainSettingsCmds::Remigrate { ref commonopts, .. } => {
                     commonopts.config_path.clone()
