@@ -156,7 +156,7 @@ pub struct ScimListSchemaClass {
 }
 
 #[serde_as]
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ScimEntrySchemaAttribute {
     #[serde(flatten)]

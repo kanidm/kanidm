@@ -1,17 +1,11 @@
-use crate::ApiOpt;
+use crate::{ApiOpt, KanidmClientParser};
 use std::io::IsTerminal;
 
 impl ApiOpt {
-    pub fn debug(&self) -> bool {
-        match self {
-            ApiOpt::DownloadSchema(asdo) => asdo.copt.debug,
-        }
-    }
-
-    pub async fn exec(&self) {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
             ApiOpt::DownloadSchema(aopt) => {
-                let client = aopt.copt.to_unauth_client();
+                let client = opt.to_unauth_client();
                 // check if the output file already exists
                 if aopt.filename.exists() {
                     debug!("Output file {} already exists", aopt.filename.display());

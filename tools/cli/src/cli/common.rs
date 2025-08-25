@@ -1,22 +1,15 @@
-use std::env;
-
 use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_proto::cli::OpType;
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use kanidm_proto::internal::UserAuthToken;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
-use crate::session::read_tokens;
-use crate::{CommonOpt, LoginOpt, ReauthOpt};
-
-#[derive(Clone)]
-pub enum OpType {
-    Read,
-    Write,
-}
+use crate::session::{process_auth_state, read_tokens};
+use crate::{KanidmClientParser, LoginOpt};
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
@@ -26,7 +19,7 @@ pub enum ToClientError {
     Other,
 }
 
-impl CommonOpt {
+impl KanidmClientParser {
     pub fn to_unauth_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde(DEFAULT_CLIENT_CONFIG_PATH_HOME).into_owned();
 
@@ -290,9 +283,8 @@ impl CommonOpt {
     }
 
     pub async fn to_client(&self, optype: OpType) -> KanidmClient {
-        let mut copt_mut = self.clone();
         loop {
-            match self.try_to_client(optype.clone()).await {
+            match self.try_to_client(optype).await {
                 Ok(c) => break c,
                 Err(ToClientError::NeedLogin(username)) => {
                     if !Confirm::new()
@@ -304,18 +296,19 @@ impl CommonOpt {
                         std::process::exit(1);
                     }
 
-                    copt_mut.username = Some(username);
-                    let copt = copt_mut.clone();
-                    let login_opt = LoginOpt {
-                        copt,
-                        password: env::var("KANIDM_PASSWORD").ok(),
+                    let copt = Self {
+                        username: Some(username),
+                        ..self.to_owned()
                     };
 
-                    login_opt.exec().await;
+                    let login_opt = LoginOpt {};
+
                     // Okay, try again ...
+                    login_opt.exec(copt).await;
                     continue;
                 }
-                Err(ToClientError::NeedReauth(username, client)) => {
+
+                Err(ToClientError::NeedReauth(username, _client)) => {
                     if !Confirm::new()
                         .with_prompt("Would you like to re-authenticate?")
                         .default(true)
@@ -324,10 +317,12 @@ impl CommonOpt {
                     {
                         std::process::exit(1);
                     }
-                    copt_mut.username = Some(username);
-                    let copt = copt_mut.clone();
-                    let reauth_opt = ReauthOpt { copt };
-                    reauth_opt.inner(client).await;
+
+                    let copt = Self {
+                        username: Some(username),
+                        ..self.to_owned()
+                    };
+                    Box::pin(copt.reauth(optype)).await;
 
                     // Okay, re-auth should have passed, lets loop
                     continue;
@@ -337,6 +332,17 @@ impl CommonOpt {
                 }
             }
         }
+    }
+
+    pub(crate) async fn reauth(&self, optype: OpType) {
+        let client = self.to_client(optype).await;
+
+        let allowed = client.reauth_begin().await.unwrap_or_else(|e| {
+            error!("Error during reauthentication begin phase: {:?}", e);
+            std::process::exit(1);
+        });
+
+        process_auth_state(allowed, client, &self.password, &self.instance).await;
     }
 }
 

@@ -13,7 +13,7 @@
 #[macro_use]
 extern crate tracing;
 
-use crate::common::OpType;
+use kanidm_proto::cli::OpType;
 use std::path::PathBuf;
 
 use identify_user_no_tui::{run_identity_verification_no_tui, IdentifyUserState};
@@ -86,23 +86,16 @@ pub(crate) fn handle_group_account_policy_error(response: ClientError, _output_m
 }
 
 impl SelfOpt {
-    pub fn debug(&self) -> bool {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
-            SelfOpt::Whoami(copt) => copt.debug,
-            SelfOpt::IdentifyUser(copt) => copt.debug,
-        }
-    }
-
-    pub async fn exec(&self) {
-        match self {
-            SelfOpt::Whoami(copt) => {
-                let client = copt.to_client(OpType::Read).await;
+            SelfOpt::Whoami => {
+                let client = opt.to_client(OpType::Read).await;
 
                 match client.whoami().await {
                     Ok(o_ent) => {
                         match o_ent {
                             Some(ent) => {
-                                println!("{ent}");
+                                opt.output_mode.print_message(ent);
                             }
                             None => {
                                 error!("Authentication with cached token failed, can't query information.");
@@ -110,11 +103,11 @@ impl SelfOpt {
                             }
                         }
                     }
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
-            SelfOpt::IdentifyUser(copt) => {
-                let client = copt.to_client(OpType::Write).await;
+            SelfOpt::IdentifyUser => {
+                let client = opt.to_client(OpType::Write).await;
                 let whoami_response = match client.whoami().await {
                     Ok(o_ent) => {
                         match o_ent {
@@ -126,7 +119,8 @@ impl SelfOpt {
                         }
                     }
                     Err(e) => {
-                        println!("Error querying whoami endpoint: {e:?}"); // TODO: add an error ID (internal/web response error, restart or check connectivity)
+                        opt.output_mode
+                            .print_message(format!("Error querying whoami endpoint: {e:?}")); // TODO: add an error ID (internal/web response error, restart or check connectivity)
                         return;
                     }
                 };
@@ -135,7 +129,7 @@ impl SelfOpt {
                     match whoami_response.attrs.get("spn").and_then(|v| v.first()) {
                         Some(spn) => spn,
                         None => {
-                            eprintln!("Failed to parse your SPN from the system's whoami endpoint, exiting!"); // TODO: add an error ID (internal/web response error, restart)
+                            opt.output_mode.print_message("Failed to parse your SPN from the system's whoami endpoint, exiting!"); // TODO: add an error ID (internal/web response error, restart)
                             return;
                         }
                     };
@@ -147,78 +141,43 @@ impl SelfOpt {
 }
 
 impl SystemOpt {
-    pub fn debug(&self) -> bool {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
-            SystemOpt::Api { commands } => commands.debug(),
-            SystemOpt::PwBadlist { commands } => commands.debug(),
-            SystemOpt::DeniedNames { commands } => commands.debug(),
-            SystemOpt::Oauth2 { commands } => commands.debug(),
-            SystemOpt::Domain { commands } => commands.debug(),
-            SystemOpt::Synch { commands } => commands.debug(),
-        }
-    }
-
-    pub async fn exec(&self) {
-        match self {
-            SystemOpt::Api { commands } => commands.exec().await,
-            SystemOpt::PwBadlist { commands } => commands.exec().await,
-            SystemOpt::DeniedNames { commands } => commands.exec().await,
-            SystemOpt::Oauth2 { commands } => commands.exec().await,
-            SystemOpt::Domain { commands } => commands.exec().await,
-            SystemOpt::Synch { commands } => commands.exec().await,
+            SystemOpt::Api { commands } => commands.exec(opt).await,
+            SystemOpt::PwBadlist { commands } => commands.exec(opt).await,
+            SystemOpt::DeniedNames { commands } => commands.exec(opt).await,
+            SystemOpt::Oauth2 { commands } => commands.exec(opt).await,
+            SystemOpt::Domain { commands } => commands.exec(opt).await,
+            SystemOpt::Synch { commands } => commands.exec(opt).await,
         }
     }
 }
 
-impl KanidmClientOpt {
-    pub fn debug(&self) -> bool {
-        match self {
-            KanidmClientOpt::Raw { commands } => commands.debug(),
-            KanidmClientOpt::Login(lopt) => lopt.debug(),
-            KanidmClientOpt::Reauth(lopt) => lopt.debug(),
-            KanidmClientOpt::Logout(lopt) => lopt.debug(),
-            KanidmClientOpt::Session { commands } => commands.debug(),
-            KanidmClientOpt::CSelf { commands } => commands.debug(),
-            KanidmClientOpt::Group { commands } => commands.debug(),
-            KanidmClientOpt::Person { commands } => commands.debug(),
-            KanidmClientOpt::ServiceAccount { commands } => commands.debug(),
-            KanidmClientOpt::Graph(gopt) => gopt.debug(),
+impl KanidmClientParser {
+    pub async fn exec(self) {
+        match self.commands.clone() {
+            KanidmClientOpt::Raw { commands } => commands.exec(self).await,
+            KanidmClientOpt::Login(lopt) => lopt.exec(self).await,
+            KanidmClientOpt::Reauth { mode } => self.reauth(mode).await,
+            KanidmClientOpt::Logout(lopt) => lopt.exec(self).await,
+            KanidmClientOpt::Session { commands } => commands.exec(self).await,
+            KanidmClientOpt::CSelf { commands } => commands.exec(self).await,
+            KanidmClientOpt::Person { commands } => commands.exec(self).await,
+            KanidmClientOpt::ServiceAccount { commands } => commands.exec(self).await,
+            KanidmClientOpt::Group { commands } => commands.exec(self).await,
+            KanidmClientOpt::Graph(gops) => gops.exec(self).await,
+            KanidmClientOpt::System { commands } => commands.exec(self).await,
             KanidmClientOpt::Schema {
                 commands: SchemaOpt::Class { commands },
-            } => commands.debug(),
+            } => commands.exec(self).await,
             KanidmClientOpt::Schema {
                 commands: SchemaOpt::Attribute { commands },
-            } => commands.debug(),
-            KanidmClientOpt::System { commands } => commands.debug(),
-            KanidmClientOpt::Recycle { commands } => commands.debug(),
-            KanidmClientOpt::Version {} => {
-                println!("kanidm {}", env!("KANIDM_PKG_VERSION"));
-                true
+            } => commands.exec(self).await,
+            KanidmClientOpt::Recycle { commands } => commands.exec(self).await,
+            KanidmClientOpt::Version => {
+                self.output_mode
+                    .print_message(format!("kanidm {}", env!("KANIDM_PKG_VERSION")));
             }
-        }
-    }
-
-    pub async fn exec(&self) {
-        match self {
-            KanidmClientOpt::Raw { commands } => commands.exec().await,
-            KanidmClientOpt::Login(lopt) => lopt.exec().await,
-            KanidmClientOpt::Reauth(lopt) => lopt.exec().await,
-            KanidmClientOpt::Logout(lopt) => lopt.exec().await,
-            KanidmClientOpt::Session { commands } => commands.exec().await,
-            KanidmClientOpt::CSelf { commands } => commands.exec().await,
-            KanidmClientOpt::Person { commands } => commands.exec().await,
-            KanidmClientOpt::ServiceAccount { commands } => commands.exec().await,
-            KanidmClientOpt::Group { commands } => commands.exec().await,
-            KanidmClientOpt::Graph(gops) => gops.exec().await,
-            KanidmClientOpt::System { commands } => commands.exec().await,
-            KanidmClientOpt::Schema {
-                commands: SchemaOpt::Class { commands },
-            } => commands.exec().await,
-            KanidmClientOpt::Schema {
-                commands: SchemaOpt::Attribute { commands },
-            } => commands.exec().await,
-            KanidmClientOpt::Recycle { commands } => commands.exec().await,
-            KanidmClientOpt::Version {} => (),
         }
     }
 }
