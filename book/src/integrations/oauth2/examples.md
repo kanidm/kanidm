@@ -658,13 +658,13 @@ To set up OPKSSH to authenticate with Kanidm:
 
 ## Outline
 
-> These instructions were tested with self-hosted Outline 0.80.2.
+> These instructions were tested with self-hosted Outline 0.86.1.
 
 Outline is a wiki / knowledge base which [can be self-hosted][outline-self].
 
 Self-hosted [Outline supports authentication with OpenID Connect][outline-oidc], with some limitations:
 
-- [Outline does not support PKCE][outline-pkce], [which is a security issue][pkce-disable-security].
+- [Outline does not support PKCE][outline-pkce] with manual OAuth2 configuration, [which is a security issue][pkce-disable-security]. However, it does support PKCE using automatic configuration via OIDC discovery.
 
 - Outline does not support group or ACL delegation.
 
@@ -692,13 +692,14 @@ To set up a _new_ self-hosted Outline instance to authenticate with Kanidm:
    **Warning:** don't add any other users when first setting up Outline. The first user who logs in will gain
    administrative rights.
 
-3. Create a new OAuth2 application configuration in Kanidm (`outline`), disable the PKCE requirement
+3. Create a new OAuth2 application configuration in Kanidm (`outline`), disable the PKCE requirement (only for manual configuration)
    ([this is insecure][pkce-disable-security], but [Outline doesn't support it][outline-pkce]), configure the redirect
    URL, and scope access to the `outline_users` group:
 
    ```sh
    kanidm system oauth2 create outline Outline https://outline.example.com
-   kanidm system oauth2 warning-insecure-client-disable-pkce outline
+   # only required for manual configuration
+   # kanidm system oauth2 warning-insecure-client-disable-pkce outline
    kanidm system oauth2 add-redirect-url outline https://outline.example.com/auth/oidc.callback
    kanidm system oauth2 update-scope-map outline outline_users email openid profile groups
    ```
@@ -712,12 +713,18 @@ To set up a _new_ self-hosted Outline instance to authenticate with Kanidm:
 5. Configure Outline to authenticate to Kanidm with OpenID Connect in Outline's environment file (`docker.env` /
    `.env`):
 
-   ```
+   ```ini
    OIDC_CLIENT_ID=outline
    OIDC_CLIENT_SECRET=YOUR KANIDM BASIC SECRET HERE
-   OIDC_AUTH_URI=https://idm.example.com/ui/oauth2
-   OIDC_TOKEN_URI=https://idm.example.com/oauth2/token
-   OIDC_USERINFO_URI=https://idm.example.com/oauth2/openid/outline/userinfo
+
+   # Run OIDC discovery with PKCE support
+   OIDC_ISSUER_URL=https://idm.example.com/oauth2/openid/outline/.well-known/openid-configuration
+
+   # OR these 3 lines manual config, no PKCE support
+   # OIDC_AUTH_URI=https://idm.example.com/ui/oauth2
+   # OIDC_TOKEN_URI=https://idm.example.com/oauth2/token
+   # OIDC_USERINFO_URI=https://idm.example.com/oauth2/openid/outline/userinfo
+
    OIDC_LOGOUT_URI=
    # Prevent redirect loop on logout
    OIDC_DISABLE_REDIRECT=true
