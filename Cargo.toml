@@ -162,7 +162,7 @@ axum-htmx = { version = "0.5.0", features = ["serde", "guards"] }
 base32 = "^0.5.1"
 base64 = "^0.22.1"
 base64urlsafedata = "0.5.2"
-bitflags = "^2.9.2"
+bitflags = "^2.9.3"
 bytes = "^1.9.0"
 cidr = "0.3.1"
 clap = { version = "4.5.45", features = ["derive", "env"] }
@@ -179,7 +179,7 @@ dialoguer = "0.11.0"
 dhat = "0.3.3"
 dyn-clone = "^1.0.20"
 enum-iterator = "2.1.0"
-filetime = "^0.2.24"
+filetime = "^0.2.26"
 fs4 = "^0.13.0"
 futures = "^0.3.31"
 futures-util = { version = "^0.3.30", features = ["sink"] }
@@ -189,7 +189,7 @@ hashbrown = { version = "0.15.5", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
 http = "1.2.0"
 http-body-util = "0.1"
-hyper = { version = "1.5.1", features = [
+hyper = { version = "1.7.0", features = [
     "full",
 ] } # hyper full includes client/server/http2
 hyper-util = { version = "0.1.16", features = ["server", "tokio"] }
@@ -244,7 +244,7 @@ qrcode = "0.14.1"
 quote = "1"
 rand = "0.9.2"
 rand_chacha = "0.9.0"
-regex = "1.11.0"
+regex = "1.11.2"
 reqwest = { version = "0.12.23", default-features = false, features = [
     "cookies",
     "http2",
@@ -263,7 +263,7 @@ sd-notify = "^0.4.5"
 selinux = "^0.5.3"
 serde = "^1.0.217"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
-serde_json = "^1.0.142"
+serde_json = "^1.0.143"
 serde_urlencoded = "^0.7.1"
 serde_with = "3.13.0"
 sha-crypt = "0.5.0"
@@ -275,7 +275,7 @@ sshkey-attest = "^0.5.2"
 sshkeys = "0.3.3"
 svg = "0.18.0"
 syn = { version = "2.0.106", features = ["full"] }
-tempfile = "3.20.0"
+tempfile = "3.21.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.36", features = ["formatting", "local-offset"] }
 
