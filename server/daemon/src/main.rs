@@ -53,77 +53,6 @@ use whoami;
 
 include!("./opt.rs");
 
-impl KanidmdOpt {
-    fn commonopt(&self) -> &CommonOpt {
-        match self {
-            KanidmdOpt::Server(sopt)
-            | KanidmdOpt::CertGenerate(sopt)
-            | KanidmdOpt::ConfigTest(sopt)
-            | KanidmdOpt::DbScan {
-                commands: DbScanOpt::ListIndexes(sopt),
-            }
-            | KanidmdOpt::DbScan {
-                commands: DbScanOpt::ListId2Entry(sopt),
-            }
-            | KanidmdOpt::DbScan {
-                commands: DbScanOpt::ListIndexAnalysis(sopt),
-            } => sopt,
-            KanidmdOpt::Database {
-                commands: DbCommands::Backup(bopt),
-            } => &bopt.commonopts,
-            KanidmdOpt::Database {
-                commands: DbCommands::Restore(ropt),
-            } => &ropt.commonopts,
-            KanidmdOpt::DbScan {
-                commands: DbScanOpt::QuarantineId2Entry { commonopts, .. },
-            }
-            | KanidmdOpt::DbScan {
-                commands: DbScanOpt::ListQuarantined { commonopts },
-            }
-            | KanidmdOpt::DbScan {
-                commands: DbScanOpt::RestoreQuarantined { commonopts, .. },
-            }
-            | KanidmdOpt::ShowReplicationCertificate { commonopts }
-            | KanidmdOpt::RenewReplicationCertificate { commonopts }
-            | KanidmdOpt::RefreshReplicationConsumer { commonopts, .. } => commonopts,
-            KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
-            KanidmdOpt::DisableAccount { commonopts, .. } => commonopts,
-            KanidmdOpt::DbScan {
-                commands: DbScanOpt::ListIndex(dopt),
-            } => &dopt.commonopts,
-            KanidmdOpt::DbScan {
-                commands: DbScanOpt::GetId2Entry(dopt),
-            } => &dopt.commonopts,
-            KanidmdOpt::DomainSettings {
-                commands: DomainSettingsCmds::Show { commonopts },
-            }
-            | KanidmdOpt::DomainSettings {
-                commands: DomainSettingsCmds::Change { commonopts },
-            }
-            | KanidmdOpt::DomainSettings {
-                commands: DomainSettingsCmds::UpgradeCheck { commonopts },
-            }
-            | KanidmdOpt::DomainSettings {
-                commands: DomainSettingsCmds::Raise { commonopts },
-            }
-            | KanidmdOpt::DomainSettings {
-                commands: DomainSettingsCmds::Remigrate { commonopts, .. },
-            } => commonopts,
-            KanidmdOpt::Database {
-                commands: DbCommands::Verify(sopt),
-            }
-            | KanidmdOpt::Database {
-                commands: DbCommands::Reindex(sopt),
-            } => sopt,
-            KanidmdOpt::Database {
-                commands: DbCommands::Vacuum(copt),
-            } => copt,
-            KanidmdOpt::HealthCheck(hcopt) => &hcopt.commonopts,
-            KanidmdOpt::Version(copt) => copt,
-        }
-    }
-}
-
 /// Get information on the windows username
 #[cfg(target_family = "windows")]
 fn get_user_details_windows() {
@@ -342,10 +271,10 @@ fn check_file_ownership(opt: &KanidmdParser) -> Result<(), ExitCode> {
         (cuid, ceuid)
     };
 
-    if let Some(cfg_path) = opt.config_path() {
+    if let Some(cfg_path) = &opt.config_path {
         #[cfg(target_family = "unix")]
         {
-            if let Some(cfg_meta) = match metadata(&cfg_path) {
+            if let Some(cfg_meta) = match metadata(cfg_path) {
                 Ok(m) => Some(m),
                 Err(e) => {
                     error!(
@@ -468,8 +397,8 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
 
     let lock_was_setup = match &opt.commands {
         // we aren't going to touch the DB so we can carry on
-        KanidmdOpt::ShowReplicationCertificate { .. }
-        | KanidmdOpt::RenewReplicationCertificate { .. }
+        KanidmdOpt::ShowReplicationCertificate
+        | KanidmdOpt::RenewReplicationCertificate
         | KanidmdOpt::RefreshReplicationConsumer { .. }
         | KanidmdOpt::RecoverAccount { .. }
         | KanidmdOpt::DisableAccount { .. }
@@ -552,7 +481,7 @@ fn main() -> ExitCode {
     let opt = KanidmdParser::parse();
 
     // print the app version and bail
-    if let KanidmdOpt::Version(_) = &opt.commands {
+    if let KanidmdOpt::Version = &opt.commands {
         println!("kanidmd {}", env!("KANIDM_PKG_VERSION"));
         return ExitCode::SUCCESS;
     };
@@ -564,8 +493,8 @@ fn main() -> ExitCode {
 
     let default_config_path = PathBuf::from(env!("KANIDM_SERVER_CONFIG_PATH"));
 
-    let maybe_config_path = if let Some(p) = opt.config_path() {
-        Some(p)
+    let maybe_config_path = if let Some(p) = &opt.config_path {
+        Some(p.clone())
     } else {
         // The user didn't ask for a file, lets check if the default path exists?
         if default_config_path.exists() {
@@ -600,10 +529,10 @@ fn main() -> ExitCode {
     };
 
     let cli_config = CliConfig {
-        output_mode: Some(opt.commands.commonopt().output_mode.to_owned().into()),
+        output_mode: Some(opt.output_mode.to_owned().into()),
     };
 
-    let is_server = matches!(&opt.commands, KanidmdOpt::Server(_));
+    let is_server = matches!(&opt.commands, KanidmdOpt::Server);
 
     let config = Configuration::build()
         .add_env_config(envconfig)
@@ -654,8 +583,8 @@ fn main() -> ExitCode {
 /// that we are processing into the config for the main server.
 async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
     match &opt.commands {
-        KanidmdOpt::Server(_sopt) | KanidmdOpt::ConfigTest(_sopt) => {
-            let config_test = matches!(&opt.commands, KanidmdOpt::ConfigTest(_));
+        KanidmdOpt::Server | KanidmdOpt::ConfigTest => {
+            let config_test = matches!(&opt.commands, KanidmdOpt::ConfigTest);
             if config_test {
                 info!("Running in server configuration test mode ...");
             } else {
@@ -866,7 +795,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                 info!("Stopped 🛑 ");
             }
         }
-        KanidmdOpt::CertGenerate(_sopt) => {
+        KanidmdOpt::CertGenerate => {
             info!("Running in certificate generate mode ...");
             cert_generate_core(&config);
         }
@@ -883,14 +812,14 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             restore_server_core(&config, &ropt.path).await;
         }
         KanidmdOpt::Database {
-            commands: DbCommands::Verify(_vopt),
+            commands: DbCommands::Verify,
         } => {
             info!("Running in db verification mode ...");
             verify_server_core(&config).await;
         }
-        KanidmdOpt::ShowReplicationCertificate { commonopts } => {
+        KanidmdOpt::ShowReplicationCertificate => {
             info!("Running show replication certificate ...");
-            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            let output_mode: ConsoleOutputMode = opt.output_mode.into();
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::ShowReplicationCertificate,
@@ -898,9 +827,9 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             )
             .await;
         }
-        KanidmdOpt::RenewReplicationCertificate { commonopts } => {
+        KanidmdOpt::RenewReplicationCertificate => {
             info!("Running renew replication certificate ...");
-            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            let output_mode: ConsoleOutputMode = opt.output_mode.into();
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::RenewReplicationCertificate,
@@ -908,15 +837,12 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             )
             .await;
         }
-        KanidmdOpt::RefreshReplicationConsumer {
-            commonopts,
-            proceed,
-        } => {
+        KanidmdOpt::RefreshReplicationConsumer { proceed } => {
             info!("Running refresh replication consumer ...");
             if !proceed {
                 error!("Unwilling to proceed. Check --help.");
             } else {
-                let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                let output_mode: ConsoleOutputMode = opt.output_mode.into();
                 submit_admin_req(
                     config.adminbindpath.as_str(),
                     AdminTaskRequest::RefreshReplicationConsumer,
@@ -925,9 +851,9 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                 .await;
             }
         }
-        KanidmdOpt::RecoverAccount { name, commonopts } => {
+        KanidmdOpt::RecoverAccount { name } => {
             info!("Running account recovery ...");
-            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            let output_mode: ConsoleOutputMode = opt.output_mode.into();
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::RecoverAccount {
@@ -937,9 +863,9 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             )
             .await;
         }
-        KanidmdOpt::DisableAccount { name, commonopts } => {
+        KanidmdOpt::DisableAccount { name } => {
             info!("Running account disable ...");
-            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            let output_mode: ConsoleOutputMode = opt.output_mode.into();
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DisableAccount {
@@ -950,25 +876,25 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             .await;
         }
         KanidmdOpt::Database {
-            commands: DbCommands::Reindex(_copt),
+            commands: DbCommands::Reindex,
         } => {
             info!("Running in reindex mode ...");
             reindex_server_core(&config).await;
         }
         KanidmdOpt::DbScan {
-            commands: DbScanOpt::ListIndexes(_),
+            commands: DbScanOpt::ListIndexes,
         } => {
             info!("👀 db scan - list indexes");
             dbscan_list_indexes_core(&config);
         }
         KanidmdOpt::DbScan {
-            commands: DbScanOpt::ListId2Entry(_),
+            commands: DbScanOpt::ListId2Entry,
         } => {
             info!("👀 db scan - list id2entry");
             dbscan_list_id2entry_core(&config);
         }
         KanidmdOpt::DbScan {
-            commands: DbScanOpt::ListIndexAnalysis(_),
+            commands: DbScanOpt::ListIndexAnalysis,
         } => {
             info!("👀 db scan - list index analysis");
             dbscan_list_index_analysis_core(&config);
@@ -987,38 +913,38 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         }
 
         KanidmdOpt::DbScan {
-            commands: DbScanOpt::QuarantineId2Entry { id, commonopts: _ },
+            commands: DbScanOpt::QuarantineId2Entry { id },
         } => {
             info!("☣️  db scan - quarantine id2 entry - {}", id);
             dbscan_quarantine_id2entry_core(&config, *id);
         }
 
         KanidmdOpt::DbScan {
-            commands: DbScanOpt::ListQuarantined { commonopts: _ },
+            commands: DbScanOpt::ListQuarantined,
         } => {
             info!("☣️  db scan - list quarantined");
             dbscan_list_quarantined_core(&config);
         }
 
         KanidmdOpt::DbScan {
-            commands: DbScanOpt::RestoreQuarantined { id, commonopts: _ },
+            commands: DbScanOpt::RestoreQuarantined { id },
         } => {
             info!("☣️  db scan - restore quarantined entry - {}", id);
             dbscan_restore_quarantined_core(&config, *id);
         }
 
         KanidmdOpt::DomainSettings {
-            commands: DomainSettingsCmds::Change { .. },
+            commands: DomainSettingsCmds::Change,
         } => {
             info!("Running in domain name change mode ... this may take a long time ...");
             domain_rename_core(&config).await;
         }
 
         KanidmdOpt::DomainSettings {
-            commands: DomainSettingsCmds::Show { commonopts },
+            commands: DomainSettingsCmds::Show,
         } => {
             info!("Running domain show ...");
-            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            let output_mode: ConsoleOutputMode = opt.output_mode.into();
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainShow,
@@ -1028,10 +954,10 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         }
 
         KanidmdOpt::DomainSettings {
-            commands: DomainSettingsCmds::UpgradeCheck { commonopts },
+            commands: DomainSettingsCmds::UpgradeCheck,
         } => {
             info!("Running domain upgrade check ...");
-            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            let output_mode: ConsoleOutputMode = opt.output_mode.into();
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainUpgradeCheck,
@@ -1041,10 +967,10 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         }
 
         KanidmdOpt::DomainSettings {
-            commands: DomainSettingsCmds::Raise { commonopts },
+            commands: DomainSettingsCmds::Raise,
         } => {
             info!("Running domain raise ...");
-            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            let output_mode: ConsoleOutputMode = opt.output_mode.to_owned().into();
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainRaise,
@@ -1054,10 +980,10 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         }
 
         KanidmdOpt::DomainSettings {
-            commands: DomainSettingsCmds::Remigrate { commonopts, level },
+            commands: DomainSettingsCmds::Remigrate { level },
         } => {
             info!("⚠️  Running domain remigrate ...");
-            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            let output_mode: ConsoleOutputMode = opt.output_mode.into();
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainRemigrate { level: *level },
@@ -1067,7 +993,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         }
 
         KanidmdOpt::Database {
-            commands: DbCommands::Vacuum(_copt),
+            commands: DbCommands::Vacuum,
         } => {
             info!("Running in vacuum mode ...");
             vacuum_server_core(&config);
@@ -1163,7 +1089,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                 }
             };
             debug!("Request: {req:?}");
-            let output_mode: ConsoleOutputMode = sopt.commonopts.output_mode.to_owned().into();
+            let output_mode: ConsoleOutputMode = opt.output_mode.to_owned().into();
             match output_mode {
                 ConsoleOutputMode::JSON => {
                     println!("{{\"result\":\"OK\"}}")
@@ -1173,7 +1099,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                 }
             }
         }
-        KanidmdOpt::Version(_) => {}
+        KanidmdOpt::Version => {}
     }
     ExitCode::SUCCESS
 }

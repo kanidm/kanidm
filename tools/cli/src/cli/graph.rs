@@ -1,16 +1,13 @@
-use crate::common::OpType;
-use crate::{handle_client_error, GraphCommonOpt, GraphType, ObjectType, OutputMode};
+use crate::{
+    handle_client_error, GraphCommonOpt, GraphType, KanidmClientParser, ObjectType, OutputMode,
+};
+use kanidm_proto::cli::OpType;
 use kanidm_proto::internal::Filter::{Eq, Or};
 
 impl GraphCommonOpt {
-    pub fn debug(&self) -> bool {
-        self.copt.debug
-    }
-
-    pub async fn exec(&self) {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         let gopt: &GraphCommonOpt = self;
-        let copt = &gopt.copt;
-        let client = copt.to_client(OpType::Read).await;
+        let client = opt.to_client(OpType::Read).await;
         let graph_type = &gopt.graph_type;
         let filters = &gopt.filter;
 
@@ -25,12 +22,12 @@ impl GraphCommonOpt {
         let entries = match result {
             Ok(entries) => entries,
             Err(e) => {
-                handle_client_error(e, copt.output_mode);
+                handle_client_error(e, opt.output_mode);
                 return;
             }
         };
 
-        match copt.output_mode {
+        match opt.output_mode {
             OutputMode::Json => {
                 let r_attrs: Vec<_> = entries.iter().map(|entry| &entry.attrs).collect();
                 println!(
