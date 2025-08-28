@@ -1,0 +1,4 @@
+/org/gnome/login-screen/enable-smartcard-authentication
+/org/gnome/login-screen/enable-fingerprint-authentication
+/org/gnome/login-screen/enable-password-authentication
+/org/gnome/settings-daemon/peripherals/smartcard/removal-action {include if "with-smartcard-lock-on-removal"}
