@@ -14,7 +14,7 @@ use qrcode::render::svg;
 use qrcode::QrCode;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -23,11 +23,7 @@ use uuid::Uuid;
 pub use sshkey_attest::proto::PublicKey as SshPublicKey;
 pub use sshkeys::KeyType;
 
-use kanidm_proto::internal::{
-    CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus,
-    CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo, UserAuthToken,
-    COOKIE_CU_SESSION_TOKEN,
-};
+use kanidm_proto::internal::{CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus, CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo, UiHint, UserAuthToken, COOKIE_CU_SESSION_TOKEN};
 use kanidmd_lib::prelude::ClientAuthInfo;
 
 use super::constants::Urls;
@@ -773,7 +769,7 @@ pub(crate) async fn view_self_reset_get(
             .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
             .await?;
 
-        let cu_resp = get_cu_response(uat, domain_info, cu_status, true);
+        let cu_resp = get_cu_response(&uat.ui_hints, domain_info, cu_status, true);
 
         jar = add_cu_cookie(jar, &state, cu_session_token);
         Ok((jar, cu_resp).into_response())
@@ -990,9 +986,6 @@ pub(crate) async fn view_reset_get(
         .handle_auth_valid(client_auth_info.clone(), kopid.eventid)
         .await
         .is_ok();
-    let uat: &UserAuthToken = client_auth_info
-        .pre_validated_uat()
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     if let Some(cookie) = cookie {
         // We already have a session
@@ -1026,7 +1019,7 @@ pub(crate) async fn view_reset_get(
         };
 
         // CU Session cookie is okay
-        let cu_resp = get_cu_response(uat, domain_info, cu_status, is_logged_in);
+        let cu_resp = get_cu_response(&Default::default(), domain_info, cu_status, is_logged_in);
 
         Ok(cu_resp)
     } else if let Some(token) = params.token {
@@ -1037,7 +1030,7 @@ pub(crate) async fn view_reset_get(
             .await
         {
             Ok((cu_session_token, cu_status)) => {
-                let cu_resp = get_cu_response(uat, domain_info, cu_status, is_logged_in);
+                let cu_resp = get_cu_response(&Default::default(), domain_info, cu_status, is_logged_in);
 
                 jar = add_cu_cookie(jar, &state, cu_session_token);
                 Ok((jar, cu_resp).into_response())
@@ -1132,7 +1125,7 @@ fn get_cu_partial_response(cu_status: CUStatus) -> Response {
 }
 
 fn get_cu_response(
-    uat: &UserAuthToken,
+    ui_hints: &BTreeSet<UiHint>,
     domain_info: DomainInfoRead,
     cu_status: CUStatus,
     is_logged_in: bool,
@@ -1154,7 +1147,7 @@ fn get_cu_response(
         (
             HxPushUrl(Uri::from_static(Urls::UpdateCredentials.as_ref())),
             ProfileView {
-                navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
+                navbar_ctx: NavbarCtx::new(domain_info, ui_hints),
                 profile_partial: cred_status_view,
             },
         )
