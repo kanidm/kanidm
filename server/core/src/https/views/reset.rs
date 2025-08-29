@@ -23,7 +23,11 @@ use uuid::Uuid;
 pub use sshkey_attest::proto::PublicKey as SshPublicKey;
 pub use sshkeys::KeyType;
 
-use kanidm_proto::internal::{CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus, CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo, UiHint, UserAuthToken, COOKIE_CU_SESSION_TOKEN};
+use kanidm_proto::internal::{
+    CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus,
+    CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo, UiHint,
+    UserAuthToken, COOKIE_CU_SESSION_TOKEN,
+};
 use kanidmd_lib::prelude::ClientAuthInfo;
 
 use super::constants::Urls;
@@ -1030,7 +1034,8 @@ pub(crate) async fn view_reset_get(
             .await
         {
             Ok((cu_session_token, cu_status)) => {
-                let cu_resp = get_cu_response(&Default::default(), domain_info, cu_status, is_logged_in);
+                let cu_resp =
+                    get_cu_response(&Default::default(), domain_info, cu_status, is_logged_in);
 
                 jar = add_cu_cookie(jar, &state, cu_session_token);
                 Ok((jar, cu_resp).into_response())
