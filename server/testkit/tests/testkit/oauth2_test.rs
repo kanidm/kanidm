@@ -410,11 +410,8 @@ async fn test_oauth2_openid_basic_flow_impl(
         token_type_hint: None,
         client_post_auth: ClientPostAuth::default(),
     };
-    // TODO: make this work with POST auth
-    let mut  response = client
-        .post(rsclient.make_url(OAUTH2_TOKEN_INTROSPECT_ENDPOINT))
-        // .basic_auth(TEST_INTEGRATION_RS_ID, Some(client_secret.clone()))
-       ;
+
+    let mut response = client.post(rsclient.make_url(OAUTH2_TOKEN_INTROSPECT_ENDPOINT));
 
     match auth_method {
         AuthMethod::Basic => {
