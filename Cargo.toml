@@ -289,7 +289,7 @@ tracing = { version = "^0.1.41", features = [
     "max_level_trace",
     "release_max_level_debug",
 ] }
-tracing-subscriber = { version = "^0.3.19", features = ["env-filter"] }
+tracing-subscriber = { version = "^0.3.20", features = ["env-filter"] }
 tracing-forest = { version = "^0.1.6", features = ["defer"] }
 
 url = "^2.5.2"
