@@ -173,16 +173,15 @@ pub struct AccessTokenRequest {
     pub grant_type: GrantTypeReq,
     // REQUIRED, if the client is not authenticating with the
     //  authorization server as described in Section 3.2.1.
-    pub client_id: Option<String>,
-    pub client_secret: Option<String>,
+    #[serde(flatten)]
+    pub client_post_auth: ClientPostAuth,
 }
 
 impl From<GrantTypeReq> for AccessTokenRequest {
     fn from(req: GrantTypeReq) -> AccessTokenRequest {
         AccessTokenRequest {
             grant_type: req,
-            client_id: None,
-            client_secret: None,
+            client_post_auth: ClientPostAuth::default(),
         }
     }
 }
@@ -282,6 +281,35 @@ pub struct TokenRevokeRequest {
     /// Not required for Kanidm.
     /// <https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2>
     pub token_type_hint: Option<String>,
+
+    #[serde(flatten)]
+    pub client_post_auth: ClientPostAuth,
+}
+
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug, Default)]
+/// <https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1>
+pub struct ClientPostAuth {
+    pub client_id: Option<String>,
+    pub client_secret: Option<String>,
+}
+
+impl From<(String, Option<String>)> for ClientPostAuth {
+    fn from((client_id, client_secret): (String, Option<String>)) -> Self {
+        ClientPostAuth {
+            client_id: Some(client_id),
+            client_secret,
+        }
+    }
+}
+
+impl From<(&str, Option<&str>)> for ClientPostAuth {
+    fn from((client_id, client_secret): (&str, Option<&str>)) -> Self {
+        ClientPostAuth {
+            client_id: Some(client_id.to_string()),
+            client_secret: client_secret.map(|s| s.to_string()),
+        }
+    }
 }
 
 /// Request to introspect the identity of the account associated to a token.
@@ -292,6 +320,11 @@ pub struct AccessTokenIntrospectRequest {
     /// Not required for Kanidm.
     /// <https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2>
     pub token_type_hint: Option<String>,
+
+    // For when they want to use POST auth
+    // https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
+    #[serde(flatten)]
+    pub client_post_auth: ClientPostAuth,
 }
 
 /// Response to an introspection request. If the token is inactive or revoked, only
