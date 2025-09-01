@@ -21,7 +21,6 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 use std::fs::{metadata, File};
 // This works on both unix and windows.
 use fs4::fs_std::FileExt;
-use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::messages::ConsoleOutputMode;
 use sketching::otel::TracingPipelineGuard;
 use std::io::Read;
@@ -804,12 +803,8 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             commands: DbCommands::Backup(bopt),
         } => {
             info!("Running in backup mode ...");
-            let backup = bopt
-                .compression
-                .clone()
-                .map(BackupCompression::from)
-                .unwrap_or_default();
-            backup_server_core(&config, &bopt.path, backup);
+
+            backup_server_core(&config, &bopt.path);
         }
         KanidmdOpt::Database {
             commands: DbCommands::Restore(ropt),

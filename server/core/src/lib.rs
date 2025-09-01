@@ -339,7 +339,7 @@ pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
     };
 }
 
-pub fn backup_server_core(config: &Configuration, dst_path: &Path, compression: BackupCompression) {
+pub fn backup_server_core(config: &Configuration, dst_path: &Path) {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
@@ -364,8 +364,12 @@ pub fn backup_server_core(config: &Configuration, dst_path: &Path, compression: 
         }
     };
 
-    let r = be_ro_txn.backup(dst_path, compression);
-    match r {
+    let compression = match config.online_backup.as_ref() {
+        Some(backup_config) => backup_config.compression,
+        None => BackupCompression::default(),
+    };
+
+    match be_ro_txn.backup(dst_path, compression) {
         Ok(_) => info!("Backup success!"),
         Err(e) => {
             error!("Backup failed: {:?}", e);
