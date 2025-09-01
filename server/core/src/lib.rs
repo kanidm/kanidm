@@ -42,6 +42,7 @@ use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::{JwsHs256Signer, JwsSigner};
+use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::internal::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
 use kanidmd_lib::idm::ldap::LdapServer;
@@ -363,8 +364,12 @@ pub fn backup_server_core(config: &Configuration, dst_path: &Path) {
         }
     };
 
-    let r = be_ro_txn.backup(dst_path);
-    match r {
+    let compression = match config.online_backup.as_ref() {
+        Some(backup_config) => backup_config.compression,
+        None => BackupCompression::default(),
+    };
+
+    match be_ro_txn.backup(dst_path, compression) {
         Ok(_) => info!("Backup success!"),
         Err(e) => {
             error!("Backup failed: {:?}", e);

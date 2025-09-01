@@ -803,6 +803,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             commands: DbCommands::Backup(bopt),
         } => {
             info!("Running in backup mode ...");
+
             backup_server_core(&config, &bopt.path);
         }
         KanidmdOpt::Database {
