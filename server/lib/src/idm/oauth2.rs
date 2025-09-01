@@ -30,8 +30,8 @@ pub use kanidm_proto::oauth2::{
     OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, TokenRevokeRequest,
 };
 use kanidm_proto::oauth2::{
-    AccessTokenType, ClaimType, DeviceAuthorizationResponse, DisplayValue, GrantType,
-    IdTokenSignAlg, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
+    AccessTokenType, ClaimType, ClientPostAuth, DeviceAuthorizationResponse, DisplayValue,
+    GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
 };
 use openssl::sha;
 use serde::{Deserialize, Serialize};
@@ -531,6 +531,21 @@ impl Oauth2ResourceServers {
     }
 }
 
+/// For when you've got the bearer auth and the post auth and you just want the resulting auth attempt
+fn get_client_auth(
+    client_auth_info: &ClientAuthInfo,
+    client_post_auth: &ClientPostAuth,
+) -> Result<(String, Option<String>), Oauth2Error> {
+    if let Some(client_authz) = client_auth_info.basic_authz.as_ref() {
+        parse_basic_authz(client_authz.as_str())
+    } else if let Some(client_id) = client_post_auth.client_id.as_ref() {
+        Ok((client_id.clone(), client_post_auth.client_secret.clone()))
+    } else {
+        admin_warn!("OAuth2 client authentication not provided");
+        Err(Oauth2Error::AuthenticationRequired)
+    }
+}
+
 impl Oauth2ResourceServersWriteTransaction<'_> {
     #[instrument(level = "debug", name = "oauth2::reload", skip_all)]
     pub fn reload(
@@ -865,12 +880,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         revoke_req: &TokenRevokeRequest,
         ct: Duration,
     ) -> Result<(), Oauth2Error> {
-        let Some(client_authz) = client_auth_info.basic_authz.as_ref() else {
-            admin_warn!("OAuth2 client_id not provided by basic authz");
-            return Err(Oauth2Error::AuthenticationRequired);
-        };
-
-        let (client_id, secret) = parse_basic_authz(client_authz.as_str())?;
+        let (client_id, secret) = get_client_auth(client_auth_info, &revoke_req.client_post_auth)?;
 
         // Get the o2rs for the handle.
         let o2rs = self.oauth2rs.inner.rs_set_get(&client_id).ok_or_else(|| {
@@ -881,7 +891,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         // check the secret.
         match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
-                if authz_secret != &secret {
+                if Some(authz_secret.to_owned()) != secret {
                     security_info!("Invalid OAuth2 client_id secret, this can happen if your RS is public but you configured a 'basic' type.");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
@@ -993,22 +1003,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         // Public clients will send the client_id via the ATR, so we need to handle this case.
-        let (client_id, secret) = if let Some(client_authz) = client_auth_info.basic_authz.as_ref()
-        {
-            let (client_id, secret) = parse_basic_authz(client_authz.as_str())?;
-            (client_id, Some(secret))
-        } else {
-            match (&token_req.client_id, &token_req.client_secret) {
-                (Some(a), b) => (a.clone(), b.clone()),
-                _ => {
-                    // We at least need the client_id, else we can't proceed!
-                    security_info!(
-                        "Invalid OAuth2 authentication - no basic auth or missing client_id in access token request"
-                    );
-                    return Err(Oauth2Error::AuthenticationRequired);
-                }
-            }
-        };
+        let (client_id, secret) = get_client_auth(client_auth_info, &token_req.client_post_auth)?;
 
         let o2rs = self.get_client(&client_id)?;
 
@@ -1865,7 +1860,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         // check the secret.
         if let OauthRSType::Basic { authz_secret, .. } = &o2rs.type_ {
-            if o2rs.is_basic() && authz_secret != &secret {
+            if o2rs.is_basic() && Some(authz_secret.to_owned()) != secret {
                 security_info!("Invalid OAuth2 secret for client_id={}", client_id);
                 return Err(OperationError::InvalidSessionState);
             }
@@ -2337,12 +2332,7 @@ impl IdmServerProxyReadTransaction<'_> {
         intr_req: &AccessTokenIntrospectRequest,
         ct: Duration,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
-        let Some(client_authz) = client_auth_info.basic_authz.as_ref() else {
-            admin_warn!("OAuth2 client_id not provided by basic authz");
-            return Err(Oauth2Error::AuthenticationRequired);
-        };
-
-        let (client_id, secret) = parse_basic_authz(client_authz.as_str())?;
+        let (client_id, secret) = get_client_auth(client_auth_info, &intr_req.client_post_auth)?;
 
         // Get the o2rs for the handle.
         let o2rs = self.oauth2rs.inner.rs_set_get(&client_id).ok_or_else(|| {
@@ -2353,7 +2343,7 @@ impl IdmServerProxyReadTransaction<'_> {
         // check the secret.
         match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
-                if authz_secret != &secret {
+                if Some(authz_secret.to_owned()) != secret {
                     security_info!("Invalid OAuth2 client_id secret");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
@@ -2885,7 +2875,7 @@ impl IdmServerProxyReadTransaction<'_> {
     }
 }
 
-fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error> {
+fn parse_basic_authz(client_authz: &str) -> Result<(String, Option<String>), Oauth2Error> {
     // Check the client_authz
     let authz = general_purpose::STANDARD
         .decode(client_authz)
@@ -2913,7 +2903,7 @@ fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error
         Oauth2Error::AuthenticationRequired
     })?;
 
-    Ok((client_id.to_string(), secret.to_string()))
+    Ok((client_id.to_string(), Some(secret.to_string())))
 }
 
 fn s_claims_for_account(
@@ -3556,8 +3546,10 @@ mod tests {
                 // From the first step.
                 code_verifier,
             },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: Some(secret),
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret),
+            },
         };
 
         let token_response = idms_prox_write
@@ -3618,8 +3610,11 @@ mod tests {
                 // From the first step.
                 code_verifier,
             },
-            client_id: Some("Test_Resource_Server".to_string()),
-            client_secret: None,
+
+            client_post_auth: ClientPostAuth {
+                client_id: Some("Test_Resource_Server".to_string()),
+                client_secret: None,
+            },
         };
 
         let token_response = idms_prox_write
@@ -4251,8 +4246,11 @@ mod tests {
                 // From the first step.
                 code_verifier: code_verifier.clone(),
             },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: Some(secret.clone()),
+
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret.clone()),
+            },
         };
 
         let token_response = idms_prox_write
@@ -4314,8 +4312,11 @@ mod tests {
                 // From the first step.
                 code_verifier,
             },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: Some(secret),
+
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret),
+            },
         };
 
         drop(idms_prox_read);
@@ -4381,6 +4382,8 @@ mod tests {
         let intr_request = AccessTokenIntrospectRequest {
             token: oauth2_token.access_token,
             token_type_hint: None,
+
+            client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
             .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
@@ -4480,6 +4483,7 @@ mod tests {
         let intr_request = AccessTokenIntrospectRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
             .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
@@ -4496,6 +4500,7 @@ mod tests {
         let revoke_request = TokenRevokeRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
         };
         let e = idms_prox_write
             .oauth2_token_revoke(&bad_client_authz, &revoke_request, ct)
@@ -4508,6 +4513,7 @@ mod tests {
         let revoke_request = TokenRevokeRequest {
             token: "this is an invalid token, nothing will happen!".to_string(),
             token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
         };
         let e = idms_prox_write
             .oauth2_token_revoke(&client_authz, &revoke_request, ct)
@@ -4528,6 +4534,7 @@ mod tests {
         let revoke_request = TokenRevokeRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
             .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
@@ -4584,6 +4591,7 @@ mod tests {
         let revoke_request = TokenRevokeRequest {
             token: oauth2_token.access_token,
             token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
             .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
@@ -5727,8 +5735,11 @@ mod tests {
                 // From the first step.
                 code_verifier,
             },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: Some(secret),
+
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret),
+            },
         };
 
         let token_response = idms_prox_write
@@ -6095,8 +6106,10 @@ mod tests {
                 // Note the code verifier is set to "something else"
                 code_verifier,
             },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: Some(secret),
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret),
+            },
         };
 
         // Assert the exchange fails.
@@ -6185,8 +6198,11 @@ mod tests {
                 // Note the code verifier is set to "something else"
                 code_verifier,
             },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: Some(secret),
+
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret),
+            },
         };
 
         // Assert the exchange fails.
@@ -6405,6 +6421,7 @@ mod tests {
         let revoke_request = TokenRevokeRequest {
             token: access_token_response_1.access_token.clone(),
             token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
             .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
@@ -7034,6 +7051,7 @@ mod tests {
         let intr_request = AccessTokenIntrospectRequest {
             token: token_response.access_token.clone(),
             token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
             .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
@@ -7140,8 +7158,10 @@ mod tests {
                 // From the first step.
                 code_verifier,
             },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: None,
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: None,
+            },
         };
 
         let token_response = idms_prox_write
@@ -7169,8 +7189,11 @@ mod tests {
 
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::ClientCredentials { scope: None },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: Some(secret),
+
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret),
+            },
         };
 
         let oauth2_token = idms_prox_write
@@ -7188,6 +7211,7 @@ mod tests {
         let intr_request = AccessTokenIntrospectRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
             .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
@@ -7215,6 +7239,7 @@ mod tests {
         let revoke_request = TokenRevokeRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
             .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
@@ -7228,6 +7253,7 @@ mod tests {
         let intr_request = AccessTokenIntrospectRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
         };
 
         let intr_response = idms_prox_read
@@ -7252,8 +7278,10 @@ mod tests {
         // Public Client
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::ClientCredentials { scope: None },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: None,
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: None,
+            },
         };
 
         assert_eq!(
@@ -7266,8 +7294,11 @@ mod tests {
         // Incorrect Password
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::ClientCredentials { scope: None },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: Some("wrong password".to_string()),
+
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some("wrong password".to_string()),
+            },
         };
 
         assert_eq!(
@@ -7281,8 +7312,11 @@ mod tests {
         let scope = Some(btreeset!["💅".to_string()]);
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::ClientCredentials { scope },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: Some(secret.clone()),
+
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret.clone()),
+            },
         };
 
         assert_eq!(
@@ -7296,8 +7330,11 @@ mod tests {
         let scope = Some(btreeset!["invalid_scope".to_string()]);
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::ClientCredentials { scope },
-            client_id: Some("test_resource_server".to_string()),
-            client_secret: Some(secret.clone()),
+
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret.clone()),
+            },
         };
 
         assert_eq!(
