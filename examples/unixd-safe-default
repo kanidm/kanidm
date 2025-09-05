@@ -4,16 +4,14 @@
 
 version = '2'
 
-[kanidm]
+# Steps to enable the Kanidm auth provider:
+# 1. Uncomment the `[kanidm]` line below to enable the provider.
+# 2. Set the `pam_allowed_login_groups` option to a valid group.
+# 3. Also update /etc/kanidm/config and set the `idm_uri` option.
+
+# [kanidm]
+# pam_allowed_login_groups = ["your_posix_login_group"]
 # default_shell = "/bin/sh"
 # home_attr = "uuid"
 # home_alias = "spn"
 # use_etc_skel = false
-
-# Defines a set of POSIX groups where membership of any of these groups
-# will be allowed to login via PAM
-#
-# WITHOUT THIS SET, NOBODY WILL BE ABLE TO LOG IN VIA PAM
-#
-# Replace your group below and uncomment this line
-# pam_allowed_login_groups = ["your_posix_login_group"]
