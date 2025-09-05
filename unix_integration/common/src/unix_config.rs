@@ -459,17 +459,6 @@ impl UnixdConfig {
 
     fn apply_from_config_v2(self, config: ConfigV2) -> Result<Self, UnixIntegrationError> {
         let kanidm_config = if let Some(kconfig) = config.kanidm {
-            match &kconfig.pam_allowed_login_groups {
-                None => {
-                    error!("You have a 'kanidm' section in the config but an empty pam_allowed_login_groups set. USERS CANNOT AUTH.")
-                }
-                Some(groups) => {
-                    if groups.is_empty() {
-                        error!("You have a 'kanidm' section in the config but an empty pam_allowed_login_groups set. USERS CANNOT AUTH.");
-                    }
-                }
-            }
-
             let service_account_token_path_env = match env::var("KANIDM_SERVICE_ACCOUNT_TOKEN_PATH")
             {
                 Ok(val) => val.into(),
