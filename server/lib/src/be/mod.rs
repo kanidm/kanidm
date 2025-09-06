@@ -100,7 +100,7 @@ pub enum IdList {
     /// The value is not indexed, and must be assumed that all entries may match.
     AllIds,
     /// The index is "fuzzy" like a bloom filter (perhaps superset is a better description) -
-    /// it containes all elements that do match, but may have extra elements that don't.
+    /// it contains all elements that do match, but may have extra elements that don't.
     /// This requires the caller to perform a filter test to assert that all
     /// returned entries match all assertions within the filter.
     Partial(IDLBitRange),

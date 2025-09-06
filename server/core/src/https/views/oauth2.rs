@@ -235,7 +235,7 @@ async fn oauth2_auth_req(
 pub struct ConsentForm {
     consent_token: String,
     #[serde(default)]
-    #[allow(dead_code)] // TODO: do smoething with this
+    #[allow(dead_code)] // TODO: do something with this
     redirect: Option<String>,
 }
 

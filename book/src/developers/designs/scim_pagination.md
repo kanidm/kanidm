@@ -1,6 +1,6 @@
 # SCIM Pagination
 
-SCIM Pagination is important for Kanidm to limit the size of responses to clients, and to allow effecient UI's to exist
+SCIM Pagination is important for Kanidm to limit the size of responses to clients, and to allow efficient UI's to exist
 that show results over multiple pages for large datasets (such as users)
 
 The default pagination in the [SCIM rfc](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.4) has many limitations in

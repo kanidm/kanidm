@@ -193,7 +193,7 @@ pub enum GroupAccountPolicyOpt {
     /// allowing any passkey to be used by members of this group.
     #[clap(name = "reset-webauthn-attestation-ca-list")]
     ResetWebauthnAttestationCaList { name: String },
-    /// Reset the searche maxmium results limit to its default value.
+    /// Reset the search maximum results limit to its default value.
     #[clap(name = "reset-limit-search-max-results")]
     ResetLimitSearchMaxResults { name: String },
     /// Reset the max filter test limit to its default value.

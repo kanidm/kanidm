@@ -91,7 +91,7 @@ fn delete_filter_entry<'a>(
                 // to our uuid or a group we are in as an entry manager.
 
                 // Note, while schema has this as single value, we currently
-                // fetch it as a multivalue btreeset for future incase we allow
+                // fetch it as a multivalue btreeset for future in case we allow
                 // multiple entry manager by in future.
                 if let Some(entry_manager_uuids) = entry.get_ava_refer(Attribute::EntryManagedBy) {
                     let group_check = ident_memberof

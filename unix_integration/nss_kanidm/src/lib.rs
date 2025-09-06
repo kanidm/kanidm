@@ -12,7 +12,7 @@
 
 #[cfg(target_os = "freebsd")]
 /// BSD nss is quite different to that of linux (rather, glibc). As a result of this
-/// FreeBSD kindly offers us wrappers to allow compatability of the two. But to
+/// FreeBSD kindly offers us wrappers to allow compatibility of the two. But to
 /// do this we need a .c file to include the macros and export tables, as well as
 /// handling the variadic args (which rust doesn't).
 ///
