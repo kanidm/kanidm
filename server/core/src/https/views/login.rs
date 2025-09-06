@@ -808,7 +808,7 @@ async fn view_login_step(
     } = auth_result;
     session_context.id = Some(sessionid);
 
-    // This lets us break out the loop incase of a fault. Take that halting problem!
+    // This lets us break out the loop in case of a fault. Take that halting problem!
     let mut safety = 3;
 
     // Unlike the api version, only set the cookie.

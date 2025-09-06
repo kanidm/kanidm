@@ -186,7 +186,7 @@ pub fn setup_tls(
 
         let read_dir = fs::read_dir(client_ca).map_err(|err| {
             std::io::Error::other(format!(
-                "Failed to create TLS listener. An error occured while loading a client ca from {}: {:?}",
+                "Failed to create TLS listener. An error occurred while loading a client ca from {}: {:?}",
                 client_ca.display(),
                 err
             ))

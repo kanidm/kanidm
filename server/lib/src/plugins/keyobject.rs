@@ -149,7 +149,7 @@ impl KeyObjectManagement {
             })
             .try_for_each(|entry| {
                 // The entry should not have set any type of KeyObject at this point.
-                // Should we force delete those attrs here just incase?
+                // Should we force delete those attrs here just in case?
                 entry.remove_ava(Attribute::Class, &EntryClass::KeyObjectInternal.into());
 
                 // Must be set by now.
@@ -214,7 +214,7 @@ impl KeyObjectManagement {
                 if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into())
                 {
                     // Assert that this object has a valid es256 key present. Post revoke, it may NOT
-                    // be present. This differs to rotate, in that the assert verifes we have at least
+                    // be present. This differs to rotate, in that the assert verifies we have at least
                     // *one* key that is valid in all conditions.
                     key_object.jws_es256_assert(Duration::ZERO, &txn_cid)?;
                 }
