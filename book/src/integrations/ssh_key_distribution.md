@@ -43,8 +43,9 @@ Enter password:
 
 ### Public Key Caching Configuration
 
-If you have `kanidm_unixd` running, you can use it to locally cache SSH public keys. This means you can still SSH into
-your machines, even if your network is down, you move away from Kanidm, or some other interruption occurs.
+If you have `kanidm_unixd` running and have enabled the Kanidm provider, you can use it to locally cache SSH public keys.
+This means you can still SSH into your machines, even if your network is down, you move away from Kanidm,
+or some other interruption occurs.
 
 The `kanidm_ssh_authorizedkeys` command is part of the `kanidm-unix-clients` package, so should be installed on the
 servers. It communicates to `kanidm_unixd`, so you should have a configured PAM/nsswitch setup as well.

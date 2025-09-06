@@ -141,6 +141,7 @@ version = '2'
 
 # ========================================
 # This section enables the Kanidm provider
+# If enabled, /etc/kanidm/config MUST have a valid `uri` setting for the daemon to start.
 [kanidm]
 
 # Defines a set of POSIX groups where membership of any of these groups
