@@ -6,6 +6,7 @@ If authentication is failing via PAM, make sure that you enabled the Kanidm prov
 a list of valid groups is configured in `/etc/kanidm/unixd`. The `[kanidm]` line is important!
 
 You can check the provider status, the second line is only shown if enabled:
+
 ```bash
 > kanidm-unix status
 system: online
@@ -13,6 +14,7 @@ Kanidm: online
 ```
 
 Example of a minimum `/etc/kanidm/unixd` config:
+
 ```toml
 [kanidm]
 pam_allowed_login_groups = ["example_group"]

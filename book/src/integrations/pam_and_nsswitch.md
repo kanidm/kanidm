@@ -83,6 +83,7 @@ If it is not working, you will see an error message:
 ```
 
 If the unixd daemon is running but not configured to use the Kanidm provider, only system status is reported:
+
 ```text
 system: online
 ```
