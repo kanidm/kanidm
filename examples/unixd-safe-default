@@ -6,7 +6,7 @@ version = '2'
 
 # Steps to enable the Kanidm auth provider:
 # 1. Uncomment the `[kanidm]` line below to enable the provider.
-# 2. Set the `pam_allowed_login_groups` option to one or more valid groups.
+# 2. Set the `pam_allowed_login_groups` option to one or more valid posix groups.
 # 3. Also update /etc/kanidm/config and set the `idm_uri` option.
 
 # [kanidm]
