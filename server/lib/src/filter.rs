@@ -1765,7 +1765,7 @@ impl FilterResolved {
             | FilterResolved::And(_, sf)
             | FilterResolved::Inclusion(_, sf)
             | FilterResolved::AndNot(_, sf) => *sf,
-            // We hard code 1 because there is no slope for an invlid filter
+            // We hard code 1 because there is no slope for an invalid filter
             FilterResolved::Invalid(_) => NonZeroU8::new(1),
         }
     }

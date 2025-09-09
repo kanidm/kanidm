@@ -73,7 +73,7 @@ impl AgingPolicy {
                 // Both of these values are relative to the max age, so without a max age
                 // they are meaningless.
 
-                // If the warning isnt 0
+                // If the warning isn't 0
                 let warning = if days_warning_period != 0 {
                     // This is a subtract
                     Some(*expiry - time::Duration::days(days_warning_period))

@@ -1122,7 +1122,7 @@ pub static ref SCHEMA_CLASS_APPLICATION: SchemaClass = SchemaClass {
         Attribute::ApplicationUrl,
     ],
     // I think this could change before release - I can see a world
-    // whe we may want an oauth2 application to have application passwords,
+    // when we may want an oauth2 application to have application passwords,
     // or for this to be it's own thing. But service accounts also don't
     // quite do enough, they have api tokens, but that's all we kind
     // of want from them?

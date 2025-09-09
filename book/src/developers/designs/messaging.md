@@ -3,7 +3,7 @@
 A number of features require us to be able to communicate with users. This includes things like user account signups,
 credential reset requests, and notification of security events.
 
-Each of these has unique requirements, so simply sending an email is not sufficent.
+Each of these has unique requirements, so simply sending an email is not sufficient.
 
 ## Use Cases
 
@@ -35,11 +35,11 @@ addresses)
 
 Many of these messages will need to be internationalised in future, so we should avoid embedding text directly in our
 work, and only indicate or store "events" that can be translated to some kind of text based on user preference (like
-langugae).
+language).
 
 ### Multiple Kani Servers
 
-Kanidm often has mulitple servers, so we need a way to ensure that messages are sent "at least once". But at the same
+Kanidm often has multiple servers, so we need a way to ensure that messages are sent "at least once". But at the same
 time we don't want to send the message _too many_ times, as this can annoy users.
 
 ### Different Messaging Requirements

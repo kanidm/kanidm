@@ -384,7 +384,7 @@ impl KanidmClientBuilder {
                 );
 
                 // It's not an error if the instance isn't present, the build step
-                // will fail if there is insufficent information to proceed.
+                // will fail if there is insufficient information to proceed.
                 Ok(self)
             }
         } else {
@@ -738,18 +738,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -797,16 +787,7 @@ impl KanidmClient {
         // If we have a sessionid header in the response, get it now.
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
+        let response = self.ok_or_clienterror(&opid, response).await?;
 
         // Do we have a cookie? Our job here isn't to parse and validate the cookies, but just to
         // know if the session id was set *in* our cookie store at all.
@@ -875,18 +856,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -923,9 +894,9 @@ impl KanidmClient {
                 return Err(ClientError::InvalidRequest(format!("Something about the request content was invalid, check the server logs for further information. Operation ID: {} Error: {:?}",opid, response.text().await.ok() )))
             }
 
-            unexpect => {
+            unexpected => {
                 return Err(ClientError::Http(
-                    unexpect,
+                    unexpected,
                     response.json().await.ok(),
                     opid,
                 ))
@@ -936,6 +907,22 @@ impl KanidmClient {
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
+    }
+
+    /// Handles not-OK responses and turns them into ClientErrors
+    async fn ok_or_clienterror(
+        &self,
+        opid: &str,
+        response: reqwest::Response,
+    ) -> Result<reqwest::Response, ClientError> {
+        match response.status() {
+            reqwest::StatusCode::OK => Ok(response),
+            unexpected => Err(ClientError::Http(
+                unexpected,
+                response.json().await.ok(),
+                opid.to_string(),
+            )),
+        }
     }
 
     pub async fn perform_patch_request<R: Serialize, T: DeserializeOwned>(
@@ -963,18 +950,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -1024,18 +1001,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -1066,18 +1033,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -1108,18 +1065,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -1598,9 +1545,9 @@ impl KanidmClient {
             // Continue to process.
             reqwest::StatusCode::OK => {}
             reqwest::StatusCode::UNAUTHORIZED => return Ok(None),
-            unexpect => {
+            unexpected => {
                 return Err(ClientError::Http(
-                    unexpect,
+                    unexpected,
                     response.json().await.ok(),
                     opid,
                 ))

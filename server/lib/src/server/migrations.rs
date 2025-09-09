@@ -130,7 +130,7 @@ impl QueryServer {
             // Reload if anything in migrations requires it - this triggers the domain migrations
             // which in turn can trigger schema reloads etc. If the server was just brought up
             // then we don't need the extra reload since we are already at the correct
-            // version of the server, and this call to set the target level is just for persistance
+            // version of the server, and this call to set the target level is just for persistence
             // of the value.
             if domain_info_version != 0 {
                 reload_required = true;
@@ -418,7 +418,7 @@ impl QueryServerWriteTransaction<'_> {
         // Reload for the new schema.
         self.reload()?;
 
-        // Since we just loaded in a ton of schema, lets reindex it incase we added
+        // Since we just loaded in a ton of schema, lets reindex it in case we added
         // new indexes, or this is a bootstrap and we have no indexes yet.
         self.reindex(false)?;
 
@@ -561,7 +561,7 @@ impl QueryServerWriteTransaction<'_> {
         // Reload for the new schema.
         self.reload()?;
 
-        // Since we just loaded in a ton of schema, lets reindex it incase we added
+        // Since we just loaded in a ton of schema, lets reindex it in case we added
         // new indexes, or this is a bootstrap and we have no indexes yet.
         self.reindex(false)?;
 
@@ -632,7 +632,7 @@ impl QueryServerWriteTransaction<'_> {
         // Reload for the new schema.
         self.reload()?;
 
-        // Since we just loaded in a ton of schema, lets reindex it incase we added
+        // Since we just loaded in a ton of schema, lets reindex it in case we added
         // new indexes, or this is a bootstrap and we have no indexes yet.
         self.reindex(false)?;
 

@@ -59,17 +59,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
