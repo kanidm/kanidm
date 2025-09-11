@@ -963,6 +963,15 @@ async fn test_cache_authenticate_system_account() {
                 gecos: Default::default(),
                 homedir: Default::default(),
                 shell: Default::default(),
+            },
+            EtcUser {
+                name: "testaccount3".to_string(),
+                uid: 30002,
+                gid: 30002,
+                password: Default::default(),
+                gecos: Default::default(),
+                homedir: Default::default(),
+                shell: Default::default(),
             }
             ],
             vec![
@@ -990,6 +999,18 @@ async fn test_cache_authenticate_system_account() {
                     epoch_expire_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(380)),
                     flag_reserved: None
                 },
+                EtcShadow {
+                    name: "testaccount3".to_string(),
+                    // The very secure password, "a".
+                    password: CryptPw::YesCrypt("$y$j9T$LdJMENpBABJJ3hIHjB1Bi.$GFxnbKnR8WaEdBMGMctf6JGMs56hU5dYcy6UrKGWr62".to_string()),
+                    epoch_change_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(364)),
+                    days_min_password_age: 0,
+                    days_max_password_age: Some(2),
+                    days_warning_period: 1,
+                    days_inactivity_period: None,
+                    epoch_expire_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(380)),
+                    flag_reserved: None
+                },
             ],
             vec![],
         )
@@ -1002,6 +1023,10 @@ async fn test_cache_authenticate_system_account() {
         .expect("Failed to get from cache");
     let _ = cachelayer
         .get_nssaccount_name("testaccount2")
+        .await
+        .expect("Failed to get from cache");
+    let _ = cachelayer
+        .get_nssaccount_name("testaccount3")
         .await
         .expect("Failed to get from cache");
 
@@ -1019,6 +1044,18 @@ async fn test_cache_authenticate_system_account() {
         .expect("failed to authenticate");
     assert_eq!(a1, Some(false));
 
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount2", current_time, "wrong password")
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(false));
+
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount3", current_time, "wrong password")
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(false));
+
     // Check correct pw (both accounts)
     let a1 = cachelayer
         .pam_account_authenticate("testaccount1", current_time, SECURE_PASSWORD)
@@ -1028,6 +1065,12 @@ async fn test_cache_authenticate_system_account() {
 
     let a1 = cachelayer
         .pam_account_authenticate("testaccount2", current_time, SECURE_PASSWORD)
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(true));
+
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount3", current_time, SECURE_PASSWORD)
         .await
         .expect("failed to authenticate");
     assert_eq!(a1, Some(true));
@@ -1045,6 +1088,12 @@ async fn test_cache_authenticate_system_account() {
         .expect("failed to authenticate");
     assert_eq!(a1, Some(false));
 
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount3", expire_time, SECURE_PASSWORD)
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(false));
+
     // due to how posix auth works, session and authorisation are simpler, and should
     // always just return "true".
     let a1 = cachelayer
@@ -1055,6 +1104,12 @@ async fn test_cache_authenticate_system_account() {
 
     let a1 = cachelayer
         .pam_account_allowed("testaccount2")
+        .await
+        .expect("failed to authorise");
+    assert_eq!(a1, Some(true));
+
+    let a1 = cachelayer
+        .pam_account_allowed("testaccount3")
         .await
         .expect("failed to authorise");
     assert_eq!(a1, Some(true));
