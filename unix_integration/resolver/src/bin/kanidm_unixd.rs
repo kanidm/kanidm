@@ -662,7 +662,9 @@ async fn main() -> ExitCode {
                         return ExitCode::FAILURE
                     }
                 };
-
+                if kconfig.pam_allowed_login_groups.is_empty() {
+                    error!("Kanidm is enabled but no pam_allowed_login_groups are set, KANIDM USERS CANNOT AUTH!");
+                }
                 Some((cb, kconfig))
             } else { None };
 
@@ -971,7 +973,7 @@ async fn main() -> ExitCode {
             // notify the submitter of the task that the task is completed.
 
             // This channel is for the second case - the tasks-daemon can send us
-            // unsolicited dm's about system state, and when these occure we need to
+            // unsolicited dm's about system state, and when these occur we need to
             // response to these notifications. Because each potential dm that the
             // daemon can send us has a specific intent, we need a channel for each
             // type of notification that we could get. This channel is for when
