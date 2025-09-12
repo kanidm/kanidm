@@ -6,7 +6,10 @@ pub const DEFAULT_TASK_SOCK_PATH: &str = "/var/run/kanidm-unixd/task_sock";
 pub const DEFAULT_PERSISTENT_DB_PATH: &str = "/var/lib/kanidm-unixd/kanidm.db";
 pub const DEFAULT_CACHE_DB_PATH: &str = "/var/cache/kanidm-unixd/kanidm.cache.db";
 pub const DEFAULT_CONN_TIMEOUT: u64 = 2;
-pub const DEFAULT_CACHE_TIMEOUT: u64 = 15;
+pub const DEFAULT_CACHE_TIMEOUT: u64 = 120;
+// When there is 30 seconds of validity remaining, perform an async refresh.
+pub const DEFAULT_CACHE_ASYNC_REFRESH: u64 = 30;
+pub const DEFAULT_CACHE_TIMEOUT_JITTER_MS: u64 = 10_000;
 pub const DEFAULT_SHELL: &str = env!("KANIDM_RESOLVER_UNIX_SHELL_PATH");
 pub const DEFAULT_HOME_PREFIX: &str = "/home/";
 pub const DEFAULT_HOME_ATTR: HomeAttr = HomeAttr::Uuid;

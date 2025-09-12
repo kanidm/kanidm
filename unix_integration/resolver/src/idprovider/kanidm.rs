@@ -344,6 +344,7 @@ impl IdProvider for KanidmProvider {
         inner.state = CacheState::Offline;
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn unix_user_get(
         &self,
         id: &Id,
@@ -439,6 +440,7 @@ impl IdProvider for KanidmProvider {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn unix_user_online_auth_init(
         &self,
         _account_id: &str,
@@ -460,6 +462,7 @@ impl IdProvider for KanidmProvider {
         Ok(None)
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn unix_user_online_auth_step(
         &self,
         account_id: &str,
@@ -628,6 +631,7 @@ impl IdProvider for KanidmProvider {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn unix_group_get(
         &self,
         id: &Id,

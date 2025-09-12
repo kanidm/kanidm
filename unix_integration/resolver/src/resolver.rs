@@ -18,7 +18,10 @@ use crate::idprovider::system::{
 };
 use hashbrown::HashMap;
 use kanidm_hsm_crypto::provider::BoxedDynTpm;
-use kanidm_unix_common::constants::{DEFAULT_SHELL_SEARCH_PATHS, SYSTEM_SHADOW_PATH};
+use kanidm_unix_common::constants::{
+    DEFAULT_CACHE_ASYNC_REFRESH, DEFAULT_CACHE_TIMEOUT_JITTER_MS, DEFAULT_SHELL_SEARCH_PATHS,
+    SYSTEM_SHADOW_PATH,
+};
 use kanidm_unix_common::unix_config::{HomeAttr, UidAttr};
 use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{
@@ -35,11 +38,13 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use time::OffsetDateTime;
 use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
 const NXCACHE_SIZE: NonZeroUsize =
-    NonZeroUsize::new(128).expect("Invalid NXCACHE constant at compile time");
+    NonZeroUsize::new(256).expect("Invalid NXCACHE constant at compile time");
+const ASYNC_REFRESH_QUEUE: usize = 64;
 
 pub enum AuthSession {
     Online {
@@ -70,6 +75,13 @@ pub enum AuthSession {
     Denied,
 }
 
+#[derive(Debug, PartialEq)]
+enum ExpiryState {
+    Valid,
+    ValidRefresh,
+    Expired,
+}
+
 pub struct Resolver {
     // Generic / modular types.
     db: Db,
@@ -95,6 +107,7 @@ pub struct Resolver {
     uid_attr_map: UidAttr,
     gid_attr_map: UidAttr,
     nxcache: Mutex<LruCache<Id, SystemTime>>,
+    async_refresh_tx: mpsc::Sender<Id>,
 }
 
 impl Display for Id {
@@ -120,7 +133,7 @@ impl Resolver {
         home_alias: Option<HomeAttr>,
         uid_attr_map: UidAttr,
         gid_attr_map: UidAttr,
-    ) -> Result<Self, ()> {
+    ) -> Result<(Self, mpsc::Receiver<Id>), ()> {
         let hsm = Mutex::new(hsm);
 
         let primary_origin = clients.first().map(|c| c.origin()).unwrap_or_default();
@@ -130,24 +143,30 @@ impl Resolver {
             .map(|provider| (provider.origin(), provider.clone()))
             .collect();
 
+        let (async_refresh_tx, async_refresh_rx) = mpsc::channel(ASYNC_REFRESH_QUEUE);
+
         // We assume we are offline at start up, and we mark the next "online check" as
         // being valid from "now".
-        Ok(Resolver {
-            db,
-            hsm,
-            system_provider,
-            clients,
-            primary_origin,
-            client_ids,
-            timeout_seconds,
-            default_shell,
-            home_prefix,
-            home_attr,
-            home_alias,
-            uid_attr_map,
-            gid_attr_map,
-            nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
-        })
+        Ok((
+            Resolver {
+                db,
+                hsm,
+                system_provider,
+                clients,
+                primary_origin,
+                client_ids,
+                timeout_seconds,
+                default_shell,
+                home_prefix,
+                home_attr,
+                home_alias,
+                uid_attr_map,
+                gid_attr_map,
+                nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
+                async_refresh_tx,
+            },
+            async_refresh_rx,
+        ))
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -183,22 +202,30 @@ impl Resolver {
             .map_err(|_| ())
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn get_cached_usertokens(&self) -> Result<Vec<UserToken>, ()> {
         let mut dbtxn = self.db.write().await;
         dbtxn.get_accounts().map_err(|_| ())
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn get_cached_grouptokens(&self) -> Result<Vec<GroupToken>, ()> {
         let mut dbtxn = self.db.write().await;
         dbtxn.get_groups().map_err(|_| ())
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn set_nxcache(&self, id: &Id) {
         let mut nxcache_txn = self.nxcache.lock().await;
-        let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
+        // To try and prevent too many requests occuring all at the same time, we subtract a small
+        // amount of "jitter" from expiry values so that we space out refreshes.
+        let jitter = rand::random_range(0..DEFAULT_CACHE_TIMEOUT_JITTER_MS);
+        let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds)
+            - Duration::from_millis(jitter);
         nxcache_txn.put(id.clone(), ex_time);
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn check_nxcache(&self, id: &Id) -> Option<SystemTime> {
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.get(id).copied()
@@ -214,7 +241,11 @@ impl Resolver {
         self.system_provider.reload(users, shadow, groups).await
     }
 
-    async fn get_cached_usertoken(&self, account_id: &Id) -> Result<(bool, Option<UserToken>), ()> {
+    #[instrument(level = "debug", skip_all)]
+    async fn get_cached_usertoken(
+        &self,
+        account_id: &Id,
+    ) -> Result<(ExpiryState, Option<UserToken>), ()> {
         // Account_id could be:
         //  * gidnumber
         //  * name
@@ -231,14 +262,20 @@ impl Resolver {
         match r {
             Some((ut, ex)) => {
                 // Are we expired?
-                let offset = Duration::from_secs(ex);
-                let ex_time = SystemTime::UNIX_EPOCH + offset;
+                let ex_time = SystemTime::UNIX_EPOCH + Duration::from_secs(ex);
+                let async_ref_time = if ex > DEFAULT_CACHE_ASYNC_REFRESH {
+                    SystemTime::UNIX_EPOCH + Duration::from_secs(ex - DEFAULT_CACHE_ASYNC_REFRESH)
+                } else {
+                    ex_time
+                };
                 let now = SystemTime::now();
 
                 if now >= ex_time {
-                    Ok((true, Some(ut)))
+                    Ok((ExpiryState::Expired, Some(ut)))
+                } else if now >= async_ref_time {
+                    Ok((ExpiryState::ValidRefresh, Some(ut)))
                 } else {
-                    Ok((false, Some(ut)))
+                    Ok((ExpiryState::Valid, Some(ut)))
                 }
             }
             None => {
@@ -249,23 +286,24 @@ impl Resolver {
                         if now >= ex_time {
                             // It's in the LRU, but we are past the expiry so
                             // lets attempt a refresh.
-                            Ok((true, None))
+                            Ok((ExpiryState::ValidRefresh, None))
                         } else {
                             // It's in the LRU and still valid, so return that
                             // no check is needed.
-                            Ok((false, None))
+                            Ok((ExpiryState::Valid, None))
                         }
                     }
                     None => {
                         // Not in the LRU. Return that this IS expired
                         // and we have no data.
-                        Ok((true, None))
+                        Ok((ExpiryState::Expired, None))
                     }
                 }
             }
         } // end match r
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn get_cached_grouptoken(&self, grp_id: &Id) -> Result<(bool, Option<GroupToken>), ()> {
         // grp_id could be:
         //  * gidnumber
@@ -316,6 +354,7 @@ impl Resolver {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn set_cache_usertoken(
         &self,
         token: &mut UserToken,
@@ -323,7 +362,11 @@ impl Resolver {
         _tpm: &mut BoxedDynTpm,
     ) -> Result<(), ()> {
         // Set an expiry
-        let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
+        // To try and prevent too many requests occuring all at the same time, we subtract a small
+        // amount of "jitter" from expiry values so that we space out refreshes.
+        let jitter = rand::random_range(0..DEFAULT_CACHE_TIMEOUT_JITTER_MS);
+        let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds)
+            - Duration::from_millis(jitter);
         let offset = ex_time
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|e| {
@@ -412,6 +455,7 @@ impl Resolver {
             .map_err(|_| ())
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn set_cache_grouptoken(&self, token: &GroupToken) -> Result<(), ()> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
@@ -428,6 +472,7 @@ impl Resolver {
             .map_err(|_| ())
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn delete_cache_usertoken(&self, a_uuid: Uuid) -> Result<(), ()> {
         let mut dbtxn = self.db.write().await;
         dbtxn
@@ -436,6 +481,7 @@ impl Resolver {
             .map_err(|_| ())
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn delete_cache_grouptoken(&self, g_uuid: Uuid) -> Result<(), ()> {
         let mut dbtxn = self.db.write().await;
         dbtxn
@@ -444,10 +490,10 @@ impl Resolver {
             .map_err(|_| ())
     }
 
-    async fn refresh_usertoken(
+    #[instrument(level = "debug", skip_all)]
+    pub async fn refresh_usertoken(
         &self,
         account_id: &Id,
-        token: Option<UserToken>,
         current_time: SystemTime,
     ) -> Result<Option<UserToken>, ()> {
         let mut hsm_lock = self.hsm.lock().await;
@@ -456,17 +502,13 @@ impl Resolver {
         // we know that as we write the updated token, we know that no one else has
         // written to this token, since we are now the only task that is allowed
         // to be in a write phase.
-        let token = if token.is_some() {
-            self.get_cached_usertoken(account_id)
-                .await
-                .map(|(_expired, option_token)| option_token)
-                .map_err(|err| {
-                    debug!(?err, "get_usertoken error");
-                })?
-        } else {
-            // Was already none, leave it that way.
-            None
-        };
+        let token = self
+            .get_cached_usertoken(account_id)
+            .await
+            .map(|(_expired, option_token)| option_token)
+            .map_err(|err| {
+                debug!(?err, "get_usertoken error");
+            })?;
 
         let user_get_result = if let Some(tok) = token.as_ref() {
             // Re-use the provider that the token is from.
@@ -539,6 +581,7 @@ impl Resolver {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn refresh_grouptoken(
         &self,
         grp_id: &Id,
@@ -608,15 +651,18 @@ impl Resolver {
     #[instrument(level = "debug", skip(self))]
     async fn get_usertoken(&self, account_id: &Id) -> Result<Option<UserToken>, ()> {
         // get the item from the cache
-        let (expired, item) = self.get_cached_usertoken(account_id).await.map_err(|e| {
+        let (expiry_state, item) = self.get_cached_usertoken(account_id).await.map_err(|e| {
             debug!("get_usertoken error -> {:?}", e);
         })?;
 
         // If the token isn't found, get_cached will set expired = true.
-        if expired {
-            self.refresh_usertoken(account_id, item, SystemTime::now())
-                .await
+        if expiry_state == ExpiryState::Expired {
+            self.refresh_usertoken(account_id, SystemTime::now()).await
         } else {
+            if expiry_state == ExpiryState::ValidRefresh {
+                // We don't mind if the buffer is full.
+                let _ = self.async_refresh_tx.try_send(account_id.clone());
+            }
             // Still valid, return the cached entry.
             Ok(item)
         }
