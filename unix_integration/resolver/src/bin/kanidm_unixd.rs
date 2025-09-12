@@ -921,7 +921,7 @@ async fn main() -> ExitCode {
             }
 
             // Okay, the hsm is now loaded and ready to go.
-            let cl_inner = match Resolver::new(
+            let (cl_inner, mut async_refresh_rx) = match Resolver::new(
                 db,
                 Arc::new(system_provider),
                 clients,
@@ -1055,7 +1055,20 @@ async fn main() -> ExitCode {
                 info!("Stopped shadow reload task handler");
             });
 
-            // TODO: Setup a task that handles pre-fetching here.
+            // Setup the task that handles async pre-fetching here.
+            let prefetch_cachelayer = cachelayer.clone();
+            let _task_prefetch = tokio::spawn(async move {
+                while let Some(refresh_account_id) = async_refresh_rx.recv().await {
+                    let current_time = SystemTime::now();
+                    // we don't mind if there was an error, it's already logged, and on success
+                    // we don't need the info anyway.
+                    if prefetch_cachelayer.refresh_usertoken(&refresh_account_id, current_time).await.is_ok() {
+                        debug!(?refresh_account_id, "successful refresh of account");
+                    } else {
+                        warn!(?refresh_account_id, "failed to refresh account");
+                    }
+                }
+            });
 
             // Set the umask while we open the path for most clients.
             let before = unsafe { umask(0) };

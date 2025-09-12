@@ -3726,6 +3726,7 @@ dependencies = [
  "lru 0.14.0",
  "notify-debouncer-full",
  "prctl",
+ "rand 0.9.2",
  "rusqlite",
  "sd-notify",
  "serde",

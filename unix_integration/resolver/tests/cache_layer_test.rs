@@ -26,6 +26,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use time::OffsetDateTime;
 use tokio::task;
+use tokio::sync::mpsc;
 use tracing::debug;
 
 const ADMIN_TEST_USER: &str = "admin";
@@ -46,7 +47,7 @@ where
     Box::new(move |n| Box::pin(f(n)))
 }
 
-async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
+async fn setup_test(fix_fn: Fixture) -> (Resolver, mpsc::Receiver<Id>, KanidmClient) {
     sketching::test_init();
 
     let mut counter = 0;
@@ -182,7 +183,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
 
     dbtxn.commit().expect("Unable to commit dbtxn");
 
-    let cachelayer = Resolver::new(
+    let (cachelayer, async_refresh_rx) = Resolver::new(
         db,
         Arc::new(system_provider),
         vec![Arc::new(idprovider)],
@@ -199,7 +200,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
     .expect("Failed to build cache layer.");
 
     // test_fn(cachelayer, client);
-    (cachelayer, client)
+    (cachelayer, async_refresh_rx, client)
     // We DO NOT need teardown, as sqlite is in mem
     // let the tables hit the floor
 }
@@ -270,7 +271,7 @@ async fn test_fixture(rsclient: KanidmClient) {
 
 #[tokio::test]
 async fn test_cache_sshkey() {
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
     // Force offline. Show we have no keys.
     cachelayer.mark_offline().await;
 
@@ -297,11 +298,12 @@ async fn test_cache_sshkey() {
         .await
         .expect("Failed to get from cache.");
     assert_eq!(sk.len(), 1);
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_account() {
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
     // Force offline. Show we have no account
     cachelayer.mark_offline().await;
 
@@ -341,11 +343,12 @@ async fn test_cache_account() {
         .await
         .expect("failed to list all accounts");
     assert_eq!(us.len(), 1);
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_group() {
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
     // Force offline. Show we have no groups.
     cachelayer.mark_offline().await;
     let gt = cachelayer
@@ -405,11 +408,13 @@ async fn test_cache_group() {
         .await
         .expect("failed to list all groups");
     assert_eq!(gs.len(), 2);
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_group_delete() {
-    let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, adminclient) = setup_test(fixture(test_fixture)).await;
     // get the group
     cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
@@ -439,11 +444,13 @@ async fn test_cache_group_delete() {
         .await
         .expect("Failed to get from cache");
     assert!(gt.is_none());
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_account_delete() {
-    let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, adminclient) = setup_test(fixture(test_fixture)).await;
     // get the account
     cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
@@ -480,12 +487,14 @@ async fn test_cache_account_delete() {
         .await
         .expect("Failed to get from cache");
     assert!(gt.is_none());
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_account_password() {
     let current_time = OffsetDateTime::now_utc();
-    let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
     // Test authentication failure.
     let a1 = cachelayer
@@ -573,11 +582,13 @@ async fn test_cache_account_password() {
         .await
         .expect("failed to authenticate");
     assert_eq!(a8, Some(true));
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_account_pam_allowed() {
-    let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
 
     // Should fail
@@ -605,12 +616,14 @@ async fn test_cache_account_pam_allowed() {
         .await
         .expect("failed to authenticate");
     assert_eq!(a2, Some(true));
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_account_pam_nonexist() {
     let current_time = OffsetDateTime::now_utc();
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
 
     let a1 = cachelayer
@@ -638,12 +651,14 @@ async fn test_cache_account_pam_nonexist() {
         .await
         .expect("failed to authenticate");
     assert!(a2.is_none());
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_account_expiry() {
     let current_time = OffsetDateTime::now_utc();
-    let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
@@ -710,11 +725,13 @@ async fn test_cache_account_expiry() {
         .await
         .expect("failed to authenticate");
     assert_eq!(a5, Some(false));
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_nxcache() {
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
     // Is it in the nxcache?
@@ -782,11 +799,13 @@ async fn test_cache_nxcache() {
         .await
         .is_none());
     assert!(cachelayer.check_nxcache(&Id::Gid(3000)).await.is_none());
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_nxset_account() {
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
 
     // Important! This is what sets up that testaccount1 won't be resolved
     // because it's in the "local" user set.
@@ -846,11 +865,13 @@ async fn test_cache_nxset_account() {
 
     assert_eq!(us.len(), 1);
     assert_eq!(us[0].gid, 30000);
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
 async fn test_cache_nxset_group() {
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
 
     // Important! This is what sets up that testgroup1 won't be resolved
     // because it's in the "local" group set.
@@ -931,6 +952,8 @@ async fn test_cache_nxset_group() {
     debug!("{gs:?}");
     assert_eq!(gs.len(), 1);
     assert_eq!(gs[0].gid, 30001);
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
@@ -939,7 +962,7 @@ async fn test_cache_authenticate_system_account() {
 
     let current_time = OffsetDateTime::UNIX_EPOCH + time::Duration::days(365);
     let expire_time = OffsetDateTime::UNIX_EPOCH + time::Duration::days(380);
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
 
     // Important! This is what sets up that testaccount1 won't be resolved
     // because it's in the "local" user set.
@@ -1126,6 +1149,8 @@ async fn test_cache_authenticate_system_account() {
         .await
         .expect("failed to begin session");
     assert_eq!(a1, None);
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 /// Issue 1830. If cache items expire where we have an account and a group, and we
@@ -1137,7 +1162,7 @@ async fn test_cache_authenticate_system_account() {
 /// only the group.
 #[tokio::test]
 async fn test_cache_group_fk_deferred() {
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
 
     cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
@@ -1170,6 +1195,8 @@ async fn test_cache_group_fk_deferred() {
     assert!(gt.is_some());
     // And check we have members in the group, since we came from a userlook up
     assert_eq!(gt.unwrap().members.len(), 1);
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
 
 #[tokio::test]
@@ -1178,7 +1205,7 @@ async fn test_cache_group_fk_deferred() {
 /// group. This prevents a remote group changing the gidnumber of the local group and
 /// causing breakages.
 async fn test_cache_extend_group_members() {
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
 
     cachelayer
         .reload_system_identities(
@@ -1321,4 +1348,6 @@ async fn test_cache_extend_group_members() {
     let gt = gt.unwrap();
     assert_eq!(gt.gid, 30001);
     assert_eq!(gt.members.as_slice(), &["local_account".to_string()]);
+    // Assert no outstanding async requests
+    assert!(async_refresh_rx.is_empty());
 }
