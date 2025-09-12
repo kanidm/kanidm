@@ -76,6 +76,7 @@ pub struct CUSessionToken {
 #[serde(rename_all = "lowercase")]
 pub enum CURequest {
     PrimaryRemove,
+    PasswordQualityCheck(String),
     Password(String),
     CancelMFAReg,
     TotpGenerate,
@@ -100,6 +101,7 @@ impl fmt::Debug for CURequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let t = match self {
             CURequest::PrimaryRemove => "CURequest::PrimaryRemove",
+            CURequest::PasswordQualityCheck(_) => "CURequest::PasswordQualityCheck",
             CURequest::Password(_) => "CURequest::Password",
             CURequest::CancelMFAReg => "CURequest::CancelMFAReg",
             CURequest::TotpGenerate => "CURequest::TotpGenerate",

@@ -1178,6 +1178,15 @@ impl QueryServerReadV1 {
                     );
                     e
                 }),
+            CURequest::PasswordQualityCheck(pw) => idms_cred_update
+                .credential_check_password_quality(&session_token, ct, &pw)
+                .map_err(|e| {
+                    error!(
+                        err = ?e,
+                        "Failed to begin credential_check_password_quality",
+                    );
+                    e
+                }),
             CURequest::Password(pw) => idms_cred_update
                 .credential_primary_set_password(&session_token, ct, &pw)
                 .map_err(|e| {
