@@ -648,15 +648,22 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip(self))]
-    async fn get_usertoken(&self, account_id: &Id) -> Result<Option<UserToken>, ()> {
+    async fn get_usertoken(
+        &self,
+        account_id: &Id,
+        current_time: SystemTime,
+    ) -> Result<Option<UserToken>, ()> {
         // get the item from the cache
-        let (expiry_state, item) = self.get_cached_usertoken(account_id, current_time).await.map_err(|e| {
-            debug!("get_usertoken error -> {:?}", e);
-        })?;
+        let (expiry_state, item) = self
+            .get_cached_usertoken(account_id, current_time)
+            .await
+            .map_err(|e| {
+                debug!("get_usertoken error -> {:?}", e);
+            })?;
 
         // If the token isn't found, get_cached will set expired = true.
         if expiry_state == ExpiryState::Expired {
-            self.refresh_usertoken(account_id, SystemTime::now()).await
+            self.refresh_usertoken(account_id, current_time).await
         } else {
             if expiry_state == ExpiryState::ValidRefresh {
                 // We don't mind if the buffer is full.
@@ -707,8 +714,9 @@ impl Resolver {
     // Get ssh keys for an account id
     #[instrument(level = "debug", skip(self))]
     pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, ()> {
+        let current_time = SystemTime::now();
         let token = self
-            .get_usertoken(&Id::Name(account_id.to_string()))
+            .get_usertoken(&Id::Name(account_id.to_string()), current_time)
             .await?;
         Ok(token
             .map(|t| {
@@ -784,13 +792,17 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn get_nssaccount(&self, account_id: Id) -> Result<Option<NssUser>, ()> {
+    async fn get_nssaccount(
+        &self,
+        account_id: Id,
+        current_time: SystemTime,
+    ) -> Result<Option<NssUser>, ()> {
         if let Some(nss_user) = self.system_provider.get_nssaccount(&account_id).await {
             debug!("system provider satisfied request");
             return Ok(Some(nss_user));
         }
 
-        let token = self.get_usertoken(&account_id).await?;
+        let token = self.get_usertoken(&account_id, current_time).await?;
         Ok(token.map(|tok| NssUser {
             homedir: self.token_abs_homedirectory(&tok),
             name: self.token_uidattr(&tok),
@@ -802,13 +814,26 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip(self))]
+    pub async fn get_nssaccount_name_time(
+        &self,
+        account_id: &str,
+        current_time: SystemTime,
+    ) -> Result<Option<NssUser>, ()> {
+        self.get_nssaccount(Id::Name(account_id.to_string()), current_time)
+            .await
+    }
+
+    #[instrument(level = "debug", skip(self))]
     pub async fn get_nssaccount_name(&self, account_id: &str) -> Result<Option<NssUser>, ()> {
-        self.get_nssaccount(Id::Name(account_id.to_string())).await
+        let current_time = SystemTime::now();
+        self.get_nssaccount(Id::Name(account_id.to_string()), current_time)
+            .await
     }
 
     #[instrument(level = "debug", skip(self))]
     pub async fn get_nssaccount_gid(&self, gid: u32) -> Result<Option<NssUser>, ()> {
-        self.get_nssaccount(Id::Gid(gid)).await
+        let current_time = SystemTime::now();
+        self.get_nssaccount(Id::Gid(gid), current_time).await
     }
 
     fn token_gidattr(&self, token: &GroupToken) -> String {
@@ -906,6 +931,7 @@ impl Resolver {
 
     #[instrument(level = "debug", skip(self))]
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
+        let current_time = SystemTime::now();
         let id = Id::Name(account_id.to_string());
 
         if let Some(answer) = self.system_provider.authorise(&id).await {
@@ -913,7 +939,7 @@ impl Resolver {
         };
 
         // Not a system account, handle with the provider.
-        let token = self.get_usertoken(&id).await?;
+        let token = self.get_usertoken(&id, current_time).await?;
 
         // If there is no token, return Ok(None) to trigger unknown-user path in pam.
         match token {
@@ -997,7 +1023,7 @@ impl Resolver {
             }
         }
 
-        let token = self.get_usertoken(&id).await?;
+        let token = self.get_usertoken(&id, now).await?;
 
         // Get the provider associated to this token.
 
@@ -1124,6 +1150,7 @@ impl Resolver {
         auth_session: &mut AuthSession,
         pam_next_req: PamAuthRequest,
     ) -> Result<PamAuthResponse, ()> {
+        let current_time = SystemTime::now();
         let mut hsm_lock = self.hsm.lock().await;
 
         let maybe_err = match &mut *auth_session {
@@ -1367,6 +1394,7 @@ impl Resolver {
         &self,
         account_id: &str,
     ) -> Result<Option<HomeDirectoryInfo>, ()> {
+        let current_time = SystemTime::now();
         let id = Id::Name(account_id.to_string());
 
         match self.system_provider.begin_session(&id).await {
@@ -1384,7 +1412,7 @@ impl Resolver {
         };
 
         // Not a system account, check based on the token and resolve.
-        let token = self.get_usertoken(&id).await?;
+        let token = self.get_usertoken(&id, current_time).await?;
         Ok(token.as_ref().map(|tok| HomeDirectoryInfo {
             uid: tok.gidnumber,
             gid: tok.gidnumber,

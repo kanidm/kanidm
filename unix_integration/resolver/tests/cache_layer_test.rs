@@ -6,8 +6,8 @@ use kanidm_hsm_crypto::{
 };
 use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
 use kanidm_unix_common::constants::{
-    DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
-    DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
+    DEFAULT_CACHE_ASYNC_REFRESH, DEFAULT_CACHE_TIMEOUT, DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS,
+    DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
 use kanidm_unix_common::unix_config::{GroupMap, KanidmConfig};
 use kanidm_unix_common::unix_passwd::{CryptPw, EtcGroup, EtcShadow, EtcUser};
@@ -25,8 +25,8 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use time::OffsetDateTime;
-use tokio::task;
 use tokio::sync::mpsc;
+use tokio::task;
 use tracing::debug;
 
 const ADMIN_TEST_USER: &str = "admin";
@@ -188,7 +188,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, mpsc::Receiver<Id>, KanidmCli
         Arc::new(system_provider),
         vec![Arc::new(idprovider)],
         hsm,
-        300,
+        DEFAULT_CACHE_TIMEOUT,
         DEFAULT_SHELL.to_string(),
         DEFAULT_HOME_PREFIX.into(),
         DEFAULT_HOME_ATTR,
@@ -304,22 +304,28 @@ async fn test_cache_sshkey() {
 #[tokio::test]
 async fn test_cache_account() {
     let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    const ASYNC_REFRESH_TIME: u64 = DEFAULT_CACHE_TIMEOUT - DEFAULT_CACHE_ASYNC_REFRESH;
+
+    let current_time = SystemTime::now();
+    let refresh_time = SystemTime::now() + Duration::from_secs(ASYNC_REFRESH_TIME);
+
     // Force offline. Show we have no account
     cachelayer.mark_offline().await;
 
     let ut = cachelayer
-        .get_nssaccount_name("testaccount1")
+        .get_nssaccount_name_time("testaccount1", current_time)
         .await
         .expect("Failed to get from cache");
     assert!(ut.is_none());
 
     // go online
-    cachelayer.mark_next_check_now(SystemTime::now()).await;
+    cachelayer.mark_next_check_now(current_time).await;
     assert!(cachelayer.test_connection().await);
 
     // get the account
     let ut = cachelayer
-        .get_nssaccount_name("testaccount1")
+        .get_nssaccount_name_time("testaccount1", current_time)
         .await
         .expect("Failed to get from cache");
     assert!(ut.is_some());
@@ -332,7 +338,7 @@ async fn test_cache_account() {
 
     // can still get account
     let ut = cachelayer
-        .get_nssaccount_name("testaccount1")
+        .get_nssaccount_name_time("testaccount1", current_time)
         .await
         .expect("Failed to get from cache");
     assert!(ut.is_some());
@@ -343,7 +349,15 @@ async fn test_cache_account() {
         .await
         .expect("failed to list all accounts");
     assert_eq!(us.len(), 1);
-    assert!(async_refresh_rx.is_empty());
+
+    // Set the time to when an async refresh should occur
+    let ut = cachelayer
+        .get_nssaccount_name_time("testaccount1", refresh_time)
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_some());
+    // Check that it's now in the queue to refresh.
+    assert_eq!(async_refresh_rx.len(), 1);
 }
 
 #[tokio::test]
