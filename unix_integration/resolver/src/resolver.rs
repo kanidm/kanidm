@@ -245,6 +245,7 @@ impl Resolver {
     async fn get_cached_usertoken(
         &self,
         account_id: &Id,
+        current_time: SystemTime,
     ) -> Result<(ExpiryState, Option<UserToken>), ()> {
         // Account_id could be:
         //  * gidnumber
@@ -268,11 +269,10 @@ impl Resolver {
                 } else {
                     ex_time
                 };
-                let now = SystemTime::now();
 
-                if now >= ex_time {
+                if current_time >= ex_time {
                     Ok((ExpiryState::Expired, Some(ut)))
-                } else if now >= async_ref_time {
+                } else if current_time >= async_ref_time {
                     Ok((ExpiryState::ValidRefresh, Some(ut)))
                 } else {
                     Ok((ExpiryState::Valid, Some(ut)))
@@ -282,8 +282,7 @@ impl Resolver {
                 // it wasn't in the DB - lets see if it's in the nxcache.
                 match self.check_nxcache(account_id).await {
                     Some(ex_time) => {
-                        let now = SystemTime::now();
-                        if now >= ex_time {
+                        if current_time >= ex_time {
                             // It's in the LRU, but we are past the expiry so
                             // lets attempt a refresh.
                             Ok((ExpiryState::ValidRefresh, None))
@@ -503,7 +502,7 @@ impl Resolver {
         // written to this token, since we are now the only task that is allowed
         // to be in a write phase.
         let token = self
-            .get_cached_usertoken(account_id)
+            .get_cached_usertoken(account_id, current_time)
             .await
             .map(|(_expired, option_token)| option_token)
             .map_err(|err| {
@@ -651,7 +650,7 @@ impl Resolver {
     #[instrument(level = "debug", skip(self))]
     async fn get_usertoken(&self, account_id: &Id) -> Result<Option<UserToken>, ()> {
         // get the item from the cache
-        let (expiry_state, item) = self.get_cached_usertoken(account_id).await.map_err(|e| {
+        let (expiry_state, item) = self.get_cached_usertoken(account_id, current_time).await.map_err(|e| {
             debug!("get_usertoken error -> {:?}", e);
         })?;
 
@@ -1140,7 +1139,7 @@ impl Resolver {
                 // requests an update. Since we hold the hsm_lock, no other task can
                 // update this token between now and completion of the fn.
                 let current_token = self
-                    .get_cached_usertoken(id)
+                    .get_cached_usertoken(id, current_time)
                     .await
                     .map(|(_expired, option_token)| option_token)
                     .map_err(|err| {
@@ -1185,7 +1184,7 @@ impl Resolver {
                 // requests an update. Since we hold the hsm_lock, no other task can
                 // update this token between now and completion of the fn.
                 let current_token = self
-                    .get_cached_usertoken(id)
+                    .get_cached_usertoken(id, current_time)
                     .await
                     .map(|(_expired, option_token)| option_token)
                     .map_err(|err| {
