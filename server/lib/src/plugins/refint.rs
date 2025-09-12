@@ -97,6 +97,12 @@ impl ReferentialIntegrity {
         // What would be the best way to delete these ....
         debug_assert!(false);
 
+        // For each deleted entry
+        //     Did any reference entry exist that refrenced it?
+        //     if yes
+        //         modify those entries to now state they were cascade deleted
+        //         delete those entries.
+
 
         // Find all reference types in the schema
         let schema = qs.get_schema();
