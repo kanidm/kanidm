@@ -19,8 +19,8 @@ use crate::idprovider::system::{
 use hashbrown::HashMap;
 use kanidm_hsm_crypto::provider::BoxedDynTpm;
 use kanidm_unix_common::constants::{
-    DEFAULT_CACHE_ASYNC_REFRESH, DEFAULT_CACHE_TIMEOUT_JITTER_MS, DEFAULT_SHELL_SEARCH_PATHS,
-    SYSTEM_SHADOW_PATH,
+    DEFAULT_CACHE_TIMEOUT_JITTER_MS, DEFAULT_CACHE_TIMEOUT_MAXIMUM, DEFAULT_CACHE_TIMEOUT_MINIMUM,
+    DEFAULT_SHELL_SEARCH_PATHS, SYSTEM_SHADOW_PATH,
 };
 use kanidm_unix_common::unix_config::{HomeAttr, UidAttr};
 use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
@@ -44,7 +44,8 @@ use uuid::Uuid;
 
 const NXCACHE_SIZE: NonZeroUsize =
     NonZeroUsize::new(256).expect("Invalid NXCACHE constant at compile time");
-const ASYNC_REFRESH_QUEUE: usize = 64;
+// Can sometimes have duplicates, so it can be a bit longer.
+const ASYNC_REFRESH_QUEUE: usize = 128;
 
 pub enum AuthSession {
     Online {
@@ -105,6 +106,7 @@ pub struct Resolver {
     primary_origin: ProviderOrigin,
 
     timeout_seconds: u64,
+    async_refresh_seconds: u64,
     default_shell: String,
     home_prefix: PathBuf,
     home_attr: HomeAttr,
@@ -150,6 +152,18 @@ impl Resolver {
 
         let (async_refresh_tx, async_refresh_rx) = mpsc::channel(ASYNC_REFRESH_QUEUE);
 
+        // How many seconds before expiry should we be refreshing an entry.
+        // We want to balance this - we don't want too many refreshes, but we
+        // also need to account for long cache times and ensuring that we are checking
+        // account validities in the background.
+        //
+        // Something else to consider is we want to
+
+        let timeout_seconds =
+            timeout_seconds.clamp(DEFAULT_CACHE_TIMEOUT_MINIMUM, DEFAULT_CACHE_TIMEOUT_MAXIMUM);
+
+        let async_refresh_seconds = (timeout_seconds / 3) * 2;
+
         // We assume we are offline at start up, and we mark the next "online check" as
         // being valid from "now".
         Ok((
@@ -161,6 +175,7 @@ impl Resolver {
                 primary_origin,
                 client_ids,
                 timeout_seconds,
+                async_refresh_seconds,
                 default_shell,
                 home_prefix,
                 home_attr,
@@ -269,8 +284,10 @@ impl Resolver {
             Some((ut, ex)) => {
                 // Are we expired?
                 let ex_time = SystemTime::UNIX_EPOCH + Duration::from_secs(ex);
-                let async_ref_time = if ex > DEFAULT_CACHE_ASYNC_REFRESH {
-                    SystemTime::UNIX_EPOCH + Duration::from_secs(ex - DEFAULT_CACHE_ASYNC_REFRESH)
+
+                // Should we async refresh?
+                let async_ref_time = if ex > self.async_refresh_seconds {
+                    SystemTime::UNIX_EPOCH + Duration::from_secs(ex - self.async_refresh_seconds)
                 } else {
                     ex_time
                 };
