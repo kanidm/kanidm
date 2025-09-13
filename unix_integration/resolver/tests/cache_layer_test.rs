@@ -6,8 +6,9 @@ use kanidm_hsm_crypto::{
 };
 use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
 use kanidm_unix_common::constants::{
-    DEFAULT_CACHE_ASYNC_REFRESH, DEFAULT_CACHE_TIMEOUT, DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS,
-    DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
+    DEFAULT_CACHE_TIMEOUT, DEFAULT_CACHE_TIMEOUT_JITTER_MS, DEFAULT_GID_ATTR_MAP,
+    DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL,
+    DEFAULT_UID_ATTR_MAP,
 };
 use kanidm_unix_common::unix_config::{GroupMap, KanidmConfig};
 use kanidm_unix_common::unix_passwd::{CryptPw, EtcGroup, EtcShadow, EtcUser};
@@ -305,10 +306,13 @@ async fn test_cache_sshkey() {
 async fn test_cache_account() {
     let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
 
-    const ASYNC_REFRESH_TIME: u64 = DEFAULT_CACHE_TIMEOUT - DEFAULT_CACHE_ASYNC_REFRESH;
-
     let current_time = SystemTime::now();
-    let refresh_time = SystemTime::now() + Duration::from_secs(ASYNC_REFRESH_TIME);
+    // We know that async refreshes occur in the last 1/3rd of the entries
+    // expiry. However we have to account for jitter. This means we need the expiry minus jitter
+    // and a bit
+    let refresh_time = SystemTime::now()
+        + (Duration::from_secs(DEFAULT_CACHE_TIMEOUT)
+            - (Duration::from_millis(DEFAULT_CACHE_TIMEOUT_JITTER_MS) + Duration::from_secs(1)));
 
     // Force offline. Show we have no account
     cachelayer.mark_offline().await;
