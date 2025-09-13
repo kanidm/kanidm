@@ -59,26 +59,34 @@ impl DaemonClientBlocking {
 
         self.codec.encode(req, &mut data).map_err(Box::new)?;
 
-        match self.stream.set_read_timeout(Some(timeout)) {
-            Ok(()) => {}
-            Err(e) => {
+        // This timeout is so that we periodically return from blocking and check our
+        // outer timeout.
+        self.stream.set_read_timeout(Some(Duration::from_millis(10))).map_err(|err| {
+            error!(
+                ?err,
+                "Unix socket stream setup error while setting read timeout",
+            );
+            Box::new(err)
+        })?;
+
+        self.stream
+            .set_write_timeout(Some(timeout))
+            .map_err(|err| {
                 error!(
-                    "Unix socket stream setup error while setting read timeout -> {:?}",
-                    e
+                    ?err,
+                    "Unix socket stream setup error while setting write timeout",
                 );
-                return Err(Box::new(e));
-            }
-        };
-        match self.stream.set_write_timeout(Some(timeout)) {
-            Ok(()) => {}
-            Err(e) => {
-                error!(
-                    "Unix socket stream setup error while setting write timeout -> {:?}",
-                    e
-                );
-                return Err(Box::new(e));
-            }
-        };
+                Box::new(err)
+            })?;
+
+        // We want this to be blocking so that we wait in small bursts to read data
+        self.stream.set_nonblocking(false).map_err(|err| {
+            error!(
+                ?err,
+                "Unix socket stream setup error while setting nonblocking=false",
+            );
+            Box::new(err)
+        })?;
 
         self.stream
             .write_all(&data)
@@ -102,7 +110,7 @@ impl DaemonClientBlocking {
                 return Err(Box::new(io::Error::other("Timeout")));
             }
 
-            let mut buffer = [0; 1024];
+            let mut buffer = [0; 8192];
 
             // Would be a lot easier if we had peek ...
             // https://github.com/rust-lang/rust/issues/76923
@@ -121,6 +129,7 @@ impl DaemonClientBlocking {
                 }
                 Ok(count) => {
                     read_started = true;
+                    debug!("read {count} bytes");
                     data.extend_from_slice(&buffer[..count]);
                 }
                 Err(e) => {
@@ -131,9 +140,11 @@ impl DaemonClientBlocking {
             }
 
             match self.codec.decode(&mut data) {
+                // A whole frame is ready and present.
                 Ok(Some(cr)) => return Ok(cr),
                 // Need more data
                 Ok(None) => continue,
+                // Failed to decode for some reason
                 Err(e) => return Err(Box::new(e)),
             }
         }
