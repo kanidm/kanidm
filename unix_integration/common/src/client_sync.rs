@@ -61,13 +61,15 @@ impl DaemonClientBlocking {
 
         // This timeout is so that we periodically return from blocking and check our
         // outer timeout.
-        self.stream.set_read_timeout(Some(Duration::from_millis(10))).map_err(|err| {
-            error!(
-                ?err,
-                "Unix socket stream setup error while setting read timeout",
-            );
-            Box::new(err)
-        })?;
+        self.stream
+            .set_read_timeout(Some(Duration::from_millis(10)))
+            .map_err(|err| {
+                error!(
+                    ?err,
+                    "Unix socket stream setup error while setting read timeout",
+                );
+                Box::new(err)
+            })?;
 
         self.stream
             .set_write_timeout(Some(timeout))
