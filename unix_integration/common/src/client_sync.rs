@@ -32,12 +32,12 @@ impl DaemonClientBlocking {
         debug!(%path);
 
         let stream = UnixStream::connect(path)
-            .inspect_err(|err|
+            .inspect_err(|err| {
                 error!(
                     ?err, %path,
                     "Unix socket stream setup error",
                 )
-            )
+            })
             .map_err(Box::new)?;
 
         Ok(DaemonClientBlocking {
@@ -64,14 +64,6 @@ impl DaemonClientBlocking {
                 Box::new(err)
             })?;
 
-        self.stream.set_read_timeout(Some(timeout)).map_err(|err| {
-            error!(
-                ?err,
-                "Unix socket stream setup error while setting read timeout",
-            );
-            Box::new(err)
-        })?;
-
         // We want this to be blocking so that we wait for data to be ready
         self.stream.set_nonblocking(false).map_err(|err| {
             error!(
@@ -88,10 +80,19 @@ impl DaemonClientBlocking {
         self.stream
             .write_all(&data)
             .and_then(|_| self.stream.flush())
-            .inspect_err(|err|
-                error!(?err, "stream write error")
-            )
+            .inspect_err(|err| error!(?err, "stream write error"))
             .map_err(Box::new)?;
+
+        // Not 100% sure why, but you need to set the read timeout *after*
+        // we perform the write, else the read timeout == zero and can cause
+        // EAGAIN to be raised that disconnects the client rapidly.
+        self.stream.set_read_timeout(Some(timeout)).map_err(|err| {
+            error!(
+                ?err,
+                "Unix socket stream setup error while setting read timeout",
+            );
+            Box::new(err)
+        })?;
 
         // Now wait on the response.
         data.clear();
