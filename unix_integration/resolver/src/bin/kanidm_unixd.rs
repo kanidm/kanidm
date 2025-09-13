@@ -196,6 +196,7 @@ async fn handle_client(
     while let Some(Ok(req)) = reqs.next().await {
         let span = span!(Level::INFO, "client request", uuid = %conn_id, defer = true);
         let _enter = span.enter();
+        debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
         let resp = match req {
             ClientRequest::SshKey(account_id) => cachelayer
@@ -1095,9 +1096,9 @@ async fn main() -> ExitCode {
                                 Ok((socket, _addr)) => {
                                     let cachelayer_ref = cachelayer.clone();
                                     tokio::spawn(async move {
-                                        if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
+                                        if let Err(err) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
                                         {
-                                            error!("handle_client error occurred; error = {:?}", e);
+                                            error!(?err, "handle_client error occurred");
                                         }
                                     });
                                 }
