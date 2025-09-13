@@ -76,9 +76,14 @@ pub enum AuthSession {
 }
 
 #[derive(Debug, PartialEq)]
+/// The expiration state of a cache item
 enum ExpiryState {
+    /// The item is valid
     Valid,
+    /// The item is valid, but approaching it's expiry so a background/async refresh should be
+    /// performed.
     ValidRefresh,
+    /// The item is expired and needs refresh before we can proceed
     Expired,
 }
 
@@ -667,7 +672,9 @@ impl Resolver {
         } else {
             if expiry_state == ExpiryState::ValidRefresh {
                 // We don't mind if the buffer is full.
-                let _ = self.async_refresh_tx.try_send(account_id.clone());
+                if self.async_refresh_tx.try_send(account_id.clone()).is_err() {
+                    debug!(?account_id, "unable to queue async refresh");
+                }
             }
             // Still valid, return the cached entry.
             Ok(item)
