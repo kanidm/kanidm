@@ -452,6 +452,7 @@ impl DbTxn<'_> {
         Ok(())
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), CacheError> {
         if self.committed {
             error!("Invalid state, SQL transaction was already committed!");
@@ -597,6 +598,7 @@ impl DbTxn<'_> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn get_account(&mut self, account_id: &Id) -> Result<Option<(UserToken, u64)>, CacheError> {
         let data = match account_id {
             Id::Name(n) => self.get_account_data_name(n.as_str()),
@@ -631,6 +633,7 @@ impl DbTxn<'_> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn get_accounts(&mut self) -> Result<Vec<UserToken>, CacheError> {
         let mut stmt = self
             .conn
@@ -660,6 +663,7 @@ impl DbTxn<'_> {
             .collect())
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn update_account(&mut self, account: &UserToken, expire: u64) -> Result<(), CacheError> {
         let data = serde_json::to_vec(account).map_err(|e| {
             error!("update_account json error -> {:?}", e);
@@ -756,6 +760,7 @@ impl DbTxn<'_> {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn delete_account(&mut self, a_uuid: Uuid) -> Result<(), CacheError> {
         let account_uuid = a_uuid.as_hyphenated().to_string();
 
@@ -776,6 +781,7 @@ impl DbTxn<'_> {
             .map_err(|e| self.sqlite_error("account_t delete", &e))
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn get_group(&mut self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, CacheError> {
         let data = match grp_id {
             Id::Name(n) => self.get_group_data_name(n.as_str()),
@@ -810,6 +816,7 @@ impl DbTxn<'_> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn get_group_members(&mut self, g_uuid: Uuid) -> Result<Vec<UserToken>, CacheError> {
         let mut stmt = self
             .conn
@@ -839,6 +846,7 @@ impl DbTxn<'_> {
             .collect()
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn get_groups(&mut self) -> Result<Vec<GroupToken>, CacheError> {
         let mut stmt = self
             .conn
@@ -868,6 +876,7 @@ impl DbTxn<'_> {
             .collect())
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn update_group(&mut self, grp: &GroupToken, expire: u64) -> Result<(), CacheError> {
         let data = serde_json::to_vec(grp).map_err(|e| {
             error!("json error -> {:?}", e);
@@ -899,6 +908,7 @@ impl DbTxn<'_> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn delete_group(&mut self, g_uuid: Uuid) -> Result<(), CacheError> {
         let group_uuid = g_uuid.as_hyphenated().to_string();
         self.conn

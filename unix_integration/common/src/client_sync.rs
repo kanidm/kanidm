@@ -55,14 +55,8 @@ impl DaemonClientBlocking {
     ) -> Result<ClientResponse, Box<dyn Error>> {
         let timeout = Duration::from_secs(timeout.unwrap_or(self.default_timeout));
 
-        let mut data = BytesMut::new();
-
-        self.codec.encode(req, &mut data).map_err(Box::new)?;
-
-        // This timeout is so that we periodically return from blocking and check our
-        // outer timeout.
         self.stream
-            .set_read_timeout(Some(Duration::from_millis(10)))
+            .set_read_timeout(Some(timeout))
             .map_err(|err| {
                 error!(
                     ?err,
@@ -81,7 +75,7 @@ impl DaemonClientBlocking {
                 Box::new(err)
             })?;
 
-        // We want this to be blocking so that we wait in small bursts to read data
+        // We want this to be blocking so that we wait for data to be ready
         self.stream.set_nonblocking(false).map_err(|err| {
             error!(
                 ?err,
@@ -89,6 +83,10 @@ impl DaemonClientBlocking {
             );
             Box::new(err)
         })?;
+
+        let mut data = BytesMut::new();
+
+        self.codec.encode(req, &mut data).map_err(Box::new)?;
 
         self.stream
             .write_all(&data)
