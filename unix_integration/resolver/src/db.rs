@@ -88,6 +88,16 @@ impl Db {
                 DbError::Sqlite
             })?;
 
+        // synchronous=normal is safe for WAL
+        conn.pragma_update(None, "synchronous", "NORMAL")
+            .map_err(|error| {
+                error!(
+                    "sqlite synchronous=NORMAL error: {:?} db_path={:?}",
+                    error, path
+                );
+                DbError::Sqlite
+            })?;
+
         conn.pragma_update(None, "cache_size", CACHE_SIZE)
             .map_err(|error| {
                 error!(

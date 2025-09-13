@@ -42,13 +42,13 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::metadata;
 use std::io::Error as IoError;
+use std::num::NonZeroUsize;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
-use std::num::NonZeroUsize;
 use time::OffsetDateTime;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt; // for read_to_end()
