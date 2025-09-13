@@ -33,6 +33,7 @@ use kanidm_unix_resolver::idprovider::system::SystemProvider;
 use kanidm_unix_resolver::resolver::Resolver;
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
+use lru::LruCache;
 use sketching::tracing::span;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
@@ -47,6 +48,7 @@ use std::process::ExitCode;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
+use std::num::NonZeroUsize;
 use time::OffsetDateTime;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt; // for read_to_end()
@@ -60,7 +62,9 @@ use tokio_util::codec::Framed;
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
 
-//=== the codec
+const REFRESH_DEBOUNCE_SIZE: NonZeroUsize =
+    NonZeroUsize::new(16).expect("Invalid REFRESH_DEBOUNCE_SIZE constant at compile time");
+const REFRESH_DEBOUNCE_WINDOW: Duration = Duration::from_secs(5);
 
 struct AsyncTaskRequest {
     task_req: TaskRequest,
@@ -1059,8 +1063,24 @@ async fn main() -> ExitCode {
             // Setup the task that handles async pre-fetching here.
             let prefetch_cachelayer = cachelayer.clone();
             let _task_prefetch = tokio::spawn(async move {
+
+                let mut refresh_cache = LruCache::new(REFRESH_DEBOUNCE_SIZE);
+
                 while let Some(refresh_account_id) = async_refresh_rx.recv().await {
                     let current_time = SystemTime::now();
+
+                    // Have we already checked this item in the last few seconds?
+                    match refresh_cache.get(&refresh_account_id).copied() {
+                        Some(not_before) if current_time < not_before => {
+                            debug!(?refresh_account_id, "debounce triggered");
+                            continue
+                        }
+                        _ => {}
+                    };
+
+                    // Mark that we are about to refresh this, and that we shouldn't attempt again for a few seconds.
+                    refresh_cache.put(refresh_account_id.clone(), current_time + REFRESH_DEBOUNCE_WINDOW);
+
                     // we don't mind if there was an error, it's already logged, and on success
                     // we don't need the info anyway.
                     if prefetch_cachelayer.refresh_usertoken(&refresh_account_id, current_time).await.is_ok() {
