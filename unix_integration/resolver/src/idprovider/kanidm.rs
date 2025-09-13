@@ -344,7 +344,7 @@ impl IdProvider for KanidmProvider {
         inner.state = CacheState::Offline;
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip_all, fields(id = ?id))]
     async fn unix_user_get(
         &self,
         id: &Id,
