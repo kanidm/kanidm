@@ -202,7 +202,7 @@ pub async fn create_https_server(
         concat!(
             "default-src 'self'; ",
             "base-uri 'self' https:; ",
-            "form-action 'self' https:;",
+            "form-action 'self' https: localhost;",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
