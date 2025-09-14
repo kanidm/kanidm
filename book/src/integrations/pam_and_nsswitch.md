@@ -92,8 +92,6 @@ For more information, see the [Troubleshooting](pam_and_nsswitch/troubleshooting
 
 ## Using a service account
 
-
-
 ## nsswitch
 
 When the daemon is running you can add the nsswitch libraries to /etc/nsswitch.conf
