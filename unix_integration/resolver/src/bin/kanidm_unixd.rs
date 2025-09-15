@@ -474,7 +474,8 @@ fn open_tpm_if_possible(_tcti_name: &str) -> BoxedDynTpm {
     BoxedDynTpm::new(SoftTpm::default())
 }
 
-#[tokio::main(flavor = "current_thread")]
+// #[tokio::main(flavor = "current_thread")]
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> ExitCode {
     // On linux when debug assertions are disabled, prevent ptrace
     // from attaching to us.
