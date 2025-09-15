@@ -3,9 +3,9 @@ use crate::json_codec::JsonCodec;
 use crate::unix_proto::{ClientRequest, ClientResponse};
 use bytes::BytesMut;
 use std::error::Error;
-use std::io::{self, Read, Write, ErrorKind};
-use std::time::{Duration, SystemTime};
+use std::io::{self, ErrorKind, Read, Write};
 use std::thread;
+use std::time::{Duration, SystemTime};
 use tokio_util::codec::{Decoder, Encoder};
 
 pub use std::os::unix::net::UnixStream;
@@ -136,7 +136,7 @@ impl DaemonClientBlocking {
                 Err(err) if err.kind() == ErrorKind::WouldBlock => {
                     debug!("would block");
                     thread::sleep(Duration::from_millis(500));
-                    continue
+                    continue;
                 }
                 Err(err) => {
                     error!(?err, "Stream read failure from {:?}", &self.stream);
@@ -149,17 +149,17 @@ impl DaemonClientBlocking {
                 // A whole frame is ready and present.
                 Ok(Some(cr)) => {
                     debug!("read loop - ok");
-                    return Ok(cr)
+                    return Ok(cr);
                 }
                 // Need more data
                 Ok(None) => {
                     debug!("need more");
-                    continue
+                    continue;
                 }
                 // Failed to decode for some reason
                 Err(err) => {
                     error!(?err);
-                    return Err(Box::new(err))
+                    return Err(Box::new(err));
                 }
             }
         }
