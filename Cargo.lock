@@ -3736,6 +3736,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+ "tracing-subscriber",
  "uuid",
  "walkdir",
 ]
@@ -6981,8 +6982,8 @@ dependencies = [
 
 [[package]]
 name = "tracing-forest"
-version = "0.1.6"
-source = "git+https://github.com/Firstyear/tracing-forest.git?rev=a04c79e049ee31fcc6965091181a5e427196db9b#a04c79e049ee31fcc6965091181a5e427196db9b"
+version = "0.2.0"
+source = "git+https://github.com/Firstyear/tracing-forest.git?rev=6c2921df9ddad20b0137770580469808c72f6c76#6c2921df9ddad20b0137770580469808c72f6c76"
 dependencies = [
  "smallvec",
  "thiserror 2.0.12",
