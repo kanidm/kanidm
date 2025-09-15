@@ -5,6 +5,7 @@ use bytes::BytesMut;
 use std::error::Error;
 use std::io::{self, Read, Write, ErrorKind};
 use std::time::{Duration, SystemTime};
+use std::thread;
 use tokio_util::codec::{Decoder, Encoder};
 
 pub use std::os::unix::net::UnixStream;
@@ -134,6 +135,7 @@ impl DaemonClientBlocking {
                 }
                 Err(err) if err.kind() == ErrorKind::WouldBlock => {
                     debug!("would block");
+                    thread::sleep(Duration::from_millis(500));
                     continue
                 }
                 Err(err) => {
