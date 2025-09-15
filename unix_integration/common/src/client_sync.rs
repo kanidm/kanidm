@@ -3,7 +3,7 @@ use crate::json_codec::JsonCodec;
 use crate::unix_proto::{ClientRequest, ClientResponse};
 use bytes::BytesMut;
 use std::error::Error;
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Write, ErrorKind};
 use std::time::{Duration, SystemTime};
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -100,6 +100,7 @@ impl DaemonClientBlocking {
         let mut read_started = false;
 
         loop {
+            debug!("read loop");
             let durr = SystemTime::now().duration_since(start).map_err(Box::new)?;
             if durr > timeout {
                 error!("Socket timeout");
@@ -108,6 +109,8 @@ impl DaemonClientBlocking {
             }
 
             let mut buffer = [0; 8192];
+
+            debug!(read_timeout = ?self.stream.read_timeout(), write_timeout = ?self.stream.write_timeout());
 
             // Would be a lot easier if we had peek ...
             // https://github.com/rust-lang/rust/issues/76923
@@ -129,20 +132,33 @@ impl DaemonClientBlocking {
                     debug!("read {count} bytes");
                     data.extend_from_slice(&buffer[..count]);
                 }
-                Err(e) => {
-                    error!("Stream read failure from {:?} -> {:?}", &self.stream, e);
+                Err(err) if err.kind() == ErrorKind::WouldBlock => {
+                    debug!("would block");
+                    continue
+                }
+                Err(err) => {
+                    error!(?err, "Stream read failure from {:?}", &self.stream);
                     // Failure!
-                    return Err(Box::new(e));
+                    return Err(Box::new(err));
                 }
             }
 
             match self.codec.decode(&mut data) {
                 // A whole frame is ready and present.
-                Ok(Some(cr)) => return Ok(cr),
+                Ok(Some(cr)) => {
+                    debug!("read loop - ok");
+                    return Ok(cr)
+                }
                 // Need more data
-                Ok(None) => continue,
+                Ok(None) => {
+                    debug!("need more");
+                    continue
+                }
                 // Failed to decode for some reason
-                Err(e) => return Err(Box::new(e)),
+                Err(err) => {
+                    error!(?err);
+                    return Err(Box::new(err))
+                }
             }
         }
     }
