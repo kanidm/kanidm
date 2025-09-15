@@ -35,9 +35,8 @@ use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, ge
 use libc::umask;
 use lru::LruCache;
 use sketching::tracing::span;
-use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
-use sketching::tracing_forest::{self};
+// use sketching::tracing_forest::{self, traits::*};
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::metadata;
@@ -1207,6 +1206,7 @@ async fn main() -> ExitCode {
         std::env::set_var("RUST_LOG", "debug");
     }
 
+    /*
     #[allow(clippy::expect_used)]
     tracing_forest::worker_task()
         .set_global(true)
@@ -1221,4 +1221,22 @@ async fn main() -> ExitCode {
         })
         .on(main_inner(clap_args))
         .await
+    */
+
+    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_subscriber::prelude::*;
+
+
+    let fmt_layer = fmt::layer()
+    .with_target(false);
+    let filter_layer = EnvFilter::try_from_default_env()
+        .or_else(|_| EnvFilter::try_new("info"))
+        .unwrap();
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .init();
+
+    main_inner(clap_args).await
 }
