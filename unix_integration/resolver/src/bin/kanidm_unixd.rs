@@ -474,6 +474,668 @@ fn open_tpm_if_possible(_tcti_name: &str) -> BoxedDynTpm {
     BoxedDynTpm::new(SoftTpm::default())
 }
 
+async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
+    let cuid = get_current_uid();
+    let ceuid = get_effective_uid();
+    let cgid = get_current_gid();
+    let cegid = get_effective_gid();
+
+    let span = span!(Level::DEBUG, "starting resolver");
+    let _enter = span.enter();
+
+    if clap_args.get_flag("skip-root-check") {
+        warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
+        // TODO: this wording is not great m'kay.
+    } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+        error!("Refusing to run - this process must not operate as root.");
+        return ExitCode::FAILURE;
+    };
+
+    debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
+    debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
+
+    let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
+        error!("Failed to pull the client config path");
+        return ExitCode::FAILURE;
+    };
+    let cfg_path: PathBuf = PathBuf::from(cfg_path_str);
+
+    if !cfg_path.exists() {
+        // there's no point trying to start up if we can't read a usable config!
+        error!(
+            "Client config missing from {} - cannot start up. Quitting.",
+            cfg_path_str
+        );
+        let diag = kanidm_lib_file_permissions::diagnose_path(cfg_path.as_ref());
+        info!(%diag);
+        return ExitCode::FAILURE;
+    } else {
+        let cfg_meta = match metadata(&cfg_path) {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
+                let diag = kanidm_lib_file_permissions::diagnose_path(cfg_path.as_ref());
+                info!(%diag);
+                return ExitCode::FAILURE;
+            }
+        };
+        if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
+            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                        cfg_path_str
+                        );
+        }
+
+        if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
+            warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+                        cfg_path_str
+                    );
+        }
+    }
+
+    let Some(unixd_path_str) = clap_args.get_one::<String>("unixd-config") else {
+        error!("Failed to pull the unixd config path");
+        return ExitCode::FAILURE;
+    };
+    let unixd_path = PathBuf::from(unixd_path_str);
+
+    if !unixd_path.exists() {
+        // there's no point trying to start up if we can't read a usable config!
+        error!(
+            "unixd config missing from {} - cannot start up. Quitting.",
+            unixd_path_str
+        );
+        let diag = kanidm_lib_file_permissions::diagnose_path(unixd_path.as_ref());
+        info!(%diag);
+        return ExitCode::FAILURE;
+    } else {
+        let unixd_meta = match metadata(&unixd_path) {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
+                let diag = kanidm_lib_file_permissions::diagnose_path(unixd_path.as_ref());
+                info!(%diag);
+                return ExitCode::FAILURE;
+            }
+        };
+        if !kanidm_lib_file_permissions::readonly(&unixd_meta) {
+            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                        unixd_path_str);
+        }
+
+        if unixd_meta.uid() == cuid || unixd_meta.uid() == ceuid {
+            warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+                        unixd_path_str
+                    );
+        }
+    }
+
+    let cfg = match UnixdConfig::new().read_options_from_optional_config(&unixd_path) {
+        Ok(v) => v,
+        Err(_) => {
+            error!("Failed to parse {}", unixd_path_str);
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let client_builder = if let Some(kconfig) = &cfg.kanidm_config {
+        // setup
+        let cb = match KanidmClientBuilder::new().read_options_from_optional_config(&cfg_path) {
+            Ok(v) => v,
+            Err(_) => {
+                error!("Failed to parse {}", cfg_path_str);
+                return ExitCode::FAILURE;
+            }
+        };
+
+        Some((cb, kconfig))
+    } else {
+        None
+    };
+
+    if clap_args.get_flag("configtest") {
+        eprintln!("###################################");
+        eprintln!("Dumping configs:\n###################################");
+        eprintln!("kanidm_unixd config (from {:#?})", &unixd_path);
+        eprintln!("{cfg}");
+        eprintln!("###################################");
+        if let Some((cb, _)) = client_builder.as_ref() {
+            eprintln!("kanidm client config (from {:#?})", &cfg_path);
+            eprintln!("{cb}");
+        } else {
+            eprintln!("kanidm client: disabled");
+        }
+        return ExitCode::SUCCESS;
+    }
+
+    debug!("🧹 Cleaning up sockets from previous invocations");
+    rm_if_exist(cfg.sock_path.as_str());
+    rm_if_exist(cfg.task_sock_path.as_str());
+
+    // Check the db path will be okay.
+    if !cfg.cache_db_path.is_empty() {
+        let cache_db_path = PathBuf::from(cfg.cache_db_path.as_str());
+        // We only need to check the parent folder path permissions as the db itself may not exist yet.
+        if let Some(db_parent_path) = cache_db_path.parent() {
+            if !db_parent_path.exists() {
+                error!(
+                    "Refusing to run, DB folder {} does not exist",
+                    db_parent_path
+                        .to_str()
+                        .unwrap_or("<db_parent_path invalid>")
+                );
+                let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
+                info!(%diag);
+                return ExitCode::FAILURE;
+            }
+
+            let db_par_path_buf = db_parent_path.to_path_buf();
+
+            let i_meta = match metadata(&db_par_path_buf) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!(
+                        "Unable to read metadata for {} - {:?}",
+                        db_par_path_buf
+                            .to_str()
+                            .unwrap_or("<db_par_path_buf invalid>"),
+                        e
+                    );
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            if !i_meta.is_dir() {
+                error!(
+                    "Refusing to run - DB folder {} may not be a directory",
+                    db_par_path_buf
+                        .to_str()
+                        .unwrap_or("<db_par_path_buf invalid>")
+                );
+                return ExitCode::FAILURE;
+            }
+            if kanidm_lib_file_permissions::readonly(&i_meta) {
+                warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
+                        .unwrap_or("<db_par_path_buf invalid>")
+                        );
+            }
+
+            if i_meta.mode() & 0o007 != 0 {
+                warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
+                        .unwrap_or("<db_par_path_buf invalid>")
+                        );
+            }
+        }
+
+        // check to see if the db's already there
+        if cache_db_path.exists() {
+            if !cache_db_path.is_file() {
+                error!(
+                    "Refusing to run - DB path {} already exists and is not a file.",
+                    cache_db_path.to_str().unwrap_or("<cache_db_path invalid>")
+                );
+                let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
+                info!(%diag);
+                return ExitCode::FAILURE;
+            };
+
+            match metadata(&cache_db_path) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!(
+                        "Unable to read metadata for {} - {:?}",
+                        cache_db_path.to_str().unwrap_or("<cache_db_path invalid>"),
+                        e
+                    );
+                    let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
+                    info!(%diag);
+                    return ExitCode::FAILURE;
+                }
+            };
+            // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
+        };
+    }
+
+    let db = match Db::new(cfg.cache_db_path.as_str()) {
+        Ok(db) => db,
+        Err(_e) => {
+            error!("Failed to create database");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    // perform any db migrations.
+    let mut dbtxn = db.write().await;
+    if dbtxn.migrate().and_then(|_| dbtxn.commit()).is_err() {
+        error!("Failed to migrate database");
+        return ExitCode::FAILURE;
+    }
+
+    // Check for and create the hsm pin if required.
+    if let Err(err) = write_hsm_pin(cfg.hsm_pin_path.as_str()).await {
+        let diag = kanidm_lib_file_permissions::diagnose_path(cfg.hsm_pin_path.as_ref());
+        info!(%diag);
+        error!(
+            ?err,
+            "Failed to create HSM PIN into {}",
+            cfg.hsm_pin_path.as_str()
+        );
+        return ExitCode::FAILURE;
+    };
+
+    // read the hsm pin
+    let hsm_pin = match read_hsm_pin(cfg.hsm_pin_path.as_str()).await {
+        Ok(hp) => hp,
+        Err(err) => {
+            let diag = kanidm_lib_file_permissions::diagnose_path(cfg.hsm_pin_path.as_ref());
+            info!(%diag);
+            error!(
+                ?err,
+                "Failed to read HSM PIN from {}",
+                cfg.hsm_pin_path.as_str()
+            );
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let auth_value = match AuthValue::try_from(hsm_pin.as_slice()) {
+        Ok(av) => av,
+        Err(err) => {
+            error!(?err, "invalid hsm pin");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let mut hsm: BoxedDynTpm = match cfg.hsm_type {
+        HsmType::Soft => BoxedDynTpm::new(SoftTpm::default()),
+        HsmType::TpmIfPossible => open_tpm_if_possible(&cfg.tpm_tcti_name),
+        HsmType::Tpm => match open_tpm(&cfg.tpm_tcti_name) {
+            Some(hsm) => hsm,
+            None => return ExitCode::FAILURE,
+        },
+    };
+
+    // With the assistance of the DB, setup the HSM and its machine key.
+    let mut db_txn = db.write().await;
+
+    let loadable_machine_key = match db_txn.get_hsm_root_storage_key() {
+        Ok(Some(lmk)) => lmk,
+        Ok(None) => {
+            // No machine key found - create one, and store it.
+            let loadable_machine_key = match hsm.root_storage_key_create(&auth_value) {
+                Ok(lmk) => lmk,
+                Err(err) => {
+                    error!(?err, "Unable to create hsm loadable machine key");
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            if let Err(err) = db_txn.insert_hsm_root_storage_key(&loadable_machine_key) {
+                error!(?err, "Unable to persist hsm loadable machine key");
+                return ExitCode::FAILURE;
+            }
+
+            loadable_machine_key
+        }
+        Err(err) => {
+            error!(?err, "Unable to access hsm loadable machine key");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let machine_key = match hsm.root_storage_key_load(&auth_value, &loadable_machine_key) {
+        Ok(mk) => mk,
+        Err(err) => {
+            error!(
+                ?err,
+                "Unable to load machine root key - This can occur if you have changed your HSM pin"
+            );
+            error!(
+                "To proceed you must remove the content of the cache db ({}) to reset all keys",
+                cfg.cache_db_path.as_str()
+            );
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let Ok(system_provider) = SystemProvider::new() else {
+        error!("Failed to configure System Provider");
+        return ExitCode::FAILURE;
+    };
+
+    info!("Started system provider");
+
+    let mut clients: Vec<Arc<dyn IdProvider + Send + Sync>> = Vec::with_capacity(1);
+
+    // Setup Kanidm provider if the configuration requests it.
+    if let Some((cb, kconfig)) = client_builder {
+        let cb = cb.connect_timeout(kconfig.conn_timeout);
+        let cb = cb.request_timeout(kconfig.request_timeout);
+
+        let rsclient = match cb.build() {
+            Ok(rsc) => rsc,
+            Err(_e) => {
+                error!("Failed to build async client");
+                return ExitCode::FAILURE;
+            }
+        };
+
+        let Ok(idprovider) = KanidmProvider::new(
+            rsclient,
+            kconfig,
+            SystemTime::now(),
+            &mut (&mut db_txn).into(),
+            &mut hsm,
+            &machine_key,
+        )
+        .await
+        else {
+            error!("Failed to configure Kanidm Provider");
+            return ExitCode::FAILURE;
+        };
+
+        // Now stacked for the resolver.
+        clients.push(Arc::new(idprovider));
+        info!("Started kanidm provider");
+    }
+
+    drop(machine_key);
+
+    if let Err(err) = db_txn.commit() {
+        error!(
+            ?err,
+            "Failed to commit database transaction, unable to proceed"
+        );
+        return ExitCode::FAILURE;
+    }
+
+    if !cfg.default_shell.is_empty() {
+        let shell_path = PathBuf::from_str(&cfg.default_shell)
+            .expect("Failed to build a representation of your default_shell path!");
+        if !shell_path.exists() {
+            error!(
+                "Cannot find configured default shell at {}, this could cause login issues!",
+                shell_path.display()
+            )
+        }
+    }
+
+    // Okay, the hsm is now loaded and ready to go.
+    let (cl_inner, mut async_refresh_rx) = match Resolver::new(
+        db,
+        Arc::new(system_provider),
+        clients,
+        hsm,
+        cfg.cache_timeout,
+        cfg.default_shell.clone(),
+        cfg.home_prefix.clone(),
+        cfg.home_attr,
+        cfg.home_alias,
+        cfg.uid_attr_map,
+        cfg.gid_attr_map,
+    )
+    .await
+    {
+        Ok(c) => c,
+        Err(_e) => {
+            error!("Failed to build cache layer.");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let cachelayer = Arc::new(cl_inner);
+
+    // Setup the root-only tasks socket. Take away all other access bits.
+    let before = unsafe { umask(0o0077) };
+    let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
+        Ok(l) => l,
+        Err(_e) => {
+            let diag = kanidm_lib_file_permissions::diagnose_path(cfg.task_sock_path.as_ref());
+            info!(%diag);
+            error!("Failed to bind UNIX socket {}", cfg.task_sock_path.as_str());
+            return ExitCode::FAILURE;
+        }
+    };
+    // Undo umask changes.
+    let _ = unsafe { umask(before) };
+
+    // The tasks ... well task. Tasks-task. Anyway, the tasks-task is bidirectional
+    // in its communication to the tasks-daemon. We submit tasks to the tasks-daemon
+    // via this channel here -\
+    //                        |
+    //                        v
+    let (task_channel_tx, mut task_channel_rx) = channel(16);
+    let task_channel_tx = Arc::new(task_channel_tx);
+    let task_channel_tx_cln = task_channel_tx.clone();
+    // Each submitted task contains a oneshot channel allowing the tasks-task to
+    // notify the submitter of the task that the task is completed.
+
+    // This channel is for the second case - the tasks-daemon can send us
+    // unsolicited dm's about system state, and when these occure we need to
+    // response to these notifications. Because each potential dm that the
+    // daemon can send us has a specific intent, we need a channel for each
+    // type of notification that we could get. This channel is for when
+    // the tasks daemon has a reloaded shadow database for us to process
+    // and cache:
+    let (notify_shadow_channel_tx, mut notify_shadow_channel_rx) = channel(16);
+    let notify_shadow_channel_tx = Arc::new(notify_shadow_channel_tx);
+
+    // Broadcast receivers so that the tasks-task can be shut down when we get
+    // signals etc.
+    let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
+    let mut c_broadcast_rx = broadcast_tx.subscribe();
+    let mut d_broadcast_rx = broadcast_tx.subscribe();
+
+    let task_b = tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                // Wait on the broadcast to see if we need to close down.
+                _ = c_broadcast_rx.recv() => {
+                    break;
+                }
+                accept_res = task_listener.accept() => {
+                    match accept_res {
+                        Ok((socket, _addr)) => {
+                            // Did it come from root? If not, they don't have the needed
+                            // permissions to actually be a task handler, and we wouldn't
+                            // want to leak to anyone else anyway.
+                            if let Ok(ucred) = socket.peer_cred() {
+                                if ucred.uid() != 0 {
+                                    // move along.
+                                    warn!("Task handler not running as root, ignoring ...");
+                                    continue;
+                                }
+                            } else {
+                                // move along.
+                                warn!("Unable to determine socked peer cred, ignoring ...");
+                                continue;
+                            };
+                            debug!("A task handler has connected.");
+                            // It did? Great, now we can wait and spin on that one
+                            // client.
+
+                            // We have to check for signals here else this tasks waits forever.
+                            if let Err(err) = handle_task_client(socket, &notify_shadow_channel_tx, &mut task_channel_rx, &mut d_broadcast_rx).await {
+                                error!(?err, "Task client error occurred");
+                            }
+                            // If they disconnect we go back to accept.
+                        }
+                        Err(err) => {
+                            error!("Task Accept error -> {:?}", err);
+                        }
+                    }
+                }
+            }
+            // done
+        }
+        info!("Stopped task connector");
+    });
+
+    // ====== Listen for shadow change notification from tasks ======
+
+    let shadow_notify_cachelayer = cachelayer.clone();
+    let mut c_broadcast_rx = broadcast_tx.subscribe();
+
+    let task_c = tokio::spawn(async move {
+        debug!("Spawned shadow reload task handler");
+        loop {
+            tokio::select! {
+                _ = c_broadcast_rx.recv() => {
+                    break;
+                }
+                Some(EtcDb {
+                    users, shadow, groups
+                }) = notify_shadow_channel_rx.recv() => {
+                    shadow_notify_cachelayer
+                        .reload_system_identities(users, shadow, groups)
+                        .await;
+                }
+            }
+        }
+        info!("Stopped shadow reload task handler");
+    });
+
+    // Setup the task that handles async pre-fetching here.
+    let prefetch_cachelayer = cachelayer.clone();
+    let _task_prefetch = tokio::spawn(async move {
+        let mut refresh_cache = LruCache::new(REFRESH_DEBOUNCE_SIZE);
+
+        while let Some(refresh_account_id) = async_refresh_rx.recv().await {
+            let current_time = SystemTime::now();
+
+            // Have we already checked this item in the last few seconds?
+            match refresh_cache.get(&refresh_account_id).copied() {
+                Some(not_before) if current_time < not_before => {
+                    debug!(?refresh_account_id, "debounce triggered");
+                    continue;
+                }
+                _ => {}
+            };
+
+            // Mark that we are about to refresh this, and that we shouldn't attempt again for a few seconds.
+            refresh_cache.put(
+                refresh_account_id.clone(),
+                current_time + REFRESH_DEBOUNCE_WINDOW,
+            );
+
+            // we don't mind if there was an error, it's already logged, and on success
+            // we don't need the info anyway.
+            if prefetch_cachelayer
+                .refresh_usertoken(&refresh_account_id, current_time)
+                .await
+                .is_ok()
+            {
+                debug!(?refresh_account_id, "successful refresh of account");
+            } else {
+                warn!(?refresh_account_id, "failed to refresh account");
+            }
+        }
+    });
+
+    // Set the umask while we open the path for most clients.
+    let before = unsafe { umask(0) };
+    let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
+        Ok(l) => l,
+        Err(_e) => {
+            error!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
+            return ExitCode::FAILURE;
+        }
+    };
+    // Undo umask changes.
+    let _ = unsafe { umask(before) };
+
+    let task_a = tokio::spawn(async move {
+        loop {
+            let tc_tx = task_channel_tx_cln.clone();
+
+            tokio::select! {
+                _ = broadcast_rx.recv() => {
+                    break;
+                }
+                accept_res = listener.accept() => {
+                    match accept_res {
+                        Ok((socket, _addr)) => {
+                            let cachelayer_ref = cachelayer.clone();
+                            tokio::spawn(async move {
+                                if let Err(err) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
+                                {
+                                    error!(?err, "handle_client error occurred");
+                                }
+                            });
+                        }
+                        Err(err) => {
+                            error!("Error while handling connection -> {:?}", err);
+                        }
+                    }
+                }
+            }
+        }
+        info!("Stopped resolver");
+    });
+
+    info!("Server started ...");
+
+    // End the startup span, we can now proceed.
+    drop(_enter);
+
+    // On linux, notify systemd.
+    #[cfg(target_os = "linux")]
+    let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+
+    loop {
+        tokio::select! {
+            Ok(()) = tokio::signal::ctrl_c() => {
+                break
+            }
+            Some(()) = async move {
+                let sigterm = tokio::signal::unix::SignalKind::terminate();
+                #[allow(clippy::unwrap_used)]
+                tokio::signal::unix::signal(sigterm).unwrap().recv().await
+            } => {
+                break
+            }
+            Some(()) = async move {
+                let sigterm = tokio::signal::unix::SignalKind::alarm();
+                #[allow(clippy::unwrap_used)]
+                tokio::signal::unix::signal(sigterm).unwrap().recv().await
+            } => {
+                // Ignore
+            }
+            Some(()) = async move {
+                let sigterm = tokio::signal::unix::SignalKind::hangup();
+                #[allow(clippy::unwrap_used)]
+                tokio::signal::unix::signal(sigterm).unwrap().recv().await
+            } => {
+                // Ignore
+            }
+            Some(()) = async move {
+                let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                #[allow(clippy::unwrap_used)]
+                tokio::signal::unix::signal(sigterm).unwrap().recv().await
+            } => {
+                // Ignore
+            }
+            Some(()) = async move {
+                let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                #[allow(clippy::unwrap_used)]
+                tokio::signal::unix::signal(sigterm).unwrap().recv().await
+            } => {
+                // Ignore
+            }
+        }
+    }
+    info!("Signal received, sending down signal to tasks");
+    // Send a broadcast that we are done.
+    if let Err(e) = broadcast_tx.send(true) {
+        error!("Unable to shutdown workers {:?}", e);
+    }
+
+    let _ = task_a.await;
+    let _ = task_b.await;
+    let _ = task_c.await;
+
+    ExitCode::SUCCESS
+}
+
 // #[tokio::main(flavor = "current_thread")]
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> ExitCode {
@@ -494,11 +1156,6 @@ async fn main() -> ExitCode {
         ))
         .trim_backtraces(Some(40))
         .build();
-
-    let cuid = get_current_uid();
-    let ceuid = get_effective_uid();
-    let cgid = get_current_gid();
-    let cegid = get_effective_gid();
 
     let clap_args = Command::new("kanidm_unixd")
         .version(env!("CARGO_PKG_VERSION"))
@@ -555,648 +1212,13 @@ async fn main() -> ExitCode {
         .set_global(true)
         // Fall back to stderr
         .map_sender(|sender| sender.or_stderr())
-        .build_on(|subscriber| subscriber
-            .with(EnvFilter::try_from_default_env()
-                .or_else(|_| EnvFilter::try_new("info"))
-                .expect("Failed to init envfilter")
+        .build_on(|subscriber| {
+            subscriber.with(
+                EnvFilter::try_from_default_env()
+                    .or_else(|_| EnvFilter::try_new("info"))
+                    .expect("Failed to init envfilter"),
             )
-        )
-        .on(async {
-            let span = span!(Level::DEBUG, "starting resolver");
-            let _enter = span.enter();
-
-            if clap_args.get_flag("skip-root-check") {
-                warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
-                // TODO: this wording is not great m'kay.
-            } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-                error!("Refusing to run - this process must not operate as root.");
-                return ExitCode::FAILURE
-            };
-
-            debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
-            debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
-
-            let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
-                error!("Failed to pull the client config path");
-                return ExitCode::FAILURE
-            };
-            let cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
-
-            if !cfg_path.exists() {
-                // there's no point trying to start up if we can't read a usable config!
-                error!(
-                    "Client config missing from {} - cannot start up. Quitting.",
-                    cfg_path_str
-                );
-                let diag = kanidm_lib_file_permissions::diagnose_path(cfg_path.as_ref());
-                info!(%diag);
-                return ExitCode::FAILURE
-            } else {
-                let cfg_meta = match metadata(&cfg_path) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                        let diag = kanidm_lib_file_permissions::diagnose_path(cfg_path.as_ref());
-                        info!(%diag);
-                        return ExitCode::FAILURE
-                    }
-                };
-                if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
-                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                        cfg_path_str
-                        );
-                }
-
-                if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
-                    warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                        cfg_path_str
-                    );
-                }
-            }
-
-            let Some(unixd_path_str) = clap_args.get_one::<String>("unixd-config") else {
-                error!("Failed to pull the unixd config path");
-                return ExitCode::FAILURE
-            };
-            let unixd_path = PathBuf::from(unixd_path_str);
-
-            if !unixd_path.exists() {
-                // there's no point trying to start up if we can't read a usable config!
-                error!(
-                    "unixd config missing from {} - cannot start up. Quitting.",
-                    unixd_path_str
-                );
-                let diag = kanidm_lib_file_permissions::diagnose_path(unixd_path.as_ref());
-                info!(%diag);
-                return ExitCode::FAILURE
-            } else {
-                let unixd_meta = match metadata(&unixd_path) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
-                        let diag = kanidm_lib_file_permissions::diagnose_path(unixd_path.as_ref());
-                        info!(%diag);
-                        return ExitCode::FAILURE
-                    }
-                };
-                if !kanidm_lib_file_permissions::readonly(&unixd_meta) {
-                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                        unixd_path_str);
-                }
-
-                if unixd_meta.uid() == cuid || unixd_meta.uid() == ceuid {
-                    warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                        unixd_path_str
-                    );
-                }
-            }
-
-            let cfg = match UnixdConfig::new().read_options_from_optional_config(&unixd_path) {
-                Ok(v) => v,
-                Err(_) => {
-                    error!("Failed to parse {}", unixd_path_str);
-                    return ExitCode::FAILURE
-                }
-            };
-
-            let client_builder = if let Some(kconfig) = &cfg.kanidm_config {
-                // setup
-                let cb = match KanidmClientBuilder::new().read_options_from_optional_config(&cfg_path) {
-                    Ok(v) => v,
-                    Err(_) => {
-                        error!("Failed to parse {}", cfg_path_str);
-                        return ExitCode::FAILURE
-                    }
-                };
-
-                Some((cb, kconfig))
-            } else { None };
-
-            if clap_args.get_flag("configtest") {
-                eprintln!("###################################");
-                eprintln!("Dumping configs:\n###################################");
-                eprintln!("kanidm_unixd config (from {:#?})", &unixd_path);
-                eprintln!("{cfg}");
-                eprintln!("###################################");
-                if let Some((cb, _)) = client_builder.as_ref() {
-                    eprintln!("kanidm client config (from {:#?})", &cfg_path);
-                    eprintln!("{cb}");
-                }  else {
-                    eprintln!("kanidm client: disabled");
-                }
-                return ExitCode::SUCCESS;
-            }
-
-            debug!("🧹 Cleaning up sockets from previous invocations");
-            rm_if_exist(cfg.sock_path.as_str());
-            rm_if_exist(cfg.task_sock_path.as_str());
-
-            // Check the db path will be okay.
-            if !cfg.cache_db_path.is_empty() {
-                let cache_db_path = PathBuf::from(cfg.cache_db_path.as_str());
-                // We only need to check the parent folder path permissions as the db itself may not exist yet.
-                if let Some(db_parent_path) = cache_db_path.parent() {
-                    if !db_parent_path.exists() {
-                        error!(
-                            "Refusing to run, DB folder {} does not exist",
-                            db_parent_path
-                                .to_str()
-                                .unwrap_or("<db_parent_path invalid>")
-                        );
-                        let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
-                        info!(%diag);
-                        return ExitCode::FAILURE
-                    }
-
-                    let db_par_path_buf = db_parent_path.to_path_buf();
-
-                    let i_meta = match metadata(&db_par_path_buf) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!(
-                                "Unable to read metadata for {} - {:?}",
-                                db_par_path_buf
-                                    .to_str()
-                                    .unwrap_or("<db_par_path_buf invalid>"),
-                                e
-                            );
-                            return ExitCode::FAILURE
-                        }
-                    };
-
-                    if !i_meta.is_dir() {
-                        error!(
-                            "Refusing to run - DB folder {} may not be a directory",
-                            db_par_path_buf
-                                .to_str()
-                                .unwrap_or("<db_par_path_buf invalid>")
-                        );
-                        return ExitCode::FAILURE
-                    }
-                    if kanidm_lib_file_permissions::readonly(&i_meta) {
-                        warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
-                        .unwrap_or("<db_par_path_buf invalid>")
-                        );
-                    }
-
-                    if i_meta.mode() & 0o007 != 0 {
-                        warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
-                        .unwrap_or("<db_par_path_buf invalid>")
-                        );
-                    }
-                }
-
-                // check to see if the db's already there
-                if cache_db_path.exists() {
-                    if !cache_db_path.is_file() {
-                        error!(
-                            "Refusing to run - DB path {} already exists and is not a file.",
-                            cache_db_path.to_str().unwrap_or("<cache_db_path invalid>")
-                        );
-                        let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
-                        info!(%diag);
-                        return ExitCode::FAILURE
-                    };
-
-                    match metadata(&cache_db_path) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!(
-                                "Unable to read metadata for {} - {:?}",
-                                cache_db_path.to_str().unwrap_or("<cache_db_path invalid>"),
-                                e
-                            );
-                            let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
-                            info!(%diag);
-                            return ExitCode::FAILURE
-                        }
-                    };
-                    // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
-                };
-            }
-
-            let db = match Db::new(cfg.cache_db_path.as_str()) {
-                Ok(db) => db,
-                Err(_e) => {
-                    error!("Failed to create database");
-                    return ExitCode::FAILURE
-                }
-            };
-
-            // perform any db migrations.
-            let mut dbtxn = db.write().await;
-            if dbtxn.migrate()
-                .and_then(|_| {
-                    dbtxn.commit()
-                }).is_err() {
-                    error!("Failed to migrate database");
-                    return ExitCode::FAILURE
-                }
-
-            // Check for and create the hsm pin if required.
-            if let Err(err) = write_hsm_pin(cfg.hsm_pin_path.as_str()).await {
-                let diag = kanidm_lib_file_permissions::diagnose_path(cfg.hsm_pin_path.as_ref());
-                info!(%diag);
-                error!(?err, "Failed to create HSM PIN into {}", cfg.hsm_pin_path.as_str());
-                return ExitCode::FAILURE
-            };
-
-            // read the hsm pin
-            let hsm_pin = match read_hsm_pin(cfg.hsm_pin_path.as_str()).await {
-                Ok(hp) => hp,
-                Err(err) => {
-                    let diag = kanidm_lib_file_permissions::diagnose_path(cfg.hsm_pin_path.as_ref());
-                    info!(%diag);
-                    error!(?err, "Failed to read HSM PIN from {}", cfg.hsm_pin_path.as_str());
-                    return ExitCode::FAILURE
-                }
-            };
-
-            let auth_value = match AuthValue::try_from(hsm_pin.as_slice()) {
-                Ok(av) => av,
-                Err(err) => {
-                    error!(?err, "invalid hsm pin");
-                    return ExitCode::FAILURE
-                }
-            };
-
-            let mut hsm: BoxedDynTpm = match cfg.hsm_type {
-                HsmType::Soft => {
-                    BoxedDynTpm::new(SoftTpm::default())
-                }
-                HsmType::TpmIfPossible => {
-                    open_tpm_if_possible(&cfg.tpm_tcti_name)
-                }
-                HsmType::Tpm => {
-                    match open_tpm(&cfg.tpm_tcti_name) {
-                        Some(hsm) => hsm,
-                        None => return ExitCode::FAILURE,
-                    }
-                }
-            };
-
-            // With the assistance of the DB, setup the HSM and its machine key.
-            let mut db_txn = db.write().await;
-
-            let loadable_machine_key = match db_txn.get_hsm_root_storage_key() {
-                Ok(Some(lmk)) => lmk,
-                Ok(None) => {
-                    // No machine key found - create one, and store it.
-                    let loadable_machine_key = match hsm.root_storage_key_create(&auth_value) {
-                        Ok(lmk) => lmk,
-                        Err(err) => {
-                            error!(?err, "Unable to create hsm loadable machine key");
-                            return ExitCode::FAILURE
-                        }
-                    };
-
-                    if let Err(err) = db_txn.insert_hsm_root_storage_key(&loadable_machine_key) {
-                        error!(?err, "Unable to persist hsm loadable machine key");
-                        return ExitCode::FAILURE
-                    }
-
-                    loadable_machine_key
-                }
-                Err(err) => {
-                    error!(?err, "Unable to access hsm loadable machine key");
-                    return ExitCode::FAILURE
-                }
-            };
-
-            let machine_key = match hsm.root_storage_key_load(&auth_value, &loadable_machine_key) {
-                Ok(mk) => mk,
-                Err(err) => {
-                    error!(?err, "Unable to load machine root key - This can occur if you have changed your HSM pin");
-                    error!("To proceed you must remove the content of the cache db ({}) to reset all keys", cfg.cache_db_path.as_str());
-                    return ExitCode::FAILURE
-                }
-            };
-
-            let Ok(system_provider) = SystemProvider::new(
-            ) else {
-                error!("Failed to configure System Provider");
-                return ExitCode::FAILURE
-            };
-
-            info!("Started system provider");
-
-            let mut clients: Vec<Arc<dyn IdProvider + Send + Sync>> = Vec::with_capacity(1);
-
-            // Setup Kanidm provider if the configuration requests it.
-            if let Some((cb, kconfig)) = client_builder {
-                let cb = cb.connect_timeout(kconfig.conn_timeout);
-                let cb = cb.request_timeout(kconfig.request_timeout);
-
-                let rsclient = match cb.build() {
-                    Ok(rsc) => rsc,
-                    Err(_e) => {
-                        error!("Failed to build async client");
-                        return ExitCode::FAILURE
-                    }
-                };
-
-                let Ok(idprovider) = KanidmProvider::new(
-                    rsclient,
-                    kconfig,
-                    SystemTime::now(),
-                    &mut (&mut db_txn).into(),
-                    &mut hsm,
-                    &machine_key
-                ).await else {
-                    error!("Failed to configure Kanidm Provider");
-                    return ExitCode::FAILURE
-                };
-
-                // Now stacked for the resolver.
-                clients.push(Arc::new(idprovider));
-                info!("Started kanidm provider");
-            }
-
-            drop(machine_key);
-
-            if let Err(err) = db_txn.commit() {
-                error!(?err, "Failed to commit database transaction, unable to proceed");
-                return ExitCode::FAILURE
-            }
-
-            if !cfg.default_shell.is_empty() {
-                let shell_path = PathBuf::from_str(&cfg.default_shell).expect("Failed to build a representation of your default_shell path!");
-                if !shell_path.exists() {
-                    error!("Cannot find configured default shell at {}, this could cause login issues!", shell_path.display())
-                }
-            }
-
-            // Okay, the hsm is now loaded and ready to go.
-            let (cl_inner, mut async_refresh_rx) = match Resolver::new(
-                db,
-                Arc::new(system_provider),
-                clients,
-                hsm,
-                cfg.cache_timeout,
-                cfg.default_shell.clone(),
-                cfg.home_prefix.clone(),
-                cfg.home_attr,
-                cfg.home_alias,
-                cfg.uid_attr_map,
-                cfg.gid_attr_map,
-            )
-            .await
-            {
-                Ok(c) => c,
-                Err(_e) => {
-                    error!("Failed to build cache layer.");
-                    return ExitCode::FAILURE
-                }
-            };
-
-            let cachelayer = Arc::new(cl_inner);
-
-            // Setup the root-only tasks socket. Take away all other access bits.
-            let before = unsafe { umask(0o0077) };
-            let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
-                Ok(l) => l,
-                Err(_e) => {
-                    let diag = kanidm_lib_file_permissions::diagnose_path(cfg.task_sock_path.as_ref());
-                    info!(%diag);
-                    error!("Failed to bind UNIX socket {}", cfg.task_sock_path.as_str());
-                    return ExitCode::FAILURE
-                }
-            };
-            // Undo umask changes.
-            let _ = unsafe { umask(before) };
-
-            // The tasks ... well task. Tasks-task. Anyway, the tasks-task is bidirectional
-            // in its communication to the tasks-daemon. We submit tasks to the tasks-daemon
-            // via this channel here -\
-            //                        |
-            //                        v
-            let (task_channel_tx, mut task_channel_rx) = channel(16);
-            let task_channel_tx = Arc::new(task_channel_tx);
-            let task_channel_tx_cln = task_channel_tx.clone();
-            // Each submitted task contains a oneshot channel allowing the tasks-task to
-            // notify the submitter of the task that the task is completed.
-
-            // This channel is for the second case - the tasks-daemon can send us
-            // unsolicited dm's about system state, and when these occure we need to
-            // response to these notifications. Because each potential dm that the
-            // daemon can send us has a specific intent, we need a channel for each
-            // type of notification that we could get. This channel is for when
-            // the tasks daemon has a reloaded shadow database for us to process
-            // and cache:
-            let (notify_shadow_channel_tx, mut notify_shadow_channel_rx) = channel(16);
-            let notify_shadow_channel_tx = Arc::new(notify_shadow_channel_tx);
-
-            // Broadcast receivers so that the tasks-task can be shut down when we get
-            // signals etc.
-            let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
-            let mut c_broadcast_rx = broadcast_tx.subscribe();
-            let mut d_broadcast_rx = broadcast_tx.subscribe();
-
-            let task_b = tokio::spawn(async move {
-                loop {
-                    tokio::select! {
-                        // Wait on the broadcast to see if we need to close down.
-                        _ = c_broadcast_rx.recv() => {
-                            break;
-                        }
-                        accept_res = task_listener.accept() => {
-                            match accept_res {
-                                Ok((socket, _addr)) => {
-                                    // Did it come from root? If not, they don't have the needed
-                                    // permissions to actually be a task handler, and we wouldn't
-                                    // want to leak to anyone else anyway.
-                                    if let Ok(ucred) = socket.peer_cred() {
-                                        if ucred.uid() != 0 {
-                                            // move along.
-                                            warn!("Task handler not running as root, ignoring ...");
-                                            continue;
-                                        }
-                                    } else {
-                                        // move along.
-                                        warn!("Unable to determine socked peer cred, ignoring ...");
-                                        continue;
-                                    };
-                                    debug!("A task handler has connected.");
-                                    // It did? Great, now we can wait and spin on that one
-                                    // client.
-
-                                    // We have to check for signals here else this tasks waits forever.
-                                    if let Err(err) = handle_task_client(socket, &notify_shadow_channel_tx, &mut task_channel_rx, &mut d_broadcast_rx).await {
-                                        error!(?err, "Task client error occurred");
-                                    }
-                                    // If they disconnect we go back to accept.
-                                }
-                                Err(err) => {
-                                    error!("Task Accept error -> {:?}", err);
-                                }
-                            }
-                        }
-                    }
-                    // done
-                }
-                info!("Stopped task connector");
-            });
-
-            // ====== Listen for shadow change notification from tasks ======
-
-            let shadow_notify_cachelayer = cachelayer.clone();
-            let mut c_broadcast_rx = broadcast_tx.subscribe();
-
-            let task_c = tokio::spawn(async move {
-                debug!("Spawned shadow reload task handler");
-                loop {
-                    tokio::select! {
-                        _ = c_broadcast_rx.recv() => {
-                            break;
-                        }
-                        Some(EtcDb {
-                            users, shadow, groups
-                        }) = notify_shadow_channel_rx.recv() => {
-                            shadow_notify_cachelayer
-                                .reload_system_identities(users, shadow, groups)
-                                .await;
-                        }
-                    }
-                }
-                info!("Stopped shadow reload task handler");
-            });
-
-            // Setup the task that handles async pre-fetching here.
-            let prefetch_cachelayer = cachelayer.clone();
-            let _task_prefetch = tokio::spawn(async move {
-
-                let mut refresh_cache = LruCache::new(REFRESH_DEBOUNCE_SIZE);
-
-                while let Some(refresh_account_id) = async_refresh_rx.recv().await {
-                    let current_time = SystemTime::now();
-
-                    // Have we already checked this item in the last few seconds?
-                    match refresh_cache.get(&refresh_account_id).copied() {
-                        Some(not_before) if current_time < not_before => {
-                            debug!(?refresh_account_id, "debounce triggered");
-                            continue
-                        }
-                        _ => {}
-                    };
-
-                    // Mark that we are about to refresh this, and that we shouldn't attempt again for a few seconds.
-                    refresh_cache.put(refresh_account_id.clone(), current_time + REFRESH_DEBOUNCE_WINDOW);
-
-                    // we don't mind if there was an error, it's already logged, and on success
-                    // we don't need the info anyway.
-                    if prefetch_cachelayer.refresh_usertoken(&refresh_account_id, current_time).await.is_ok() {
-                        debug!(?refresh_account_id, "successful refresh of account");
-                    } else {
-                        warn!(?refresh_account_id, "failed to refresh account");
-                    }
-                }
-            });
-
-            // Set the umask while we open the path for most clients.
-            let before = unsafe { umask(0) };
-            let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
-                Ok(l) => l,
-                Err(_e) => {
-                    error!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
-                    return ExitCode::FAILURE
-                }
-            };
-            // Undo umask changes.
-            let _ = unsafe { umask(before) };
-
-            let task_a = tokio::spawn(async move {
-                loop {
-                    let tc_tx = task_channel_tx_cln.clone();
-
-                    tokio::select! {
-                        _ = broadcast_rx.recv() => {
-                            break;
-                        }
-                        accept_res = listener.accept() => {
-                            match accept_res {
-                                Ok((socket, _addr)) => {
-                                    let cachelayer_ref = cachelayer.clone();
-                                    tokio::spawn(async move {
-                                        if let Err(err) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
-                                        {
-                                            error!(?err, "handle_client error occurred");
-                                        }
-                                    });
-                                }
-                                Err(err) => {
-                                    error!("Error while handling connection -> {:?}", err);
-                                }
-                            }
-                        }
-                    }
-
-                }
-                info!("Stopped resolver");
-            });
-
-            info!("Server started ...");
-
-            // End the startup span, we can now proceed.
-            drop(_enter);
-
-            // On linux, notify systemd.
-            #[cfg(target_os = "linux")]
-            let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
-
-            loop {
-                tokio::select! {
-                    Ok(()) = tokio::signal::ctrl_c() => {
-                        break
-                    }
-                    Some(()) = async move {
-                        let sigterm = tokio::signal::unix::SignalKind::terminate();
-                        #[allow(clippy::unwrap_used)]
-                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                    } => {
-                        break
-                    }
-                    Some(()) = async move {
-                        let sigterm = tokio::signal::unix::SignalKind::alarm();
-                        #[allow(clippy::unwrap_used)]
-                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                    } => {
-                        // Ignore
-                    }
-                    Some(()) = async move {
-                        let sigterm = tokio::signal::unix::SignalKind::hangup();
-                        #[allow(clippy::unwrap_used)]
-                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                    } => {
-                        // Ignore
-                    }
-                    Some(()) = async move {
-                        let sigterm = tokio::signal::unix::SignalKind::user_defined1();
-                        #[allow(clippy::unwrap_used)]
-                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                    } => {
-                        // Ignore
-                    }
-                    Some(()) = async move {
-                        let sigterm = tokio::signal::unix::SignalKind::user_defined2();
-                        #[allow(clippy::unwrap_used)]
-                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                    } => {
-                        // Ignore
-                    }
-                }
-            }
-            info!("Signal received, sending down signal to tasks");
-            // Send a broadcast that we are done.
-            if let Err(e) = broadcast_tx.send(true) {
-                error!("Unable to shutdown workers {:?}", e);
-            }
-
-            let _ = task_a.await;
-            let _ = task_b.await;
-            let _ = task_c.await;
-
-            ExitCode::SUCCESS
-    })
-    .await
-    // TODO: can we catch signals to clean up sockets etc, especially handy when running as root
+        })
+        .on(main_inner(clap_args))
+        .await
 }
