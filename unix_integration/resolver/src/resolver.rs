@@ -319,6 +319,19 @@ impl Resolver {
 
     #[instrument(level = "debug", skip_all)]
     async fn get_cached_grouptoken(&self, grp_id: &Id) -> Result<(bool, Option<GroupToken>), ()> {
+        let current_time = SystemTime::now();
+        // Is it in the nxcache?
+        if let Some(ex_time) = self.check_nxcache(grp_id).await {
+            if current_time >= ex_time {
+                // It's in the LRU, but we are past the expiry so
+                // lets attempt a refresh.
+                return Ok((true, None));
+            } else {
+                // It's in the LRU and still valid, so return that
+                // no check is needed.
+                return Ok((false, None));
+            }
+        }
         // grp_id could be:
         //  * gidnumber
         //  * name
@@ -326,7 +339,9 @@ impl Resolver {
         //  * uuid
         //  Attempt to search these in the db.
         let mut dbtxn = self.db.write().await;
-        let r = dbtxn.get_group(grp_id).map_err(|_| ())?;
+        let r = dbtxn.get_group(grp_id).map_err(|err| {
+            debug!(?err, "get_cached_grouptoken");
+        })?;
 
         drop(dbtxn);
 
@@ -335,35 +350,16 @@ impl Resolver {
                 // Are we expired?
                 let offset = Duration::from_secs(ex);
                 let ex_time = SystemTime::UNIX_EPOCH + offset;
-                let now = SystemTime::now();
 
-                if now >= ex_time {
+                if current_time >= ex_time {
                     Ok((true, Some(ut)))
                 } else {
                     Ok((false, Some(ut)))
                 }
             }
             None => {
-                // it wasn't in the DB - lets see if it's in the nxcache.
-                match self.check_nxcache(grp_id).await {
-                    Some(ex_time) => {
-                        let now = SystemTime::now();
-                        if now >= ex_time {
-                            // It's in the LRU, but we are past the expiry so
-                            // lets attempt a refresh.
-                            Ok((true, None))
-                        } else {
-                            // It's in the LRU and still valid, so return that
-                            // no check is needed.
-                            Ok((false, None))
-                        }
-                    }
-                    None => {
-                        // Not in the LRU. Return that this IS expired
-                        // and we have no data.
-                        Ok((true, None))
-                    }
-                }
+                // it wasn't in the DB, and it wasn't in the nxcache.
+                Ok((true, None))
             }
         }
     }
@@ -662,7 +658,7 @@ impl Resolver {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip_all)]
     async fn get_usertoken(
         &self,
         account_id: &Id,
@@ -695,7 +691,7 @@ impl Resolver {
         })
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     async fn get_grouptoken(
         &self,
         grp_id: Id,
@@ -808,7 +804,7 @@ impl Resolver {
             .collect())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "trace", skip_all)]
     async fn get_nssaccount(
         &self,
         account_id: Id,
@@ -895,6 +891,7 @@ impl Resolver {
         Ok(r)
     }
 
+    #[instrument(level = "trace", skip_all)]
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
         if let Some(mut nss_group) = self.system_provider.get_nssgroup(&grp_id).await {
             debug!("system provider satisfied request");
@@ -975,7 +972,7 @@ impl Resolver {
         }
     }
 
-    #[instrument(level = "debug", skip(self, shutdown_rx))]
+    #[instrument(level = "debug", skip(self, shutdown_rx, current_time))]
     pub async fn pam_account_authenticate_init(
         &self,
         account_id: &str,
@@ -1331,7 +1328,7 @@ impl Resolver {
     }
 
     // Can this be cfg debug/test?
-    #[instrument(level = "debug", skip(self, password))]
+    #[instrument(level = "debug", skip(self, password, current_time))]
     pub async fn pam_account_authenticate(
         &self,
         account_id: &str,
@@ -1441,6 +1438,7 @@ impl Resolver {
         }))
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn provider_status(&self) -> Vec<ProviderStatus> {
         let now = SystemTime::now();
         let mut hsm_lock = self.hsm.lock().await;
