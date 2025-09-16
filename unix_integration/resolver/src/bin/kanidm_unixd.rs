@@ -36,7 +36,7 @@ use libc::umask;
 use lru::LruCache;
 use sketching::tracing::span;
 use sketching::tracing_forest::util::*;
-// use sketching::tracing_forest::{self, traits::*};
+use sketching::tracing_forest::{self, traits::*};
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::metadata;
@@ -197,7 +197,8 @@ async fn handle_client(
     drop(_enter);
 
     while let Some(Ok(req)) = reqs.next().await {
-        let span = span!(Level::INFO, "client request", uuid = %conn_id, defer = true);
+        // This span or a parent are lasting too long.
+        let span = span!(Level::INFO, "client request", uuid = %conn_id); // , defer = false);
         let _enter = span.enter();
         debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
@@ -377,10 +378,18 @@ async fn handle_client(
                 ClientResponse::ProviderStatus(status)
             }
         };
+
         reqs.send(resp).await?;
         reqs.flush().await?;
         trace!("flushed response!");
+
+        drop(_enter);
     }
+
+    // Disconnect them
+    let span = span!(Level::DEBUG, "disconnecting client", uuid = %conn_id);
+    let _enter = span.enter();
+    debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
     // Signal any tasks that they need to stop.
     if let Err(shutdown_err) = shutdown_tx.send(()) {
@@ -389,11 +398,6 @@ async fn handle_client(
             "Unable to signal tasks to stop, they will naturally timeout instead."
         )
     }
-
-    // Disconnect them
-    let span = span!(Level::DEBUG, "disconnecting client", uuid = %conn_id);
-    let _enter = span.enter();
-    debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
     Ok(())
 }
@@ -1206,7 +1210,6 @@ async fn main() -> ExitCode {
         std::env::set_var("RUST_LOG", "debug");
     }
 
-    /*
     #[allow(clippy::expect_used)]
     tracing_forest::worker_task()
         .set_global(true)
@@ -1221,11 +1224,10 @@ async fn main() -> ExitCode {
         })
         .on(main_inner(clap_args))
         .await
-    */
 
+    /*
     use tracing_subscriber::{fmt, EnvFilter};
     use tracing_subscriber::prelude::*;
-
 
     let fmt_layer = fmt::layer()
     .with_target(false);
@@ -1239,4 +1241,5 @@ async fn main() -> ExitCode {
         .init();
 
     main_inner(clap_args).await
+    */
 }
