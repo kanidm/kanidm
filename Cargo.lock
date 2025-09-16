@@ -6982,7 +6982,8 @@ dependencies = [
 [[package]]
 name = "tracing-forest"
 version = "0.2.0"
-source = "git+https://github.com/Firstyear/tracing-forest.git?rev=6c2921df9ddad20b0137770580469808c72f6c76#6c2921df9ddad20b0137770580469808c72f6c76"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3298fe855716711a00474eceb89cc7dc254bbe67f6bc4afafdeec5f0c538771c"
 dependencies = [
  "smallvec",
  "thiserror 2.0.12",
