@@ -178,8 +178,6 @@ async fn handle_client(
         )));
     };
 
-    // debug!(uuid = %conn_id, uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid(), "accepted connection");
-
     let codec: JsonCodec<ClientRequest, ClientResponse> = JsonCodec::default();
 
     let mut reqs = Framed::new(sock, codec);
@@ -190,7 +188,7 @@ async fn handle_client(
     let (shutdown_tx, _shutdown_rx) = broadcast::channel(1);
 
     while let Some(Ok(req)) = reqs.next().await {
-        let maybe_err = async {
+        let maybe_err: Result<(), Box<dyn Error>> = async {
             debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
             let resp = match req {
@@ -381,9 +379,7 @@ async fn handle_client(
             )
             .await;
 
-        if let Err(err) = maybe_err {
-            return Err(err);
-        }
+        maybe_err?;
     }
 
     // Disconnect them

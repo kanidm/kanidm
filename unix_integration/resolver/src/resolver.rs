@@ -693,7 +693,7 @@ impl Resolver {
             Ok(item)
         }
         .map(|t| {
-            debug!("token -> {:?}", t);
+            trace!("token -> {:?}", t);
             t
         })
     }
@@ -715,7 +715,7 @@ impl Resolver {
             Ok(item)
         }
         .map(|t| {
-            debug!("token -> {:?}", t);
+            trace!("token -> {:?}", t);
             t
         })
     }
