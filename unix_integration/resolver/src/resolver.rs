@@ -272,11 +272,11 @@ impl Resolver {
             if current_time >= ex_time {
                 // It's in the LRU, but we are past the expiry so
                 // lets attempt a refresh.
-                return Ok((ExpiryState::ValidRefresh, None))
+                return Ok((ExpiryState::ValidRefresh, None));
             } else {
                 // It's in the LRU and still valid, so return that
                 // no check is needed.
-                return Ok((ExpiryState::Valid, None))
+                return Ok((ExpiryState::Valid, None));
             }
         }
 
