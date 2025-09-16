@@ -457,7 +457,65 @@ impl DbTxn<'_> {
             self.clear_hsm()?;
         }
 
-        self.set_db_version(DBV_MAIN, 1)?;
+        if db_version < 2 {
+            self.conn
+                .execute(
+                    "CREATE INDEX IF NOT EXISTS account_t_uuid_idx ON account_t ( uuid )",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("account_t uuid index create", &e))?;
+
+            self.conn
+                .execute(
+                    "CREATE INDEX IF NOT EXISTS account_t_name_idx ON account_t ( name )",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("account_t uuid index create", &e))?;
+
+            self.conn
+                .execute(
+                    "CREATE INDEX IF NOT EXISTS account_t_spn_idx ON account_t ( spn )",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("account_t uuid index create", &e))?;
+
+            self.conn
+                .execute(
+                    "CREATE INDEX IF NOT EXISTS account_t_gidnumber_idx ON account_t ( gidnumber )",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("account_t uuid index create", &e))?;
+
+            self.conn
+                .execute(
+                    "CREATE INDEX IF NOT EXISTS group_t_uuid_idx ON group_t ( uuid )",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("group_t uuid index create", &e))?;
+
+            self.conn
+                .execute(
+                    "CREATE INDEX IF NOT EXISTS group_t_name_idx ON group_t ( name )",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("group_t uuid index create", &e))?;
+
+            self.conn
+                .execute(
+                    "CREATE INDEX IF NOT EXISTS group_t_spn_idx ON group_t ( spn )",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("group_t uuid index create", &e))?;
+
+            self.conn
+                .execute(
+                    "CREATE INDEX IF NOT EXISTS group_t_gidnumber_idx ON group_t ( gidnumber )",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("group_t uuid index create", &e))?;
+        }
+
+        self.set_db_version(DBV_MAIN, 2)?;
 
         Ok(())
     }
