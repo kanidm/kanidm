@@ -88,7 +88,6 @@ tokio = { workspace = true, features = [
 ] }
 tokio-util = { workspace = true, features = ["codec"] }
 tracing = { workspace = true }
-# tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
 walkdir = { workspace = true }
 
