@@ -172,16 +172,13 @@ async fn handle_client(
 ) -> Result<(), Box<dyn Error>> {
     let conn_id = uuid::Uuid::new_v4();
 
-    let span = span!(Level::DEBUG, "accepted connection", uuid = %conn_id);
-    let _enter = span.enter();
-
     let Ok(ucred) = sock.peer_cred() else {
         return Err(Box::new(IoError::other(
             "Unable to verify peer credentials.",
         )));
     };
 
-    debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
+    debug!(uuid = %conn_id, uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid(), "accepted connection");
 
     let codec: JsonCodec<ClientRequest, ClientResponse> = JsonCodec::default();
 
@@ -192,212 +189,218 @@ async fn handle_client(
     // tell consumers to stop work.
     let (shutdown_tx, _shutdown_rx) = broadcast::channel(1);
 
-    debug!("Waiting for requests ...");
-    // Drop the span here so that there are no parent spans during the request loop.
-    drop(_enter);
-
     while let Some(Ok(req)) = reqs.next().await {
-        // This span or a parent are lasting too long.
-        let span = span!(Level::INFO, "client request", uuid = %conn_id); // , defer = false);
-        let _enter = span.enter();
-        debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
+        let span = span!(Level::INFO, "client request", uuid = %conn_id, defer = true);
 
-        let resp = match req {
-            ClientRequest::SshKey(account_id) => cachelayer
-                .get_sshkeys(account_id.as_str())
-                .await
-                .map(ClientResponse::SshKeys)
-                .unwrap_or_else(|_| {
-                    error!("unable to load keys, returning empty set.");
-                    ClientResponse::SshKeys(vec![])
-                }),
-            ClientRequest::NssAccounts => cachelayer
-                .get_nssaccounts()
-                .await
-                .map(ClientResponse::NssAccounts)
-                .unwrap_or_else(|_| {
-                    error!("unable to enum accounts");
-                    ClientResponse::NssAccounts(Vec::new())
-                }),
-            ClientRequest::NssAccountByUid(gid) => cachelayer
-                .get_nssaccount_gid(gid)
-                .await
-                .map(ClientResponse::NssAccount)
-                .unwrap_or_else(|_| {
-                    error!("unable to load account, returning empty.");
-                    ClientResponse::NssAccount(None)
-                }),
-            ClientRequest::NssAccountByName(account_id) => cachelayer
-                .get_nssaccount_name(account_id.as_str())
-                .await
-                .map(ClientResponse::NssAccount)
-                .unwrap_or_else(|_| {
-                    error!("unable to load account, returning empty.");
-                    ClientResponse::NssAccount(None)
-                }),
-            ClientRequest::NssGroups => cachelayer
-                .get_nssgroups()
-                .await
-                .map(ClientResponse::NssGroups)
-                .unwrap_or_else(|_| {
-                    error!("unable to enum groups");
-                    ClientResponse::NssGroups(Vec::new())
-                }),
-            ClientRequest::NssGroupByGid(gid) => cachelayer
-                .get_nssgroup_gid(gid)
-                .await
-                .map(ClientResponse::NssGroup)
-                .unwrap_or_else(|_| {
-                    error!("unable to load group, returning empty.");
-                    ClientResponse::NssGroup(None)
-                }),
-            ClientRequest::NssGroupByName(grp_id) => cachelayer
-                .get_nssgroup_name(grp_id.as_str())
-                .await
-                .map(ClientResponse::NssGroup)
-                .unwrap_or_else(|_| {
-                    error!("unable to load group, returning empty.");
-                    ClientResponse::NssGroup(None)
-                }),
-            ClientRequest::PamAuthenticateInit { account_id, info } => {
-                match &pam_auth_session_state {
-                    Some(_auth_session) => {
-                        // Invalid to init a request twice.
-                        warn!("Attempt to init auth session while current session is active");
-                        // Clean the former session, something is wrong.
-                        pam_auth_session_state = None;
-                        ClientResponse::Error(OperationError::KU001InitWhileSessionActive)
-                    }
-                    None => {
-                        let current_time = OffsetDateTime::now_utc();
+        let maybe_err = async {
+            debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
-                        match cachelayer
-                            .pam_account_authenticate_init(
-                                account_id.as_str(),
-                                &info,
-                                current_time,
-                                shutdown_tx.subscribe(),
-                            )
-                            .await
-                        {
-                            Ok((auth_session, pam_auth_response)) => {
-                                pam_auth_session_state = Some(auth_session);
-                                pam_auth_response.into()
-                            }
-                            Err(_) => ClientResponse::Error(OperationError::KU004PamInitFailed),
+            let resp = match req {
+                ClientRequest::SshKey(account_id) => cachelayer
+                    .get_sshkeys(account_id.as_str())
+                    .await
+                    .map(ClientResponse::SshKeys)
+                    .unwrap_or_else(|_| {
+                        error!("unable to load keys, returning empty set.");
+                        ClientResponse::SshKeys(vec![])
+                    }),
+                ClientRequest::NssAccounts => cachelayer
+                    .get_nssaccounts()
+                    .await
+                    .map(ClientResponse::NssAccounts)
+                    .unwrap_or_else(|_| {
+                        error!("unable to enum accounts");
+                        ClientResponse::NssAccounts(Vec::new())
+                    }),
+                ClientRequest::NssAccountByUid(gid) => cachelayer
+                    .get_nssaccount_gid(gid)
+                    .await
+                    .map(ClientResponse::NssAccount)
+                    .unwrap_or_else(|_| {
+                        error!("unable to load account, returning empty.");
+                        ClientResponse::NssAccount(None)
+                    }),
+                ClientRequest::NssAccountByName(account_id) => cachelayer
+                    .get_nssaccount_name(account_id.as_str())
+                    .await
+                    .map(ClientResponse::NssAccount)
+                    .unwrap_or_else(|_| {
+                        error!("unable to load account, returning empty.");
+                        ClientResponse::NssAccount(None)
+                    }),
+                ClientRequest::NssGroups => cachelayer
+                    .get_nssgroups()
+                    .await
+                    .map(ClientResponse::NssGroups)
+                    .unwrap_or_else(|_| {
+                        error!("unable to enum groups");
+                        ClientResponse::NssGroups(Vec::new())
+                    }),
+                ClientRequest::NssGroupByGid(gid) => cachelayer
+                    .get_nssgroup_gid(gid)
+                    .await
+                    .map(ClientResponse::NssGroup)
+                    .unwrap_or_else(|_| {
+                        error!("unable to load group, returning empty.");
+                        ClientResponse::NssGroup(None)
+                    }),
+                ClientRequest::NssGroupByName(grp_id) => cachelayer
+                    .get_nssgroup_name(grp_id.as_str())
+                    .await
+                    .map(ClientResponse::NssGroup)
+                    .unwrap_or_else(|_| {
+                        error!("unable to load group, returning empty.");
+                        ClientResponse::NssGroup(None)
+                    }),
+                ClientRequest::PamAuthenticateInit { account_id, info } => {
+                    match &pam_auth_session_state {
+                        Some(_auth_session) => {
+                            // Invalid to init a request twice.
+                            warn!("Attempt to init auth session while current session is active");
+                            // Clean the former session, something is wrong.
+                            pam_auth_session_state = None;
+                            ClientResponse::Error(OperationError::KU001InitWhileSessionActive)
                         }
-                    }
-                }
-            }
-            ClientRequest::PamAuthenticateStep(pam_next_req) => match &mut pam_auth_session_state {
-                Some(auth_session) => cachelayer
-                    .pam_account_authenticate_step(auth_session, pam_next_req)
-                    .await
-                    .map(|pam_auth_response| pam_auth_response.into())
-                    .unwrap_or(ClientResponse::Error(OperationError::KU003PamAuthFailed)),
-                None => {
-                    warn!("Attempt to continue auth session while current session is inactive");
-                    ClientResponse::Error(OperationError::KU002ContinueWhileSessionInActive)
-                }
-            },
-            ClientRequest::PamAccountAllowed(account_id) => cachelayer
-                .pam_account_allowed(account_id.as_str())
-                .await
-                .map(ClientResponse::PamStatus)
-                .unwrap_or(ClientResponse::Error(
-                    OperationError::KU005ErrorCheckingAccount,
-                )),
-            ClientRequest::PamAccountBeginSession(account_id) => {
-                match cachelayer
-                    .pam_account_beginsession(account_id.as_str())
-                    .await
-                {
-                    Ok(Some(info)) => {
-                        let (tx, rx) = oneshot::channel();
+                        None => {
+                            let current_time = OffsetDateTime::now_utc();
 
-                        match task_channel_tx
-                            .send_timeout(
-                                AsyncTaskRequest {
-                                    task_req: TaskRequest::HomeDirectory(info),
-                                    task_chan: tx,
-                                },
-                                Duration::from_millis(100),
-                            )
-                            .await
-                        {
-                            Ok(()) => {
-                                // Now wait for the other end OR timeout.
-                                match tokio::time::timeout_at(
-                                    tokio::time::Instant::now() + Duration::from_millis(1000),
-                                    rx,
+                            match cachelayer
+                                .pam_account_authenticate_init(
+                                    account_id.as_str(),
+                                    &info,
+                                    current_time,
+                                    shutdown_tx.subscribe(),
                                 )
                                 .await
-                                {
-                                    Ok(Ok(_)) => {
-                                        debug!("Task completed, returning to pam ...");
-                                        ClientResponse::Ok
-                                    }
-                                    _ => {
-                                        // Timeout or other error.
-                                        ClientResponse::Error(OperationError::KG001TaskTimeout)
-                                    }
+                            {
+                                Ok((auth_session, pam_auth_response)) => {
+                                    pam_auth_session_state = Some(auth_session);
+                                    pam_auth_response.into()
                                 }
-                            }
-                            Err(_) => {
-                                // We could not submit the req. Move on!
-                                ClientResponse::Error(OperationError::KG002TaskCommFailure)
+                                Err(_) => ClientResponse::Error(OperationError::KU004PamInitFailed),
                             }
                         }
                     }
-                    Ok(None) => {
-                        // The session can begin, but we do not need to create the home dir.
-                        ClientResponse::Ok
-                    }
-                    Err(_) => ClientResponse::Error(OperationError::KU005ErrorCheckingAccount),
                 }
-            }
-            ClientRequest::InvalidateCache => cachelayer
-                .invalidate()
-                .await
-                .map(|_| ClientResponse::Ok)
-                .unwrap_or(ClientResponse::Error(OperationError::KG003CacheClearFailed)),
-            ClientRequest::ClearCache => {
-                if ucred.uid() == 0 {
-                    cachelayer
-                        .clear_cache()
+                ClientRequest::PamAuthenticateStep(pam_next_req) => match &mut pam_auth_session_state {
+                    Some(auth_session) => cachelayer
+                        .pam_account_authenticate_step(auth_session, pam_next_req)
                         .await
-                        .map(|_| ClientResponse::Ok)
-                        .unwrap_or(ClientResponse::Error(OperationError::KG003CacheClearFailed))
-                } else {
-                    error!("{}", OperationError::KU006OnlyRootAllowed);
-                    ClientResponse::Error(OperationError::KU006OnlyRootAllowed)
+                        .map(|pam_auth_response| pam_auth_response.into())
+                        .unwrap_or(ClientResponse::Error(OperationError::KU003PamAuthFailed)),
+                    None => {
+                        warn!("Attempt to continue auth session while current session is inactive");
+                        ClientResponse::Error(OperationError::KU002ContinueWhileSessionInActive)
+                    }
+                },
+                ClientRequest::PamAccountAllowed(account_id) => cachelayer
+                    .pam_account_allowed(account_id.as_str())
+                    .await
+                    .map(ClientResponse::PamStatus)
+                    .unwrap_or(ClientResponse::Error(
+                        OperationError::KU005ErrorCheckingAccount,
+                    )),
+                ClientRequest::PamAccountBeginSession(account_id) => {
+                    match cachelayer
+                        .pam_account_beginsession(account_id.as_str())
+                        .await
+                    {
+                        Ok(Some(info)) => {
+                            let (tx, rx) = oneshot::channel();
+
+                            match task_channel_tx
+                                .send_timeout(
+                                    AsyncTaskRequest {
+                                        task_req: TaskRequest::HomeDirectory(info),
+                                        task_chan: tx,
+                                    },
+                                    Duration::from_millis(100),
+                                )
+                                .await
+                            {
+                                Ok(()) => {
+                                    // Now wait for the other end OR timeout.
+                                    match tokio::time::timeout_at(
+                                        tokio::time::Instant::now() + Duration::from_millis(1000),
+                                        rx,
+                                    )
+                                    .await
+                                    {
+                                        Ok(Ok(_)) => {
+                                            debug!("Task completed, returning to pam ...");
+                                            ClientResponse::Ok
+                                        }
+                                        _ => {
+                                            // Timeout or other error.
+                                            ClientResponse::Error(OperationError::KG001TaskTimeout)
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    // We could not submit the req. Move on!
+                                    ClientResponse::Error(OperationError::KG002TaskCommFailure)
+                                }
+                            }
+                        }
+                        Ok(None) => {
+                            // The session can begin, but we do not need to create the home dir.
+                            ClientResponse::Ok
+                        }
+                        Err(_) => ClientResponse::Error(OperationError::KU005ErrorCheckingAccount),
+                    }
                 }
-            }
-            ClientRequest::Status => {
-                let status = cachelayer.provider_status().await;
-                ClientResponse::ProviderStatus(status)
-            }
-        };
+                ClientRequest::InvalidateCache => cachelayer
+                    .invalidate()
+                    .await
+                    .map(|_| ClientResponse::Ok)
+                    .unwrap_or(ClientResponse::Error(OperationError::KG003CacheClearFailed)),
+                ClientRequest::ClearCache => {
+                    if ucred.uid() == 0 {
+                        cachelayer
+                            .clear_cache()
+                            .await
+                            .map(|_| ClientResponse::Ok)
+                            .unwrap_or(ClientResponse::Error(OperationError::KG003CacheClearFailed))
+                    } else {
+                        error!("{}", OperationError::KU006OnlyRootAllowed);
+                        ClientResponse::Error(OperationError::KU006OnlyRootAllowed)
+                    }
+                }
+                ClientRequest::Status => {
+                    let status = cachelayer.provider_status().await;
+                    ClientResponse::ProviderStatus(status)
+                }
+            };
 
-        reqs.send(resp).await?;
-        reqs.flush().await?;
-        trace!("flushed response!");
+            reqs.send(resp).await?;
+            reqs.flush().await?;
+            trace!("flushed response!");
 
-        drop(_enter);
+            Ok(())
+        }
+            .instrument(span)
+            .await;
+
+        if let Err(err) = maybe_err {
+            return Err(err);
+        }
     }
 
     // Disconnect them
     let span = span!(Level::DEBUG, "disconnecting client", uuid = %conn_id);
-    let _enter = span.enter();
-    debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
+    async {
+        debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
-    // Signal any tasks that they need to stop.
-    if let Err(shutdown_err) = shutdown_tx.send(()) {
-        warn!(
-            ?shutdown_err,
-            "Unable to signal tasks to stop, they will naturally timeout instead."
-        )
+        // Signal any tasks that they need to stop.
+        if let Err(shutdown_err) = shutdown_tx.send(()) {
+            warn!(
+                ?shutdown_err,
+                "Unable to signal tasks to stop, they will naturally timeout instead."
+            )
+        }
     }
+    .instrument(span)
+    .await;
 
     Ok(())
 }
@@ -482,9 +485,6 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
     let ceuid = get_effective_uid();
     let cgid = get_current_gid();
     let cegid = get_effective_gid();
-
-    let span = span!(Level::DEBUG, "starting resolver");
-    let _enter = span.enter();
 
     if clap_args.get_flag("skip-root-check") {
         warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
@@ -1076,9 +1076,6 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
     });
 
     info!("Server started ...");
-
-    // End the startup span, we can now proceed.
-    drop(_enter);
 
     // On linux, notify systemd.
     #[cfg(target_os = "linux")]
