@@ -190,8 +190,6 @@ async fn handle_client(
     let (shutdown_tx, _shutdown_rx) = broadcast::channel(1);
 
     while let Some(Ok(req)) = reqs.next().await {
-        let span = span!(Level::INFO, "client request", uuid = %conn_id, defer = true);
-
         let maybe_err = async {
             debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
@@ -378,7 +376,9 @@ async fn handle_client(
 
             Ok(())
         }
-            .instrument(span)
+            .instrument(
+                span!(Level::INFO, "client request", uuid = %conn_id, defer = true)
+            )
             .await;
 
         if let Err(err) = maybe_err {
@@ -387,20 +387,13 @@ async fn handle_client(
     }
 
     // Disconnect them
-    let span = span!(Level::DEBUG, "disconnecting client", uuid = %conn_id);
-    async {
-        debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
-
-        // Signal any tasks that they need to stop.
-        if let Err(shutdown_err) = shutdown_tx.send(()) {
-            warn!(
-                ?shutdown_err,
-                "Unable to signal tasks to stop, they will naturally timeout instead."
-            )
-        }
+    // Signal any tasks that they need to stop.
+    if let Err(shutdown_err) = shutdown_tx.send(()) {
+        warn!(
+            ?shutdown_err,
+            "Unable to signal tasks to stop, they will naturally timeout instead."
+        )
     }
-    .instrument(span)
-    .await;
 
     Ok(())
 }
