@@ -178,7 +178,7 @@ async fn handle_client(
         )));
     };
 
-    debug!(uuid = %conn_id, uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid(), "accepted connection");
+    // debug!(uuid = %conn_id, uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid(), "accepted connection");
 
     let codec: JsonCodec<ClientRequest, ClientResponse> = JsonCodec::default();
 

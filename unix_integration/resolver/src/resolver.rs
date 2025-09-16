@@ -267,6 +267,19 @@ impl Resolver {
         account_id: &Id,
         current_time: SystemTime,
     ) -> Result<(ExpiryState, Option<UserToken>), ()> {
+        // Is it in the nxcache?
+        if let Some(ex_time) = self.check_nxcache(account_id).await {
+            if current_time >= ex_time {
+                // It's in the LRU, but we are past the expiry so
+                // lets attempt a refresh.
+                return Ok((ExpiryState::ValidRefresh, None))
+            } else {
+                // It's in the LRU and still valid, so return that
+                // no check is needed.
+                return Ok((ExpiryState::Valid, None))
+            }
+        }
+
         // Account_id could be:
         //  * gidnumber
         //  * name
@@ -301,25 +314,8 @@ impl Resolver {
                 }
             }
             None => {
-                // it wasn't in the DB - lets see if it's in the nxcache.
-                match self.check_nxcache(account_id).await {
-                    Some(ex_time) => {
-                        if current_time >= ex_time {
-                            // It's in the LRU, but we are past the expiry so
-                            // lets attempt a refresh.
-                            Ok((ExpiryState::ValidRefresh, None))
-                        } else {
-                            // It's in the LRU and still valid, so return that
-                            // no check is needed.
-                            Ok((ExpiryState::Valid, None))
-                        }
-                    }
-                    None => {
-                        // Not in the LRU. Return that this IS expired
-                        // and we have no data.
-                        Ok((ExpiryState::Expired, None))
-                    }
-                }
+                // it wasn't in the DB, and it wasn't in the nxcache.
+                Ok((ExpiryState::Expired, None))
             }
         } // end match r
     }
