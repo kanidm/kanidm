@@ -1210,22 +1210,4 @@ async fn main() -> ExitCode {
         })
         .on(main_inner(clap_args))
         .await
-
-    /*
-    use tracing_subscriber::{fmt, EnvFilter};
-    use tracing_subscriber::prelude::*;
-
-    let fmt_layer = fmt::layer()
-    .with_target(false);
-    let filter_layer = EnvFilter::try_from_default_env()
-        .or_else(|_| EnvFilter::try_new("info"))
-        .unwrap();
-
-    tracing_subscriber::registry()
-        .with(filter_layer)
-        .with(fmt_layer)
-        .init();
-
-    main_inner(clap_args).await
-    */
 }

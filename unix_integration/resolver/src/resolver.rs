@@ -155,13 +155,10 @@ impl Resolver {
         // How many seconds before expiry should we be refreshing an entry.
         // We want to balance this - we don't want too many refreshes, but we
         // also need to account for long cache times and ensuring that we are checking
-        // account validities in the background.
-        //
-        // Something else to consider is we want to
+        // account validity in the background.
 
         let timeout_seconds =
             timeout_seconds.clamp(DEFAULT_CACHE_TIMEOUT_MINIMUM, DEFAULT_CACHE_TIMEOUT_MAXIMUM);
-
         let async_refresh_seconds = (timeout_seconds / 3) * 2;
 
         // We assume we are offline at start up, and we mark the next "online check" as
