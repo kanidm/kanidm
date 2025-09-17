@@ -30,6 +30,9 @@ impl From<UnixStream> for DaemonClientBlocking {
 
 impl DaemonClientBlocking {
     pub fn new(path: &str, default_timeout: u64) -> Result<DaemonClientBlocking, Box<dyn Error>> {
+        // Setup a subscriber incase one isn't setup.
+        let _ = tracing_subscriber::fmt().try_init();
+
         debug!(%path);
 
         let stream = UnixStream::connect(path)
