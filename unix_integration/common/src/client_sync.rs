@@ -34,12 +34,10 @@ impl DaemonClientBlocking {
         // let _ = tracing_subscriber::fmt().try_init();
 
         use tracing_subscriber::prelude::*;
-        use tracing_subscriber::{fmt, EnvFilter};
+        use tracing_subscriber::{filter::LevelFilter, fmt};
 
         let fmt_layer = fmt::layer().with_target(false);
-        let filter_layer = EnvFilter::try_from_default_env()
-            .or_else(|_| EnvFilter::try_new("info"))
-            .unwrap();
+        let filter_layer = LevelFilter::ERROR;
 
         let _ = tracing_subscriber::registry()
             .with(filter_layer)
@@ -48,14 +46,13 @@ impl DaemonClientBlocking {
 
         debug!(%path);
 
-        let stream = UnixStream::connect(path)
-            .inspect_err(|err| {
-                error!(
-                    ?err, %path,
-                    "Unix socket stream setup error",
-                )
-            })
-            .map_err(Box::new)?;
+        let stream = UnixStream::connect(path).map_err(|err| {
+            error!(
+                ?err, %path,
+                "Unix socket stream setup error",
+            );
+            Box::new(err)
+        })?;
 
         Ok(DaemonClientBlocking {
             stream,
@@ -100,13 +97,18 @@ impl DaemonClientBlocking {
 
         let mut data = BytesMut::new();
 
-        self.codec.encode(req, &mut data).map_err(Box::new)?;
+        self.codec.encode(req, &mut data).map_err(|err| {
+            error!(?err, "codec encode error");
+            Box::new(err)
+        })?;
 
         self.stream
             .write_all(&data)
             .and_then(|_| self.stream.flush())
-            .inspect_err(|err| error!(?err, "stream write error"))
-            .map_err(Box::new)?;
+            .map_err(|err| {
+                error!(?err, "stream write error");
+                Box::new(err)
+            })?;
 
         // Now wait on the response.
         data.clear();
