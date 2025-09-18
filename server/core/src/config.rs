@@ -5,6 +5,7 @@
 //! or domain entries that are able to be replicated.
 
 use cidr::IpCidr;
+use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
@@ -75,6 +76,9 @@ pub struct OnlineBackup {
     /// Enabled by default
     #[serde(default = "default_online_backup_enabled")]
     pub enabled: bool,
+
+    #[serde(default)]
+    pub compression: BackupCompression,
 }
 
 impl Default for OnlineBackup {
@@ -84,6 +88,7 @@ impl Default for OnlineBackup {
             schedule: default_online_backup_schedule(),
             versions: default_online_backup_versions(),
             enabled: default_online_backup_enabled(),
+            compression: BackupCompression::default(),
         }
     }
 }
