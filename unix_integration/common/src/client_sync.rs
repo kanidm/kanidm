@@ -31,7 +31,21 @@ impl From<UnixStream> for DaemonClientBlocking {
 impl DaemonClientBlocking {
     pub fn new(path: &str, default_timeout: u64) -> Result<DaemonClientBlocking, Box<dyn Error>> {
         // Setup a subscriber incase one isn't setup.
-        let _ = tracing_subscriber::fmt().try_init();
+        // let _ = tracing_subscriber::fmt().try_init();
+
+        use tracing_subscriber::{fmt, EnvFilter};
+        use tracing_subscriber::prelude::*;
+
+        let fmt_layer = fmt::layer()
+            .with_target(false);
+        let filter_layer = EnvFilter::try_from_default_env()
+            .or_else(|_| EnvFilter::try_new("debug"))
+            .unwrap();
+
+        let _ = tracing_subscriber::registry()
+            .with(filter_layer)
+            .with(fmt_layer)
+            .init();
 
         debug!(%path);
 
