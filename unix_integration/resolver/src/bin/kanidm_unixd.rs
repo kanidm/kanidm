@@ -169,13 +169,12 @@ async fn handle_client(
     sock: UnixStream,
     cachelayer: Arc<Resolver>,
     task_channel_tx: &Sender<AsyncTaskRequest>,
-) -> Result<(), Box<dyn Error>> {
+) {
     let conn_id = uuid::Uuid::new_v4();
 
     let Ok(ucred) = sock.peer_cred() else {
-        return Err(Box::new(IoError::other(
-            "Unable to verify peer credentials.",
-        )));
+        error!("Unable to verify peer credentials, terminating connection.");
+        return;
     };
 
     let codec: JsonCodec<ClientRequest, ClientResponse> = JsonCodec::default();
@@ -368,8 +367,17 @@ async fn handle_client(
                 }
             };
 
-            reqs.send(resp).await?;
-            reqs.flush().await?;
+            trace!(?resp);
+
+            reqs.send(resp).await
+                .inspect_err(|err| {
+                    error!(?err, "unable to send response");
+                })?;
+            reqs.flush().await
+                .inspect_err(|err| {
+                    error!(?err, "unable to flush response");
+                })?;
+
             trace!("flushed response!");
 
             Ok(())
@@ -379,7 +387,9 @@ async fn handle_client(
             )
             .await;
 
-        maybe_err?;
+        if maybe_err.is_err() {
+            break;
+        }
     }
 
     // Disconnect them
@@ -390,8 +400,6 @@ async fn handle_client(
             "Unable to signal tasks to stop, they will naturally timeout instead."
         )
     }
-
-    Ok(())
 }
 
 async fn read_hsm_pin(hsm_pin_path: &str) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -1048,14 +1056,11 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
                         Ok((socket, _addr)) => {
                             let cachelayer_ref = cachelayer.clone();
                             tokio::spawn(async move {
-                                if let Err(err) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
-                                {
-                                    error!(?err, "handle_client error occurred");
-                                }
+                                handle_client(socket, cachelayer_ref.clone(), &tc_tx).await;
                             });
                         }
                         Err(err) => {
-                            error!("Error while handling connection -> {:?}", err);
+                            error!(?err, "Error while accepting connection");
                         }
                     }
                 }

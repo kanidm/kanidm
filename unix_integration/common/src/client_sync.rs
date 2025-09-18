@@ -33,13 +33,12 @@ impl DaemonClientBlocking {
         // Setup a subscriber incase one isn't setup.
         // let _ = tracing_subscriber::fmt().try_init();
 
-        use tracing_subscriber::{fmt, EnvFilter};
         use tracing_subscriber::prelude::*;
+        use tracing_subscriber::{fmt, EnvFilter};
 
-        let fmt_layer = fmt::layer()
-            .with_target(false);
+        let fmt_layer = fmt::layer().with_target(false);
         let filter_layer = EnvFilter::try_from_default_env()
-            .or_else(|_| EnvFilter::try_new("debug"))
+            .or_else(|_| EnvFilter::try_new("info"))
             .unwrap();
 
         let _ = tracing_subscriber::registry()
