@@ -5,7 +5,7 @@ use bytes::BytesMut;
 use std::error::Error;
 use std::io::{self, ErrorKind, Read, Write};
 use std::thread;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant};
 use tokio_util::codec::{Decoder, Encoder};
 
 pub use std::os::unix::net::UnixStream;
@@ -110,12 +110,12 @@ impl DaemonClientBlocking {
 
         // Now wait on the response.
         data.clear();
-        let start = SystemTime::now();
+        let start = Instant::now();
         let mut read_started = false;
 
         loop {
             debug!("read loop");
-            let durr = SystemTime::now().duration_since(start).map_err(Box::new)?;
+            let durr = Instant::now().duration_since(start);
             if durr > timeout {
                 error!("Socket timeout");
                 // timed out, not enough activity.
