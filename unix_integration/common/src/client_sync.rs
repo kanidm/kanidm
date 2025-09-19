@@ -77,14 +77,6 @@ impl DaemonClientBlocking {
                 Box::new(err)
             })?;
 
-        self.stream.set_read_timeout(Some(timeout)).map_err(|err| {
-            error!(
-                ?err,
-                "Unix socket stream setup error while setting read timeout",
-            );
-            Box::new(err)
-        })?;
-
         // We want this to be blocking so that we wait for data to be ready
         self.stream.set_nonblocking(false).map_err(|err| {
             error!(
@@ -109,6 +101,26 @@ impl DaemonClientBlocking {
                 Box::new(err)
             })?;
 
+        // Set our read timeout
+        self.stream.set_read_timeout(Some(timeout)).map_err(|err| {
+            error!(
+                ?err,
+                "Unix socket stream setup error while setting read timeout",
+            );
+            Box::new(err)
+        })?;
+
+        // We want this to be blocking so that we wait for data to be ready
+        self.stream.set_nonblocking(true).map_err(|err| {
+            error!(
+                ?err,
+                "Unix socket stream setup error while setting nonblocking=false",
+            );
+            Box::new(err)
+        })?;
+
+        trace!(read_timeout = ?self.stream.read_timeout(), write_timeout = ?self.stream.write_timeout());
+
         // Now wait on the response.
         data.clear();
         let start = Instant::now();
@@ -124,8 +136,6 @@ impl DaemonClientBlocking {
             }
 
             let mut buffer = [0; 16 * 1024];
-
-            trace!(read_timeout = ?self.stream.read_timeout(), write_timeout = ?self.stream.write_timeout());
 
             // Would be a lot easier if we had peek ...
             // https://github.com/rust-lang/rust/issues/76923
@@ -146,6 +156,11 @@ impl DaemonClientBlocking {
                     read_started = true;
                     trace!("read {count} bytes");
                     data.extend_from_slice(&buffer[..count]);
+                    if count == buffer.len() {
+                        // Whole buffer, read again
+                        continue;
+                    }
+                    // Not a whole buffer, probably complete.
                 }
                 Err(err) if err.kind() == ErrorKind::WouldBlock => {
                     trace!("read from UDS would block, try again.");
