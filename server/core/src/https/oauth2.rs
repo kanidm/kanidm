@@ -726,6 +726,8 @@ pub async fn oauth2_preflight_options() -> Response {
         .into_response()
 }
 
+// 1.90 incorrectly thinks this is dead code - it's literally used in the function below.
+#[allow(dead_code)]
 #[serde_as]
 #[derive(Deserialize, Debug, Serialize)]
 pub(crate) struct DeviceFlowForm {
