@@ -111,7 +111,7 @@ impl DaemonClientBlocking {
         })?;
 
         // We want this to be blocking so that we wait for data to be ready
-        self.stream.set_nonblocking(true).map_err(|err| {
+        self.stream.set_nonblocking(false).map_err(|err| {
             error!(
                 ?err,
                 "Unix socket stream setup error while setting nonblocking=false",
