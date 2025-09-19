@@ -70,6 +70,7 @@ pub struct ServerState {
     pub(crate) jws_signer: JwsHs256Signer,
     pub(crate) trust_x_forward_for_ips: Option<Arc<AddressSet>>,
     pub(crate) csp_header: HeaderValue,
+    pub(crate) csp_header_no_form_action: HeaderValue,
     pub(crate) origin: Url,
     pub(crate) domain: String,
     // This is set to true by default, and is only false on integration tests.
@@ -202,7 +203,7 @@ pub async fn create_https_server(
         concat!(
             "default-src 'self'; ",
             "base-uri 'self' https:; ",
-            "form-action 'self' https: localhost;",
+            "form-action 'self'; ",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
@@ -214,6 +215,28 @@ pub async fn create_https_server(
     let csp_header = HeaderValue::from_str(&csp_header).map_err(|err| {
         error!(?err, "Unable to generate content security policy");
     })?;
+
+    // Omit form action - form action is interpreted by chrome to also control valid
+    // redirect targets on submit. This breaks oauth2 in many cases.
+    let csp_header_no_form_action = format!(
+        concat!(
+            "default-src 'self'; ",
+            "base-uri 'self' https:; ",
+            "frame-ancestors 'none'; ",
+            "img-src 'self' data:; ",
+            "worker-src 'none'; ",
+            "script-src 'self' 'unsafe-eval'{};",
+        ),
+        js_checksums
+    );
+
+    let csp_header_no_form_action =
+        HeaderValue::from_str(&csp_header_no_form_action).map_err(|err| {
+            error!(
+                ?err,
+                "Unable to generate content security policy with no form action"
+            );
+        })?;
 
     let trust_x_forward_for_ips = config
         .http_client_address_info
