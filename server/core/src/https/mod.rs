@@ -218,6 +218,11 @@ pub async fn create_https_server(
 
     // Omit form action - form action is interpreted by chrome to also control valid
     // redirect targets on submit. This breaks oauth2 in many cases.
+    //
+    // Normally this would be considered BAD to remove a CSP control to make Oauth2 work
+    // but we need to consider the primary attack form-action protects from - open redirectors
+    // in the form submission. Since the paths that use this header do NOT have open
+    // redirectors, we are safe to remove the form-action directive.
     let csp_header_no_form_action = format!(
         concat!(
             "default-src 'self'; ",
@@ -255,6 +260,7 @@ pub async fn create_https_server(
         jws_signer,
         trust_x_forward_for_ips,
         csp_header,
+        csp_header_no_form_action,
         origin: config.origin,
         domain: config.domain.clone(),
         secure_cookies: config.integration_test_config.is_none(),
@@ -271,7 +277,7 @@ pub async fn create_https_server(
                 .layer(middleware::compression::new())
                 .layer(from_fn(middleware::caching::cache_me_short))
                 .route("/", get(|| async { Redirect::to("/ui") }))
-                .nest("/ui", views::view_router())
+                .nest("/ui", views::view_router(state.clone()))
             // Can't compress on anything that changes
         }
         ServerRole::WriteReplicaNoUI => Router::new(),
