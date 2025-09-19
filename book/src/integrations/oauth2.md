@@ -43,7 +43,6 @@ Kanidm will expose its OAuth2 APIs at the following URLs, substituting `:client_
 <!-- markdownlint-disable MD033 -->
 
 <dl>
-
 <dt>
 
 [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html) URL **(recommended)**
@@ -350,20 +349,6 @@ kanidm system oauth2 enable-localhost-redirects mywebapp
 
 ## Alternate Redirect URLs
 
-> [!WARNING]
->
-> Security Risk!
->
-> You **MUST NOT** share a single OAuth2 client definition between multiple applications.
->
-> The ability to configure multiple redirect URLs is **NOT** intended to allow you to share a single Kanidm client
-> definition between multiple OAuth2 clients.
->
-> Sharing OAuth2 client configurations between applications **FUNDAMENTALLY BREAKS** the OAuth2 security model and is
-> **NOT SUPPORTED** as a configuration. The Kanidm Project **WILL NOT** support you if you attempt this.
->
-> Multiple origins are **ONLY** to allow supplemental redirects within the _same_ client application.
-
 Some services may have a website URL as well as native applications with opaque origins. These native applications
 require alternate redirection URLs to be configured so that after an OAuth2 exchange, the system can redirect to the
 native application.
@@ -379,23 +364,28 @@ kanidm system oauth2 add-redirect-url nextcloud app://ios-nextcloud
 
 Supplemental URLs are shown in the OAuth2 client configuration in the `oauth2_rs_origin` attribute.
 
-### Strict Redirect URLs
-
-Kanidm previously enforced that redirection targets only matched by _origin_, not the full URL. In 1.4.0 these URLs will
-enforce a full URL match instead.
-
-To indicate your readiness for this transition, all OAuth2 clients must have the field `strict-redirect-url` enabled.
-Once enabled, the client will begin to enforce the 1.4.0 strict validation behaviour.
-
 > [!WARNING]
 >
-> If you have not enabled `strict-redirect-url` on all OAuth2 clients the upgrade to 1.4.0 will refuse to proceed.
+> Security Risk!
+>
+> You **MUST NOT** share a single OAuth2 client definition between multiple applications.
+>
+> The ability to configure multiple redirect URLs is **NOT** intended to allow you to share a single Kanidm client
+> definition between multiple OAuth2 clients.
+>
+> Sharing OAuth2 client configurations between applications **FUNDAMENTALLY BREAKS** the OAuth2 security model and is
+> **NOT SUPPORTED** as a configuration. The Kanidm Project **WILL NOT** support you if you attempt this.
+>
+> Multiple origins are **ONLY** to allow supplemental redirects within the _same_ client application.
 
-To enable or disable strict validation:
+## Short names
 
-```bash
-kanidm system oauth2 enable-strict-redirect-url <name>
-kanidm system oauth2 disable-strict-redirect-url <name>
+By default Kanidm will use SPN as a display username for users. In some cases you may want to use the
+users `name` instead. To change this setting:
+
+```
+kanidm system oauth2 prefer-short-username <client name>
+kanidm system oauth2 prefer-spn-username <client name>
 ```
 
 ## Extended Options for Legacy Clients
