@@ -65,15 +65,15 @@ impl<'a> Borrow<dyn IdxKeyToRef + 'a> for IdxKey {
     }
 }
 
-impl PartialEq for (dyn IdxKeyToRef + '_) {
+impl PartialEq for dyn IdxKeyToRef + '_ {
     fn eq(&self, other: &Self) -> bool {
         self.keyref().eq(&other.keyref())
     }
 }
 
-impl Eq for (dyn IdxKeyToRef + '_) {}
+impl Eq for dyn IdxKeyToRef + '_ {}
 
-impl Hash for (dyn IdxKeyToRef + '_) {
+impl Hash for dyn IdxKeyToRef + '_ {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.keyref().hash(state)
     }
@@ -130,27 +130,27 @@ impl<'a> Borrow<dyn IdlCacheKeyToRef + 'a> for IdlCacheKey {
     }
 }
 
-impl PartialEq for (dyn IdlCacheKeyToRef + '_) {
+impl PartialEq for dyn IdlCacheKeyToRef + '_ {
     fn eq(&self, other: &Self) -> bool {
         self.keyref().eq(&other.keyref())
     }
 }
 
-impl Eq for (dyn IdlCacheKeyToRef + '_) {}
+impl Eq for dyn IdlCacheKeyToRef + '_ {}
 
-impl Hash for (dyn IdlCacheKeyToRef + '_) {
+impl Hash for dyn IdlCacheKeyToRef + '_ {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.keyref().hash(state)
     }
 }
 
-impl PartialOrd for (dyn IdlCacheKeyToRef + '_) {
+impl PartialOrd for dyn IdlCacheKeyToRef + '_ {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(&other.keyref()))
     }
 }
 
-impl Ord for (dyn IdlCacheKeyToRef + '_) {
+impl Ord for dyn IdlCacheKeyToRef + '_ {
     fn cmp(&self, other: &Self) -> Ordering {
         self.keyref().cmp(&other.keyref())
     }

@@ -8,7 +8,8 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use super::{errors::WebError, ServerState};
 
-pub(crate) mod path_schema;
+// pub(crate) mod path_schema;
+
 pub(crate) mod response_schema;
 #[cfg(test)]
 pub(crate) mod tests;
