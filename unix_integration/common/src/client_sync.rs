@@ -4,7 +4,6 @@ use crate::unix_proto::{ClientRequest, ClientResponse};
 use bytes::BytesMut;
 use std::error::Error;
 use std::io::{self, ErrorKind, Read, Write};
-use std::thread;
 use std::time::{Duration, Instant};
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -44,7 +43,7 @@ impl DaemonClientBlocking {
             .with(fmt_layer)
             .try_init();
 
-        debug!(%path);
+        trace!(%path);
 
         let stream = UnixStream::connect(path).map_err(|err| {
             error!(
@@ -116,7 +115,7 @@ impl DaemonClientBlocking {
         let mut read_started = false;
 
         loop {
-            debug!("read loop");
+            trace!("read loop");
             let durr = Instant::now().duration_since(start);
             if durr > timeout {
                 error!("Socket timeout");
@@ -124,37 +123,37 @@ impl DaemonClientBlocking {
                 return Err(Box::new(io::Error::other("Timeout")));
             }
 
-            let mut buffer = [0; 8192];
+            let mut buffer = [0; 16 * 1024];
 
-            debug!(read_timeout = ?self.stream.read_timeout(), write_timeout = ?self.stream.write_timeout());
+            trace!(read_timeout = ?self.stream.read_timeout(), write_timeout = ?self.stream.write_timeout());
 
             // Would be a lot easier if we had peek ...
             // https://github.com/rust-lang/rust/issues/76923
             match self.stream.read(&mut buffer) {
                 Ok(0) => {
                     if read_started {
-                        debug!("read_started true, no bytes read");
+                        trace!("read_started true, no bytes read");
                         // We're done, no more bytes. This will now
                         // fall through to the codec decode to double
                         // check this assertion.
                     } else {
-                        debug!("Waiting ...");
+                        trace!("Waiting ...");
                         // Still can wait ...
                         continue;
                     }
                 }
                 Ok(count) => {
                     read_started = true;
-                    debug!("read {count} bytes");
+                    trace!("read {count} bytes");
                     data.extend_from_slice(&buffer[..count]);
                 }
                 Err(err) if err.kind() == ErrorKind::WouldBlock => {
-                    debug!("would block");
-                    thread::sleep(Duration::from_millis(500));
+                    trace!("read from UDS would block, try again.");
+                    // std::thread::sleep(Duration::from_millis(1));
                     continue;
                 }
                 Err(err) => {
-                    error!(?err, "Stream read failure from {:?}", &self.stream);
+                    error!(?err, err_kind = ?err.kind(), "Stream read failure from {:?}", &self.stream);
                     // Failure!
                     return Err(Box::new(err));
                 }
@@ -163,17 +162,17 @@ impl DaemonClientBlocking {
             match self.codec.decode(&mut data) {
                 // A whole frame is ready and present.
                 Ok(Some(cr)) => {
-                    debug!("read loop - ok");
+                    trace!("read loop - ok");
                     return Ok(cr);
                 }
                 // Need more data
                 Ok(None) => {
-                    debug!("need more");
+                    trace!("need more");
                     continue;
                 }
                 // Failed to decode for some reason
                 Err(err) => {
-                    error!(?err);
+                    error!(?err, "failed to decode response");
                     return Err(Box::new(err));
                 }
             }
