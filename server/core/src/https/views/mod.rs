@@ -2,6 +2,7 @@ use crate::https::views::admin::{admin_api_router, admin_router};
 use crate::https::{middleware, ServerState};
 use askama::Template;
 use axum::{
+    middleware::from_fn_with_state,
     response::Redirect,
     routing::{get, post},
     Router,
@@ -42,7 +43,7 @@ struct ErrorToastPartial {
     operation_id: Uuid,
 }
 
-pub fn view_router() -> Router<ServerState> {
+pub fn view_router(state: ServerState) -> Router<ServerState> {
     let mut unguarded_router = Router::new()
         .route(
             "/",
@@ -104,8 +105,8 @@ pub fn view_router() -> Router<ServerState> {
         // These routes are special, and often need to redirect *out* of kanidm. We need to
         // allow this within CSP.
         .layer(from_fn_with_state(
-            state.clone(),
-            middleware::csp_header_no_form_action_layer,
+            state,
+            middleware::security_headers::csp_header_no_form_action_layer,
         ));
 
     // The webauthn post is unguarded because it's not a htmx event.
