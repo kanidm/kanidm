@@ -36,7 +36,7 @@ impl DaemonClientBlocking {
         use tracing_subscriber::{filter::LevelFilter, fmt};
 
         let fmt_layer = fmt::layer().with_target(false);
-        let filter_layer = LevelFilter::ERROR;
+        let filter_layer = LevelFilter::WARN;
 
         let _ = tracing_subscriber::registry()
             .with(filter_layer)
@@ -163,7 +163,7 @@ impl DaemonClientBlocking {
                     // Not a whole buffer, probably complete.
                 }
                 Err(err) if err.kind() == ErrorKind::WouldBlock => {
-                    trace!("read from UDS would block, try again.");
+                    warn!("read from UDS would block, try again.");
                     // std::thread::sleep(Duration::from_millis(1));
                     continue;
                 }
