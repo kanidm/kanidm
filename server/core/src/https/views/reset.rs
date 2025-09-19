@@ -170,12 +170,6 @@ struct AddPasskeyPartial {
 }
 
 #[derive(Deserialize, Debug)]
-struct PasskeyCreateResponse {}
-
-#[derive(Deserialize, Debug)]
-struct PasskeyCreateExtensions {}
-
-#[derive(Deserialize, Debug)]
 pub(crate) struct PasskeyInitForm {
     class: PasskeyClass,
 }
