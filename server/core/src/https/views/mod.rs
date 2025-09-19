@@ -1,21 +1,17 @@
+use crate::https::views::admin::{admin_api_router, admin_router};
+use crate::https::{middleware, ServerState};
 use askama::Template;
-
 use axum::{
     response::Redirect,
     routing::{get, post},
     Router,
 };
-
 use axum_htmx::HxRequestGuardLayer;
-
-use crate::https::views::admin::{admin_api_router, admin_router};
 use constants::Urls;
 use kanidmd_lib::{
     idm::server::DomainInfoRead,
     prelude::{OperationError, Uuid},
 };
-
-use crate::https::ServerState;
 
 mod admin;
 mod apps;
@@ -104,7 +100,13 @@ pub fn view_router() -> Router<ServerState> {
         .route(
             "/login/pw",
             post(login::view_login_pw_post).get(|| async { Redirect::to("/ui") }),
-        );
+        )
+        // These routes are special, and often need to redirect *out* of kanidm. We need to
+        // allow this within CSP.
+        .layer(from_fn_with_state(
+            state.clone(),
+            middleware::csp_header_no_form_action_layer,
+        ));
 
     // The webauthn post is unguarded because it's not a htmx event.
 
