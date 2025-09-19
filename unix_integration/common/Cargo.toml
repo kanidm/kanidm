@@ -12,6 +12,7 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [features]
+client_sync_tracing = []
 default = ["unix"]
 unix = []
 selinux = ["dep:selinux"]

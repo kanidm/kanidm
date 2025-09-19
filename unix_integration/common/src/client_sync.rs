@@ -30,18 +30,18 @@ impl From<UnixStream> for DaemonClientBlocking {
 impl DaemonClientBlocking {
     pub fn new(path: &str, default_timeout: u64) -> Result<DaemonClientBlocking, Box<dyn Error>> {
         // Setup a subscriber incase one isn't setup.
-        // let _ = tracing_subscriber::fmt().try_init();
+        if cfg!(feature = "client_sync_tracing") {
+            use tracing_subscriber::prelude::*;
+            use tracing_subscriber::{filter::LevelFilter, fmt};
 
-        use tracing_subscriber::prelude::*;
-        use tracing_subscriber::{filter::LevelFilter, fmt};
+            let fmt_layer = fmt::layer().with_target(false);
+            let filter_layer = LevelFilter::WARN;
 
-        let fmt_layer = fmt::layer().with_target(false);
-        let filter_layer = LevelFilter::WARN;
-
-        let _ = tracing_subscriber::registry()
-            .with(filter_layer)
-            .with(fmt_layer)
-            .try_init();
+            let _ = tracing_subscriber::registry()
+                .with(filter_layer)
+                .with(fmt_layer)
+                .try_init();
+        }
 
         trace!(%path);
 
