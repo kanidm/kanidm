@@ -12,6 +12,7 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [features]
+client_sync_tracing = []
 default = ["unix"]
 unix = []
 selinux = ["dep:selinux"]
@@ -38,6 +39,7 @@ tokio = { workspace = true, features = ["time", "net", "macros"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
 tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 selinux = { workspace = true, optional = true }
 
