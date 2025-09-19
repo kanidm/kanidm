@@ -381,7 +381,7 @@ Supplemental URLs are shown in the OAuth2 client configuration in the `oauth2_rs
 ## Short names
 
 By default Kanidm will use SPN as a display username for users. In some cases you may want to use the
-users `name` instead. To change this setting:
+user's `name` instead. To change this setting:
 
 ```
 kanidm system oauth2 prefer-short-username <client name>
