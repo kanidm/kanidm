@@ -310,7 +310,7 @@ impl QueryServerWriteTransaction<'_> {
                 Ok(ConsumerState::RefreshRequired)
             }
             ReplIncrementalContext::NoChangesAvailable => {
-                info!("no changes are available");
+                debug!("no changes are available");
                 Ok(ConsumerState::Ok)
             }
             ReplIncrementalContext::RefreshRequired => {
@@ -335,7 +335,7 @@ impl QueryServerWriteTransaction<'_> {
                 domain_version,
                 domain_patch_level,
                 domain_uuid,
-                ranges,
+                &ranges,
                 schema_entries,
                 meta_entries,
                 entries,
@@ -343,13 +343,13 @@ impl QueryServerWriteTransaction<'_> {
         }
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn consumer_apply_changes_v1(
         &mut self,
         ctx_domain_version: DomainVersion,
         ctx_domain_patch_level: u32,
         ctx_domain_uuid: Uuid,
-        ctx_ranges: BTreeMap<Uuid, ReplAnchoredCidRange>,
+        ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
         ctx_schema_entries: Vec<ReplIncrementalEntryV1>,
         ctx_meta_entries: Vec<ReplIncrementalEntryV1>,
         ctx_entries: Vec<ReplIncrementalEntryV1>,
@@ -385,7 +385,9 @@ impl QueryServerWriteTransaction<'_> {
         let txn_cid = self.get_cid().clone();
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.incremental_preflight_validate_ruv(&ctx_ranges, &txn_cid)
+        let change_count = ctx_schema_entries.len() + ctx_meta_entries.len() + ctx_entries.len();
+
+        ruv.incremental_preflight_validate_ruv(ctx_ranges, &txn_cid)
             .inspect_err(|err| {
                 error!(
                     ?err,
@@ -394,14 +396,13 @@ impl QueryServerWriteTransaction<'_> {
             })?;
 
         // == ⚠️  Below this point we begin to make changes! ==
-        info!(
-            "Proceeding to apply incremental from domain {:?} at level {}",
-            ctx_domain_uuid, ctx_domain_version
+        debug!(
+            "Proceeding to apply incremental with {change_count} changes from domain {ctx_domain_uuid:?} at level {ctx_domain_version}"
         );
 
         debug!(?ctx_ranges);
 
-        debug!("Applying schema entries");
+        debug!("Applying {} schema entries", ctx_schema_entries.len());
         // Apply the schema entries first.
         let schema_changed = self
             .consumer_incremental_apply_entries(ctx_schema_entries)
@@ -416,7 +417,7 @@ impl QueryServerWriteTransaction<'_> {
             })?;
         }
 
-        debug!("Applying meta entries");
+        debug!("Applying {} meta entries", ctx_meta_entries.len());
         // Apply meta entries now.
         let meta_changed = self
             .consumer_incremental_apply_entries(ctx_meta_entries)
@@ -434,7 +435,7 @@ impl QueryServerWriteTransaction<'_> {
             })?;
         }
 
-        debug!("Applying all context entries");
+        debug!("Applying {} context entries", ctx_entries.len());
         // Update all other entries now.
         self.consumer_incremental_apply_entries(ctx_entries)
             .inspect_err(|err| {
@@ -457,11 +458,11 @@ impl QueryServerWriteTransaction<'_> {
         // context. Note that we get this in a writeable form!
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.refresh_validate_ruv(&ctx_ranges).inspect_err(|err| {
+        ruv.refresh_validate_ruv(ctx_ranges).inspect_err(|err| {
             error!(?err, "RUV ranges were not rebuilt correctly.");
         })?;
 
-        ruv.refresh_update_ruv(&ctx_ranges).inspect_err(|err| {
+        ruv.refresh_update_ruv(ctx_ranges).inspect_err(|err| {
             error!(?err, "Unable to update RUV with supplier ranges.");
         })?;
 
@@ -485,7 +486,7 @@ impl QueryServerWriteTransaction<'_> {
                 domain_version,
                 domain_devel,
                 domain_uuid,
-                ranges,
+                &ranges,
                 schema_entries,
                 meta_entries,
                 entries,
@@ -554,7 +555,7 @@ impl QueryServerWriteTransaction<'_> {
         ctx_domain_version: DomainVersion,
         ctx_domain_devel: bool,
         ctx_domain_uuid: Uuid,
-        ctx_ranges: BTreeMap<Uuid, ReplAnchoredCidRange>,
+        ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
         ctx_schema_entries: Vec<ReplEntryV1>,
         ctx_meta_entries: Vec<ReplEntryV1>,
         ctx_entries: Vec<ReplEntryV1>,
@@ -676,11 +677,11 @@ impl QueryServerWriteTransaction<'_> {
         // context. Note that we get this in a writeable form!
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.refresh_validate_ruv(&ctx_ranges).inspect_err(|err| {
+        ruv.refresh_validate_ruv(ctx_ranges).inspect_err(|err| {
             error!(?err, "RUV ranges were not rebuilt correctly.");
         })?;
 
-        ruv.refresh_update_ruv(&ctx_ranges).inspect_err(|err| {
+        ruv.refresh_update_ruv(ctx_ranges).inspect_err(|err| {
             error!(?err, "Unable to update RUV with supplier ranges.");
         })?;
 

@@ -10,9 +10,11 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
-use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::constants::{
+    DEFAULT_CONFIG_PATH, SYSTEM_GROUP_PATH, SYSTEM_PASSWD_PATH, SYSTEM_SHADOW_PATH,
+};
+use kanidm_unix_common::json_codec::JsonCodec;
 use kanidm_unix_common::unix_config::UnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow, EtcDb};
 use kanidm_unix_common::unix_proto::{
@@ -38,50 +40,14 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tokio::net::UnixStream;
 use tokio::sync::broadcast;
+use tokio::sync::watch;
 use tokio::time;
-use tokio_util::codec::{Decoder, Encoder, Framed};
+use tokio_util::codec::Framed;
+use tracing::instrument;
 use walkdir::WalkDir;
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use kanidm_unix_common::selinux_util;
-
-struct TaskCodec;
-
-impl Decoder for TaskCodec {
-    type Error = io::Error;
-    type Item = TaskRequestFrame;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_json::from_slice::<TaskRequestFrame>(src) {
-            Ok(msg) => {
-                // Clear the buffer for the next message.
-                src.clear();
-                Ok(Some(msg))
-            }
-            _ => Ok(None),
-        }
-    }
-}
-
-impl Encoder<TaskResponse> for TaskCodec {
-    type Error = io::Error;
-
-    fn encode(&mut self, msg: TaskResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        debug!("Attempting to send request -> {:?} ...", msg);
-        let data = serde_json::to_vec(&msg).map_err(|e| {
-            error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "JSON encode error")
-        })?;
-        dst.put(data.as_slice());
-        Ok(())
-    }
-}
-
-impl TaskCodec {
-    fn new() -> Self {
-        TaskCodec
-    }
-}
 
 fn chown(path: &Path, gid: u32) -> Result<(), String> {
     let path_os = CString::new(path.as_os_str().as_bytes())
@@ -111,13 +77,13 @@ fn create_home_directory(
     // mounts
     let home_prefix_path = home_prefix_path
         .canonicalize()
-        .map_err(|e| format!("{:?}", e))?;
+        .map_err(|e| format!("{e:?}"))?;
 
     // This is where the storage is *mounted*. If not set, falls back to the home_prefix.
     let home_mount_prefix_path = home_mount_prefix_path
         .unwrap_or(&home_prefix_path)
         .canonicalize()
-        .map_err(|e| format!("{:?}", e))?;
+        .map_err(|e| format!("{e:?}"))?;
 
     // Does our home_prefix actually exist?
     if !home_prefix_path.exists() || !home_prefix_path.is_dir() || !home_prefix_path.is_absolute() {
@@ -168,7 +134,7 @@ fn create_home_directory(
         if let Err(e) = fs::create_dir_all(&hd_mount_path) {
             let _ = unsafe { umask(before) };
             error!(err = ?e, ?hd_mount_path, "Unable to create directory");
-            return Err(format!("{:?}", e));
+            return Err(format!("{e:?}"));
         }
         let _ = unsafe { umask(before) };
 
@@ -242,7 +208,7 @@ fn create_home_directory(
                 Ok(a) => a,
                 Err(e) => {
                     error!(err = ?e, ?alias_path, "Unable to read alias path metadata");
-                    return Err(format!("{:?}", e));
+                    return Err(format!("{e:?}"));
                 }
             };
 
@@ -250,13 +216,13 @@ fn create_home_directory(
                 // Probably need to update it.
                 if let Err(e) = fs::remove_file(&alias_path) {
                     error!(err = ?e, ?alias_path, "Unable to remove existing alias path");
-                    return Err(format!("{:?}", e));
+                    return Err(format!("{e:?}"));
                 }
 
                 debug!("updating symlink {:?} -> {:?}", alias_path, hd_mount_path);
                 if let Err(e) = symlink(&hd_mount_path, &alias_path) {
                     error!(err = ?e, ?alias_path, "Unable to update alias path");
-                    return Err(format!("{:?}", e));
+                    return Err(format!("{e:?}"));
                 }
             } else {
                 warn!(
@@ -270,82 +236,125 @@ fn create_home_directory(
             debug!("creating symlink {:?} -> {:?}", alias_path, hd_mount_path);
             if let Err(e) = symlink(&hd_mount_path, &alias_path) {
                 error!(err = ?e, ?alias_path, "Unable to create alias path");
-                return Err(format!("{:?}", e));
+                return Err(format!("{e:?}"));
             }
         }
     }
     Ok(())
 }
 
-async fn handle_tasks(
-    stream: UnixStream,
-    ctl_broadcast_rx: &mut broadcast::Receiver<bool>,
-    shadow_broadcast_rx: &mut broadcast::Receiver<bool>,
-    cfg: &UnixdConfig,
+async fn shadow_reload_task(
+    shadow_data_watch_tx: watch::Sender<EtcDb>,
+    mut shadow_broadcast_rx: broadcast::Receiver<bool>,
 ) {
-    let mut reqs = Framed::new(stream, TaskCodec::new());
+    debug!("shadow reload task has started ...");
 
-    loop {
-        tokio::select! {
-            _ = ctl_broadcast_rx.recv() => {
-                break;
+    while shadow_broadcast_rx.recv().await.is_ok() {
+        match process_etc_passwd_group().await {
+            Ok(etc_db) => {
+                shadow_data_watch_tx.send_replace(etc_db);
+                debug!("shadow reload task sent");
             }
-            request = reqs.next() => {
-                match request {
-                    Some(Ok(TaskRequestFrame {
-                        id,
-                        req: TaskRequest::HomeDirectory(info),
-                    })) => {
-                        debug!("Received task -> HomeDirectory({:?})", info);
-
-                        let resp = match create_home_directory(
-                            &info,
-                            cfg.home_prefix.as_ref(),
-                            cfg.home_mount_prefix.as_ref(),
-                            cfg.use_etc_skel,
-                            cfg.selinux,
-                        ) {
-                            Ok(()) => TaskResponse::Success(id),
-                            Err(msg) => TaskResponse::Error(msg),
-                        };
-
-                        // Now send a result.
-                        if let Err(err) = reqs.send(resp).await {
-                            error!(?err, "Unable to communicate to kanidm unixd");
-                            break;
-                        }
-                        // All good, loop.
-                    }
-                    other => {
-                        error!("Error -> {:?}", other);
-                        break;
-                    }
-                }
-            }
-            _ = shadow_broadcast_rx.recv() => {
-                // process etc shadow and send it here.
-                match process_etc_passwd_group().await {
-                    Ok(etc_db) => {
-                        let resp = TaskResponse::NotifyShadowChange(etc_db);
-                        if let Err(err) = reqs.send(resp).await {
-                            error!(?err, "Unable to communicate to kanidm unixd");
-                            break;
-                        }
-                    }
-                    Err(()) => {
-                        error!("Unable to process etc db");
-                        continue
-                    }
-                }
+            Err(()) => {
+                error!("Unable to process etc db");
+                continue;
             }
         }
     }
 
-    info!("Disconnected from kanidm_unixd ...");
+    debug!("shadow reload task has stopped");
 }
 
+async fn handle_shadow_reload(shadow_data_watch_rx: &mut watch::Receiver<EtcDb>) -> TaskResponse {
+    debug!("Received shadow reload event.");
+    let etc_db: EtcDb = {
+        let etc_db_ref = shadow_data_watch_rx.borrow_and_update();
+        (*etc_db_ref).clone()
+    };
+    // process etc shadow and send it here.
+    TaskResponse::NotifyShadowChange(etc_db)
+}
+
+async fn handle_unixd_request(
+    request: Option<Result<TaskRequestFrame, io::Error>>,
+    cfg: &UnixdConfig,
+) -> Result<TaskResponse, ()> {
+    debug!("Received unixd event.");
+    match request {
+        Some(Ok(TaskRequestFrame {
+            id,
+            req: TaskRequest::HomeDirectory(info),
+        })) => {
+            debug!("Received task -> HomeDirectory({:?})", info);
+
+            match create_home_directory(
+                &info,
+                cfg.home_prefix.as_ref(),
+                cfg.home_mount_prefix.as_ref(),
+                cfg.use_etc_skel,
+                cfg.selinux,
+            ) {
+                Ok(()) => Ok(TaskResponse::Success(id)),
+                Err(msg) => Ok(TaskResponse::Error(msg)),
+            }
+        }
+        other => {
+            error!("Error -> got un-handled Request Frame {other:?}");
+            Err(())
+        }
+    }
+}
+
+async fn handle_tasks(
+    stream: UnixStream,
+    ctl_broadcast_rx: &mut broadcast::Receiver<bool>,
+    shadow_data_watch_rx: &mut watch::Receiver<EtcDb>,
+    cfg: &UnixdConfig,
+) {
+    let codec: JsonCodec<TaskRequestFrame, TaskResponse> = JsonCodec::default();
+
+    let mut reqs = Framed::new(stream, codec);
+
+    // Immediately trigger that we should reload the shadow files for the new connected handler
+    shadow_data_watch_rx.mark_changed();
+
+    debug!("Task handler loop has started ...");
+
+    loop {
+        let msg = tokio::select! {
+            biased; // tell tokio to poll these in order
+            _ = ctl_broadcast_rx.recv() => {
+                // We received a shutdown signal.
+                debug!("Received shutdown signal, breaking task handler loop ...");
+                return
+            }
+            // We bias to *sending* messages in tasks.
+            Ok(_) = shadow_data_watch_rx.changed() => {
+                handle_shadow_reload(shadow_data_watch_rx).await
+            }
+            request = reqs.next() => {
+                match handle_unixd_request(request,  cfg).await {
+                    Ok(response) => {
+                       response
+                    }
+                    Err(_) => {
+                        error!("Error handling request, exiting task handler loop ...");
+                        return;
+                    }
+                }
+            }
+        };
+
+        if let Err(e) = reqs.send(msg).await {
+            error!(?e, "Error sending response to kanidm_unixd");
+            return;
+        }
+    }
+}
+
+#[instrument(level = "debug", skip_all)]
 async fn process_etc_passwd_group() -> Result<EtcDb, ()> {
-    let mut file = File::open("/etc/passwd").await.map_err(|err| {
+    let mut file = File::open(SYSTEM_PASSWD_PATH).await.map_err(|err| {
         error!(?err);
     })?;
     let mut contents = vec![];
@@ -359,7 +368,7 @@ async fn process_etc_passwd_group() -> Result<EtcDb, ()> {
             error!(?err);
         })?;
 
-    let mut file = File::open("/etc/shadow").await.map_err(|err| {
+    let mut file = File::open(SYSTEM_SHADOW_PATH).await.map_err(|err| {
         error!(?err);
     })?;
     let mut contents = vec![];
@@ -373,7 +382,7 @@ async fn process_etc_passwd_group() -> Result<EtcDb, ()> {
             error!(?err);
         })?;
 
-    let mut file = File::open("/etc/group").await.map_err(|err| {
+    let mut file = File::open(SYSTEM_GROUP_PATH).await.map_err(|err| {
         error!(?err);
     })?;
     let mut contents = vec![];
@@ -398,7 +407,7 @@ fn setup_shadow_inotify_watcher(
     shadow_broadcast_tx: broadcast::Sender<bool>,
 ) -> Result<Debouncer<RecommendedWatcher, RecommendedCache>, ExitCode> {
     let watcher = new_debouncer(
-        Duration::from_secs(1),
+        Duration::from_secs(5),
         None,
         move |event: Result<Vec<DebouncedEvent>, _>| {
             let array_of_events = match event {
@@ -416,9 +425,9 @@ fn setup_shadow_inotify_watcher(
             for inode_event in array_of_events.iter() {
                 if !inode_event.kind.is_access()
                     && inode_event.paths.iter().any(|path| {
-                        path == Path::new("/etc/group")
-                            || path == Path::new("/etc/passwd")
-                            || path == Path::new("/etc/shadow")
+                        path == Path::new(SYSTEM_GROUP_PATH)
+                            || path == Path::new(SYSTEM_PASSWD_PATH)
+                            || path == Path::new(SYSTEM_SHADOW_PATH)
                     })
                 {
                     debug!(?inode_event, "Handling inotify modification event");
@@ -430,7 +439,7 @@ fn setup_shadow_inotify_watcher(
             if path_of_interest_was_changed {
                 let _ = shadow_broadcast_tx.send(true);
             } else {
-                debug!(?array_of_events, "IGNORED");
+                trace!(?array_of_events, "IGNORED");
             }
         },
     )
@@ -518,12 +527,30 @@ async fn main() -> ExitCode {
 
             // This is to broadcast when we need to reload the shadow
             // files.
-            let (shadow_broadcast_tx, mut shadow_broadcast_rx) = broadcast::channel(4);
+            let (shadow_broadcast_tx, shadow_broadcast_rx) = broadcast::channel(4);
 
             let watcher = match setup_shadow_inotify_watcher(shadow_broadcast_tx.clone()) {
                 Ok(w) => w,
                 Err(exit) => return exit,
             };
+
+            // Setup the etcdb watch
+            let etc_db = match process_etc_passwd_group().await {
+                Ok(etc_db) => etc_db,
+                Err(err) => {
+                    warn!(?err, "unable to process {SYSTEM_PASSWD_PATH} and related files.");
+                    // Return an empty set instead.
+                    EtcDb::default()
+                }
+            };
+
+            let (shadow_data_watch_tx, mut shadow_data_watch_rx) = watch::channel(etc_db);
+
+            let _shadow_task = tokio::spawn(async move {
+                shadow_reload_task(
+                    shadow_data_watch_tx, shadow_broadcast_rx
+                ).await
+            });
 
             let server = tokio::spawn(async move {
                 loop {
@@ -538,12 +565,9 @@ async fn main() -> ExitCode {
                                 Ok(stream) => {
                                     info!("Found kanidm_unixd, waiting for tasks ...");
 
-                                    // Immediately trigger that we should reload the shadow files
-                                    let _ = shadow_broadcast_tx.send(true);
-
-                                    // Yep! Now let the main handler do it's job.
+                                    // Yep! Now let the main handler do its job.
                                     // If it returns (dc, etc, then we loop and try again).
-                                    handle_tasks(stream, &mut d_broadcast_rx, &mut shadow_broadcast_rx, &cfg).await;
+                                    handle_tasks(stream, &mut d_broadcast_rx, &mut shadow_data_watch_rx, &cfg).await;
                                     continue;
                                 }
                                 Err(e) => {

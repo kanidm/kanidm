@@ -149,7 +149,7 @@ pub(crate) fn test(args: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let test_fn = &input.sig.ident;
-    let test_driver = Ident::new(&format!("tk_{}", test_fn), input.sig.span());
+    let test_driver = Ident::new(&format!("tk_{test_fn}"), input.sig.span());
 
     // Effectively we are just injecting a real test function around this which we will
     // call.

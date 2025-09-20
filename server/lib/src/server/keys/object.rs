@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use compact_jwt::{compact::JweCompact, jwe::Jwe};
-use compact_jwt::{Jwk, Jws, JwsCompact};
+use compact_jwt::{Jwk, JwkKeySet, Jws, JwsCompact};
 use smolset::SmolSet;
 use std::collections::BTreeSet;
 use uuid::Uuid;
@@ -28,6 +28,25 @@ pub trait KeyObjectT {
         jws: &Jws,
         current_time: Duration,
     ) -> Result<JwsCompact, OperationError>;
+
+    fn jws_es256_jwks(&self) -> Option<JwkKeySet>;
+
+    fn jws_rs256_import(
+        &mut self,
+        import_keys: &SmolSet<[Vec<u8>; 1]>,
+        valid_from: Duration,
+        cid: &Cid,
+    ) -> Result<(), OperationError>;
+
+    fn jws_rs256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError>;
+
+    fn jws_rs256_sign(
+        &self,
+        jws: &Jws,
+        current_time: Duration,
+    ) -> Result<JwsCompact, OperationError>;
+
+    fn jws_rs256_jwks(&self) -> Option<JwkKeySet>;
 
     fn jws_verify(&self, jwsc: &JwsCompact) -> Result<Jws, OperationError>;
 

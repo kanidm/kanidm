@@ -95,7 +95,7 @@ async fn test_sync_account_lifecycle(rsclient: &KanidmClient) {
         .map(|jws| jws.from_json::<ScimSyncToken>().expect("Invalid json"))
         .expect("Unable verify token");
 
-    println!("{:?}", token);
+    println!("{token:?}");
 
     rsclient
         .idm_sync_account_destroy_token("ipa_sync_account")

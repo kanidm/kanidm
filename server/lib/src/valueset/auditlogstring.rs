@@ -226,7 +226,7 @@ mod tests {
         };
         // Should always be '1' since the set merge would have pushed '0' (ring-buffer);
         assert_eq!(c.ts, Duration::from_secs(1));
-        println!("{:?}", c);
+        println!("{c:?}");
         drop(v_iter);
 
         // Make a second set.
@@ -248,7 +248,7 @@ mod tests {
         };
         // Should always be '1' since the set merge would have pushed '0' (ring-buffer);
         assert_eq!(c.ts, Duration::from_secs(1));
-        println!("{:?}", c);
+        println!("{c:?}");
         drop(v_iter);
 
         // Now merge in with a set that has a value that is newer.
@@ -274,7 +274,7 @@ mod tests {
             unreachable!();
         };
         // Should always be '1' since the set merge would have pushed '0' (ring-buffer);
-        println!("{:?}", c);
+        println!("{c:?}");
         assert_eq!(c.ts, Duration::from_secs(2));
         drop(v_iter);
     }
@@ -315,7 +315,7 @@ mod tests {
         };
         // Should always be '1' since the set merge would have pushed '0' (ring-buffer);
         assert_eq!(c.ts, Duration::from_secs(1));
-        println!("{:?}", c);
+        println!("{c:?}");
         drop(v_iter);
 
         // Now merge in with a set that has a value that is newer.
@@ -342,7 +342,7 @@ mod tests {
             unreachable!();
         };
         // Should always be '1' since the set merge would have pushed '0' (ring-buffer);
-        println!("{:?}", c);
+        println!("{c:?}");
         assert_eq!(c.ts, Duration::from_secs(2));
         drop(v_iter);
     }

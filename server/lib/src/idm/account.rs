@@ -1,9 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
-use kanidm_proto::internal::{
-    BackupCodesView, CredentialStatus, UatPurpose, UiHint, UserAuthToken,
-};
+use kanidm_proto::internal::{CredentialStatus, UatPurpose, UiHint, UserAuthToken};
 use kanidm_proto::v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -654,13 +652,6 @@ impl Account {
             .ok_or(OperationError::NoMatchingAttributes)
     }
 
-    pub(crate) fn to_backupcodesview(&self) -> Result<BackupCodesView, OperationError> {
-        self.primary
-            .as_ref()
-            .ok_or(OperationError::InvalidState)
-            .and_then(|cred| cred.get_backup_code_view())
-    }
-
     pub(crate) fn existing_credential_id_list(&self) -> Option<Vec<CredentialID>> {
         // TODO!!!
         // Used in registrations only for disallowing existing credentials.
@@ -779,18 +770,6 @@ impl Account {
             }
         }
         Ok(None)
-    }
-
-    pub(crate) fn generate_application_password_mod(
-        &self,
-        application: Uuid,
-        label: &str,
-        cleartext: &str,
-        policy: &CryptoPolicy,
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let ap = ApplicationPassword::new(application, label, cleartext, policy)?;
-        let vap = Value::ApplicationPassword(ap);
-        Ok(ModifyList::new_append(Attribute::ApplicationPassword, vap))
     }
 
     pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
@@ -917,13 +896,13 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         // Remove the service account class.
         // Add the person class.
-        let mut new_classes = prev_classes.clone();
-        new_classes.remove(EntryClass::ServiceAccount.into());
-        new_classes.insert(EntryClass::Person.into());
+        let mut new_iutf8es = prev_classes.clone();
+        new_iutf8es.remove(EntryClass::ServiceAccount.into());
+        new_iutf8es.insert(EntryClass::Person.into());
 
         // diff the schema attrs, and remove the ones that are service_account only.
         let (_added, removed) = schema_ref
-            .query_attrs_difference(&prev_classes, &new_classes)
+            .query_attrs_difference(&prev_classes, &new_iutf8es)
             .map_err(|se| {
                 admin_error!("While querying the schema, it reported that requested classes may not be present indicating a possible corruption");
                 OperationError::SchemaViolation(

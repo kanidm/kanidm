@@ -1366,7 +1366,7 @@ impl IdlArcSqlite {
         self.name_cache.try_quiesce();
     }
 
-    pub fn read(&self) -> Result<IdlArcSqliteReadTransaction, OperationError> {
+    pub fn read(&self) -> Result<IdlArcSqliteReadTransaction<'_>, OperationError> {
         // IMPORTANT! Always take entrycache FIRST
         let entry_cache_read = self.entry_cache.read();
         let db_read = self.db.read()?;
@@ -1385,7 +1385,7 @@ impl IdlArcSqlite {
         })
     }
 
-    pub fn write(&self) -> Result<IdlArcSqliteWriteTransaction, OperationError> {
+    pub fn write(&self) -> Result<IdlArcSqliteWriteTransaction<'_>, OperationError> {
         // IMPORTANT! Always take entrycache FIRST
         let entry_cache_write = self.entry_cache.write();
         let db_write = self.db.write()?;

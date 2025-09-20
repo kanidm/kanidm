@@ -13,7 +13,7 @@
 #[macro_use]
 extern crate tracing;
 
-use crate::common::OpType;
+use kanidm_proto::cli::OpType;
 use std::path::PathBuf;
 
 use identify_user_no_tui::{run_identity_verification_no_tui, IdentifyUserState};
@@ -32,6 +32,7 @@ mod oauth2;
 mod person;
 mod raw;
 mod recycle;
+mod schema;
 mod serviceaccount;
 mod session;
 mod synch;
@@ -43,7 +44,7 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMod
     match response {
         ClientError::Http(status, error, opid) => {
             let error_msg = match &error {
-                Some(msg) => format!(" {:?}", msg),
+                Some(msg) => format!(" {msg:?}"),
                 None => "".to_string(),
             };
             error!("OperationId: {:?}", opid);
@@ -65,7 +66,7 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMod
             std::process::exit(1);
         }
         _ => {
-            eprintln!("{:?}", response);
+            eprintln!("{response:?}");
         }
     };
 }
@@ -85,23 +86,16 @@ pub(crate) fn handle_group_account_policy_error(response: ClientError, _output_m
 }
 
 impl SelfOpt {
-    pub fn debug(&self) -> bool {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
-            SelfOpt::Whoami(copt) => copt.debug,
-            SelfOpt::IdentifyUser(copt) => copt.debug,
-        }
-    }
-
-    pub async fn exec(&self) {
-        match self {
-            SelfOpt::Whoami(copt) => {
-                let client = copt.to_client(OpType::Read).await;
+            SelfOpt::Whoami => {
+                let client = opt.to_client(OpType::Read).await;
 
                 match client.whoami().await {
                     Ok(o_ent) => {
                         match o_ent {
                             Some(ent) => {
-                                println!("{}", ent);
+                                opt.output_mode.print_message(ent);
                             }
                             None => {
                                 error!("Authentication with cached token failed, can't query information.");
@@ -109,11 +103,11 @@ impl SelfOpt {
                             }
                         }
                     }
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
-            SelfOpt::IdentifyUser(copt) => {
-                let client = copt.to_client(OpType::Write).await;
+            SelfOpt::IdentifyUser => {
+                let client = opt.to_client(OpType::Write).await;
                 let whoami_response = match client.whoami().await {
                     Ok(o_ent) => {
                         match o_ent {
@@ -125,7 +119,8 @@ impl SelfOpt {
                         }
                     }
                     Err(e) => {
-                        println!("Error querying whoami endpoint: {:?}", e); // TODO: add an error ID (internal/web response error, restart or check connectivity)
+                        opt.output_mode
+                            .print_message(format!("Error querying whoami endpoint: {e:?}")); // TODO: add an error ID (internal/web response error, restart or check connectivity)
                         return;
                     }
                 };
@@ -134,7 +129,7 @@ impl SelfOpt {
                     match whoami_response.attrs.get("spn").and_then(|v| v.first()) {
                         Some(spn) => spn,
                         None => {
-                            eprintln!("Failed to parse your SPN from the system's whoami endpoint, exiting!"); // TODO: add an error ID (internal/web response error, restart)
+                            opt.output_mode.print_message("Failed to parse your SPN from the system's whoami endpoint, exiting!"); // TODO: add an error ID (internal/web response error, restart)
                             return;
                         }
                     };
@@ -146,66 +141,43 @@ impl SelfOpt {
 }
 
 impl SystemOpt {
-    pub fn debug(&self) -> bool {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
-            SystemOpt::Api { commands } => commands.debug(),
-            SystemOpt::PwBadlist { commands } => commands.debug(),
-            SystemOpt::DeniedNames { commands } => commands.debug(),
-            SystemOpt::Oauth2 { commands } => commands.debug(),
-            SystemOpt::Domain { commands } => commands.debug(),
-            SystemOpt::Synch { commands } => commands.debug(),
-        }
-    }
-
-    pub async fn exec(&self) {
-        match self {
-            SystemOpt::Api { commands } => commands.exec().await,
-            SystemOpt::PwBadlist { commands } => commands.exec().await,
-            SystemOpt::DeniedNames { commands } => commands.exec().await,
-            SystemOpt::Oauth2 { commands } => commands.exec().await,
-            SystemOpt::Domain { commands } => commands.exec().await,
-            SystemOpt::Synch { commands } => commands.exec().await,
+            SystemOpt::Api { commands } => commands.exec(opt).await,
+            SystemOpt::PwBadlist { commands } => commands.exec(opt).await,
+            SystemOpt::DeniedNames { commands } => commands.exec(opt).await,
+            SystemOpt::Oauth2 { commands } => commands.exec(opt).await,
+            SystemOpt::Domain { commands } => commands.exec(opt).await,
+            SystemOpt::Synch { commands } => commands.exec(opt).await,
         }
     }
 }
 
-impl KanidmClientOpt {
-    pub fn debug(&self) -> bool {
-        match self {
-            KanidmClientOpt::Raw { commands } => commands.debug(),
-            KanidmClientOpt::Login(lopt) => lopt.debug(),
-            KanidmClientOpt::Reauth(lopt) => lopt.debug(),
-            KanidmClientOpt::Logout(lopt) => lopt.debug(),
-            KanidmClientOpt::Session { commands } => commands.debug(),
-            KanidmClientOpt::CSelf { commands } => commands.debug(),
-            KanidmClientOpt::Group { commands } => commands.debug(),
-            KanidmClientOpt::Person { commands } => commands.debug(),
-            KanidmClientOpt::ServiceAccount { commands } => commands.debug(),
-            KanidmClientOpt::Graph(gopt) => gopt.debug(),
-            KanidmClientOpt::System { commands } => commands.debug(),
-            KanidmClientOpt::Recycle { commands } => commands.debug(),
-            KanidmClientOpt::Version {} => {
-                println!("kanidm {}", env!("KANIDM_PKG_VERSION"));
-                true
+impl KanidmClientParser {
+    pub async fn exec(self) {
+        match self.commands.clone() {
+            KanidmClientOpt::Raw { commands } => commands.exec(self).await,
+            KanidmClientOpt::Login(lopt) => lopt.exec(self).await,
+            KanidmClientOpt::Reauth { mode } => self.reauth(mode).await,
+            KanidmClientOpt::Logout(lopt) => lopt.exec(self).await,
+            KanidmClientOpt::Session { commands } => commands.exec(self).await,
+            KanidmClientOpt::CSelf { commands } => commands.exec(self).await,
+            KanidmClientOpt::Person { commands } => commands.exec(self).await,
+            KanidmClientOpt::ServiceAccount { commands } => commands.exec(self).await,
+            KanidmClientOpt::Group { commands } => commands.exec(self).await,
+            KanidmClientOpt::Graph(gops) => gops.exec(self).await,
+            KanidmClientOpt::System { commands } => commands.exec(self).await,
+            KanidmClientOpt::Schema {
+                commands: SchemaOpt::Class { commands },
+            } => commands.exec(self).await,
+            KanidmClientOpt::Schema {
+                commands: SchemaOpt::Attribute { commands },
+            } => commands.exec(self).await,
+            KanidmClientOpt::Recycle { commands } => commands.exec(self).await,
+            KanidmClientOpt::Version => {
+                self.output_mode
+                    .print_message(format!("kanidm {}", env!("KANIDM_PKG_VERSION")));
             }
-        }
-    }
-
-    pub async fn exec(&self) {
-        match self {
-            KanidmClientOpt::Raw { commands } => commands.exec().await,
-            KanidmClientOpt::Login(lopt) => lopt.exec().await,
-            KanidmClientOpt::Reauth(lopt) => lopt.exec().await,
-            KanidmClientOpt::Logout(lopt) => lopt.exec().await,
-            KanidmClientOpt::Session { commands } => commands.exec().await,
-            KanidmClientOpt::CSelf { commands } => commands.exec().await,
-            KanidmClientOpt::Person { commands } => commands.exec().await,
-            KanidmClientOpt::ServiceAccount { commands } => commands.exec().await,
-            KanidmClientOpt::Group { commands } => commands.exec().await,
-            KanidmClientOpt::Graph(gops) => gops.exec().await,
-            KanidmClientOpt::System { commands } => commands.exec().await,
-            KanidmClientOpt::Recycle { commands } => commands.exec().await,
-            KanidmClientOpt::Version {} => (),
         }
     }
 }
@@ -231,17 +203,14 @@ pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
     None
 }
 
-pub const IDENTITY_UNAVAILABLE_ERROR_MESSAGE: &str = "The identity verification feature is not enabled for your account, please contact an administrator.";
-pub const CODE_FAILURE_ERROR_MESSAGE: &str = "The provided code doesn't match, please try again.";
-pub const INVALID_USER_ID_ERROR_MESSAGE: &str =
-    "account exists but cannot access the identity verification feature 😕";
+pub const IDENTITY_UNAVAILABLE_ERROR_MESSAGE: &str = "Identity verification is not available.";
+pub const CODE_FAILURE_ERROR_MESSAGE: &str = "The provided verification code is invalid. Check the code with the other person, and if it remains invalid, they may be attempting to fool you!";
 pub const INVALID_STATE_ERROR_MESSAGE: &str =
     "The user identification flow is in an invalid state 😵😵";
 
 mod identify_user_no_tui {
     use crate::{
-        CODE_FAILURE_ERROR_MESSAGE, IDENTITY_UNAVAILABLE_ERROR_MESSAGE,
-        INVALID_STATE_ERROR_MESSAGE, INVALID_USER_ID_ERROR_MESSAGE,
+        CODE_FAILURE_ERROR_MESSAGE, IDENTITY_UNAVAILABLE_ERROR_MESSAGE, INVALID_STATE_ERROR_MESSAGE,
     };
 
     use kanidm_client::{ClientError, KanidmClient};
@@ -271,7 +240,7 @@ mod identify_user_no_tui {
 
     fn server_error(e: &ClientError) {
         eprintln!("Server error!"); // TODO: add an error ID (internal error, restart)
-        eprintln!("{:?}", e);
+        eprintln!("{e:?}");
         println!("Exiting...");
     }
 
@@ -340,10 +309,6 @@ mod identify_user_no_tui {
 
                             other_id = Some(other_user_id);
                         }
-                        IdentifyUserResponse::InvalidUserId => {
-                            eprintln!("{other_user_id} {INVALID_USER_ID_ERROR_MESSAGE}");
-                            return;
-                        }
                         _ => {
                             eprintln!("{INVALID_STATE_ERROR_MESSAGE}");
                             return;
@@ -390,13 +355,6 @@ mod identify_user_no_tui {
                             );
                             return;
                         }
-                        IdentifyUserResponse::InvalidUserId => {
-                            eprintln!(
-                                "{} {INVALID_USER_ID_ERROR_MESSAGE}",
-                                other_id.as_deref().unwrap_or_default()
-                            );
-                            return;
-                        }
                         IdentifyUserResponse::ProvideCode { step, totp } => {
                             // since we have already inserted the code, we have to go to display code second,
                             state = IdentifyUserState::DisplayCodeSecond {
@@ -412,7 +370,7 @@ mod identify_user_no_tui {
                     }
                 }
                 IdentifyUserState::DisplayCodeFirst { self_totp, step } => {
-                    println!("Provide the following code when asked: {}", self_totp);
+                    println!("Provide the following code when asked: {self_totp}");
                     let seconds_left = get_ms_left_from_now(step as u128) / 1000;
                     println!("This codes expires in {seconds_left} seconds");
                     let _ = stdout().flush();
@@ -429,7 +387,7 @@ mod identify_user_no_tui {
                             return;
                         },
                         Err(e) => {
-                            eprintln!("An error occurred while trying to read from stderr: {:?}", e); // TODO: add error ID (internal error, restart)
+                            eprintln!("An error occurred while trying to read from stderr: {e:?}"); // TODO: add error ID (internal error, restart)
                             println!("Exiting...");
                             return;
                         },
@@ -438,7 +396,7 @@ mod identify_user_no_tui {
                     state = IdentifyUserState::SubmitCode;
                 }
                 IdentifyUserState::DisplayCodeSecond { self_totp, step } => {
-                    println!("Provide the following code when asked: {}", self_totp);
+                    println!("Provide the following code when asked: {self_totp}");
                     let seconds_left = get_ms_left_from_now(step as u128) / 1000;
                     println!("This codes expires in {seconds_left} seconds!");
                     let _ = stdout().flush();
@@ -459,7 +417,7 @@ mod identify_user_no_tui {
                             return;
                         },
                         Err(e) => {
-                            eprintln!("An error occurred while trying to read from stderr: {:?}", e); // TODO: add error ID (internal error, restart)
+                            eprintln!("An error occurred while trying to read from stderr: {e:?}"); // TODO: add error ID (internal error, restart)
                             println!("Exiting...");
                             return;
                         },
@@ -469,8 +427,6 @@ mod identify_user_no_tui {
         }
     }
 
-    // TODO: this function is somewhat a duplicate of what can be found in the webui, see https://github.com/kanidm/kanidm/blob/003234c2d0a52146683628156e2a106bf61fe9f4/server/web_ui/src/components/totpdisplay.rs#L83
-    // * should we move it to a common crate or can we just leave it there?
     fn get_ms_left_from_now(step: u128) -> u32 {
         #[allow(clippy::expect_used)]
         let dur = SystemTime::now()

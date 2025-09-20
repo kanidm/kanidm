@@ -20,6 +20,7 @@ use openssl::pkey::Private;
 use openssl::pkey::Public;
 use smolset::SmolSet;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use time::OffsetDateTime;
 use webauthn_rs::prelude::AttestationCaList;
@@ -154,6 +155,15 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_>;
 
     fn equal(&self, other: &ValueSet) -> bool;
+
+    fn cmp(&self, _other: &ValueSet) -> Ordering {
+        // IMPORTANT - in the case we attempt to compare the ordering of two value sets
+        // that are different syntaxs or types, the CORRECT and reliable thing to do is
+        // report them as equal such that any sorting function won't rearrange the values.
+        error!("cmp should not be called on {:?}", self.syntax());
+        debug_assert!(false);
+        Ordering::Equal
+    }
 
     fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError>;
 
@@ -999,11 +1009,11 @@ pub(crate) fn scim_json_reflexive(vs: &ValueSet, data: &str) {
     let scim_value = vs.to_scim_value().unwrap().assume_resolved();
 
     let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-    eprintln!("{}", strout);
+    eprintln!("{strout}");
 
     let json_value: serde_json::Value = serde_json::to_value(&scim_value).unwrap();
 
-    eprintln!("{}", data);
+    eprintln!("{data}");
     let expect: serde_json::Value = serde_json::from_str(data).unwrap();
 
     assert_eq!(json_value, expect);
@@ -1019,7 +1029,7 @@ pub(crate) fn scim_json_reflexive_unresolved(
     let scim_value = write_txn.resolve_scim_interim(scim_int_value).unwrap();
 
     let strout = serde_json::to_string_pretty(&scim_value).expect("Failed to serialize");
-    eprintln!("{}", strout);
+    eprintln!("{strout}");
 
     let json_value: serde_json::Value =
         serde_json::to_value(&scim_value).expect("Failed to convert to JSON");
@@ -1038,7 +1048,7 @@ pub(crate) fn scim_json_put_reflexive<T: ValueSetScimPut>(
     let scim_value = expect_vs.to_scim_value().unwrap().assume_resolved();
 
     let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-    eprintln!("{}", strout);
+    eprintln!("{strout}");
 
     let generic = serde_json::to_value(scim_value).unwrap();
     // Check that we can turn back into a vs from the generic version.

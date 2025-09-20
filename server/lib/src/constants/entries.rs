@@ -7,6 +7,7 @@ use crate::valueset::{ValueSet, ValueSetIutf8};
 pub use kanidm_proto::attribute::Attribute;
 use kanidm_proto::constants::*;
 use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::ScimFilter;
 
 //TODO: This would do well in the proto lib
 // together with all the other definitions.
@@ -40,6 +41,7 @@ pub enum EntryClass {
     KeyProviderInternal,
     KeyObject,
     KeyObjectJwtEs256,
+    KeyObjectJwtRs256,
     KeyObjectJweA128GCM,
     KeyObjectInternal,
     MemberOf,
@@ -64,6 +66,12 @@ pub enum EntryClass {
     SystemConfig,
     #[cfg(any(test, debug_assertions))]
     TestClass,
+}
+
+impl From<EntryClass> for ScimFilter {
+    fn from(ec: EntryClass) -> Self {
+        ScimFilter::Equal(Attribute::Class.into(), ec.into())
+    }
 }
 
 impl From<EntryClass> for &'static str {
@@ -94,6 +102,7 @@ impl From<EntryClass> for &'static str {
             EntryClass::KeyProviderInternal => ENTRYCLASS_KEY_PROVIDER_INTERNAL,
             EntryClass::KeyObject => ENTRYCLASS_KEY_OBJECT,
             EntryClass::KeyObjectJwtEs256 => ENTRYCLASS_KEY_OBJECT_JWT_ES256,
+            EntryClass::KeyObjectJwtRs256 => ENTRYCLASS_KEY_OBJECT_JWT_RS256,
             EntryClass::KeyObjectJweA128GCM => ENTRYCLASS_KEY_OBJECT_JWE_A128GCM,
             EntryClass::KeyObjectInternal => ENTRYCLASS_KEY_OBJECT_INTERNAL,
             EntryClass::MemberOf => ENTRYCLASS_MEMBER_OF,
@@ -168,7 +177,7 @@ impl From<EntryClass> for crate::prelude::AttrString {
 impl Display for EntryClass {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> std::fmt::Result {
         let s: String = (*self).into();
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

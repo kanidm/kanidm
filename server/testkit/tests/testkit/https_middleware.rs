@@ -17,7 +17,7 @@ async fn test_https_middleware_headers(rsclient: &KanidmClient) {
             );
         }
     };
-    eprintln!("response: {:#?}", response);
+    eprintln!("response: {response:#?}");
     assert_eq!(response.status(), 200);
     eprintln!(
         "csp headers: {:#?}",
@@ -39,7 +39,7 @@ async fn test_https_middleware_headers(rsclient: &KanidmClient) {
             );
         }
     };
-    eprintln!("response: {:#?}", response);
+    eprintln!("response: {response:#?}");
     assert_eq!(response.status(), 200);
 
     eprintln!(

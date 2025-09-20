@@ -1,12 +1,9 @@
 #![deny(warnings)]
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
-use time::OffsetDateTime;
-
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_hsm_crypto::{
+    provider::{BoxedDynTpm, SoftTpm, Tpm},
+    AuthValue,
+};
 use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
 use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
@@ -22,10 +19,14 @@ use kanidm_unix_resolver::resolver::Resolver;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
 use kanidmd_testkit::{is_free_port, PORT_ALLOC};
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
+use time::OffsetDateTime;
 use tokio::task;
-use tracing::log::{debug, trace};
-
-use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
+use tracing::debug;
 
 const ADMIN_TEST_USER: &str = "admin";
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -71,7 +72,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
 
     // Setup the config ...
     let mut config = Configuration::new_for_test();
-    config.address = format!("127.0.0.1:{}", port);
+    config.address = format!("127.0.0.1:{port}");
     config.integration_test_config = Some(int_config);
     config.role = ServerRole::WriteReplicaNoUI;
     config.threads = 1;
@@ -83,7 +84,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
     task::yield_now().await;
 
     // Setup the client, and the address we selected.
-    let addr = format!("http://127.0.0.1:{}", port);
+    let addr = format!("http://127.0.0.1:{port}");
 
     // Run fixtures
     let adminclient = KanidmClientBuilder::new()
@@ -93,6 +94,35 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
         .build()
         .expect("Failed to build sync client");
 
+    let res = adminclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    debug!("auth_simple_password res: {res:?}");
+    assert!(res.is_ok());
+
+    // Setup a service-account that can access the unix parts.
+    adminclient
+        .idm_service_account_create("unixd_service", "Unixd Service Account", "idm_admins")
+        .await
+        .expect("Unable to create service account");
+
+    adminclient
+        .idm_group_add_members("idm_unix_authentication_read", &["unixd_service"])
+        .await
+        .expect("Unable to add service account to unixd read group");
+
+    let service_api_token = adminclient
+        .idm_service_account_generate_api_token("unixd_service", "accesstoken", None, false)
+        .await
+        .expect("Unable to create service account api token");
+
+    // Now we can disable the anonymous account.
+    adminclient
+        .idm_service_account_set_attr("anonymous", ATTR_ACCOUNT_EXPIRE, &[ACCOUNT_EXPIRE])
+        .await
+        .expect("Failed to disable the anonymous account");
+
+    // Finally execute the test fixtures
     fix_fn(adminclient).await;
 
     let client = KanidmClientBuilder::new()
@@ -117,13 +147,13 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
     let mut dbtxn = db.write().await;
     dbtxn.migrate().expect("Unable to migrate cache db");
 
-    let mut hsm = BoxedDynTpm::new(SoftTpm::new());
+    let mut hsm = BoxedDynTpm::new(SoftTpm::default());
 
     let auth_value = AuthValue::ephemeral().unwrap();
 
-    let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
+    let loadable_machine_key = hsm.root_storage_key_create(&auth_value).unwrap();
     let machine_key = hsm
-        .machine_key_load(&auth_value, &loadable_machine_key)
+        .root_storage_key_load(&auth_value, &loadable_machine_key)
         .unwrap();
 
     let system_provider = SystemProvider::new().unwrap();
@@ -138,12 +168,14 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
                 local: "extensible_group".to_string(),
                 with: "testgroup1".to_string(),
             }],
+            service_account_token: Some(service_api_token),
         },
         SystemTime::now(),
         &mut (&mut dbtxn).into(),
         &mut hsm,
         &machine_key,
     )
+    .await
     .unwrap();
 
     drop(machine_key);
@@ -173,7 +205,6 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
 }
 
 /// This is the test fixture. It sets up the following:
-/// - adds admin to idm_admins
 /// - creates a test account (testaccount1)
 /// - extends the test account with posix attrs
 /// - adds a ssh public key to the test account
@@ -182,12 +213,6 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
 /// - extends testgroup1 with posix attrs
 /// - creates two more groups with unix perms (allowed_group, masked_group)
 async fn test_fixture(rsclient: KanidmClient) {
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    debug!("auth_simple_password res: {:?}", res);
-    trace!("{:?}", &res);
-    assert!(res.is_ok());
     // Create a new account
     rsclient
         .idm_person_account_create("testaccount1", "Posix Demo Account")
@@ -903,7 +928,7 @@ async fn test_cache_nxset_group() {
         .filter(|nss_group| nss_group.name == "testgroup1")
         .collect();
 
-    debug!("{:?}", gs);
+    debug!("{gs:?}");
     assert_eq!(gs.len(), 1);
     assert_eq!(gs[0].gid, 30001);
 }
@@ -938,6 +963,15 @@ async fn test_cache_authenticate_system_account() {
                 gecos: Default::default(),
                 homedir: Default::default(),
                 shell: Default::default(),
+            },
+            EtcUser {
+                name: "testaccount3".to_string(),
+                uid: 30002,
+                gid: 30002,
+                password: Default::default(),
+                gecos: Default::default(),
+                homedir: Default::default(),
+                shell: Default::default(),
             }
             ],
             vec![
@@ -945,24 +979,36 @@ async fn test_cache_authenticate_system_account() {
                     name: "testaccount1".to_string(),
                     // The very secure password, "a".
                     password: CryptPw::Sha512("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string()),
-                    epoch_change_days: None,
+                    epoch_change_seconds: None,
                     days_min_password_age: 0,
                     days_max_password_age: Some(1),
                     days_warning_period: 1,
                     days_inactivity_period: None,
-                    epoch_expire_date: Some(380),
+                    epoch_expire_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(380)),
                     flag_reserved: None
                 },
                 EtcShadow {
                     name: "testaccount2".to_string(),
                     // The very secure password, "a".
                     password: CryptPw::Sha512("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string()),
-    epoch_change_days: Some(364),
+                    epoch_change_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(364)),
                     days_min_password_age: 0,
                     days_max_password_age: Some(2),
                     days_warning_period: 1,
                     days_inactivity_period: None,
-                    epoch_expire_date: Some(380),
+                    epoch_expire_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(380)),
+                    flag_reserved: None
+                },
+                EtcShadow {
+                    name: "testaccount3".to_string(),
+                    // The very secure password, "a".
+                    password: CryptPw::YesCrypt("$y$j9T$LdJMENpBABJJ3hIHjB1Bi.$GFxnbKnR8WaEdBMGMctf6JGMs56hU5dYcy6UrKGWr62".to_string()),
+                    epoch_change_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(364)),
+                    days_min_password_age: 0,
+                    days_max_password_age: Some(2),
+                    days_warning_period: 1,
+                    days_inactivity_period: None,
+                    epoch_expire_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(380)),
                     flag_reserved: None
                 },
             ],
@@ -977,6 +1023,10 @@ async fn test_cache_authenticate_system_account() {
         .expect("Failed to get from cache");
     let _ = cachelayer
         .get_nssaccount_name("testaccount2")
+        .await
+        .expect("Failed to get from cache");
+    let _ = cachelayer
+        .get_nssaccount_name("testaccount3")
         .await
         .expect("Failed to get from cache");
 
@@ -994,6 +1044,18 @@ async fn test_cache_authenticate_system_account() {
         .expect("failed to authenticate");
     assert_eq!(a1, Some(false));
 
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount2", current_time, "wrong password")
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(false));
+
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount3", current_time, "wrong password")
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(false));
+
     // Check correct pw (both accounts)
     let a1 = cachelayer
         .pam_account_authenticate("testaccount1", current_time, SECURE_PASSWORD)
@@ -1003,6 +1065,12 @@ async fn test_cache_authenticate_system_account() {
 
     let a1 = cachelayer
         .pam_account_authenticate("testaccount2", current_time, SECURE_PASSWORD)
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(true));
+
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount3", current_time, SECURE_PASSWORD)
         .await
         .expect("failed to authenticate");
     assert_eq!(a1, Some(true));
@@ -1020,6 +1088,12 @@ async fn test_cache_authenticate_system_account() {
         .expect("failed to authenticate");
     assert_eq!(a1, Some(false));
 
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount3", expire_time, SECURE_PASSWORD)
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(false));
+
     // due to how posix auth works, session and authorisation are simpler, and should
     // always just return "true".
     let a1 = cachelayer
@@ -1030,6 +1104,12 @@ async fn test_cache_authenticate_system_account() {
 
     let a1 = cachelayer
         .pam_account_allowed("testaccount2")
+        .await
+        .expect("failed to authorise");
+    assert_eq!(a1, Some(true));
+
+    let a1 = cachelayer
+        .pam_account_allowed("testaccount3")
         .await
         .expect("failed to authorise");
     assert_eq!(a1, Some(true));

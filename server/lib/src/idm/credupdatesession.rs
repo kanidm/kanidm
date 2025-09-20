@@ -312,7 +312,7 @@ pub enum CredentialUpdateSessionStatusWarnings {
 
 impl Display for CredentialUpdateSessionStatusWarnings {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -1794,6 +1794,42 @@ impl IdmServerCredUpdateTransaction<'_> {
         } else {
             Ok(())
         }
+    }
+
+    #[instrument(level = "trace", skip(cust, self))]
+    pub fn credential_check_password_quality(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+        pw: &str,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        self.check_password_quality(
+            pw,
+            &session.resolved_account_policy,
+            session.account.related_inputs().as_slice(),
+            session.account.radius_secret.as_deref(),
+        )
+        .map_err(|e| match e {
+            PasswordQuality::TooShort(sz) => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(sz)])
+            }
+            PasswordQuality::BadListed => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::BadListed])
+            }
+            PasswordQuality::DontReusePasswords => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::DontReusePasswords])
+            }
+            PasswordQuality::Feedback(feedback) => OperationError::PasswordQuality(feedback),
+        })?;
+
+        Ok(session.deref().into())
     }
 
     #[instrument(level = "trace", skip(cust, self))]

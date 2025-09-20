@@ -22,32 +22,32 @@ use crate::CoreAction;
 use axum::{
     body::Body,
     extract::connect_info::IntoMakeServiceWithConnectInfo,
-    http::{HeaderMap, HeaderValue, Request},
+    http::{HeaderMap, HeaderValue, Request, StatusCode},
     middleware::{from_fn, from_fn_with_state},
-    response::Redirect,
+    response::{IntoResponse, Redirect, Response},
     routing::*,
     Router,
 };
 use axum_extra::extract::cookie::CookieJar;
+use cidr::IpCidr;
 use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
 use futures::pin_mut;
 use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
-use hashbrown::HashSet;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
-use openssl::ssl::{Ssl, SslAcceptor};
 use serde::de::DeserializeOwned;
 use sketching::*;
 use std::fmt::Write;
 use std::io::ErrorKind;
-use std::net::IpAddr;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::{net::SocketAddr, str::FromStr};
+use std::{
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     net::{TcpListener, TcpStream},
@@ -55,7 +55,7 @@ use tokio::{
     sync::mpsc,
     task,
 };
-use tokio_openssl::SslStream;
+use tokio_rustls::TlsAcceptor;
 use tower::Service;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use url::Url;
@@ -89,7 +89,7 @@ impl ServerState {
                     if matches!(err, JwtError::InvalidSignature) {
                         // The server has an ephemeral in memory HMAC signer. This is important as
                         // auth (login) sessions on one node shouldn't validate on another. Sessions
-                        // that are shared beween nodes use the internal ECDSA signer.
+                        // that are shared between nodes use the internal ECDSA signer.
                         //
                         // But because of this if the server restarts it rolls the key. Additionally
                         // it can occur if the load balancer isn't sticking sessions to the correct
@@ -144,7 +144,7 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
         ];
 
         for filepath in filelist {
-            match generate_integrity_hash(format!("{}/{}", pkg_path, filepath,)) {
+            match generate_integrity_hash(format!("{pkg_path}/{filepath}",)) {
                 Ok(hash) => {
                     debug!("Integrity hash for {}: {}", filepath, hash);
                     let js = JavaScriptFile { hash };
@@ -164,6 +164,10 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
     Ok(all_pages)
 }
 
+async fn handler_404() -> Response {
+    (StatusCode::NOT_FOUND, "Route not found").into_response()
+}
+
 pub async fn create_https_server(
     config: Configuration,
     jws_signer: JwsHs256Signer,
@@ -171,8 +175,8 @@ pub async fn create_https_server(
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
     server_message_tx: broadcast::Sender<CoreAction>,
-    maybe_tls_acceptor: Option<SslAcceptor>,
-    tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
+    maybe_tls_acceptor: Option<TlsAcceptor>,
+    tls_acceptor_reload_rx: mpsc::Receiver<TlsAcceptor>,
 ) -> Result<task::JoinHandle<()>, ()> {
     let rx = server_message_tx.subscribe();
 
@@ -190,7 +194,7 @@ pub async fn create_https_server(
     let js_checksums: String = js_directives
         .iter()
         .fold(String::new(), |mut output, value| {
-            let _ = write!(output, " 'sha384-{}'", value);
+            let _ = write!(output, " 'sha384-{value}'");
             output
         });
 
@@ -198,7 +202,7 @@ pub async fn create_https_server(
         concat!(
             "default-src 'self'; ",
             "base-uri 'self' https:; ",
-            "form-action 'self' https:;",
+            "form-action 'self' https: localhost;",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
@@ -221,12 +225,6 @@ pub async fn create_https_server(
         .trusted_proxy_v2()
         .map(Arc::new);
 
-    let origin = Url::parse(&config.origin)
-        // Should be impossible!
-        .map_err(|err| {
-            error!(?err, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", config.origin);
-        })?;
-
     let state = ServerState {
         status_ref,
         qe_w_ref,
@@ -234,7 +232,7 @@ pub async fn create_https_server(
         jws_signer,
         trust_x_forward_for_ips,
         csp_header,
-        origin,
+        origin: config.origin,
         domain: config.domain.clone(),
         secure_cookies: config.integration_test_config.is_none(),
     };
@@ -308,10 +306,16 @@ pub async fn create_https_server(
 
     let app = app
         .route("/status", get(generic::status))
+        // 404 handler
+        .fallback(handler_404)
         // This must be the LAST middleware.
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging
         // coherence to be maintained.
+        .layer(from_fn_with_state(
+            state.clone(),
+            middleware::ip_address_middleware,
+        ))
         .layer(from_fn(middleware::kopid_middleware))
         .merge(apidocs::router())
         // this MUST be the last layer before with_state else the span never starts and everything breaks.
@@ -357,13 +361,13 @@ pub async fn create_https_server(
 }
 
 async fn server_tls_loop(
-    mut tls_acceptor: SslAcceptor,
+    mut tls_acceptor: TlsAcceptor,
     listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
-    mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    mut tls_acceptor_reload_rx: mpsc::Receiver<TlsAcceptor>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) {
     pin_mut!(listener);
 
@@ -404,7 +408,7 @@ async fn server_plaintext_loop(
     listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     mut rx: broadcast::Receiver<CoreAction>,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) {
     pin_mut!(listener);
 
@@ -438,14 +442,14 @@ pub(crate) async fn handle_conn(
     stream: TcpStream,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     connection_addr: SocketAddr,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) -> Result<(), std::io::Error> {
-    let (stream, client_addr) =
+    let (stream, client_ip_addr) =
         process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
 
     let client_conn_info = ClientConnInfo {
         connection_addr,
-        client_addr,
+        client_ip_addr,
         client_cert: None,
     };
 
@@ -458,83 +462,76 @@ pub(crate) async fn handle_conn(
 
 /// This handles an individual connection.
 pub(crate) async fn handle_tls_conn(
-    acceptor: SslAcceptor,
+    acceptor: TlsAcceptor,
     stream: TcpStream,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     connection_addr: SocketAddr,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) -> Result<(), std::io::Error> {
-    let (stream, client_addr) =
+    let (stream, client_ip_addr) =
         process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
 
-    let ssl = Ssl::new(acceptor.context()).map_err(|e| {
-        error!("Failed to create TLS context: {:?}", e);
-        std::io::Error::from(ErrorKind::ConnectionAborted)
-    })?;
-
-    let mut tls_stream = SslStream::new(ssl, stream).map_err(|err| {
+    let tls_stream = acceptor.accept(stream).await.map_err(|err| {
         error!(?err, "Failed to create TLS stream");
         std::io::Error::from(ErrorKind::ConnectionAborted)
     })?;
 
-    match SslStream::accept(Pin::new(&mut tls_stream)).await {
-        Ok(_) => {
-            // Process the client cert (if any)
-            let client_cert = if let Some(peer_cert) = tls_stream.ssl().peer_certificate() {
-                // TODO: This is where we should be checking the CRL!!!
+    let maybe_peer_cert = tls_stream
+        .get_ref()
+        .1
+        .peer_certificates()
+        // The first certificate relates to the peer.
+        .and_then(|peer_certs| peer_certs.first());
 
-                // Extract the cert from openssl to x509-cert which is a better
-                // parser to handle the various extensions.
+    // Process the client cert (if any)
+    let client_cert = if let Some(peer_cert) = maybe_peer_cert {
+        // We don't need to check the CRL here - it's already completed as part of the
+        // TLS connection establishment process.
 
-                let cert_der = peer_cert.to_der().map_err(|ossl_err| {
-                    error!(?ossl_err, "unable to process x509 certificate as DER");
-                    std::io::Error::from(ErrorKind::ConnectionAborted)
-                })?;
+        // Extract the cert from rustls DER to x509-cert which is a better
+        // parser to handle the various extensions.
+        let certificate = Certificate::from_der(peer_cert).map_err(|ossl_err| {
+            error!(?ossl_err, "unable to process DER certificate to x509");
+            std::io::Error::from(ErrorKind::ConnectionAborted)
+        })?;
 
-                let certificate = Certificate::from_der(&cert_der).map_err(|ossl_err| {
-                    error!(?ossl_err, "unable to process DER certificate to x509");
-                    std::io::Error::from(ErrorKind::ConnectionAborted)
-                })?;
+        let public_key_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
+            error!("subject public key bitstring is not octet aligned");
+            std::io::Error::from(ErrorKind::ConnectionAborted)
+        })?;
 
-                let public_key_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
-                    error!("subject public key bitstring is not octet aligned");
-                    std::io::Error::from(ErrorKind::ConnectionAborted)
-                })?;
+        Some(ClientCertInfo {
+            public_key_s256,
+            certificate,
+        })
+    } else {
+        None
+    };
 
-                Some(ClientCertInfo {
-                    public_key_s256,
-                    certificate,
-                })
-            } else {
-                None
-            };
+    let client_conn_info = ClientConnInfo {
+        connection_addr,
+        client_ip_addr,
+        client_cert,
+    };
 
-            let client_conn_info = ClientConnInfo {
-                connection_addr,
-                client_addr,
-                client_cert,
-            };
+    // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+    // `TokioIo` converts between them.
+    let stream = TokioIo::new(tls_stream);
 
-            // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
-            // `TokioIo` converts between them.
-            let stream = TokioIo::new(tls_stream);
-
-            process_client_hyper(stream, app, client_conn_info).await
-        }
-        Err(error) => {
-            trace!("Failed to handle connection: {:?}", error);
-            Ok(())
-        }
-    }
+    process_client_hyper(stream, app, client_conn_info).await
 }
 
 async fn process_client_addr(
     stream: TcpStream,
     connection_addr: SocketAddr,
-    trusted_proxy_v2_ips: Option<Arc<HashSet<IpAddr>>>,
-) -> Result<(TcpStream, SocketAddr), std::io::Error> {
+    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
+) -> Result<(TcpStream, IpAddr), std::io::Error> {
     let enable_proxy_v2_hdr = trusted_proxy_v2_ips
-        .map(|trusted| trusted.contains(&connection_addr.ip()))
+        .map(|trusted| {
+            trusted
+                .iter()
+                .any(|ip_cidr| ip_cidr.contains(&connection_addr.ip()))
+        })
         .unwrap_or_default();
 
     let (stream, client_addr) = if enable_proxy_v2_hdr {
@@ -564,7 +561,7 @@ async fn process_client_addr(
         (stream, connection_addr)
     };
 
-    Ok((stream, client_addr))
+    Ok((stream, client_addr.ip()))
 }
 
 async fn process_client_hyper<T>(
@@ -577,11 +574,10 @@ where
 {
     debug!(?client_conn_info);
 
-    let svc =
-        axum_server::service::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
-            &mut app,
-            client_conn_info,
-        );
+    let svc = tower::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
+        &mut app,
+        client_conn_info,
+    );
 
     let svc = svc.await.map_err(|e| {
         error!("Failed to build HTTP response: {:?}", e);

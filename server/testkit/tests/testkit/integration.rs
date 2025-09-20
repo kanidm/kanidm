@@ -252,7 +252,7 @@ async fn test_all_persons_has_builtin_class(rsclient: &KanidmClient) {
         .idm_group_get("idm_all_persons")
         .await
         .expect("Failed to get idm_all_persons");
-    eprintln!("res: {:?}", res);
+    eprintln!("res: {res:?}");
 
     assert!(res
         .unwrap()

@@ -3,22 +3,30 @@
 
 [Unit]
 Description=Kanidm Local Tasks
-After=chronyd.service ntpd.service network-online.target kanidm-unixd.service
+After=chronyd.service ntpd.service network-online.target suspend.target kanidm-unixd.service
+
+# This prevents starting unixd-tasks before unixd is running and
+# has created the socket necessary for communication.
+# We need the check so that fs namespacing used by`ReadWritePaths` has a 
+# strict enough target to namespace. Without the check it fails in a more confusing way.
+ConditionPathExists=/run/kanidm-unixd/task_sock
+
+# We need to require kanidm-unixd to be started else the condition path above won't be
+# met and we fail to start.
+Requires=kanidm-unixd.service
 
 [Service]
 User=root
 Type=notify
 ExecStart=/usr/sbin/kanidm_unixd_tasks
 
-# because kanidm-unixd might have failed for some reason but we need to try again later
 Restart=always
 RestartSec=30
-
 
 CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
 # SystemCallFilter=@aio @basic-io @chown @file-system @io-event @network-io @sync
 ProtectSystem=strict
-ReadWritePaths=/home /var/run/kanidm-unixd
+ReadWritePaths=/home /run/kanidm-unixd
 RestrictAddressFamilies=AF_UNIX
 NoNewPrivileges=true
 PrivateTmp=true
@@ -31,7 +39,3 @@ ProtectKernelModules=true
 ProtectKernelLogs=true
 ProtectControlGroups=true
 MemoryDenyWriteExecute=true
-
-[Install]
-WantedBy=multi-user.target
-

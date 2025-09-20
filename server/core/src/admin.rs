@@ -25,6 +25,7 @@ pub use kanidm_proto::internal::{
 #[derive(Serialize, Deserialize, Debug)]
 pub enum AdminTaskRequest {
     RecoverAccount { name: String },
+    DisableAccount { name: String },
     ShowReplicationCertificate,
     RenewReplicationCertificate,
     RefreshReplicationConsumer,
@@ -82,7 +83,7 @@ impl Encoder<AdminTaskRequest> for ClientCodec {
         trace!("Attempting to send response -> {:?} ...", msg);
         let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "JSON encode error")
+            io::Error::other("JSON encode error")
         })?;
         dst.put(data.as_slice());
         Ok(())
@@ -116,7 +117,7 @@ impl Encoder<AdminTaskResponse> for ServerCodec {
         trace!("Attempting to send response -> {:?} ...", msg);
         let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "JSON encode error")
+            io::Error::other("JSON encode error")
         })?;
         dst.put(data.as_slice());
         Ok(())
@@ -314,6 +315,15 @@ async fn handle_client(
                         Ok(password) => AdminTaskResponse::RecoverAccount { password },
                         Err(e) => {
                             error!(err = ?e, "error during recover-account");
+                            AdminTaskResponse::Error
+                        }
+                    }
+                }
+                AdminTaskRequest::DisableAccount { name } => {
+                    match server_rw.handle_admin_disable_account(name, eventid).await {
+                        Ok(()) => AdminTaskResponse::Success,
+                        Err(e) => {
+                            error!(err = ?e, "error during disable-account");
                             AdminTaskResponse::Error
                         }
                     }

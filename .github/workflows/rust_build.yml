@@ -23,7 +23,7 @@ jobs:
       CARGO_INCREMENTAL: 0
       CARGO_TERM_COLOR: always
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
@@ -66,7 +66,7 @@ jobs:
       matrix:
         rust_version: ['beta', 'nightly']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -108,7 +108,7 @@ jobs:
       CARGO_TERM_COLOR: always
       MALLOC_CONF: "thp:always,metadata_thp:always"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
@@ -124,5 +124,5 @@ jobs:
             ripgrep
       - name: "Run the release build test script"
         env:
-          BUILD_MODE: release
+          BUILD_MODE: --release
         run: ./scripts/test_run_release_server.sh

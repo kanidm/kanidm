@@ -32,6 +32,7 @@ pub enum Attribute {
     AcpTargetScope,
     ApiTokenSession,
     ApplicationPassword,
+    ApplicationUrl,
     AttestedPasskeys,
     #[default]
     Attr,
@@ -89,6 +90,7 @@ pub enum Attribute {
     KeyActionRotate,
     KeyActionRevoke,
     KeyActionImportJwsEs256,
+    KeyActionImportJwsRs256,
     KeyInternalData,
     KeyProvider,
     LastModifiedCid,
@@ -189,6 +191,14 @@ pub enum Attribute {
     NonExist,
     #[cfg(any(debug_assertions, test, feature = "test"))]
     TestAttr,
+    #[cfg(test)]
+    TestAttrA,
+    #[cfg(test)]
+    TestAttrB,
+    #[cfg(test)]
+    TestAttrC,
+    #[cfg(test)]
+    TestAttrD,
     #[cfg(any(debug_assertions, test, feature = "test"))]
     TestNumber,
     #[cfg(any(debug_assertions, test, feature = "test"))]
@@ -267,6 +277,7 @@ impl Attribute {
             Attribute::AcpTargetScope => ATTR_ACP_TARGET_SCOPE,
             Attribute::ApiTokenSession => ATTR_API_TOKEN_SESSION,
             Attribute::ApplicationPassword => ATTR_APPLICATION_PASSWORD,
+            Attribute::ApplicationUrl => ATTR_APPLICATION_URL,
             Attribute::AttestedPasskeys => ATTR_ATTESTED_PASSKEYS,
             Attribute::Attr => ATTR_ATTR,
             Attribute::AttributeName => ATTR_ATTRIBUTENAME,
@@ -323,6 +334,7 @@ impl Attribute {
             Attribute::KeyActionRotate => ATTR_KEY_ACTION_ROTATE,
             Attribute::KeyActionRevoke => ATTR_KEY_ACTION_REVOKE,
             Attribute::KeyActionImportJwsEs256 => ATTR_KEY_ACTION_IMPORT_JWS_ES256,
+            Attribute::KeyActionImportJwsRs256 => ATTR_KEY_ACTION_IMPORT_JWS_RS256,
             Attribute::KeyInternalData => ATTR_KEY_INTERNAL_DATA,
             Attribute::KeyProvider => ATTR_KEY_PROVIDER,
             Attribute::LastModifiedCid => ATTR_LAST_MODIFIED_CID,
@@ -419,6 +431,16 @@ impl Attribute {
             Attribute::NonExist => TEST_ATTR_NON_EXIST,
             #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::TestAttr => TEST_ATTR_TEST_ATTR,
+
+            #[cfg(test)]
+            Attribute::TestAttrA => TEST_ATTR_TEST_ATTR_A,
+            #[cfg(test)]
+            Attribute::TestAttrB => TEST_ATTR_TEST_ATTR_B,
+            #[cfg(test)]
+            Attribute::TestAttrC => TEST_ATTR_TEST_ATTR_C,
+            #[cfg(test)]
+            Attribute::TestAttrD => TEST_ATTR_TEST_ATTR_D,
+
             #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::Extra => TEST_ATTR_EXTRA,
             #[cfg(any(debug_assertions, test, feature = "test"))]
@@ -454,6 +476,7 @@ impl Attribute {
             ATTR_ACP_TARGET_SCOPE => Attribute::AcpTargetScope,
             ATTR_API_TOKEN_SESSION => Attribute::ApiTokenSession,
             ATTR_APPLICATION_PASSWORD => Attribute::ApplicationPassword,
+            ATTR_APPLICATION_URL => Attribute::ApplicationUrl,
             ATTR_ATTESTED_PASSKEYS => Attribute::AttestedPasskeys,
             ATTR_ATTR => Attribute::Attr,
             ATTR_ATTRIBUTENAME => Attribute::AttributeName,
@@ -510,6 +533,7 @@ impl Attribute {
             ATTR_KEY_ACTION_ROTATE => Attribute::KeyActionRotate,
             ATTR_KEY_ACTION_REVOKE => Attribute::KeyActionRevoke,
             ATTR_KEY_ACTION_IMPORT_JWS_ES256 => Attribute::KeyActionImportJwsEs256,
+            ATTR_KEY_ACTION_IMPORT_JWS_RS256 => Attribute::KeyActionImportJwsRs256,
             ATTR_KEY_INTERNAL_DATA => Attribute::KeyInternalData,
             ATTR_KEY_PROVIDER => Attribute::KeyProvider,
             ATTR_LAST_MODIFIED_CID => Attribute::LastModifiedCid,
@@ -606,6 +630,16 @@ impl Attribute {
             TEST_ATTR_NON_EXIST => Attribute::NonExist,
             #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_TEST_ATTR => Attribute::TestAttr,
+
+            #[cfg(test)]
+            TEST_ATTR_TEST_ATTR_A => Attribute::TestAttrA,
+            #[cfg(test)]
+            TEST_ATTR_TEST_ATTR_B => Attribute::TestAttrB,
+            #[cfg(test)]
+            TEST_ATTR_TEST_ATTR_C => Attribute::TestAttrC,
+            #[cfg(test)]
+            TEST_ATTR_TEST_ATTR_D => Attribute::TestAttrD,
+
             #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_EXTRA => Attribute::Extra,
             #[cfg(any(debug_assertions, test, feature = "test"))]
@@ -647,9 +681,19 @@ impl From<Attribute> for String {
 pub enum SubAttribute {
     /// Denotes a primary value.
     Primary,
+    /// The type of value
+    Type,
+    /// The data associated to a value
+    Value,
 
     #[cfg(not(test))]
     Custom(AttrString),
+}
+
+impl fmt::Display for SubAttribute {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 impl From<SubAttribute> for AttrString {
@@ -676,6 +720,8 @@ impl SubAttribute {
     pub fn as_str(&self) -> &str {
         match self {
             SubAttribute::Primary => SUB_ATTR_PRIMARY,
+            SubAttribute::Type => SUB_ATTR_TYPE,
+            SubAttribute::Value => SUB_ATTR_VALUE,
             #[cfg(not(test))]
             SubAttribute::Custom(s) => s,
         }
@@ -688,6 +734,8 @@ impl SubAttribute {
         // to limit length of str?
         match value.to_lowercase().as_str() {
             SUB_ATTR_PRIMARY => SubAttribute::Primary,
+            SUB_ATTR_TYPE => SubAttribute::Type,
+            SUB_ATTR_VALUE => SubAttribute::Value,
 
             #[cfg(not(test))]
             _ => SubAttribute::Custom(AttrString::from(value)),
@@ -731,9 +779,7 @@ mod test {
             let attr2 = Attribute::from(attr.as_str());
             assert!(
                 attr == attr2,
-                "Round-trip failed for {} <=> {} check you've implemented a from and to string",
-                attr,
-                attr2
+                "Round-trip failed for {attr} <=> {attr2} check you've implemented a from and to string"
             );
         }
     }

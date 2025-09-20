@@ -42,16 +42,18 @@ tokio = { workspace = true, features = [
     "rt",
 ] }
 tracing = { workspace = true, features = ["attributes"] }
+webauthn-authenticator-rs = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }
 
 [dev-dependencies]
+cidr = { workspace = true }
 compact_jwt = { workspace = true }
-escargot = "0.5.13"
+escargot = "0.5.15"
 # used for webdriver testing
-fantoccini = { version = "0.21.5" }
+fantoccini = { version = "0.22.0" }
 futures = { workspace = true }
 hex = { workspace = true }
 hyper = { workspace = true }
@@ -61,14 +63,13 @@ ldap3_client = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false, features = [
     "reqwest",
 ] }
-petgraph = { version = "0.7.1", features = ["serde"] }
+petgraph = { version = "0.8.2", features = ["serde"] }
 serde_json = { workspace = true }
 time = { workspace = true }
 tokio-openssl = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 uuid = { workspace = true }
-webauthn-authenticator-rs = { workspace = true }
-jsonschema = "0.29.1"
+jsonschema = { workspace = true }
 
 [package.metadata.cargo-machete]
 ignored = ["escargot", "futures", "kanidm_build_profiles"]

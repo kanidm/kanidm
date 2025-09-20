@@ -141,12 +141,14 @@ version = '2'
 
 # ========================================
 # This section enables the Kanidm provider
+# If enabled, /etc/kanidm/config MUST have a valid `uri` setting for the daemon to start.
 [kanidm]
 
 # Defines a set of POSIX groups where membership of any of these groups
-# will be allowed to login via PAM. All POSIX users and groups can be
-# resolved by NSS regardless of PAM login status. You may specify a
-# group's name, SPN or UUID
+# will be authorised to login via PAM. If you are NOT a member of any of
+# these groups you will NOT be able to login.
+# All POSIX users and groups can be resolved by NSS regardless of PAM
+# authorisation status. You may specify a group's name, SPN or UUID
 #
 # Default: empty set (no access allowed)
 
@@ -154,7 +156,7 @@ pam_allowed_login_groups = ["posix_group"]
 
 # Allow extension (mapping) of a local system groups members with members from a
 # kanidm provided group. An example of this is that the local group
-# `libvirt` can has it's membership extended with the members from
+# `libvirt` can have its membership extended with the members from
 # `virt-admins`. This section can be repeated many times.
 #
 # Default: empty set (no group maps)

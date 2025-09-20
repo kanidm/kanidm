@@ -1,8 +1,12 @@
 use super::ldap::{LdapBoundToken, LdapSession};
+use crate::credential::apppwd::ApplicationPassword;
 use crate::idm::account::Account;
 use crate::idm::event::LdapApplicationAuthEvent;
-use crate::idm::server::{IdmServerAuthTransaction, IdmServerTransaction};
+use crate::idm::server::{
+    IdmServerAuthTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
+};
 use crate::prelude::*;
+use crate::utils::readable_password_from_random;
 use concread::cowcell::*;
 use hashbrown::HashMap;
 use kanidm_proto::internal::OperationError;
@@ -110,7 +114,7 @@ impl LdapApplications {
         }
     }
 
-    pub fn write(&self) -> LdapApplicationsWriteTransaction {
+    pub fn write(&self) -> LdapApplicationsWriteTransaction<'_> {
         LdapApplicationsWriteTransaction {
             inner: self.inner.write(),
         }
@@ -240,6 +244,73 @@ impl GenerateApplicationPasswordEvent {
     }
 }
 
+impl IdmServerProxyWriteTransaction<'_> {
+    #[instrument(level = "debug", skip_all)]
+    pub fn generate_application_password(
+        &mut self,
+        ev: &GenerateApplicationPasswordEvent,
+    ) -> Result<(String, Uuid), OperationError> {
+        // This is intended to be read/copied by a human
+        let cleartext = readable_password_from_random();
+        let policy = self.crypto_policy();
+
+        let ap = ApplicationPassword::new(
+            ev.application,
+            ev.label.as_str(),
+            cleartext.as_str(),
+            policy,
+        )
+        .inspect_err(|err| {
+            error!(
+                ?err,
+                "Unable to generate application password. This is a BUG!!!"
+            )
+        })?;
+
+        let ap_uuid = ap.uuid;
+        let vap = Value::ApplicationPassword(ap);
+        let modlist = ModifyList::new_append(Attribute::ApplicationPassword, vap);
+
+        // Apply it
+        self.qs_write
+            .impersonate_modify(
+                // Filter as executed
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(ev.target))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(ev.target))),
+                &modlist,
+                // Provide the event to impersonate
+                &ev.ident,
+            )
+            .inspect_err(|err| error!(?err))
+            .map(|_| (cleartext, ap_uuid))
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn application_password_delete(
+        &mut self,
+        ident: &Identity,
+        target: Uuid,
+        apppwd_id: Uuid,
+    ) -> Result<(), OperationError> {
+        let modlist = ModifyList::new_remove(
+            Attribute::ApplicationPassword,
+            PartialValue::Uuid(apppwd_id),
+        );
+
+        self.qs_write
+            .impersonate_modify(
+                // Filter as executed
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
+                &modlist,
+                ident,
+            )
+            .inspect_err(|err| error!(?err))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::event::CreateEvent;
@@ -254,139 +325,6 @@ mod tests {
     use std::time::Duration;
 
     const TEST_CURRENT_TIME: u64 = 6000;
-
-    // Tests that only the correct combinations of [Account, Person, Application and
-    // ServiceAccount] classes are allowed.
-    #[idm_test]
-    async fn test_idm_application_excludes(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
-        let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
-
-        // ServiceAccount, Application and Person not allowed together
-        let test_grp_name = "testgroup1";
-        let test_grp_uuid = Uuid::new_v4();
-        let e1 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Name, Value::new_iname(test_grp_name)),
-            (Attribute::Uuid, Value::Uuid(test_grp_uuid))
-        );
-        let test_entry_uuid = Uuid::new_v4();
-        let e2 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
-            (Attribute::Class, EntryClass::Application.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Name, Value::new_iname("test_app_name")),
-            (Attribute::Uuid, Value::Uuid(test_entry_uuid)),
-            (Attribute::Description, Value::new_utf8s("test_app_desc")),
-            (
-                Attribute::DisplayName,
-                Value::new_utf8s("test_app_dispname")
-            ),
-            (Attribute::LinkedGroup, Value::Refer(test_grp_uuid))
-        );
-        let ce = CreateEvent::new_internal(vec![e1, e2]);
-        let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(cr.is_err());
-
-        // Application and Person not allowed together
-        let test_grp_name = "testgroup1";
-        let test_grp_uuid = Uuid::new_v4();
-        let e1 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Name, Value::new_iname(test_grp_name)),
-            (Attribute::Uuid, Value::Uuid(test_grp_uuid))
-        );
-        let test_entry_uuid = Uuid::new_v4();
-        let e2 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::Application.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Name, Value::new_iname("test_app_name")),
-            (Attribute::Uuid, Value::Uuid(test_entry_uuid)),
-            (Attribute::Description, Value::new_utf8s("test_app_desc")),
-            (
-                Attribute::DisplayName,
-                Value::new_utf8s("test_app_dispname")
-            ),
-            (Attribute::LinkedGroup, Value::Refer(test_grp_uuid))
-        );
-        let ce = CreateEvent::new_internal(vec![e1, e2]);
-        let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(cr.is_err());
-
-        // Supplements not satisfied, Application supplements ServiceAccount
-        let test_grp_name = "testgroup1";
-        let test_grp_uuid = Uuid::new_v4();
-        let e1 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Name, Value::new_iname(test_grp_name)),
-            (Attribute::Uuid, Value::Uuid(test_grp_uuid))
-        );
-        let test_entry_uuid = Uuid::new_v4();
-        let e2 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::Application.to_value()),
-            (Attribute::Name, Value::new_iname("test_app_name")),
-            (Attribute::Uuid, Value::Uuid(test_entry_uuid)),
-            (Attribute::Description, Value::new_utf8s("test_app_desc")),
-            (Attribute::LinkedGroup, Value::Refer(test_grp_uuid))
-        );
-        let ce = CreateEvent::new_internal(vec![e1, e2]);
-        let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(cr.is_err());
-
-        // Supplements not satisfied, Application supplements ServiceAccount
-        let test_grp_name = "testgroup1";
-        let test_grp_uuid = Uuid::new_v4();
-        let e1 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Name, Value::new_iname(test_grp_name)),
-            (Attribute::Uuid, Value::Uuid(test_grp_uuid))
-        );
-        let test_entry_uuid = Uuid::new_v4();
-        let e2 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Application.to_value()),
-            (Attribute::Name, Value::new_iname("test_app_name")),
-            (Attribute::Uuid, Value::Uuid(test_entry_uuid)),
-            (Attribute::Description, Value::new_utf8s("test_app_desc")),
-            (Attribute::LinkedGroup, Value::Refer(test_grp_uuid))
-        );
-        let ce = CreateEvent::new_internal(vec![e1, e2]);
-        let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(cr.is_err());
-
-        // Supplements satisfied, Application supplements ServiceAccount
-        let test_grp_name = "testgroup1";
-        let test_grp_uuid = Uuid::new_v4();
-        let e1 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Name, Value::new_iname(test_grp_name)),
-            (Attribute::Uuid, Value::Uuid(test_grp_uuid))
-        );
-        let test_entry_uuid = Uuid::new_v4();
-        let e2 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Application.to_value()),
-            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
-            (Attribute::Name, Value::new_iname("test_app_name")),
-            (Attribute::Uuid, Value::Uuid(test_entry_uuid)),
-            (Attribute::Description, Value::new_utf8s("test_app_desc")),
-            (Attribute::LinkedGroup, Value::Refer(test_grp_uuid))
-        );
-        let ce = CreateEvent::new_internal(vec![e1, e2]);
-        let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(cr.is_ok());
-    }
 
     // Tests it is not possible to create an application without the linked group attribute
     #[idm_test]
@@ -404,6 +342,7 @@ mod tests {
             (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::ServiceAccount.to_value()),
             (Attribute::Class, EntryClass::Application.to_value()),
+            (Attribute::DisplayName, Value::new_utf8s("Application")),
             (Attribute::Name, Value::new_iname("test_app_name")),
             (Attribute::Uuid, Value::Uuid(test_entry_uuid)),
             (Attribute::Description, Value::new_utf8s("test_app_desc")),
@@ -547,8 +486,10 @@ mod tests {
 
             let e3 = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::ServiceAccount.to_value()),
                 (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::DisplayName, Value::new_utf8s("Application")),
                 (Attribute::Name, Value::new_iname(test_app_name)),
                 (Attribute::Uuid, Value::Uuid(test_app_uuid)),
                 (Attribute::LinkedGroup, Value::Refer(test_grp_uuid))
@@ -647,7 +588,9 @@ mod tests {
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Application.to_value()),
+            (Attribute::DisplayName, Value::new_utf8s("Application")),
             (Attribute::Name, Value::new_iname("test_app_name")),
             (Attribute::Uuid, Value::Uuid(test_entry_uuid)),
             (Attribute::Description, Value::new_utf8s("test_app_desc")),

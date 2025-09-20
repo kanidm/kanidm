@@ -1,5 +1,5 @@
 mod access;
-mod accounts;
+pub(super) mod accounts;
 mod groups;
 mod key_providers;
 mod schema;
@@ -69,7 +69,6 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_SYNC_TOKEN_SESSION.clone().into(),
         SCHEMA_ATTR_UNIX_PASSWORD.clone().into(),
         SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION.clone().into(),
-        SCHEMA_ATTR_DENIED_NAME.clone().into(),
         SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM.clone().into(),
         SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST.clone().into(),
         // DL4
@@ -100,6 +99,16 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_LINKED_GROUP_DL8.clone().into(),
         SCHEMA_ATTR_APPLICATION_PASSWORD_DL8.clone().into(),
         SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8.clone().into(),
+        // DL9
+        SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9.clone().into(),
+        SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9.clone().into(),
+        // DL10
+        SCHEMA_ATTR_DENIED_NAME_DL10.clone().into(),
+        SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES.clone().into(),
+        SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256_DL6.clone().into(),
+        // DL11
+        SCHEMA_ATTR_APPLICATION_URL.clone().into(),
+        // DL12
     ]
 }
 
@@ -113,14 +122,9 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         // DL4
         SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4.clone().into(),
         // DL5
-        // SCHEMA_CLASS_PERSON_DL5.clone().into(),
         SCHEMA_CLASS_ACCOUNT_DL5.clone().into(),
-        // SCHEMA_CLASS_OAUTH2_RS_DL5.clone().into(),
         SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5.clone().into(),
         // DL6
-        // SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
-        // SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
-        // SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
         SCHEMA_CLASS_GROUP_DL6.clone().into(),
         SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
         SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
@@ -128,18 +132,20 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6.clone().into(),
         SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6.clone().into(),
         SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6.clone().into(),
-        // SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
         // DL7
-        // SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
         SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
         SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
         SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7.clone().into(),
-        SCHEMA_CLASS_OAUTH2_RS_DL7.clone().into(),
         // DL8
         SCHEMA_CLASS_ACCOUNT_POLICY_DL8.clone().into(),
-        SCHEMA_CLASS_APPLICATION_DL8.clone().into(),
         SCHEMA_CLASS_PERSON_DL8.clone().into(),
-        SCHEMA_CLASS_DOMAIN_INFO_DL8.clone().into(),
+        // DL9
+        SCHEMA_CLASS_OAUTH2_RS_DL9.clone().into(),
+        // DL10
+        SCHEMA_CLASS_DOMAIN_INFO_DL10.clone().into(),
+        SCHEMA_CLASS_KEY_OBJECT_JWT_RS256.clone().into(),
+        // DL11
+        SCHEMA_CLASS_APPLICATION.clone().into(),
     ]
 }
 
@@ -218,10 +224,7 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         IDM_ACP_RADIUS_SERVERS_V1.clone().into(),
         IDM_ACP_RADIUS_SECRET_MANAGE_V1.clone().into(),
         IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1.clone().into(),
-        // IDM_ACP_SELF_READ_V1.clone(),
-        // IDM_ACP_SELF_WRITE_V1.clone(),
         IDM_ACP_ACCOUNT_SELF_WRITE_V1.clone().into(),
-        // IDM_ACP_SELF_NAME_WRITE_V1.clone(),
         IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1.clone().into(),
         IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1
             .clone()
@@ -249,25 +252,23 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone().into(),
         // DL4
         // DL5
-        // IDM_ACP_OAUTH2_MANAGE_DL5.clone(),
         // DL6
-        // IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone(),
         IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
-        IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
         IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone().into(),
-        // IDM_ACP_DOMAIN_ADMIN_DL6.clone(),
         // DL7
-        // IDM_ACP_SELF_WRITE_DL7.clone(),
         IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
         IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7.clone().into(),
-        IDM_ACP_OAUTH2_MANAGE_DL7.clone().into(),
         // DL8
         IDM_ACP_SELF_READ_DL8.clone().into(),
         IDM_ACP_SELF_WRITE_DL8.clone().into(),
         IDM_ACP_APPLICATION_MANAGE_DL8.clone().into(),
         IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8.clone().into(),
         IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
-        IDM_ACP_DOMAIN_ADMIN_DL8.clone().into(),
         IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8.clone().into(),
+        // DL9
+        IDM_ACP_GROUP_MANAGE_DL9.clone().into(),
+        IDM_ACP_DOMAIN_ADMIN_DL9.clone().into(),
+        // DL10
+        IDM_ACP_OAUTH2_MANAGE.clone().into(),
     ]
 }

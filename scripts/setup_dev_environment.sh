@@ -9,10 +9,8 @@
 
 set -e
 
-if [ -n "${BUILD_MODE}" ]; then
-    BUILD_MODE="--${BUILD_MODE}"
-else
-    BUILD_MODE=""
+if [ -z "${BUILD_MODE}" ]; then
+    BUILD_MODE="--debug"
 fi
 
 # if they passed --help then output the help
@@ -20,7 +18,7 @@ if [ "${1}" == "--help" ]; then
     echo "Usage: $0 [--remove-db]"
     echo "  --remove-db: remove the existing DB before running"
     echo "  Env vars:"
-    echo " BUILD_MODE - default=debug, set to 'release' to build binaries in release mode"
+    echo " BUILD_MODE - default=--debug, set to '--release' to build binaries in release mode"
     exit 0
 fi
 if [ ! -f run_insecure_dev_server.sh ]; then
@@ -45,7 +43,7 @@ fi
 
 # defaults
 KANIDM_CONFIG_FILE="./insecure_server.toml"
-KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
+KANIDM_URL="$(grep -E 'origin.*https' "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
 # wait for them to shut down the server if it's running...
@@ -89,7 +87,7 @@ IDM_ADMIN_USER="idm_admin@localhost"
 echo "Resetting the idm_admin user..."
 IDM_ADMIN_PASS_RAW="$(${KANIDMD} recover-account idm_admin -o json 2>&1)"
 IDM_ADMIN_PASS="$(echo "${IDM_ADMIN_PASS_RAW}" | grep password | jq -r .password)"
-if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null " ]; then
+if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null" ]; then
     echo "Failed to reset idm_admin password!"
     echo "Raw output:"
     echo "${IDM_ADMIN_PASS_RAW}"

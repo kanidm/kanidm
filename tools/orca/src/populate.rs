@@ -113,7 +113,7 @@ pub async fn preflight(state: State) -> Result<(), Error> {
                         let was = counter_c.fetch_add(1, Ordering::Relaxed);
                         if was % 1000 == 999 {
                             let order = was + 1;
-                            eprint!("{}", order);
+                            eprint!("{order}");
                         } else if was % 100 == 99 {
                             // Since we just added one, this just rolled over.
                             eprint!(".");
@@ -153,7 +153,7 @@ pub async fn preflight(state: State) -> Result<(), Error> {
         let was = counter.fetch_add(1, Ordering::Relaxed);
         if was % 1000 == 999 {
             let order = was + 1;
-            eprint!("{}", order);
+            eprint!("{order}");
         } else if was % 100 == 99 {
             // Since we just added one, this just rolled over.
             eprint!(".");

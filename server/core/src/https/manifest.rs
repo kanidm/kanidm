@@ -122,7 +122,7 @@ pub fn manifest_data(host_req: Option<&str>, domain_display_name: String) -> Man
     ];
 
     let start_url = match host_req {
-        Some(value) => format!("https://{}/", value),
+        Some(value) => format!("https://{value}/"),
         None => String::from("/"),
     };
 

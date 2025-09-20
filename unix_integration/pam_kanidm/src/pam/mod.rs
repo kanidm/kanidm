@@ -86,7 +86,7 @@ impl TryFrom<&Vec<&CStr>> for ModuleOptions {
         let gopts = match opts {
             Ok(o) => o,
             Err(e) => {
-                println!("Error in module args -> {:?}", e);
+                println!("Error in module args -> {e:?}");
                 return Err(());
             }
         };

@@ -28,11 +28,11 @@ test = []                   # Enable this for cross-package test features.
 base64 = { workspace = true }
 base64urlsafedata = { workspace = true }
 bitflags = { workspace = true }
-compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto"] }
+compact_jwt = { workspace = true }
 concread = { workspace = true }
+crypto-glue = { workspace = true }
 dhat = { workspace = true, optional = true }
 dyn-clone = { workspace = true }
-fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
 # futures-util = { workspace = true }
 hashbrown = { workspace = true }
 idlset = { workspace = true }
@@ -68,8 +68,8 @@ tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
-
 url = { workspace = true, features = ["serde"] }
+utoipa = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 webauthn-rs = { workspace = true, features = [
     "resident-key-support",
@@ -94,8 +94,6 @@ whoami = { workspace = true }
 
 [dev-dependencies]
 compact_jwt = { workspace = true, features = [
-    "openssl",
-    "hsm-crypto",
     "unsafe_release_without_verify",
 ] }
 futures = { workspace = true }

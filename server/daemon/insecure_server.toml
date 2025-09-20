@@ -13,18 +13,21 @@ tls_key = "/tmp/kanidm/key.pem"
 #   NOTE: this is overridden by KANIDM_LOG_LEVEL environment variable
 #   Defaults to "info"
 #
-log_level = "info"
+# log_level = "info"
 # log_level = "debug"
-# log_level = "trace"
+log_level = "trace"
 
 # otel_grpc_url = "http://localhost:4317"
 
 domain = "localhost"
 origin = "https://localhost:8443"
-trust_x_forward_for = true
 
 [online_backup]
 # defaults to db_path
 # path = "/tmp/kanidm/backups/"
 schedule = "@hourly"
 # enabled = true # default enabled
+
+[replication]
+origin = "repl://127.0.0.1:8444"
+bindaddress = "0.0.0.0:8444"

@@ -194,7 +194,7 @@ impl Spn {
             return Ok(());
         };
 
-        // IMPORTANT - we have to *pre-emptively reload the domain info here*
+        // IMPORTANT - we have to *preemptively reload the domain info here*
         //
         // If we don't, we don't get the updated domain name in the txn, and then
         // spn rename fails as we recurse and just populate the old name.
@@ -233,7 +233,7 @@ mod tests {
         let preload = Vec::with_capacity(0);
 
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,
@@ -286,7 +286,7 @@ mod tests {
         let preload = Vec::with_capacity(0);
 
         run_create_test!(
-            Ok(()),
+            Ok(None),
             preload,
             create,
             None,

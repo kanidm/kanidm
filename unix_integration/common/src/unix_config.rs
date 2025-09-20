@@ -7,18 +7,16 @@
 //! specification which will be parsed by the tools, then the configuration as
 //! relevant to that tool.
 
-use std::env;
-use std::fmt::{Display, Formatter};
-use std::fs::File;
-use std::io::{ErrorKind, Read};
-use std::path::{Path, PathBuf};
-
+use crate::constants::*;
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use crate::selinux_util;
 use crate::unix_passwd::UnixIntegrationError;
-
-use crate::constants::*;
 use serde::Deserialize;
+use std::env;
+use std::fmt::{Display, Formatter};
+use std::fs::{read_to_string, File};
+use std::io::{ErrorKind, Read};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Copy, Clone)]
 pub enum HomeAttr {
@@ -139,6 +137,7 @@ struct KanidmConfigV2 {
     pam_allowed_login_groups: Option<Vec<String>>,
     #[serde(default)]
     map_group: Vec<GroupMap>,
+    service_account_token_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -185,6 +184,7 @@ pub struct KanidmConfig {
     pub request_timeout: u64,
     pub pam_allowed_login_groups: Vec<String>,
     pub map_group: Vec<GroupMap>,
+    pub service_account_token: Option<String>,
 }
 
 #[derive(Debug)]
@@ -226,12 +226,12 @@ impl Display for UnixdConfig {
         writeln!(f, "default_shell: {}", self.default_shell)?;
         writeln!(f, "home_prefix: {:?}", self.home_prefix)?;
         match self.home_mount_prefix.as_deref() {
-            Some(val) => writeln!(f, "home_mount_prefix: {:?}", val)?,
+            Some(val) => writeln!(f, "home_mount_prefix: {val:?}")?,
             None => writeln!(f, "home_mount_prefix: unset")?,
         }
         writeln!(f, "home_attr: {}", self.home_attr)?;
         match self.home_alias {
-            Some(val) => writeln!(f, "home_alias: {}", val)?,
+            Some(val) => writeln!(f, "home_alias: {val}")?,
             None => writeln!(f, "home_alias: unset")?,
         }
 
@@ -368,6 +368,7 @@ impl UnixdConfig {
             request_timeout: config.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
             pam_allowed_login_groups: config.pam_allowed_login_groups.unwrap_or_default(),
             map_group,
+            service_account_token: None,
         });
 
         // Now map the values into our config.
@@ -468,11 +469,52 @@ impl UnixdConfig {
                     }
                 }
             }
+
+            let service_account_token_path_env = match env::var("KANIDM_SERVICE_ACCOUNT_TOKEN_PATH")
+            {
+                Ok(val) => val.into(),
+                Err(_) => DEFAULT_KANIDM_SERVICE_ACCOUNT_TOKEN_PATH.into(),
+            };
+
+            let service_account_token_path: PathBuf = kconfig
+                .service_account_token_path
+                .unwrap_or(service_account_token_path_env);
+
+            let service_account_token = if service_account_token_path.exists() {
+                let token_string = read_to_string(&service_account_token_path).map_err(|err| {
+                    error!(
+                        ?err,
+                        "Unable to open and read service account token file '{}'",
+                        service_account_token_path.display()
+                    );
+                    UnixIntegrationError
+                })?;
+
+                let token_string =
+                    token_string
+                        .lines()
+                        .next()
+                        .map(String::from)
+                        .ok_or_else(|| {
+                            error!(
+                                "Service account token file '{}' does not contain an api token",
+                                service_account_token_path.display()
+                            );
+                            UnixIntegrationError
+                        })?;
+
+                Some(token_string)
+            } else {
+                // The file does not exist, there is no token to use.
+                None
+            };
+
             Some(KanidmConfig {
                 conn_timeout: kconfig.conn_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT),
                 request_timeout: kconfig.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
                 pam_allowed_login_groups: kconfig.pam_allowed_login_groups.unwrap_or_default(),
                 map_group: kconfig.map_group,
+                service_account_token,
             })
         } else {
             error!(
@@ -694,19 +736,19 @@ mod tests {
 
         for file in PathBuf::from(&examples_dir)
             .canonicalize()
-            .unwrap_or_else(|_| panic!("Can't find examples dir at {}", examples_dir))
+            .unwrap_or_else(|_| panic!("Can't find examples dir at {examples_dir}"))
             .read_dir()
             .expect("Can't read examples dir!")
         {
             let file = file.unwrap();
             let filename = file.file_name().into_string().unwrap();
             if filename.starts_with("unixd") {
-                print!("Checking that {} parses as a valid config...", filename);
+                print!("Checking that {filename} parses as a valid config...");
 
                 UnixdConfig::new()
                     .read_options_from_optional_config(file.path())
                     .inspect_err(|e| {
-                        println!("Failed to parse: {:?}", e);
+                        println!("Failed to parse: {e:?}");
                     })
                     .expect("Failed to parse!");
                 println!("OK");

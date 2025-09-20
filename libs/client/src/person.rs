@@ -17,12 +17,12 @@ impl KanidmClient {
     }
 
     pub async fn idm_person_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/person/{}", id).as_str())
+        self.perform_get_request(format!("/v1/person/{id}").as_str())
             .await
     }
 
     pub async fn idm_person_search(&self, id: &str) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/person/_search/{}", id).as_str())
+        self.perform_get_request(format!("/v1/person/_search/{id}").as_str())
             .await
     }
 
@@ -77,12 +77,12 @@ impl KanidmClient {
                 .insert(ATTR_MAIL.to_string(), mail.to_vec());
         }
 
-        self.perform_patch_request(format!("/v1/person/{}", id).as_str(), update_entry)
+        self.perform_patch_request(format!("/v1/person/{id}").as_str(), update_entry)
             .await
     }
 
     pub async fn idm_person_account_delete(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/person/{}", id).as_str())
+        self.perform_delete_request(format!("/v1/person/{id}").as_str())
             .await
     }
 
@@ -93,7 +93,7 @@ impl KanidmClient {
         values: &[&str],
     ) -> Result<(), ClientError> {
         let msg: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
-        self.perform_post_request(format!("/v1/person/{}/_attr/{}", id, attr).as_str(), msg)
+        self.perform_post_request(format!("/v1/person/{id}/_attr/{attr}").as_str(), msg)
             .await
     }
 
@@ -104,7 +104,7 @@ impl KanidmClient {
         values: &[&str],
     ) -> Result<(), ClientError> {
         let m: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
-        self.perform_put_request(format!("/v1/person/{}/_attr/{}", id, attr).as_str(), m)
+        self.perform_put_request(format!("/v1/person/{id}/_attr/{attr}").as_str(), m)
             .await
     }
 
@@ -113,7 +113,7 @@ impl KanidmClient {
         id: &str,
         attr: &str,
     ) -> Result<Option<Vec<String>>, ClientError> {
-        self.perform_get_request(format!("/v1/person/{}/_attr/{}", id, attr).as_str())
+        self.perform_get_request(format!("/v1/person/{id}/_attr/{attr}").as_str())
             .await
     }
 
@@ -122,7 +122,7 @@ impl KanidmClient {
         id: &str,
         attr: &str,
     ) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/person/{}/_attr/{}", id, attr).as_str())
+        self.perform_delete_request(format!("/v1/person/{id}/_attr/{attr}").as_str())
             .await
     }
 
@@ -131,7 +131,7 @@ impl KanidmClient {
         id: &str,
     ) -> Result<CredentialStatus, ClientError> {
         let res: Result<CredentialStatus, ClientError> = self
-            .perform_get_request(format!("/v1/person/{}/_credential/_status", id).as_str())
+            .perform_get_request(format!("/v1/person/{id}/_credential/_status").as_str())
             .await;
         res.and_then(|cs| {
             if cs.creds.is_empty() {
@@ -167,7 +167,7 @@ impl KanidmClient {
         pubkey: &str,
     ) -> Result<(), ClientError> {
         let sk = (tag.to_string(), pubkey.to_string());
-        self.perform_post_request(format!("/v1/person/{}/_ssh_pubkeys", id).as_str(), sk)
+        self.perform_post_request(format!("/v1/person/{id}/_ssh_pubkeys").as_str(), sk)
             .await
     }
 
@@ -176,7 +176,7 @@ impl KanidmClient {
         id: &str,
         tag: &str,
     ) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/person/{}/_ssh_pubkeys/{}", id, tag).as_str())
+        self.perform_delete_request(format!("/v1/person/{id}/_ssh_pubkeys/{tag}").as_str())
             .await
     }
 
@@ -190,7 +190,7 @@ impl KanidmClient {
             shell: shell.map(str::to_string),
             gidnumber,
         };
-        self.perform_post_request(format!("/v1/person/{}/_unix", id).as_str(), ux)
+        self.perform_post_request(format!("/v1/person/{id}/_unix").as_str(), ux)
             .await
     }
 
@@ -230,7 +230,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<Option<String>, ClientError> {
-        self.perform_get_request(format!("/v1/person/{}/_radius", id).as_str())
+        self.perform_get_request(format!("/v1/person/{id}/_radius").as_str())
             .await
     }
 
@@ -238,12 +238,12 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<String, ClientError> {
-        self.perform_post_request(format!("/v1/person/{}/_radius", id).as_str(), ())
+        self.perform_post_request(format!("/v1/person/{id}/_radius").as_str(), ())
             .await
     }
 
     pub async fn idm_account_radius_credential_delete(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/person/{}/_radius", id).as_str())
+        self.perform_delete_request(format!("/v1/person/{id}/_radius").as_str())
             .await
     }
 
@@ -251,7 +251,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<Vec<UatStatus>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_user_auth_token", id).as_str())
+        self.perform_get_request(format!("/v1/account/{id}/_user_auth_token").as_str())
             .await
     }
 
@@ -272,7 +272,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_person_certificate_list(&self, id: &str) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/person/{}/_certificate", id).as_str())
+        self.perform_get_request(format!("/v1/person/{id}/_certificate").as_str())
             .await
     }
 
@@ -287,7 +287,7 @@ impl KanidmClient {
         new_cert
             .attrs
             .insert(ATTR_CERTIFICATE.to_string(), vec![pem_data.to_string()]);
-        self.perform_post_request(format!("/v1/person/{}/_certificate", id).as_str(), new_cert)
+        self.perform_post_request(format!("/v1/person/{id}/_certificate").as_str(), new_cert)
             .await
     }
 

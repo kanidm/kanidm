@@ -22,6 +22,7 @@ RUN \
         sccache \
         cargo \
         clang \
+        cmake \
         gawk \
         make \
         automake \
@@ -104,6 +105,6 @@ HEALTHCHECK \
     --start-period=60s \
     --start-interval=5s \
     --retries=3 \
-    CMD [ "/sbin/kanidmd", "healthcheck", "-c", "/data/server.toml"]
+    CMD [ "/sbin/kanidmd", "healthcheck"]
 
-CMD [ "/sbin/kanidmd", "server", "-c", "/data/server.toml"]
+CMD [ "/sbin/kanidmd", "server"]

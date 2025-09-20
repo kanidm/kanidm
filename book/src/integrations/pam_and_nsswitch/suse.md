@@ -1,7 +1,6 @@
 # SUSE / OpenSUSE
 
-To configure PAM on SUSE you must modify four files, which control the various stages of
-authentication:
+To configure PAM on SUSE you must modify four files, which control the various stages of authentication:
 
 ```bash
 /etc/pam.d/common-account
@@ -13,9 +12,9 @@ authentication:
 > [!IMPORTANT]
 >
 > By default these files are symlinks to their corresponding `-pc` file, for example,
-> `common-account -> common-account-pc`. If you directly edit these you are updating the inner
-> content of the `-pc` file and it WILL be reset on a future upgrade. To prevent this you must first
-> copy the `-pc` files. You can then edit the files safely.
+> `common-account -> common-account-pc`. If you directly edit these you are updating the inner content of the `-pc` file
+> and it WILL be reset on a future upgrade. To prevent this you must first copy the `-pc` files. You can then edit the
+> files safely.
 
 ```bash
 # These steps must be taken as root
@@ -29,8 +28,8 @@ cp /etc/pam.d/common-session-pc  /etc/pam.d/common-session
 cp /etc/pam.d/common-password-pc /etc/pam.d/common-password
 ```
 
-> NOTE: Unlike other PAM modules, Kanidm replaces the functionality of `pam_unix` and can authenticate
-> local users securely.
+> NOTE: Unlike other PAM modules, Kanidm replaces the functionality of `pam_unix` and can authenticate local users
+> securely.
 
 The content should look like:
 
@@ -63,5 +62,5 @@ session optional    pam_env.so
 
 > [!WARNING]
 >
-> Ensure that `pam_mkhomedir` or `pam_oddjobd` are _not_ present in any stage of your PAM
-> configuration, as they interfere with the correct operation of the Kanidm tasks daemon.
+> Ensure that `pam_mkhomedir` or `pam_oddjobd` are _not_ present in any stage of your PAM configuration, as they
+> interfere with the correct operation of the Kanidm tasks daemon.

@@ -28,20 +28,17 @@ use crate::schema::{
     SchemaWriteTransaction,
 };
 use crate::value::{CredentialType, EXTRACT_VAL_DN};
-use crate::valueset::uuid_to_proto_string;
-use crate::valueset::ScimValueIntermediate;
 use crate::valueset::*;
 use concread::arcache::{ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
-use kanidm_proto::scim_v1::client::ScimFilter;
-use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
-use kanidm_proto::scim_v1::server::ScimOAuth2ScopeMap;
-use kanidm_proto::scim_v1::server::ScimReference;
-use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::ScimEntryGetQuery;
+use kanidm_proto::scim_v1::{
+    server::{ScimListResponse, ScimOAuth2ClaimMap, ScimOAuth2ScopeMap, ScimReference},
+    JsonValue, ScimEntryGetQuery, ScimFilter,
+};
 use std::collections::BTreeSet;
+use std::num::NonZeroU64;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::{Semaphore, SemaphorePermit};
@@ -959,6 +956,8 @@ pub trait QueryServerTransaction<'a> {
             return Err(OperationError::InvalidAttributeName(attr.to_string()));
         };
 
+        debug!(schema_syntax = ?schema_a.syntax, ?value);
+
         match schema_a.syntax {
             SyntaxType::Utf8String => {
                 let JsonValue::String(value) = value else {
@@ -986,6 +985,21 @@ pub trait QueryServerTransaction<'a> {
                 let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                 Ok(PartialValue::Uuid(un))
             }
+            SyntaxType::Boolean => {
+                let JsonValue::Bool(value) = value else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+                Ok(PartialValue::Bool(*value))
+            }
+            SyntaxType::SyntaxId => {
+                let JsonValue::String(value) = value else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+                let Ok(value) = SyntaxType::try_from(value.as_str()) else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+                Ok(PartialValue::Syntax(value))
+            }
             SyntaxType::ReferenceUuid
             | SyntaxType::OauthScopeMap
             | SyntaxType::Session
@@ -1002,138 +1016,6 @@ pub trait QueryServerTransaction<'a> {
 
             _ => Err(OperationError::InvalidAttribute(attr.to_string())),
         }
-    }
-
-    fn resolve_scim_json_put(
-        &mut self,
-        attr: &Attribute,
-        value: Option<JsonValue>,
-    ) -> Result<Option<ValueSet>, OperationError> {
-        let schema = self.get_schema();
-        // Lookup the attr
-        let Some(schema_a) = schema.get_attributes().get(attr) else {
-            // No attribute of this name exists - fail fast, there is no point to
-            // proceed, as nothing can be satisfied.
-            return Err(OperationError::InvalidAttributeName(attr.to_string()));
-        };
-
-        let Some(value) = value else {
-            // It's a none so the value needs to be unset, and the attr DOES exist in
-            // schema.
-            return Ok(None);
-        };
-
-        let resolve_status = match schema_a.syntax {
-            SyntaxType::Utf8String => ValueSetUtf8::from_scim_json_put(value),
-            SyntaxType::Utf8StringInsensitive => ValueSetIutf8::from_scim_json_put(value),
-            SyntaxType::Uuid => ValueSetUuid::from_scim_json_put(value),
-            SyntaxType::Boolean => ValueSetBool::from_scim_json_put(value),
-            SyntaxType::SyntaxId => ValueSetSyntax::from_scim_json_put(value),
-            SyntaxType::IndexId => ValueSetIndex::from_scim_json_put(value),
-            SyntaxType::ReferenceUuid => ValueSetRefer::from_scim_json_put(value),
-            SyntaxType::Utf8StringIname => ValueSetIname::from_scim_json_put(value),
-            SyntaxType::NsUniqueId => ValueSetNsUniqueId::from_scim_json_put(value),
-            SyntaxType::DateTime => ValueSetDateTime::from_scim_json_put(value),
-            SyntaxType::EmailAddress => ValueSetEmailAddress::from_scim_json_put(value),
-            SyntaxType::Url => ValueSetUrl::from_scim_json_put(value),
-            SyntaxType::OauthScope => ValueSetOauthScope::from_scim_json_put(value),
-            SyntaxType::OauthScopeMap => ValueSetOauthScopeMap::from_scim_json_put(value),
-            SyntaxType::OauthClaimMap => ValueSetOauthClaimMap::from_scim_json_put(value),
-            SyntaxType::UiHint => ValueSetUiHint::from_scim_json_put(value),
-            SyntaxType::CredentialType => ValueSetCredentialType::from_scim_json_put(value),
-            SyntaxType::Certificate => ValueSetCertificate::from_scim_json_put(value),
-            SyntaxType::SshKey => ValueSetSshKey::from_scim_json_put(value),
-            SyntaxType::Uint32 => ValueSetUint32::from_scim_json_put(value),
-
-            // Not Yet ... if ever
-            // SyntaxType::JsonFilter => ValueSetJsonFilter::from_scim_json_put(value),
-            SyntaxType::JsonFilter => Err(OperationError::InvalidAttribute(
-                "Json Filters are not able to be set.".to_string(),
-            )),
-            // Can't be set currently as these are only internally generated for key-id's
-            // SyntaxType::HexString => ValueSetHexString::from_scim_json_put(value),
-            SyntaxType::HexString => Err(OperationError::InvalidAttribute(
-                "Hex strings are not able to be set.".to_string(),
-            )),
-
-            // Can't be set until we have better error handling in the set paths
-            // SyntaxType::Image => ValueSetImage::from_scim_json_put(value),
-            SyntaxType::Image => Err(OperationError::InvalidAttribute(
-                "Images are not able to be set.".to_string(),
-            )),
-
-            // Can't be set yet, mostly as I'm lazy
-            // SyntaxType::WebauthnAttestationCaList => {
-            //    ValueSetWebauthnAttestationCaList::from_scim_json_put(value)
-            // }
-            SyntaxType::WebauthnAttestationCaList => Err(OperationError::InvalidAttribute(
-                "Webauthn Attestation Ca Lists are not able to be set.".to_string(),
-            )),
-
-            // Syntax types that can not be submitted
-            SyntaxType::Credential => Err(OperationError::InvalidAttribute(
-                "Credentials are not able to be set.".to_string(),
-            )),
-            SyntaxType::SecretUtf8String => Err(OperationError::InvalidAttribute(
-                "Secrets are not able to be set.".to_string(),
-            )),
-            SyntaxType::SecurityPrincipalName => Err(OperationError::InvalidAttribute(
-                "SPNs are not able to be set.".to_string(),
-            )),
-            SyntaxType::Cid => Err(OperationError::InvalidAttribute(
-                "CIDs are not able to be set.".to_string(),
-            )),
-            SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute(
-                "Private Binaries are not able to be set.".to_string(),
-            )),
-            SyntaxType::IntentToken => Err(OperationError::InvalidAttribute(
-                "Intent Tokens are not able to be set.".to_string(),
-            )),
-            SyntaxType::Passkey => Err(OperationError::InvalidAttribute(
-                "Passkeys are not able to be set.".to_string(),
-            )),
-            SyntaxType::AttestedPasskey => Err(OperationError::InvalidAttribute(
-                "Attested Passkeys are not able to be set.".to_string(),
-            )),
-            SyntaxType::Session => Err(OperationError::InvalidAttribute(
-                "Sessions are not able to be set.".to_string(),
-            )),
-            SyntaxType::JwsKeyEs256 => Err(OperationError::InvalidAttribute(
-                "Jws ES256 Private Keys are not able to be set.".to_string(),
-            )),
-            SyntaxType::JwsKeyRs256 => Err(OperationError::InvalidAttribute(
-                "Jws RS256 Private Keys are not able to be set.".to_string(),
-            )),
-            SyntaxType::Oauth2Session => Err(OperationError::InvalidAttribute(
-                "Sessions are not able to be set.".to_string(),
-            )),
-            SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute(
-                "TOTP Secrets are not able to be set.".to_string(),
-            )),
-            SyntaxType::ApiToken => Err(OperationError::InvalidAttribute(
-                "API Tokens are not able to be set.".to_string(),
-            )),
-            SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute(
-                "Audit Strings are not able to be set.".to_string(),
-            )),
-            SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute(
-                "EC Private Keys are not able to be set.".to_string(),
-            )),
-            SyntaxType::KeyInternal => Err(OperationError::InvalidAttribute(
-                "Key Internal Structures are not able to be set.".to_string(),
-            )),
-            SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute(
-                "Application Passwords are not able to be set.".to_string(),
-            )),
-        }?;
-
-        match resolve_status {
-            ValueSetResolveStatus::Resolved(vs) => Ok(vs),
-            ValueSetResolveStatus::NeedsResolution(vs_inter) => {
-                self.resolve_valueset_intermediate(vs_inter)
-            }
-        }
-        .map(Some)
     }
 
     fn resolve_valueset_intermediate(
@@ -1261,10 +1143,7 @@ pub trait QueryServerTransaction<'a> {
 
                     let joined = str_concat!(claims, ",");
 
-                    v.push(format!(
-                        "{}:{}:{}:{:?}",
-                        claim_name, resolved_id, join_char, joined
-                    ))
+                    v.push(format!("{claim_name}:{resolved_id}:{join_char}:{joined:?}"))
                 }
             }
             Ok(v)
@@ -1542,6 +1421,8 @@ impl QueryServerReadTransaction<'_> {
             return sc_errs;
         }
 
+        // The schema is now valid, so we load this up
+
         //  * Indexing (req be + sch )
         let idx_errs = self.get_be_txn().verify_indexes();
 
@@ -1632,7 +1513,15 @@ impl QueryServerReadTransaction<'_> {
         ident: Identity,
         filter: ScimFilter,
         query: ScimEntryGetQuery,
-    ) -> Result<Vec<ScimEntryKanidm>, OperationError> {
+    ) -> Result<ScimListResponse, OperationError> {
+        // Parse filter here?
+
+        let filter = if let Some(user_filter) = query.filter {
+            ScimFilter::And(Box::new(filter), Box::new(user_filter.clone()))
+        } else {
+            filter
+        };
+
         let filter_intent = Filter::from_scim_ro(&ident, &filter, self)?;
 
         let f_intent_valid = filter_intent
@@ -1653,11 +1542,74 @@ impl QueryServerReadTransaction<'_> {
             effective_access_check: query.ext_access_check,
         };
 
-        let vs = self.search_ext(&se)?;
+        let mut result_set = self.search_ext(&se)?;
 
-        vs.into_iter()
+        // We need to know total_results before we paginate.
+        let total_results = result_set.len() as u64;
+
+        // These are STUPID ways to do this, but they demonstrate that the feature
+        // works and it's viable on small datasets. We will make this use indexes
+        // in the future!
+
+        // First, sort if any.
+        if let Some(sort_attr) = query.sort_by {
+            result_set.sort_unstable_by(|entry_left, entry_right| {
+                let left = entry_left.get_ava_set(&sort_attr);
+                let right = entry_right.get_ava_set(&sort_attr);
+                match (left, right) {
+                    (Some(left), Some(right)) => left.cmp(right),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => std::cmp::Ordering::Equal,
+                }
+            });
+        }
+
+        // Paginate, if any.
+        let (items_per_page, start_index, paginated_result_set) = if let Some(count) = query.count {
+            let count: u64 = count.get();
+            // User wants pagination. Count is how many elements they want.
+
+            let start_index: u64 = query
+                .start_index
+                .map(|non_zero_index|
+                    // SCIM pagination is 1 indexed, not 0.
+                    non_zero_index.get() - 1)
+                .unwrap_or_default();
+
+            // First, check that our start_index is valid.
+            if start_index as usize > result_set.len() {
+                // SCIM rfc doesn't define what happens if start index
+                // is OOB of the result set.
+                return Err(OperationError::SC0029PaginationOutOfBounds);
+            }
+
+            let mut result_set = result_set.split_off(start_index as usize);
+            result_set.truncate(count as usize);
+
+            (
+                NonZeroU64::new(count),
+                NonZeroU64::new(start_index + 1),
+                result_set,
+            )
+        } else {
+            // Unchanged
+            (None, None, result_set)
+        };
+
+        let resources = paginated_result_set
+            .into_iter()
             .map(|entry| entry.to_scim_kanidm(self))
-            .collect()
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(ScimListResponse {
+            // Requires other schema changes in future.
+            schemas: Vec::with_capacity(0),
+            total_results,
+            items_per_page,
+            start_index,
+            resources,
+        })
     }
 }
 
@@ -2038,6 +1990,23 @@ impl QueryServer {
     }
 
     pub async fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+        let current_time = duration_from_epoch_now();
+        // Before we can proceed, command the QS to load schema in full.
+        // IMPORTANT: While we take a write txn, this does no writes to the
+        // actual db, it's only so we can write to the in memory schema
+        // structures.
+        if self
+            .write(current_time)
+            .await
+            .and_then(|mut txn| {
+                txn.force_schema_reload();
+                txn.commit()
+            })
+            .is_err()
+        {
+            return vec![Err(ConsistencyError::Unknown)];
+        };
+
         match self.read().await {
             Ok(mut r_txn) => r_txn.verify(),
             Err(_) => vec![Err(ConsistencyError::Unknown)],
@@ -2478,6 +2447,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.migrate_domain_10_to_11()?;
         }
 
+        if previous_version <= DOMAIN_LEVEL_11 && domain_info_version >= DOMAIN_LEVEL_12 {
+            // 1.7 -> 1.8
+            self.migrate_domain_11_to_12()?;
+        }
+
+        if previous_version <= DOMAIN_LEVEL_12 && domain_info_version >= DOMAIN_LEVEL_13 {
+            // 1.8 -> 1.9
+            self.migrate_domain_12_to_13()?;
+        }
+
         // This is here to catch when we increase domain levels but didn't create the migration
         // hooks. If this fails it probably means you need to add another migration hook
         // in the above.
@@ -2499,7 +2478,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let display_name = domain_entry
             .get_ava_single_utf8(Attribute::DomainDisplayName)
             .map(str::to_string)
-            .unwrap_or_else(|| format!("Kanidm {}", domain_name));
+            .unwrap_or_else(|| format!("Kanidm {domain_name}"));
 
         let domain_ldap_allow_unix_pw_bind = domain_entry
             .get_ava_single_bool(Attribute::LdapAllowUnixPwBind)
@@ -2698,7 +2677,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn.clear_cache()
     }
 
-    #[instrument(level = "info", name="qswt_commit" skip_all)]
+    #[instrument(level = "debug", name="qswt_commit" skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
         self.reload()?;
 
@@ -2766,10 +2745,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use kanidm_proto::scim_v1::client::ScimFilter;
-    use kanidm_proto::scim_v1::server::ScimReference;
-    use kanidm_proto::scim_v1::JsonValue;
-    use kanidm_proto::scim_v1::ScimEntryGetQuery;
+    use kanidm_proto::scim_v1::{
+        server::{ScimListResponse, ScimReference},
+        JsonValue, ScimEntryGetQuery, ScimFilter,
+    };
+    use std::num::NonZeroU64;
 
     #[qs_test]
     async fn test_name_to_uuid(server: &QueryServer) {
@@ -3137,7 +3117,7 @@ mod tests {
                 assert_eq!(name.clone(), "idm_people_self_name_write")
             }
             _ => {
-                panic!("expected String, actual {:?}", name_scim);
+                panic!("expected String, actual {name_scim:?}");
             }
         }
 
@@ -3154,10 +3134,7 @@ mod tests {
                 )
             }
             _ => {
-                panic!(
-                    "expected EntryReference, actual {:?}",
-                    entry_managed_by_scim
-                );
+                panic!("expected EntryReference, actual {entry_managed_by_scim:?}");
             }
         }
 
@@ -3173,7 +3150,7 @@ mod tests {
                 )
             }
             _ => {
-                panic!("expected EntryReferences, actual {:?}", members_scim);
+                panic!("expected EntryReferences, actual {members_scim:?}");
             }
         }
     }
@@ -3253,11 +3230,149 @@ mod tests {
             )),
         );
 
-        let base: Vec<ScimEntryKanidm> = server_txn
+        let base: ScimListResponse = server_txn
             .scim_search_ext(idm_admin_ident, filter, ScimEntryGetQuery::default())
             .unwrap();
 
-        assert_eq!(base.len(), 1);
-        assert_eq!(base[0].header.id, group_uuid);
+        assert_eq!(base.resources.len(), 1);
+        assert_eq!(base.total_results, 1);
+        // Pagination not requested,
+        assert_eq!(base.items_per_page, None);
+        assert_eq!(base.start_index, None);
+        assert_eq!(base.resources[0].header.id, group_uuid);
+    }
+
+    #[qs_test]
+    async fn test_scim_basic_search_ext_query_with_sort(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        for i in (1..4).rev() {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (
+                    Attribute::Name,
+                    Value::new_iname(format!("testgroup{i}").as_str())
+                )
+            );
+            assert!(server_txn.internal_create(vec![e1]).is_ok());
+        }
+
+        assert!(server_txn.commit().is_ok());
+
+        // Now read that entry.
+        let mut server_txn = server.read().await.unwrap();
+
+        let idm_admin_entry = server_txn.internal_search_uuid(UUID_IDM_ADMIN).unwrap();
+        let idm_admin_ident = Identity::from_impersonate_entry_readwrite(idm_admin_entry);
+
+        let filter = ScimFilter::And(
+            Box::new(ScimFilter::Equal(
+                Attribute::Class.into(),
+                EntryClass::Group.into(),
+            )),
+            Box::new(ScimFilter::StartsWith(
+                Attribute::Name.into(),
+                JsonValue::String("testgroup".into()),
+            )),
+        );
+
+        let base: ScimListResponse = server_txn
+            .scim_search_ext(
+                idm_admin_ident.clone(),
+                filter.clone(),
+                ScimEntryGetQuery {
+                    sort_by: Some(Attribute::Name),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+
+        assert_eq!(base.resources.len(), 3);
+        assert_eq!(base.total_results, 3);
+        // Pagination not requested,
+        assert_eq!(base.items_per_page, None);
+        assert_eq!(base.start_index, None);
+
+        let Some(ScimValueKanidm::String(testgroup_name_0)) =
+            base.resources[0].attrs.get(&Attribute::Name)
+        else {
+            panic!("Invalid data in attribute.");
+        };
+        let Some(ScimValueKanidm::String(testgroup_name_1)) =
+            base.resources[1].attrs.get(&Attribute::Name)
+        else {
+            panic!("Invalid data in attribute.");
+        };
+        let Some(ScimValueKanidm::String(testgroup_name_2)) =
+            base.resources[2].attrs.get(&Attribute::Name)
+        else {
+            panic!("Invalid data in attribute.");
+        };
+
+        assert!(testgroup_name_0 < testgroup_name_1);
+        assert!(testgroup_name_0 < testgroup_name_2);
+        assert!(testgroup_name_1 < testgroup_name_2);
+
+        // ================
+        // Test pagination.
+        let base: ScimListResponse = server_txn
+            .scim_search_ext(
+                idm_admin_ident.clone(),
+                filter.clone(),
+                ScimEntryGetQuery {
+                    count: NonZeroU64::new(1),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+
+        assert_eq!(base.resources.len(), 1);
+        assert_eq!(base.total_results, 3);
+        // Pagination not requested,
+        assert_eq!(base.items_per_page, NonZeroU64::new(1));
+        assert_eq!(base.start_index, NonZeroU64::new(1));
+
+        let Some(ScimValueKanidm::String(testgroup_name_0)) =
+            base.resources[0].attrs.get(&Attribute::Name)
+        else {
+            panic!("Invalid data in attribute.");
+        };
+        // DB has reverse order
+        assert_eq!(testgroup_name_0, "testgroup3");
+
+        // ================
+        // Test pagination + sort
+        let base: ScimListResponse = server_txn
+            .scim_search_ext(
+                idm_admin_ident,
+                filter.clone(),
+                ScimEntryGetQuery {
+                    sort_by: Some(Attribute::Name),
+                    count: NonZeroU64::new(2),
+                    start_index: NonZeroU64::new(2),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+
+        assert_eq!(base.resources.len(), 2);
+        assert_eq!(base.total_results, 3);
+        assert_eq!(base.items_per_page, NonZeroU64::new(2));
+        assert_eq!(base.start_index, NonZeroU64::new(2));
+
+        let Some(ScimValueKanidm::String(testgroup_name_0)) =
+            base.resources[0].attrs.get(&Attribute::Name)
+        else {
+            panic!("Invalid data in attribute.");
+        };
+        let Some(ScimValueKanidm::String(testgroup_name_1)) =
+            base.resources[1].attrs.get(&Attribute::Name)
+        else {
+            panic!("Invalid data in attribute.");
+        };
+        // Sorted, note we skipped entry "testgroup 1" using pagination.
+        assert_eq!(testgroup_name_0, "testgroup2");
+        assert_eq!(testgroup_name_1, "testgroup3");
     }
 }

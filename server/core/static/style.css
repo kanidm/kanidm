@@ -1,6 +1,12 @@
 :root {
   --totp-width-and-height: 30px;
   --totp-stroke-width: 60px;
+  --navbar-colors-transition: color 0.15s ease-in-out,
+    background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  --navbar-colors-transition: none;
 }
 
 html,
@@ -60,28 +66,16 @@ body {
 }
 
 /*
- * Personal Settings sidemenu
- */
-
-/*
  * Navbar
  */
-nav.kanidm_navbar {
-  background-color: var(--bs-navbar-brand-color);
+.navbar-toggle-icon {
+  width: 30px;
+  height: 30px;
+  transition: var(--navbar-colors-transition);
 }
-
-nav a.navbar-brand,
-nav a.nav-link {
-  color: var(--bs-body-bg);
-}
-
-nav a.navbar-brand:hover,
-nav a.nav-link:hover {
-  color: var(--bs-secondary-bg);
-}
-
-footer {
-  background-color: var(--bs-tertiary-bg);
+nav a.navbar-brand {
+  color: var(--bs-navbar-color);
+  transition: var(--navbar-colors-transition);
 }
 
 .kanidm_logo {
@@ -205,4 +199,8 @@ footer {
   width: var(--icon-size);
   height: var(--icon-size);
   transform: rotate(35deg);
+}
+
+.cursor-pointer:hover {
+  cursor: pointer;
 }

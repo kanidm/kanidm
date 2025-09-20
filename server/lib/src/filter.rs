@@ -23,7 +23,7 @@ use hashbrown::HashMap;
 use hashbrown::HashSet;
 use kanidm_proto::constants::ATTR_UUID;
 use kanidm_proto::internal::{Filter as ProtoFilter, OperationError, SchemaError};
-use kanidm_proto::scim_v1::client::{AttrPath as ScimAttrPath, ScimFilter};
+use kanidm_proto::scim_v1::{AttrPath as ScimAttrPath, ScimFilter};
 use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -150,27 +150,27 @@ impl fmt::Debug for FilterComp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FilterComp::Eq(attr, pv) => {
-                write!(f, "{} eq {:?}", attr, pv)
+                write!(f, "{attr} eq {pv:?}")
             }
             FilterComp::Cnt(attr, pv) => {
-                write!(f, "{} cnt {:?}", attr, pv)
+                write!(f, "{attr} cnt {pv:?}")
             }
             FilterComp::Stw(attr, pv) => {
-                write!(f, "{} stw {:?}", attr, pv)
+                write!(f, "{attr} stw {pv:?}")
             }
             FilterComp::Enw(attr, pv) => {
-                write!(f, "{} enw {:?}", attr, pv)
+                write!(f, "{attr} enw {pv:?}")
             }
             FilterComp::Pres(attr) => {
-                write!(f, "{} pres", attr)
+                write!(f, "{attr} pres")
             }
             FilterComp::LessThan(attr, pv) => {
-                write!(f, "{} lt {:?}", attr, pv)
+                write!(f, "{attr} lt {pv:?}")
             }
             FilterComp::And(list) => {
                 write!(f, "(")?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " and ")?;
                     }
@@ -180,7 +180,7 @@ impl fmt::Debug for FilterComp {
             FilterComp::Or(list) => {
                 write!(f, "(")?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " or ")?;
                     }
@@ -190,7 +190,7 @@ impl fmt::Debug for FilterComp {
             FilterComp::Inclusion(list) => {
                 write!(f, "(")?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " inc ")?;
                     }
@@ -198,13 +198,13 @@ impl fmt::Debug for FilterComp {
                 write!(f, ")")
             }
             FilterComp::AndNot(inner) => {
-                write!(f, "not ( {:?} )", inner)
+                write!(f, "not ( {inner:?} )")
             }
             FilterComp::SelfUuid => {
                 write!(f, "uuid eq self")
             }
             FilterComp::Invalid(attr) => {
-                write!(f, "invalid ( {:?} )", attr)
+                write!(f, "invalid ( {attr:?} )")
             }
         }
     }
@@ -291,7 +291,7 @@ impl fmt::Debug for FilterResolved {
             FilterResolved::And(list, idx) => {
                 write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " and ")?;
                     }
@@ -301,7 +301,7 @@ impl fmt::Debug for FilterResolved {
             FilterResolved::Or(list, idx) => {
                 write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " or ")?;
                     }
@@ -311,7 +311,7 @@ impl fmt::Debug for FilterResolved {
             FilterResolved::Inclusion(list, idx) => {
                 write!(f, "(s{} ", idx.unwrap_or(NonZeroU8::MAX))?;
                 for (i, fc) in list.iter().enumerate() {
-                    write!(f, "{:?}", fc)?;
+                    write!(f, "{fc:?}")?;
                     if i != list.len() - 1 {
                         write!(f, " inc ")?;
                     }
@@ -322,7 +322,7 @@ impl fmt::Debug for FilterResolved {
                 write!(f, "not (s{} {:?})", idx.unwrap_or(NonZeroU8::MAX), inner)
             }
             FilterResolved::Invalid(attr) => {
-                write!(f, "{} inv", attr)
+                write!(f, "{attr} inv")
             }
         }
     }
@@ -378,7 +378,7 @@ pub enum FilterPlan {
 fn fmt_filterplan_set(f: &mut fmt::Formatter<'_>, name: &str, plan: &[FilterPlan]) -> fmt::Result {
     write!(f, "{name}(")?;
     for item in plan {
-        write!(f, "{}, ", item)?;
+        write!(f, "{item}, ")?;
     }
     write!(f, ")")
 }
@@ -1197,7 +1197,6 @@ impl FilterComp {
                 let pv = qs.resolve_scim_json_get(a, json_value)?;
                 FilterComp::Eq(a.clone(), pv)
             }
-
             ScimFilter::Contains(ScimAttrPath { a, s: None }, json_value) => {
                 let pv = qs.resolve_scim_json_get(a, json_value)?;
                 FilterComp::Cnt(a.clone(), pv)
@@ -1766,7 +1765,7 @@ impl FilterResolved {
             | FilterResolved::And(_, sf)
             | FilterResolved::Inclusion(_, sf)
             | FilterResolved::AndNot(_, sf) => *sf,
-            // We hard code 1 because there is no slope for an invlid filter
+            // We hard code 1 because there is no slope for an invalid filter
             FilterResolved::Invalid(_) => NonZeroU8::new(1),
         }
     }
@@ -1857,14 +1856,14 @@ mod tests {
                     Attribute::Class,
                     EntryClass::TestClass.to_partialvalue()
                 )]),
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
                 f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_pres(Attribute::Class),
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
             ])
         );
 
@@ -1872,20 +1871,20 @@ mod tests {
         filter_optimise_assert!(
             f_and(vec![
                 f_and(vec![
-                    f_eq(Attribute::Class, PartialValue::new_class("foo")),
+                    f_eq(Attribute::Class, PartialValue::new_iutf8("foo")),
                     f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
-                    f_eq(Attribute::Uid, PartialValue::new_class("bar")),
+                    f_eq(Attribute::Uid, PartialValue::new_iutf8("bar")),
                 ]),
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
                 f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ]),
             f_and(vec![
-                f_eq(Attribute::Class, PartialValue::new_class("foo")),
+                f_eq(Attribute::Class, PartialValue::new_iutf8("foo")),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_pres(Attribute::Class),
-                f_eq(Attribute::Uid, PartialValue::new_class("bar")),
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_eq(Attribute::Uid, PartialValue::new_iutf8("bar")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
             ])
         );
 
@@ -1893,14 +1892,14 @@ mod tests {
             f_or(vec![
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue()),
                 f_pres(Attribute::Class),
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
                 f_or(vec![f_eq(
                     Attribute::Class,
                     EntryClass::TestClass.to_partialvalue()
                 )]),
             ]),
             f_or(vec![
-                f_sub(Attribute::Class, PartialValue::new_class("te")),
+                f_sub(Attribute::Class, PartialValue::new_iutf8("te")),
                 f_pres(Attribute::Class),
                 f_eq(Attribute::Class, EntryClass::TestClass.to_partialvalue())
             ])

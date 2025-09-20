@@ -17,7 +17,8 @@ use crate::idprovider::system::{
     Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit, SystemProviderSession,
 };
 use hashbrown::HashMap;
-use kanidm_unix_common::constants::DEFAULT_SHELL_SEARCH_PATHS;
+use kanidm_hsm_crypto::provider::BoxedDynTpm;
+use kanidm_unix_common::constants::{DEFAULT_SHELL_SEARCH_PATHS, SYSTEM_SHADOW_PATH};
 use kanidm_unix_common::unix_config::{HomeAttr, UidAttr};
 use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{
@@ -33,14 +34,12 @@ use std::string::ToString;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use time::OffsetDateTime;
+use tokio::sync::broadcast;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-use kanidm_hsm_crypto::BoxedDynTpm;
-
-use tokio::sync::broadcast;
-
-const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
+const NXCACHE_SIZE: NonZeroUsize =
+    NonZeroUsize::new(128).expect("Invalid NXCACHE constant at compile time");
 
 pub enum AuthSession {
     Online {
@@ -449,10 +448,8 @@ impl Resolver {
         &self,
         account_id: &Id,
         token: Option<UserToken>,
+        current_time: SystemTime,
     ) -> Result<Option<UserToken>, ()> {
-        // TODO: Move this to the caller.
-        let now = SystemTime::now();
-
         let mut hsm_lock = self.hsm.lock().await;
 
         // We need to re-acquire the token now behind the hsmlock - this is so that
@@ -476,7 +473,12 @@ impl Resolver {
             match self.client_ids.get(&tok.provider) {
                 Some(client) => {
                     client
-                        .unix_user_get(account_id, token.as_ref(), hsm_lock.deref_mut(), now)
+                        .unix_user_get(
+                            account_id,
+                            token.as_ref(),
+                            hsm_lock.deref_mut(),
+                            current_time,
+                        )
                         .await
                 }
                 None => {
@@ -494,7 +496,12 @@ impl Resolver {
             'search: {
                 for client in self.clients.iter() {
                     match client
-                        .unix_user_get(account_id, token.as_ref(), hsm_lock.deref_mut(), now)
+                        .unix_user_get(
+                            account_id,
+                            token.as_ref(),
+                            hsm_lock.deref_mut(),
+                            current_time,
+                        )
                         .await
                     {
                         // Ignore this one.
@@ -536,10 +543,8 @@ impl Resolver {
         &self,
         grp_id: &Id,
         token: Option<GroupToken>,
+        current_time: SystemTime,
     ) -> Result<Option<GroupToken>, ()> {
-        // TODO: Move this to the caller.
-        let now = SystemTime::now();
-
         let mut hsm_lock = self.hsm.lock().await;
 
         let group_get_result = if let Some(tok) = token.as_ref() {
@@ -547,7 +552,7 @@ impl Resolver {
             match self.client_ids.get(&tok.provider) {
                 Some(client) => {
                     client
-                        .unix_group_get(grp_id, hsm_lock.deref_mut(), now)
+                        .unix_group_get(grp_id, hsm_lock.deref_mut(), current_time)
                         .await
                 }
                 None => {
@@ -564,7 +569,7 @@ impl Resolver {
             'search: {
                 for client in self.clients.iter() {
                     match client
-                        .unix_group_get(grp_id, hsm_lock.deref_mut(), now)
+                        .unix_group_get(grp_id, hsm_lock.deref_mut(), current_time)
                         .await
                     {
                         // Ignore this one.
@@ -609,7 +614,8 @@ impl Resolver {
 
         // If the token isn't found, get_cached will set expired = true.
         if expired {
-            self.refresh_usertoken(account_id, item).await
+            self.refresh_usertoken(account_id, item, SystemTime::now())
+                .await
         } else {
             // Still valid, return the cached entry.
             Ok(item)
@@ -621,13 +627,17 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip(self))]
-    async fn get_grouptoken(&self, grp_id: Id) -> Result<Option<GroupToken>, ()> {
+    async fn get_grouptoken(
+        &self,
+        grp_id: Id,
+        current_time: SystemTime,
+    ) -> Result<Option<GroupToken>, ()> {
         let (expired, item) = self.get_cached_grouptoken(&grp_id).await.map_err(|e| {
             debug!("get_grouptoken error -> {:?}", e);
         })?;
 
         if expired {
-            self.refresh_grouptoken(&grp_id, item).await
+            self.refresh_grouptoken(&grp_id, item, current_time).await
         } else {
             // Still valid, return the cached entry.
             Ok(item)
@@ -804,7 +814,9 @@ impl Resolver {
 
             for client in self.clients.iter() {
                 if let Some(extend_group_id) = client.has_map_group(&nss_group.name) {
-                    let token = self.get_grouptoken(extend_group_id.clone()).await?;
+                    let token = self
+                        .get_grouptoken(extend_group_id.clone(), SystemTime::now())
+                        .await?;
                     if let Some(token) = token {
                         let members = self.get_groupmembers(token.uuid).await;
                         nss_group.members.extend(members);
@@ -822,7 +834,7 @@ impl Resolver {
             return Ok(Some(nss_group));
         }
 
-        let token = self.get_grouptoken(grp_id).await?;
+        let token = self.get_grouptoken(grp_id, SystemTime::now()).await?;
         // Get members set.
         match token {
             Some(tok) => {
@@ -903,7 +915,7 @@ impl Resolver {
             SystemProviderAuthInit::ShadowMissing => {
                 warn!(
                     ?account_id,
-                    "Resolver unable to proceed, /etc/shadow was not accessible."
+                    "Resolver unable to proceed, {SYSTEM_SHADOW_PATH} was not accessible."
                 );
                 return Ok((AuthSession::Denied, PamAuthResponse::Unknown));
             }

@@ -91,7 +91,7 @@ async fn driver_main(opt: Opt) {
     let sync_config: Config = match toml::from_str(contents.as_str()) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("unable to parse config {:?}", e);
+            eprintln!("unable to parse config {e:?}");
             return;
         }
     };
@@ -854,7 +854,7 @@ fn ipa_to_scim_entry(
 
         let password_import = entry
             .remove_ava_single(Attribute::IpaNtHash.as_ref())
-            .map(|s| format!("ipaNTHash: {}", s))
+            .map(|s| format!("ipaNTHash: {s}"))
             // If we don't have this, try one of the other hashes that *might* work
             // The reason we don't do this by default is there are multiple
             // pw hash formats in 389-ds we don't support!
@@ -1112,7 +1112,7 @@ fn main() {
         match EnvFilter::try_new("kanidm_client=debug,kanidm_ipa_sync=debug,ldap3_client=debug") {
             Ok(f) => f,
             Err(e) => {
-                eprintln!("ERROR! Unable to start tracing {:?}", e);
+                eprintln!("ERROR! Unable to start tracing {e:?}");
                 return;
             }
         }

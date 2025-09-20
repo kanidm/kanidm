@@ -135,11 +135,13 @@ impl KeyObjectManagement {
         qs: &mut QueryServerWriteTransaction,
         cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
-        // Valid from right meow!
+        // New keys will be valid from right meow!
         let valid_from = qs.get_curtime();
         let txn_cid = qs.get_cid().clone();
-
         let key_providers = qs.get_key_providers_mut();
+        // ====================================================================
+        // Transform any found KeyObjects and manage any related key operations
+        // for them
 
         cand.iter_mut()
             .filter(|entry| {
@@ -147,7 +149,7 @@ impl KeyObjectManagement {
             })
             .try_for_each(|entry| {
                 // The entry should not have set any type of KeyObject at this point.
-                // Should we force delete those attrs here just incase?
+                // Should we force delete those attrs here just in case?
                 entry.remove_ava(Attribute::Class, &EntryClass::KeyObjectInternal.into());
 
                 // Must be set by now.
@@ -172,6 +174,14 @@ impl KeyObjectManagement {
                     key_object.jws_es256_import(import_keys, valid_from, &txn_cid)?;
                 }
 
+                let maybe_import = entry.pop_ava(Attribute::KeyActionImportJwsRs256);
+                if let Some(import_keys) = maybe_import
+                    .as_ref()
+                    .and_then(|vs| vs.as_private_binary_set())
+                {
+                    key_object.jws_rs256_import(import_keys, valid_from, &txn_cid)?;
+                }
+
                 // If revoke. This weird looking let dance is to ensure that the inner hexstring set
                 // lives long enough.
                 let maybe_revoked = entry.pop_ava(Attribute::KeyActionRevoke);
@@ -188,24 +198,30 @@ impl KeyObjectManagement {
                 if let Some(rotation_time) = entry
                     .pop_ava(Attribute::KeyActionRotate)
                     .and_then(|vs| vs.to_datetime_single())
-                    .and_then(|odt| {
+                    .map(|odt| {
                         let secs = odt.unix_timestamp() as u64;
                         if secs > valid_from.as_secs() {
-                            Some(Duration::from_secs(secs))
+                            Duration::from_secs(secs)
                         } else {
-                            None
+                            valid_from
                         }
                     })
                 {
+                    debug!(?rotation_time, "initiate key rotation");
                     key_object.rotate_keys(rotation_time, &txn_cid)?;
                 }
 
                 if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into())
                 {
                     // Assert that this object has a valid es256 key present. Post revoke, it may NOT
-                    // be present. This differs to rotate, in that the assert verifes we have at least
+                    // be present. This differs to rotate, in that the assert verifies we have at least
                     // *one* key that is valid in all conditions.
                     key_object.jws_es256_assert(Duration::ZERO, &txn_cid)?;
+                }
+
+                if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtRs256.into())
+                {
+                    key_object.jws_rs256_assert(Duration::ZERO, &txn_cid)?;
                 }
 
                 if entry

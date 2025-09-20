@@ -2,16 +2,13 @@
 
 > [!WARNING]
 >
-> Kanidm currently has no support for SELinux policy - this may mean you need to run the daemon with
-> permissive mode for the `unconfined_service_t` daemon type. To do this run:
-> `semanage permissive -a unconfined_service_t`. To undo this run
-> `semanage permissive -d unconfined_service_t`.
+> Kanidm currently has no support for SELinux policy - this may mean you need to run the daemon with permissive mode for
+> the `unconfined_service_t` daemon type. To do this run: `semanage permissive -a unconfined_service_t`. To undo this
+> run `semanage permissive -d unconfined_service_t`.
 >
-> You may also need to run `audit2allow` for sshd and other types to be able to access the UNIX
-> daemon sockets.
+> You may also need to run `audit2allow` for sshd and other types to be able to access the UNIX daemon sockets.
 
-These files are managed by authselect as symlinks. You can either work with authselect, or remove
-the symlinks first.
+These files are managed by authselect as symlinks. You can either work with authselect, or remove the symlinks first.
 
 ## Without authselect
 
@@ -81,10 +78,9 @@ First run the following command:
 authselect create-profile kanidm -b sssd
 ```
 
-A new folder, /etc/authselect/custom/kanidm, should be created. Inside that folder, create or
-overwrite the following three files: nsswitch.conf, password-auth, system-auth. password-auth and
-system-auth should be the same as above. nsswitch should be modified for your use case. A working
-example looks like this:
+A new folder, /etc/authselect/custom/kanidm, should be created. Inside that folder, create or overwrite the following
+three files: nsswitch.conf, password-auth, system-auth. password-auth and system-auth should be the same as above.
+nsswitch should be modified for your use case. A working example looks like this:
 
 ```text
 passwd: kanidm compat systemd

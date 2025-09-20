@@ -51,9 +51,9 @@ impl Plugin for CredImport {
 
 impl CredImport {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| {
+        cand.iter_mut().try_for_each(|entry| {
             // PASSWORD IMPORT
-            if let Some(vs) = e.pop_ava(Attribute::PasswordImport) {
+            if let Some(vs) = entry.pop_ava(Attribute::PasswordImport) {
                 // if there are multiple, fail.
                 let im_pw = vs.to_utf8_single().ok_or_else(|| {
                     OperationError::Plugin(PluginError::CredImport(
@@ -62,27 +62,18 @@ impl CredImport {
                 })?;
 
                 // convert the import_password_string to a password
-                let pw = Password::try_from(im_pw).map_err(|_| {
-                    let len = if im_pw.len() > 5 {
-                        4
-                    } else {
-                        im_pw.len() - 1
-                    };
-                    let hint = im_pw.split_at(len).0;
-                    let id = e.get_display_id();
-
-                    error!(%hint, entry_id = %id, "{} was unable to convert hash format", Attribute::PasswordImport);
-
+                let pw = Password::try_from(im_pw).map_err(|err| {
+                    error!(entry_id = %entry.get_display_id(), "{} was unable to convert hash format - {}", Attribute::PasswordImport, err);
                     OperationError::Plugin(PluginError::CredImport(
                         "password_import was unable to convert hash format".to_string(),
                     ))
                 })?;
 
                 // does the entry have a primary cred?
-                match e.get_ava_single_credential(Attribute::PrimaryCredential) {
+                match entry.get_ava_single_credential(Attribute::PrimaryCredential) {
                     Some(c) => {
                         let c = c.update_password(pw);
-                        e.set_ava(
+                        entry.set_ava(
                             &Attribute::PrimaryCredential,
                             once(Value::new_credential("primary", c)),
                         );
@@ -90,7 +81,7 @@ impl CredImport {
                     None => {
                         // just set it then!
                         let c = Credential::new_from_password(pw);
-                        e.set_ava(
+                        entry.set_ava(
                             &Attribute::PrimaryCredential,
                             once(Value::new_credential("primary", c)),
                         );
@@ -100,7 +91,7 @@ impl CredImport {
 
             // TOTP IMPORT - Must be subsequent to password import to allow primary cred to
             // be created.
-            if let Some(vs) = e.pop_ava(Attribute::TotpImport) {
+            if let Some(vs) = entry.pop_ava(Attribute::TotpImport) {
                 // Get the map.
                 let totps = vs.as_totp_map().ok_or_else(|| {
                     OperationError::Plugin(PluginError::CredImport(
@@ -108,11 +99,11 @@ impl CredImport {
                     ))
                 })?;
 
-                if let Some(c) = e.get_ava_single_credential(Attribute::PrimaryCredential) {
+                if let Some(c) = entry.get_ava_single_credential(Attribute::PrimaryCredential) {
                     let c = totps.iter().fold(c.clone(), |acc, (label, totp)| {
                         acc.append_totp(label.clone(), totp.clone())
                     });
-                    e.set_ava(
+                    entry.set_ava(
                         &Attribute::PrimaryCredential,
                         once(Value::new_credential("primary", c)),
                     );
@@ -125,7 +116,7 @@ impl CredImport {
             }
 
             // UNIX PASSWORD IMPORT
-            if let Some(vs) = e.pop_ava(Attribute::UnixPasswordImport) {
+            if let Some(vs) = entry.pop_ava(Attribute::UnixPasswordImport) {
                 // if there are multiple, fail.
                 let im_pw = vs.to_utf8_single().ok_or_else(|| {
                     OperationError::Plugin(PluginError::CredImport(
@@ -140,8 +131,10 @@ impl CredImport {
                     } else {
                         im_pw.len() - 1
                     };
-                    let hint = im_pw.split_at(len).0;
-                    let id = e.get_display_id();
+                    let hint = im_pw.split_at_checked(len)
+                        .map(|(a, _)| a)
+                        .unwrap_or("CORRUPT");
+                    let id = entry.get_display_id();
 
                     error!(%hint, entry_id = %id, "{} was unable to convert hash format", Attribute::UnixPasswordImport);
 
@@ -152,7 +145,7 @@ impl CredImport {
 
                 // Unix pw's aren't like primary, we can just splat them here.
                 let c = Credential::new_from_password(pw);
-                e.set_ava(
+                entry.set_ava(
                     &Attribute::UnixPassword,
                     once(Value::new_credential("primary", c)),
                 );
@@ -205,7 +198,7 @@ mod tests {
 
         let create = vec![e];
 
-        run_create_test!(Ok(()), preload, create, None, |_| {});
+        run_create_test!(Ok(None), preload, create, None, |_| {});
     }
 
     #[test]

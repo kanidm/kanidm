@@ -9,16 +9,11 @@ pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
             let filecontents = match std::fs::read(&filepath) {
                 Ok(value) => value,
                 Err(error) => {
-                    return Err(format!(
-                        "Failed to read {:?}, skipping: {:?}",
-                        filepath, error
-                    ));
+                    return Err(format!("Failed to read {filepath:?}, skipping: {error:?}"));
                 }
             };
             let shasum = openssl::hash::hash(openssl::hash::MessageDigest::sha384(), &filecontents)
-                .map_err(|_| {
-                    format!("Failed to generate SHA384 hash for file at {:?}", filepath)
-                })?;
+                .map_err(|_| format!("Failed to generate SHA384 hash for file at {filepath:?}"))?;
             Ok(openssl::base64::encode_block(&shasum))
         }
     }

@@ -4,40 +4,79 @@
 Profile
 (% endblock %)
 
+(% macro string_attr(dispname, name, value, editable, attribute) %)
+(% if scim_effective_access.search.check(attribute|as_ref) %)
+<div class="row g-0 mt-3">
+    <label for="person(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
+    <div class="col-12 col-md-8 col-lg-6">
+        (% if scim_effective_access.modify_present.check(attribute|as_ref) %)
+        <input class="form-control py-0" id="person(( name ))" name="(( name ))" value="(( value ))">
+        (% else %)
+        <input readonly class="form-control-plaintext py-0" id="person(( name ))" name="(( name ))" value="(( value ))">
+        (% endif %)
+    </div>
+</div>
+(% endif %)
+(% endmacro %)
+
 (% block settings_window %)
 
-<form>
-    <div class="mb-2 row">
-        <label for="profileUserName" class="col-12 col-md-3 col-xl-2 col-form-label">User name</label>
-        <div class="col-12 col-md-6 col-lg-5">
-            <input type="text" readonly class="form-control-plaintext" id="profileUserName" value="(( account_name ))">
-        </div>
-    </div>
+<form id="user_settings_container" class="needs-validation"
+      hx-post="/ui/api/user_settings/edit_profile"
+      hx-target="#main"
+      hx-swap="outerHTML"
+      hx-validate="true"
+      hx-ext="bs-validation"
+      novalidate>
+    (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)
 
-    <div class="mb-2 row">
-        <label for="profileDisplayName" class="col-12 col-md-3 col-xl-2 col-form-label">Display name</label>
-        <div class="col-12 col-md-6 col-lg-5">
-            <input type="text" class="form-control-plaintext" id="profileDisplayName" value="(( display_name ))" disabled>
+    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)
+
+    (% let can_edit_email = can_rw && scim_effective_access.modify_present.check(Attribute::Mail|as_ref) %)
+    <div class="mb-2">
+        <div class="mt-3 mb-2 col-12 col-md-11 col-lg-8">
+            <label for="profileEmail" class="fw-bold">Email addresses (% if can_edit_email %)(select primary)(% endif %)</label>
+            (% if can_edit_email %)
+            <a class="cursor-pointer float-end"
+               hx-boost="true"
+               hx-get="/ui/api/user_settings/add_email"
+               hx-target="#emailAddresses"
+               hx-include="#emailAddresses :last-child .email-index-state"
+               hx-swap="beforeend">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square"
+                     viewBox="0 0 16 16" width="20" height="20">
+                    <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"></path>
+                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"></path>
+                </svg>
+            </a>
+            (% endif %)
         </div>
-    </div>
-    
-    <div class="mb-2 row">
-        <label for="profileEmail" class="col-12 col-md-3 col-xl-2 col-form-label">Email</label>
-        <div class="col-12 col-md-6 col-lg-5">
-            <input type="email" disabled class="form-control-plaintext" id="profileEmail" value="(( email.clone().unwrap_or("None configured".to_string())))">
+        <div>
+            <div class="row g-0">
+                <div class="col-12 col-md-11 col-lg-8" id="emailAddresses">
+                    (% for (index, email) in person.mails.iter().enumerate() %)
+                    (% let value = email.value.clone() %)
+                    (% let primary = email.primary %)
+                    (% let can_edit = can_edit_email %)
+
+                    (% include "user_settings/form_email_entry_partial.html" %)
+
+                    (% endfor %)
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Edit button -->
-    <!-- <div class="pt-4">
+    <div class="pt-4">
         (% if can_rw %)
-            <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_profile" disabled>Edit (Currently Not Working!)</button>
+        <button class="btn btn-primary" type="submit">Save</button>
         (% else %)
-            <a href=(Urls::ProfileUnlock) hx-boost="false">
-                <button class="btn btn-primary" type="button">((UiMessage::UnlockEdit))</button>
-            </a>
+        <a href="/ui/unlock" hx-boost="false">
+            <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
+        </a>
         (% endif %)
-    </div> -->
+    </div>
 </form>
 
 (% endblock %)

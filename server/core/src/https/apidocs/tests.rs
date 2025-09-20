@@ -7,7 +7,7 @@ fn figure_out_if_we_have_all_the_routes() {
 
     // load this file
     let module_filename = format!("{}/src/https/apidocs/mod.rs", env!("CARGO_MANIFEST_DIR"));
-    println!("trying to load apidocs source file: {}", module_filename);
+    println!("trying to load apidocs source file: {module_filename}");
     let file = std::fs::read_to_string(&module_filename).unwrap();
 
     // find all the lines that start with super::v1:: and end with a comma
@@ -16,7 +16,7 @@ fn figure_out_if_we_have_all_the_routes() {
     for line in file.lines() {
         if let Some(caps) = apidocs_function_finder.captures(line) {
             let route = caps.get(1).unwrap().as_str();
-            println!("route: {}", route);
+            println!("route: {route}");
             let mut splitter = route.split("::");
 
             let module = splitter.next().unwrap();
@@ -31,7 +31,7 @@ fn figure_out_if_we_have_all_the_routes() {
         }
     }
     for (module, routes) in apidocs_routes.iter() {
-        println!("API Module: {}", module);
+        println!("API Module: {module}");
         for route in routes {
             println!(" - {} (method: {})", route.0, route.1);
         }
@@ -43,7 +43,7 @@ fn figure_out_if_we_have_all_the_routes() {
             .unwrap();
     // work our way through the source files in this package looking for routedefs
     let mut found_routes: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
-    let walker = walkdir::WalkDir::new(format!("{}/src", env!("CARGO_MANIFEST_DIR")))
+    let walker = walkdir::WalkDir::new(format!("{}/src/https", env!("CARGO_MANIFEST_DIR")))
         .follow_links(false)
         .into_iter();
 
@@ -63,6 +63,14 @@ fn figure_out_if_we_have_all_the_routes() {
         let source_module = relative_filename.split("/").last().unwrap();
         let source_module = source_module.split(".").next().unwrap();
 
+        // If the file is in certain paths, we skip them wholesale.
+        if let Some(parent_path) = entry.path().parent() {
+            if parent_path.ends_with("https/views") {
+                println!("skipping excluded path {}", parent_path.display());
+                continue;
+            }
+        }
+
         let file = std::fs::read_to_string(entry.path()).unwrap();
         for line in file.lines() {
             if line.contains("skip_route_check") {
@@ -77,7 +85,7 @@ fn figure_out_if_we_have_all_the_routes() {
                     found_routes.insert(source_module.to_string(), Vec::new());
                 }
                 let new_route = (route.to_string(), method.to_string());
-                println!("Found new route: {} {:?}", source_module, new_route);
+                println!("Found new route: {source_module} {new_route:?}");
                 found_routes.get_mut(source_module).unwrap().push(new_route);
             }
         }
@@ -85,10 +93,7 @@ fn figure_out_if_we_have_all_the_routes() {
     // now we check the things
     for (module, routes) in found_routes {
         if ["ui", "cookies"].contains(&module.as_str()) {
-            println!(
-                "We can skip checking {} because it's allow-listed for docs",
-                module
-            );
+            println!("We can skip checking {module} because it's allow-listed for docs");
             continue;
         }
         if module == "mod" {
@@ -97,7 +102,7 @@ fn figure_out_if_we_have_all_the_routes() {
             continue;
         }
         if !apidocs_routes.contains_key(&module) {
-            panic!("Module {} is missing from the API docs", module);
+            panic!("Module {module} is missing from the API docs");
         }
         // we can't handle the method yet because that's in the derive
         for (route, _method) in routes {
@@ -109,9 +114,9 @@ fn figure_out_if_we_have_all_the_routes() {
                 }
             }
             if !found_route {
-                panic!("couldn't find apidocs route for {}::{}", module, route);
+                panic!("couldn't find apidocs route for {module}::{route}");
             } else {
-                println!("Docs OK: {}::{}", module, route);
+                println!("Docs OK: {module}::{route}");
             }
         }
     }

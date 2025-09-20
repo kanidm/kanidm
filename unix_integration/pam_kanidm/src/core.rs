@@ -2,6 +2,7 @@ use crate::constants::PamResultCode;
 use crate::module::PamResult;
 use crate::pam::ModuleOptions;
 use kanidm_unix_common::client_sync::DaemonClientBlocking;
+use kanidm_unix_common::constants::{SYSTEM_PASSWD_PATH, SYSTEM_SHADOW_PATH};
 use kanidm_unix_common::unix_config::PamNssConfig;
 use kanidm_unix_common::unix_passwd::{
     read_etc_passwd_file, read_etc_shadow_file, EtcShadow, EtcUser,
@@ -55,9 +56,9 @@ impl RequestOptions {
                 if let Some(client) = maybe_client {
                     Source::Daemon(client)
                 } else {
-                    let users = read_etc_passwd_file("/etc/passwd").unwrap_or_default();
-                    // let groups = read_etc_group_file("/etc/group").unwrap_or_default();
-                    let shadow = read_etc_shadow_file("/etc/shadow").unwrap_or_default();
+                    let users = read_etc_passwd_file(SYSTEM_PASSWD_PATH).unwrap_or_default();
+                    // let groups = read_etc_group_file(SYSTEM_GROUP_PATH).unwrap_or_default();
+                    let shadow = read_etc_shadow_file(SYSTEM_SHADOW_PATH).unwrap_or_default();
                     Source::Fallback {
                         users,
                         // groups,
@@ -137,7 +138,7 @@ pub fn sm_authenticate_connected<P: PamHandler>(
     let mut req = ClientRequest::PamAuthenticateInit { account_id, info };
 
     loop {
-        let client_response = match daemon_client.call_and_wait(&req, timeout) {
+        let client_response = match daemon_client.call_and_wait(req, timeout) {
             Ok(r) => r,
             Err(err) => {
                 // Something unrecoverable occurred, bail and stop everything
@@ -348,9 +349,7 @@ pub fn sm_authenticate_fallback<P: PamHandler>(
         }
     };
 
-    let expiration_date = shadow
-        .epoch_expire_date
-        .map(|expire| OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire));
+    let expiration_date = shadow.epoch_expire_seconds;
 
     if let Some(expire) = expiration_date {
         if current_time >= expire {
@@ -419,7 +418,7 @@ pub fn acct_mgmt<P: PamHandler>(
     match req_opt.connect_to_daemon() {
         Source::Daemon(mut daemon_client) => {
             let req = ClientRequest::PamAccountAllowed(account_id);
-            match daemon_client.call_and_wait(&req, None) {
+            match daemon_client.call_and_wait(req, None) {
                 Ok(r) => match r {
                     ClientResponse::PamStatus(Some(true)) => {
                         debug!("PamResultCode::PAM_SUCCESS");
@@ -470,9 +469,7 @@ pub fn acct_mgmt<P: PamHandler>(
                 }
             };
 
-            let expiration_date = shadow
-                .epoch_expire_date
-                .map(|expire| OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire));
+            let expiration_date = shadow.epoch_expire_seconds;
 
             if let Some(expire) = expiration_date {
                 if current_time >= expire {
@@ -503,7 +500,7 @@ pub fn sm_open_session<P: PamHandler>(
         Source::Daemon(mut daemon_client) => {
             let req = ClientRequest::PamAccountBeginSession(account_id);
 
-            match daemon_client.call_and_wait(&req, None) {
+            match daemon_client.call_and_wait(req, None) {
                 Ok(ClientResponse::Ok) => {
                     debug!("PAM_SUCCESS");
                     PamResultCode::PAM_SUCCESS

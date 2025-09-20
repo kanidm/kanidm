@@ -1,12 +1,11 @@
 # Client Tools
 
-To interact with Kanidm as an administrator, you'll need to use our command line tools. If you
-haven't installed them yet, [install them now](installing_client_tools.md).
+To interact with Kanidm as an administrator, you'll need to use our command line tools. If you haven't installed them
+yet, [install them now](installing_client_tools.md).
 
 ## Kanidm configuration
 
-You can configure `kanidm` to help make commands simpler by modifying `~/.config/kanidm` or
-`/etc/kanidm/config`.
+You can configure `kanidm` to help make commands simpler by modifying `~/.config/kanidm` or `/etc/kanidm/config`.
 
 ```toml
 uri = "https://idm.example.com"
@@ -24,8 +23,8 @@ kanidm self whoami --name anonymous
 
 ## Session Management
 
-To authenticate as a user (for use with the command line), you need to use the `login` command to
-establish a session token.
+To authenticate as a user (for use with the command line), you need to use the `login` command to establish a session
+token.
 
 ```bash
 kanidm login --name USERNAME
@@ -34,8 +33,7 @@ kanidm login -D USERNAME
 kanidm login -D admin
 ```
 
-Once complete, you can use `kanidm` without re-authenticating for a period of time for
-administration.
+Once complete, you can use `kanidm` without re-authenticating for a period of time for administration.
 
 You can list active sessions with:
 
@@ -58,12 +56,11 @@ kanidm logout --name admin
 
 ## Multiple Instances
 
-In some cases you may have multiple Kanidm instances. For example you may have a production instance
-and a development instance. This can introduce friction for admins when they need to change between
-those instances.
+In some cases you may have multiple Kanidm instances. For example you may have a production instance and a development
+instance. This can introduce friction for admins when they need to change between those instances.
 
-The Kanidm cli tool allows you to configure multiple instances and swap between them with an
-environment variable, or the `--instance` flag. Instances maintain separate session stores.
+The Kanidm cli tool allows you to configure multiple instances and swap between them with an environment variable, or
+the `--instance` flag. Instances maintain separate session stores.
 
 ```toml
 uri = "https://idm.example.com"

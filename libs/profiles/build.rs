@@ -45,21 +45,19 @@ fn main() {
 
     let profile = env::var("KANIDM_BUILD_PROFILE").unwrap_or_else(|_| "developer".to_string());
 
-    let profile_path: PathBuf = ["./", format!("{}.toml", profile).as_str()]
-        .iter()
-        .collect();
+    let profile_path: PathBuf = ["./", format!("{profile}.toml").as_str()].iter().collect();
 
     let data =
-        fs::read(&profile_path).unwrap_or_else(|_| panic!("Failed to read {:?}", profile_path));
+        fs::read(&profile_path).unwrap_or_else(|_| panic!("Failed to read {profile_path:?}"));
 
     let contents = general_purpose::STANDARD.encode(data);
 
     if let Some(commit_rev) = determine_git_rev() {
-        println!("cargo:rustc-env=KANIDM_PKG_COMMIT_REV={}", commit_rev);
+        println!("cargo:rustc-env=KANIDM_PKG_COMMIT_REV={commit_rev}");
     }
 
     println!("cargo:rerun-if-changed={}", profile_path.to_str().unwrap());
 
-    println!("cargo:rustc-env=KANIDM_BUILD_PROFILE={}", profile);
-    println!("cargo:rustc-env=KANIDM_BUILD_PROFILE_TOML={}", contents);
+    println!("cargo:rustc-env=KANIDM_BUILD_PROFILE={profile}");
+    println!("cargo:rustc-env=KANIDM_BUILD_PROFILE_TOML={contents}");
 }

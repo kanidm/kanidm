@@ -225,29 +225,6 @@ impl CredentialStatusEvent {
     }
 }
 
-#[derive(Debug)]
-pub struct ReadBackupCodeEvent {
-    pub ident: Identity,
-    pub target: Uuid,
-}
-
-impl ReadBackupCodeEvent {
-    pub fn from_parts(
-        // qs: &QueryServerReadTransaction,
-        ident: Identity,
-        target: Uuid,
-    ) -> Result<Self, OperationError> {
-        Ok(ReadBackupCodeEvent { ident, target })
-    }
-
-    #[cfg(test)]
-    pub fn new_internal(target: Uuid) -> Self {
-        let ident = Identity::from_internal();
-
-        ReadBackupCodeEvent { ident, target }
-    }
-}
-
 pub struct LdapAuthEvent {
     // pub ident: Identity,
     pub target: Uuid,

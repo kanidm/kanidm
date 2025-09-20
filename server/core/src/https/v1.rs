@@ -1,5 +1,11 @@
 //! The V1 API things!
 
+use super::errors::WebError;
+use super::middleware::caching::{cache_me_short, dont_cache_me};
+use super::middleware::KOpId;
+use super::ServerState;
+use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
+use crate::https::extractors::{ClientConnInfo, VerifiedClientInformation};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, HeaderValue};
 use axum::middleware::from_fn;
@@ -9,9 +15,6 @@ use axum::{Extension, Json, Router};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use compact_jwt::{Jwk, Jws, JwsSigner};
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
-use std::net::IpAddr;
-use uuid::Uuid;
-
 use kanidm_proto::internal::{
     ApiToken, AppLink, CUIntentToken, CURequest, CUSessionToken, CUStatus, CreateRequest,
     CredentialStatus, DeleteRequest, IdentifyUserRequest, IdentifyUserResponse, ModifyRequest,
@@ -27,13 +30,8 @@ use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
-
-use super::errors::WebError;
-use super::middleware::caching::{cache_me_short, dont_cache_me};
-use super::middleware::KOpId;
-use super::ServerState;
-use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
-use crate::https::extractors::{TrustedClientIp, VerifiedClientInformation};
+use std::net::IpAddr;
+use uuid::Uuid;
 
 #[utoipa::path(
     post,
@@ -184,7 +182,7 @@ pub async fn whoami_uat(
 ) -> Result<Json<UserAuthToken>, WebError> {
     state
         .qe_r_ref
-        .handle_whoami_uat(client_auth_info, kopid.eventid)
+        .handle_whoami_uat(&client_auth_info, kopid.eventid)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1391,7 +1389,7 @@ pub async fn credential_update_update(
     let scr: CURequest = match serde_json::from_value(cubody[0].clone()) {
         Ok(val) => val,
         Err(err) => {
-            let errmsg = format!("Failed to deserialize CURequest: {:?}", err);
+            let errmsg = format!("Failed to deserialize CURequest: {err:?}");
             error!("{}", errmsg);
             return Err(WebError::InternalServerError(errmsg));
         }
@@ -1400,12 +1398,12 @@ pub async fn credential_update_update(
     let session_token = match serde_json::from_value(cubody[1].clone()) {
         Ok(val) => val,
         Err(err) => {
-            let errmsg = format!("Failed to deserialize session token: {:?}", err);
+            let errmsg = format!("Failed to deserialize session token: {err:?}");
             error!("{}", errmsg);
             return Err(WebError::InternalServerError(errmsg));
         }
     };
-    debug!("session_token: {:?}", session_token);
+    trace!("session_token: {:?}", session_token);
     debug!("scr: {:?}", scr);
 
     state
@@ -1995,32 +1993,6 @@ pub async fn person_id_unix_post(
 )]
 #[instrument(, level = "INFO", skip(id, state, kopid))]
 pub async fn service_account_id_unix_post(
-    State(state): State<ServerState>,
-    Path(id): Path<String>,
-    Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    Json(obj): Json<AccountUnixExtend>,
-) -> Result<Json<()>, WebError> {
-    state
-        .qe_w_ref
-        .handle_idmaccountunixextend(client_auth_info, id, obj, kopid.eventid)
-        .await
-        .map(Json::from)
-        .map_err(WebError::from)
-}
-
-#[utoipa::path(
-    post,
-    path = "/v1/account/{id}/_unix",
-    responses(
-        DefaultApiResponse,
-    ),
-    security(("token_jwt" = [])),
-    tag = "v1/account",
-)]
-/// Expects an `AccountUnixExtend` object
-#[instrument(, level = "INFO", skip(id, state, kopid))]
-pub async fn account_id_unix_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
@@ -2847,7 +2819,7 @@ pub async fn reauth(
         .handle_reauth(client_auth_info, obj, kopid.eventid)
         .await;
     debug!("ReAuth result: {:?}", inter);
-    auth_session_state_management(state, jar, inter)
+    auth_session_state_management(&state, jar, inter)
 }
 
 #[utoipa::path(
@@ -2885,13 +2857,13 @@ pub async fn auth(
         .handle_auth(maybe_sessionid, obj, kopid.eventid, client_auth_info)
         .await;
     debug!("Auth result: {:?}", inter);
-    auth_session_state_management(state, jar, inter)
+    auth_session_state_management(&state, jar, inter)
 }
 
 // Disable on any level except trace to stop leaking tokens
 #[instrument(level = "trace", skip_all)]
 fn auth_session_state_management(
-    state: ServerState,
+    state: &ServerState,
     mut jar: CookieJar,
     inter: Result<AuthResult, OperationError>,
 ) -> Result<Response, WebError> {
@@ -3048,9 +3020,9 @@ pub async fn auth_valid(
 )]
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,
-    TrustedClientIp(ip_addr): TrustedClientIp,
+    Extension(trusted_client_ip): Extension<ClientConnInfo>,
 ) -> Result<Json<IpAddr>, ()> {
-    Ok(Json::from(ip_addr))
+    Ok(Json::from(trusted_client_ip.client_ip_addr))
 }
 
 #[utoipa::path(

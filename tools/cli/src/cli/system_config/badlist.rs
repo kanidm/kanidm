@@ -1,5 +1,5 @@
-use crate::common::OpType;
-use crate::{handle_client_error, PwBadlistOpt};
+use crate::{handle_client_error, KanidmClientParser, OutputMode, PwBadlistOpt};
+use kanidm_proto::cli::OpType;
 
 // use std::thread;
 use std::fs::File;
@@ -10,34 +10,32 @@ use zxcvbn::Score;
 const CHUNK_SIZE: usize = 1000;
 
 impl PwBadlistOpt {
-    pub fn debug(&self) -> bool {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
-            PwBadlistOpt::Show(copt) => copt.debug,
-            PwBadlistOpt::Upload { copt, .. } => copt.debug,
-            PwBadlistOpt::Remove { copt, .. } => copt.debug,
-        }
-    }
-
-    pub async fn exec(&self) {
-        match self {
-            PwBadlistOpt::Show(copt) => {
-                let client = copt.to_client(OpType::Read).await;
+            PwBadlistOpt::Show => {
+                let client = opt.to_client(OpType::Read).await;
                 match client.system_password_badlist_get().await {
                     Ok(list) => {
-                        for i in list {
-                            println!("{}", i);
+                        match opt.output_mode {
+                            OutputMode::Json => {
+                                let json = serde_json::to_string(&list)
+                                    .expect("Failed to serialise list to JSON!");
+                                println!("{json}");
+                            }
+                            OutputMode::Text => {
+                                // Print each entry on a new line
+                                list.iter().for_each(|entry| {
+                                    println!("{entry}");
+                                });
+                                eprintln!("--");
+                                eprintln!("Success");
+                            }
                         }
-                        eprintln!("--");
-                        eprintln!("Success");
                     }
-                    Err(e) => crate::handle_client_error(e, copt.output_mode),
+                    Err(e) => crate::handle_client_error(e, opt.output_mode),
                 }
             }
-            PwBadlistOpt::Upload {
-                copt,
-                paths,
-                dryrun,
-            } => {
+            PwBadlistOpt::Upload { paths, dryrun } => {
                 info!("pre-processing - this may take a while ...");
 
                 let mut pwset: Vec<String> = Vec::new();
@@ -108,18 +106,18 @@ impl PwBadlistOpt {
 
                 if *dryrun {
                     for pw in filt_pwset {
-                        println!("{}", pw);
+                        println!("{pw}");
                     }
                 } else {
-                    let client = copt.to_client(OpType::Write).await;
+                    let client = opt.to_client(OpType::Write).await;
                     match client.system_password_badlist_append(filt_pwset).await {
                         Ok(_) => println!("Success"),
-                        Err(e) => handle_client_error(e, copt.output_mode),
+                        Err(e) => handle_client_error(e, opt.output_mode),
                     }
                 }
             } // End Upload
-            PwBadlistOpt::Remove { copt, paths } => {
-                let client = copt.to_client(OpType::Write).await;
+            PwBadlistOpt::Remove { paths } => {
+                let client = opt.to_client(OpType::Write).await;
 
                 let mut pwset: Vec<String> = Vec::new();
 
@@ -147,13 +145,13 @@ impl PwBadlistOpt {
                 pwset.dedup();
 
                 if pwset.is_empty() {
-                    eprintln!("No entries to remove?");
+                    opt.output_mode.print_message("No entries to remove?");
                     return;
                 }
 
                 match client.system_password_badlist_remove(pwset).await {
-                    Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Ok(_) => opt.output_mode.print_message("Success"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             } // End Remove
         }

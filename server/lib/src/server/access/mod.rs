@@ -370,8 +370,8 @@ pub trait AccessControlsTransaction<'a> {
         name = "access::search_filter_entry_attributes",
         skip_all
     )]
-    fn search_filter_entry_attributes<'b>(
-        &'b self,
+    fn search_filter_entry_attributes(
+        &self,
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<EntryReducedCommitted>, OperationError> {
@@ -1225,7 +1225,7 @@ impl AccessControls {
         self.acp_resolve_filter_cache.try_quiesce();
     }
 
-    pub fn read(&self) -> AccessControlsReadTransaction {
+    pub fn read(&self) -> AccessControlsReadTransaction<'_> {
         AccessControlsReadTransaction {
             inner: self.inner.read(),
             // acp_related_search_cache: Cell::new(self.acp_related_search_cache.read()),
@@ -1233,7 +1233,7 @@ impl AccessControls {
         }
     }
 
-    pub fn write(&self) -> AccessControlsWriteTransaction {
+    pub fn write(&self) -> AccessControlsWriteTransaction<'_> {
         AccessControlsWriteTransaction {
             inner: self.inner.write(),
             // acp_related_search_cache_wr: self.acp_related_search_cache.write(),
@@ -2431,7 +2431,7 @@ mod tests {
 
         let ev2 = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::TestNotAllowed, Value::new_class("notallowed")),
+            (Attribute::TestNotAllowed, Value::new_iutf8("notallowed")),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
@@ -2440,7 +2440,7 @@ mod tests {
 
         let ev3 = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, Value::new_class("notallowed")),
+            (Attribute::Class, Value::new_iutf8("notallowed")),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );

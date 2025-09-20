@@ -55,7 +55,7 @@ const FILTER_SUBSTR_TEST_THRESHOLD: usize = 4;
 #[derive(Debug, Clone)]
 /// Limits on the resources a single event can consume. These are defined per-event
 /// as they are derived from the userAuthToken based on that individual session
-pub(crate) struct Limits {
+pub struct Limits {
     pub unindexed_allow: bool,
     pub search_max_results: usize,
     pub search_max_filter_test: usize,
@@ -100,7 +100,7 @@ pub enum IdList {
     /// The value is not indexed, and must be assumed that all entries may match.
     AllIds,
     /// The index is "fuzzy" like a bloom filter (perhaps superset is a better description) -
-    /// it containes all elements that do match, but may have extra elements that don't.
+    /// it contains all elements that do match, but may have extra elements that don't.
     /// This requires the caller to perform a filter test to assert that all
     /// returned entries match all assertions within the filter.
     Partial(IDLBitRange),
@@ -1217,7 +1217,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", name = "be::incremental_prepare", skip_all)]
-    pub fn incremental_prepare<'x>(
+    pub fn incremental_prepare(
         &mut self,
         entry_meta: &[EntryIncrementalNew],
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
@@ -1740,7 +1740,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 if immediate {
                     count += 1;
                     if count % 2500 == 0 {
-                        eprint!("{}", count);
+                        eprint!("{count}");
                     } else if count % 250 == 0 {
                         eprint!(".");
                     }
@@ -2191,7 +2191,7 @@ impl Backend {
         self.idlayer.try_quiesce();
     }
 
-    pub fn read(&self) -> Result<BackendReadTransaction, OperationError> {
+    pub fn read(&self) -> Result<BackendReadTransaction<'_>, OperationError> {
         Ok(BackendReadTransaction {
             idlayer: self.idlayer.read()?,
             idxmeta: self.idxmeta.read(),
@@ -2199,7 +2199,7 @@ impl Backend {
         })
     }
 
-    pub fn write(&self) -> Result<BackendWriteTransaction, OperationError> {
+    pub fn write(&self) -> Result<BackendWriteTransaction<'_>, OperationError> {
         Ok(BackendWriteTransaction {
             idlayer: self.idlayer.write()?,
             idxmeta_wr: self.idxmeta.write(),
@@ -2482,7 +2482,9 @@ mod tests {
             let vr2 = r2.into_sealed_committed();
 
             // Modify single
-            assert!(be.modify(&CID_ZERO, &[pre1], &[vr1.clone()]).is_ok());
+            assert!(be
+                .modify(&CID_ZERO, &[pre1], std::slice::from_ref(&vr1))
+                .is_ok());
             // Assert no other changes
             assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr));
             assert!(!entry_attr_pres!(be, vr2, Attribute::TestAttr));
@@ -2555,7 +2557,9 @@ mod tests {
             // This sets up the RUV with the changes.
             let r1_ts = r1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
 
-            assert!(be.modify(&CID_ONE, &[r1], &[r1_ts.clone()]).is_ok());
+            assert!(be
+                .modify(&CID_ONE, &[r1], std::slice::from_ref(&r1_ts))
+                .is_ok());
 
             let r2_ts = r2.to_tombstone(CID_TWO.clone()).into_sealed_committed();
             let r3_ts = r3.to_tombstone(CID_TWO.clone()).into_sealed_committed();

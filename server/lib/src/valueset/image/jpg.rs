@@ -87,8 +87,7 @@ pub fn validate_decoding(
         Ok(val) => val,
         Err(err) => {
             return Err(ImageValidationError::InvalidImage(format!(
-                "Failed to parse {} as JPG: {:?}",
-                filename, err
+                "Failed to parse {filename} as JPG: {err:?}"
             )))
         }
     };

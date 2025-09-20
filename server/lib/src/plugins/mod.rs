@@ -18,10 +18,10 @@ mod domain;
 pub(crate) mod dyngroup;
 mod eckeygen;
 pub(crate) mod gidnumber;
-mod jwskeygen;
 mod keyobject;
 mod memberof;
 mod namehistory;
+mod oauth2;
 mod refint;
 mod session;
 mod spn;
@@ -230,15 +230,17 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         base::Base::pre_create_transform(qs, cand, ce)?;
         valuedeny::ValueDeny::pre_create_transform(qs, cand, ce)?;
-        cred_import::CredImport::pre_create_transform(qs, cand, ce)?;
+
+        oauth2::OAuth2::pre_create_transform(qs, cand, ce)?;
+        eckeygen::EcdhKeyGen::pre_create_transform(qs, cand, ce)?;
         keyobject::KeyObjectManagement::pre_create_transform(qs, cand, ce)?;
-        jwskeygen::JwsKeygen::pre_create_transform(qs, cand, ce)?;
+        cred_import::CredImport::pre_create_transform(qs, cand, ce)?;
+
         gidnumber::GidNumber::pre_create_transform(qs, cand, ce)?;
         domain::Domain::pre_create_transform(qs, cand, ce)?;
         spn::Spn::pre_create_transform(qs, cand, ce)?;
         default_values::DefaultValues::pre_create_transform(qs, cand, ce)?;
         namehistory::NameHistory::pre_create_transform(qs, cand, ce)?;
-        eckeygen::EcdhKeyGen::pre_create_transform(qs, cand, ce)?;
         // Should always be last
         attrunique::AttrUnique::pre_create_transform(qs, cand, ce)
     }
@@ -271,16 +273,18 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         base::Base::pre_modify(qs, pre_cand, cand, me)?;
         valuedeny::ValueDeny::pre_modify(qs, pre_cand, cand, me)?;
-        cred_import::CredImport::pre_modify(qs, pre_cand, cand, me)?;
-        jwskeygen::JwsKeygen::pre_modify(qs, pre_cand, cand, me)?;
+
+        oauth2::OAuth2::pre_modify(qs, pre_cand, cand, me)?;
+        eckeygen::EcdhKeyGen::pre_modify(qs, pre_cand, cand, me)?;
         keyobject::KeyObjectManagement::pre_modify(qs, pre_cand, cand, me)?;
+        cred_import::CredImport::pre_modify(qs, pre_cand, cand, me)?;
+
         gidnumber::GidNumber::pre_modify(qs, pre_cand, cand, me)?;
         domain::Domain::pre_modify(qs, pre_cand, cand, me)?;
         spn::Spn::pre_modify(qs, pre_cand, cand, me)?;
         session::SessionConsistency::pre_modify(qs, pre_cand, cand, me)?;
         default_values::DefaultValues::pre_modify(qs, pre_cand, cand, me)?;
         namehistory::NameHistory::pre_modify(qs, pre_cand, cand, me)?;
-        eckeygen::EcdhKeyGen::pre_modify(qs, pre_cand, cand, me)?;
         // attr unique should always be last
         attrunique::AttrUnique::pre_modify(qs, pre_cand, cand, me)
     }
@@ -306,16 +310,18 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         base::Base::pre_batch_modify(qs, pre_cand, cand, me)?;
         valuedeny::ValueDeny::pre_batch_modify(qs, pre_cand, cand, me)?;
-        cred_import::CredImport::pre_batch_modify(qs, pre_cand, cand, me)?;
-        jwskeygen::JwsKeygen::pre_batch_modify(qs, pre_cand, cand, me)?;
+
+        oauth2::OAuth2::pre_batch_modify(qs, pre_cand, cand, me)?;
+        eckeygen::EcdhKeyGen::pre_batch_modify(qs, pre_cand, cand, me)?;
         keyobject::KeyObjectManagement::pre_batch_modify(qs, pre_cand, cand, me)?;
+        cred_import::CredImport::pre_batch_modify(qs, pre_cand, cand, me)?;
+
         gidnumber::GidNumber::pre_batch_modify(qs, pre_cand, cand, me)?;
         domain::Domain::pre_batch_modify(qs, pre_cand, cand, me)?;
         spn::Spn::pre_batch_modify(qs, pre_cand, cand, me)?;
         session::SessionConsistency::pre_batch_modify(qs, pre_cand, cand, me)?;
         default_values::DefaultValues::pre_batch_modify(qs, pre_cand, cand, me)?;
         namehistory::NameHistory::pre_batch_modify(qs, pre_cand, cand, me)?;
-        eckeygen::EcdhKeyGen::pre_batch_modify(qs, pre_cand, cand, me)?;
         // attr unique should always be last
         attrunique::AttrUnique::pre_batch_modify(qs, pre_cand, cand, me)
     }

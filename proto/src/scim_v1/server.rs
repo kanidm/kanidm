@@ -7,6 +7,7 @@ use scim_proto::ScimEntryHeader;
 use serde::Serialize;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
 use std::collections::{BTreeMap, BTreeSet};
+use std::num::NonZeroU64;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use url::Url;
@@ -19,6 +20,7 @@ use uuid::Uuid;
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ScimEntryKanidm {
     #[serde(flatten)]
     pub header: ScimEntryHeader,
@@ -26,6 +28,35 @@ pub struct ScimEntryKanidm {
     pub ext_access_check: Option<ScimEffectiveAccess>,
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
+}
+
+impl ScimEntryKanidm {
+    fn get_string_attr(&self, attr: &Attribute) -> Option<&String> {
+        self.attrs.get(attr).and_then(|v| match v {
+            ScimValueKanidm::String(s) => Some(s),
+            _ => None,
+        })
+    }
+
+    fn get_scim_refs_attr(&self, attr: &Attribute) -> Option<&Vec<ScimReference>> {
+        let option = self.attrs.get(attr);
+        option.and_then(|v| match v {
+            ScimValueKanidm::EntryReferences(s) => Some(s),
+            _ => None,
+        })
+    }
+}
+
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Serialize, Clone, Debug, Default)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct ScimListResponse {
+    pub schemas: Vec<String>,
+    pub total_results: u64,
+    pub items_per_page: Option<NonZeroU64>,
+    pub start_index: Option<NonZeroU64>,
+    pub resources: Vec<ScimEntryKanidm>,
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
@@ -45,6 +76,15 @@ impl ScimAttributeEffectiveAccess {
             Self::Grant => true,
             Self::Deny => false,
             Self::Allow(set) => set.contains(attr),
+        }
+    }
+
+    /// Check if the effective access allows ANY of the attributes
+    pub fn check_any(&self, attrs: &BTreeSet<Attribute>) -> bool {
+        match self {
+            Self::Grant => true,
+            Self::Deny => false,
+            Self::Allow(set) => attrs.intersection(set).next().is_some(),
         }
     }
 }
@@ -77,7 +117,7 @@ pub struct ScimAddress {
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ScimApplicationPassword {
+pub struct ScimApplicationPasswordReference {
     pub uuid: Uuid,
     pub application_uuid: Uuid,
     pub label: String,
@@ -229,13 +269,14 @@ pub enum ScimValueKanidm {
     Integer(i64),
     Decimal(f64),
     String(String),
+
+    // Other strong outbound types.
     DateTime(#[serde_as(as = "Rfc3339")] OffsetDateTime),
     Reference(Url),
     Uuid(Uuid),
     EntryReference(ScimReference),
     EntryReferences(Vec<ScimReference>),
 
-    // Other strong outbound types.
     ArrayString(Vec<String>),
     ArrayDateTime(#[serde_as(as = "Vec<Rfc3339>")] Vec<OffsetDateTime>),
     ArrayUuid(Vec<Uuid>),
@@ -244,7 +285,7 @@ pub enum ScimValueKanidm {
 
     Address(Vec<ScimAddress>),
     Mail(Vec<ScimMail>),
-    ApplicationPassword(Vec<ScimApplicationPassword>),
+    ApplicationPassword(Vec<ScimApplicationPasswordReference>),
     AuditString(Vec<ScimAuditString>),
     SshPublicKey(Vec<ScimSshPublicKey>),
     AuthSession(Vec<ScimAuthSession>),
@@ -276,39 +317,18 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
     fn try_from(scim_entry: ScimEntryKanidm) -> Result<Self, Self::Error> {
         let uuid = scim_entry.header.id;
         let name = scim_entry
-            .attrs
-            .get(&Attribute::Name)
-            .and_then(|v| match v {
-                ScimValueKanidm::String(s) => Some(s.clone()),
-                _ => None,
-            })
+            .get_string_attr(&Attribute::Name)
+            .cloned()
             .ok_or(())?;
-
         let displayname = scim_entry
-            .attrs
-            .get(&Attribute::DisplayName)
-            .and_then(|v| match v {
-                ScimValueKanidm::String(s) => Some(s.clone()),
-                _ => None,
-            })
+            .get_string_attr(&Attribute::DisplayName)
+            .cloned()
             .ok_or(())?;
-
         let spn = scim_entry
-            .attrs
-            .get(&Attribute::Spn)
-            .and_then(|v| match v {
-                ScimValueKanidm::String(s) => Some(s.clone()),
-                _ => None,
-            })
+            .get_string_attr(&Attribute::Spn)
+            .cloned()
             .ok_or(())?;
-
-        let description = scim_entry
-            .attrs
-            .get(&Attribute::Description)
-            .and_then(|v| match v {
-                ScimValueKanidm::String(s) => Some(s.clone()),
-                _ => None,
-            });
+        let description = scim_entry.get_string_attr(&Attribute::Description).cloned();
 
         let mails = scim_entry
             .attrs
@@ -320,12 +340,8 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
             .unwrap_or_default();
 
         let groups = scim_entry
-            .attrs
-            .get(&Attribute::DirectMemberOf)
-            .and_then(|v| match v {
-                ScimValueKanidm::EntryReferences(v) => Some(v.clone()),
-                _ => None,
-            })
+            .get_scim_refs_attr(&Attribute::DirectMemberOf)
+            .cloned()
             .unwrap_or_default();
 
         let managed_by = scim_entry
@@ -345,6 +361,39 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
             mails,
             managed_by,
             groups,
+        })
+    }
+}
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimGroup {
+    pub uuid: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub members: Vec<ScimReference>,
+}
+
+impl TryFrom<ScimEntryKanidm> for ScimGroup {
+    type Error = ();
+
+    fn try_from(scim_entry: ScimEntryKanidm) -> Result<Self, Self::Error> {
+        let uuid = scim_entry.header.id;
+        let name = scim_entry
+            .get_string_attr(&Attribute::Name)
+            .cloned()
+            .ok_or(())?;
+        let description = scim_entry.get_string_attr(&Attribute::Description).cloned();
+        let members = scim_entry
+            .get_scim_refs_attr(&Attribute::Member)
+            .cloned()
+            .unwrap_or_default();
+
+        Ok(ScimGroup {
+            uuid,
+            name,
+            description,
+            members,
         })
     }
 }
@@ -421,8 +470,8 @@ impl From<Vec<ScimMail>> for ScimValueKanidm {
     }
 }
 
-impl From<Vec<ScimApplicationPassword>> for ScimValueKanidm {
-    fn from(set: Vec<ScimApplicationPassword>) -> Self {
+impl From<Vec<ScimApplicationPasswordReference>> for ScimValueKanidm {
+    fn from(set: Vec<ScimApplicationPasswordReference>) -> Self {
         Self::ApplicationPassword(set)
     }
 }

@@ -8,28 +8,96 @@ To get started, see the [kanidm book]
 
 ## Feedback
 
-We value your feedback! First, please see our [code of conduct]. If you have questions please join
-our [gitter community channel] so that we can help. If you find a bug or issue, we'd love you to
-report it to our [issue tracker].
+We value your feedback! First, please see our [code of conduct]. If you have questions please join our
+[gitter community channel] so that we can help. If you find a bug or issue, we'd love you to report it to our
+[issue tracker].
 
 ## Release Notes
 
+### 2025-08-01 - Kanidm 1.7.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
+
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
+
+Before upgrading you should review [our upgrade documentation]
+
+#### 1.7.0 Release Highlights
+
+- Darkmode UI colour and style improvements (#3593, #3660)
+- OpenSSL removal in favour of rust-cryptography and rustls (#3594, #3687,  )
+- OAuth2 client IDs always process as lowercase (#3605)
+- Test for corrupt unicode in SSH keys (#3618)
+- Accept SSH keys with variable salt lengths (#3629)
+- Move unixd shadow/passwd handling into the tasks daemon (#3631)
+- Reload schema before db verify to prevent incorrect warnings (#3643)
+- Improve unixd and tasks daemon startup coupling (#3638)
+- Reduce unixd memory usage (#3651, #3645, #3754)
+- SCIM API implementation (#3535, #3700, #3725, #3741, #3748)
+- Fix parsing of passwd files with comments in them (#3673)
+- Reduce unixd logging verbosity (#3680)
+- Only allow server side password generation for service accounts (#3688)
+- Fix UI confusion when unix password validation fails (#3719, #3720)
+- Web UI for users to self manage RADIUS passwords (#3728)
+
+### 2025-05-01 - Kanidm 1.6.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
+
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
+
+Before upgrading you should review [our upgrade documentation]
+
+#### 1.6.0 Important Changes
+
+- The kanidmd server configuration now supports versions. You should review the example server configuration and update
+  to `version = "2"`.
+
+#### 1.6.0 Release Highlights
+
+- Drop fernet in favour of JWE for OAuth2 tokens (#3577)
+- Allow spaces in ssh key comments
+- Support HAProxy PROXY protocol v2 (#3542)
+- Preserve ssh key content on form validation error (#3574)
+- Harden pam unix resolver to prevent a token update race (#3553)
+- Improve db klock handling (#3551)
+- Unix pam unix config parser (#3533)
+- Improve handling of systemd notify (#3540)
+- Allow versioning of server configs (#3515)
+- Remove the protected plugin in favour of access framework (#3504)
+- Add `max_ber_size` to freeipa sync tool (#3530)
+- Make schema indexing a boolean rather than index type (#3517)
+- Add set-description to group cli (#3511)
+- pam kanidm now acts as a pam unix replacement (#3501)
+- Support rfc2307 in ldap import/sync (3466)
+- Handle incorrect OAuth2 clients that ignore response modes (#3467)
+- Improve idx validation performance (#3459)
+- Improve migration and bootstrapper (#3432)
+- Reduce size of docker container (#3452)
+- Add limits to maximum queryable ldap attributes (#3431)
+- Accept more formats of ldap pwd hashes (#3444, 3458)
+- TOTP Label validation (#3419)
+- Harden denied names against accidental lockouts (#3429)
+- OAuth2 supports redirect uri's with query parameters (#3422)
+
 ### 2025-02-09 - Kanidm 1.5.0
 
-This is the latest stable release of the Kanidm Identity Management project. Every release is the
-combined effort of our community and we appreciate their invaluable contributions, comments,
-questions, feedback and support.
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
 
-You should review our
-[support documentation] as this
-may have important effects on your distribution or upgrades in future.
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
 
-Before upgrading you should review
-[our upgrade documentation]
+Before upgrading you should review [our upgrade documentation]
 
 #### 1.5.0 Important Changes
 
-- There has been a lot of tweaks to how cookies are handled in this release, if you're having issues with the login flow please clear all cookies as an initial troubleshooting step.
+- There has been a lot of tweaks to how cookies are handled in this release, if you're having issues with the login flow
+  please clear all cookies as an initial troubleshooting step.
 
 #### 1.5.0 Release Highlights
 
@@ -67,25 +135,20 @@ And many more!
 
 ### 2024-11-01 - Kanidm 1.4.0
 
-This is the latest stable release of the Kanidm Identity Management project. Every release is the
-combined effort of our community and we appreciate their invaluable contributions, comments,
-questions, feedback and support.
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
 
-You should review our
-[support documentation] as this
-may have important effects on your distribution or upgrades in future.
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
 
-Before upgrading you should review
-[our upgrade documentation]
+Before upgrading you should review [our upgrade documentation]
 
 #### 1.4.0 Important Changes
 
-- The web user interface has been rewritten and now supports theming. You will notice that your
-domain displayname is included in a number of locations on upgrade, and that you can set
-your own domain and OAuth2 client icons.
-- OAuth2 strict redirect uri is now required. Ensure you have read
-[our upgrade documentation].
-and taken the needed steps before upgrading.
+- The web user interface has been rewritten and now supports theming. You will notice that your domain displayname is
+  included in a number of locations on upgrade, and that you can set your own domain and OAuth2 client icons.
+- OAuth2 strict redirect uri is now required. Ensure you have read [our upgrade documentation]. and taken the needed
+  steps before upgrading.
 
 #### 1.4.0 Release Highlights
 
@@ -106,38 +169,34 @@ and taken the needed steps before upgrading.
 - PAM/NSS unixd can provide system users, replacing `pam_unix`
 - Account policy supports LDAP password fallback to main password
 - PAM/NSS unixd can extend a system group with members from remote sources (such as Kanidm)
-- Resolve a potential issue in replication on upgrade where migrated entries cause a referential
-  integrity conflict leading to a forced initialisation
+- Resolve a potential issue in replication on upgrade where migrated entries cause a referential integrity conflict
+  leading to a forced initialisation
 - Display credential reset token expiry time when created on CLI
 - Reload certificates and private keys on SIGHUP
 - Remove a large number of dependencies that were either not needed or could be streamlined
-- SCIM foundations for getting and modifying entries, reference handling, and complex attribute
-  display. Much more to come in this space!
-- Rewrite the entire web frontend to be simpler and faster, allowing more features to be added
-  in the future. Greatly improves user experience as the pages are now very fast to load!
+- SCIM foundations for getting and modifying entries, reference handling, and complex attribute display. Much more to
+  come in this space!
+- Rewrite the entire web frontend to be simpler and faster, allowing more features to be added in the future. Greatly
+  improves user experience as the pages are now very fast to load!
 
 ### 2024-08-07 - Kanidm 1.3.0
 
-This is the latest stable release of the Kanidm Identity Management project. Every release is the
-combined effort of our community and we appreciate their invaluable contributions, comments,
-questions, feedback and support.
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
 
-You should review our
-[support documentation] as this
-may have important effects on your distribution or upgrades in future.
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
 
-Before upgrading you should review
-[our upgrade documentation]
+Before upgrading you should review [our upgrade documentation]
 
 #### 1.3.0 Important Changes
 
-- New GID number constraints are now enforced in this version. To upgrade from 1.2.0 all accounts
-  and groups must adhere to these rules. See [our upgrade documentation]. about tools to help you
-  detect and correct affected entries.
+- New GID number constraints are now enforced in this version. To upgrade from 1.2.0 all accounts and groups must adhere
+  to these rules. See [our upgrade documentation]. about tools to help you detect and correct affected entries.
 - OAuth2 URIs require stricter matching rules to be applied from 1.4.0.
-- Security Keys will be removed as a second factor alternative to TOTP from accounts in 1.4.0. It
-  has not been possible to register a new security for more than 1 year. Security Keys are surpassed
-  by PassKeys which give a better user experience.
+- Security Keys will be removed as a second factor alternative to TOTP from accounts in 1.4.0. It has not been possible
+  to register a new security for more than 1 year. Security Keys are surpassed by PassKeys which give a better user
+  experience.
 - Kanidm now supports FreeBSD and Illumos in addition to Linux
 
 #### 1.3.0 Release Highlights
@@ -165,20 +224,18 @@ Before upgrading you should review
 
 ### 2024-05-01 - Kanidm 1.2.0
 
-This is the first stable release of the Kanidm Identity Management project. We want to thank every
-one in our community who has supported to the project to this point with their invaluable
-contributions, comments, questions, feedback and support.
+This is the first stable release of the Kanidm Identity Management project. We want to thank every one in our community
+who has supported to the project to this point with their invaluable contributions, comments, questions, feedback and
+support.
 
-Importantly this release makes a number of changes to our project's support processes. You should
-review our [support documentation]
-as this may have important effects on your distribution or upgrades in future.
+Importantly this release makes a number of changes to our project's support processes. You should review our
+[support documentation] as this may have important effects on your distribution or upgrades in future.
 
 #### 1.2.0 Important Changes
 
-- On upgrade all OAuth2 sessions and user sessions will be reset due to changes in cryptographic key
-  handling. This does not affect api tokens.
-- There is a maximum limit of 48 interactive sessions for persons where older sessions are
-  automatically removed.
+- On upgrade all OAuth2 sessions and user sessions will be reset due to changes in cryptographic key handling. This does
+  not affect api tokens.
+- There is a maximum limit of 48 interactive sessions for persons where older sessions are automatically removed.
 
 #### 1.2.0 Release Highlights
 
@@ -207,12 +264,11 @@ as this may have important effects on your distribution or upgrades in future.
 
 ### 2024-02-07 - Kanidm 1.1.0-rc.16
 
-This is the sixteenth pre-release of the Kanidm Identity Management project. Pre-releases are to
-help get feedback and ideas from the community on how we can continue to make this project better.
+This is the sixteenth pre-release of the Kanidm Identity Management project. Pre-releases are to help get feedback and
+ideas from the community on how we can continue to make this project better.
 
-This is the final release candidate before we publish a release version. We believe that the API and
-server interfaces are stable and reliable enough for people to depend on, and to develop external
-tools to interact with Kanidm.
+This is the final release candidate before we publish a release version. We believe that the API and server interfaces
+are stable and reliable enough for people to depend on, and to develop external tools to interact with Kanidm.
 
 #### 1.1.0-rc.16 Release Highlights
 
@@ -235,12 +291,12 @@ tools to interact with Kanidm.
 
 ### 2023-10-31 - Kanidm 1.1.0-beta14
 
-This is the fourteenth pre-release of the Kanidm Identity Management project. Pre-releases are to
-help get feedback and ideas from the community on how we can continue to make this project better.
+This is the fourteenth pre-release of the Kanidm Identity Management project. Pre-releases are to help get feedback and
+ideas from the community on how we can continue to make this project better.
 
-At this point we believe we are on the final stretch to making something we consider "release
-ready". After this we will start to ship release candidates as our focus will now be changing to
-finish our production components and the stability of the API's for longer term support.
+At this point we believe we are on the final stretch to making something we consider "release ready". After this we will
+start to ship release candidates as our focus will now be changing to finish our production components and the stability
+of the API's for longer term support.
 
 #### 1.1.0-beta14 Release Highlights
 
@@ -258,12 +314,12 @@ finish our production components and the stability of the API's for longer term 
 
 ### 2023-05-01 - Kanidm 1.1.0-beta13
 
-This is the thirteenth pre-release of the Kanidm Identity Management project. Pre-releases are to
-help get feedback and ideas from the community on how we can continue to make this project better.
+This is the thirteenth pre-release of the Kanidm Identity Management project. Pre-releases are to help get feedback and
+ideas from the community on how we can continue to make this project better.
 
-At this point we believe we are on the final stretch to making something we consider "release
-ready". After this we will start to ship release candidates as our focus will now be changing to
-finish our production components and the stability of the API's for longer term support.
+At this point we believe we are on the final stretch to making something we consider "release ready". After this we will
+start to ship release candidates as our focus will now be changing to finish our production components and the stability
+of the API's for longer term support.
 
 #### 1.1.0-beta13 Release Highlights
 
@@ -308,14 +364,12 @@ finish our production components and the stability of the API's for longer term 
 
 ### 2023-05-01 - Kanidm 1.1.0-alpha12
 
-This is the twelfth alpha series release of the Kanidm Identity Management project. Alpha releases
-are to help get feedback and ideas from the community on how we can continue to make this project
-better for a future supported release.
+This is the twelfth alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
-The project is shaping up very nicely, and a beta will be coming soon! The main reason we haven't
-done so yet is we haven't decided if we want to commit to the current API layout and freeze it yet.
-There are still things we want to change there. Otherwise the server is stable and reliable for
-production usage.
+The project is shaping up very nicely, and a beta will be coming soon! The main reason we haven't done so yet is we
+haven't decided if we want to commit to the current API layout and freeze it yet. There are still things we want to
+change there. Otherwise the server is stable and reliable for production usage.
 
 #### 1.1.0-alpha12 Release Highlights
 
@@ -339,13 +393,12 @@ production usage.
 
 ### 2023-02-01 - Kanidm 1.1.0-alpha11
 
-This is the eleventh alpha series release of the Kanidm Identity Management project. Alpha releases
-are to help get feedback and ideas from the community on how we can continue to make this project
-better for a future supported release.
+This is the eleventh alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
-The project is shaping up very nicely, and a beta will be coming soon! The main reason we haven't
-done so yet is we haven't decided if we want to commit to the current API layout and freeze it yet.
-There are still things we want to change there. Otherwise the server is stable and reliable.
+The project is shaping up very nicely, and a beta will be coming soon! The main reason we haven't done so yet is we
+haven't decided if we want to commit to the current API layout and freeze it yet. There are still things we want to
+change there. Otherwise the server is stable and reliable.
 
 #### 1.1.0-alpha11 Release Highlights
 
@@ -370,16 +423,15 @@ There are still things we want to change there. Otherwise the server is stable a
 
 ### 2022-11-01 - Kanidm 1.1.0-alpha10
 
-This is the tenth alpha series release of the Kanidm Identity Management project. Alpha releases are
-to help get feedback and ideas from the community on how we can continue to make this project better
-for a future supported release.
+This is the tenth alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
 The project is shaping up very nicely, and a beta will be coming soon!
 
 #### 1.1.0-alpha10 Upgrade Note
 
-This version will _require_ TLS on all servers, even if behind a load balancer or TLS terminating
-proxy. You should be ready for this change when you upgrade to the latest version.
+This version will _require_ TLS on all servers, even if behind a load balancer or TLS terminating proxy. You should be
+ready for this change when you upgrade to the latest version.
 
 #### 1.1.0-alpha10 Release Highlights
 
@@ -405,9 +457,8 @@ proxy. You should be ready for this change when you upgrade to the latest versio
 
 ### 2022-08-02 - Kanidm 1.1.0-alpha9
 
-This is the ninth alpha series release of the Kanidm Identity Management project. Alpha releases are
-to help get feedback and ideas from the community on how we can continue to make this project better
-for a future supported release.
+This is the ninth alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
 The project is shaping up very nicely, and a beta will be coming soon!
 
@@ -429,9 +480,8 @@ The project is shaping up very nicely, and a beta will be coming soon!
 
 ### 2022-05-01 - Kanidm 1.1.0-alpha8
 
-This is the eighth alpha series release of the Kanidm Identity Management project. Alpha releases
-are to help get feedback and ideas from the community on how we can continue to make this project
-better for a future supported release.
+This is the eighth alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
 #### 1.1.0-alpha8 Release Highlights
 
@@ -451,9 +501,8 @@ better for a future supported release.
 
 ### 2022-01-01 - Kanidm 1.1.0-alpha7
 
-This is the seventh alpha series release of the Kanidm Identity Management project. Alpha releases
-are to help get feedback and ideas from the community on how we can continue to make this project
-better for a future supported release.
+This is the seventh alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
 #### 1.1.0-alpha7 Release Highlights
 
@@ -468,12 +517,11 @@ better for a future supported release.
 
 ### 2021-10-01 - Kanidm 1.1.0-alpha6
 
-This is the sixth alpha series release of the Kanidm Identity Management project. Alpha releases are
-to help get feedback and ideas from the community on how we can continue to make this project better
-for a future supported release.
+This is the sixth alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
-It's also a special release as Kanidm has just turned 3 years old! Thank you all for helping to
-bring the project this far! 🎉 🦀
+It's also a special release as Kanidm has just turned 3 years old! Thank you all for helping to bring the project this
+far! 🎉 🦀
 
 #### 1.1.0-alpha6 Release Highlights
 
@@ -497,9 +545,8 @@ bring the project this far! 🎉 🦀
 
 ### 2021-07-07 - Kanidm 1.1.0-alpha5
 
-This is the fifth alpha series release of the Kanidm Identity Management project. Alpha releases are
-to help get feedback and ideas from the community on how we can continue to make this project better
-for a future supported release.
+This is the fifth alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
 #### 1.1.0-alpha5 Release Highlights
 
@@ -518,9 +565,8 @@ for a future supported release.
 
 ### 2021-04-01 - Kanidm 1.1.0-alpha4
 
-This is the fourth alpha series release of the Kanidm Identity Management project. Alpha releases
-are to help get feedback and ideas from the community on how we can continue to make this project
-better for a future supported release.
+This is the fourth alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
 #### 1.1.0-alpha4 Release Highlights
 
@@ -538,9 +584,8 @@ better for a future supported release.
 
 ### 2021-01-01 - Kanidm 1.1.0-alpha3
 
-This is the third alpha series release of the Kanidm Identity Management project. Alpha releases are
-to help get feedback and ideas from the community on how we can continue to make this project better
-for a future supported release.
+This is the third alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
 #### 1.1.0-alpha3 Release Highlights
 
@@ -552,9 +597,8 @@ for a future supported release.
 
 ### 2020-10-01 - Kanidm 1.1.0-alpha2
 
-This is the second alpha series release of the Kanidm Identity Management project. Alpha releases
-are to help get feedback and ideas from the community on how we can continue to make this project
-better for a future supported release.
+This is the second alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
 #### 1.1.0-alpha2 Release Highlights
 
@@ -570,12 +614,11 @@ better for a future supported release.
 
 ### 2020-07-01 - Kanidm 1.1.0-alpha1
 
-This is the first alpha series release of the Kanidm Identity Management project. Alpha releases are
-to help get feedback and ideas from the community on how we can continue to make this project better
-for a future supported release.
+This is the first alpha series release of the Kanidm Identity Management project. Alpha releases are to help get
+feedback and ideas from the community on how we can continue to make this project better for a future supported release.
 
-It would not be possible to create a project like this, without the contributions and help of many
-people. I would especially like to thank:
+It would not be possible to create a project like this, without the contributions and help of many people. I would
+especially like to thank:
 
 - Pando85
 - Alberto Planas (aplanas)

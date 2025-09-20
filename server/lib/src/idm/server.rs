@@ -1,35 +1,8 @@
-use std::convert::TryFrom;
-use std::sync::Arc;
-use std::time::Duration;
-
-use kanidm_lib_crypto::CryptoPolicy;
-
-use compact_jwt::{Jwk, JwsCompact};
-use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
-use concread::cowcell::CowCellReadTxn;
-use concread::hashmap::HashMap;
-use kanidm_proto::internal::{
-    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken,
-    UatPurpose, UserAuthToken,
-};
-use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
-use rand::prelude::*;
-use tokio::sync::mpsc::{
-    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
-};
-use tokio::sync::{Mutex, Semaphore};
-use tracing::trace;
-use url::Url;
-use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
-use zxcvbn::{zxcvbn, Score};
-
-use super::event::ReadBackupCodeEvent;
 use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
 use crate::idm::application::{
-    GenerateApplicationPasswordEvent, LdapApplications, LdapApplicationsReadTransaction,
-    LdapApplicationsWriteTransaction,
+    LdapApplications, LdapApplicationsReadTransaction, LdapApplicationsWriteTransaction,
 };
 use crate::idm::audit::AuditEvent;
 use crate::idm::authsession::{AuthSession, AuthSessionData};
@@ -38,9 +11,6 @@ use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
     WebauthnCounterIncrement,
 };
-
-#[cfg(test)]
-use crate::idm::event::PasswordChangeEvent;
 use crate::idm::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::event::{
     CredentialStatusEvent, LdapAuthEvent, LdapTokenAuthEvent, RadiusAuthTokenEvent,
@@ -56,11 +26,37 @@ use crate::idm::radius::RadiusAccount;
 use crate::idm::scim::SyncAccount;
 use crate::idm::serviceaccount::ServiceAccount;
 use crate::idm::AuthState;
+use crate::idm::PreValidatedTokenStatus;
 use crate::prelude::*;
 use crate::server::keys::KeyProvidersTransaction;
 use crate::server::DomainInfo;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 use crate::value::{Session, SessionState};
+use compact_jwt::{Jwk, JwsCompact};
+use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
+use concread::cowcell::CowCellReadTxn;
+use concread::hashmap::HashMap;
+use kanidm_lib_crypto::CryptoPolicy;
+use kanidm_proto::internal::{
+    ApiToken, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken, UatPurpose,
+    UserAuthToken,
+};
+use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+use rand::prelude::*;
+use std::convert::TryFrom;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::mpsc::{
+    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
+};
+use tokio::sync::{Mutex, Semaphore};
+use tracing::trace;
+use url::Url;
+use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
+use zxcvbn::{zxcvbn, Score};
+
+#[cfg(test)]
+use crate::idm::event::PasswordChangeEvent;
 
 pub(crate) type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 pub(crate) type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
@@ -143,8 +139,9 @@ pub struct IdmServerAudit {
 impl IdmServer {
     pub async fn new(
         qs: QueryServer,
-        origin: &str,
+        origin: &Url,
         is_integration_test: bool,
+        current_time: Duration,
     ) -> Result<(IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
         let crypto_policy = if cfg!(test) || is_integration_test {
             CryptoPolicy::danger_test_minimum()
@@ -158,77 +155,80 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, rp_name, domain_level, oauth2rs_set, application_set) = {
+        let (rp_id, rp_name, application_set) = {
             let mut qs_read = qs.read().await?;
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
-                qs_read.get_domain_version(),
                 // Add a read/reload of all oauth2 configurations.
-                qs_read.get_oauth2rs_set()?,
                 qs_read.get_applications_set()?,
             )
         };
 
         // Check that it gels with our origin.
-        let origin_url = Url::parse(origin)
-            .map_err(|_e| {
-                admin_error!("Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", origin);
-                OperationError::InvalidState
+        let valid = origin
+            .domain()
+            .map(|effective_domain| {
+                // We need to prepend the '.' here to ensure that myexample.com != example.com,
+                // rather than just ends with.
+                effective_domain.ends_with(&format!(".{rp_id}")) || effective_domain == rp_id
             })
-            .and_then(|url| {
-                let valid = url.domain().map(|effective_domain| {
-                    // We need to prepend the '.' here to ensure that myexample.com != example.com,
-                    // rather than just ends with.
-                    effective_domain.ends_with(&format!(".{rp_id}"))
-                    || effective_domain == rp_id
-                }).unwrap_or(false);
+            .unwrap_or(false);
 
-                if valid {
-                    Ok(url)
-                } else {
-                    admin_error!("Effective domain (ed) is not a descendent of server domain name (rp_id).");
-                    admin_error!("You must change origin or domain name to be consistent. ded: {:?} - rp_id: {:?}", origin, rp_id);
-                    admin_error!("To change the origin or domain name see: https://kanidm.github.io/kanidm/master/server_configuration.html");
-                    Err(OperationError::InvalidState)
-                }
-            })?;
+        if !valid {
+            admin_error!(
+                "Effective domain (ed) is not a descendent of server domain name (rp_id)."
+            );
+            admin_error!(
+                "You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}",
+                origin,
+                rp_id
+            );
+            admin_error!("To change the origin or domain name see: https://kanidm.github.io/kanidm/master/server_configuration.html");
+            return Err(OperationError::InvalidState);
+        };
 
-        let webauthn = WebauthnBuilder::new(&rp_id, &origin_url)
+        let webauthn = WebauthnBuilder::new(&rp_id, origin)
             .and_then(|builder| builder.allow_subdomains(true).rp_name(&rp_name).build())
             .map_err(|e| {
                 admin_error!("Invalid Webauthn Configuration - {:?}", e);
                 OperationError::InvalidState
             })?;
 
-        let oauth2rs = Oauth2ResourceServers::try_from((oauth2rs_set, origin_url, domain_level))
-            .map_err(|e| {
-                admin_error!("Failed to load oauth2 resource servers - {:?}", e);
-                e
-            })?;
+        let oauth2rs = Oauth2ResourceServers::new(origin.to_owned()).map_err(|err| {
+            error!(?err, "Failed to load oauth2 resource servers");
+            err
+        })?;
 
         let applications = LdapApplications::try_from(application_set).map_err(|e| {
             admin_error!("Failed to load ldap applications - {:?}", e);
             e
         })?;
 
-        Ok((
-            IdmServer {
-                session_ticket: Semaphore::new(1),
-                sessions: BptreeMap::new(),
-                softlocks: HashMap::new(),
-                cred_update_sessions: BptreeMap::new(),
-                qs,
-                crypto_policy,
-                async_tx,
-                audit_tx,
-                webauthn,
-                oauth2rs: Arc::new(oauth2rs),
-                applications: Arc::new(applications),
-            },
-            IdmServerDelayed { async_rx },
-            IdmServerAudit { audit_rx },
-        ))
+        let idm_server = IdmServer {
+            session_ticket: Semaphore::new(1),
+            sessions: BptreeMap::new(),
+            softlocks: HashMap::new(),
+            cred_update_sessions: BptreeMap::new(),
+            qs,
+            crypto_policy,
+            async_tx,
+            audit_tx,
+            webauthn,
+            oauth2rs: Arc::new(oauth2rs),
+            applications: Arc::new(applications),
+        };
+        let idm_server_delayed = IdmServerDelayed { async_rx };
+        let idm_server_audit = IdmServerAudit { audit_rx };
+
+        let mut idm_write_txn = idm_server.proxy_write(current_time).await?;
+
+        idm_write_txn.reload_applications()?;
+        idm_write_txn.reload_oauth2()?;
+
+        idm_write_txn.commit()?;
+
+        Ok((idm_server, idm_server_delayed, idm_server_audit))
     }
 
     /// Start an auth txn
@@ -409,23 +409,60 @@ pub trait IdmServerTransaction<'a> {
             client_cert,
             bearer_token,
             basic_authz: _,
+            pre_validated_token: _,
         } = client_auth_info;
+
+        // Future - if there is a pre-validated UAT, use that. For now I want to review
+        // all the auth and validation flows to ensure that the UAT path is security
+        // wise equivalent to the other paths. This pre-validation is an "optimisation"
+        // for the web-ui where operations will make a number of api calls, and we don't
+        // want to do redundant work.
 
         match (client_cert, bearer_token) {
             (Some(client_cert_info), _) => {
                 self.client_certificate_to_identity(&client_cert_info, ct, source)
             }
-            (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
-                Token::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct, source),
-                Token::ApiToken(apit, entry) => {
-                    self.process_apit_to_identity(&apit, source, entry, ct)
+            (None, Some(token)) => {
+                match self.validate_and_parse_token_to_identity_token(&token, ct)? {
+                    Token::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct, source),
+                    Token::ApiToken(apit, entry) => {
+                        self.process_apit_to_identity(&apit, source, entry, ct)
+                    }
                 }
-            },
+            }
             (None, None) => {
                 debug!("No client certificate or bearer tokens were supplied");
                 Err(OperationError::NotAuthenticated)
             }
         }
+    }
+
+    /// This function will pre-validate the credentials provided and update the
+    /// ClientAuthInfo structure so that future operations using the same auth
+    /// info will not need to perform all the same checks (time, cryptography, etc).
+    /// However, subsequent callers will still need to load the entry into the
+    /// identity.
+    #[instrument(level = "info", skip_all)]
+    fn pre_validate_client_auth_info(
+        &mut self,
+        client_auth_info: &mut ClientAuthInfo,
+        ct: Duration,
+    ) -> Result<(), OperationError> {
+        let (result, status) = match self.validate_client_auth_info_to_uat(client_auth_info, ct) {
+            Ok(uat) => (Ok(()), PreValidatedTokenStatus::Valid(Box::new(uat))),
+            Err(OperationError::NotAuthenticated) => {
+                (Ok(()), PreValidatedTokenStatus::NotAuthenticated)
+            }
+            Err(OperationError::SessionExpired) => {
+                (Ok(()), PreValidatedTokenStatus::SessionExpired)
+            }
+            Err(err) => (Err(err), PreValidatedTokenStatus::None),
+        };
+
+        client_auth_info.set_pre_validated_uat(status);
+
+        // The result to bubble up.
+        result
     }
 
     /// This function is not using in authentication flows - it is a reflector of the
@@ -434,27 +471,27 @@ pub trait IdmServerTransaction<'a> {
     #[instrument(level = "info", skip_all)]
     fn validate_client_auth_info_to_uat(
         &mut self,
-        client_auth_info: ClientAuthInfo,
+        client_auth_info: &ClientAuthInfo,
         ct: Duration,
     ) -> Result<UserAuthToken, OperationError> {
-        let ClientAuthInfo {
-            client_cert,
-            bearer_token,
-            source: _,
-            basic_authz: _,
-        } = client_auth_info;
+        // Future - if there is a pre-validated UAT, use that.
 
-        match (client_cert, bearer_token) {
+        match (
+            client_auth_info.client_cert.as_ref(),
+            client_auth_info.bearer_token.as_ref(),
+        ) {
             (Some(client_cert_info), _) => {
-                self.client_certificate_to_user_auth_token(&client_cert_info, ct)
+                self.client_certificate_to_user_auth_token(client_cert_info, ct)
             }
-            (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
-                Token::UserAuthToken(uat) => Ok(uat),
-                Token::ApiToken(_apit, _entry) => {
-                    warn!("Unable to process non user auth token");
-                    Err(OperationError::NotAuthenticated)
+            (None, Some(token)) => {
+                match self.validate_and_parse_token_to_identity_token(token, ct)? {
+                    Token::UserAuthToken(uat) => Ok(uat),
+                    Token::ApiToken(_apit, _entry) => {
+                        warn!("Unable to process non user auth token");
+                        Err(OperationError::NotAuthenticated)
+                    }
                 }
-            },
+            }
             (None, None) => {
                 debug!("No client certificate or bearer tokens were supplied");
                 Err(OperationError::NotAuthenticated)
@@ -462,7 +499,7 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
-    fn validate_and_parse_token_to_token(
+    fn validate_and_parse_token_to_identity_token(
         &mut self,
         jwsu: &JwsCompact,
         ct: Duration,
@@ -1458,7 +1495,7 @@ impl IdmServerAuthTransaction<'_> {
         lae: &LdapTokenAuthEvent,
         ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
-        match self.validate_and_parse_token_to_token(&lae.token, ct)? {
+        match self.validate_and_parse_token_to_identity_token(&lae.token, ct)? {
             Token::UserAuthToken(uat) => {
                 let spn = uat.spn.clone();
                 Ok(Some(LdapBoundToken {
@@ -1601,24 +1638,6 @@ impl IdmServerProxyReadTransaction<'_> {
             })?;
 
         account.to_credentialstatus()
-    }
-
-    pub fn get_backup_codes(
-        &mut self,
-        rbce: &ReadBackupCodeEvent,
-    ) -> Result<BackupCodesView, OperationError> {
-        let account = self
-            .qs_read
-            .impersonate_search_ext_uuid(rbce.target, &rbce.ident)
-            .and_then(|account_entry| {
-                Account::try_from_entry_reduced(&account_entry, &mut self.qs_read)
-            })
-            .map_err(|e| {
-                admin_error!("Failed to search account {:?}", e);
-                e
-            })?;
-
-        account.to_backupcodesview()
     }
 }
 
@@ -1863,9 +1882,8 @@ impl IdmServerProxyWriteTransaction<'_> {
         cleartext: Option<&str>,
     ) -> Result<String, OperationError> {
         // name to uuid
-        let target = self.qs_write.name_to_uuid(name).map_err(|e| {
-            admin_error!(?e, "name to uuid failed");
-            e
+        let target = self.qs_write.name_to_uuid(name).inspect_err(|err| {
+            error!(?err, "name to uuid failed");
         })?;
 
         let cleartext = cleartext
@@ -1873,13 +1891,18 @@ impl IdmServerProxyWriteTransaction<'_> {
             .unwrap_or_else(password_from_random);
 
         let ncred = Credential::new_generatedpassword_only(self.crypto_policy, &cleartext)
-            .map_err(|e| {
-                admin_error!("Unable to generate password mod {:?}", e);
-                e
+            .inspect_err(|err| {
+                error!(?err, "unable to generate password modification");
             })?;
         let vcred = Value::new_credential("primary", ncred);
-        // We need to remove other credentials too.
+        let v_valid_from = Value::new_datetime_epoch(self.qs_write.get_curtime());
+
         let modlist = ModifyList::new_list(vec![
+            // Ensure the account is valid from *now*, and that the expiry is unset.
+            m_purge(Attribute::AccountExpire),
+            m_purge(Attribute::AccountValidFrom),
+            Modify::Present(Attribute::AccountValidFrom, v_valid_from),
+            // We need to remove other credentials too.
             m_purge(Attribute::PassKeys),
             m_purge(Attribute::PrimaryCredential),
             Modify::Present(Attribute::PrimaryCredential, vcred),
@@ -1893,12 +1916,42 @@ impl IdmServerProxyWriteTransaction<'_> {
                 &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
                 &modlist,
             )
-            .map_err(|e| {
-                request_error!(error = ?e);
-                e
+            .inspect_err(|err| {
+                error!(?err);
             })?;
 
         Ok(cleartext)
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub fn disable_account(&mut self, name: &str) -> Result<(), OperationError> {
+        // name to uuid
+        let target = self.qs_write.name_to_uuid(name).inspect_err(|err| {
+            error!(?err, "name to uuid failed");
+        })?;
+
+        let v_expire = Value::new_datetime_epoch(self.qs_write.get_curtime());
+
+        let modlist = ModifyList::new_list(vec![
+            // Ensure that the account has no validity, and the expiry is now.
+            m_purge(Attribute::AccountValidFrom),
+            m_purge(Attribute::AccountExpire),
+            Modify::Present(Attribute::AccountExpire, v_expire),
+        ]);
+
+        trace!(?modlist, "processing change");
+
+        self.qs_write
+            .internal_modify(
+                // Filter as executed
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target))),
+                &modlist,
+            )
+            .inspect_err(|err| {
+                error!(?err);
+            })?;
+
+        Ok(())
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2119,20 +2172,37 @@ impl IdmServerProxyWriteTransaction<'_> {
         }
     }
 
+    fn reload_applications(&mut self) -> Result<(), OperationError> {
+        self.qs_write
+            .get_applications_set()
+            .and_then(|application_set| self.applications.reload(application_set))
+    }
+
+    fn reload_oauth2(&mut self) -> Result<(), OperationError> {
+        let domain_level = self.qs_write.get_domain_version();
+        self.qs_write.get_oauth2rs_set().and_then(|oauth2rs_set| {
+            let key_providers = self.qs_write.get_key_providers();
+            self.oauth2rs
+                .reload(oauth2rs_set, key_providers, domain_level)
+        })?;
+        // Clear the flag to indicate we completed the reload.
+        self.qs_write.clear_changed_oauth2();
+        Ok(())
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
+        // The problem we have here is that we need the qs_write layer to reload *first*
+        // so that things like schema and key objects are ready.
+        self.qs_write.reload()?;
+
+        // Now that's done, let's proceed.
         if self.qs_write.get_changed_app() {
-            self.qs_write
-                .get_applications_set()
-                .and_then(|application_set| self.applications.reload(application_set))?;
+            self.reload_applications()?;
         }
+
         if self.qs_write.get_changed_oauth2() {
-            let domain_level = self.qs_write.get_domain_version();
-            self.qs_write
-                .get_oauth2rs_set()
-                .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set, domain_level))?;
-            // Clear the flag to indicate we completed the reload.
-            self.qs_write.clear_changed_oauth2();
+            self.reload_oauth2()?;
         }
 
         // Commit everything.
@@ -2142,47 +2212,6 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         trace!("cred_update_session.commit");
         self.qs_write.commit()
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn generate_application_password(
-        &mut self,
-        ev: &GenerateApplicationPasswordEvent,
-    ) -> Result<String, OperationError> {
-        let account = self.target_to_account(ev.target)?;
-
-        // This is intended to be read/copied by a human
-        let cleartext = readable_password_from_random();
-
-        // Create a modlist from the change
-        let modlist = account
-            .generate_application_password_mod(
-                ev.application,
-                ev.label.as_str(),
-                cleartext.as_str(),
-                self.crypto_policy,
-            )
-            .map_err(|e| {
-                admin_error!("Unable to generate application password mod {:?}", e);
-                e
-            })?;
-        trace!(?modlist, "processing change");
-        // Apply it
-        self.qs_write
-            .impersonate_modify(
-                // Filter as executed
-                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(ev.target))),
-                // Filter as intended (acp)
-                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(ev.target))),
-                &modlist,
-                // Provide the event to impersonate
-                &ev.ident,
-            )
-            .map_err(|e| {
-                error!(error = ?e);
-                e
-            })
-            .map(|_| cleartext)
     }
 }
 
@@ -2726,13 +2755,13 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         // Get the account that will be doing the actual reads.
-        let admin_entry = idms_prox_read
+        let idm_admin_entry = idms_prox_read
             .qs_read
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_IDM_ADMIN)
             .expect("Can't access admin entry.");
 
         let ugte = UnixGroupTokenEvent::new_impersonate(
-            admin_entry.clone(),
+            idm_admin_entry.clone(),
             uuid!("01609135-a1c4-43d5-966b-a28227644445"),
         );
         let tok_g = idms_prox_read
@@ -2756,7 +2785,7 @@ mod tests {
 
         // Show we can get the admin as a unix group token too
         let ugte = UnixGroupTokenEvent::new_impersonate(
-            admin_entry,
+            idm_admin_entry,
             uuid!("00000000-0000-0000-0000-000000000000"),
         );
         let tok_g = idms_prox_read
@@ -3849,7 +3878,7 @@ mod tests {
             Err(e) => {
                 error!("A critical error has occurred! {:?}", e);
                 // Should not occur!
-                panic!("A critical error has occurred! {:?}", e);
+                panic!("A critical error has occurred! {e:?}");
             }
         };
 
@@ -3861,7 +3890,7 @@ mod tests {
             .proxy_read()
             .await
             .unwrap()
-            .validate_and_parse_token_to_token(&token, ct)
+            .validate_and_parse_token_to_identity_token(&token, ct)
             .expect("Must not fail")
         else {
             panic!("Unexpected auth token type for anonymous auth");

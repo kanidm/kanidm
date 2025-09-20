@@ -657,6 +657,17 @@ pub static ref SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6: SchemaAttribute = Sc
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256,
+    name: Attribute::KeyActionImportJwsRs256,
+    description: "".to_string(),
+    multivalue: true,
+    // Ephemeral action.
+    phantom: true,
+    syntax: SyntaxType::PrivateBinary,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_PATCH_LEVEL_DL7: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_PATCH_LEVEL,
     name: Attribute::PatchLevel,
@@ -838,9 +849,9 @@ pub static ref SCHEMA_CLASS_ACCOUNT_DL5: SchemaClass = SchemaClass {
         Attribute::Spn
     ],
     systemsupplements: vec![
+        EntryClass::OAuth2ResourceServer.into(),
         EntryClass::Person.into(),
         EntryClass::ServiceAccount.into(),
-        EntryClass::OAuth2ResourceServer.into(),
     ],
     ..Default::default()
 };
@@ -948,13 +959,12 @@ pub static ref SCHEMA_CLASS_SYSTEM_CONFIG: SchemaClass = SchemaClass {
 pub static ref SCHEMA_CLASS_OAUTH2_RS_DL9: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS,
     name: EntryClass::OAuth2ResourceServer.into(),
-    description: "The class representing a configured OAuth2 Client".to_string(),
+    description: "The class epresenting a configured OAuth2 Client".to_string(),
 
     systemmay: vec![
         Attribute::Description,
         Attribute::OAuth2RsScopeMap,
         Attribute::OAuth2RsSupScopeMap,
-        Attribute::Rs256PrivateKeyDer,
         Attribute::OAuth2JwtLegacyCryptoEnable,
         Attribute::OAuth2PreferShortUsername,
         Attribute::Image,
@@ -963,11 +973,13 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_DL9: SchemaClass = SchemaClass {
         Attribute::OAuth2RsOrigin,
         Attribute::OAuth2StrictRedirectUri,
         Attribute::OAuth2DeviceFlowEnable,
+        // Deprecated
+        Attribute::Rs256PrivateKeyDer,
+        Attribute::OAuth2RsTokenKey,
+        Attribute::Es256PrivateKeyDer,
     ],
     systemmust: vec![
         Attribute::OAuth2RsOriginLanding,
-        Attribute::OAuth2RsTokenKey,
-        Attribute::Es256PrivateKeyDer,
     ],
     ..Default::default()
 };
@@ -1039,6 +1051,16 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6: SchemaClass = SchemaClass 
     uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_ES256,
     name: EntryClass::KeyObjectJwtEs256.into(),
     description: "A marker class indicating that this keyobject must provide jwt es256 capability.".to_string(),
+    systemsupplements: vec![
+        EntryClass::KeyObject.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_RS256: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_RS256,
+    name: EntryClass::KeyObjectJwtRs256.into(),
+    description: "A marker class indicating that this keyobject must provide jwt rs256 capability.".to_string(),
     systemsupplements: vec![
         EntryClass::KeyObject.into(),
     ],

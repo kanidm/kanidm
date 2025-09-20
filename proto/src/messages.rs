@@ -35,10 +35,7 @@ impl FromStr for ConsoleOutputMode {
             "json" => Ok(ConsoleOutputMode::JSON),
             "text" => Ok(ConsoleOutputMode::Text),
             _ => {
-                eprintln!(
-                    "Supplied output mode ({:?}) was invalid, defaulting to text",
-                    s
-                );
+                eprintln!("Supplied output mode ({s:?}) was invalid, defaulting to text");
                 Ok(ConsoleOutputMode::Text)
             }
         }
@@ -145,7 +142,7 @@ impl fmt::Display for AccountChangeMessage {
             ConsoleOutputMode::JSON => write!(
                 f,
                 "{}",
-                serde_json::to_string(self).unwrap_or(format!("{:?}", self)) /* if it fails to JSON serialize, just debug-dump it */
+                serde_json::to_string(self).unwrap_or(format!("{self:?}")) /* if it fails to JSON serialize, just debug-dump it */
             ),
             ConsoleOutputMode::Text => write!(
                 f,
@@ -199,7 +196,7 @@ impl fmt::Display for BasicMessage {
             ConsoleOutputMode::JSON => write!(
                 f,
                 "{}",
-                serde_json::to_string(self).unwrap_or(format!("{:?}", self)) /* if it fails to JSON serialize, just debug-dump it */
+                serde_json::to_string(self).unwrap_or(format!("{self:?}")) /* if it fails to JSON serialize, just debug-dump it */
             ),
             ConsoleOutputMode::Text => {
                 write!(f, "{} - {}: {}", self.status, self.action, self.result,)

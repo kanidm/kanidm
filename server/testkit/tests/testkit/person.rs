@@ -19,9 +19,9 @@ async fn test_v1_person_id_patch(rsclient: &KanidmClient) {
         .await
     {
         Ok(val) => val,
-        Err(err) => panic!("Failed to patch person: {:?}", err),
+        Err(err) => panic!("Failed to patch person: {err:?}"),
     };
-    eprintln!("response: {:#?}", response);
+    eprintln!("response: {response:#?}");
 }
 
 #[kanidmd_testkit::test]
@@ -42,10 +42,10 @@ async fn test_v1_person_id_ssh_pubkeys_post(rsclient: &KanidmClient) {
         .perform_post_request::<serde_json::Value, String>("/v1/person/foo/_ssh_pubkeys", post_body)
         .await
     {
-        Ok(val) => panic!("Expected failure to post person ssh pubkeys: {:?}", val),
+        Ok(val) => panic!("Expected failure to post person ssh pubkeys: {val:?}"),
         Err(err) => err,
     };
-    eprintln!("response: {:#?}", response);
+    eprintln!("response: {response:#?}");
     assert!(matches!(
         response,
         ClientError::Http(StatusCode::BAD_REQUEST, _, _)

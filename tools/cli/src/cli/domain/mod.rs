@@ -1,77 +1,57 @@
-use crate::common::OpType;
-use crate::{handle_client_error, DomainOpt};
+use crate::{handle_client_error, DomainOpt, KanidmClientParser};
 use anyhow::{Context, Error};
-use kanidm_proto::internal::ImageValue;
+use kanidm_proto::{cli::OpType, internal::ImageValue};
 use std::fs::read;
 
 impl DomainOpt {
-    pub fn debug(&self) -> bool {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
-            DomainOpt::SetDisplayname(copt) => copt.copt.debug,
-            DomainOpt::SetLdapBasedn { copt, .. }
-            | DomainOpt::SetImage { copt, .. }
-            | DomainOpt::RemoveImage { copt }
-            | DomainOpt::SetLdapAllowUnixPasswordBind { copt, .. }
-            | DomainOpt::SetAllowEasterEggs { copt, .. }
-            | DomainOpt::RevokeKey { copt, .. }
-            | DomainOpt::Show(copt)
-            | DomainOpt::SetLdapMaxQueryableAttrs { copt, .. } => copt.debug,
-        }
-    }
-
-    pub async fn exec(&self) {
-        match self {
-            DomainOpt::SetDisplayname(opt) => {
+            DomainOpt::SetDisplayname(dopt) => {
                 eprintln!(
                     "Attempting to set the domain's display name to: {:?}",
-                    opt.new_display_name
+                    dopt.new_display_name
                 );
-                let client = opt.copt.to_client(OpType::Write).await;
+                let client = opt.to_client(OpType::Write).await;
                 match client
-                    .idm_domain_set_display_name(&opt.new_display_name)
+                    .idm_domain_set_display_name(&dopt.new_display_name)
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, opt.copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
             DomainOpt::SetLdapMaxQueryableAttrs {
-                copt,
                 new_max_queryable_attrs,
             } => {
                 eprintln!(
-                    "Attempting to set the maximum number of queryable LDAP attributes to: {:?}",
-                    new_max_queryable_attrs
+                    "Attempting to set the maximum number of queryable LDAP attributes to: {new_max_queryable_attrs:?}"
                 );
-                let client = copt.to_client(OpType::Write).await;
+                let client = opt.to_client(OpType::Write).await;
                 match client
                     .idm_domain_set_ldap_max_queryable_attrs(*new_max_queryable_attrs)
                     .await
                 {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
-            DomainOpt::SetLdapBasedn { copt, new_basedn } => {
-                eprintln!(
-                    "Attempting to set the domain's ldap basedn to: {:?}",
-                    new_basedn
-                );
-                let client = copt.to_client(OpType::Write).await;
+            DomainOpt::SetLdapBasedn { new_basedn } => {
+                eprintln!("Attempting to set the domain's ldap basedn to: {new_basedn:?}");
+                let client = opt.to_client(OpType::Write).await;
                 match client.idm_domain_set_ldap_basedn(new_basedn).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
-            DomainOpt::SetLdapAllowUnixPasswordBind { copt, enable } => {
-                let client = copt.to_client(OpType::Write).await;
+            DomainOpt::SetLdapAllowUnixPasswordBind { enable } => {
+                let client = opt.to_client(OpType::Write).await;
                 match client.idm_set_ldap_allow_unix_password_bind(*enable).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
-            DomainOpt::SetAllowEasterEggs { copt, enable } => {
-                let client = copt.to_client(OpType::Write).await;
+            DomainOpt::SetAllowEasterEggs { enable } => {
+                let client = opt.to_client(OpType::Write).await;
                 match client.idm_set_domain_allow_easter_eggs(*enable).await {
                     Ok(_) => {
                         if *enable {
@@ -80,29 +60,25 @@ impl DomainOpt {
                             println!("Success")
                         }
                     }
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
-            DomainOpt::Show(copt) => {
-                let client = copt.to_client(OpType::Read).await;
+            DomainOpt::Show => {
+                let client = opt.to_client(OpType::Read).await;
                 match client.idm_domain_get().await {
-                    Ok(e) => println!("{}", e),
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Ok(e) => println!("{e}"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
-            DomainOpt::RevokeKey { copt, key_id } => {
-                let client = copt.to_client(OpType::Write).await;
+            DomainOpt::RevokeKey { key_id } => {
+                let client = opt.to_client(OpType::Write).await;
                 match client.idm_domain_revoke_key(key_id).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
-            DomainOpt::SetImage {
-                copt,
-                path,
-                image_type,
-            } => {
-                let client = copt.to_client(OpType::Write).await;
+            DomainOpt::SetImage { path, image_type } => {
+                let client = opt.to_client(OpType::Write).await;
                 let img_res: Result<ImageValue, Error> = (move || {
                     let file_name = path
                         .file_name()
@@ -126,7 +102,7 @@ impl DomainOpt {
                     match read_res {
                         Ok(data) => Ok(ImageValue::new(file_name, image_type, data)),
                         Err(err) => {
-                            if copt.debug {
+                            if opt.debug {
                                 eprintln!(
                                     "{}",
                                     kanidm_lib_file_permissions::diagnose_path(path.as_ref())
@@ -147,15 +123,15 @@ impl DomainOpt {
 
                 match client.idm_domain_update_image(img).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
-            DomainOpt::RemoveImage { copt } => {
-                let client = copt.to_client(OpType::Write).await;
+            DomainOpt::RemoveImage => {
+                let client = opt.to_client(OpType::Write).await;
 
                 match client.idm_domain_delete_image().await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
         }

@@ -50,10 +50,12 @@ use webauthn_rs_proto::{
     PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse,
 };
 
+mod application;
 mod domain;
 mod group;
 mod oauth;
 mod person;
+mod schema;
 mod scim;
 mod service_account;
 mod sync_account;
@@ -144,21 +146,21 @@ pub struct KanidmClientBuilder {
 impl Display for KanidmClientBuilder {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.address {
-            Some(value) => writeln!(f, "address: {}", value)?,
+            Some(value) => writeln!(f, "address: {value}")?,
             None => writeln!(f, "address: unset")?,
         }
         writeln!(f, "verify_ca: {}", self.verify_ca)?;
         writeln!(f, "verify_hostnames: {}", self.verify_hostnames)?;
         match &self.ca {
-            Some(value) => writeln!(f, "ca: {:#?}", value)?,
+            Some(value) => writeln!(f, "ca: {value:#?}")?,
             None => writeln!(f, "ca: unset")?,
         }
         match self.connect_timeout {
-            Some(value) => writeln!(f, "connect_timeout: {}", value)?,
+            Some(value) => writeln!(f, "connect_timeout: {value}")?,
             None => writeln!(f, "connect_timeout: unset")?,
         }
         match self.request_timeout {
-            Some(value) => writeln!(f, "request_timeout: {}", value)?,
+            Some(value) => writeln!(f, "request_timeout: {value}")?,
             None => writeln!(f, "request_timeout: unset")?,
         }
         writeln!(f, "use_system_proxies: {}", self.use_system_proxies)?;
@@ -223,7 +225,7 @@ impl KanidmClientBuilder {
             let path = Path::new(ca_path);
             let ca_meta = read_file_metadata(&path).map_err(|e| {
                 error!("{:?}", e);
-                ClientError::ConfigParseIssue(format!("{:?}", e))
+                ClientError::ConfigParseIssue(format!("{e:?}"))
             })?;
 
             trace!("uid:gid {}:{}", ca_meta.uid(), ca_meta.gid());
@@ -244,15 +246,15 @@ impl KanidmClientBuilder {
 
         let mut f = File::open(ca_path).map_err(|e| {
             error!("{:?}", e);
-            ClientError::ConfigParseIssue(format!("{:?}", e))
+            ClientError::ConfigParseIssue(format!("{e:?}"))
         })?;
         f.read_to_end(&mut buf).map_err(|e| {
             error!("{:?}", e);
-            ClientError::ConfigParseIssue(format!("{:?}", e))
+            ClientError::ConfigParseIssue(format!("{e:?}"))
         })?;
         reqwest::Certificate::from_pem(&buf).map_err(|e| {
             error!("{:?}", e);
-            ClientError::CertParseIssue(format!("{:?}", e))
+            ClientError::CertParseIssue(format!("{e:?}"))
         })
     }
 
@@ -363,24 +365,27 @@ impl KanidmClientBuilder {
         let mut contents = String::new();
         f.read_to_string(&mut contents).map_err(|e| {
             error!("{:?}", e);
-            ClientError::ConfigParseIssue(format!("{:?}", e))
+            ClientError::ConfigParseIssue(format!("{e:?}"))
         })?;
 
         let mut config: KanidmClientConfig = toml::from_str(&contents).map_err(|e| {
             error!("{:?}", e);
-            ClientError::ConfigParseIssue(format!("{:?}", e))
+            ClientError::ConfigParseIssue(format!("{e:?}"))
         })?;
 
         if let Some(instance_name) = instance {
             if let Some(instance_config) = config.instances.remove(instance_name) {
                 self.apply_config_options(instance_config)
             } else {
-                let emsg = format!(
-                    "instance {} does not exist in config file {:?}",
-                    instance_name, config_path
+                info!(
+                    "instance {} does not exist in config file {}",
+                    instance_name,
+                    config_path.as_ref().display()
                 );
-                error!(%emsg);
-                Err(ClientError::ConfigParseIssue(emsg))
+
+                // It's not an error if the instance isn't present, the build step
+                // will fail if there is insufficient information to proceed.
+                Ok(self)
             }
         } else {
             self.apply_config_options(config.default)
@@ -453,7 +458,7 @@ impl KanidmClientBuilder {
         //Okay we have a ca to add. Let's read it in and setup.
         let ca = Self::parse_certificate(ca_path).map_err(|e| {
             error!("{:?}", e);
-            ClientError::CertParseIssue(format!("{:?}", e))
+            ClientError::CertParseIssue(format!("{e:?}"))
         })?;
 
         Ok(KanidmClientBuilder {
@@ -694,11 +699,11 @@ impl KanidmClient {
             if let Some(hyper_error) = find_reqwest_error_source::<hyper::Error>(&error) {
                 // hyper errors can be *anything* depending on the underlying client libraries
                 // ref: https://github.com/hyperium/hyper/blob/9feb70e9249d9fb99634ec96f83566e6bb3b3128/src/error.rs#L26C2-L26C2
-                if format!("{:?}", hyper_error)
+                if format!("{hyper_error:?}")
                     .to_lowercase()
                     .contains("certificate")
                 {
-                    return ClientError::UntrustedCertificate(format!("{}", hyper_error));
+                    return ClientError::UntrustedCertificate(format!("{hyper_error}"));
                 }
             }
         }
@@ -733,18 +738,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -792,16 +787,7 @@ impl KanidmClient {
         // If we have a sessionid header in the response, get it now.
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
+        let response = self.ok_or_clienterror(&opid, response).await?;
 
         // Do we have a cookie? Our job here isn't to parse and validate the cookies, but just to
         // know if the session id was set *in* our cookie store at all.
@@ -870,18 +856,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -918,9 +894,9 @@ impl KanidmClient {
                 return Err(ClientError::InvalidRequest(format!("Something about the request content was invalid, check the server logs for further information. Operation ID: {} Error: {:?}",opid, response.text().await.ok() )))
             }
 
-            unexpect => {
+            unexpected => {
                 return Err(ClientError::Http(
-                    unexpect,
+                    unexpected,
                     response.json().await.ok(),
                     opid,
                 ))
@@ -931,6 +907,22 @@ impl KanidmClient {
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
+    }
+
+    /// Handles not-OK responses and turns them into ClientErrors
+    async fn ok_or_clienterror(
+        &self,
+        opid: &str,
+        response: reqwest::Response,
+    ) -> Result<reqwest::Response, ClientError> {
+        match response.status() {
+            reqwest::StatusCode::OK => Ok(response),
+            unexpected => Err(ClientError::Http(
+                unexpected,
+                response.json().await.ok(),
+                opid.to_string(),
+            )),
+        }
     }
 
     pub async fn perform_patch_request<R: Serialize, T: DeserializeOwned>(
@@ -958,18 +950,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -1019,18 +1001,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -1061,18 +1033,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -1103,18 +1065,8 @@ impl KanidmClient {
 
         let opid = self.get_kopid_from_response(&response);
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => {
-                return Err(ClientError::Http(
-                    unexpect,
-                    response.json().await.ok(),
-                    opid,
-                ))
-            }
-        }
-
-        response
+        self.ok_or_clienterror(&opid, response)
+            .await?
             .json()
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
@@ -1566,8 +1518,7 @@ impl KanidmClient {
     }
 
     pub async fn get_public_jwk(&self, key_id: &str) -> Result<Jwk, ClientError> {
-        self.perform_get_request(&format!("/v1/jwk/{}", key_id))
-            .await
+        self.perform_get_request(&format!("/v1/jwk/{key_id}")).await
     }
 
     pub async fn whoami(&self) -> Result<Option<Entry>, ClientError> {
@@ -1594,9 +1545,9 @@ impl KanidmClient {
             // Continue to process.
             reqwest::StatusCode::OK => {}
             reqwest::StatusCode::UNAUTHORIZED => return Ok(None),
-            unexpect => {
+            unexpected => {
                 return Err(ClientError::Http(
-                    unexpect,
+                    unexpected,
                     response.json().await.ok(),
                     opid,
                 ))
@@ -1641,14 +1592,14 @@ impl KanidmClient {
     }
 
     pub async fn idm_group_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(&format!("/v1/group/{}", id)).await
+        self.perform_get_request(&format!("/v1/group/{id}")).await
     }
 
     pub async fn idm_group_get_members(
         &self,
         id: &str,
     ) -> Result<Option<Vec<String>>, ClientError> {
-        self.perform_get_request(&format!("/v1/group/{}/_attr/member", id))
+        self.perform_get_request(&format!("/v1/group/{id}/_attr/member"))
             .await
     }
 
@@ -1680,7 +1631,7 @@ impl KanidmClient {
         entry_manager: &str,
     ) -> Result<(), ClientError> {
         let data = vec![entry_manager];
-        self.perform_put_request(&format!("/v1/group/{}/_attr/entry_managed_by", id), data)
+        self.perform_put_request(&format!("/v1/group/{id}/_attr/entry_managed_by"), data)
             .await
     }
 
@@ -1690,7 +1641,7 @@ impl KanidmClient {
         members: &[&str],
     ) -> Result<(), ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
-        self.perform_put_request(&format!("/v1/group/{}/_attr/member", id), m)
+        self.perform_put_request(&format!("/v1/group/{id}/_attr/member"), m)
             .await
     }
 
@@ -1700,7 +1651,7 @@ impl KanidmClient {
         members: &[&str],
     ) -> Result<(), ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
-        self.perform_post_request(&format!("/v1/group/{}/_attr/member", id), m)
+        self.perform_post_request(&format!("/v1/group/{id}/_attr/member"), m)
             .await
     }
 
@@ -1714,15 +1665,12 @@ impl KanidmClient {
             &members.join(","),
             group
         );
-        self.perform_delete_request_with_body(
-            &format!("/v1/group/{}/_attr/member", group),
-            &members,
-        )
-        .await
+        self.perform_delete_request_with_body(&format!("/v1/group/{group}/_attr/member"), &members)
+            .await
     }
 
     pub async fn idm_group_purge_members(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(&format!("/v1/group/{}/_attr/member", id))
+        self.perform_delete_request(&format!("/v1/group/{id}/_attr/member"))
             .await
     }
 
@@ -1732,24 +1680,24 @@ impl KanidmClient {
         gidnumber: Option<u32>,
     ) -> Result<(), ClientError> {
         let gx = GroupUnixExtend { gidnumber };
-        self.perform_post_request(&format!("/v1/group/{}/_unix", id), gx)
+        self.perform_post_request(&format!("/v1/group/{id}/_unix"), gx)
             .await
     }
 
     pub async fn idm_group_unix_token_get(&self, id: &str) -> Result<UnixGroupToken, ClientError> {
-        self.perform_get_request(&format!("/v1/group/{}/_unix/_token", id))
+        self.perform_get_request(&format!("/v1/group/{id}/_unix/_token"))
             .await
     }
 
     pub async fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(&format!("/v1/group/{}", id))
+        self.perform_delete_request(&format!("/v1/group/{id}"))
             .await
     }
 
     // ==== ACCOUNTS
 
     pub async fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
-        self.perform_get_request(&format!("/v1/account/{}/_unix/_token", id))
+        self.perform_get_request(&format!("/v1/account/{id}/_unix/_token"))
             .await
     }
 
@@ -1761,13 +1709,10 @@ impl KanidmClient {
         ttl: Option<u32>,
     ) -> Result<CUIntentToken, ClientError> {
         if let Some(ttl) = ttl {
-            self.perform_get_request(&format!(
-                "/v1/person/{}/_credential/_update_intent/{}",
-                id, ttl
-            ))
-            .await
+            self.perform_get_request(&format!("/v1/person/{id}/_credential/_update_intent/{ttl}"))
+                .await
         } else {
-            self.perform_get_request(&format!("/v1/person/{}/_credential/_update_intent", id))
+            self.perform_get_request(&format!("/v1/person/{id}/_credential/_update_intent"))
                 .await
         }
     }
@@ -1776,7 +1721,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<(CUSessionToken, CUStatus), ClientError> {
-        self.perform_get_request(&format!("/v1/person/{}/_credential/_update", id))
+        self.perform_get_request(&format!("/v1/person/{id}/_credential/_update"))
             .await
     }
 
@@ -1991,7 +1936,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<RadiusAuthToken, ClientError> {
-        self.perform_get_request(&format!("/v1/account/{}/_radius/_token", id))
+        self.perform_get_request(&format!("/v1/account/{id}/_radius/_token"))
             .await
     }
 
@@ -2003,7 +1948,7 @@ impl KanidmClient {
         let req = SingleStringRequest {
             value: cred.to_string(),
         };
-        self.perform_post_request(&format!("/v1/account/{}/_unix/_auth", id), req)
+        self.perform_post_request(&format!("/v1/account/{id}/_unix/_auth"), req)
             .await
     }
 
@@ -2015,12 +1960,12 @@ impl KanidmClient {
         id: &str,
         tag: &str,
     ) -> Result<Option<String>, ClientError> {
-        self.perform_get_request(&format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag))
+        self.perform_get_request(&format!("/v1/account/{id}/_ssh_pubkeys/{tag}"))
             .await
     }
 
     pub async fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
-        self.perform_get_request(&format!("/v1/account/{}/_ssh_pubkeys", id))
+        self.perform_get_request(&format!("/v1/account/{id}/_ssh_pubkeys"))
             .await
     }
 
@@ -2036,7 +1981,7 @@ impl KanidmClient {
         new_display_name: &str,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_DISPLAY_NAME),
+            &format!("/v1/domain/_attr/{ATTR_DOMAIN_DISPLAY_NAME}"),
             vec![new_display_name],
         )
         .await
@@ -2044,7 +1989,7 @@ impl KanidmClient {
 
     pub async fn idm_domain_set_ldap_basedn(&self, new_basedn: &str) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_LDAP_BASEDN),
+            &format!("/v1/domain/_attr/{ATTR_DOMAIN_LDAP_BASEDN}"),
             vec![new_basedn],
         )
         .await
@@ -2056,7 +2001,7 @@ impl KanidmClient {
         max_queryable_attrs: usize,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/domain/_attr/{}", ATTR_LDAP_MAX_QUERYABLE_ATTRS),
+            &format!("/v1/domain/_attr/{ATTR_LDAP_MAX_QUERYABLE_ATTRS}"),
             vec![max_queryable_attrs.to_string()],
         )
         .await
@@ -2074,7 +2019,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_domain_get_ssid(&self) -> Result<String, ClientError> {
-        self.perform_get_request(&format!("/v1/domain/_attr/{}", ATTR_DOMAIN_SSID))
+        self.perform_get_request(&format!("/v1/domain/_attr/{ATTR_DOMAIN_SSID}"))
             .await
             .and_then(|mut r: Vec<String>|
                 // Get the first result
@@ -2086,7 +2031,7 @@ impl KanidmClient {
 
     pub async fn idm_domain_set_ssid(&self, ssid: &str) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_SSID),
+            &format!("/v1/domain/_attr/{ATTR_DOMAIN_SSID}"),
             vec![ssid.to_string()],
         )
         .await
@@ -2094,7 +2039,7 @@ impl KanidmClient {
 
     pub async fn idm_domain_revoke_key(&self, key_id: &str) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("/v1/domain/_attr/{}", ATTR_KEY_ACTION_REVOKE),
+            &format!("/v1/domain/_attr/{ATTR_KEY_ACTION_REVOKE}"),
             vec![key_id.to_string()],
         )
         .await
@@ -2113,7 +2058,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(&format!("/v1/schema/attributetype/{}", id))
+        self.perform_get_request(&format!("/v1/schema/attributetype/{id}"))
             .await
     }
 
@@ -2122,7 +2067,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_schema_classtype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(&format!("/v1/schema/classtype/{}", id))
+        self.perform_get_request(&format!("/v1/schema/classtype/{id}"))
             .await
     }
 
@@ -2132,12 +2077,12 @@ impl KanidmClient {
     }
 
     pub async fn recycle_bin_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(&format!("/v1/recycle_bin/{}", id))
+        self.perform_get_request(&format!("/v1/recycle_bin/{id}"))
             .await
     }
 
     pub async fn recycle_bin_revive(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_post_request(&format!("/v1/recycle_bin/{}/_revive", id), ())
+        self.perform_post_request(&format!("/v1/recycle_bin/{id}/_revive"), ())
             .await
     }
 }
@@ -2184,34 +2129,34 @@ mod tests {
     fn test_make_url() {
         use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
         let client: KanidmClient = KanidmClientBuilder::new()
-            .address(format!("https://{}", DEFAULT_SERVER_ADDRESS))
+            .address(format!("https://{DEFAULT_SERVER_ADDRESS}"))
             .enable_native_ca_roots(false)
             .build()
             .unwrap();
         assert_eq!(
             client.get_url(),
-            Url::parse(&format!("https://{}", DEFAULT_SERVER_ADDRESS)).unwrap()
+            Url::parse(&format!("https://{DEFAULT_SERVER_ADDRESS}")).unwrap()
         );
         assert_eq!(
             client.make_url("/hello"),
-            Url::parse(&format!("https://{}/hello", DEFAULT_SERVER_ADDRESS)).unwrap()
+            Url::parse(&format!("https://{DEFAULT_SERVER_ADDRESS}/hello")).unwrap()
         );
 
         let client: KanidmClient = KanidmClientBuilder::new()
-            .address(format!("https://{}/cheese/", DEFAULT_SERVER_ADDRESS))
+            .address(format!("https://{DEFAULT_SERVER_ADDRESS}/cheese/"))
             .enable_native_ca_roots(false)
             .build()
             .unwrap();
         assert_eq!(
             client.make_url("hello"),
-            Url::parse(&format!("https://{}/cheese/hello", DEFAULT_SERVER_ADDRESS)).unwrap()
+            Url::parse(&format!("https://{DEFAULT_SERVER_ADDRESS}/cheese/hello")).unwrap()
         );
     }
 
     #[test]
     fn test_kanidmclientbuilder_display() {
         let defaultclient = KanidmClientBuilder::default();
-        println!("{}", defaultclient);
+        println!("{defaultclient}");
         assert!(defaultclient.to_string().contains("verify_ca"));
 
         let testclient = KanidmClientBuilder {
@@ -2225,13 +2170,13 @@ mod tests {
             token_cache_path: Some(CLIENT_TOKEN_CACHE.to_string()),
             disable_system_ca_store: false,
         };
-        println!("testclient {}", testclient);
+        println!("testclient {testclient}");
         assert!(testclient.to_string().contains("verify_ca: true"));
         assert!(testclient.to_string().contains("verify_hostnames: true"));
 
         let badness = testclient.danger_accept_invalid_hostnames(true);
         let badness = badness.danger_accept_invalid_certs(true);
-        println!("badness: {}", badness);
+        println!("badness: {badness}");
         assert!(badness.to_string().contains("verify_ca: false"));
         assert!(badness.to_string().contains("verify_hostnames: false"));
     }

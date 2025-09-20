@@ -1,7 +1,7 @@
 use md5::{Digest, Md5};
 use std::cmp::min;
 
-/// Maximium salt length.
+/// Maximum salt length.
 const MD5_MAGIC: &str = "$1$";
 const MD5_TRANSPOSE: &[u8] = b"\x0c\x06\x00\x0d\x07\x01\x0e\x08\x02\x0f\x09\x03\x05\x0a\x04\x0b";
 

@@ -119,9 +119,10 @@ struct SetUnixCredPartial {
 #[derive(Template)]
 #[template(path = "credential_update_add_ssh_publickey_partial.html")]
 struct AddSshPublicKeyPartial {
+    key_title: Option<String>,
     title_error: Option<String>,
-    key_error: Option<String>,
     key_value: Option<String>,
+    key_error: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -167,12 +168,6 @@ struct AddPasskeyPartial {
     challenge: String,
     class: PasskeyClass,
 }
-
-#[derive(Deserialize, Debug)]
-struct PasskeyCreateResponse {}
-
-#[derive(Deserialize, Debug)]
-struct PasskeyCreateExtensions {}
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct PasskeyInitForm {
@@ -760,11 +755,9 @@ pub(crate) async fn view_self_reset_get(
     DomainInfo(domain_info): DomainInfo,
     mut jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let uat: UserAuthToken = state
-        .qe_r_ref
-        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-        .await?;
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
     let can_rw = uat.purpose_readwrite_active(time);
@@ -772,11 +765,15 @@ pub(crate) async fn view_self_reset_get(
     if can_rw {
         let (cu_session_token, cu_status) = state
             .qe_w_ref
-            .handle_idmcredentialupdate(client_auth_info, uat.uuid.to_string(), kopid.eventid)
+            .handle_idmcredentialupdate(
+                client_auth_info.clone(),
+                uat.uuid.to_string(),
+                kopid.eventid,
+            )
             .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
             .await?;
 
-        let cu_resp = get_cu_response(domain_info, cu_status, true);
+        let cu_resp = get_cu_response(uat, domain_info, cu_status, true);
 
         jar = add_cu_cookie(jar, &state, cu_session_token);
         Ok((jar, cu_resp).into_response())
@@ -785,7 +782,7 @@ pub(crate) async fn view_self_reset_get(
             domain_info,
             oauth2: None,
             reauth: Some(Reauth {
-                username: uat.spn,
+                username: uat.spn.clone(),
                 purpose: ReauthPurpose::ProfileSettings,
             }),
             error: None,
@@ -877,7 +874,7 @@ pub(crate) async fn view_set_unixcred(
         status,
         swapped_handler_trigger,
         HxPushUrl(Uri::from_static("/ui/reset/set_unixcred")),
-        AddPasswordPartial { check_res },
+        SetUnixCredPartial { check_res },
     )
         .into_response())
 }
@@ -901,9 +898,10 @@ pub(crate) async fn view_add_ssh_publickey(
     let new_key = match opt_form {
         None => {
             return Ok((AddSshPublicKeyPartial {
+                key_title: None,
                 title_error: None,
-                key_error: None,
                 key_value: None,
+                key_error: None,
             },)
                 .into_response());
         }
@@ -920,9 +918,10 @@ pub(crate) async fn view_add_ssh_publickey(
         let publickey = match SshPublicKey::from_string(&new_key.key) {
             Err(_) => {
                 return Ok((AddSshPublicKeyPartial {
+                    key_title: Some(new_key.title),
                     title_error: None,
-                    key_error: Some("Key cannot be parsed".to_string()),
                     key_value: Some(new_key.key),
+                    key_error: Some("Key cannot be parsed".to_string()),
                 },)
                     .into_response());
             }
@@ -932,7 +931,7 @@ pub(crate) async fn view_add_ssh_publickey(
             .qe_r_ref
             .handle_idmcredentialupdate(
                 cu_session_token,
-                CURequest::SshPublicKey(new_key.title, publickey),
+                CURequest::SshPublicKey(new_key.title.clone(), publickey),
                 kopid.eventid,
             )
             .await;
@@ -966,6 +965,7 @@ pub(crate) async fn view_add_ssh_publickey(
         status,
         HxPushUrl(Uri::from_static("/ui/reset/add_ssh_publickey")),
         AddSshPublicKeyPartial {
+            key_title: Some(new_key.title),
             title_error,
             key_error,
             key_value: Some(new_key.key),
@@ -990,6 +990,9 @@ pub(crate) async fn view_reset_get(
         .handle_auth_valid(client_auth_info.clone(), kopid.eventid)
         .await
         .is_ok();
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     if let Some(cookie) = cookie {
         // We already have a session
@@ -1023,7 +1026,8 @@ pub(crate) async fn view_reset_get(
         };
 
         // CU Session cookie is okay
-        let cu_resp = get_cu_response(domain_info, cu_status, is_logged_in);
+        let cu_resp = get_cu_response(uat, domain_info, cu_status, is_logged_in);
+
         Ok(cu_resp)
     } else if let Some(token) = params.token {
         // We have a reset token and want to create a new session
@@ -1033,7 +1037,7 @@ pub(crate) async fn view_reset_get(
             .await
         {
             Ok((cu_session_token, cu_status)) => {
-                let cu_resp = get_cu_response(domain_info, cu_status, is_logged_in);
+                let cu_resp = get_cu_response(uat, domain_info, cu_status, is_logged_in);
 
                 jar = add_cu_cookie(jar, &state, cu_session_token);
                 Ok((jar, cu_resp).into_response())
@@ -1128,6 +1132,7 @@ fn get_cu_partial_response(cu_status: CUStatus) -> Response {
 }
 
 fn get_cu_response(
+    uat: &UserAuthToken,
     domain_info: DomainInfoRead,
     cu_status: CUStatus,
     is_logged_in: bool,
@@ -1135,7 +1140,7 @@ fn get_cu_response(
     let spn = cu_status.spn.clone();
     let displayname = cu_status.displayname.clone();
     let (username, _domain) = spn.split_once('@').unwrap_or(("", &spn));
-    let names = format!("{} ({})", displayname, username);
+    let names = format!("{displayname} ({username})");
     let credentials_update_partial = get_cu_partial(cu_status);
 
     if is_logged_in {
@@ -1149,7 +1154,7 @@ fn get_cu_response(
         (
             HxPushUrl(Uri::from_static(Urls::UpdateCredentials.as_ref())),
             ProfileView {
-                navbar_ctx: NavbarCtx { domain_info },
+                navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
                 profile_partial: cred_status_view,
             },
         )

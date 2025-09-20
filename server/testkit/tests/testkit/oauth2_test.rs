@@ -1,9 +1,6 @@
 #![deny(warnings)]
-use std::collections::{BTreeMap, BTreeSet};
-use std::convert::TryFrom;
-use std::str::FromStr;
-
 use compact_jwt::{JwkKeySet, JwsEs256Verifier, JwsVerifier, OidcToken, OidcUnverified};
+use kanidm_client::{http::header, KanidmClient, StatusCode};
 use kanidm_proto::constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT};
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::Oauth2ClaimMapJoin;
@@ -14,18 +11,20 @@ use kanidm_proto::oauth2::{
 };
 use kanidmd_lib::constants::NAME_IDM_ALL_ACCOUNTS;
 use kanidmd_lib::prelude::Attribute;
-use oauth2_ext::PkceCodeChallenge;
-use reqwest::header::{HeaderValue, CONTENT_TYPE};
-use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
-use url::{form_urlencoded::parse as query_parse, Url};
-
-use kanidm_client::{http::header, KanidmClient, StatusCode};
 use kanidmd_testkit::{
     assert_no_cache, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, NOT_ADMIN_TEST_EMAIL,
     NOT_ADMIN_TEST_PASSWORD, NOT_ADMIN_TEST_USERNAME, TEST_INTEGRATION_RS_DISPLAY,
     TEST_INTEGRATION_RS_GROUP_ALL, TEST_INTEGRATION_RS_ID, TEST_INTEGRATION_RS_REDIRECT_URL,
-    TEST_INTEGRATION_RS_URL,
+    TEST_INTEGRATION_RS_URL, TEST_INTEGRATION_STATE_VALUE,
 };
+use oauth2_ext::PkceCodeChallenge;
+use reqwest::header::{HeaderValue, CONTENT_TYPE};
+use std::collections::{BTreeMap, BTreeSet};
+use std::convert::TryFrom;
+use std::str::FromStr;
+use time::OffsetDateTime;
+use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
+use url::{form_urlencoded::parse as query_parse, Url};
 
 /// Tests an OAuth 2.0 / OpenID confidential client Authorisation Client flow.
 ///
@@ -43,6 +42,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     rsclient: &KanidmClient,
     response_mode: Option<&str>,
     response_in_fragment: bool,
+    state: Option<&str>,
 ) {
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
@@ -91,9 +91,14 @@ async fn test_oauth2_openid_basic_flow_impl(
         .expect("Failed to configure account password");
 
     rsclient
-        .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true, true, true)
+        .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true)
         .await
         .expect("Failed to update oauth2 config");
+
+    rsclient
+        .idm_oauth2_rs_rotate_keys(TEST_INTEGRATION_RS_ID, OffsetDateTime::now_utc())
+        .await
+        .expect("Failed to rotate oauth2 keys");
 
     rsclient
         .idm_oauth2_rs_update_scope_map(
@@ -224,14 +229,14 @@ async fn test_oauth2_openid_basic_flow_impl(
     assert_eq!(response.status(), StatusCode::OK);
     assert_no_cache!(response);
 
-    let mut jwk_set: JwkKeySet = response
+    let jwk_set: JwkKeySet = response
         .json()
         .await
         .expect("Failed to access response body");
 
-    let public_jwk = jwk_set.keys.pop().expect("No public key in set!");
+    let public_jwk = jwk_set.keys.first().expect("No public key in set!");
 
-    let jws_validator = JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
+    let jws_validator = JwsEs256Verifier::try_from(public_jwk).expect("failed to build validator");
 
     // Step 1 - the Oauth2 Resource Server would send a redirect to the authorisation
     // server, where the url contains a series of authorisation request parameters.
@@ -244,7 +249,6 @@ async fn test_oauth2_openid_basic_flow_impl(
     let mut query = vec![
         ("response_type", "code"),
         ("client_id", TEST_INTEGRATION_RS_ID),
-        ("state", "YWJjZGVm"),
         ("code_challenge", pkce_code_challenge.as_str()),
         ("code_challenge_method", "S256"),
         ("redirect_uri", TEST_INTEGRATION_RS_REDIRECT_URL),
@@ -254,6 +258,10 @@ async fn test_oauth2_openid_basic_flow_impl(
 
     if let Some(response_mode) = response_mode {
         query.push(("response_mode", response_mode));
+    }
+
+    if let Some(state) = state {
+        query.push(("state", state));
     }
 
     let response = client
@@ -322,8 +330,10 @@ async fn test_oauth2_openid_basic_flow_impl(
 
     // We should have state and code.
     let code = pairs.get("code").expect("code not found!");
-    let state = pairs.get("state").expect("state not found!");
-    assert_eq!(state, "YWJjZGVm");
+    assert_eq!(
+        pairs.get("state").map(|s| s.to_string()),
+        state.map(|s| s.to_string())
+    );
 
     // Step 3 - the "resource server" then uses this state and code to directly contact
     // the authorisation server to request a token.
@@ -396,7 +406,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     assert_eq!(tir.client_id.as_deref(), Some(TEST_INTEGRATION_RS_ID));
     assert_eq!(
         tir.username.as_deref(),
-        Some(format!("{}@localhost", NOT_ADMIN_TEST_USERNAME).as_str())
+        Some(format!("{NOT_ADMIN_TEST_USERNAME}@localhost").as_str())
     );
     assert_eq!(tir.token_type, Some(AccessTokenType::Bearer));
     assert!(tir.exp.is_some());
@@ -536,7 +546,8 @@ async fn test_oauth2_openid_basic_flow_impl(
 /// The response should be returned as a query parameter.
 #[kanidmd_testkit::test]
 async fn test_oauth2_openid_basic_flow_mode_unset(rsclient: &KanidmClient) {
-    test_oauth2_openid_basic_flow_impl(rsclient, None, false).await;
+    test_oauth2_openid_basic_flow_impl(rsclient, None, false, Some(TEST_INTEGRATION_STATE_VALUE))
+        .await;
 }
 
 /// Test an OAuth 2.0/OpenID confidential client Authorisation Code flow, with
@@ -545,7 +556,13 @@ async fn test_oauth2_openid_basic_flow_mode_unset(rsclient: &KanidmClient) {
 /// The response should be returned as a query parameter.
 #[kanidmd_testkit::test]
 async fn test_oauth2_openid_basic_flow_mode_query(rsclient: &KanidmClient) {
-    test_oauth2_openid_basic_flow_impl(rsclient, Some("query"), false).await;
+    test_oauth2_openid_basic_flow_impl(
+        rsclient,
+        Some("query"),
+        false,
+        Some(TEST_INTEGRATION_STATE_VALUE),
+    )
+    .await;
 }
 
 /// Test an OAuth 2.0/OpenID confidential client Authorisation Code flow, with
@@ -554,7 +571,22 @@ async fn test_oauth2_openid_basic_flow_mode_query(rsclient: &KanidmClient) {
 /// The response should be returned in the URI's fragment.
 #[kanidmd_testkit::test]
 async fn test_oauth2_openid_basic_flow_mode_fragment(rsclient: &KanidmClient) {
-    test_oauth2_openid_basic_flow_impl(rsclient, Some("fragment"), true).await;
+    test_oauth2_openid_basic_flow_impl(
+        rsclient,
+        Some("fragment"),
+        true,
+        Some(TEST_INTEGRATION_STATE_VALUE),
+    )
+    .await;
+}
+
+/// Test an OAuth 2.0/OpenID confidential client Authorisation Code flow, with
+/// `response_mode=fragment` and no state in the request..
+///
+/// The response should be returned in the URI's fragment.
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_basic_flow_no_state(rsclient: &KanidmClient) {
+    test_oauth2_openid_basic_flow_impl(rsclient, Some("fragment"), true, None).await;
 }
 
 /// Tests an OAuth 2.0 / OpenID public client Authorisation Client flow.
@@ -573,6 +605,7 @@ async fn test_oauth2_openid_public_flow_impl(
     rsclient: &KanidmClient,
     response_mode: Option<&str>,
     response_in_fragment: bool,
+    state: Option<&str>,
 ) {
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
@@ -621,7 +654,7 @@ async fn test_oauth2_openid_public_flow_impl(
         .expect("Failed to configure account password");
 
     rsclient
-        .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true, true, true)
+        .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true)
         .await
         .expect("Failed to update oauth2 config");
 
@@ -696,14 +729,14 @@ async fn test_oauth2_openid_public_flow_impl(
     assert_eq!(response.status(), StatusCode::OK);
     assert_no_cache!(response);
 
-    let mut jwk_set: JwkKeySet = response
+    let jwk_set: JwkKeySet = response
         .json()
         .await
         .expect("Failed to access response body");
 
-    let public_jwk = jwk_set.keys.pop().expect("No public key in set!");
+    let public_jwk = jwk_set.keys.first().expect("No public key in set!");
 
-    let jws_validator = JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
+    let jws_validator = JwsEs256Verifier::try_from(public_jwk).expect("failed to build validator");
 
     // Step 1 - the Oauth2 Resource Server would send a redirect to the authorisation
     // server, where the url contains a series of authorisation request parameters.
@@ -715,7 +748,6 @@ async fn test_oauth2_openid_public_flow_impl(
     let mut query = vec![
         ("response_type", "code"),
         ("client_id", TEST_INTEGRATION_RS_ID),
-        ("state", "YWJjZGVm"),
         ("code_challenge", pkce_code_challenge.as_str()),
         ("code_challenge_method", "S256"),
         ("redirect_uri", TEST_INTEGRATION_RS_REDIRECT_URL),
@@ -724,6 +756,10 @@ async fn test_oauth2_openid_public_flow_impl(
 
     if let Some(response_mode) = response_mode {
         query.push(("response_mode", response_mode));
+    }
+
+    if let Some(state) = state {
+        query.push(("state", state));
     }
 
     let response = client
@@ -791,8 +827,10 @@ async fn test_oauth2_openid_public_flow_impl(
 
     // We should have state and code.
     let code = pairs.get("code").expect("code not found!");
-    let state = pairs.get("state").expect("state not found!");
-    assert_eq!(state, "YWJjZGVm");
+    assert_eq!(
+        pairs.get("state").map(|s| s.to_string()),
+        state.map(|s| s.to_string())
+    );
 
     // Step 3 - the "resource server" then uses this state and code to directly contact
     // the authorisation server to request a token.
@@ -902,7 +940,8 @@ async fn test_oauth2_openid_public_flow_impl(
 /// The response should be returned as a query parameter.
 #[kanidmd_testkit::test]
 async fn test_oauth2_openid_public_flow_mode_unset(rsclient: &KanidmClient) {
-    test_oauth2_openid_public_flow_impl(rsclient, None, false).await;
+    test_oauth2_openid_public_flow_impl(rsclient, None, false, Some(TEST_INTEGRATION_STATE_VALUE))
+        .await;
 }
 
 /// Test an OAuth 2.0/OpenID public client Authorisation Code flow, with
@@ -911,7 +950,13 @@ async fn test_oauth2_openid_public_flow_mode_unset(rsclient: &KanidmClient) {
 /// The response should be returned as a query parameter.
 #[kanidmd_testkit::test]
 async fn test_oauth2_openid_public_flow_mode_query(rsclient: &KanidmClient) {
-    test_oauth2_openid_public_flow_impl(rsclient, Some("query"), false).await;
+    test_oauth2_openid_public_flow_impl(
+        rsclient,
+        Some("query"),
+        false,
+        Some(TEST_INTEGRATION_STATE_VALUE),
+    )
+    .await;
 }
 
 /// Test an OAuth 2.0/OpenID public client Authorisation Code flow, with
@@ -920,7 +965,22 @@ async fn test_oauth2_openid_public_flow_mode_query(rsclient: &KanidmClient) {
 /// The response should be returned in the URI's fragment.
 #[kanidmd_testkit::test]
 async fn test_oauth2_openid_public_flow_mode_fragment(rsclient: &KanidmClient) {
-    test_oauth2_openid_public_flow_impl(rsclient, Some("fragment"), true).await;
+    test_oauth2_openid_public_flow_impl(
+        rsclient,
+        Some("fragment"),
+        true,
+        Some(TEST_INTEGRATION_STATE_VALUE),
+    )
+    .await;
+}
+
+/// Test an OAuth 2.0/OpenID public client Authorisation Code flow, with
+/// `response_mode=fragment` and no state value in the url
+///
+/// The response should be returned in the URI's fragment.
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_public_flow_no_state(rsclient: &KanidmClient) {
+    test_oauth2_openid_public_flow_impl(rsclient, Some("fragment"), true, None).await;
 }
 
 #[kanidmd_testkit::test]
@@ -945,7 +1005,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token request.");
-    println!("{:?}", response);
+    println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a bad-auth request
@@ -955,7 +1015,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token introspection request.");
-    println!("{:?}", response);
+    println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
@@ -981,7 +1041,7 @@ async fn test_oauth2_token_revoke_post(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token request.");
-    println!("{:?}", response);
+    println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a invalid format request on token
@@ -992,7 +1052,7 @@ async fn test_oauth2_token_revoke_post(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token request.");
-    println!("{:?}", response);
+    println!("{response:?}");
 
     assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
 
@@ -1004,7 +1064,7 @@ async fn test_oauth2_token_revoke_post(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token request.");
-    println!("{:?}", response);
+    println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a bad-body request on token
@@ -1015,6 +1075,6 @@ async fn test_oauth2_token_revoke_post(rsclient: &KanidmClient) {
         .send()
         .await
         .expect("Failed to send token request.");
-    println!("{:?}", response);
+    println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
 }

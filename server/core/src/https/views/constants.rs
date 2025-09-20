@@ -7,19 +7,20 @@ pub(crate) enum ProfileMenuItems {
     Credentials,
     EnrolDevice,
     UnixPassword,
+    Radius,
 }
 
-pub(crate) enum UiMessage {
-    UnlockEdit,
-}
-
-impl std::fmt::Display for UiMessage {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            UiMessage::UnlockEdit => write!(f, "Unlock Edit 🔒"),
-        }
-    }
-}
+// pub(crate) enum UiMessage {
+//     UnlockEdit,
+// }
+//
+// impl std::fmt::Display for UiMessage {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         match self {
+//             UiMessage::UnlockEdit => write!(f, "Unlock Edit 🔒"),
+//         }
+//     }
+// }
 
 pub(crate) enum Urls {
     Apps,
@@ -31,6 +32,8 @@ pub(crate) enum Urls {
     Login,
     Ui,
     WellKnownChangePassword,
+    Radius,
+    Admin,
 }
 
 impl AsRef<str> for Urls {
@@ -45,6 +48,8 @@ impl AsRef<str> for Urls {
             Self::Login => "/ui/login",
             Self::Ui => "/ui",
             Self::WellKnownChangePassword => "/.well-known/change-password",
+            Self::Radius => "/ui/radius",
+            Self::Admin => "/ui/admin/persons",
         }
     }
 }

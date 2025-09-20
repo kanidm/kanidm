@@ -8,7 +8,7 @@ use axum::{
 
 use axum_htmx::HxRequestGuardLayer;
 
-use crate::https::views::admin::admin_router;
+use crate::https::views::admin::{admin_api_router, admin_router};
 use constants::Urls;
 use kanidmd_lib::{
     idm::server::DomainInfoRead,
@@ -27,6 +27,7 @@ mod login;
 mod navbar;
 mod oauth2;
 mod profile;
+mod radius;
 mod reset;
 
 #[derive(Template)]
@@ -56,7 +57,9 @@ pub fn view_router() -> Router<ServerState> {
         .route("/reset", get(reset::view_reset_get))
         .route("/update_credentials", get(reset::view_self_reset_get))
         .route("/profile", get(profile::view_profile_get))
-        .route("/profile/unlock", get(profile::view_profile_unlock_get))
+        .route("/profile/diff", get(profile::view_profile_get))
+        .route("/radius", get(radius::view_radius_get))
+        .route("/unlock", get(login::view_reauth_to_referer_get))
         .route("/logout", get(login::view_logout_get))
         .route("/oauth2", get(oauth2::view_index_get));
 
@@ -116,6 +119,7 @@ pub fn view_router() -> Router<ServerState> {
             "/reset/add_ssh_publickey",
             post(reset::view_add_ssh_publickey),
         )
+        .route("/radius/generate", post(radius::view_radius_post))
         .route("/api/delete_alt_creds", post(reset::remove_alt_creds))
         .route("/api/delete_unixcred", post(reset::remove_unixcred))
         .route("/api/add_totp", post(reset::add_totp))
@@ -129,13 +133,27 @@ pub fn view_router() -> Router<ServerState> {
         )
         .route("/api/cu_cancel", post(reset::cancel_cred_update))
         .route("/api/cu_commit", post(reset::commit))
+        .route(
+            "/api/user_settings/add_email",
+            get(profile::view_new_email_entry_partial),
+        )
+        .route(
+            "/api/user_settings/edit_profile",
+            post(profile::view_profile_diff_start_save_post),
+        )
+        .route(
+            "/api/user_settings/confirm_profile",
+            post(profile::view_profile_diff_confirm_save_post),
+        )
         .layer(HxRequestGuardLayer::new("/ui"));
 
     let admin_router = admin_router();
+    let admin_api_router = admin_api_router();
     Router::new()
         .merge(unguarded_router)
         .merge(guarded_router)
         .nest("/admin", admin_router)
+        .nest("/api/admin", admin_api_router)
 }
 
 /// Serde deserialization decorator to map empty Strings to None,

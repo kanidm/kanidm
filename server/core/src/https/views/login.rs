@@ -7,15 +7,17 @@ use crate::https::{
     ServerState,
 };
 use askama::Template;
+use axum::http::HeaderMap;
 use axum::{
     extract::State,
     response::{IntoResponse, Redirect, Response},
     Extension, Form, Json,
 };
 use axum_extra::extract::cookie::{CookieJar, SameSite};
+use hyper::Uri;
 use kanidm_proto::internal::{
-    COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN, COOKIE_OAUTH2_REQ,
-    COOKIE_USERNAME,
+    UserAuthToken, COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN,
+    COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
 };
 use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep,
@@ -187,6 +189,39 @@ pub async fn view_logout_get(
     jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
 
     (jar, response).into_response()
+}
+
+pub async fn view_reauth_to_referer_get(
+    State(state): State<ServerState>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
+    Extension(kopid): Extension<KOpId>,
+    headers: HeaderMap,
+    jar: CookieJar,
+) -> Result<Response, HtmxError> {
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
+
+    let referer = headers.get("Referer").and_then(|hv| hv.to_str().ok());
+
+    let redirect = referer.and_then(|some_referer| Uri::from_str(some_referer).ok());
+    let redirect = redirect
+        .as_ref()
+        .map(|uri| uri.path())
+        .unwrap_or(Urls::Apps.as_ref());
+
+    let display_ctx = LoginDisplayCtx {
+        domain_info,
+        oauth2: None,
+        reauth: Some(Reauth {
+            username: uat.spn.clone(),
+            purpose: ReauthPurpose::ProfileSettings,
+        }),
+        error: None,
+    };
+
+    Ok(view_reauth_get(state, client_auth_info, kopid, jar, redirect, display_ctx).await)
 }
 
 pub async fn view_reauth_get(
@@ -773,7 +808,7 @@ async fn view_login_step(
     } = auth_result;
     session_context.id = Some(sessionid);
 
-    // This lets us break out the loop incase of a fault. Take that halting problem!
+    // This lets us break out the loop in case of a fault. Take that halting problem!
     let mut safety = 3;
 
     // Unlike the api version, only set the cookie.
@@ -947,7 +982,7 @@ async fn view_login_step(
                             username_cookie.make_permanent();
                             jar.add(username_cookie)
                         } else {
-                            jar
+                            cookies::destroy(jar, COOKIE_USERNAME, &state)
                         };
 
                         jar = jar.add(bearer_cookie);

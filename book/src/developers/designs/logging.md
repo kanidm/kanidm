@@ -1,47 +1,42 @@
 # Logging
 
-Logging is how the server communicates to developers and administrators about the state of the
-service, and how operations are performing and what they are doing. It's important this is clear in
-how it communicates.
+Logging is how the server communicates to developers and administrators about the state of the service, and how
+operations are performing and what they are doing. It's important this is clear in how it communicates.
 
 ## Use Cases
 
 ### Developer Bug Reports
 
-A developer should be able to see the internal state of the server, and why any decision or logic
-path was taken, so that errors or logic can be analysed post-incident. The information in the log
-and the source code should be enough to resolve any issues, as we may not have LLDB access to any
-consumers site, or any effective reproducer.
+A developer should be able to see the internal state of the server, and why any decision or logic path was taken, so
+that errors or logic can be analysed post-incident. The information in the log and the source code should be enough to
+resolve any issues, as we may not have LLDB access to any consumers site, or any effective reproducer.
 
 ### Security Audits
 
-We must be able to see why any security decision was made, such as credential validation, access
-control application, or group/claim issuing to a session. This should be connected to the IP and
-other identifiers of the caller.
+We must be able to see why any security decision was made, such as credential validation, access control application, or
+group/claim issuing to a session. This should be connected to the IP and other identifiers of the caller.
 
 ### Error Analysis
 
-For an administrator, they must be able to determine why an operation is failing in detail so they
-can advise on how a consumer or user could change their behaviour to improve the situation (beyond
-the error messages we return).
+For an administrator, they must be able to determine why an operation is failing in detail so they can advise on how a
+consumer or user could change their behaviour to improve the situation (beyond the error messages we return).
 
 ### Performance
 
-Administrators and Developers should be able to analyse fine grained information about the
-performance of any operation, and make informed decisions about tuning (such as caches or or
-threads), and developers should be able to identify code paths that are under pressure and could be
-targets for improvement.
+Administrators and Developers should be able to analyse fine grained information about the performance of any operation,
+and make informed decisions about tuning (such as caches or or threads), and developers should be able to identify code
+paths that are under pressure and could be targets for improvement.
 
 ### Containers/Systemd
 
-Logs should be emitted on stdout/stderr as this is the easiest interface for existing log
-aggregation systems to collect data from.
+Logs should be emitted on stdout/stderr as this is the easiest interface for existing log aggregation systems to collect
+data from.
 
 ## Details
 
-As developers we should indicate what messages are relevant to what use case as part of the message.
-Log levels are used in other services, but that allows messages to be missed. Instead we always log
-every "service", but filter them to different locations.
+As developers we should indicate what messages are relevant to what use case as part of the message. Log levels are used
+in other services, but that allows messages to be missed. Instead we always log every "service", but filter them to
+different locations.
 
 This leads to the following log categories:
 
@@ -63,31 +58,30 @@ This leads to the following log categories:
   - The unique event ID is provided in any operation success or failure.
 - Security (aka audit)
   - Filtering of security sensitive attributes (via debug/display features)
-  - Display of sufficient information to establish a security picture of connected actions via the
-    user's uuid/session id.
+  - Display of sufficient information to establish a security picture of connected actions via the user's uuid/session
+    id.
   - Tracking of who-changed-what-when-why
 - Replication
   - Both replication consumers and providers log when they make runs.
   - Errors in replication should surface as such.
 
-It can be seen pretty quickly that multiple message types are useful across categories. For example,
-the unique event id for all messages, how hard errors affect operation errors or how an operation
-error can come from a security denial.
+It can be seen pretty quickly that multiple message types are useful across categories. For example, the unique event id
+for all messages, how hard errors affect operation errors or how an operation error can come from a security denial.
 
 Logging must also remain a separate thread and async for performance.
 
-This means that the best way to declare these logs is a unified log which can be filtered based on
-the admins or consumers needs.
+This means that the best way to declare these logs is a unified log which can be filtered based on the admins or
+consumers needs.
 
 ## API
 
-For all types, it's important that we can associate all related events correctly. When the operation
-initiates we assign an event-id that is part of the audit trail.
+For all types, it's important that we can associate all related events correctly. When the operation initiates we assign
+an event-id that is part of the audit trail.
 
 ### Statistics
 
-Stats should be accumulated in a statistics variable so that we can determine possible tuning and
-other events related. Useful stats would be:
+Stats should be accumulated in a statistics variable so that we can determine possible tuning and other events related.
+Useful stats would be:
 
 - Cache Hits
 - Cache Misses
@@ -106,8 +100,7 @@ This would also then be fed back to the global stats thread for averaging.
 
 ### System Performance
 
-The key metric for performance is time-in-function so it would be good to be able to build a value
-like:
+The key metric for performance is time-in-function so it would be good to be able to build a value like:
 
 ```json
 {
@@ -127,8 +120,8 @@ like:
 }
 ```
 
-This would allow a rich view of how much time went to any function at a high level, as then further
-investigation can occur.
+This would allow a rich view of how much time went to any function at a high level, as then further investigation can
+occur.
 
 ### SQL Query Analysis
 
@@ -147,8 +140,7 @@ To analyse a query we need:
 
 ### Internal Analysis
 
-This is generally what is "debug" logging, which is just decision points and verbose descriptions of
-what we went where.
+This is generally what is "debug" logging, which is just decision points and verbose descriptions of what we went where.
 
 ### Admin Notification
 

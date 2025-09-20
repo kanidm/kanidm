@@ -10,14 +10,17 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use bytes::{BufMut, BytesMut};
 use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
-use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
+use kanidm_hsm_crypto::{
+    provider::{BoxedDynTpm, SoftTpm, Tpm},
+    AuthValue,
+};
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_proto::internal::OperationError;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::json_codec::JsonCodec;
 use kanidm_unix_common::unix_config::{HsmType, UnixdConfig};
 use kanidm_unix_common::unix_passwd::EtcDb;
 use kanidm_unix_common::unix_proto::{
@@ -37,8 +40,7 @@ use sketching::tracing_forest::{self};
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::metadata;
-use std::io;
-use std::io::{Error as IoError, ErrorKind};
+use std::io::Error as IoError;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -52,84 +54,17 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
-use tokio_util::codec::{Decoder, Encoder, Framed};
+use tokio_util::codec::Framed;
 
-#[cfg(not(target_os = "illumos"))]
+#[cfg(feature = "dhat-heap")]
 #[global_allocator]
-static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+static ALLOC: dhat::Alloc = dhat::Alloc;
 
 //=== the codec
 
 struct AsyncTaskRequest {
     task_req: TaskRequest,
     task_chan: oneshot::Sender<()>,
-}
-
-#[derive(Default)]
-struct ClientCodec;
-
-impl Decoder for ClientCodec {
-    type Error = io::Error;
-    type Item = ClientRequest;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        trace!("Attempting to decode request ...");
-        match serde_json::from_slice::<ClientRequest>(src) {
-            Ok(msg) => {
-                // Clear the buffer for the next message.
-                src.clear();
-                Ok(Some(msg))
-            }
-            _ => Ok(None),
-        }
-    }
-}
-
-impl Encoder<ClientResponse> for ClientCodec {
-    type Error = io::Error;
-
-    fn encode(&mut self, msg: ClientResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        trace!("Attempting to send response -> {:?} ...", msg);
-        let data = serde_json::to_vec(&msg).map_err(|e| {
-            error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "JSON encode error")
-        })?;
-        dst.put(data.as_slice());
-        Ok(())
-    }
-}
-
-#[derive(Default)]
-struct TaskCodec;
-
-impl Decoder for TaskCodec {
-    type Error = io::Error;
-    type Item = TaskResponse;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_json::from_slice::<TaskResponse>(src) {
-            Ok(msg) => {
-                // Clear the buffer for the next message.
-                src.clear();
-                Ok(Some(msg))
-            }
-            _ => Ok(None),
-        }
-    }
-}
-
-impl Encoder<TaskRequestFrame> for TaskCodec {
-    type Error = io::Error;
-
-    fn encode(&mut self, msg: TaskRequestFrame, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        debug!("Attempting to send request -> {:?} ...", msg.id);
-        let data = serde_json::to_vec(&msg).map_err(|e| {
-            error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "JSON encode error")
-        })?;
-        dst.put(data.as_slice());
-        Ok(())
-    }
 }
 
 /// Pass this a file path and it'll look for the file and remove it if it's there.
@@ -156,15 +91,44 @@ async fn handle_task_client(
     // setup the codec, this is to the unix socket which the task daemon
     // connected to us with.
     let mut last_task_id: u64 = 0;
-    let mut task_handles = BTreeMap::new();
+    let mut task_handles: BTreeMap<u64, oneshot::Sender<()>> = BTreeMap::new();
 
-    let mut framed_stream = Framed::new(stream, TaskCodec);
+    let codec: JsonCodec<TaskResponse, TaskRequestFrame> = JsonCodec::default();
+
+    let mut framed_stream = Framed::new(stream, codec);
 
     loop {
         tokio::select! {
+            biased; // tell tokio to poll these in order
             // We have been commanded to stop operation.
             _ = broadcast_rx.recv() => {
                 return Ok(())
+            }
+            // We bias to *reading* messages in the resolver.
+            response = framed_stream.next() => {
+                // Process incoming messages. They may be out of order.
+                match response {
+                    Some(Ok(TaskResponse::Success(task_id))) => {
+                        debug!("Task was acknowledged and completed.");
+
+                        if let Some(handle) = task_handles.remove(&task_id) {
+                            // Send a result back via the one-shot
+                            // Ignore if it fails.
+                            let _ = handle.send(());
+                        }
+                        // If the ID was unregistered, ignore.
+                    }
+                    Some(Ok(TaskResponse::NotifyShadowChange(etc_db))) => {
+                        let _ = notify_shadow_change_tx.send(etc_db).await;
+                    }
+                    // Other things ....
+                    // Some(Ok(TaskResponse::ReloadSystemIds))
+
+                    other => {
+                        error!("Error -> {:?}", other);
+                        return Err(Box::new(IoError::other("oh no!")));
+                    }
+                }
             }
             task_request = task_channel_rx.recv() => {
                 let Some(AsyncTaskRequest {
@@ -194,34 +158,6 @@ async fn handle_task_client(
                 }
                 // Task sent
             }
-
-            response = framed_stream.next() => {
-                // Process incoming messages. They may be out of order.
-                match response {
-                    Some(Ok(TaskResponse::Success(task_id))) => {
-                        debug!("Task was acknowledged and completed.");
-
-                        if let Some(handle) = task_handles.remove(&task_id) {
-                            // Send a result back via the one-shot
-                            // Ignore if it fails.
-                            let _ = handle.send(());
-                        }
-                        // If the ID was unregistered, ignore.
-                    }
-                    Some(Ok(TaskResponse::NotifyShadowChange(etc_db))) => {
-                        let _ = notify_shadow_change_tx.send(etc_db).await;
-                    }
-                    // Other things ....
-                    // Some(Ok(TaskResponse::ReloadSystemIds))
-
-                    other => {
-                        error!("Error -> {:?}", other);
-                        return Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")));
-                    }
-                }
-
-            }
-
         }
     }
 }
@@ -237,15 +173,16 @@ async fn handle_client(
     let _enter = span.enter();
 
     let Ok(ucred) = sock.peer_cred() else {
-        return Err(Box::new(IoError::new(
-            ErrorKind::Other,
+        return Err(Box::new(IoError::other(
             "Unable to verify peer credentials.",
         )));
     };
 
     debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
-    let mut reqs = Framed::new(sock, ClientCodec);
+    let codec: JsonCodec<ClientRequest, ClientResponse> = JsonCodec::default();
+
+    let mut reqs = Framed::new(sock, codec);
     let mut pam_auth_session_state = None;
 
     // Setup a broadcast channel so that if we have an unexpected disconnection, we can
@@ -257,7 +194,7 @@ async fn handle_client(
     drop(_enter);
 
     while let Some(Ok(req)) = reqs.next().await {
-        let span = span!(Level::INFO, "client request", uuid = %conn_id);
+        let span = span!(Level::INFO, "client request", uuid = %conn_id, defer = true);
         let _enter = span.enter();
 
         let resp = match req {
@@ -461,7 +398,7 @@ async fn read_hsm_pin(hsm_pin_path: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     if !PathBuf::from_str(hsm_pin_path)?.exists() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("HSM PIN file '{}' not found", hsm_pin_path),
+            format!("HSM PIN file '{hsm_pin_path}' not found"),
         )
         .into());
     }
@@ -476,7 +413,7 @@ async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
     if !PathBuf::from_str(hsm_pin_path)?.exists() {
         let new_pin = AuthValue::generate().map_err(|hsm_err| {
             error!(?hsm_err, "Unable to generate new pin");
-            std::io::Error::new(std::io::ErrorKind::Other, "Unable to generate new pin")
+            std::io::Error::other("Unable to generate new pin")
         })?;
 
         std::fs::write(hsm_pin_path, new_pin)?;
@@ -489,8 +426,8 @@ async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
 
 #[cfg(feature = "tpm")]
 fn open_tpm(tcti_name: &str) -> Option<BoxedDynTpm> {
-    use kanidm_hsm_crypto::tpm::TpmTss;
-    match TpmTss::new(tcti_name) {
+    use kanidm_hsm_crypto::provider::TssTpm;
+    match TssTpm::new(tcti_name) {
         Ok(tpm) => {
             debug!("opened hw tpm");
             Some(BoxedDynTpm::new(tpm))
@@ -510,8 +447,8 @@ fn open_tpm(_tcti_name: &str) -> Option<BoxedDynTpm> {
 
 #[cfg(feature = "tpm")]
 fn open_tpm_if_possible(tcti_name: &str) -> BoxedDynTpm {
-    use kanidm_hsm_crypto::tpm::TpmTss;
-    match TpmTss::new(tcti_name) {
+    use kanidm_hsm_crypto::provider::TssTpm;
+    match TssTpm::new(tcti_name) {
         Ok(tpm) => {
             debug!("opened hw tpm");
             BoxedDynTpm::new(tpm)
@@ -529,7 +466,7 @@ fn open_tpm_if_possible(tcti_name: &str) -> BoxedDynTpm {
 #[cfg(not(feature = "tpm"))]
 fn open_tpm_if_possible(_tcti_name: &str) -> BoxedDynTpm {
     debug!("opened soft tpm");
-    BoxedDynTpm::new(SoftTpm::new())
+    BoxedDynTpm::new(SoftTpm::default())
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -541,6 +478,16 @@ async fn main() -> ExitCode {
         error!(?code, "CRITICAL: Unable to set prctl flags");
         return ExitCode::FAILURE;
     }
+
+    // We need enough backtrace depth to find leak sources if they exist.
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::builder()
+        .file_name(format!(
+            "/var/cache/kanidm-unixd/heap-{}.json",
+            std::process::id()
+        ))
+        .trim_backtraces(Some(40))
+        .build();
 
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
@@ -723,11 +670,11 @@ async fn main() -> ExitCode {
                 eprintln!("###################################");
                 eprintln!("Dumping configs:\n###################################");
                 eprintln!("kanidm_unixd config (from {:#?})", &unixd_path);
-                eprintln!("{}", cfg);
+                eprintln!("{cfg}");
                 eprintln!("###################################");
                 if let Some((cb, _)) = client_builder.as_ref() {
                     eprintln!("kanidm client config (from {:#?})", &cfg_path);
-                    eprintln!("{}", cb);
+                    eprintln!("{cb}");
                 }  else {
                     eprintln!("kanidm client: disabled");
                 }
@@ -869,7 +816,7 @@ async fn main() -> ExitCode {
 
             let mut hsm: BoxedDynTpm = match cfg.hsm_type {
                 HsmType::Soft => {
-                    BoxedDynTpm::new(SoftTpm::new())
+                    BoxedDynTpm::new(SoftTpm::default())
                 }
                 HsmType::TpmIfPossible => {
                     open_tpm_if_possible(&cfg.tpm_tcti_name)
@@ -885,11 +832,11 @@ async fn main() -> ExitCode {
             // With the assistance of the DB, setup the HSM and its machine key.
             let mut db_txn = db.write().await;
 
-            let loadable_machine_key = match db_txn.get_hsm_machine_key() {
+            let loadable_machine_key = match db_txn.get_hsm_root_storage_key() {
                 Ok(Some(lmk)) => lmk,
                 Ok(None) => {
                     // No machine key found - create one, and store it.
-                    let loadable_machine_key = match hsm.machine_key_create(&auth_value) {
+                    let loadable_machine_key = match hsm.root_storage_key_create(&auth_value) {
                         Ok(lmk) => lmk,
                         Err(err) => {
                             error!(?err, "Unable to create hsm loadable machine key");
@@ -897,7 +844,7 @@ async fn main() -> ExitCode {
                         }
                     };
 
-                    if let Err(err) = db_txn.insert_hsm_machine_key(&loadable_machine_key) {
+                    if let Err(err) = db_txn.insert_hsm_root_storage_key(&loadable_machine_key) {
                         error!(?err, "Unable to persist hsm loadable machine key");
                         return ExitCode::FAILURE
                     }
@@ -910,7 +857,7 @@ async fn main() -> ExitCode {
                 }
             };
 
-            let machine_key = match hsm.machine_key_load(&auth_value, &loadable_machine_key) {
+            let machine_key = match hsm.root_storage_key_load(&auth_value, &loadable_machine_key) {
                 Ok(mk) => mk,
                 Err(err) => {
                     error!(?err, "Unable to load machine root key - This can occur if you have changed your HSM pin");
@@ -949,7 +896,7 @@ async fn main() -> ExitCode {
                     &mut (&mut db_txn).into(),
                     &mut hsm,
                     &machine_key
-                ) else {
+                ).await else {
                     error!("Failed to configure Kanidm Provider");
                     return ExitCode::FAILURE
                 };

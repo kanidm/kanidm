@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::be::{Backend, BackendConfig};
 use crate::prelude::*;
 use crate::schema::Schema;
@@ -96,7 +98,12 @@ pub async fn setup_idm_test(
 ) -> (IdmServer, IdmServerDelayed, IdmServerAudit) {
     let qs = setup_test(config).await;
 
-    IdmServer::new(qs, "https://idm.example.com", true)
-        .await
-        .expect("Failed to setup idms")
+    IdmServer::new(
+        qs,
+        &Url::from_str("https://idm.example.com").expect("Failed to parse URL"),
+        true,
+        duration_from_epoch_now(),
+    )
+    .await
+    .expect("Failed to setup idms")
 }

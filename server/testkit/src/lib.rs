@@ -3,7 +3,6 @@
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
 #![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
 #![deny(clippy::unreachable)]
 #![deny(clippy::await_holding_lock)]
@@ -11,15 +10,18 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_proto::internal::{Filter, Modify, ModifyList};
+use kanidm_proto::internal::{CURegState, Filter, Modify, ModifyList};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::{create_server_core, CoreHandle};
 use kanidmd_lib::prelude::{Attribute, NAME_SYSTEM_ADMINS};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
+use std::str::FromStr;
 use std::sync::atomic::{AtomicU16, Ordering};
 use tokio::task;
 use tracing::error;
 use url::Url;
+use webauthn_authenticator_rs::softpasskey::SoftPasskey;
+use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 pub const ADMIN_TEST_USER: &str = "admin";
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -37,6 +39,7 @@ pub const TEST_INTEGRATION_RS_GROUP_ALL: &str = "idm_all_accounts";
 pub const TEST_INTEGRATION_RS_DISPLAY: &str = "Test Integration";
 pub const TEST_INTEGRATION_RS_URL: &str = "https://demo.example.com";
 pub const TEST_INTEGRATION_RS_REDIRECT_URL: &str = "https://demo.example.com/oauth2/flow";
+pub const TEST_INTEGRATION_STATE_VALUE: &str = "KrabzRc0ol";
 
 pub use testkit_macros::test;
 use tracing::trace;
@@ -83,13 +86,15 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
         idm_admin_password: IDM_ADMIN_TEST_PASSWORD.to_string(),
     });
 
-    let addr = format!("http://localhost:{}", port);
+    #[allow(clippy::expect_used)]
+    let addr =
+        Url::from_str(&format!("http://localhost:{port}")).expect("Failed to parse origin URL");
 
     let ldap_url = if config.ldapbindaddress.is_some() {
         let ldapport = port_loop();
         let ldap_sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), ldapport);
         config.ldapbindaddress = Some(ldap_sock_addr.to_string());
-        Url::parse(&format!("ldap://{}", ldap_sock_addr))
+        Url::parse(&format!("ldap://{ldap_sock_addr}"))
             .inspect_err(|err| error!(?err, "ldap address setup"))
             .ok()
     } else {
@@ -114,7 +119,7 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
 
     #[allow(clippy::panic)]
     let rsclient = match KanidmClientBuilder::new()
-        .address(addr.clone())
+        .address(addr.to_string())
         .enable_native_ca_roots(false)
         .no_proxy()
         .build()
@@ -133,6 +138,73 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
     }
 }
 
+pub async fn setup_account_passkey(
+    rsclient: &KanidmClient,
+    account_name: &str,
+) -> WebauthnAuthenticator<SoftPasskey> {
+    // Create an intent token for them
+    let intent_token = rsclient
+        .idm_person_account_credential_update_intent(account_name, Some(1234))
+        .await
+        .expect("Unable to setup account passkey");
+
+    // Create a new empty session.
+    let rsclient = rsclient
+        .new_session()
+        .expect("Unable to create new client session");
+
+    // Exchange the intent token
+    let (session_token, _status) = rsclient
+        .idm_account_credential_update_exchange(intent_token.token)
+        .await
+        .expect("Unable to exchange credential update token");
+
+    let _status = rsclient
+        .idm_account_credential_update_status(&session_token)
+        .await
+        .expect("Unable to check credential update status");
+
+    // Setup and update the passkey
+    let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+
+    let status = rsclient
+        .idm_account_credential_update_passkey_init(&session_token)
+        .await
+        .expect("Unable to init passkey update");
+
+    let passkey_chal = match status.mfaregstate {
+        CURegState::Passkey(c) => Some(c),
+        _ => None,
+    }
+    .expect("Unable to access passkey challenge, invalid state");
+
+    eprintln!("{}", rsclient.get_origin());
+    let passkey_resp = wa
+        .do_registration(rsclient.get_origin().clone(), passkey_chal)
+        .expect("Failed to create soft passkey");
+
+    let label = "Soft Passkey".to_string();
+
+    let status = rsclient
+        .idm_account_credential_update_passkey_finish(&session_token, label, passkey_resp)
+        .await
+        .expect("Unable to finish passkey credential");
+
+    assert!(status.can_commit);
+    assert_eq!(status.passkeys.len(), 1);
+
+    // Commit it
+    rsclient
+        .idm_account_credential_update_commit(&session_token)
+        .await
+        .expect("Unable to commit credential update");
+
+    // Assert it now works.
+    let _ = rsclient.logout().await;
+
+    wa
+}
+
 /// creates a user (username: `id`) and puts them into a group, creating it if need be.
 pub async fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) {
     #[allow(clippy::expect_used)]
@@ -146,20 +218,20 @@ pub async fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) {
     if rsclient
         .idm_group_get(group_name)
         .await
-        .unwrap_or_else(|_| panic!("Failed to get group {}", group_name))
+        .unwrap_or_else(|_| panic!("Failed to get group {group_name}"))
         .is_none()
     {
         #[allow(clippy::panic)]
         rsclient
             .idm_group_create(group_name, None)
             .await
-            .unwrap_or_else(|_| panic!("Failed to create group {}", group_name));
+            .unwrap_or_else(|_| panic!("Failed to create group {group_name}"));
     }
     #[allow(clippy::panic)]
     rsclient
         .idm_group_add_members(group_name, &[id])
         .await
-        .unwrap_or_else(|_| panic!("Failed to add user {} to group {}", id, group_name));
+        .unwrap_or_else(|_| panic!("Failed to add user {id} to group {group_name}"));
 }
 
 pub async fn create_user_with_all_attrs(
@@ -167,7 +239,7 @@ pub async fn create_user_with_all_attrs(
     id: &str,
     optional_group: Option<&str>,
 ) {
-    let group_format = format!("{}_group", id);
+    let group_format = format!("{id}_group");
     let group_name = optional_group.unwrap_or(&group_format);
 
     create_user(rsclient, id, group_name).await;
@@ -193,7 +265,7 @@ pub async fn add_all_attrs(
         .expect("Failed to extend user group");
 
     for attr in [Attribute::SshPublicKey, Attribute::Mail].into_iter() {
-        println!("Checking writable for {}", attr);
+        println!("Checking writable for {attr}");
         #[allow(clippy::expect_used)]
         let res = is_attr_writable(rsclient, id, attr)
             .await
@@ -227,7 +299,7 @@ pub async fn add_all_attrs(
 }
 
 pub async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: Attribute) -> Option<bool> {
-    println!("writing to attribute: {}", attr);
+    println!("writing to attribute: {attr}");
     match attr {
         Attribute::RadiusSecret => Some(
             rsclient
@@ -273,7 +345,7 @@ pub async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: Attribute
                 .idm_person_account_set_attr(
                     id,
                     Attribute::Mail.as_ref(),
-                    &[&format!("{}@example.com", id)],
+                    &[&format!("{id}@example.com")],
                 )
                 .await
                 .is_ok(),
@@ -307,13 +379,13 @@ pub async fn login_account(rsclient: &KanidmClient, id: &str) {
         .await;
 
     // Setup privs
-    println!("{} logged in", id);
+    println!("{id} logged in");
     assert!(res.is_ok());
 
     let res = rsclient
         .reauth_simple_password(NOT_ADMIN_TEST_PASSWORD)
         .await;
-    println!("{} priv granted for", id);
+    println!("{id} priv granted for");
     assert!(res.is_ok());
 }
 
@@ -337,7 +409,7 @@ pub async fn test_read_attrs(
     attrs: &[Attribute],
     is_readable: bool,
 ) {
-    println!("Test read to {}, is readable: {}", id, is_readable);
+    println!("Test read to {id}, is readable: {is_readable}");
     #[allow(clippy::expect_used)]
     let rset = rsclient
         .search(Filter::Eq(Attribute::Name.to_string(), id.to_string()))
@@ -369,9 +441,9 @@ pub async fn test_write_attrs(
     attrs: &[Attribute],
     is_writeable: bool,
 ) {
-    println!("Test write to {}, is writeable: {}", id, is_writeable);
+    println!("Test write to {id}, is writeable: {is_writeable}");
     for attr in attrs.iter() {
-        println!("Writing to {} - ex {}", attr, is_writeable);
+        println!("Writing to {attr} - ex {is_writeable}");
         #[allow(clippy::unwrap_used)]
         let is_ok = is_attr_writable(rsclient, id, attr.clone()).await.unwrap();
         assert_eq!(is_ok, is_writeable)
@@ -385,7 +457,7 @@ pub async fn test_modify_group(
 ) {
     // need user test created to be added as test part
     for group in group_names.iter() {
-        println!("Testing group: {}", group);
+        println!("Testing group: {group}");
         for attr in [Attribute::Description, Attribute::Name].into_iter() {
             #[allow(clippy::unwrap_used)]
             let is_writable = is_attr_writable(rsclient, group, attr.clone())

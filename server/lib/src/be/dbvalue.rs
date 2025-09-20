@@ -1,11 +1,10 @@
-use std::fmt;
-use std::time::Duration;
-
 use hashbrown::HashSet;
 use kanidm_proto::internal::ImageType;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
+use std::time::Duration;
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -13,9 +12,9 @@ use webauthn_rs::prelude::{
     SecurityKey as SecurityKeyV4,
 };
 use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
-
 // Re-export this as though it was here.
 use crate::repl::cid::Cid;
+use crypto_glue::traits::Zeroizing;
 pub use kanidm_lib_crypto::DbPasswordV1;
 
 #[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq, Clone)]
@@ -148,6 +147,8 @@ impl std::fmt::Debug for DbBackupCodeV1 {
     }
 }
 
+// Allow as this is used in serde, but compiler gets that wrong.
+#[allow(dead_code)]
 // We have to allow this as serde expects &T for the fn sig.
 #[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_false(b: &bool) -> bool {
@@ -426,20 +427,6 @@ pub struct DbValueTaggedStringV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct DbValueEmailAddressV1 {
-    pub d: String,
-    #[serde(skip_serializing_if = "is_false", default)]
-    pub p: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct DbValuePhoneNumberV1 {
-    pub d: String,
-    #[serde(skip_serializing_if = "is_false", default)]
-    pub p: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DbValueAddressV1 {
     #[serde(rename = "f")]
     pub formatted: String,
@@ -692,6 +679,8 @@ pub enum DbValueImage {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum DbValueKeyUsage {
     JwsEs256,
+    JwsHs256,
+    JwsRs256,
     JweA128GCM,
 }
 
@@ -710,7 +699,7 @@ pub enum DbValueKeyInternal {
         valid_from: u64,
         status: DbValueKeyStatus,
         status_cid: DbCidV1,
-        der: Vec<u8>,
+        der: Zeroizing<Vec<u8>>,
     },
 }
 
@@ -800,9 +789,9 @@ pub enum DbValueSetV2 {
     #[serde(rename = "AS")]
     Session(Vec<DbValueSession>),
     #[serde(rename = "JE")]
-    JwsKeyEs256(Vec<Vec<u8>>),
+    JwsKeyEs256(Vec<Zeroizing<Vec<u8>>>),
     #[serde(rename = "JR")]
-    JwsKeyRs256(Vec<Vec<u8>>),
+    JwsKeyRs256(Vec<Zeroizing<Vec<u8>>>),
     #[serde(rename = "OZ")]
     Oauth2Session(Vec<DbValueOauth2Session>),
     #[serde(rename = "UH")]

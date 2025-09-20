@@ -63,7 +63,7 @@ pub enum UatStatusState {
 impl fmt::Display for UatStatusState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UatStatusState::ExpiresAt(odt) => write!(f, "expires at {}", odt),
+            UatStatusState::ExpiresAt(odt) => write!(f, "expires at {odt}"),
             UatStatusState::NeverExpires => write!(f, "never expires"),
             UatStatusState::Revoked => write!(f, "revoked"),
         }
@@ -120,7 +120,7 @@ impl fmt::Display for Entry {
         writeln!(f, "---")?;
         self.attrs
             .iter()
-            .try_for_each(|(k, vs)| vs.iter().try_for_each(|v| writeln!(f, "{}: {}", k, v)))
+            .try_for_each(|(k, vs)| vs.iter().try_for_each(|v| writeln!(f, "{k}: {v}")))
     }
 }
 

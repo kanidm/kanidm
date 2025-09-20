@@ -4,7 +4,7 @@
 //! These components should be "per server". Any "per domain" config should be in the system
 //! or domain entries that are able to be replicated.
 
-use hashbrown::HashSet;
+use cidr::IpCidr;
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
@@ -20,24 +20,31 @@ use url::Url;
 
 use crate::repl::config::ReplicationConfiguration;
 
+#[derive(Debug, Deserialize)]
+struct VersionDetection {
+    #[serde(default)]
+    version: Version,
+}
+
+#[derive(Debug, Deserialize, Default)]
+// #[serde(tag = "version")]
+pub enum Version {
+    #[serde(rename = "2")]
+    V2,
+
+    #[default]
+    Legacy,
+}
+
 // Allowed as the large enum is only short lived at startup to the true config
 #[allow(clippy::large_enum_variant)]
-// These structures allow us to move to version tagging of the configuration structure.
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
 pub enum ServerConfigUntagged {
     Version(ServerConfigVersion),
     Legacy(ServerConfig),
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(tag = "version")]
 pub enum ServerConfigVersion {
-    #[serde(rename = "2")]
-    V2 {
-        #[serde(flatten)]
-        values: ServerConfigV2,
-    },
+    V2 { values: ServerConfigV2 },
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -105,11 +112,11 @@ pub enum LdapAddressInfo {
     #[default]
     None,
     #[serde(rename = "proxy-v2")]
-    ProxyV2(HashSet<IpAddr>),
+    ProxyV2(Vec<IpCidr>),
 }
 
 impl LdapAddressInfo {
-    pub fn trusted_proxy_v2(&self) -> Option<HashSet<IpAddr>> {
+    pub fn trusted_proxy_v2(&self) -> Option<Vec<IpCidr>> {
         if let Self::ProxyV2(trusted) = self {
             Some(trusted.clone())
         } else {
@@ -125,7 +132,7 @@ impl Display for LdapAddressInfo {
             Self::ProxyV2(trusted) => {
                 f.write_str("proxy-v2 [ ")?;
                 for ip in trusted {
-                    write!(f, "{} ", ip)?;
+                    write!(f, "{ip} ")?;
                 }
                 f.write_str("]")
             }
@@ -134,7 +141,7 @@ impl Display for LdapAddressInfo {
 }
 
 pub(crate) enum AddressSet {
-    NonContiguousIpSet(HashSet<IpAddr>),
+    NonContiguousIpSet(Vec<IpCidr>),
     All,
 }
 
@@ -142,7 +149,9 @@ impl AddressSet {
     pub(crate) fn contains(&self, ip_addr: &IpAddr) -> bool {
         match self {
             Self::All => true,
-            Self::NonContiguousIpSet(range) => range.contains(ip_addr),
+            Self::NonContiguousIpSet(range) => {
+                range.iter().any(|ip_cidr| ip_cidr.contains(ip_addr))
+            }
         }
     }
 }
@@ -152,13 +161,13 @@ pub enum HttpAddressInfo {
     #[default]
     None,
     #[serde(rename = "x-forward-for")]
-    XForwardFor(HashSet<IpAddr>),
+    XForwardFor(Vec<IpCidr>),
     // IMPORTANT: This is undocumented, and only exists for backwards compat
     // with config v1 which has a boolean toggle for this option.
     #[serde(rename = "x-forward-for-all-source-trusted")]
     XForwardForAllSourcesTrusted,
     #[serde(rename = "proxy-v2")]
-    ProxyV2(HashSet<IpAddr>),
+    ProxyV2(Vec<IpCidr>),
 }
 
 impl HttpAddressInfo {
@@ -170,7 +179,7 @@ impl HttpAddressInfo {
         }
     }
 
-    pub(crate) fn trusted_proxy_v2(&self) -> Option<HashSet<IpAddr>> {
+    pub(crate) fn trusted_proxy_v2(&self) -> Option<Vec<IpCidr>> {
         if let Self::ProxyV2(trusted) = self {
             Some(trusted.clone())
         } else {
@@ -187,7 +196,7 @@ impl Display for HttpAddressInfo {
             Self::XForwardFor(trusted) => {
                 f.write_str("x-forward-for [ ")?;
                 for ip in trusted {
-                    write!(f, "{} ", ip)?;
+                    write!(f, "{ip} ")?;
                 }
                 f.write_str("]")
             }
@@ -197,7 +206,7 @@ impl Display for HttpAddressInfo {
             Self::ProxyV2(trusted) => {
                 f.write_str("proxy-v2 [ ")?;
                 for ip in trusted {
-                    write!(f, "{} ", ip)?;
+                    write!(f, "{ip} ")?;
                 }
                 f.write_str("]")
             }
@@ -219,8 +228,7 @@ pub struct ServerConfig {
     /// *REQUIRED* - Kanidm Domain, eg `kanidm.example.com`.
     domain: Option<String>,
     /// *REQUIRED* - The user-facing HTTPS URL for this server, eg <https://idm.example.com>
-    // TODO  -this should be URL
-    origin: Option<String>,
+    origin: Option<Url>,
     /// File path of the database file
     db_path: Option<PathBuf>,
     /// The filesystem type, either "zfs" or "generic". Defaults to "generic" if unset. I you change this, run a database vacuum.
@@ -282,21 +290,39 @@ impl ServerConfigUntagged {
         // see if we can load it from the config file you asked for
         eprintln!("📜 Using config file: {:?}", config_path.as_ref());
         let mut f: File = File::open(config_path.as_ref()).inspect_err(|e| {
-            eprintln!("Unable to open config file [{:?}] 🥺", e);
+            eprintln!("Unable to open config file [{e:?}] 🥺");
             let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-            eprintln!("{}", diag);
+            eprintln!("{diag}");
         })?;
 
         let mut contents = String::new();
 
         f.read_to_string(&mut contents).inspect_err(|e| {
-            eprintln!("unable to read contents {:?}", e);
+            eprintln!("unable to read contents {e:?}");
             let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-            eprintln!("{}", diag);
+            eprintln!("{diag}");
         })?;
 
-        // if we *can* load the config we'll set config to that.
-        toml::from_str::<ServerConfigUntagged>(contents.as_str()).map_err(|err| {
+        // First, can we detect the config version?
+        let config_version = toml::from_str::<VersionDetection>(contents.as_str())
+            .map(|vd| vd.version)
+            .map_err(|err| {
+                eprintln!(
+                    "Unable to parse config version from '{:?}': {:?}",
+                    config_path.as_ref(),
+                    err
+                );
+                std::io::Error::new(std::io::ErrorKind::InvalidData, err)
+            })?;
+
+        match config_version {
+            Version::V2 => toml::from_str::<ServerConfigV2>(contents.as_str())
+                .map(|values| ServerConfigUntagged::Version(ServerConfigVersion::V2 { values })),
+            Version::Legacy => {
+                toml::from_str::<ServerConfig>(contents.as_str()).map(ServerConfigUntagged::Legacy)
+            }
+        }
+        .map_err(|err| {
             eprintln!(
                 "Unable to parse config from '{:?}': {:?}",
                 config_path.as_ref(),
@@ -310,8 +336,10 @@ impl ServerConfigUntagged {
 #[derive(Debug, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ServerConfigV2 {
+    #[allow(dead_code)]
+    version: String,
     domain: Option<String>,
-    origin: Option<String>,
+    origin: Option<Url>,
     db_path: Option<PathBuf>,
     db_fs_type: Option<kanidm_proto::internal::FsType>,
     tls_chain: Option<PathBuf>,
@@ -345,7 +373,7 @@ pub struct CliConfig {
 #[derive(Default)]
 pub struct EnvironmentConfig {
     domain: Option<String>,
-    origin: Option<String>,
+    origin: Option<Url>,
     db_path: Option<PathBuf>,
     tls_chain: Option<PathBuf>,
     tls_key: Option<PathBuf>,
@@ -395,7 +423,9 @@ impl EnvironmentConfig {
                     env_config.domain = Some(value.to_string());
                 }
                 "ORIGIN" => {
-                    env_config.origin = Some(value.to_string());
+                    let url = Url::parse(value.as_str())
+                        .map_err(|err| format!("Failed to parse KANIDM_ORIGIN as URL: {err}"))?;
+                    env_config.origin = Some(url);
                 }
                 "DB_PATH" => {
                     env_config.db_path = Some(PathBuf::from(value.to_string()));
@@ -417,13 +447,13 @@ impl EnvironmentConfig {
                 }
                 "ROLE" => {
                     env_config.role = Some(ServerRole::from_str(&value).map_err(|err| {
-                        format!("Failed to parse KANIDM_ROLE as ServerRole: {}", err)
+                        format!("Failed to parse KANIDM_ROLE as ServerRole: {err}")
                     })?);
                 }
                 "LOG_LEVEL" => {
                     env_config.log_level = LogLevel::from_str(&value)
                         .map_err(|err| {
-                            format!("Failed to parse KANIDM_LOG_LEVEL as LogLevel: {}", err)
+                            format!("Failed to parse KANIDM_LOG_LEVEL as LogLevel: {err}")
                         })
                         .ok();
                 }
@@ -486,7 +516,7 @@ impl EnvironmentConfig {
                 }
                 "REPLICATION_ORIGIN" => {
                     let repl_origin = Url::parse(value.as_str()).map_err(|err| {
-                        format!("Failed to parse KANIDM_REPLICATION_ORIGIN as URL: {}", err)
+                        format!("Failed to parse KANIDM_REPLICATION_ORIGIN as URL: {err}")
                     })?;
                     if let Some(repl) = &mut env_config.repl_config {
                         repl.origin = repl_origin
@@ -606,7 +636,7 @@ pub struct Configuration {
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
     pub online_backup: Option<OnlineBackup>,
     pub domain: String,
-    pub origin: String,
+    pub origin: Url,
     pub role: ServerRole,
     pub output_mode: ConsoleOutputMode,
     pub log_level: LogLevel,
@@ -650,6 +680,7 @@ impl Configuration {
     }
 
     pub fn new_for_test() -> Self {
+        #[allow(clippy::expect_used)]
         Configuration {
             address: DEFAULT_SERVER_ADDRESS.to_string(),
             ldapbindaddress: None,
@@ -665,7 +696,8 @@ impl Configuration {
             integration_test_config: None,
             online_backup: None,
             domain: "idm.example.com".to_string(),
-            origin: "https://idm.example.com".to_string(),
+            origin: Url::from_str("https://idm.example.com")
+                .expect("Failed to parse built-in string as URL"),
             output_mode: ConsoleOutputMode::default(),
             log_level: LogLevel::default(),
             role: ServerRole::WriteReplica,
@@ -681,7 +713,7 @@ impl fmt::Display for Configuration {
         write!(f, "address: {}, ", self.address)?;
         write!(f, "domain: {}, ", self.domain)?;
         match &self.ldapbindaddress {
-            Some(la) => write!(f, "ldap address: {}, ", la),
+            Some(la) => write!(f, "ldap address: {la}, "),
             None => write!(f, "ldap address: disabled, "),
         }?;
         write!(f, "origin: {} ", self.origin)?;
@@ -696,7 +728,7 @@ impl fmt::Display for Configuration {
                 .unwrap_or("MEMORY".to_string())
         )?;
         match self.db_arc_size {
-            Some(v) => write!(f, "arcsize: {}, ", v),
+            Some(v) => write!(f, "arcsize: {v}, "),
             None => write!(f, "arcsize: AUTO, "),
         }?;
         write!(f, "max request size: {}b, ", self.maximum_request)?;
@@ -772,7 +804,7 @@ pub struct ConfigurationBuilder {
     tls_client_ca: Option<PathBuf>,
     online_backup: Option<OnlineBackup>,
     domain: Option<String>,
-    origin: Option<String>,
+    origin: Option<Url>,
     role: Option<ServerRole>,
     output_mode: Option<ConsoleOutputMode>,
     log_level: Option<LogLevel>,
@@ -1142,5 +1174,34 @@ impl ConfigurationBuilder {
             integration_repl_config: None,
             integration_test_config: None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use cidr::{IpCidr, Ipv4Cidr, Ipv6Cidr};
+    use std::net::{Ipv4Addr, Ipv6Addr};
+
+    #[test]
+    fn assert_cidr_parsing_behaviour() {
+        // Assert that we can parse individual hosts, and ranges
+        let parsed_ip_cidr: IpCidr = serde_json::from_str("\"127.0.0.1\"").unwrap();
+        let expect_ip_cidr = IpCidr::from(Ipv4Addr::new(127, 0, 0, 1));
+        assert_eq!(parsed_ip_cidr, expect_ip_cidr);
+
+        let parsed_ip_cidr: IpCidr = serde_json::from_str("\"127.0.0.0/8\"").unwrap();
+        let expect_ip_cidr = IpCidr::from(Ipv4Cidr::new(Ipv4Addr::new(127, 0, 0, 0), 8).unwrap());
+        assert_eq!(parsed_ip_cidr, expect_ip_cidr);
+
+        // Same for ipv6
+        let parsed_ip_cidr: IpCidr = serde_json::from_str("\"2001:0db8::1\"").unwrap();
+        let expect_ip_cidr = IpCidr::from(Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 0x0001));
+        assert_eq!(parsed_ip_cidr, expect_ip_cidr);
+
+        let parsed_ip_cidr: IpCidr = serde_json::from_str("\"2001:0db8::/64\"").unwrap();
+        let expect_ip_cidr = IpCidr::from(
+            Ipv6Cidr::new(Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 0), 64).unwrap(),
+        );
+        assert_eq!(parsed_ip_cidr, expect_ip_cidr);
     }
 }

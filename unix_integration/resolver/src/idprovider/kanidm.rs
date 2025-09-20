@@ -1,5 +1,8 @@
 use super::interface::{
-    tpm::{self, HmacKey, Tpm},
+    tpm::{
+        provider::{BoxedDynTpm, TpmHmacS256},
+        structures::{HmacS256Key, LoadableHmacS256Key, StorageKey},
+    },
     AuthCredHandler, AuthRequest, AuthResult, GroupToken, GroupTokenState, Id, IdProvider,
     IdpError, ProviderOrigin, UserToken, UserTokenState,
 };
@@ -18,7 +21,7 @@ use std::collections::BTreeSet;
 use std::time::{Duration, SystemTime};
 use tokio::sync::{broadcast, Mutex};
 
-const KANIDM_HMAC_KEY: &str = "kanidm-hmac-key";
+const KANIDM_HMAC_KEY: &str = "kanidm-hmac-key-v2";
 const KANIDM_PWV1_KEY: &str = "kanidm-pw-v1";
 
 // If the provider is offline, we need to backoff and wait a bit.
@@ -34,9 +37,10 @@ enum CacheState {
 struct KanidmProviderInternal {
     state: CacheState,
     client: KanidmClient,
-    hmac_key: HmacKey,
+    hmac_key: HmacS256Key,
     crypto_policy: CryptoPolicy,
     pam_allow_groups: BTreeSet<String>,
+    bearer_token_set: bool,
 }
 
 pub struct KanidmProvider {
@@ -47,16 +51,18 @@ pub struct KanidmProvider {
 }
 
 impl KanidmProvider {
-    pub fn new(
+    pub async fn new<'a, 'b>(
         client: KanidmClient,
         config: &KanidmConfig,
         now: SystemTime,
-        keystore: &mut KeyStoreTxn,
-        tpm: &mut tpm::BoxedDynTpm,
-        machine_key: &tpm::MachineKey,
+        keystore: &mut KeyStoreTxn<'a, 'b>,
+        tpm: &mut BoxedDynTpm,
+        machine_key: &StorageKey,
     ) -> Result<Self, IdpError> {
+        let tpm_ctx: &mut dyn TpmHmacS256 = &mut **tpm;
+
         // Initially retrieve our HMAC key.
-        let loadable_hmac_key: Option<tpm::LoadableHmacKey> = keystore
+        let loadable_hmac_key: Option<LoadableHmacS256Key> = keystore
             .get_tagged_hsm_key(KANIDM_HMAC_KEY)
             .map_err(|ks_err| {
                 error!(?ks_err);
@@ -66,7 +72,7 @@ impl KanidmProvider {
         let loadable_hmac_key = if let Some(loadable_hmac_key) = loadable_hmac_key {
             loadable_hmac_key
         } else {
-            let loadable_hmac_key = tpm.hmac_key_create(machine_key).map_err(|tpm_err| {
+            let loadable_hmac_key = tpm_ctx.hmac_s256_create(machine_key).map_err(|tpm_err| {
                 error!(?tpm_err);
                 IdpError::Tpm
             })?;
@@ -81,8 +87,8 @@ impl KanidmProvider {
             loadable_hmac_key
         };
 
-        let hmac_key = tpm
-            .hmac_key_load(machine_key, &loadable_hmac_key)
+        let hmac_key = tpm_ctx
+            .hmac_s256_load(machine_key, &loadable_hmac_key)
             .map_err(|tpm_err| {
                 error!(?tpm_err);
                 IdpError::Tpm
@@ -99,6 +105,12 @@ impl KanidmProvider {
             .map(|GroupMap { local, with }| (local, Id::Name(with)))
             .collect();
 
+        // Set the api token if one is set
+        if let Some(token) = config.service_account_token.clone() {
+            client.set_token(token).await;
+        };
+        let bearer_token_set = config.service_account_token.is_some();
+
         Ok(KanidmProvider {
             inner: Mutex::new(KanidmProviderInternal {
                 state: CacheState::OfflineNextCheck(now),
@@ -106,6 +118,7 @@ impl KanidmProvider {
                 hmac_key,
                 crypto_policy,
                 pam_allow_groups,
+                bearer_token_set,
             }),
             map_group,
         })
@@ -171,10 +184,12 @@ impl UserToken {
         &mut self,
         crypto_policy: &CryptoPolicy,
         cred: &str,
-        tpm: &mut tpm::BoxedDynTpm,
-        hmac_key: &HmacKey,
+        tpm: &mut BoxedDynTpm,
+        hmac_key: &HmacS256Key,
     ) {
-        let pw = match Password::new_argon2id_hsm(crypto_policy, cred, tpm, hmac_key) {
+        let tpm_ctx: &mut dyn TpmHmacS256 = &mut **tpm;
+
+        let pw = match Password::new_argon2id_hsm(crypto_policy, cred, tpm_ctx, hmac_key) {
             Ok(pw) => pw,
             Err(reason) => {
                 // Clear cached pw.
@@ -207,8 +222,8 @@ impl UserToken {
     pub fn kanidm_check_cached_password(
         &self,
         cred: &str,
-        tpm: &mut tpm::BoxedDynTpm,
-        hmac_key: &HmacKey,
+        tpm: &mut BoxedDynTpm,
+        hmac_key: &HmacS256Key,
     ) -> bool {
         let pw_value = match self.extra_keys.get(KANIDM_PWV1_KEY) {
             Some(pw_value) => pw_value,
@@ -234,14 +249,16 @@ impl UserToken {
             }
         };
 
-        pw.verify_ctx(cred, Some((tpm, hmac_key)))
+        let tpm_ctx: &mut dyn TpmHmacS256 = &mut **tpm;
+
+        pw.verify_ctx(cred, Some((tpm_ctx, hmac_key)))
             .unwrap_or_default()
     }
 }
 
 impl KanidmProviderInternal {
     #[instrument(level = "debug", skip_all)]
-    async fn check_online(&mut self, tpm: &mut tpm::BoxedDynTpm, now: SystemTime) -> bool {
+    async fn check_online(&mut self, tpm: &mut BoxedDynTpm, now: SystemTime) -> bool {
         match self.state {
             // Proceed
             CacheState::Online => true,
@@ -253,11 +270,7 @@ impl KanidmProviderInternal {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn check_online_right_meow(
-        &mut self,
-        tpm: &mut tpm::BoxedDynTpm,
-        now: SystemTime,
-    ) -> bool {
+    async fn check_online_right_meow(&mut self, tpm: &mut BoxedDynTpm, now: SystemTime) -> bool {
         match self.state {
             CacheState::Online => true,
             CacheState::OfflineNextCheck(_) => self.attempt_online(tpm, now).await,
@@ -266,11 +279,20 @@ impl KanidmProviderInternal {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn attempt_online(&mut self, _tpm: &mut tpm::BoxedDynTpm, now: SystemTime) -> bool {
+    async fn attempt_online(&mut self, _tpm: &mut BoxedDynTpm, now: SystemTime) -> bool {
         let mut max_attempts = 3;
         while max_attempts > 0 {
             max_attempts -= 1;
-            match self.client.auth_anonymous().await {
+
+            // If a bearer token is set, we don't want to do an auth flow and
+            // remove that. Just do a whoami call, which will tell us the result.
+            let check_online_result = if self.bearer_token_set {
+                self.client.whoami().await.map(|_| ())
+            } else {
+                self.client.auth_anonymous().await
+            };
+
+            match check_online_result {
                 Ok(_uat) => {
                     debug!("provider is now online");
                     self.state = CacheState::Online;
@@ -303,7 +325,7 @@ impl IdProvider for KanidmProvider {
         ProviderOrigin::Kanidm
     }
 
-    async fn attempt_online(&self, tpm: &mut tpm::BoxedDynTpm, now: SystemTime) -> bool {
+    async fn attempt_online(&self, tpm: &mut BoxedDynTpm, now: SystemTime) -> bool {
         let mut inner = self.inner.lock().await;
         inner.check_online_right_meow(tpm, now).await
     }
@@ -326,7 +348,7 @@ impl IdProvider for KanidmProvider {
         &self,
         id: &Id,
         token: Option<&UserToken>,
-        tpm: &mut tpm::BoxedDynTpm,
+        tpm: &mut BoxedDynTpm,
         now: SystemTime,
     ) -> Result<UserTokenState, IdpError> {
         let mut inner = self.inner.lock().await;
@@ -421,7 +443,7 @@ impl IdProvider for KanidmProvider {
         &self,
         _account_id: &str,
         _token: &UserToken,
-        _tpm: &mut tpm::BoxedDynTpm,
+        _tpm: &mut BoxedDynTpm,
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
         // Not sure that I need to do much here?
@@ -431,7 +453,7 @@ impl IdProvider for KanidmProvider {
     async fn unix_unknown_user_online_auth_init(
         &self,
         _account_id: &str,
-        _tpm: &mut tpm::BoxedDynTpm,
+        _tpm: &mut BoxedDynTpm,
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<Option<(AuthRequest, AuthCredHandler)>, IdpError> {
         // We do not support unknown user auth.
@@ -444,7 +466,7 @@ impl IdProvider for KanidmProvider {
         current_token: Option<&UserToken>,
         cred_handler: &mut AuthCredHandler,
         pam_next_req: PamAuthRequest,
-        tpm: &mut tpm::BoxedDynTpm,
+        tpm: &mut BoxedDynTpm,
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<AuthResult, IdpError> {
         match (cred_handler, pam_next_req) {
@@ -490,7 +512,7 @@ impl IdProvider for KanidmProvider {
                         Ok(AuthResult::Denied)
                     }
                     Err(ClientError::Transport(err)) => {
-                        error!(?err, "A client transport error occured.");
+                        error!(?err, "A client transport error occurred.");
                         Err(IdpError::Transport)
                     }
                     Err(ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid)) => {
@@ -575,7 +597,7 @@ impl IdProvider for KanidmProvider {
         session_token: &UserToken,
         cred_handler: &mut AuthCredHandler,
         pam_next_req: PamAuthRequest,
-        tpm: &mut tpm::BoxedDynTpm,
+        tpm: &mut BoxedDynTpm,
     ) -> Result<AuthResult, IdpError> {
         match (cred_handler, pam_next_req) {
             (AuthCredHandler::Password, PamAuthRequest::Password { cred }) => {
@@ -609,7 +631,7 @@ impl IdProvider for KanidmProvider {
     async fn unix_group_get(
         &self,
         id: &Id,
-        tpm: &mut tpm::BoxedDynTpm,
+        tpm: &mut BoxedDynTpm,
         now: SystemTime,
     ) -> Result<GroupTokenState, IdpError> {
         let mut inner = self.inner.lock().await;
@@ -698,7 +720,7 @@ impl IdProvider for KanidmProvider {
 
         if inner.pam_allow_groups.is_empty() {
             // can't allow anything if the group list is zero...
-            warn!("Cannot authenticate users, no allowed groups in configuration!");
+            warn!("NO USERS CAN LOGIN TO THIS SYSTEM! There are no `pam_allowed_login_groups` in configuration!");
             Ok(Some(false))
         } else {
             let user_set: BTreeSet<_> = token
@@ -714,6 +736,10 @@ impl IdProvider for KanidmProvider {
             let intersection_count = user_set.intersection(&inner.pam_allow_groups).count();
             debug!("Number of intersecting groups: {}", intersection_count);
             debug!("User token is valid: {}", token.valid);
+
+            if intersection_count == 0 && token.valid {
+                warn!("The user {} authenticated successfully but is NOT a member of a group defined in `pam_allowed_login_groups`. They have been denied access to this system.", token.spn);
+            }
 
             Ok(Some(intersection_count > 0 && token.valid))
         }

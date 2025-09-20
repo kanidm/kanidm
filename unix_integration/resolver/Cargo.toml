@@ -14,8 +14,10 @@ repository = { workspace = true }
 [features]
 default = ["unix"]
 unix = []
-selinux = ["dep:selinux", "kanidm_unix_common/selinux"]
+selinux = ["kanidm_unix_common/selinux"]
 tpm = ["kanidm-hsm-crypto/tpm", "kanidm_unix_common/tpm"]
+dhat-heap = ["dep:dhat"]
+dhat-ad-hoc = ["dep:dhat"]
 
 [[bin]]
 name = "kanidm_unixd"
@@ -56,6 +58,7 @@ async-trait = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 dialoguer = { workspace = true }
+dhat = { workspace = true, optional = true }
 futures = { workspace = true }
 hashbrown = { workspace = true }
 libc = { workspace = true }
@@ -68,12 +71,10 @@ kanidm_lib_file_permissions = { workspace = true }
 kanidm_unix_common = { workspace = true }
 notify-debouncer-full = { workspace = true }
 rusqlite = { workspace = true }
-selinux = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sketching = { workspace = true }
 time = { workspace = true, features = ["std"] }
-toml = { workspace = true }
 tokio = { workspace = true, features = [
     "rt",
     "fs",
@@ -94,9 +95,6 @@ prctl = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 kanidm_utils_users = { workspace = true }
-
-[target.'cfg(not(target_os = "illumos"))'.dependencies]
-mimalloc = { workspace = true }
 
 [dev-dependencies]
 kanidmd_core = { workspace = true }

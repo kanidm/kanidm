@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use kanidm_hsm_crypto::provider::BoxedDynTpm;
 use kanidm_unix_common::unix_proto::{
     DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse,
 };
@@ -70,7 +71,7 @@ pub enum ProviderOrigin {
     // causes these items to be nixed.
     #[default]
     Ignore,
-    /// Provided by /etc/passwd or /etc/group
+    /// Provided by local files, commonly /etc/passwd, /etc/group and /etc/shadow
     System,
     Kanidm,
 }
@@ -207,7 +208,7 @@ pub trait IdProvider {
     fn origin(&self) -> ProviderOrigin;
 
     /// Attempt to go online *immediately*
-    async fn attempt_online(&self, _tpm: &mut tpm::BoxedDynTpm, _now: SystemTime) -> bool;
+    async fn attempt_online(&self, _tpm: &mut BoxedDynTpm, _now: SystemTime) -> bool;
 
     /// Mark that this provider should attempt to go online next time it
     /// receives a request
@@ -226,7 +227,7 @@ pub trait IdProvider {
     async fn configure_machine_identity(
         &self,
         _keystore: &mut KeyStoreTxn,
-        _tpm: &mut tpm::BoxedDynTpm,
+        _tpm: &mut BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
     ) -> Result<(), IdpError> {
         Ok(())
@@ -237,7 +238,7 @@ pub trait IdProvider {
         &self,
         _id: &Id,
         _token: Option<&UserToken>,
-        _tpm: &mut tpm::BoxedDynTpm,
+        _tpm: &mut BoxedDynTpm,
         _now: SystemTime,
     ) -> Result<UserTokenState, IdpError>;
 
@@ -245,7 +246,7 @@ pub trait IdProvider {
         &self,
         _account_id: &str,
         _token: &UserToken,
-        _tpm: &mut tpm::BoxedDynTpm,
+        _tpm: &mut BoxedDynTpm,
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
@@ -255,14 +256,14 @@ pub trait IdProvider {
         _current_token: Option<&UserToken>,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-        _tpm: &mut tpm::BoxedDynTpm,
+        _tpm: &mut BoxedDynTpm,
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<AuthResult, IdpError>;
 
     async fn unix_unknown_user_online_auth_init(
         &self,
         _account_id: &str,
-        _tpm: &mut tpm::BoxedDynTpm,
+        _tpm: &mut BoxedDynTpm,
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<Option<(AuthRequest, AuthCredHandler)>, IdpError>;
 
@@ -296,7 +297,7 @@ pub trait IdProvider {
         _session_token: &UserToken,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-        _tpm: &mut tpm::BoxedDynTpm,
+        _tpm: &mut BoxedDynTpm,
     ) -> Result<AuthResult, IdpError>;
 
     async fn unix_user_authorise(&self, _token: &UserToken) -> Result<Option<bool>, IdpError>;
@@ -304,7 +305,7 @@ pub trait IdProvider {
     async fn unix_group_get(
         &self,
         id: &Id,
-        _tpm: &mut tpm::BoxedDynTpm,
+        _tpm: &mut BoxedDynTpm,
         _now: SystemTime,
     ) -> Result<GroupTokenState, IdpError>;
 }

@@ -120,7 +120,7 @@ pub(crate) fn qs_test(args: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let test_fn = &input.sig.ident;
-    let test_driver = Ident::new(&format!("qs_{}", test_fn), input.sig.span());
+    let test_driver = Ident::new(&format!("qs_{test_fn}"), input.sig.span());
 
     // Effectively we are just injecting a real test function around this which we will
     // call.
@@ -214,7 +214,7 @@ pub(crate) fn qs_pair_test(args: &TokenStream, item: TokenStream) -> TokenStream
     };
 
     let test_fn = &input.sig.ident;
-    let test_driver = Ident::new(&format!("qs_{}", test_fn), input.sig.span());
+    let test_driver = Ident::new(&format!("qs_{test_fn}"), input.sig.span());
 
     // Effectively we are just injecting a real test function around this which we will
     // call.
@@ -309,7 +309,7 @@ pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let test_fn = &input.sig.ident;
-    let test_driver = Ident::new(&format!("idm_{}", test_fn), input.sig.span());
+    let test_driver = Ident::new(&format!("idm_{test_fn}"), input.sig.span());
 
     let test_fn_args = if flags.audit {
         quote! {

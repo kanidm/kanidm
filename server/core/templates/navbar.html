@@ -1,4 +1,4 @@
-<nav hx-boost="false" class="navbar navbar-expand-md kanidm_navbar mb-4">
+<nav hx-boost="false" class="navbar bg-body-tertiary navbar-expand-md mb-4">
     <div class="container-lg">
         <a class="navbar-brand d-flex align-items-center" href="/ui/apps">
             (% if navbar_ctx.domain_info.image().is_some() %)
@@ -13,11 +13,12 @@
         </a>
 
         <!-- this shows a button on mobile devices to open the menu-->
-        <button class="navbar-toggler" type="button"
+        <button class="navbar-toggler navbar-brand" type="button"
             data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
             aria-controls="navbarCollapse" aria-expanded="false"
             aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+            <svg class="navbar-toggle-icon" xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'>
+                <path stroke='currentColor' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/></svg>
         </button>
 
         <div class="collapse navbar-collapse" id="navbarCollapse">
@@ -30,6 +31,12 @@
                     <a class="nav-link" href=((Urls::Profile))>
                         <span data-feather="file"></span>Profile</a>
                 </li>
+                (% if navbar_ctx.ui_hints.contains(kanidm_proto::internal::UiHint::ExperimentalFeatures|as_ref) %)
+                <li>
+                    <a class="nav-link" href=((Urls::Admin))>
+                        <span data-feather="file"></span>Admin</a>
+                </li>
+                (% endif %)
             </ul>
             <ul class="navbar-nav ms-md-auto">
                 <li>

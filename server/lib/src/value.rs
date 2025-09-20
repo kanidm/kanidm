@@ -5,33 +5,6 @@
 
 #![allow(non_upper_case_globals)]
 
-use std::cmp::Ordering;
-use std::collections::BTreeSet;
-use std::convert::TryFrom;
-use std::fmt;
-use std::fmt::Formatter;
-use std::str::FromStr;
-use std::time::Duration;
-
-#[cfg(test)]
-use base64::{engine::general_purpose, Engine as _};
-use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
-use hashbrown::HashSet;
-use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
-use kanidm_proto::internal::ImageValue;
-use num_enum::TryFromPrimitive;
-use openssl::ec::EcKey;
-use openssl::pkey::Private;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
-use sshkey_attest::proto::PublicKey as SshPublicKey;
-use time::OffsetDateTime;
-use url::Url;
-use uuid::Uuid;
-use webauthn_rs::prelude::{
-    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
-};
-
 use crate::be::dbentry::DbIdentSpn;
 use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
@@ -41,11 +14,37 @@ use crate::server::identity::IdentityId;
 use crate::server::keys::KeyId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
-
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
+use crypto_glue::traits::Zeroizing;
+use hashbrown::HashSet;
+use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
+use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
 use kanidm_proto::v1::UatPurposeStatus;
+use num_enum::TryFromPrimitive;
+use openssl::ec::EcKey;
+use openssl::pkey::Private;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use sshkey_attest::proto::PublicKey as SshPublicKey;
+use std::cmp::Ordering;
+use std::collections::BTreeSet;
+use std::convert::TryFrom;
+use std::fmt;
+use std::fmt::Formatter;
 use std::hash::Hash;
+use std::str::FromStr;
+use std::time::Duration;
+use time::OffsetDateTime;
+use url::Url;
+use uuid::Uuid;
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
+
+#[cfg(test)]
+use base64::{engine::general_purpose, Engine as _};
 
 lazy_static! {
     pub static ref SPN_RE: Regex = {
@@ -106,7 +105,8 @@ lazy_static! {
     /// this regex validates for valid emails.
     pub static ref VALIDATE_EMAIL_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new(r"^[a-zA-Z0-9.!#$%&'*+=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid singleline regex found")
+        Regex::new(r"^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+            .expect("Invalid singleline regex found")
     };
 
     // Formerly checked with
@@ -648,12 +648,6 @@ impl PartialValue {
 
     pub fn new_iname(s: &str) -> Self {
         PartialValue::Iname(s.to_lowercase())
-    }
-
-    // TODO: take this away
-    #[inline]
-    pub fn new_class(s: &str) -> Self {
-        PartialValue::new_iutf8(s)
     }
 
     pub fn is_iutf8(&self) -> bool {
@@ -1251,6 +1245,8 @@ pub struct Oauth2Session {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyUsage {
     JwsEs256,
+    JwsHs256,
+    JwsRs256,
     JweA128GCM,
 }
 
@@ -1261,6 +1257,8 @@ impl fmt::Display for KeyUsage {
             "{}",
             match self {
                 KeyUsage::JwsEs256 => "jws_es256",
+                KeyUsage::JwsHs256 => "jws_hs256",
+                KeyUsage::JwsRs256 => "jws_rs256",
                 KeyUsage::JweA128GCM => "jwe_a128gcm",
             }
         )
@@ -1353,7 +1351,7 @@ pub enum Value {
         valid_from: u64,
         status: KeyStatus,
         status_cid: Cid,
-        der: Vec<u8>,
+        der: Zeroizing<Vec<u8>>,
     },
 
     HexString(String),
@@ -1527,11 +1525,6 @@ impl Value {
 
     pub fn is_iutf8(&self) -> bool {
         matches!(self, Value::Iutf8(_))
-    }
-
-    #[inline(always)]
-    pub fn new_class(s: &str) -> Self {
-        Value::Iutf8(s.to_lowercase())
     }
 
     pub fn new_attr(s: &str) -> Self {
@@ -2124,7 +2117,7 @@ impl Value {
             Value::Iname(s) => s.clone(),
             Value::Uuid(u) => u.as_hyphenated().to_string(),
             // We display the tag and fingerprint.
-            Value::SshKey(tag, key) => format!("{}: {}", tag, key),
+            Value::SshKey(tag, key) => format!("{tag}: {key}"),
             Value::Spn(n, r) => format!("{n}@{r}"),
             _ => unreachable!(
                 "You've specified the wrong type for the attribute, got: {:?}",
@@ -2342,17 +2335,17 @@ mod tests {
         assert!(sk1.validate());
         // to proto them
         let psk1 = sk1.to_proto_string_clone();
-        assert_eq!(psk1, format!("tag: {}", ecdsa));
+        assert_eq!(psk1, format!("tag: {ecdsa}"));
 
         let sk2 = Value::new_sshkey_str("tag", ed25519).expect("Invalid ssh key");
         assert!(sk2.validate());
         let psk2 = sk2.to_proto_string_clone();
-        assert_eq!(psk2, format!("tag: {}", ed25519));
+        assert_eq!(psk2, format!("tag: {ed25519}"));
 
         let sk3 = Value::new_sshkey_str("tag", rsa).expect("Invalid ssh key");
         assert!(sk3.validate());
         let psk3 = sk3.to_proto_string_clone();
-        assert_eq!(psk3, format!("tag: {}", rsa));
+        assert_eq!(psk3, format!("tag: {rsa}"));
 
         let sk4 = Value::new_sshkey_str("tag", "ntaouhtnhtnuehtnuhotnuhtneouhtneouh");
         assert!(sk4.is_err());

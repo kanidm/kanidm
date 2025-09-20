@@ -1,18 +1,18 @@
-use std::convert::TryFrom;
-use std::fmt;
-
 use crate::idprovider::interface::{GroupToken, Id, UserToken};
 use async_trait::async_trait;
+use kanidm_hsm_crypto::structures::{LoadableHmacS256Key, LoadableStorageKey};
 use libc::umask;
 use rusqlite::{Connection, OptionalExtension};
+use serde::{de::DeserializeOwned, Serialize};
+use std::convert::TryFrom;
+use std::fmt;
 use tokio::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
 
-use serde::{de::DeserializeOwned, Serialize};
-
-use kanidm_hsm_crypto::{LoadableHmacKey, LoadableMachineKey};
-
 const DBV_MAIN: &str = "main";
+// This is in *pages* for sqlite. The default page size is 4096 bytes. So to achieve
+// 32MB we need to divide by this.
+const CACHE_SIZE: usize = 32 * ((1024 * 1024) / 4096);
 
 #[async_trait]
 pub trait Cache {
@@ -77,6 +77,27 @@ impl Db {
             DbError::Sqlite
         })?;
         let _ = unsafe { umask(before) };
+
+        // Setup WAL/COW mode.
+        conn.pragma_update(None, "journal_mode", "WAL")
+            .map_err(|error| {
+                error!(
+                    "sqlite journal_mode=WAL error: {:?} db_path={:?}",
+                    error, path
+                );
+                DbError::Sqlite
+            })?;
+
+        conn.pragma_update(None, "cache_size", CACHE_SIZE)
+            .map_err(|error| {
+                error!(
+                    "sqlite cache_size={} error: {:?} db_path={:?}",
+                    CACHE_SIZE, error, path
+                );
+                DbError::Sqlite
+            })?;
+
+        conn.set_prepared_statement_cache_capacity(32);
 
         Ok(Db {
             conn: Mutex::new(conn),
@@ -331,12 +352,6 @@ impl DbTxn<'_> {
 
 impl DbTxn<'_> {
     pub fn migrate(&mut self) -> Result<(), CacheError> {
-        self.conn.set_prepared_statement_cache_capacity(16);
-        self.conn
-            .prepare("PRAGMA journal_mode=WAL;")
-            .and_then(|mut wal_stmt| wal_stmt.query([]).map(|_| ()))
-            .map_err(|e| self.sqlite_error("account_t create", &e))?;
-
         // This definition can never change.
         self.conn
             .execute(
@@ -492,7 +507,7 @@ impl DbTxn<'_> {
         Ok(())
     }
 
-    pub fn get_hsm_machine_key(&mut self) -> Result<Option<LoadableMachineKey>, CacheError> {
+    pub fn get_hsm_root_storage_key(&mut self) -> Result<Option<LoadableStorageKey>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_int_t WHERE key = 'mk'")
@@ -513,9 +528,9 @@ impl DbTxn<'_> {
         }
     }
 
-    pub fn insert_hsm_machine_key(
+    pub fn insert_hsm_root_storage_key(
         &mut self,
-        machine_key: &LoadableMachineKey,
+        machine_key: &LoadableStorageKey,
     ) -> Result<(), CacheError> {
         let data = serde_json::to_vec(machine_key).map_err(|e| {
             error!("insert_hsm_machine_key json error -> {:?}", e);
@@ -537,7 +552,7 @@ impl DbTxn<'_> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    pub fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacKey>, CacheError> {
+    pub fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacS256Key>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_int_t WHERE key = 'hmac'")
@@ -558,7 +573,10 @@ impl DbTxn<'_> {
         }
     }
 
-    pub fn insert_hsm_hmac_key(&mut self, hmac_key: &LoadableHmacKey) -> Result<(), CacheError> {
+    pub fn insert_hsm_hmac_key(
+        &mut self,
+        hmac_key: &LoadableHmacS256Key,
+    ) -> Result<(), CacheError> {
         let data = serde_json::to_vec(hmac_key).map_err(|e| {
             error!("insert_hsm_hmac_key json error -> {:?}", e);
             CacheError::SerdeJson

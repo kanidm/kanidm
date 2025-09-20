@@ -15,18 +15,20 @@ use base64::engine::general_purpose;
 use base64::engine::GeneralPurpose;
 use base64::{alphabet, Engine};
 use base64urlsafedata::Base64UrlSafeData;
-use kanidm_hsm_crypto::{HmacKey, Tpm};
+use kanidm_hsm_crypto::{provider::TpmHmacS256, structures::HmacS256Key};
 use kanidm_proto::internal::OperationError;
+use md4::{Digest, Md4};
 use openssl::error::ErrorStack as OpenSSLErrorStack;
-use openssl::hash::{self, MessageDigest};
-use openssl::nid::Nid;
+use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::{Sha1, Sha256, Sha512};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Display;
+use std::num::ParseIntError;
 use std::time::{Duration, Instant};
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, warn};
 
 mod crypt_md5;
 pub mod mtls;
@@ -45,14 +47,15 @@ const PBKDF2_SALT_LEN: usize = 24;
 pub const PBKDF2_MIN_NIST_SALT_LEN: usize = 14;
 
 // Min number of rounds for a pbkdf2
-pub const PBKDF2_MIN_NIST_COST: usize = 10000;
+pub const PBKDF2_MIN_NIST_COST: usize = 10_000;
+// Default rounds - owasp recommend 600_000 rounds.
+pub const PBKDF2_DEFAULT_COST: usize = 600_000;
 
 // 32 * u8 -> 256 bits of out.
 const PBKDF2_KEY_LEN: usize = 32;
 const PBKDF2_MIN_NIST_KEY_LEN: usize = 32;
 const PBKDF2_SHA1_MIN_KEY_LEN: usize = 19;
 
-const DS_SHA_SALT_LEN: usize = 8;
 const DS_SHA1_HASH_LEN: usize = 20;
 const DS_SHA256_HASH_LEN: usize = 32;
 const DS_SHA512_HASH_LEN: usize = 64;
@@ -83,6 +86,7 @@ pub enum CryptoError {
     Argon2Version,
     Argon2Parameters,
     Crypt,
+    InvalidServerName,
 }
 
 impl From<OpenSSLErrorStack> for CryptoError {
@@ -200,33 +204,6 @@ impl CryptoPolicy {
     }
 
     pub fn time_target(target_time: Duration) -> Self {
-        const PBKDF2_BENCH_FACTOR: usize = 10;
-
-        let pbkdf2_cost = match Password::bench_pbkdf2(PBKDF2_MIN_NIST_COST * PBKDF2_BENCH_FACTOR) {
-            Some(bt) => {
-                let ubt = bt.as_nanos() as usize;
-
-                // Get the cost per thousand rounds
-                let per_thou = (PBKDF2_MIN_NIST_COST * PBKDF2_BENCH_FACTOR) / 1000;
-                let t_per_thou = ubt / per_thou;
-                trace!("{:010}µs / 1000 rounds", t_per_thou);
-
-                // Now we need the attacker work in nanos
-                let target = target_time.as_nanos() as usize;
-                let r = (target / t_per_thou) * 1000;
-
-                trace!("{}µs target time", target);
-                trace!("Maybe rounds -> {}", r);
-
-                if r < PBKDF2_MIN_NIST_COST {
-                    PBKDF2_MIN_NIST_COST
-                } else {
-                    r
-                }
-            }
-            None => PBKDF2_MIN_NIST_COST,
-        };
-
         // Argon2id has multiple parameters. These all are about *exchanges* that you can
         // request in how the computation is performed.
         //
@@ -281,19 +258,18 @@ impl CryptoPolicy {
             };
 
             if let Some(ubt) = Password::bench_argon2id(params) {
-                debug!("{}µs - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
+                debug!("{}ns - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
                 // Parameter adjustment
                 if ubt < target_time {
+                    let m_mult = target_time
+                        .as_nanos()
+                        .checked_div(ubt.as_nanos())
+                        .unwrap_or(1);
                     if m_cost < ARGON2_MAX_RAM_KIB {
                         // Help narrow in quicker.
-                        let m_adjust = if target_time
-                            .as_nanos()
-                            .checked_div(ubt.as_nanos())
-                            .unwrap_or(1)
-                            >= 2
-                        {
-                            // Very far from target, double m_cost.
-                            m_cost * 2
+                        let m_adjust = if m_mult >= 2 {
+                            // Far away, multiply up
+                            m_cost * u32::try_from(m_mult).unwrap_or(2)
                         } else {
                             // Close! Increase in a small step
                             m_cost + 1024
@@ -306,19 +282,26 @@ impl CryptoPolicy {
                         };
                         continue;
                     } else if t_cost < ARGON2_MAX_T_COST {
-                        // t=2 with m = 32MB is about the same as t=3 m=20MB, so we want to start with ram
-                        // higher on these iterations. About 12MB appears to be one iteration. We use 8MB
-                        // here though, just to give a little window under that for adjustment.
-                        //
-                        // Similar, once we hit t=4 we just need to have max ram.
-                        t_cost += 1;
-                        // Halve the ram cost.
-                        let m_adjust = m_cost
-                            .checked_sub(ARGON2_TCOST_RAM_ITER_KIB)
-                            .unwrap_or(ARGON2_MIN_RAM_KIB);
+                        // Help narrow in quicker.
+                        if m_mult >= 2 {
+                            // Far away, multiply T next
+                            let t_adjust = t_cost * u32::try_from(m_mult).unwrap_or(2);
+                            t_cost = t_adjust.clamp(ARGON2_MIN_T_COST, ARGON2_MAX_T_COST);
+                        } else {
+                            // t=2 with m = 32MB is about the same as t=3 m=20MB, so we want to start with ram
+                            // higher on these iterations. About 12MB appears to be one iteration. We use 8MB
+                            // here though, just to give a little window under that for adjustment.
+                            //
+                            // Similar, once we hit t=4 we just need to have max ram.
+                            t_cost += 1;
+                            // Halve the ram cost.
+                            let m_adjust = m_cost
+                                .checked_sub(ARGON2_TCOST_RAM_ITER_KIB)
+                                .unwrap_or(ARGON2_MIN_RAM_KIB);
 
-                        // Clamp the value
-                        m_cost = m_adjust.clamp(ARGON2_MIN_RAM_KIB, ARGON2_MAX_RAM_KIB);
+                            // Clamp the value
+                            m_cost = m_adjust.clamp(ARGON2_MIN_RAM_KIB, ARGON2_MAX_RAM_KIB);
+                        }
                         continue;
                     } else {
                         // Unable to proceed, parameters are maxed out.
@@ -340,10 +323,10 @@ impl CryptoPolicy {
             .unwrap_or_default();
 
         let p = CryptoPolicy {
-            pbkdf2_cost,
+            pbkdf2_cost: PBKDF2_DEFAULT_COST,
             argon2id_params,
         };
-        debug!(pbkdf2_cost = %p.pbkdf2_cost, argon2id_m = %p.argon2id_params.m_cost(), argon2id_p = %p.argon2id_params.p_cost(), argon2id_t = %p.argon2id_params.t_cost(), );
+        debug!(argon2id_m = %p.argon2id_params.m_cost(), argon2id_p = %p.argon2id_params.p_cost(), argon2id_t = %p.argon2id_params.t_cost(), );
         p
     }
 }
@@ -398,6 +381,51 @@ enum Kdf {
     CRYPT_SHA512 {
         h: String,
     },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PasswordError {
+    Base64Decoding,
+    InvalidFormat,
+    InvalidKeyLength,
+    InvalidLength,
+    InvalidSaltLength,
+    // We guess what it is, but don't know how to handle it
+    UnsupportedAlgorithm(String),
+    // No idea how to decode this password
+    NoDecoderFound(String),
+    ParsingFailed,
+}
+
+impl Display for PasswordError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PasswordError::Base64Decoding => write!(f, "Base64 decoding failed"),
+            PasswordError::InvalidFormat => write!(f, "Invalid password format"),
+            PasswordError::InvalidKeyLength => write!(f, "Invalid key length for password"),
+            PasswordError::InvalidLength => write!(f, "Invalid length for password"),
+            PasswordError::InvalidSaltLength => write!(f, "Invalid salt length for password"),
+            PasswordError::UnsupportedAlgorithm(alg) => {
+                write!(f, "Unsupported algorithm: {alg}")
+            }
+            PasswordError::NoDecoderFound(hint) => {
+                write!(f, "No decoder found for password in this format - input started with '{hint}' - please report it upstream")
+            }
+            PasswordError::ParsingFailed => write!(f, "Parsing of password failed"),
+        }
+    }
+}
+
+impl From<ParseIntError> for PasswordError {
+    fn from(_err: ParseIntError) -> Self {
+        PasswordError::ParsingFailed
+    }
+}
+
+impl From<base64::DecodeError> for PasswordError {
+    fn from(_err: base64::DecodeError) -> Self {
+        PasswordError::Base64Decoding
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -499,361 +527,310 @@ macro_rules! ab64_to_b64 {
     }};
 }
 
+/// Django passwords look like `algo$salt$hash`
+fn parse_django_password(value: &str) -> Result<Password, PasswordError> {
+    let django_pbkdf: Vec<&str> = value.split('$').collect();
+    if django_pbkdf.len() != 4 {
+        return Err(PasswordError::InvalidLength);
+    }
+    // let _algo = django_pbkdf[0];
+    let cost = django_pbkdf[1];
+    let salt = django_pbkdf[2];
+    let hash = django_pbkdf[3];
+    let c = cost.parse::<usize>()?;
+    let s: Vec<_> = salt.as_bytes().to_vec();
+    let h = general_purpose::STANDARD.decode(hash)?;
+    if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
+        Err(PasswordError::InvalidLength)
+    } else {
+        Ok(Password {
+            material: Kdf::PBKDF2(c, s, h),
+        })
+    }
+}
+
+fn parse_ipanthash(hash_value: &str) -> Result<Password, PasswordError> {
+    // Great work.
+    let h = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(hash_value)
+        .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(hash_value))?;
+
+    Ok(Password {
+        material: Kdf::NT_MD4(h),
+    })
+}
+
+fn parse_sambantpassword(hash_value: &str) -> Result<Password, PasswordError> {
+    let h = hex::decode(hash_value).map_err(|_| PasswordError::ParsingFailed)?;
+    Ok(Password {
+        material: Kdf::NT_MD4(h),
+    })
+}
+
+fn parse_crypt(hash_value: &str) -> Result<Password, PasswordError> {
+    if let Some(crypt_md5_phc) = hash_value.strip_prefix("$1$") {
+        let (salt, hash) = crypt_md5_phc
+            .split_once('$')
+            .ok_or(PasswordError::ParsingFailed)?;
+
+        // These are a hash64 format, so leave them as bytes, don't try
+        // to decode.
+        let s = salt.as_bytes().to_vec();
+        let h = hash.as_bytes().to_vec();
+
+        Ok(Password {
+            material: Kdf::CRYPT_MD5 { s, h },
+        })
+    } else if hash_value.starts_with("$5$") {
+        Ok(Password {
+            material: Kdf::CRYPT_SHA256 {
+                h: hash_value.to_string(),
+            },
+        })
+    } else if hash_value.starts_with("$6$") {
+        Ok(Password {
+            material: Kdf::CRYPT_SHA512 {
+                h: hash_value.to_string(),
+            },
+        })
+    } else {
+        Err(PasswordError::UnsupportedAlgorithm("crypt".to_string()))
+    }
+}
+
+fn parse_pbkdf2(hash_format: &str, hash_value: &str) -> Result<Password, PasswordError> {
+    let ol_pbkdf: Vec<&str> = hash_value.split('$').collect();
+    if ol_pbkdf.len() != 3 {
+        warn!("oldap pbkdf2 found but invalid number of elements?");
+        return Err(PasswordError::InvalidLength);
+    }
+
+    let cost = ol_pbkdf[0];
+    let salt = ol_pbkdf[1];
+    let hash = ol_pbkdf[2];
+
+    let c: usize = cost.parse()?;
+
+    let s = ab64_to_b64!(salt);
+    let base64_decoder_config =
+        general_purpose::GeneralPurposeConfig::new().with_decode_allow_trailing_bits(true);
+    let base64_decoder = GeneralPurpose::new(&alphabet::STANDARD, base64_decoder_config);
+    let s = base64_decoder.decode(s).inspect_err(|e| {
+        error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
+    })?;
+
+    let h = ab64_to_b64!(hash);
+    let h = base64_decoder.decode(h).inspect_err(|e| {
+        error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
+    })?;
+
+    match hash_format {
+        // This is just sha1 in a trenchcoat.
+        "pbkdf2" | "pbkdf2-sha1" => {
+            if h.len() < PBKDF2_SHA1_MIN_KEY_LEN {
+                Err(PasswordError::InvalidKeyLength)
+            } else {
+                Ok(Password {
+                    material: Kdf::PBKDF2_SHA1(c, s, h),
+                })
+            }
+        }
+        "pbkdf2-sha256" => {
+            if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
+                Err(PasswordError::InvalidKeyLength)
+            } else {
+                Ok(Password {
+                    material: Kdf::PBKDF2(c, s, h),
+                })
+            }
+        }
+        "pbkdf2-sha512" => {
+            if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
+                Err(PasswordError::InvalidKeyLength)
+            } else {
+                Ok(Password {
+                    material: Kdf::PBKDF2_SHA512(c, s, h),
+                })
+            }
+        }
+        _ => Err(PasswordError::UnsupportedAlgorithm(hash_format.to_string())),
+    }
+}
+
+fn parse_argon(hash_value: &str) -> Result<Password, PasswordError> {
+    match PasswordHash::try_from(hash_value) {
+        Ok(PasswordHash {
+            algorithm,
+            version,
+            params,
+            salt,
+            hash,
+        }) => {
+            if algorithm.as_str() != "argon2id" {
+                error!(alg = %algorithm.as_str(), "Only argon2id is supported");
+                return Err(PasswordError::UnsupportedAlgorithm(algorithm.to_string()));
+            }
+
+            let version = version.unwrap_or(ARGON2_VERSION);
+            let version: Version = version.try_into().map_err(|_| {
+                error!("Failed to convert {} to valid argon2id version", version);
+                PasswordError::ParsingFailed
+            })?;
+
+            let m_cost = params.get_decimal("m").ok_or_else(|| {
+                error!("Failed to access m_cost parameter");
+                PasswordError::ParsingFailed
+            })?;
+
+            let t_cost = params.get_decimal("t").ok_or_else(|| {
+                error!("Failed to access t_cost parameter");
+                PasswordError::ParsingFailed
+            })?;
+
+            let p_cost = params.get_decimal("p").ok_or_else(|| {
+                error!("Failed to access p_cost parameter");
+                PasswordError::ParsingFailed
+            })?;
+
+            let salt = salt
+                .and_then(|s| {
+                    let mut salt_arr = [0u8; 64];
+                    s.decode_b64(&mut salt_arr)
+                        .ok()
+                        .map(|salt_bytes| salt_bytes.to_owned())
+                })
+                .ok_or_else(|| {
+                    error!("Failed to access salt");
+                    PasswordError::ParsingFailed
+                })?;
+
+            let key = hash.map(|h| h.as_bytes().into()).ok_or_else(|| {
+                error!("Failed to access key");
+                PasswordError::ParsingFailed
+            })?;
+
+            Ok(Password {
+                material: Kdf::ARGON2ID {
+                    m_cost,
+                    t_cost,
+                    p_cost,
+                    version: version as u32,
+                    salt,
+                    key,
+                },
+            })
+        }
+        Err(e) => {
+            error!(?e, "Invalid argon2 PHC string");
+            Err(PasswordError::ParsingFailed)
+        }
+    }
+}
+
 impl TryFrom<&str> for Password {
-    type Error = ();
+    type Error = PasswordError;
 
     // As we may add more algos, we keep the match algo single for later.
-    #[allow(clippy::single_match)]
+
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        // There is probably a more efficient way to try this given different types?
+        if value.starts_with("pbkdf2_sha256$") {
+            parse_django_password(value)
+        } else if let Some(hash_value) = value.strip_prefix("ipaNTHash: ") {
+            parse_ipanthash(hash_value)
+        } else if let Some(hash_value) = value.strip_prefix("sambaNTPassword: ") {
+            parse_sambantpassword(hash_value)
+        } else if value.starts_with("{") {
+            // Test 389ds/openldap formats. Shout outs openldap which sometimes makes these
+            // lowercase, so we're making them all lowercase!
 
-        // test django - algo$salt$hash
-        let django_pbkdf: Vec<&str> = value.split('$').collect();
-        if django_pbkdf.len() == 4 {
-            let algo = django_pbkdf[0];
-            let cost = django_pbkdf[1];
-            let salt = django_pbkdf[2];
-            let hash = django_pbkdf[3];
-            match algo {
-                "pbkdf2_sha256" => {
-                    let c = cost.parse::<usize>().map_err(|_| ())?;
-                    let s: Vec<_> = salt.as_bytes().to_vec();
-                    let h = general_purpose::STANDARD.decode(hash).map_err(|_| ())?;
-                    if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
-                        return Err(());
-                    }
-                    return Ok(Password {
-                        material: Kdf::PBKDF2(c, s, h),
-                    });
-                }
-                _ => {}
-            }
-        }
-
-        if value.starts_with("ipaNTHash: ") {
-            let nt_md4 = match value.split_once(' ') {
-                Some((_, v)) => v,
+            // turn {hash_format}hash_value into hash_format and hash_value (and lowercase hash_format)
+            let (hash_format, hash_value) = match value.split_once('}') {
+                Some((format, value)) => (
+                    format.strip_prefix('{').unwrap_or(format).to_lowercase(),
+                    value,
+                ),
                 None => {
-                    return Err(());
+                    return Err(PasswordError::InvalidFormat);
                 }
             };
 
-            // Great work.
-            let h = base64::engine::general_purpose::URL_SAFE_NO_PAD
-                .decode(nt_md4)
-                .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(nt_md4))
-                .map_err(|_| ())?;
-
-            return Ok(Password {
-                material: Kdf::NT_MD4(h),
-            });
-        }
-
-        if value.starts_with("sambaNTPassword: ") {
-            let nt_md4 = match value.split_once(' ') {
-                Some((_, v)) => v,
-                None => {
-                    return Err(());
+            match hash_format.as_str() {
+                // Test for OpenLDAP formats
+                "pbkdf2" | "pbkdf2-sha1" | "pbkdf2-sha256" | "pbkdf2-sha512" => {
+                    parse_pbkdf2(&hash_format, hash_value)
                 }
-            };
 
-            let h = hex::decode(nt_md4).map_err(|_| ())?;
-            return Ok(Password {
-                material: Kdf::NT_MD4(h),
-            });
-        }
-
-        // Test 389ds/openldap formats. Shout outs openldap which sometimes makes these
-        // lowercase.
-
-        if let Some(crypt) = value
-            .strip_prefix("{crypt}")
-            .or_else(|| value.strip_prefix("{CRYPT}"))
-        {
-            if let Some(crypt_md5_phc) = crypt.strip_prefix("$1$") {
-                let (salt, hash) = crypt_md5_phc.split_once('$').ok_or(())?;
-
-                // These are a hash64 format, so leave them as bytes, don't try
-                // to decode.
-                let s = salt.as_bytes().to_vec();
-                let h = hash.as_bytes().to_vec();
-
-                return Ok(Password {
-                    material: Kdf::CRYPT_MD5 { s, h },
-                });
-            }
-
-            if crypt.starts_with("$5$") {
-                return Ok(Password {
-                    material: Kdf::CRYPT_SHA256 {
-                        h: crypt.to_string(),
-                    },
-                });
-            }
-
-            if crypt.starts_with("$6$") {
-                return Ok(Password {
-                    material: Kdf::CRYPT_SHA512 {
-                        h: crypt.to_string(),
-                    },
-                });
-            }
-        } // End crypt
-
-        if let Some(ds_ssha1) = value
-            .strip_prefix("{SHA}")
-            .or_else(|| value.strip_prefix("{sha}"))
-        {
-            let h = general_purpose::STANDARD.decode(ds_ssha1).map_err(|_| ())?;
-            if h.len() != DS_SHA1_HASH_LEN {
-                return Err(());
-            }
-            return Ok(Password {
-                material: Kdf::SHA1(h.to_vec()),
-            });
-        }
-
-        if let Some(ds_ssha1) = value
-            .strip_prefix("{SSHA}")
-            .or_else(|| value.strip_prefix("{ssha}"))
-        {
-            let sh = general_purpose::STANDARD.decode(ds_ssha1).map_err(|_| ())?;
-            let (h, s) = sh.split_at(DS_SHA1_HASH_LEN);
-            if s.len() != DS_SHA_SALT_LEN {
-                return Err(());
-            }
-            return Ok(Password {
-                material: Kdf::SSHA1(s.to_vec(), h.to_vec()),
-            });
-        }
-
-        if let Some(ds_ssha256) = value
-            .strip_prefix("{SHA256}")
-            .or_else(|| value.strip_prefix("{sha256}"))
-        {
-            let h = general_purpose::STANDARD
-                .decode(ds_ssha256)
-                .map_err(|_| ())?;
-            if h.len() != DS_SHA256_HASH_LEN {
-                return Err(());
-            }
-            return Ok(Password {
-                material: Kdf::SHA256(h.to_vec()),
-            });
-        }
-
-        if let Some(ds_ssha256) = value
-            .strip_prefix("{SSHA256}")
-            .or_else(|| value.strip_prefix("{ssha256}"))
-        {
-            let sh = general_purpose::STANDARD
-                .decode(ds_ssha256)
-                .map_err(|_| ())?;
-            let (h, s) = sh.split_at(DS_SHA256_HASH_LEN);
-            if s.len() != DS_SHA_SALT_LEN {
-                return Err(());
-            }
-            return Ok(Password {
-                material: Kdf::SSHA256(s.to_vec(), h.to_vec()),
-            });
-        }
-
-        if let Some(ds_ssha512) = value
-            .strip_prefix("{SHA512}")
-            .or_else(|| value.strip_prefix("{sha512}"))
-        {
-            let h = general_purpose::STANDARD
-                .decode(ds_ssha512)
-                .map_err(|_| ())?;
-            if h.len() != DS_SHA512_HASH_LEN {
-                return Err(());
-            }
-            return Ok(Password {
-                material: Kdf::SHA512(h.to_vec()),
-            });
-        }
-
-        if let Some(ds_ssha512) = value
-            .strip_prefix("{SSHA512}")
-            .or_else(|| value.strip_prefix("{ssha512}"))
-        {
-            let sh = general_purpose::STANDARD
-                .decode(ds_ssha512)
-                .map_err(|_| ())?;
-            let (h, s) = sh.split_at(DS_SHA512_HASH_LEN);
-            if s.len() != DS_SHA_SALT_LEN {
-                return Err(());
-            }
-            return Ok(Password {
-                material: Kdf::SSHA512(s.to_vec(), h.to_vec()),
-            });
-        }
-
-        // Test for OpenLDAP formats
-        if value.starts_with("{PBKDF2}")
-            || value.starts_with("{PBKDF2-SHA1}")
-            || value.starts_with("{PBKDF2-SHA256}")
-            || value.starts_with("{PBKDF2-SHA512}")
-        {
-            let ol_pbkdf2 = match value.split_once('}') {
-                Some((_, v)) => v,
-                None => {
-                    return Err(());
-                }
-            };
-
-            let ol_pbkdf: Vec<&str> = ol_pbkdf2.split('$').collect();
-            if ol_pbkdf.len() == 3 {
-                let cost = ol_pbkdf[0];
-                let salt = ol_pbkdf[1];
-                let hash = ol_pbkdf[2];
-
-                let c = cost.parse::<usize>().map_err(|_| ())?;
-
-                let s = ab64_to_b64!(salt);
-                let base64_decoder_config = general_purpose::GeneralPurposeConfig::new()
-                    .with_decode_allow_trailing_bits(true);
-                let base64_decoder =
-                    GeneralPurpose::new(&alphabet::STANDARD, base64_decoder_config);
-                let s = base64_decoder.decode(s).map_err(|e| {
-                    error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
-                })?;
-
-                let h = ab64_to_b64!(hash);
-                let h = base64_decoder.decode(h).map_err(|e| {
-                    error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
-                })?;
-
-                // This is just sha1 in a trenchcoat.
-                if value.strip_prefix("{PBKDF2}").is_some()
-                    || value.strip_prefix("{PBKDF2-SHA1}").is_some()
-                {
-                    if h.len() < PBKDF2_SHA1_MIN_KEY_LEN {
-                        return Err(());
+                "argon2" => parse_argon(hash_value),
+                "crypt" => parse_crypt(hash_value),
+                "sha" => {
+                    let h = general_purpose::STANDARD.decode(hash_value)?;
+                    if h.len() != DS_SHA1_HASH_LEN {
+                        return Err(PasswordError::InvalidSaltLength);
                     }
-                    return Ok(Password {
-                        material: Kdf::PBKDF2_SHA1(c, s, h),
-                    });
+                    Ok(Password {
+                        material: Kdf::SHA1(h.to_vec()),
+                    })
                 }
+                "ssha" => {
+                    let sh = general_purpose::STANDARD.decode(hash_value)?;
+                    let (h, s) = sh
+                        .split_at_checked(DS_SHA1_HASH_LEN)
+                        .ok_or(PasswordError::InvalidLength)?;
 
-                if value.strip_prefix("{PBKDF2-SHA256}").is_some() {
-                    if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
-                        return Err(());
+                    Ok(Password {
+                        material: Kdf::SSHA1(s.to_vec(), h.to_vec()),
+                    })
+                }
+                "sha256" => {
+                    let h = general_purpose::STANDARD.decode(hash_value)?;
+                    if h.len() != DS_SHA256_HASH_LEN {
+                        return Err(PasswordError::InvalidSaltLength);
                     }
-                    return Ok(Password {
-                        material: Kdf::PBKDF2(c, s, h),
-                    });
+                    Ok(Password {
+                        material: Kdf::SHA256(h.to_vec()),
+                    })
                 }
-
-                if value.strip_prefix("{PBKDF2-SHA512}").is_some() {
-                    if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
-                        return Err(());
+                "ssha256" => {
+                    let sh = general_purpose::STANDARD.decode(hash_value)?;
+                    let (h, s) = sh
+                        .split_at_checked(DS_SHA256_HASH_LEN)
+                        .ok_or(PasswordError::InvalidLength)?;
+                    Ok(Password {
+                        material: Kdf::SSHA256(s.to_vec(), h.to_vec()),
+                    })
+                }
+                "sha512" => {
+                    let h = general_purpose::STANDARD.decode(hash_value)?;
+                    if h.len() != DS_SHA512_HASH_LEN {
+                        return Err(PasswordError::InvalidSaltLength);
                     }
-                    return Ok(Password {
-                        material: Kdf::PBKDF2_SHA512(c, s, h),
-                    });
+                    Ok(Password {
+                        material: Kdf::SHA512(h.to_vec()),
+                    })
                 }
-
-                // Should be no way to get here!
-                return Err(());
-            } else {
-                warn!("oldap pbkdf2 found but invalid number of elements?");
+                "ssha512" => {
+                    let sh = general_purpose::STANDARD.decode(hash_value)?;
+                    if sh.len() <= DS_SHA512_HASH_LEN {
+                        return Err(PasswordError::InvalidSaltLength);
+                    }
+                    let (h, s) = sh
+                        .split_at_checked(DS_SHA512_HASH_LEN)
+                        .ok_or(PasswordError::InvalidLength)?;
+                    Ok(Password {
+                        material: Kdf::SSHA512(s.to_vec(), h.to_vec()),
+                    })
+                }
+                _ => Err(PasswordError::NoDecoderFound(hash_format)),
             }
+        } else {
+            Err(PasswordError::NoDecoderFound(
+                value.chars().take(5).collect(),
+            ))
         }
-
-        if let Some(argon2_phc) = value.strip_prefix("{ARGON2}") {
-            match PasswordHash::try_from(argon2_phc) {
-                Ok(PasswordHash {
-                    algorithm,
-                    version,
-                    params,
-                    salt,
-                    hash,
-                }) => {
-                    if algorithm.as_str() != "argon2id" {
-                        error!(alg = %algorithm.as_str(), "Only argon2id is supported");
-                        return Err(());
-                    }
-
-                    let version = version.unwrap_or(ARGON2_VERSION);
-                    let version: Version = version.try_into().map_err(|_| {
-                        error!("Failed to convert {} to valid argon2id version", version);
-                    })?;
-
-                    let m_cost = params.get_decimal("m").ok_or_else(|| {
-                        error!("Failed to access m_cost parameter");
-                    })?;
-
-                    let t_cost = params.get_decimal("t").ok_or_else(|| {
-                        error!("Failed to access t_cost parameter");
-                    })?;
-
-                    let p_cost = params.get_decimal("p").ok_or_else(|| {
-                        error!("Failed to access p_cost parameter");
-                    })?;
-
-                    let salt = salt
-                        .and_then(|s| {
-                            let mut salt_arr = [0u8; 64];
-                            s.decode_b64(&mut salt_arr)
-                                .ok()
-                                .map(|salt_bytes| salt_bytes.to_owned())
-                        })
-                        .ok_or_else(|| {
-                            error!("Failed to access salt");
-                        })?;
-
-                    error!(?salt);
-
-                    let key = hash.map(|h| h.as_bytes().into()).ok_or_else(|| {
-                        error!("Failed to access key");
-                    })?;
-
-                    return Ok(Password {
-                        material: Kdf::ARGON2ID {
-                            m_cost,
-                            t_cost,
-                            p_cost,
-                            version: version as u32,
-                            salt,
-                            key,
-                        },
-                    });
-                }
-                Err(e) => {
-                    error!(?e, "Invalid argon2 phc string");
-                    return Err(());
-                }
-            }
-        }
-
-        // Nothing matched to this point.
-        Err(())
     }
 }
 
 impl Password {
-    fn bench_pbkdf2(pbkdf2_cost: usize) -> Option<Duration> {
-        let mut rng = rand::rng();
-        let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.random()).collect();
-        let input: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.random()).collect();
-        // This is 512 bits of output
-        let mut key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
-
-        let start = Instant::now();
-        pbkdf2_hmac(
-            input.as_slice(),
-            salt.as_slice(),
-            pbkdf2_cost,
-            MessageDigest::sha256(),
-            key.as_mut_slice(),
-        )
-        .ok()?;
-        let end = Instant::now();
-
-        end.checked_duration_since(start)
-    }
-
     fn bench_argon2id(params: Params) -> Option<Duration> {
         let mut rng = rand::rng();
         let salt: Vec<u8> = (0..ARGON2_SALT_LEN).map(|_| rng.random()).collect();
@@ -918,8 +895,8 @@ impl Password {
     pub fn new_argon2id_hsm(
         policy: &CryptoPolicy,
         cleartext: &str,
-        hsm: &mut dyn Tpm,
-        hmac_key: &HmacKey,
+        hsm: &mut dyn TpmHmacS256,
+        hmac_key: &HmacS256Key,
     ) -> Result<Self, CryptoError> {
         let version = Version::V0x13;
 
@@ -937,10 +914,12 @@ impl Password {
             )
             .map_err(|_| CryptoError::Argon2)
             .and_then(|()| {
-                hsm.hmac(hmac_key, &check_key).map_err(|err| {
-                    error!(?err, "hsm error");
-                    CryptoError::Hsm
-                })
+                hsm.hmac_s256(hmac_key, &check_key)
+                    .map_err(|err| {
+                        error!(?err, "hsm error");
+                        CryptoError::Hsm
+                    })
+                    .map(|hmac_output| hmac_output.into_bytes().to_vec())
             })
             .map(|key| Kdf::TPM_ARGON2ID {
                 m_cost: policy.argon2id_params.m_cost(),
@@ -965,7 +944,7 @@ impl Password {
     pub fn verify_ctx(
         &self,
         cleartext: &str,
-        hsm: Option<(&mut dyn Tpm, &HmacKey)>,
+        hsm: Option<(&mut dyn TpmHmacS256, &HmacS256Key)>,
     ) -> Result<bool, CryptoError> {
         match (&self.material, hsm) {
             (
@@ -1006,14 +985,14 @@ impl Password {
                         CryptoError::Argon2
                     })
                     .and_then(|()| {
-                        hsm.hmac(hmac_key, &check_key).map_err(|err| {
+                        hsm.hmac_s256(hmac_key, &check_key).map_err(|err| {
                             error!(?err, "hsm error");
                             CryptoError::Hsm
                         })
                     })
                     .map(|hmac_key| {
                         // Actually compare the outputs.
-                        &hmac_key == key
+                        hmac_key.into_bytes().as_slice() == key
                     })
             }
             (Kdf::TPM_ARGON2ID { .. }, None) => {
@@ -1162,20 +1141,11 @@ impl Password {
                     .flat_map(|i| i.into_iter())
                     .collect();
 
-                let dgst = MessageDigest::from_nid(Nid::MD4).ok_or_else(|| {
-                    error!("Unable to access MD4 - fips mode may be enabled, or you may need to activate the legacy provider.");
-                    error!("For more details, see https://wiki.openssl.org/index.php/OpenSSL_3.0#Providers");
-                    CryptoError::Md4Disabled
-                })?;
+                let mut hasher = Md4::new();
+                hasher.update(&clear_utf16le);
+                let chal_key = hasher.finalize();
 
-                hash::hash(dgst, &clear_utf16le)
-                    .map_err(|e| {
-                        debug!(?e);
-                        error!("Unable to digest MD4 - fips mode may be enabled, or you may need to activate the legacy provider.");
-                        error!("For more details, see https://wiki.openssl.org/index.php/OpenSSL_3.0#Providers");
-                        CryptoError::Md4Disabled
-                    })
-                    .map(|chal_key| chal_key.as_ref() == key)
+                Ok(chal_key.as_slice() == key)
             }
             (Kdf::CRYPT_MD5 { s, h }, _) => {
                 let chal_key = crypt_md5::do_md5_crypt(cleartext.as_bytes(), s);
@@ -1293,8 +1263,10 @@ impl Password {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_hsm_crypto::soft::SoftTpm;
-    use kanidm_hsm_crypto::AuthValue;
+    use kanidm_hsm_crypto::{
+        provider::{SoftTpm, TpmHmacS256},
+        AuthValue,
+    };
     use std::convert::TryFrom;
 
     use crate::*;
@@ -1481,21 +1453,6 @@ mod tests {
      * this for this test.
      */
 
-    /*
-    #[cfg(openssl3)]
-    fn setup_openssl_legacy_provider() -> openssl::lib_ctx::LibCtx {
-        let ctx = openssl::lib_ctx::LibCtx::new()
-            .expect("Failed to create new library context");
-
-        openssl::provider::Provider::load(Some(&ctx), "legacy")
-            .expect("Failed to setup provider.");
-
-        eprintln!("setup legacy provider maybe??");
-
-        ctx
-    }
-    */
-
     #[test]
     fn test_password_from_ipa_nt_hash() {
         sketching::test_init();
@@ -1505,19 +1462,7 @@ mod tests {
         let r = Password::try_from(im_pw).expect("Failed to parse");
         assert!(r.requires_upgrade());
 
-        match r.verify(password) {
-            Ok(r) => assert!(r),
-            Err(_) =>
-            {
-                #[allow(clippy::panic)]
-                if cfg!(openssl3) {
-                    warn!("To run this test, enable the legacy provider.");
-                } else {
-                    panic!("openssl3 not enabled");
-                }
-            }
-        }
-
+        assert!(r.verify(password).expect("Failed to hash"));
         let im_pw = "ipaNTHash: pS43DjQLcUYhaNF_cd_Vhw==";
         Password::try_from(im_pw).expect("Failed to parse");
     }
@@ -1530,18 +1475,7 @@ mod tests {
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
         assert!(r.requires_upgrade());
-        match r.verify(password) {
-            Ok(r) => assert!(r),
-            Err(_) =>
-            {
-                #[allow(clippy::panic)]
-                if cfg!(openssl3) {
-                    warn!("To run this test, enable the legacy provider.");
-                } else {
-                    panic!("OpenSSL3 feature not enabled")
-                }
-            }
-        }
+        assert!(r.verify(password).expect("Failed to hash"));
     }
 
     #[test]
@@ -1581,19 +1515,21 @@ mod tests {
     fn test_password_argon2id_hsm_bind() {
         sketching::test_init();
 
-        let mut hsm: Box<dyn Tpm> = Box::new(SoftTpm::new());
+        let mut hsm: Box<dyn TpmHmacS256> = Box::new(SoftTpm::default());
 
         let auth_value = AuthValue::ephemeral().unwrap();
 
-        let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
+        let loadable_machine_key = hsm.root_storage_key_create(&auth_value).unwrap();
         let machine_key = hsm
-            .machine_key_load(&auth_value, &loadable_machine_key)
+            .root_storage_key_load(&auth_value, &loadable_machine_key)
             .unwrap();
 
-        let loadable_hmac_key = hsm.hmac_key_create(&machine_key).unwrap();
-        let key = hsm.hmac_key_load(&machine_key, &loadable_hmac_key).unwrap();
+        let loadable_hmac_key = hsm.hmac_s256_create(&machine_key).unwrap();
+        let key = hsm
+            .hmac_s256_load(&machine_key, &loadable_hmac_key)
+            .unwrap();
 
-        let ctx: &mut dyn Tpm = &mut *hsm;
+        let ctx: &mut dyn TpmHmacS256 = &mut *hsm;
 
         let p = CryptoPolicy::minimum();
         let c = Password::new_argon2id_hsm(&p, "password", ctx, &key).unwrap();
