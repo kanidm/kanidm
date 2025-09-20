@@ -9,7 +9,7 @@
 
 As of December 2024, the OIDC implementation in Proxmox supports only authentication.
 Authorization has to be done manually.
-Mapping user to specific groups won't work yet (steps 2,3,4).
+Mapping users to specific groups won't work yet (steps 2,3,4).
 
 A patch for this feature exists, but it hasn't been tested extensively:
 <https://lore.proxmox.com/pve-devel/20240901165512.687801-1-thomas@atskinner.net/>
@@ -18,7 +18,7 @@ See also:
 
 ## On Kanidm
 
-### 1. Create the proxmox resource server and configure the redirect URL
+### 1. Create the Proxmox resource server and configure the redirect URL
 
 ```bash
 kanidm system oauth2 create proxmox "proxmox" https://yourproxmox.example.com
@@ -61,7 +61,7 @@ kanidm system oauth2 show-basic-secret proxmox
 
 Copy the value that is returned.
 
-## On proxmox server
+## On the Proxmox server
 
 ### Using WebGUI
 
@@ -71,7 +71,8 @@ Select Datacenter->Realms->Add->OpenID Connect Server
 Issuer URL:
 
 - <https://idm.example.com:8443/oauth2/openid/proxmox>
-When kanidm is behind reverse proxy or when using docker port mapping:
+
+When Kanidm is behind a reverse proxy or when using Docker port mapping:
 - <https://idm.example.com/oauth2/openid/proxmox>
 
 Realm: give some proper name or anything that's meaningful
@@ -84,8 +85,15 @@ Autocreate Users: Automatically create users if they do not exist. Users are sto
 
 ### Using CLI
 
-Login to proxmox node and execute:
+Login to the Proxmox node and execute:
 
 ```bash
-pveum realm add kanidm --type openid --issuer-url https://idm.example.com/oauth2/openid/proxmox --client-id proxmox --client-key="secret from step 6" --username-claim username --scopes="email profile openid" --autocreate
+pveum realm add kanidm \
+ --type openid \
+ --issuer-url https://idm.example.com/oauth2/openid/proxmox \
+ --client-id proxmox \
+ --client-key="secret from step 6" 
+ --username-claim username \
+ --scopes="email profile openid" \
+ --autocreate
 ```
