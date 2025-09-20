@@ -11,7 +11,7 @@ As of December 2024, the OIDC implementation in Proxmox supports only authentica
 Authorization has to be done manually.
 Mapping user to specific groups won't work yet (steps 2,3,4).
 
-Patch for this feature exists, but it hasn't been tested extensively:
+A patch for this feature exists, but it hasn't been tested extensively:
 <https://lore.proxmox.com/pve-devel/20240901165512.687801-1-thomas@atskinner.net/>
 See also:
 <https://forum.proxmox.com/threads/openid-connect-default-group.103394/>
