@@ -27,7 +27,7 @@ Before upgrading you should review [our upgrade documentation]
 #### 1.7.0 Release Highlights
 
 - Darkmode UI colour and style improvements (#3593, #3660)
-- OpenSSL removal in favour of rust-cryptography and rustls (#3594, #3687,  )
+- OpenSSL removal in favour of rust-cryptography and rustls (#3594, #3687, )
 - OAuth2 client IDs always process as lowercase (#3605)
 - Test for corrupt unicode in SSH keys (#3618)
 - Accept SSH keys with variable salt lengths (#3629)
