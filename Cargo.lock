@@ -3697,6 +3697,7 @@ dependencies = [
  "tokio-util",
  "toml",
  "tracing",
+ "tracing-subscriber",
  "yescrypt",
 ]
 
@@ -3726,6 +3727,7 @@ dependencies = [
  "lru 0.14.0",
  "notify-debouncer-full",
  "prctl",
+ "rand 0.9.2",
  "rusqlite",
  "sd-notify",
  "serde",
@@ -6980,8 +6982,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-forest"
-version = "0.1.6"
-source = "git+https://github.com/Firstyear/tracing-forest.git?rev=a04c79e049ee31fcc6965091181a5e427196db9b#a04c79e049ee31fcc6965091181a5e427196db9b"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3298fe855716711a00474eceb89cc7dc254bbe67f6bc4afafdeec5f0c538771c"
 dependencies = [
  "smallvec",
  "thiserror 2.0.12",
