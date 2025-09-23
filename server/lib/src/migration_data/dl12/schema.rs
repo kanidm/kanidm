@@ -692,13 +692,19 @@ pub static ref SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9: SchemaAttribute = Schem
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_REFERS_DL7: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_REFERS,
-    name: Attribute::Refers,
-    description: "A reference to linked object".to_string(),
-    indexed: true,
-    multivalue: false,
-    syntax: SyntaxType::ReferenceUuid,
+pub static ref SCHEMA_ATTR_IMAGE: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_IMAGE,
+    name: Attribute::Image,
+    description: "An image for display to end users.".to_string(),
+    syntax: SyntaxType::Image,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE,
+    name: Attribute::OAuth2DeviceFlowEnable,
+    description: "Enable the OAuth2 Device Flow for this client.".to_string(),
+    syntax: SyntaxType::Boolean,
     ..Default::default()
 };
 

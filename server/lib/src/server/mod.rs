@@ -471,7 +471,7 @@ pub trait QueryServerTransaction<'a> {
 
     /// From internal, generate an "exists" event and dispatch
     #[instrument(level = "debug", skip_all)]
-    fn internal_exists(&mut self, filter: Filter<FilterInvalid>) -> Result<bool, OperationError> {
+    fn internal_exists(&mut self, filter: &Filter<FilterInvalid>) -> Result<bool, OperationError> {
         // Check the filter
         let f_valid = filter
             .validate(self.get_schema())
@@ -485,7 +485,7 @@ pub trait QueryServerTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     fn internal_exists_uuid(&mut self, uuid: Uuid) -> Result<bool, OperationError> {
         let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)));
-        self.internal_exists(filter)
+        self.internal_exists(&filter)
     }
 
     #[instrument(level = "debug", skip_all)]

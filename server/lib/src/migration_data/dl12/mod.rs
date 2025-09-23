@@ -88,7 +88,6 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         // DL7
         SCHEMA_ATTR_PATCH_LEVEL_DL7.clone().into(),
         SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7.clone().into(),
-        SCHEMA_ATTR_REFERS_DL7.clone().into(),
         SCHEMA_ATTR_CERTIFICATE_DL7.clone().into(),
         SCHEMA_ATTR_OAUTH2_RS_ORIGIN_DL7.clone().into(),
         SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI_DL7.clone().into(),
@@ -109,6 +108,8 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         // DL11
         SCHEMA_ATTR_APPLICATION_URL.clone().into(),
         // DL12
+        SCHEMA_ATTR_IMAGE.clone().into(),
+        SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE.clone().into(),
     ]
 }
 
