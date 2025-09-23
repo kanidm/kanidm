@@ -387,7 +387,7 @@ async fn scim_person_id_get(
 }
 
 #[utoipa::path(
-    get,
+    post,
     path = "/scim/v1/Person/{id}/Application/_create_password",
     request_body = ScimApplicationPasswordCreate,
     responses(
