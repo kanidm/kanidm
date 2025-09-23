@@ -578,6 +578,10 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
     };
 
     let client_builder = if let Some(kconfig) = &cfg.kanidm_config {
+        if kconfig.pam_allowed_login_groups.is_empty() {
+            error!("Kanidm is enabled but no pam_allowed_login_groups are set - KANIDM USERS CANNOT AUTHENTICATE !!!");
+        }
+
         // setup
         let cb = match KanidmClientBuilder::new().read_options_from_optional_config(&cfg_path) {
             Ok(v) => v,
