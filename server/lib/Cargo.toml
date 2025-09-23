@@ -87,6 +87,7 @@ image = { workspace = true, default-features = false, features = [
     "webp",
 ] }
 svg = { workspace = true }
+flate2 = "1.1.2"
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]

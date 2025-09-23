@@ -4,6 +4,7 @@ use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::internal::{
     ApiToken, AppLink, CURequest, CUSessionToken, CUStatus, CredentialStatus, IdentifyUserRequest,
     IdentifyUserResponse, ImageValue, OperationError, RadiusAuthToken, SearchRequest,
@@ -193,6 +194,7 @@ impl QueryServerReadV1 {
         msg: OnlineBackupEvent,
         outpath: &Path,
         versions: usize,
+        compression: BackupCompression,
     ) -> Result<(), OperationError> {
         trace!(eventid = ?msg.eventid, "Begin online backup event");
 
@@ -200,7 +202,7 @@ impl QueryServerReadV1 {
 
         #[allow(clippy::unwrap_used)]
         let timestamp = now.format(&Rfc3339).unwrap();
-        let dest_file = outpath.join(format!("backup-{timestamp}.json"));
+        let dest_file = outpath.join(format!("backup-{timestamp}.json{}", compression.suffix()));
 
         if dest_file.exists() {
             error!(
@@ -216,7 +218,7 @@ impl QueryServerReadV1 {
             idms_prox_read
                 .qs_read
                 .get_be_txn()
-                .backup(&dest_file)
+                .backup(&dest_file, compression)
                 .map(|()| {
                     info!("Online backup created {} successfully", dest_file.display());
                 })
@@ -230,8 +232,10 @@ impl QueryServerReadV1 {
                 })?;
         }
 
+        // TODO: make the file rotation a separate function
+
         // pattern to find automatically generated backup files
-        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z\.json$")
+        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z\.json")
             .map_err(|error| {
                 error!(
                     "Failed to parse regexp for online backup files: {:?}",

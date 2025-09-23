@@ -21,15 +21,21 @@ use concread::cowcell::*;
 use hashbrown::{HashMap as Map, HashSet};
 use idlset::v2::IDLBitRange;
 use idlset::AndNot;
+use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::internal::{ConsistencyError, OperationError};
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::prelude::*;
+use std::io::Read;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{trace, trace_span};
 use uuid::Uuid;
+
+use flate2::write::GzEncoder;
+use flate2::Compression;
 
 pub(crate) mod dbentry;
 pub(crate) mod dbrepl;
@@ -941,7 +947,11 @@ pub trait BackendTransaction {
         self.get_ruv().verify(&entries, results);
     }
 
-    fn backup(&mut self, dst_path: &Path) -> Result<(), OperationError> {
+    fn backup(
+        &mut self,
+        dst_path: &Path,
+        compression: BackupCompression,
+    ) -> Result<(), OperationError> {
         let repl_meta = self.get_ruv().to_db_backup_ruv();
 
         // load all entries into RAM, may need to change this later
@@ -988,12 +998,29 @@ pub trait BackendTransaction {
             OperationError::SerdeJsonError
         })?;
 
-        fs::write(dst_path, serialized_entries_str)
-            .map(|_| ())
-            .map_err(|e| {
-                admin_error!(?e, "fs::write error");
-                OperationError::FsError
-            })
+        match compression {
+            BackupCompression::NoCompression => fs::write(dst_path, serialized_entries_str)
+                .map(|_| ())
+                .map_err(|e| {
+                    admin_error!(?e, "fs::write error");
+                    OperationError::FsError
+                }),
+            BackupCompression::Gzip => {
+                let writer = std::fs::File::create(dst_path).map_err(|e| {
+                    admin_error!(?e, "File::create error creating {}", dst_path.display());
+                    OperationError::FsError
+                })?;
+
+                let mut encoder = GzEncoder::new(writer, Compression::best());
+                encoder
+                    .write_all(serialized_entries_str.as_bytes())
+                    .map_err(|e| {
+                        admin_error!(?e, "Gzip compression error writing backup");
+                        OperationError::FsError
+                    })?;
+                Ok(())
+            }
+        }
     }
 
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
@@ -1814,13 +1841,33 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn restore(&mut self, src_path: &Path) -> Result<(), OperationError> {
-        let serialized_string = fs::read_to_string(src_path).map_err(|e| {
-            admin_error!("fs::read_to_string {:?}", e);
-            OperationError::FsError
-        })?;
+        let compression = BackupCompression::identify_file(src_path);
+
+        debug!("Backup compression identified: {}", compression);
+        let serialized_string = match compression {
+            BackupCompression::NoCompression => fs::read_to_string(src_path).map_err(|e| {
+                error!("Failed to read backup file {} {e:?}", src_path.display());
+                OperationError::FsError
+            })?,
+            BackupCompression::Gzip => {
+                let reader = std::fs::File::open(src_path).map_err(|e| {
+                    error!("Failed to open backup file {} {e:?}", src_path.display());
+                    OperationError::FsError
+                })?;
+                let mut decoder = flate2::read::GzDecoder::new(reader);
+                let mut decompressed_data = String::new();
+                decoder
+                    .read_to_string(&mut decompressed_data)
+                    .map_err(|e| {
+                        error!("GZip decompression error {:?}", e);
+                        OperationError::FsError
+                    })?;
+                decompressed_data
+            }
+        };
 
         self.danger_delete_all_db_content().map_err(|e| {
-            admin_error!("delete_all_db_content failed {:?}", e);
+            error!("delete_all_db_content failed {:?}", e);
             e
         })?;
 
@@ -2222,6 +2269,7 @@ mod tests {
     use crate::repl::cid::Cid;
     use crate::value::{IndexType, PartialValue, Value};
     use idlset::v2::IDLBitRange;
+    use kanidm_proto::backup::BackupCompression;
     use std::fs;
     use std::iter::FromIterator;
     use std::path::Path;
@@ -2606,7 +2654,7 @@ mod tests {
     #[test]
     fn test_be_backup_restore() {
         let db_backup_file_name =
-            Path::new(option_env!("OUT_DIR").unwrap_or("/tmp")).join(".backup_test.json");
+            Path::new(option_env!("OUT_DIR").unwrap_or("/tmp")).join(".backup_test.json.gz");
         eprintln!(" ⚠️   {}", db_backup_file_name.display());
         run_test!(|be: &mut BackendWriteTransaction| {
             // Important! Need db metadata setup!
@@ -2652,8 +2700,8 @@ mod tests {
                 // otherwise return the error
                 if e.kind() == std::io::ErrorKind::NotFound {}
             }
-
-            be.backup(&db_backup_file_name).expect("Backup failed!");
+            be.backup(&db_backup_file_name, BackupCompression::Gzip)
+                .expect("Backup failed!");
             be.restore(&db_backup_file_name).expect("Restore failed!");
 
             assert!(be.verify().is_empty());
@@ -2709,7 +2757,8 @@ mod tests {
                 if e.kind() == std::io::ErrorKind::NotFound {}
             }
 
-            be.backup(&db_backup_file_name).expect("Backup failed!");
+            be.backup(&db_backup_file_name, BackupCompression::NoCompression)
+                .expect("Backup failed!");
 
             // Now here, we need to tamper with the file.
             let serialized_string = fs::read_to_string(&db_backup_file_name).unwrap();
