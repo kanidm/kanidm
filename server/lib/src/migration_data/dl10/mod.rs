@@ -106,6 +106,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_DENIED_NAME_DL10.clone().into(),
         SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES.clone().into(),
         SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256_DL6.clone().into(),
+        SCHEMA_ATTR_IMAGE.clone().into(),
         // DL11
     ]
 }

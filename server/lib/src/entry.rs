@@ -1209,6 +1209,8 @@ impl Entry<EntryInvalid, EntryCommitted> {
         // This will put the modify ahead of the revive transition.
         self.remove_ava(Attribute::Class, &EntryClass::Recycled.into());
         self.remove_ava(Attribute::Class, &EntryClass::Conflict.into());
+
+        self.purge_ava(Attribute::CascadeDeleted);
         self.purge_ava(Attribute::SourceUuid);
         self.purge_ava(Attribute::RecycledDirectMemberOf);
 

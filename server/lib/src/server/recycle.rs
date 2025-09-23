@@ -2,7 +2,7 @@ use super::modify::ModifyPartial;
 use crate::event::ReviveRecycledEvent;
 use crate::prelude::*;
 use crate::server::Plugins;
-use hashbrown::HashMap;
+use std::collections::BTreeMap;
 
 impl QueryServerWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
@@ -86,7 +86,7 @@ impl QueryServerWriteTransaction<'_> {
         }
 
         // Get the list of pre_candidates, using impersonate search.
-        let pre_candidates =
+        let mut pre_candidates =
             self.impersonate_search_valid(re.filter.clone(), re.filter.clone(), &re.ident)?;
 
         // Is the list empty?
@@ -98,7 +98,7 @@ impl QueryServerWriteTransaction<'_> {
                 );
                 return Ok(());
             } else {
-                request_error!(
+                error!(
                     "revive: no candidates match filter, failure {:?}",
                     re.filter
                 );
@@ -139,35 +139,27 @@ impl QueryServerWriteTransaction<'_> {
             return Err(OperationError::AccessDenied);
         }
 
-        // Build the list of mods from directmo, to revive memberships.
-        let mut dm_mods: HashMap<Uuid, ModifyList<ModifyInvalid>> =
-            HashMap::with_capacity(pre_candidates.len());
-
-        for e in &pre_candidates {
-            // Get this entries uuid.
-            let u: Uuid = e.get_uuid();
-
-            if let Some(riter) = e.get_ava_as_refuuid(Attribute::RecycledDirectMemberOf) {
-                for g_uuid in riter {
-                    dm_mods
-                        .entry(g_uuid)
-                        .and_modify(|mlist| {
-                            let m = Modify::Present(Attribute::Member, Value::Refer(u));
-                            mlist.push_mod(m);
-                        })
-                        .or_insert({
-                            let m = Modify::Present(Attribute::Member, Value::Refer(u));
-                            ModifyList::new_list(vec![m])
-                        });
-                }
-            }
-        }
+        // ======= Access Control and Invariants Checked !!! ========
 
         // From the pre_candidate set, find all related entries that also need to
         // be revived at the same time.
+        let references_filt = filter_rec!(f_or(
+            pre_candidates
+                .iter()
+                .map(|entry| {
+                    f_eq(
+                        Attribute::CascadeDeleted,
+                        PartialValue::Uuid(entry.get_uuid()),
+                    )
+                })
+                .collect(),
+        ));
 
-        // debug_assert!(false);
+        let mut pre_cascade_revive_candidates = self
+            .internal_search(references_filt)
+            .inspect_err(|err| error!(?err, "unable to find reference entries"))?;
 
+        pre_candidates.append(&mut pre_cascade_revive_candidates);
 
         // clone the writeable entries.
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
@@ -176,6 +168,13 @@ impl QueryServerWriteTransaction<'_> {
                 er.as_ref()
                     .clone()
                     .invalidate(self.cid.clone(), &self.trim_cid)
+            })
+            // Restore their Refers attribute.
+            .map(|mut entry| {
+                if let Some(refers_uuid) = entry.get_ava_single_uuid(Attribute::CascadeDeleted) {
+                    entry.set_ava_set(&Attribute::Refers, ValueSetRefer::new(refers_uuid));
+                }
+                entry
             })
             // Mutate to apply the revive.
             .map(|er| er.to_revived())
@@ -208,6 +207,29 @@ impl QueryServerWriteTransaction<'_> {
             .collect();
 
         let norm_cand: Vec<Entry<_, _>> = res?;
+
+        // Finally, setup the mod for restoring memberships from direct member of
+        let mut dm_mods: BTreeMap<Uuid, ModifyList<ModifyInvalid>> = Default::default();
+
+        for entry in &pre_candidates {
+            // Get this entries uuid.
+            let u: Uuid = entry.get_uuid();
+
+            if let Some(riter) = entry.get_ava_as_refuuid(Attribute::RecycledDirectMemberOf) {
+                for g_uuid in riter {
+                    dm_mods
+                        .entry(g_uuid)
+                        .and_modify(|mlist| {
+                            let m = Modify::Present(Attribute::Member, Value::Refer(u));
+                            mlist.push_mod(m);
+                        })
+                        .or_insert({
+                            let m = Modify::Present(Attribute::Member, Value::Refer(u));
+                            ModifyList::new_list(vec![m])
+                        });
+                }
+            }
+        }
 
         // build the mod partial
         let mp = ModifyPartial {

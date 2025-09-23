@@ -128,6 +128,14 @@ pub static ref SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES: SchemaAttribute = 
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_IMAGE: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_IMAGE,
+    name: Attribute::Image,
+    description: "An image for display to end users.".to_string(),
+    syntax: SyntaxType::Image,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
     name: Attribute::DomainDisplayName,

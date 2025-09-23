@@ -17,7 +17,7 @@ impl QueryServerWriteTransaction<'_> {
         }
 
         // Now, delete only what you can see
-        let pre_candidates = self
+        let mut pre_candidates = self
             .impersonate_search_valid(de.filter.clone(), de.filter_orig.clone(), &de.ident)
             .map_err(|e| {
                 admin_error!("delete: error in pre-candidate selection {:?}", e);
@@ -49,6 +49,56 @@ impl QueryServerWriteTransaction<'_> {
             return Err(OperationError::AccessDenied);
         }
 
+        // ======= Access Control and Invariants Checked !!! ========
+
+        // We now extend pre-candidates with anything that will be cascade-deleted.
+        let references_filt = filter!(f_or(
+            pre_candidates
+                .iter()
+                .map(|entry| { f_eq(Attribute::Refers, PartialValue::Refer(entry.get_uuid())) })
+                .collect(),
+        ));
+
+        let mut pre_cascade_delete_candidates = self
+            .internal_search(references_filt)
+            .inspect_err(|err| error!(?err, "unable to find reference entries"))?;
+
+        #[cfg(debug_assertions)]
+        {
+            use std::collections::BTreeSet;
+
+            let candidate_uuids: BTreeSet<_> =
+                pre_candidates.iter().map(|e| e.get_uuid()).collect();
+            let ref_candidate_uuids: BTreeSet<_> = pre_cascade_delete_candidates
+                .iter()
+                .map(|e| e.get_uuid())
+                .collect();
+
+            assert!(candidate_uuids.is_disjoint(&ref_candidate_uuids));
+        }
+
+        let mut cascade_delete_candidates: Vec<Entry<EntryInvalid, EntryCommitted>> =
+            pre_cascade_delete_candidates
+                .iter()
+                // Invalidate and assign change id's
+                .map(|er| {
+                    er.as_ref()
+                        .clone()
+                        .invalidate(self.cid.clone(), &self.trim_cid)
+                })
+                // These entries are the ones that are being deleted by cascade, so we mark them
+                // as such.
+                .map(|mut entry| {
+                    if let Some(refer_uuid) = entry.get_ava_single_refer(Attribute::Refers) {
+                        // Stash the entry that triggered our deleted in this attribute. This
+                        // allows us to restore this linkage on revive, and also being a uuid instead
+                        // of a refers means that refint won't clean this linkage.
+                        entry.add_ava(Attribute::CascadeDeleted, Value::Uuid(refer_uuid));
+                    };
+                    entry
+                })
+                .collect();
+
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()
             // Invalidate and assign change id's
@@ -58,6 +108,9 @@ impl QueryServerWriteTransaction<'_> {
                     .invalidate(self.cid.clone(), &self.trim_cid)
             })
             .collect();
+
+        pre_candidates.append(&mut pre_cascade_delete_candidates);
+        candidates.append(&mut cascade_delete_candidates);
 
         trace!(?candidates, "delete: candidates");
 
