@@ -892,7 +892,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             .inner
             .rs_set_get(client_auth.client_id.as_str())
             .ok_or_else(|| {
-                admin_warn!("Invalid OAuth2 client_id");
+                warn!("Invalid OAuth2 client_id");
                 Oauth2Error::AuthenticationRequired
             })?;
 
@@ -900,7 +900,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
                 if Some(authz_secret) != client_auth.client_secret.as_ref() {
-                    security_info!("Invalid OAuth2 client_id secret, this can happen if your RS is public but you configured a 'basic' type.");
+                    info!("Invalid OAuth2 client_id secret, this can happen if your RS is public but you configured a 'basic' type.");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
             }
@@ -1023,13 +1023,13 @@ impl IdmServerProxyWriteTransaction<'_> {
                         if authz_secret == &secret {
                             true
                         } else {
-                            security_info!("Invalid OAuth2 client_id secret");
+                            info!("Invalid OAuth2 client_id secret");
                             return Err(Oauth2Error::AuthenticationRequired);
                         }
                     }
                     None => {
                         // We can only get here if we relied on the atr for the client_id and secret
-                        security_info!(
+                        info!(
                             "Invalid OAuth2 authentication - no secret in access token request - this can happen if you're expecting a public client and configured a basic one."
                         );
                         return Err(Oauth2Error::AuthenticationRequired);
@@ -1079,7 +1079,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             .inner
             .rs_set_get(client_id)
             .ok_or_else(|| {
-                admin_warn!("Invalid OAuth2 client_id {}", client_id);
+                warn!("Invalid OAuth2 client_id {}", client_id);
                 Oauth2Error::AuthenticationRequired
             })?
             .clone();
@@ -1959,7 +1959,7 @@ impl IdmServerProxyReadTransaction<'_> {
             .inner
             .rs_set_get(&auth_req.client_id)
             .ok_or_else(|| {
-                admin_warn!(
+                warn!(
                     "Invalid OAuth2 client_id ({}) Have you configured the OAuth2 resource server?",
                     &auth_req.client_id
                 );
@@ -2355,7 +2355,7 @@ impl IdmServerProxyReadTransaction<'_> {
             .inner
             .rs_set_get(&client_auth.client_id)
             .ok_or_else(|| {
-                admin_warn!("Invalid OAuth2 client_id");
+                warn!("Invalid OAuth2 client_id");
                 Oauth2Error::AuthenticationRequired
             })?;
 
@@ -2363,7 +2363,7 @@ impl IdmServerProxyReadTransaction<'_> {
         match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
                 if Some(authz_secret) != client_auth.client_secret.as_ref() {
-                    security_info!("Invalid OAuth2 client_id secret");
+                    info!("Invalid OAuth2 client_id secret");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
             }
@@ -2555,9 +2555,7 @@ impl IdmServerProxyReadTransaction<'_> {
         // lifetime here is safe since we are the sole accessor.
         let o2rs: &Oauth2RS = unsafe {
             let s = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
-                admin_warn!(
-                    "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
-                );
+                warn!("Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)");
                 Oauth2Error::InvalidClientId
             })?;
             &*(s as *const _)
@@ -2655,9 +2653,7 @@ impl IdmServerProxyReadTransaction<'_> {
         client_id: &str,
     ) -> Result<Oauth2Rfc8414MetadataResponse, OperationError> {
         let o2rs = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
-            admin_warn!(
-                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
-            );
+            warn!("Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)");
             OperationError::NoMatchingEntries
         })?;
 
@@ -2726,9 +2722,7 @@ impl IdmServerProxyReadTransaction<'_> {
         client_id: &str,
     ) -> Result<OidcDiscoveryResponse, OperationError> {
         let o2rs = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
-            admin_warn!(
-                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
-            );
+            warn!("Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)");
             OperationError::NoMatchingEntries
         })?;
 
@@ -2841,9 +2835,7 @@ impl IdmServerProxyReadTransaction<'_> {
         resource_id: &str,
     ) -> Result<OidcWebfingerResponse, OperationError> {
         let o2rs = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
-            admin_warn!(
-                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
-            );
+            warn!("Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)");
             OperationError::NoMatchingEntries
         })?;
 
@@ -2875,9 +2867,7 @@ impl IdmServerProxyReadTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
         let o2rs = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
-            admin_warn!(
-                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
-            );
+            warn!("Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)");
             OperationError::NoMatchingEntries
         })?;
 
