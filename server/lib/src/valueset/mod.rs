@@ -159,7 +159,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     fn cmp(&self, _other: &ValueSet) -> Ordering {
         // IMPORTANT - in the case we attempt to compare the ordering of two value sets
         // that are different syntaxs or types, the CORRECT and reliable thing to do is
-        // report them as equal such that any sorting function wont rearrange the values.
+        // report them as equal such that any sorting function won't rearrange the values.
         error!("cmp should not be called on {:?}", self.syntax());
         debug_assert!(false);
         Ordering::Equal

@@ -180,7 +180,7 @@ impl IdmServer {
                 "Effective domain (ed) is not a descendent of server domain name (rp_id)."
             );
             admin_error!(
-                "You must change origin or domain name to be consistent. ded: {:?} - rp_id: {:?}",
+                "You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}",
                 origin,
                 rp_id
             );

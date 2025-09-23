@@ -54,6 +54,7 @@ pub fn read_etc_passwd_file<P: AsRef<Path>>(path: P) -> Result<Vec<EtcUser>, Uni
 pub enum CryptPw {
     Sha256(String),
     Sha512(String),
+    YesCrypt(String),
     #[default]
     Invalid,
 }
@@ -62,7 +63,7 @@ impl fmt::Display for CryptPw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CryptPw::Invalid => write!(f, "x"),
-            CryptPw::Sha256(s) | CryptPw::Sha512(s) => write!(f, "{s}"),
+            CryptPw::Sha256(s) | CryptPw::Sha512(s) | CryptPw::YesCrypt(s) => write!(f, "{s}"),
         }
     }
 }
@@ -73,6 +74,7 @@ impl fmt::Debug for CryptPw {
             CryptPw::Invalid => write!(f, "x"),
             CryptPw::Sha256(_s) => write!(f, "crypt sha256"),
             CryptPw::Sha512(_s) => write!(f, "crypt sha512"),
+            CryptPw::YesCrypt(_s) => write!(f, "crypt yescrypt"),
         }
     }
 }
@@ -85,6 +87,8 @@ impl FromStr for CryptPw {
             Ok(CryptPw::Sha512(value.to_string()))
         } else if value.starts_with("$5$") {
             Ok(CryptPw::Sha256(value.to_string()))
+        } else if value.starts_with("$y$") {
+            Ok(CryptPw::YesCrypt(value.to_string()))
         } else {
             Ok(CryptPw::Invalid)
         }
@@ -100,6 +104,9 @@ impl CryptPw {
         match &self {
             CryptPw::Sha256(crypt) => sha_crypt::sha256_check(cred, crypt.as_str()).is_ok(),
             CryptPw::Sha512(crypt) => sha_crypt::sha512_check(cred, crypt.as_str()).is_ok(),
+            CryptPw::YesCrypt(crypt) => {
+                yescrypt::yescrypt_verify(cred.as_bytes(), crypt.as_str()).is_ok()
+            }
             CryptPw::Invalid => false,
         }
     }
@@ -386,6 +393,7 @@ nobody:x:65534:65534:nobody:/var/lib/nobody:/bin/bash
     const EXAMPLE_SHADOW: &str = r#"sshd:!:19978::::::
 tss:!:19980::::::
 admin:$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//:19980:0:99999:7:::
+admin_yescrypt:$y$j9T$LdJMENpBABJJ3hIHjB1Bi.$GFxnbKnR8WaEdBMGMctf6JGMs56hU5dYcy6UrKGWr62:19980:0:99999:7:::
 "#;
 
     #[test]
@@ -438,6 +446,26 @@ admin:$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePME
             epoch_expire_seconds: None,
             flag_reserved: None
         });
+
+        assert_eq!(
+            shadow[3],
+            EtcShadow {
+                name: "admin_yescrypt".to_string(),
+                password: CryptPw::YesCrypt(
+                    "$y$j9T$LdJMENpBABJJ3hIHjB1Bi.$GFxnbKnR8WaEdBMGMctf6JGMs56hU5dYcy6UrKGWr62"
+                        .to_string()
+                ),
+                epoch_change_seconds: Some(
+                    time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(19980)
+                ),
+                days_min_password_age: 0,
+                days_max_password_age: Some(99999),
+                days_warning_period: 7,
+                days_inactivity_period: None,
+                epoch_expire_seconds: None,
+                flag_reserved: None
+            }
+        );
     }
 
     const EXAMPLE_GROUP: &str = r#"root:x:0:

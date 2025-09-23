@@ -1,23 +1,17 @@
-use crate::{handle_client_error, OpType, SchemaClassOpt};
+use crate::{handle_client_error, KanidmClientParser, OpType, SchemaClassOpt};
 use kanidm_proto::scim_v1::{ScimEntryGetQuery, ScimFilter};
 use std::str::FromStr;
 
 impl SchemaClassOpt {
-    pub fn debug(&self) -> bool {
+    pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
-            Self::List { copt } | Self::Search { copt, .. } => copt.debug,
-        }
-    }
-
-    pub async fn exec(&self) {
-        match self {
-            Self::List { copt } => {
-                let client = copt.to_client(OpType::Read).await;
+            Self::List => {
+                let client = opt.to_client(OpType::Read).await;
 
                 let classes = match client.scim_schema_class_list(None).await {
                     Ok(classes) => classes,
                     Err(e) => {
-                        handle_client_error(e, copt.output_mode);
+                        handle_client_error(e, opt.output_mode);
                         return;
                     }
                 };
@@ -26,7 +20,7 @@ impl SchemaClassOpt {
                     println!("{class:?}");
                 }
             }
-            Self::Search { copt, query } => {
+            Self::Search { query } => {
                 let query = match ScimFilter::from_str(query) {
                     Ok(query) => query,
                     Err(err) => {
@@ -41,16 +35,15 @@ impl SchemaClassOpt {
                     ..Default::default()
                 };
 
-                let client = copt.to_client(OpType::Read).await;
+                let client = opt.to_client(OpType::Read).await;
 
                 let classes = match client.scim_schema_class_list(Some(get_query)).await {
                     Ok(classes) => classes,
                     Err(e) => {
-                        handle_client_error(e, copt.output_mode);
+                        handle_client_error(e, opt.output_mode);
                         return;
                     }
                 };
-
                 for class in classes.resources {
                     println!("{class:?}");
                 }

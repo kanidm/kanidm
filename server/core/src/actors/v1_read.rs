@@ -1171,138 +1171,86 @@ impl QueryServerReadV1 {
         match scr {
             CURequest::PrimaryRemove => idms_cred_update
                 .credential_primary_delete(&session_token, ct)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_primary_delete",
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_primary_delete",);
+                }),
+            CURequest::PasswordQualityCheck(pw) => idms_cred_update
+                .credential_check_password_quality(&session_token, ct, &pw)
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_check_password_quality",);
                 }),
             CURequest::Password(pw) => idms_cred_update
                 .credential_primary_set_password(&session_token, ct, &pw)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_primary_set_password",
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_primary_set_password",);
                 }),
             CURequest::CancelMFAReg => idms_cred_update
                 .credential_update_cancel_mfareg(&session_token, ct)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_update_cancel_mfareg",
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_update_cancel_mfareg",);
                 }),
             CURequest::TotpGenerate => idms_cred_update
                 .credential_primary_init_totp(&session_token, ct)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_primary_init_totp",
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_primary_init_totp",);
                 }),
             CURequest::TotpVerify(totp_chal, label) => idms_cred_update
                 .credential_primary_check_totp(&session_token, ct, totp_chal, &label)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_primary_check_totp",
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_primary_check_totp",);
                 }),
             CURequest::TotpAcceptSha1 => idms_cred_update
                 .credential_primary_accept_sha1_totp(&session_token, ct)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_primary_accept_sha1_totp",
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_primary_accept_sha1_totp",);
                 }),
             CURequest::TotpRemove(label) => idms_cred_update
                 .credential_primary_remove_totp(&session_token, ct, &label)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_primary_remove_totp",
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_primary_remove_totp",);
                 }),
             CURequest::BackupCodeGenerate => idms_cred_update
                 .credential_primary_init_backup_codes(&session_token, ct)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_primary_init_backup_codes",
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_primary_init_backup_codes",);
                 }),
             CURequest::BackupCodeRemove => idms_cred_update
                 .credential_primary_remove_backup_codes(&session_token, ct)
-                .map_err(|e| {
+                .inspect_err(|err| {
                     error!(
-                        err = ?e,
+                        ?err,
                         "Failed to begin credential_primary_remove_backup_codes",
                     );
-                    e
                 }),
             CURequest::PasskeyInit => idms_cred_update
                 .credential_passkey_init(&session_token, ct)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_passkey_init",
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_passkey_init",);
                 }),
             CURequest::PasskeyFinish(label, rpkc) => idms_cred_update
                 .credential_passkey_finish(&session_token, ct, label, &rpkc)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_passkey_finish",
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_passkey_finish",);
                 }),
             CURequest::PasskeyRemove(uuid) => idms_cred_update
                 .credential_passkey_remove(&session_token, ct, uuid)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_passkey_remove"
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_passkey_remove",);
                 }),
             CURequest::AttestedPasskeyInit => idms_cred_update
                 .credential_attested_passkey_init(&session_token, ct)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_attested_passkey_init"
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_attested_passkey_init",);
                 }),
             CURequest::AttestedPasskeyFinish(label, rpkc) => idms_cred_update
                 .credential_attested_passkey_finish(&session_token, ct, label, &rpkc)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_attested_passkey_finish"
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_attested_passkey_finish",);
                 }),
             CURequest::AttestedPasskeyRemove(uuid) => idms_cred_update
                 .credential_attested_passkey_remove(&session_token, ct, uuid)
-                .map_err(|e| {
-                    error!(
-                        err = ?e,
-                        "Failed to begin credential_attested_passkey_remove"
-                    );
-                    e
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_attested_passkey_remove",);
                 }),
             CURequest::UnixPasswordRemove => idms_cred_update
                 .credential_unix_delete(&session_token, ct)
@@ -1314,13 +1262,11 @@ impl QueryServerReadV1 {
                 .inspect_err(|err| {
                     error!(?err, "Failed to begin credential_unix_set_password");
                 }),
-
             CURequest::SshPublicKey(label, pubkey) => idms_cred_update
                 .credential_sshkey_add(&session_token, ct, label, pubkey)
                 .inspect_err(|err| {
                     error!(?err, "Failed to begin credential_sshkey_remove");
                 }),
-
             CURequest::SshPublicKeyRemove(label) => idms_cred_update
                 .credential_sshkey_remove(&session_token, ct, &label)
                 .inspect_err(|err| {

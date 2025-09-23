@@ -59,7 +59,7 @@ You can also configure unixd with the file /etc/kanidm/unixd:
 ```
 
 If you are using the Kanidm provider features, you also need to configure `/etc/kanidm/config`. This is the covered in
-[client_tools](../client_tools.md#kanidm-configuration).
+[client_tools](../client_tools.md#kanidm-configuration). At a minimum the `uri` option must be set.
 
 You can start, and then check the status of the daemon with the following commands:
 
@@ -71,7 +71,8 @@ kanidm-unix status
 If the daemon is working, you should see:
 
 ```text
-working!
+system: online
+Kanidm: online
 ```
 
 If it is not working, you will see an error message:
@@ -81,11 +82,15 @@ If it is not working, you will see an error message:
    Os { code: 111, kind: ConnectionRefused, message: "Connection refused" }
 ```
 
+If the unixd daemon is running but not configured to use the Kanidm provider, only system status is reported:
+
+```text
+system: online
+```
+
 For more information, see the [Troubleshooting](pam_and_nsswitch/troubleshooting.md) section.
 
 ## Using a service account
-
-
 
 ## nsswitch
 

@@ -12,6 +12,7 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [features]
+client_sync_tracing = []
 default = ["unix"]
 unix = []
 selinux = ["dep:selinux"]
@@ -32,11 +33,13 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 sha-crypt = { workspace = true }
+yescrypt = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tokio = { workspace = true, features = ["time", "net", "macros"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
 tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 selinux = { workspace = true, optional = true }
 

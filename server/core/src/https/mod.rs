@@ -89,7 +89,7 @@ impl ServerState {
                     if matches!(err, JwtError::InvalidSignature) {
                         // The server has an ephemeral in memory HMAC signer. This is important as
                         // auth (login) sessions on one node shouldn't validate on another. Sessions
-                        // that are shared beween nodes use the internal ECDSA signer.
+                        // that are shared between nodes use the internal ECDSA signer.
                         //
                         // But because of this if the server restarts it rolls the key. Additionally
                         // it can occur if the load balancer isn't sticking sessions to the correct
@@ -202,7 +202,7 @@ pub async fn create_https_server(
         concat!(
             "default-src 'self'; ",
             "base-uri 'self' https:; ",
-            "form-action 'self' https:;",
+            "form-action 'self' https: localhost;",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
