@@ -30,8 +30,9 @@ pub use kanidm_proto::oauth2::{
     OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, TokenRevokeRequest,
 };
 use kanidm_proto::oauth2::{
-    AccessTokenType, ClaimType, ClientPostAuth, DeviceAuthorizationResponse, DisplayValue,
-    GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
+    AccessTokenType, ClaimType, ClientAuth, ClientPostAuth, DeviceAuthorizationResponse,
+    DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
+    TokenEndpointAuthMethod,
 };
 use openssl::sha;
 use serde::{Deserialize, Serialize};
@@ -535,11 +536,14 @@ impl Oauth2ResourceServers {
 fn get_client_auth(
     client_auth_info: &ClientAuthInfo,
     client_post_auth: &ClientPostAuth,
-) -> Result<(String, Option<String>), Oauth2Error> {
+) -> Result<ClientAuth, Oauth2Error> {
     if let Some(client_authz) = client_auth_info.basic_authz.as_ref() {
         parse_basic_authz(client_authz.as_str())
-    } else if let Some(client_id) = client_post_auth.client_id.as_ref() {
-        Ok((client_id.clone(), client_post_auth.client_secret.clone()))
+    } else if let Some(client_id) = &client_post_auth.client_id {
+        Ok(ClientAuth {
+            client_id: client_id.clone(),
+            client_secret: client_post_auth.client_secret.clone(),
+        })
     } else {
         admin_warn!("OAuth2 client authentication not provided");
         Err(Oauth2Error::AuthenticationRequired)
@@ -880,18 +884,22 @@ impl IdmServerProxyWriteTransaction<'_> {
         revoke_req: &TokenRevokeRequest,
         ct: Duration,
     ) -> Result<(), Oauth2Error> {
-        let (client_id, secret) = get_client_auth(client_auth_info, &revoke_req.client_post_auth)?;
+        let client_auth = get_client_auth(client_auth_info, &revoke_req.client_post_auth)?;
 
         // Get the o2rs for the handle.
-        let o2rs = self.oauth2rs.inner.rs_set_get(&client_id).ok_or_else(|| {
-            admin_warn!("Invalid OAuth2 client_id");
-            Oauth2Error::AuthenticationRequired
-        })?;
+        let o2rs = self
+            .oauth2rs
+            .inner
+            .rs_set_get(client_auth.client_id.as_str())
+            .ok_or_else(|| {
+                admin_warn!("Invalid OAuth2 client_id");
+                Oauth2Error::AuthenticationRequired
+            })?;
 
         // check the secret.
         match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
-                if Some(authz_secret.to_owned()) != secret {
+                if Some(authz_secret) != client_auth.client_secret.as_ref() {
                     security_info!("Invalid OAuth2 client_id secret, this can happen if your RS is public but you configured a 'basic' type.");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
@@ -1003,14 +1011,14 @@ impl IdmServerProxyWriteTransaction<'_> {
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         // Public clients will send the client_id via the ATR, so we need to handle this case.
-        let (client_id, secret) = get_client_auth(client_auth_info, &token_req.client_post_auth)?;
+        let client_auth = get_client_auth(client_auth_info, &token_req.client_post_auth)?;
 
-        let o2rs = self.get_client(&client_id)?;
+        let o2rs = self.get_client(&client_auth.client_id)?;
 
         // check the secret.
         let client_authentication_valid = match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
-                match secret {
+                match client_auth.client_secret {
                     Some(secret) => {
                         if authz_secret == &secret {
                             true
@@ -1843,25 +1851,32 @@ impl IdmServerProxyWriteTransaction<'_> {
         token: &str,
     ) -> Result<Oauth2TokenType, OperationError> {
         let Some(client_authz) = client_auth_info.basic_authz.as_ref() else {
-            admin_warn!("OAuth2 client_id not provided by basic authz");
+            warn!("OAuth2 client_id not provided by basic authz");
             return Err(OperationError::InvalidSessionState);
         };
 
-        let (client_id, secret) = parse_basic_authz(client_authz.as_str()).map_err(|_| {
-            admin_warn!("Invalid client_authz base64");
+        let client_auth = parse_basic_authz(client_authz.as_str()).map_err(|_| {
+            warn!("Invalid client_authz base64");
             OperationError::InvalidSessionState
         })?;
 
         // Get the o2rs for the handle.
-        let o2rs = self.oauth2rs.inner.rs_set_get(&client_id).ok_or_else(|| {
-            admin_warn!("Invalid OAuth2 client_id");
-            OperationError::InvalidSessionState
-        })?;
+        let o2rs = self
+            .oauth2rs
+            .inner
+            .rs_set_get(&client_auth.client_id)
+            .ok_or_else(|| {
+                warn!("Invalid OAuth2 client_id");
+                OperationError::InvalidSessionState
+            })?;
 
         // check the secret.
         if let OauthRSType::Basic { authz_secret, .. } = &o2rs.type_ {
-            if o2rs.is_basic() && Some(authz_secret.to_owned()) != secret {
-                security_info!("Invalid OAuth2 secret for client_id={}", client_id);
+            if o2rs.is_basic() && Some(authz_secret) != client_auth.client_secret.as_ref() {
+                info!(
+                    "Invalid OAuth2 secret for client_id={}",
+                    client_auth.client_id
+                );
                 return Err(OperationError::InvalidSessionState);
             }
         }
@@ -2332,18 +2347,22 @@ impl IdmServerProxyReadTransaction<'_> {
         intr_req: &AccessTokenIntrospectRequest,
         ct: Duration,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
-        let (client_id, secret) = get_client_auth(client_auth_info, &intr_req.client_post_auth)?;
+        let client_auth = get_client_auth(client_auth_info, &intr_req.client_post_auth)?;
 
         // Get the o2rs for the handle.
-        let o2rs = self.oauth2rs.inner.rs_set_get(&client_id).ok_or_else(|| {
-            admin_warn!("Invalid OAuth2 client_id");
-            Oauth2Error::AuthenticationRequired
-        })?;
+        let o2rs = self
+            .oauth2rs
+            .inner
+            .rs_set_get(&client_auth.client_id)
+            .ok_or_else(|| {
+                admin_warn!("Invalid OAuth2 client_id");
+                Oauth2Error::AuthenticationRequired
+            })?;
 
         // check the secret.
         match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
-                if Some(authz_secret.to_owned()) != secret {
+                if Some(authz_secret) != client_auth.client_secret.as_ref() {
                     security_info!("Invalid OAuth2 client_id secret");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
@@ -2430,14 +2449,14 @@ impl IdmServerProxyReadTransaction<'_> {
             Ok(AccessTokenIntrospectResponse {
                 active: true,
                 scope,
-                client_id: Some(client_id.clone()),
+                client_id: Some(client_auth.client_id.clone()),
                 username: preferred_username,
                 token_type,
                 iat: Some(iat),
                 exp: Some(exp),
                 nbf: Some(nbf),
                 sub: Some(sub.to_string()),
-                aud: Some(client_id),
+                aud: Some(client_auth.client_id),
                 iss: None,
                 jti: None,
             })
@@ -2504,14 +2523,14 @@ impl IdmServerProxyReadTransaction<'_> {
                     Ok(AccessTokenIntrospectResponse {
                         active: true,
                         scope,
-                        client_id: Some(client_id.clone()),
+                        client_id: Some(client_auth.client_id.clone()),
                         username,
                         token_type,
                         iat: Some(iat),
                         exp: Some(exp),
                         nbf: Some(nbf),
                         sub: Some(uuid.to_string()),
-                        aud: Some(client_id),
+                        aud: Some(client_auth.client_id),
                         iss: None,
                         jti: None,
                     })
@@ -2875,7 +2894,7 @@ impl IdmServerProxyReadTransaction<'_> {
     }
 }
 
-fn parse_basic_authz(client_authz: &str) -> Result<(String, Option<String>), Oauth2Error> {
+fn parse_basic_authz(client_authz: &str) -> Result<ClientAuth, Oauth2Error> {
     // Check the client_authz
     let authz = general_purpose::STANDARD
         .decode(client_authz)
@@ -2903,7 +2922,7 @@ fn parse_basic_authz(client_authz: &str) -> Result<(String, Option<String>), Oau
         Oauth2Error::AuthenticationRequired
     })?;
 
-    Ok((client_id.to_string(), Some(secret.to_string())))
+    Ok((client_id, Some(secret)).into())
 }
 
 fn s_claims_for_account(

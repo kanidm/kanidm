@@ -312,6 +312,23 @@ impl From<(&str, Option<&str>)> for ClientPostAuth {
     }
 }
 
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug, Default)]
+/// <https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1>
+pub struct ClientAuth {
+    pub client_id: String,
+    pub client_secret: Option<String>,
+}
+
+impl From<(&str, Option<&str>)> for ClientAuth {
+    fn from((client_id, client_secret): (&str, Option<&str>)) -> Self {
+        ClientAuth {
+            client_id: client_id.to_string(),
+            client_secret: client_secret.map(|s| s.to_string()),
+        }
+    }
+}
+
 /// Request to introspect the identity of the account associated to a token.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
