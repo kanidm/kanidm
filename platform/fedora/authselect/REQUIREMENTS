@@ -1,0 +1,12 @@
+Make sure that kanidm-unixd service is configured and enabled. See kanidm-unixd documentation for more information.
+                                                                                          {include if "with-pam-gnome-keyring"}
+- with-pam-gnome-keyring is selected, make sure the pam_gnome_keyring module              {include if "with-pam-gnome-keyring"}
+  is present.                                                                             {include if "with-pam-gnome-keyring"}
+                                                                                          {include if "with-mkhomedir"}
+- with-mkhomedir is selected, but it is INCOMPATIBLE with kanidm-unixd.                   {include if "with-mkhomedir"}
+                 !!! DISABLE IT NOW !!!                                                   {include if "with-mkhomedir"}
+  - systemctl disable --now oddjobd.service                                               {include if "with-mkhomedir"}
+                                                                                          {include if "with-systemd-homed"}
+- with-systemd-homed is selected, but it is INCOMPATIBLE with kanidm-unixd.               {include if "with-systemd-homed"}
+                 !!! DISABLE IT NOW !!!                                                   {include if "with-systemd-homed"}
+  - systemctl disable --now systemd-homed.service                                         {include if "with-systemd-homed"}
