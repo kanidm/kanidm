@@ -103,6 +103,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         // DL9
         SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9.clone().into(),
         SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9.clone().into(),
+        SCHEMA_ATTR_IMAGE.clone().into(),
     ]
 }
 

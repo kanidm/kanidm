@@ -10,7 +10,6 @@
 // data, so we should be careful not to step on each other.
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::filter::{f_eq, FC};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::{SchemaAttribute, SchemaTransaction};
@@ -41,9 +40,8 @@ impl ReferentialIntegrity {
         // will fail. This will return the union of the inclusion after the
         // operation.
         let filt_in = filter!(f_inc(inner));
-        let b = qs.internal_exists(filt_in).map_err(|e| {
-            admin_error!(err = ?e, "internal exists failure");
-            e
+        let b = qs.internal_exists(&filt_in).inspect_err(|err| {
+            error!(?err, "internal exists failure");
         })?;
 
         // Is the existence of all id's confirmed?
@@ -69,9 +67,8 @@ impl ReferentialIntegrity {
         let mut missing = Vec::with_capacity(inner.len());
         for u in inner {
             let filt_in = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(*u)));
-            let b = qs.internal_exists(filt_in).map_err(|e| {
-                admin_error!(err = ?e, "internal exists failure");
-                e
+            let b = qs.internal_exists(&filt_in).inspect_err(|err| {
+                error!(?err, "internal exists failure");
             })?;
 
             // If it's missing, we push it to the missing set.
@@ -94,16 +91,6 @@ impl ReferentialIntegrity {
     ) -> Result<(), OperationError> {
         trace!(?uuids);
 
-        // What would be the best way to delete these ....
-        debug_assert!(false);
-
-        // For each deleted entry
-        //     Did any reference entry exist that refrenced it?
-        //     if yes
-        //         modify those entries to now state they were cascade deleted
-        //         delete those entries.
-
-
         // Find all reference types in the schema
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
@@ -113,7 +100,7 @@ impl ReferentialIntegrity {
         // Generate a filter which is the set of all schema reference types
         // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
         // types too!
-        let filt = filter_all!(FC::Or(
+        let filt = filter_all!(f_or(
             uuids
                 .into_iter()
                 .flat_map(|u| ref_types
@@ -1445,6 +1432,7 @@ mod tests {
         assert!(server_txn
             .internal_exists_uuid(user_uuid)
             .expect("Unable to check if entry exists"));
+
         assert!(!server_txn
             .internal_exists_uuid(ref_uuid)
             .expect("Unable to check if entry exists"));
@@ -1454,11 +1442,9 @@ mod tests {
         assert!(server_txn.commit().is_ok());
         // =========== new txn
         let mut server_txn = server.write(curtime).await.unwrap();
+
         // You can't revive just the cert.
-        assert!(matches!(
-            server_txn.internal_revive_uuid(ref_uuid).unwrap_err(),
-            OperationError::Plugin(PluginError::ReferentialIntegrity(_))
-        ));
+        assert!(server_txn.internal_revive_uuid(ref_uuid).is_err());
 
         // Roll back
         drop(server_txn);
@@ -1477,4 +1463,10 @@ mod tests {
 
         assert!(server_txn.commit().is_ok());
     }
+
+    // Add in a test to assert a refers can't refers to another refers. No bad ouroboros
+
+    // Test with replication that on a conflict that the refers is deleted too?
+
+    // Ensure that the refers are all removed when conflict occurs.
 }

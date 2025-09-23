@@ -108,6 +108,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256_DL6.clone().into(),
         // DL11
         SCHEMA_ATTR_APPLICATION_URL.clone().into(),
+        SCHEMA_ATTR_IMAGE.clone().into(),
         // DL12
     ]
 }
