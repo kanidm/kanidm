@@ -1843,15 +1843,15 @@ impl<'a> BackendWriteTransaction<'a> {
     pub fn restore(&mut self, src_path: &Path) -> Result<(), OperationError> {
         let compression = BackupCompression::identify_file(src_path);
 
-        eprintln!("Backup compression identified: {}", compression);
+        debug!("Backup compression identified: {}", compression);
         let serialized_string = match compression {
             BackupCompression::NoCompression => fs::read_to_string(src_path).map_err(|e| {
-                admin_error!("fs::read_to_string {:?}", e);
+                error!("Failed to read backup file {} {e:?}", src_path.display());
                 OperationError::FsError
             })?,
             BackupCompression::Gzip => {
                 let reader = std::fs::File::open(src_path).map_err(|e| {
-                    admin_error!("fs::File::open {:?}", e);
+                    error!("Failed to open backup file {} {e:?}", src_path.display());
                     OperationError::FsError
                 })?;
                 let mut decoder = flate2::read::GzDecoder::new(reader);
@@ -1859,7 +1859,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 decoder
                     .read_to_string(&mut decompressed_data)
                     .map_err(|e| {
-                        admin_error!("gzip decompression error {:?}", e);
+                        error!("GZip decompression error {:?}", e);
                         OperationError::FsError
                     })?;
                 decompressed_data
@@ -1867,7 +1867,7 @@ impl<'a> BackendWriteTransaction<'a> {
         };
 
         self.danger_delete_all_db_content().map_err(|e| {
-            admin_error!("delete_all_db_content failed {:?}", e);
+            error!("delete_all_db_content failed {:?}", e);
             e
         })?;
 
