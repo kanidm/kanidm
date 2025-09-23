@@ -22,6 +22,8 @@ CacheDirectory=kanidm-unixd
 RuntimeDirectory=kanidm-unixd
 StateDirectory=kanidm-unixd
 
+# Raise to account for very busy unix resolvers
+LimitNOFILE=65536
 
 Type=notify
 ExecStart=/usr/sbin/kanidm_unixd
