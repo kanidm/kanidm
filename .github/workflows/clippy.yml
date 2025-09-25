@@ -43,4 +43,6 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
       - name: "Run cargo fmt"
-        run: cargo fmt --check
+        run: |
+          rustup component add rustfmt
+          cargo fmt --check
