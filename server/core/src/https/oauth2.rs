@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use super::errors::WebError;
 use super::middleware::KOpId;
 use super::ServerState;
-use crate::https::extractors::VerifiedClientInformation;
+use crate::https::extractors::{AuthorisationHeaders, VerifiedClientInformation};
 use axum::{
     body::Body,
     extract::{Path, Query, State},
@@ -158,7 +158,7 @@ pub(crate) async fn oauth2_image_get(
 pub async fn oauth2_authorise_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Json(auth_req): Json<AuthorisationRequest>,
 ) -> impl IntoResponse {
     let mut res = oauth2_authorise(state, auth_req, kopid, client_auth_info)
@@ -175,7 +175,7 @@ pub async fn oauth2_authorise_post(
 pub async fn oauth2_authorise_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Query(auth_req): Query<AuthorisationRequest>,
 ) -> impl IntoResponse {
     // Start the oauth2 authorisation flow to present to the user.
@@ -289,7 +289,7 @@ async fn oauth2_authorise(
 pub async fn oauth2_authorise_permit_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Json(consent_req): Json<String>,
 ) -> impl IntoResponse {
     let mut res = oauth2_authorise_permit(state, consent_req, kopid, client_auth_info)
@@ -311,7 +311,7 @@ pub async fn oauth2_authorise_permit_get(
     State(state): State<ServerState>,
     Query(token): Query<ConsentRequestData>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
 ) -> impl IntoResponse {
     // When this is called, this indicates consent to proceed from the user.
     oauth2_authorise_permit(state, token.token, kopid, client_auth_info).await
@@ -375,7 +375,7 @@ async fn oauth2_authorise_permit(
 pub async fn oauth2_authorise_reject_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Form(consent_req): Form<ConsentRequestData>,
 ) -> Response<Body> {
     oauth2_authorise_reject(state, consent_req.token, kopid, client_auth_info).await
@@ -384,7 +384,7 @@ pub async fn oauth2_authorise_reject_post(
 pub async fn oauth2_authorise_reject_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Query(consent_req): Query<ConsentRequestData>,
 ) -> Response<Body> {
     oauth2_authorise_reject(state, consent_req.token, kopid, client_auth_info).await
@@ -449,7 +449,7 @@ async fn oauth2_authorise_reject(
 pub async fn oauth2_token_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Form(tok_req): Form<AccessTokenRequest>,
 ) -> impl IntoResponse {
     // This is called directly by the resource server, where we then issue
@@ -567,7 +567,7 @@ pub async fn oauth2_openid_userinfo_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
 ) -> Response {
     // The token we want to inspect is in the authorisation header.
     let Some(client_token) = client_auth_info.bearer_token() else {
@@ -614,7 +614,7 @@ pub async fn oauth2_openid_publickey_get(
 pub async fn oauth2_token_introspect_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Form(intr_req): Form<AccessTokenIntrospectRequest>,
 ) -> impl IntoResponse {
     request_trace!("Introspect Request - {:?}", intr_req);
@@ -676,7 +676,7 @@ pub async fn oauth2_token_introspect_post(
 pub async fn oauth2_token_revoke_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Form(intr_req): Form<TokenRevokeRequest>,
 ) -> impl IntoResponse {
     request_trace!("Revoke Request - {:?}", intr_req);
@@ -744,7 +744,7 @@ pub(crate) struct DeviceFlowForm {
 pub(crate) async fn oauth2_authorise_device_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Form(form): Form<DeviceFlowForm>,
 ) -> Result<Json<DeviceAuthorizationResponse>, WebError> {
     state
