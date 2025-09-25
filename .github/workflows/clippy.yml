@@ -33,7 +33,9 @@ jobs:
             pkg-config \
             tpm-udev
       - name: "Run clippy"
-        run: cargo clippy --lib --bins --examples --all-features
+        run: |
+          rustup component add clippy
+          cargo clippy --lib --bins --examples --all-features
   fmt:
     runs-on: ubuntu-latest
     steps:
