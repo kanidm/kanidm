@@ -92,6 +92,69 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
     }
 }
 
+pub struct AuthorisationHeaders(pub ClientAuthInfo);
+
+#[async_trait]
+impl FromRequestParts<ServerState> for AuthorisationHeaders {
+    type Rejection = (StatusCode, &'static str);
+
+    // Need to skip all to prevent leaking tokens to logs.
+    #[instrument(level = "debug", skip_all)]
+    async fn from_request_parts(
+        parts: &mut Parts,
+        _state: &ServerState,
+    ) -> Result<Self, Self::Rejection> {
+        let ClientConnInfo {
+            connection_addr: _,
+            client_ip_addr,
+            client_cert,
+        } = parts.extensions.remove::<ClientConnInfo>().ok_or((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "request info contains invalid data",
+        ))?;
+
+        let (basic_authz, bearer_token) = if let Some(header) = parts.headers.get(AUTHORISATION) {
+            if let Some((authz_type, authz_data)) = header
+                .to_str()
+                .map_err(|err| {
+                    warn!(?err, "Invalid authz header, ignoring");
+                })
+                .ok()
+                .and_then(|s| s.split_once(' '))
+            {
+                let authz_type = authz_type.to_lowercase();
+
+                if authz_type == "basic" {
+                    (Some(authz_data.to_string()), None)
+                } else if authz_type == "bearer" {
+                    if let Ok(jwsc) = JwsCompact::from_str(authz_data) {
+                        (None, Some(jwsc))
+                    } else {
+                        warn!("bearer jws invalid");
+                        (None, None)
+                    }
+                } else {
+                    warn!("authorisation header invalid, ignoring");
+                    (None, None)
+                }
+            } else {
+                (None, None)
+            }
+        } else {
+            (None, None)
+        };
+
+        let client_auth_info = ClientAuthInfo::new(
+            Source::Https(client_ip_addr),
+            client_cert,
+            bearer_token,
+            basic_authz,
+        );
+
+        Ok(AuthorisationHeaders(client_auth_info))
+    }
+}
+
 pub struct DomainInfo(pub DomainInfoRead);
 
 #[async_trait]
