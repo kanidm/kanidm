@@ -7,6 +7,7 @@ use crate::repl::proto::ReplIncrementalContext;
 use crate::repl::ruv::ReplicationUpdateVectorTransaction;
 use crate::repl::ruv::{RangeDiffStatus, ReplicationUpdateVector};
 use crate::value::{AuthType, Session, SessionState};
+use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
 use kanidm_lib_crypto::CryptoPolicy;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
@@ -3758,6 +3759,196 @@ async fn test_repl_increment_consumer_lagging_refresh(
 
     assert!(!a_ruv_range.contains_key(&server_a_initial_uuid));
     assert!(!b_ruv_range.contains_key(&server_a_initial_uuid));
+}
+
+// A challenge of reference entries is that we can't easily tell who they
+// related to in a uuid conflict case. Thankfully, uuid conflicts are RARE
+// but if they happen we need to go scortched earth and just delete anything
+// that referenced a uuid in a conflict state.
+#[qs_pair_test]
+async fn test_repl_increment_reference_conflicts(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
+
+    let cert_data = Box::new(
+        Certificate::from_pem(TEST_X509_CERT_DATA).expect("Unable to parse test X509 cert data"),
+    );
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Now create the same entry on both servers.
+    let t_uuid = Uuid::new_v4();
+    let e_init = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Account.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
+        (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::Uuid, Value::Uuid(t_uuid)),
+        (Attribute::Description, Value::new_utf8s("testperson1")),
+        (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+    );
+
+    // Create a reference on both servers to show the difference in handling.
+    let ref_uuid_a = Uuid::new_v4();
+    let ref_entry_a = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::ClientCertificate.to_value()),
+        (Attribute::Uuid, Value::Uuid(ref_uuid_a)),
+        (Attribute::Refers, Value::Refer(t_uuid)),
+        (
+            Attribute::Certificate,
+            Value::Certificate(cert_data.clone())
+        )
+    );
+
+    let ref_uuid_b = Uuid::new_v4();
+    let ref_entry_b = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::ClientCertificate.to_value()),
+        (Attribute::Uuid, Value::Uuid(ref_uuid_b)),
+        (Attribute::Refers, Value::Refer(t_uuid)),
+        (
+            Attribute::Certificate,
+            Value::Certificate(cert_data.clone())
+        )
+    );
+
+    // Create on B first
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
+    assert!(server_b_txn
+        .internal_create(vec![e_init.clone(), ref_entry_b.clone()])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Get a new time.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    assert!(server_a_txn
+        .internal_create(vec![e_init.clone(), ref_entry_a.clone()])
+        .is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    trace!("========================================");
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
+
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+    // Replicate A to B. B should ignore the incoming conflict entry, but it will
+    // delete it's reference entry. It also needs to ignore the incoming reference.
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    // A is newer than B, so this is a basic assertion.
+    assert!(e1.get_last_changed() > e2.get_last_changed());
+
+    // Should not have been brought in.
+    let ref_a_on_b = server_b_txn
+        .internal_search_all_uuid(ref_uuid_a)
+        .expect("Unable to access new entry.");
+
+    // Must now be a conflict
+    let cnf_ref_b_on_b = server_b_txn
+        .internal_search_conflict_uuid(ref_uuid_b)
+        .expect("Unable to conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+
+    trace!(?ref_a_on_b);
+    trace!(?cnf_ref_b_on_b);
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    trace!("========================================");
+    // Replicate B to A. A should replace with B, and create the
+    // conflict entry as it's the origin of the conflict.
+    //
+    // Additionally, A should now also conflict it's reference entry too.
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    // These are now the same entry.
+    assert_eq!(e1.get_last_changed(), e2.get_last_changed());
+
+    // A will now have created a conflict for the original entry.
+    let cnf_user_on_a = server_a_txn
+        .internal_search_conflict_uuid(t_uuid)
+        .expect("Unable to conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+
+    // A should now have the conflict of it's reference.
+    let cnf_ref_a_on_a = server_a_txn
+        .internal_search_conflict_uuid(ref_uuid_a)
+        .expect("Unable to conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+
+    // A will have replicated in the conflict reference from B.
+    let cnf_ref_b_on_a = server_a_txn
+        .internal_search_conflict_uuid(ref_uuid_b)
+        .expect("Unable to conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+
+    trace!(?cnf_user_on_a);
+    trace!(?cnf_ref_a_on_a);
+    trace!(?cnf_ref_b_on_a);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    trace!("========================================");
+    // Assert all the conflict entries get replicated around as expected.
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
+
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    // B will now have recieve A's conflict for the original entry.
+    let cnf_user_on_b = server_b_txn
+        .internal_search_conflict_uuid(t_uuid)
+        .expect("Unable to conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+
+    // B should now have the conflict of A's reference.
+    let cnf_ref_a_on_b = server_b_txn
+        .internal_search_conflict_uuid(ref_uuid_a)
+        .expect("Unable to conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+
+    // And we still have conflict from B
+    let cnf_ref_b_on_b = server_b_txn
+        .internal_search_conflict_uuid(ref_uuid_b)
+        .expect("Unable to conflict entries.")
+        .pop()
+        .expect("No conflict entries present");
+
+    trace!(?cnf_user_on_b);
+    trace!(?cnf_ref_a_on_b);
+    trace!(?cnf_ref_b_on_b);
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
 }
 
 // Test change of domain version over incremental.
