@@ -135,7 +135,7 @@ impl Plugin for Base {
         // internal exists is actually a wrapper around a search for uuid internally
         //
         // But does it add value? How many people will try to custom define/add uuid?
-        let r = qs.internal_exists(filt_in);
+        let r = qs.internal_exists(&filt_in);
 
         match r {
             Ok(b) => {

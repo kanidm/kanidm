@@ -2845,7 +2845,7 @@ impl IdmServerProxyReadTransaction<'_> {
         // Ensure that the account exists.
         if !self
             .qs_read
-            .internal_exists(Filter::new(f_eq(Attribute::Spn, spn)))?
+            .internal_exists(&Filter::new(f_eq(Attribute::Spn, spn)))?
         {
             return Err(OperationError::NoMatchingEntries);
         }
