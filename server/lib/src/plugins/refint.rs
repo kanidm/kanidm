@@ -1341,11 +1341,6 @@ mod tests {
     // something that references it, that the operation is rejected as the
     // reference would then be invalid.
 
-    // TODO: Do I need a way to enforce that ref entries must link to certain
-    // classes on their target entry?
-
-    // TODO: Ensure that ref entries can't point at other ref entries.
-
     #[qs_test]
     async fn test_reference_entry_basic(server: &QueryServer) {
         // Create
@@ -1465,6 +1460,100 @@ mod tests {
     }
 
     // Add in a test to assert a refers can't refers to another refers. No bad ouroboros
+    #[qs_test]
+    async fn test_reference_ouroboros_denied(server: &QueryServer) {
+        // Create
+        let curtime = duration_from_epoch_now();
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        let user_uuid = Uuid::new_v4();
+        let ref_uuid = Uuid::new_v4();
+        let ref_ouroboros_uuid = Uuid::new_v4();
+        let cert_data = Box::new(
+            Certificate::from_pem(TEST_X509_CERT_DATA)
+                .expect("Unable to parse test X509 cert data"),
+        );
+
+        let user_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(user_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        );
+
+        let ref_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClientCertificate.to_value()),
+            (Attribute::Uuid, Value::Uuid(ref_uuid)),
+            (Attribute::Refers, Value::Refer(user_uuid)),
+            (
+                Attribute::Certificate,
+                Value::Certificate(cert_data.clone())
+            )
+        );
+
+        assert!(server_txn
+            .internal_create(vec![user_entry, ref_entry])
+            .is_ok());
+
+        assert!(server_txn.commit().is_ok());
+
+        // =========== new txn
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        // May not create a reference to a reference.
+        // This is a naughty entry.
+        let ref_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClientCertificate.to_value()),
+            (Attribute::Uuid, Value::Uuid(ref_ouroboros_uuid)),
+            (Attribute::Refers, Value::Refer(ref_uuid)),
+            (
+                Attribute::Certificate,
+                Value::Certificate(cert_data.clone())
+            )
+        );
+
+        assert!(server_txn.internal_create(vec![ref_entry]).is_err());
+
+        // Roll back
+        drop(server_txn);
+
+        // =========== new txn
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        // May not create a reference to a reference.
+        // This is a naughty entry.
+        let ref_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClientCertificate.to_value()),
+            (Attribute::Uuid, Value::Uuid(ref_ouroboros_uuid)),
+            // Start by referencing the person.
+            (Attribute::Refers, Value::Refer(user_uuid)),
+            (
+                Attribute::Certificate,
+                Value::Certificate(cert_data.clone())
+            )
+        );
+
+        assert!(server_txn.internal_create(vec![ref_entry]).is_ok());
+
+        // Now, modify to make it point at the other reference.
+        let modlist = modlist!([
+            Modify::Purged(Attribute::Refers),
+            Modify::Present(Attribute::Refers, Value::Refer(ref_uuid)),
+        ]);
+
+        assert!(server_txn
+            .internal_modify_uuid(ref_ouroboros_uuid, &modlist)
+            .is_err());
+
+        // Roll back
+        drop(server_txn);
+    }
 
     // Test with replication that on a conflict that the refers is deleted too?
 
