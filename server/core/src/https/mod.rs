@@ -541,7 +541,7 @@ async fn process_client_addr(
                     RemoteAddress::Local => {
                         debug!("PROXY protocol liveness check - will not contain client data");
                         // This is a check from the proxy, so just use the connection address.
-                        connection_addr.clone()
+                        connection_addr
                     }
                     RemoteAddress::TcpV4 { src, dst: _ } => SocketAddr::from(src),
                     RemoteAddress::TcpV6 { src, dst: _ } => SocketAddr::from(src),
