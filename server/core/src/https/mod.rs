@@ -540,7 +540,8 @@ async fn process_client_addr(
                 let remote_socket_addr = match hdr.to_remote_addr() {
                     RemoteAddress::Local => {
                         debug!("PROXY protocol liveness check - will not contain client data");
-                        return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+                        // This is a check from the proxy, so just use the connection address.
+                        connection_addr
                     }
                     RemoteAddress::TcpV4 { src, dst: _ } => SocketAddr::from(src),
                     RemoteAddress::TcpV6 { src, dst: _ } => SocketAddr::from(src),
