@@ -33,7 +33,9 @@ jobs:
             pkg-config \
             tpm-udev
       - name: "Run clippy"
-        run: cargo clippy --lib --bins --examples --all-features
+        run: |
+          rustup component add clippy
+          cargo clippy --lib --bins --examples --all-features
   fmt:
     runs-on: ubuntu-latest
     steps:
@@ -41,4 +43,6 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
       - name: "Run cargo fmt"
-        run: cargo fmt --check
+        run: |
+          rustup component add rustfmt
+          cargo fmt --check
