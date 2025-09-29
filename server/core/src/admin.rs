@@ -35,7 +35,7 @@ pub enum AdminTaskRequest {
     DomainRemigrate { level: Option<u32> },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum AdminTaskResponse {
     RecoverAccount {
         password: String,
@@ -54,6 +54,30 @@ pub enum AdminTaskResponse {
     },
     Success,
     Error,
+}
+
+impl std::fmt::Debug for AdminTaskResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            // the intent here is that we aren't sharing secret material in logs
+            AdminTaskResponse::RecoverAccount { .. } => write!(f, "RecoverAccount {{ .. }}"),
+            // the intent here is that we aren't sharing secret material in logs
+            AdminTaskResponse::ShowReplicationCertificate { .. } => {
+                write!(f, "ShowReplicationCertificate {{ .. }}",)
+            }
+            AdminTaskResponse::DomainUpgradeCheck { report } => {
+                write!(f, "DomainUpgradeCheck {{ report: {:?} }}", report)
+            }
+            AdminTaskResponse::DomainRaise { level } => {
+                write!(f, "DomainRaise {{ level: {} }}", level)
+            }
+            AdminTaskResponse::DomainShow { domain_info } => {
+                write!(f, "DomainShow {{ domain_info: {:?} }}", domain_info)
+            }
+            AdminTaskResponse::Success => write!(f, "Success"),
+            AdminTaskResponse::Error => write!(f, "Error"),
+        }
+    }
 }
 
 #[derive(Default)]
