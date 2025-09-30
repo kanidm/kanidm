@@ -163,13 +163,10 @@ impl Oauth2Opt {
                     .idm_oauth2_rs_get_basic_secret(nopt.name.as_str())
                     .await
                 {
-                    Ok(Some(secret)) => {
-                        match opt.output_mode {
-                            OutputMode::Text => println!("{secret}"),
-                            OutputMode::Json => println!("{{\"secret\": \"{secret}\"}}"),
-                        }
-                        opt.output_mode.print_message("Success");
-                    }
+                    Ok(Some(secret)) => match opt.output_mode {
+                        OutputMode::Text => println!("{secret}"),
+                        OutputMode::Json => println!("{{\"secret\": \"{secret}\"}}"),
+                    },
                     Ok(None) => {
                         opt.output_mode.print_message("No secret configured");
                     }
