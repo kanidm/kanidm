@@ -10,7 +10,7 @@
 set -e
 
 if [ -z "${BUILD_MODE}" ]; then
-    BUILD_MODE="--debug"
+    BUILD_MODE=""
 fi
 
 # if they passed --help then output the help
