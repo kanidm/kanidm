@@ -19,9 +19,13 @@ pub async fn security_headers_layer(
     // wait for the middleware to come back
     let mut response = next.run(request).await;
 
-    // add the Content-Security-Policy header, which defines how contact will be accessed/run based on the source URL
     let headers = response.headers_mut();
-    headers.insert(header::CONTENT_SECURITY_POLICY, state.csp_header);
+
+    // add the Content-Security-Policy header, which defines how contact will be accessed/run based on the source URL
+    // Only update the CSP if none is present. This allows some routes to opt into defining their own CSP
+    if !headers.contains_key(header::CONTENT_SECURITY_POLICY) {
+        headers.insert(header::CONTENT_SECURITY_POLICY, state.csp_header);
+    }
 
     // X-Content-Type-Options tells the browser if it's OK to "sniff" or guess the content type of a response
     //
@@ -47,6 +51,23 @@ pub async fn security_headers_layer(
     headers.insert(
         header::REFERRER_POLICY,
         HeaderValue::from_static("no-referrer-when-downgrade"),
+    );
+
+    response
+}
+
+pub async fn csp_header_no_form_action_layer(
+    State(state): State<ServerState>,
+    request: Request<Body>,
+    next: Next,
+) -> Response {
+    let mut response = next.run(request).await;
+
+    let headers = response.headers_mut();
+
+    headers.insert(
+        header::CONTENT_SECURITY_POLICY,
+        state.csp_header_no_form_action,
     );
 
     response

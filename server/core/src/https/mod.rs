@@ -70,6 +70,7 @@ pub struct ServerState {
     pub(crate) jws_signer: JwsHs256Signer,
     pub(crate) trust_x_forward_for_ips: Option<Arc<AddressSet>>,
     pub(crate) csp_header: HeaderValue,
+    pub(crate) csp_header_no_form_action: HeaderValue,
     pub(crate) origin: Url,
     pub(crate) domain: String,
     // This is set to true by default, and is only false on integration tests.
@@ -202,7 +203,7 @@ pub async fn create_https_server(
         concat!(
             "default-src 'self'; ",
             "base-uri 'self' https:; ",
-            "form-action 'self' https: localhost;",
+            "form-action 'self'; ",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
@@ -214,6 +215,33 @@ pub async fn create_https_server(
     let csp_header = HeaderValue::from_str(&csp_header).map_err(|err| {
         error!(?err, "Unable to generate content security policy");
     })?;
+
+    // Omit form action - form action is interpreted by chrome to also control valid
+    // redirect targets on submit. This breaks oauth2 in many cases.
+    //
+    // Normally this would be considered BAD to remove a CSP control to make Oauth2 work
+    // but we need to consider the primary attack form-action protects from - open redirectors
+    // in the form submission. Since the paths that use this header do NOT have open
+    // redirectors, we are safe to remove the form-action directive.
+    let csp_header_no_form_action = format!(
+        concat!(
+            "default-src 'self'; ",
+            "base-uri 'self' https:; ",
+            "frame-ancestors 'none'; ",
+            "img-src 'self' data:; ",
+            "worker-src 'none'; ",
+            "script-src 'self' 'unsafe-eval'{};",
+        ),
+        js_checksums
+    );
+
+    let csp_header_no_form_action =
+        HeaderValue::from_str(&csp_header_no_form_action).map_err(|err| {
+            error!(
+                ?err,
+                "Unable to generate content security policy with no form action"
+            );
+        })?;
 
     let trust_x_forward_for_ips = config
         .http_client_address_info
@@ -232,6 +260,7 @@ pub async fn create_https_server(
         jws_signer,
         trust_x_forward_for_ips,
         csp_header,
+        csp_header_no_form_action,
         origin: config.origin,
         domain: config.domain.clone(),
         secure_cookies: config.integration_test_config.is_none(),
@@ -248,7 +277,7 @@ pub async fn create_https_server(
                 .layer(middleware::compression::new())
                 .layer(from_fn(middleware::caching::cache_me_short))
                 .route("/", get(|| async { Redirect::to("/ui") }))
-                .nest("/ui", views::view_router())
+                .nest("/ui", views::view_router(state.clone()))
             // Can't compress on anything that changes
         }
         ServerRole::WriteReplicaNoUI => Router::new(),
