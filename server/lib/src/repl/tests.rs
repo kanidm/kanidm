@@ -3877,6 +3877,8 @@ async fn test_repl_increment_reference_conflicts(server_a: &QueryServer, server_
     let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
     let mut server_b_txn = server_b.read().await.unwrap();
 
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
     let e1 = server_a_txn
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access new entry.");
