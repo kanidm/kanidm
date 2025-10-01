@@ -121,6 +121,77 @@ impl ReferentialIntegrity {
 
         qs.internal_apply_writable(work_set)
     }
+
+    #[instrument(level = "debug", skip_all)]
+    fn check_refers_to_target_loop_fast(
+        qs: &mut QueryServerWriteTransaction,
+        inner: &[Uuid],
+    ) -> Result<bool, OperationError> {
+        if inner.is_empty() {
+            // There is nothing to check! Move on.
+            trace!("no refers types modified, skipping check");
+            return Ok(false);
+        }
+
+        let inner: Vec<_> = inner
+            .iter()
+            .map(|u| {
+                f_and(vec![
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(*u)),
+                    f_andnot(f_pres(Attribute::Refers)),
+                ])
+            })
+            .collect();
+
+        // F_inc(lusion). All items of inner must be 1 or more, or the filter
+        // will fail. This will return the union of the inclusion after the
+        // operation.
+        let filt_in = filter!(f_inc(inner));
+
+        let b = qs.internal_exists(&filt_in).inspect_err(|err| {
+            error!(?err, "internal exists failure");
+        })?;
+
+        // If this is true, it means all uuids do NOT have the attribute refers
+        // present. So we have to invert this boolean here as we do not have a loop.
+        if b {
+            Ok(false)
+        } else {
+            // A loop exists
+            Ok(true)
+        }
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn check_refers_to_target_loop_slow(
+        qs: &mut QueryServerWriteTransaction,
+        inner: &[Uuid],
+    ) -> Result<Vec<Uuid>, OperationError> {
+        if inner.is_empty() {
+            // There is nothing to check! Move on.
+            // Should be unreachable.
+            trace!("no refers types modified, skipping check");
+            return Ok(Vec::with_capacity(0));
+        }
+
+        let mut looping = Vec::with_capacity(inner.len());
+        for u in inner {
+            let filt_in = filter!(f_and(vec![
+                f_eq(Attribute::Uuid, PartialValue::Uuid(*u)),
+                f_pres(Attribute::Refers)
+            ]));
+            let b = qs.internal_exists(&filt_in).inspect_err(|err| {
+                error!(?err, "internal exists failure");
+            })?;
+
+            // If it's missing, we push it to the missing set.
+            if !b {
+                looping.push(*u)
+            }
+        }
+
+        Ok(looping)
+    }
 }
 
 impl Plugin for ReferentialIntegrity {
@@ -177,6 +248,60 @@ impl Plugin for ReferentialIntegrity {
         cand: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
         Self::post_modify_inner(qs, None, cand)
+    }
+
+    #[instrument(level = "debug", name = "attrunique_post_repl_incremental", skip_all)]
+    fn post_repl_incremental_conflict(
+        qs: &mut QueryServerWriteTransaction,
+        _cand: &[(EntrySealedCommitted, Arc<EntrySealedCommitted>)],
+        conflict_uuids: &mut BTreeSet<Uuid>,
+    ) -> Result<(), OperationError> {
+        // Any item that is now a conflict, must have all refers that point to it removed.
+        // This is because we can't tell the intent of the refers any more, and so we don't
+        // want a refers to linger pointing to an entry that it should not.
+        if conflict_uuids.is_empty() {
+            return Ok(());
+        }
+
+        // Find anything that is a refers to the conflicted uuids.
+        let filt_inner = conflict_uuids
+            .iter()
+            .copied()
+            .map(|conflict_uuid| f_eq(Attribute::Refers, PartialValue::Refer(conflict_uuid)))
+            .collect::<Vec<_>>();
+
+        let filt = filter!(f_or(filt_inner));
+
+        // Does anything match?
+        let conflict_cand = qs.internal_exists(&filt).inspect_err(|err| {
+            error!(?err, "internal exists error");
+        })?;
+
+        // If so, time to run the filter again on the slow path and actually conflict them.
+        if conflict_cand {
+            let mut work_set = qs.internal_search_writeable(&filt)?;
+
+            for (_, entry) in work_set.iter_mut() {
+                let Some(uuid) = entry.get_uuid() else {
+                    error!("Impossible state. Entry that was declared in conflict map does not have a uuid.");
+                    return Err(OperationError::InvalidState);
+                };
+
+                // Add the uuid to the conflict uuids now.
+                conflict_uuids.insert(uuid);
+
+                // Mark that we conflicted against ourself.
+                entry.to_conflict([uuid]);
+            }
+
+            qs.internal_apply_writable(work_set).map_err(|e| {
+                admin_error!("Failed to commit memberof group set {:?}", e);
+                e
+            })?;
+        }
+
+        // Okay we *finally got here. We are done!
+        Ok(())
     }
 
     #[instrument(level = "debug", name = "refint_post_repl_incremental", skip_all)]
@@ -406,6 +531,13 @@ impl ReferentialIntegrity {
             .collect())
     }
 
+    fn cand_refers_to_target_uuid(post_cand: &[EntrySealedCommitted]) -> Vec<Uuid> {
+        post_cand
+            .iter()
+            .filter_map(|entry| entry.get_ava_single_refer(Attribute::Refers))
+            .collect()
+    }
+
     fn post_modify_inner(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: Option<&[Arc<EntrySealedCommitted>]>,
@@ -415,22 +547,44 @@ impl ReferentialIntegrity {
 
         let all_exist_fast = Self::check_uuids_exist_fast(qs, uuids.as_slice())?;
 
-        if all_exist_fast {
-            // All good!
-            return Ok(());
+        if !all_exist_fast {
+            // Okay taking the slow path now ...
+            let missing_uuids = Self::check_uuids_exist_slow(qs, uuids.as_slice())?;
+
+            error!("some uuids that were referenced in this operation do not exist.");
+            for missing in missing_uuids {
+                error!(?missing);
+            }
+
+            return Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                "Uuid referenced not found in database".to_string(),
+            )));
         }
 
-        // Okay taking the slow path now ...
-        let missing_uuids = Self::check_uuids_exist_slow(qs, uuids.as_slice())?;
+        // Now we prevent refers from ouroborosing.
 
-        error!("some uuids that were referenced in this operation do not exist.");
-        for missing in missing_uuids {
-            error!(?missing);
+        // These are the targets that Refers point at.
+        let refers_target_uuids = Self::cand_refers_to_target_uuid(post_cand);
+
+        // Now search to ensure that these targets also do NOT have an Attribute::Refers
+        // present. If they do, that means we have a Refers pointing to a Refers.
+        let loops_present =
+            Self::check_refers_to_target_loop_fast(qs, refers_target_uuids.as_slice())?;
+
+        if loops_present {
+            let looping_uuids =
+                Self::check_refers_to_target_loop_slow(qs, refers_target_uuids.as_slice())?;
+
+            error!("some entries introduce an invalid reference to another reference.");
+            for looping in looping_uuids {
+                error!(?looping);
+            }
+
+            return Err(OperationError::ReferenceLoop);
         }
 
-        Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
-            "Uuid referenced not found in database".to_string(),
-        )))
+        // All good!
+        Ok(())
     }
 }
 
