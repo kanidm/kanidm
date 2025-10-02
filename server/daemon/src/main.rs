@@ -131,6 +131,13 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                     info!("domain_current_level   : {}", current_level);
                     info!("domain_upgrade_level   : {}", upgrade_level);
 
+                    if report_items.is_empty() {
+                        // Nothing to report, so this implies a pass.
+                        info!("------------------------");
+                        info!("status                 : PASS");
+                        return;
+                    }
+
                     for item in report_items {
                         info!("------------------------");
                         match item.status {
@@ -188,7 +195,7 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                                 }
                             }
                         }
-                    }
+                    } // end for report items
                 }
             }
         }
