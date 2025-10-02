@@ -75,6 +75,28 @@ impl QueryServerWriteTransaction<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
+    /// Delete all items that have expired / delete_after *now*.
+    pub fn purge_delete_after(&mut self) -> Result<usize, OperationError> {
+        let curtime_odt = self.get_curtime_odt();
+
+        let filter = filter!(f_and(vec![
+            f_pres(Attribute::DeleteAfter),
+            f_lt(Attribute::DeleteAfter, PartialValue::DateTime(curtime_odt))
+        ]));
+
+        // First, search to see if anything matches.
+        let entries = self.internal_search(filter.clone())?;
+
+        if entries.is_empty() {
+            return Ok(0);
+        }
+
+        self.internal_delete(&filter)?;
+
+        Ok(entries.len())
+    }
+
+    #[instrument(level = "debug", skip_all)]
     pub fn revive_recycled(&mut self, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
         // Revive an entry to live. This is a specialised function, and draws a lot of
         // inspiration from modify.
@@ -268,13 +290,14 @@ impl QueryServerWriteTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
-
+    use super::ReviveRecycledEvent;
     use crate::event::{CreateEvent, DeleteEvent};
+    use crate::prelude::*;
     use crate::server::ModifyEvent;
     use crate::server::SearchEvent;
-
-    use super::ReviveRecycledEvent;
+    use crate::server::ValueSetMessage;
+    use kanidm_proto::v1::OutboundMessage;
+    use time::OffsetDateTime;
 
     #[qs_test]
     async fn test_recycle_simple(server: &QueryServer) {
@@ -822,5 +845,66 @@ mod tests {
         ));
 
         assert!(server_txn.commit().is_ok());
+    }
+
+    #[qs_test]
+    async fn test_entry_delete_after(server: &QueryServer) {
+        let time_p1 = duration_from_epoch_now();
+        let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
+        let time_p3 = time_p2 + Duration::from_secs(1);
+
+        let odt_p1 = OffsetDateTime::UNIX_EPOCH + time_p1;
+        let odt_p2 = OffsetDateTime::UNIX_EPOCH + time_p2;
+
+        let message_uuid = Uuid::new_v4();
+
+        let mut server_txn = server.write(time_p1).await.unwrap();
+
+        let mut e_msg = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::OutboundMessage.to_value()),
+            (Attribute::Uuid, Value::Uuid(message_uuid)),
+            (Attribute::SendAfter, Value::DateTime(odt_p1)),
+            (Attribute::DeleteAfter, Value::DateTime(odt_p2))
+        );
+
+        e_msg.set_ava_set(
+            &Attribute::MessageTemplate,
+            ValueSetMessage::new(OutboundMessage::TestMessageV1 {
+                display_name: "testuser".into(),
+            }),
+        );
+
+        server_txn.internal_create(vec![e_msg]).unwrap();
+
+        server_txn.commit().unwrap();
+
+        // Now start a new txn, should not delete the message.
+        let mut server_txn = server.write(time_p1).await.unwrap();
+
+        server_txn.purge_delete_after().unwrap();
+
+        let _msg = server_txn
+            .internal_search_uuid(message_uuid)
+            .expect("Message was deleted!!!");
+
+        server_txn.commit().unwrap();
+
+        // Clock forwards, will now delete.
+        let mut server_txn = server.write(time_p3).await.unwrap();
+
+        trace!(?odt_p2);
+        server_txn.purge_delete_after().unwrap();
+
+        server_txn
+            .internal_search_uuid(message_uuid)
+            .expect_err("Message is still present");
+
+        // Search recycle bin
+        let _msg = server_txn
+            .internal_search_all_uuid(message_uuid)
+            .expect("It's not in the recycle bin!");
+
+        server_txn.commit().unwrap();
     }
 }

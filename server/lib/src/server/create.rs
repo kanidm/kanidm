@@ -182,11 +182,17 @@ impl QueryServerWriteTransaction<'_> {
         }
     }
 
-    pub fn internal_create(
-        &mut self,
-        entries: Vec<Entry<EntryInit, EntryNew>>,
-    ) -> Result<(), OperationError> {
+    pub fn internal_create(&mut self, entries: Vec<EntryInitNew>) -> Result<(), OperationError> {
         let ce = CreateEvent::new_internal(entries);
+        self.create(&ce).map(|_| ())
+    }
+
+    pub fn impersonate_create(
+        &mut self,
+        ident: &Identity,
+        entries: Vec<EntryInitNew>,
+    ) -> Result<(), OperationError> {
+        let ce = CreateEvent::new_impersonate_identity(ident.clone(), entries);
         self.create(&ce).map(|_| ())
     }
 }

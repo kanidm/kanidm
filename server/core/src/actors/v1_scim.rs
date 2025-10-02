@@ -326,6 +326,55 @@ impl QueryServerWriteV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
+    pub async fn scim_person_message_send_test(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        uuid_or_name: String,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .inspect_err(|err| error!(?err, "Invalid identity"))?;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .inspect_err(|err| error!(?err, "Error resolving id to target"))?;
+
+        idms_prox_write
+            .scim_person_message_send_test(&ident, target)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn scim_message_id_sent(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        message_id: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .inspect_err(|err| error!(?err, "Invalid identity"))?;
+
+        idms_prox_write
+            .scim_message_mark_sent(&ident, message_id)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_scim_entry_put(
         &self,
         client_auth_info: ClientAuthInfo,
@@ -424,5 +473,28 @@ impl QueryServerReadV1 {
             })?;
 
         idms_prox_read.qs_read.scim_search_ext(ident, filter, query)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn scim_message_ready_search(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+    ) -> Result<ScimListResponse, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await?;
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .inspect_err(|err| {
+                error!(?err, "Invalid identity");
+            })?;
+
+        idms_prox_read
+            .qs_read
+            .scim_search_message_ready_ext(ident, ct)
     }
 }

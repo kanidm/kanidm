@@ -334,6 +334,13 @@ impl QueryServerWriteTransaction<'_> {
             SyntaxType::JsonFilter => Err(OperationError::InvalidAttribute(
                 "Json Filters are not able to be set.".to_string(),
             )),
+            // Not Yet ... if ever.
+            SyntaxType::Json => Err(OperationError::InvalidAttribute(
+                "Json values are not able to be set.".to_string(),
+            )),
+            SyntaxType::Message => Err(OperationError::InvalidAttribute(
+                "Message values are not able to be set.".to_string(),
+            )),
             // Can't be set currently as these are only internally generated for key-id's
             // SyntaxType::HexString => ValueSetHexString::from_scim_json_put(value),
             SyntaxType::HexString => Err(OperationError::InvalidAttribute(

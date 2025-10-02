@@ -1,22 +1,22 @@
-use std::time::Duration;
-
+use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
+use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
+use crate::prelude::*;
+use crate::schema::{SchemaClass, SchemaTransaction};
+use crate::value::ApiToken;
+use crate::valueset::ValueSetDateTime;
+use crate::valueset::ValueSetEmailAddress;
+use crate::valueset::ValueSetMessage;
 use base64::{
     engine::general_purpose::{STANDARD, URL_SAFE},
     Engine as _,
 };
-
 use compact_jwt::{Jws, JwsCompact};
 use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
 use kanidm_proto::scim_v1::*;
-use std::collections::{BTreeMap, BTreeSet};
-
-use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
-use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
-use crate::prelude::*;
-use crate::value::ApiToken;
-
-use crate::schema::{SchemaClass, SchemaTransaction};
+use kanidm_proto::v1::OutboundMessage;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
+use std::collections::{BTreeMap, BTreeSet};
+use std::time::Duration;
 
 // Internals of a Scim Sync token
 
@@ -192,6 +192,70 @@ impl IdmServerProxyWriteTransaction<'_> {
                 admin_error!("Failed to destroy api token {:?}", e);
                 e
             })
+    }
+
+    pub fn scim_person_message_send_test(
+        &mut self,
+        ident: &Identity,
+        target: Uuid,
+    ) -> Result<(), OperationError> {
+        // Get the target entry.
+        let target_entry = self.qs_write.impersonate_search_uuid(target, ident)?;
+
+        let display_name = target_entry
+            .get_ava_single_utf8(Attribute::DisplayName)
+            .map(String::from)
+            .ok_or(OperationError::MissingAttribute(Attribute::DisplayName))?;
+
+        let mail_primary = target_entry
+            .get_ava_mail_primary(Attribute::Mail)
+            .map(String::from)
+            .ok_or(OperationError::MissingAttribute(Attribute::Mail))?;
+
+        // Create a message to send.
+
+        let curtime_odt = self.qs_write.get_curtime_odt();
+        let delete_after_odt = curtime_odt + DEFAULT_MESSAGE_RETENTION;
+
+        let mut e_msg: EntryInitNew = Entry::new();
+        e_msg.set_ava_set(
+            &Attribute::Class,
+            ValueSetIutf8::new(EntryClass::OutboundMessage.into()),
+        );
+        e_msg.set_ava_set(&Attribute::SendAfter, ValueSetDateTime::new(curtime_odt));
+        e_msg.set_ava_set(
+            &Attribute::DeleteAfter,
+            ValueSetDateTime::new(delete_after_odt),
+        );
+        e_msg.set_ava_set(
+            &Attribute::MessageTemplate,
+            ValueSetMessage::new(OutboundMessage::TestMessageV1 { display_name }),
+        );
+        e_msg.set_ava_set(
+            &Attribute::MailDestination,
+            ValueSetEmailAddress::new(mail_primary),
+        );
+
+        self.qs_write.impersonate_create(ident, vec![e_msg])
+    }
+
+    pub fn scim_message_mark_sent(
+        &mut self,
+        ident: &Identity,
+        message_id: Uuid,
+    ) -> Result<(), OperationError> {
+        let curtime_odt = self.qs_write.get_curtime_odt();
+
+        let filter = filter_all!(f_and(vec![
+            f_eq(Attribute::Uuid, PartialValue::Uuid(message_id)),
+            f_eq(Attribute::Class, EntryClass::OutboundMessage.into())
+        ]));
+
+        let modlist = ModifyList::new_set(Attribute::SentAt, ValueSetDateTime::new(curtime_odt));
+        let modify_event =
+            ModifyEvent::from_internal_parts(ident.clone(), &modlist, &filter, &self.qs_write)?;
+
+        self.qs_write.modify(&modify_event)
     }
 }
 
