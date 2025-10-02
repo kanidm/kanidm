@@ -64,6 +64,16 @@ pub fn f_lt(a: Attribute, v: PartialValue) -> FC {
     FC::LessThan(a, v)
 }
 
+pub fn f_gt(a: Attribute, v: PartialValue) -> FC {
+    FC::And(vec![
+        FC::Pres(a.clone()),
+        FC::AndNot(Box::new(FC::Or(vec![
+            FC::Eq(a.clone(), v.clone()),
+            FC::LessThan(a, v),
+        ]))),
+    ])
+}
+
 pub fn f_or(vs: Vec<FC>) -> FC {
     FC::Or(vs)
 }
@@ -358,6 +368,8 @@ pub enum FilterPlan {
     PresUnindexed(Attribute),
     PresCorrupt(Attribute),
     LessThanUnindexed(Attribute),
+    LessThanIndexed(Attribute),
+    LessThanCorrupt(Attribute),
     OrUnindexed(Vec<FilterPlan>),
     OrIndexed(Vec<FilterPlan>),
     OrPartial(Vec<FilterPlan>),
@@ -400,6 +412,8 @@ impl fmt::Display for FilterPlan {
             Self::PresUnindexed(attr) => write!(f, "PresUnindexed({attr})"),
 
             Self::LessThanUnindexed(attr) => write!(f, "LessThanUnindexed({attr})"),
+            Self::LessThanIndexed(attr) => write!(f, "LessThanIndexed({attr})"),
+            Self::LessThanCorrupt(attr) => write!(f, "LessThanCorrupt({attr})"),
 
             Self::OrUnindexed(plan) => fmt_filterplan_set(f, "OrUnindexed", plan),
             Self::OrIndexed(plan) => write!(f, "OrIndexed(len={})", plan.len()),
@@ -1417,9 +1431,8 @@ impl FilterResolved {
                 FilterResolved::Pres(a, NonZeroU8::new(idx as u8))
             }
             FilterComp::LessThan(a, v) => {
-                // let idx = idxmeta.contains(&(&a, &IndexType::ORDERING));
-                // TODO: For now, don't emit ordering indexes.
-                FilterResolved::LessThan(a, v, None)
+                let idx = idxmeta.contains(&(&a, &IndexType::Ordering));
+                FilterResolved::LessThan(a, v, NonZeroU8::new(idx as u8))
             }
             FilterComp::Or(vs) => FilterResolved::Or(
                 vs.into_iter()
@@ -1530,8 +1543,12 @@ impl FilterResolved {
                 Some(FilterResolved::Pres(a, idx))
             }
             FilterComp::LessThan(a, v) => {
-                // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
-                Some(FilterResolved::LessThan(a, v, None))
+                let idxkref = IdxKeyRef::new(&a, &IndexType::Ordering);
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
+                Some(FilterResolved::LessThan(a, v, idx))
             }
             // We set the compound filters slope factor to "None" here, because when we do
             // optimise we'll actually fill in the correct slope factors after we sort those

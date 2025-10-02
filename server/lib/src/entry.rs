@@ -1646,6 +1646,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         .into_iter()
                                         .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
                                         .collect(),
+                                    IndexType::Ordering => vs
+                                        .generate_idx_ord_keys()
+                                        .into_iter()
+                                        .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
+                                        .collect(),
                                 };
                                 changes
                             }
@@ -1672,6 +1677,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     }
                                     IndexType::SubString => vs
                                         .generate_idx_sub_keys()
+                                        .into_iter()
+                                        .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
+                                        .collect(),
+                                    IndexType::Ordering => vs
+                                        .generate_idx_ord_keys()
                                         .into_iter()
                                         .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
                                         .collect(),
@@ -1717,6 +1727,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         .into_iter()
                                         .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
                                         .collect(),
+                                    IndexType::Ordering => pre_vs
+                                        .generate_idx_ord_keys()
+                                        .into_iter()
+                                        .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
+                                        .collect(),
                                 };
                                 changes
                             }
@@ -1740,6 +1755,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         .into_iter()
                                         .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
                                         .collect(),
+                                    IndexType::Ordering => post_vs
+                                        .generate_idx_ord_keys()
+                                        .into_iter()
+                                        .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
+                                        .collect(),
                                 };
                                 changes
                             }
@@ -1757,6 +1777,10 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::SubString => (
                                         pre_vs.generate_idx_sub_keys(),
                                         post_vs.generate_idx_sub_keys(),
+                                    ),
+                                    IndexType::Ordering => (
+                                        pre_vs.generate_idx_ord_keys(),
+                                        post_vs.generate_idx_ord_keys(),
                                     ),
                                 };
 
@@ -1817,7 +1841,9 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     Vec::with_capacity(removed_vs.len() + added_vs.len());
 
                                 match ikey.itype {
-                                    IndexType::SubString | IndexType::Equality => {
+                                    IndexType::SubString
+                                    | IndexType::Ordering
+                                    | IndexType::Equality => {
                                         removed_vs
                                             .into_iter()
                                             .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))

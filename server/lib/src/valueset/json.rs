@@ -190,6 +190,140 @@ impl ValueSetT for ValueSetJsonFilter {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ValueSetJson {
+    object: JsonValue,
+}
+
+impl ValueSetJson {
+    pub fn new(object: JsonValue) -> Box<Self> {
+        Box::new(ValueSetJson { object })
+    }
+}
+
+impl ValueSetT for ValueSetJson {
+    fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
+        match value {
+            Value::Json(object) => {
+                self.object = object;
+                Ok(true)
+            }
+            _ => {
+                debug_assert!(false);
+                Err(OperationError::InvalidValueState)
+            }
+        }
+    }
+
+    fn clear(&mut self) {
+        self.object = JsonValue::Null;
+    }
+
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
+        match pv {
+            PartialValue::Json => {
+                self.object = JsonValue::Null;
+                true
+            }
+            _ => {
+                debug_assert!(false);
+                true
+            }
+        }
+    }
+
+    fn contains(&self, pv: &PartialValue) -> bool {
+        matches!(pv, PartialValue::Json)
+    }
+
+    fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn lessthan(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn len(&self) -> usize {
+        if self.object == JsonValue::Null {
+            0
+        } else {
+            1
+        }
+    }
+
+    fn generate_idx_eq_keys(&self) -> Vec<String> {
+        Vec::with_capacity(0)
+    }
+
+    fn syntax(&self) -> SyntaxType {
+        SyntaxType::Json
+    }
+
+    fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
+        true
+    }
+
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
+        Box::new(
+            serde_json::to_string(&self.object)
+                .inspect_err(|err| error!(?err, "A json object was corrupted during run-time"))
+                .ok()
+                .into_iter(),
+        )
+    }
+
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        serde_json::to_string(&self.object)
+            .inspect_err(|err| error!(?err, "A json object was corrupted during run-time"))
+            .ok()
+            .map(|value| ScimResolveStatus::Resolved(ScimValueKanidm::from(value)))
+    }
+
+    fn to_db_valueset_v2(&self) -> DbValueSetV2 {
+        DbValueSetV2::Json(self.object.clone())
+    }
+
+    fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
+        Box::new(std::iter::once(PartialValue::Json))
+    }
+
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
+        Box::new(std::iter::once(Value::Json(self.object.clone())))
+    }
+
+    fn equal(&self, other: &ValueSet) -> bool {
+        if let Some(other) = other.as_json_object() {
+            &self.object == other
+        } else {
+            debug_assert!(false);
+            false
+        }
+    }
+
+    fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
+        if let Some(b) = other.as_json_object() {
+            self.object = b.clone();
+            Ok(())
+        } else {
+            debug_assert!(false);
+            Err(OperationError::InvalidValueState)
+        }
+    }
+
+    fn as_json_object(&self) -> Option<&JsonValue> {
+        Some(&self.object)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{ProtoFilter, ValueSetJsonFilter};

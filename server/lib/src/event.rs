@@ -374,7 +374,6 @@ impl CreateEvent {
         }
     }
 
-    #[cfg(test)]
     pub fn new_impersonate_identity(
         ident: Identity,
         entries: Vec<Entry<EntryInit, EntryNew>>,
@@ -751,6 +750,27 @@ impl Default for PurgeRecycledEvent {
 impl PurgeRecycledEvent {
     pub fn new() -> Self {
         PurgeRecycledEvent {
+            ident: Identity::from_internal(),
+            eventid: Uuid::new_v4(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct PurgeDeleteAfterEvent {
+    pub ident: Identity,
+    pub eventid: Uuid,
+}
+
+impl Default for PurgeDeleteAfterEvent {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PurgeDeleteAfterEvent {
+    pub fn new() -> Self {
+        PurgeDeleteAfterEvent {
             ident: Identity::from_internal(),
             eventid: Uuid::new_v4(),
         }

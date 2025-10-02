@@ -312,6 +312,26 @@ lazy_static! {
         members: Vec::with_capacity(0),
         ..Default::default()
     };
+
+    pub static ref BUILTIN_GROUP_MESSAGE_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_message_admins",
+        description: "Builtin Message Administration Group.",
+        uuid: UUID_IDM_MESSAGE_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for message senders to relay and process queued messages.
+    pub static ref BUILTIN_GROUP_MESSAGE_SENDERS: BuiltinGroup = BuiltinGroup {
+        name: "idm_message_senders",
+        description: "Builtin IDM Group for message senders to read and process queued messages.",
+        uuid: UUID_IDM_MESSAGE_SENDERS,
+        entry_managed_by: Some(UUID_IDM_MESSAGE_ADMINS),
+        members: Vec::with_capacity(0),
+        ..Default::default()
+    };
+
 }
 
 // at some point vs code just gives up on syntax highlighting inside lazy_static...
@@ -405,6 +425,8 @@ lazy_static! {
             UUID_IDM_CLIENT_CERTIFICATE_ADMINS,
             UUID_IDM_APPLICATION_ADMINS,
             UUID_IDM_MAIL_ADMINS,
+            UUID_IDM_MESSAGE_ADMINS,
+            UUID_IDM_MESSAGE_SENDERS,
             UUID_IDM_HIGH_PRIVILEGE,
         ],
         ..Default::default()
