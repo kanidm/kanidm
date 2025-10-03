@@ -195,7 +195,7 @@ impl Connected<ClientConnInfo> for ClientConnInfo {
 impl Connected<SocketAddr> for ClientConnInfo {
     fn connect_info(connection_addr: SocketAddr) -> Self {
         ClientConnInfo {
-            client_ip_addr: connection_addr.ip(),
+            client_ip_addr: connection_addr.ip().to_canonical(),
             connection_addr,
             client_cert: None,
         }
