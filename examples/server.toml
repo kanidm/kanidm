@@ -89,22 +89,11 @@ origin = "https://idm.example.com"
 #   and which format the information is provided in.
 #   Defaults to "none" (no trusted sources)
 #   Only one option can be used at a time.
-#
-#   NOTE: Linux can sometimes used ipv4 to ipv6 mapped
-#         addresses. You may need to use the "::ffff:"
-#         prefixed ips instead of ipv4 addresses.
-#
 # [http_client_address_info]
 # proxy-v2 = ["127.0.0.1", "127.0.0.0/8"]
 #   # OR
 # [http_client_address_info]
-# proxy-v2 = ["::ffff:127.0.0.1", "::ffff:127.0.0.0/120"]
-#   # OR
-# [http_client_address_info]
 # x-forward-for = ["127.0.0.1", "127.0.0.0/8"]
-#   # OR
-# [http_client_address_info]
-# x-forward-for = ["::ffff:127.0.0.1", "::ffff:127.0.0.0/120"]
 
 #   LDAPS requests can be reverse proxied by a loadbalancer.
 #   To preserve the original IP of the caller, these systems
