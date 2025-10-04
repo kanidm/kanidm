@@ -126,7 +126,7 @@ async fn client_tls_accept(
         .map(|trusted| {
             trusted
                 .iter()
-                .any(|ip_cidr| ip_cidr.contains(&connection_addr.ip()))
+                .any(|ip_cidr| ip_cidr.contains(&connection_addr.ip().to_canonical()))
         })
         .unwrap_or_default();
 
