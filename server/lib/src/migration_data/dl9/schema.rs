@@ -94,6 +94,14 @@ pub static ref SCHEMA_ATTR_LEGALNAME_DL7: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_IMAGE: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_IMAGE,
+    name: Attribute::Image,
+    description: "An image for display to end users.".to_string(),
+    syntax: SyntaxType::Image,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_NAME_HISTORY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_NAME_HISTORY,
     name: Attribute::NameHistory,
