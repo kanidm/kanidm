@@ -63,7 +63,7 @@ ldap3_client = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false, features = [
     "reqwest",
 ] }
-petgraph = { version = "0.8.2", features = ["serde"] }
+petgraph = { version = "0.8.3", features = ["serde"] }
 serde_json = { workspace = true }
 time = { workspace = true }
 tokio-openssl = { workspace = true }
