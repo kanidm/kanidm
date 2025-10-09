@@ -2998,15 +2998,36 @@ fn extra_claims_for_account(
         );
     }
 
-    if scopes.contains(OAUTH2_SCOPE_GROUPS) {
+    let wants_groups = scopes.contains(OAUTH2_SCOPE_GROUPS);
+    // groups implies uuid + spn to match current behaviour.
+    let wants_groups_uuid = wants_groups || scopes.contains(OAUTH2_SCOPE_GROUPS_UUID);
+    let wants_groups_spn = wants_groups || scopes.contains(OAUTH2_SCOPE_GROUPS_SPN);
+    let wants_groups_name = scopes.contains(OAUTH2_SCOPE_GROUPS_NAME);
+
+    if wants_groups_uuid || wants_groups_name || wants_groups_spn {
         extra_claims.insert(
             OAUTH2_SCOPE_GROUPS.to_string(),
             account
                 .groups
                 .iter()
-                .flat_map(|x| {
-                    let proto_group = x.to_proto();
-                    [proto_group.spn, proto_group.uuid]
+                .flat_map(|group| {
+                    let mut attrs = Vec::with_capacity(3);
+
+                    if wants_groups_uuid {
+                        attrs.push(group.uuid().as_hyphenated().to_string())
+                    }
+
+                    if wants_groups_spn {
+                        attrs.push(group.spn().clone())
+                    }
+
+                    if wants_groups_name {
+                        if let Some(name) = group.name() {
+                            attrs.push(name.into())
+                        }
+                    }
+
+                    attrs
                 })
                 .collect(),
         );
@@ -3396,8 +3417,11 @@ mod tests {
             // System admins
             (
                 Attribute::OAuth2RsScopeMap,
-                Value::new_oauthscopemap(UUID_TESTGROUP, btreeset!["groups".to_string()])
-                    .expect("invalid oauthscope")
+                Value::new_oauthscopemap(
+                    UUID_TESTGROUP,
+                    btreeset![OAUTH2_SCOPE_GROUPS.to_string()]
+                )
+                .expect("invalid oauthscope")
             ),
             (
                 Attribute::OAuth2RsScopeMap,
@@ -4845,7 +4869,7 @@ mod tests {
         assert!(
             discovery.scopes_supported
                 == Some(vec![
-                    "groups".to_string(),
+                    OAUTH2_SCOPE_GROUPS.to_string(),
                     OAUTH2_SCOPE_OPENID.to_string(),
                     "supplement".to_string(),
                 ])
@@ -5004,7 +5028,7 @@ mod tests {
         assert!(
             discovery.scopes_supported
                 == Some(vec![
-                    "groups".to_string(),
+                    OAUTH2_SCOPE_GROUPS.to_string(),
                     OAUTH2_SCOPE_OPENID.to_string(),
                     "supplement".to_string(),
                 ])
@@ -5402,7 +5426,7 @@ mod tests {
             &ident,
             ct,
             code_challenge,
-            "openid groups".to_string()
+            format!("{OAUTH2_SCOPE_OPENID} {OAUTH2_SCOPE_GROUPS}")
         );
 
         let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
@@ -5466,6 +5490,128 @@ mod tests {
             .as_array()
             .unwrap()
             .contains(&serde_json::json!(STR_UUID_IDM_ALL_ACCOUNTS)));
+
+        // Do the id_token details line up to the userinfo?
+        let userinfo = idms_prox_read
+            .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
+            .expect("failed to get userinfo");
+
+        // does the userinfo endpoint provide the same groups?
+        assert_eq!(oidc.claims.get("groups"), userinfo.claims.get("groups"));
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_openid_group_extended_claims(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // we run the same test as test_idm_oauth2_openid_extensions()
+        // but change the preferred_username setting on the RS
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (secret, _uat, ident, oauth2_client_uuid) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
+
+        // Modify the oauth2 client to have different scope maps.
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let modlist = ModifyList::new_list(vec![
+            Modify::Removed(
+                Attribute::OAuth2RsScopeMap,
+                PartialValue::Refer(UUID_TESTGROUP),
+            ),
+            Modify::Present(
+                Attribute::OAuth2RsScopeMap,
+                Value::new_oauthscopemap(
+                    UUID_TESTGROUP,
+                    btreeset![OAUTH2_SCOPE_GROUPS_NAME.to_string()],
+                )
+                .expect("invalid oauthscope"),
+            ),
+        ]);
+
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(oauth2_client_uuid, &modlist)
+            .expect("Failed to modify scopes");
+
+        idms_prox_write.commit().expect("failed to commit");
+
+        // Now actually do the test.
+        let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            &ident,
+            ct,
+            code_challenge,
+            format!("{OAUTH2_SCOPE_OPENID} {OAUTH2_SCOPE_GROUPS_NAME}")
+        );
+
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        // == Submit the token exchange code.
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
+            code: permit_success.code,
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            // From the first step.
+            code_verifier,
+        }
+        .into();
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        let id_token = token_response.id_token.expect("No id_token in response!");
+        let access_token =
+            JwsCompact::from_str(&token_response.access_token).expect("Invalid Access Token");
+
+        assert!(idms_prox_write.commit().is_ok());
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let mut jwkset = idms_prox_read
+            .oauth2_openid_publickey("test_resource_server")
+            .expect("Failed to get public key");
+        let public_jwk = jwkset.keys.pop().expect("no such jwk");
+
+        let jws_validator =
+            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
+
+        let oidc_unverified =
+            OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+
+        let iat = ct.as_secs() as i64;
+
+        let oidc = jws_validator
+            .verify(&oidc_unverified)
+            .unwrap()
+            .verify_exp(iat)
+            .expect("Failed to verify oidc");
+
+        // does our id_token contain the expected groups?
+        assert!(oidc.claims.contains_key("groups"));
+
+        assert!(oidc
+            .claims
+            .get("groups")
+            .expect("unable to find key")
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!("testgroup")));
 
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read

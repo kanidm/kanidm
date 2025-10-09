@@ -231,6 +231,10 @@ pub const SUB_ATTR_VALUE: &str = "value";
 
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";
+pub const OAUTH2_SCOPE_GROUPS_UUID: &str = "groups_uuid";
+pub const OAUTH2_SCOPE_GROUPS_NAME: &str = "groups_name";
+pub const OAUTH2_SCOPE_GROUPS_SPN: &str = "groups_spn";
+
 pub const OAUTH2_SCOPE_SSH_PUBLICKEYS: &str = "ssh_publickeys";
 pub const OAUTH2_SCOPE_OPENID: &str = "openid";
 pub const OAUTH2_SCOPE_READ: &str = "read";
