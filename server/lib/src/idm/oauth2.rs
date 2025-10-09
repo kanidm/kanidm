@@ -3132,6 +3132,7 @@ mod tests {
     use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 
     use compact_jwt::{
+        OidcToken,
         compact::JwkUse, crypto::JwsRs256Verifier, dangernoverify::JwsDangerReleaseWithoutVerify,
         JwaAlg, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, OidcSubject, OidcUnverified,
     };
@@ -3507,6 +3508,78 @@ mod tests {
         idms_prox_write.commit().expect("failed to commit");
 
         (uat, ident, rs_uuid)
+    }
+
+    /// Perform an oauth2 exchange, assuming that it will succeed.
+    async fn perform_oauth2_exchange(
+        idms: &IdmServer,
+        ident: &Identity,
+        ct: Duration,
+        client_authz: ClientAuthInfo,
+        scopes: String,
+    ) -> AccessTokenResponse {
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let consent_request =
+            good_authorisation_request!(idms_prox_read, ident, ct, code_challenge, scopes);
+
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        // == Submit the token exchange code.
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
+            code: permit_success.code,
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            // From the first step.
+            code_verifier,
+        }
+        .into();
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        token_response
+    }
+
+    async fn validate_id_token(
+        idms: &IdmServer,
+        ct: Duration,
+        id_token: &str,
+    ) -> OidcToken {
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let mut jwkset = idms_prox_read
+            .oauth2_openid_publickey("test_resource_server")
+            .expect("Failed to get public key");
+        let public_jwk = jwkset.keys.pop().expect("no such jwk");
+
+        let jws_validator =
+            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
+
+        let oidc_unverified =
+            OidcUnverified::from_str(id_token).expect("Failed to parse id_token");
+
+        let iat = ct.as_secs() as i64;
+
+        jws_validator
+            .verify(&oidc_unverified)
+            .unwrap()
+            .verify_exp(iat)
+            .expect("Failed to verify oidc")
     }
 
     async fn setup_idm_admin(idms: &IdmServer, ct: Duration) -> (UserAuthToken, Identity) {
@@ -5415,70 +5488,23 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, _uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
+
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let idms_prox_read = idms.proxy_read().await.unwrap();
-
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-
-        let consent_request = good_authorisation_request!(
-            idms_prox_read,
+        let token_response = perform_oauth2_exchange(
+            idms,
             &ident,
             ct,
-            code_challenge,
-            format!("{OAUTH2_SCOPE_OPENID} {OAUTH2_SCOPE_GROUPS}")
-        );
-
-        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
-            unreachable!();
-        };
-
-        // == Manually submit the consent token to the permit for the permit_success
-        drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
-
-        let permit_success = idms_prox_write
-            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
-            .expect("Failed to perform OAuth2 permit");
-
-        // == Submit the token exchange code.
-        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
-            code: permit_success.code,
-            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            // From the first step.
-            code_verifier,
-        }
-        .into();
-
-        let token_response = idms_prox_write
-            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
-            .expect("Failed to perform OAuth2 token exchange");
+            client_authz,
+            format!("{OAUTH2_SCOPE_OPENID} {OAUTH2_SCOPE_GROUPS}"),
+        )
+        .await;
 
         let id_token = token_response.id_token.expect("No id_token in response!");
         let access_token =
             JwsCompact::from_str(&token_response.access_token).expect("Invalid Access Token");
 
-        assert!(idms_prox_write.commit().is_ok());
-        let mut idms_prox_read = idms.proxy_read().await.unwrap();
-
-        let mut jwkset = idms_prox_read
-            .oauth2_openid_publickey("test_resource_server")
-            .expect("Failed to get public key");
-        let public_jwk = jwkset.keys.pop().expect("no such jwk");
-
-        let jws_validator =
-            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
-
-        let oidc_unverified =
-            OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
-
-        let iat = ct.as_secs() as i64;
-
-        let oidc = jws_validator
-            .verify(&oidc_unverified)
-            .unwrap()
-            .verify_exp(iat)
-            .expect("Failed to verify oidc");
+        let oidc = validate_id_token(idms, ct, &id_token).await;
 
         // does our id_token contain the expected groups?
         assert!(oidc.claims.contains_key("groups"));
@@ -5490,6 +5516,8 @@ mod tests {
             .as_array()
             .unwrap()
             .contains(&serde_json::json!(STR_UUID_IDM_ALL_ACCOUNTS)));
+
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read
@@ -5539,68 +5567,20 @@ mod tests {
         // Now actually do the test.
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let idms_prox_read = idms.proxy_read().await.unwrap();
-
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-
-        let consent_request = good_authorisation_request!(
-            idms_prox_read,
+        let token_response = perform_oauth2_exchange(
+            idms,
             &ident,
             ct,
-            code_challenge,
-            format!("{OAUTH2_SCOPE_OPENID} {OAUTH2_SCOPE_GROUPS_NAME}")
-        );
-
-        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
-            unreachable!();
-        };
-
-        // == Manually submit the consent token to the permit for the permit_success
-        drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
-
-        let permit_success = idms_prox_write
-            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
-            .expect("Failed to perform OAuth2 permit");
-
-        // == Submit the token exchange code.
-        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
-            code: permit_success.code,
-            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            // From the first step.
-            code_verifier,
-        }
-        .into();
-
-        let token_response = idms_prox_write
-            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
-            .expect("Failed to perform OAuth2 token exchange");
+            client_authz,
+            format!("{OAUTH2_SCOPE_OPENID} {OAUTH2_SCOPE_GROUPS_NAME}"),
+        )
+        .await;
 
         let id_token = token_response.id_token.expect("No id_token in response!");
         let access_token =
             JwsCompact::from_str(&token_response.access_token).expect("Invalid Access Token");
 
-        assert!(idms_prox_write.commit().is_ok());
-        let mut idms_prox_read = idms.proxy_read().await.unwrap();
-
-        let mut jwkset = idms_prox_read
-            .oauth2_openid_publickey("test_resource_server")
-            .expect("Failed to get public key");
-        let public_jwk = jwkset.keys.pop().expect("no such jwk");
-
-        let jws_validator =
-            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
-
-        let oidc_unverified =
-            OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
-
-        let iat = ct.as_secs() as i64;
-
-        let oidc = jws_validator
-            .verify(&oidc_unverified)
-            .unwrap()
-            .verify_exp(iat)
-            .expect("Failed to verify oidc");
+        let oidc = validate_id_token(idms, ct, &id_token).await;
 
         // does our id_token contain the expected groups?
         assert!(oidc.claims.contains_key("groups"));
@@ -5612,6 +5592,8 @@ mod tests {
             .as_array()
             .unwrap()
             .contains(&serde_json::json!("testgroup")));
+
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read
