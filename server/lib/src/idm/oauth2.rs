@@ -2440,9 +2440,9 @@ impl IdmServerProxyReadTransaction<'_> {
             let scope = scopes.clone();
 
             let preferred_username = if prefer_short_username {
-                Some(account.name.unwrap_or(account.spn).clone())
+                Some(account.name().into())
             } else {
-                Some(account.spn.clone())
+                Some(account.spn().into())
             };
 
             let token_type = Some(AccessTokenType::Bearer);
@@ -2921,9 +2921,9 @@ fn s_claims_for_account(
     scopes: &BTreeSet<String>,
 ) -> OidcClaims {
     let preferred_username = if o2rs.prefer_short_username {
-        Some(account.name.unwrap_or(account.spn).clone())
+        Some(account.name().into())
     } else {
-        Some(account.spn.clone())
+        Some(account.spn().into())
     };
 
     let (email, email_verified) = if scopes.contains(OAUTH2_SCOPE_EMAIL) {
