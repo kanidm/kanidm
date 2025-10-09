@@ -44,8 +44,8 @@ impl UnixExtensions {
 pub struct Account {
     // To make this self-referential, we'll need to likely make Entry Pin<Arc<_>>
     // so that we can make the references work.
-    pub name: String,
     pub spn: String,
+    pub name: Option<String>,
     pub displayname: String,
     pub uuid: Uuid,
     pub sync_parent_uuid: Option<Uuid>,
@@ -75,8 +75,7 @@ macro_rules! try_from_entry {
         // Now extract our needed attributes
         let name = $value
             .get_ava_single_iname(Attribute::Name)
-            .map(|s| s.to_string())
-            .ok_or(OperationError::MissingAttribute(Attribute::Name))?;
+            .map(|s| s.to_string());
 
         let displayname = $value
             .get_ava_single_utf8(Attribute::DisplayName)
@@ -472,8 +471,12 @@ impl Account {
         self.mail.iter().for_each(|m| {
             inputs.push(m.as_str());
         });
-        inputs.push(self.name.as_str());
-        inputs.push(self.spn.as_str());
+        inputs.push(
+            self.spn.as_str()
+        );
+        if let (name, _) = self.spn.split_once('@') {
+            inputs.push(name)
+        }
         inputs.push(self.displayname.as_str());
         if let Some(s) = self.radius_secret.as_deref() {
             inputs.push(s);
@@ -788,7 +791,7 @@ impl Account {
         let groups: Vec<UnixGroupToken> = groups.iter().map(|g| g.to_unixgrouptoken()).collect();
 
         Ok(UnixUserToken {
-            name: self.name.clone(),
+            name: self.name.unwnap_or(self.spn).clone(),
             spn: self.spn.clone(),
             displayname: self.displayname.clone(),
             gidnumber,

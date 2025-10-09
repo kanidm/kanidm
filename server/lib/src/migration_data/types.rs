@@ -37,7 +37,7 @@ impl Default for BuiltinAccount {
 impl From<BuiltinAccount> for crate::idm::account::Account {
     fn from(value: BuiltinAccount) -> Self {
         Self {
-            name: value.name.to_string(),
+            name: Some(value.name.to_string()),
             uuid: value.uuid,
             displayname: value.displayname.to_string(),
             spn: format!("{}@example.com", value.name),
