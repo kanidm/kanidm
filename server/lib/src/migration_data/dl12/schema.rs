@@ -846,10 +846,11 @@ pub static ref SCHEMA_CLASS_GROUP_DL6: SchemaClass = SchemaClass {
         Attribute::GrantUiHint,
         Attribute::Description,
         Attribute::Mail,
+        Attribute::Name,
     ],
     systemmust: vec![
-        Attribute::Name,
-        Attribute::Spn],
+        Attribute::Spn,
+    ],
     ..Default::default()
 };
 
