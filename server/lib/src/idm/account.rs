@@ -1,14 +1,3 @@
-use std::collections::{BTreeMap, BTreeSet};
-use std::time::Duration;
-
-use kanidm_proto::internal::{CredentialStatus, UatPurpose, UiHint, UserAuthToken};
-use kanidm_proto::v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken};
-use time::OffsetDateTime;
-use uuid::Uuid;
-use webauthn_rs::prelude::{
-    AttestedPasskey as AttestedPasskeyV4, AuthenticationResult, CredentialID, Passkey as PasskeyV4,
-};
-
 use super::accountpolicy::ResolvedAccountPolicy;
 use super::group::{load_account_policy, load_all_groups_from_account, Group, Unix};
 use crate::constants::UUID_ANONYMOUS;
@@ -24,7 +13,16 @@ use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
 use kanidm_lib_crypto::CryptoPolicy;
+use kanidm_proto::internal::{CredentialStatus, UatPurpose, UiHint, UserAuthToken};
+use kanidm_proto::v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
+use std::collections::{BTreeMap, BTreeSet};
+use std::time::Duration;
+use time::OffsetDateTime;
+use uuid::Uuid;
+use webauthn_rs::prelude::{
+    AttestedPasskey as AttestedPasskeyV4, AuthenticationResult, CredentialID, Passkey as PasskeyV4,
+};
 
 #[derive(Debug, Clone)]
 pub struct UnixExtensions {
@@ -44,8 +42,8 @@ impl UnixExtensions {
 pub struct Account {
     // To make this self-referential, we'll need to likely make Entry Pin<Arc<_>>
     // so that we can make the references work.
-    pub spn: String,
-    pub name: Option<String>,
+    spn: String,
+    name: Option<String>,
     pub displayname: String,
     pub uuid: Uuid,
     pub sync_parent_uuid: Option<Uuid>,
@@ -63,6 +61,21 @@ pub struct Account {
     pub(crate) unix_extn: Option<UnixExtensions>,
     pub(crate) sshkeys: BTreeMap<String, SshPublicKey>,
     pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
+}
+
+#[cfg(test)]
+impl From<crate::migration_data::BuiltinAccount> for crate::idm::account::Account {
+    fn from(value: crate::migration_data::BuiltinAccount) -> Self {
+        Self {
+            name: Some(value.name.to_string()),
+            uuid: value.uuid,
+            displayname: value.displayname.to_string(),
+            spn: format!("{}@example.com", value.name),
+            mail_primary: None,
+            mail: Vec::with_capacity(0),
+            ..Default::default()
+        }
+    }
 }
 
 macro_rules! try_from_entry {
@@ -222,6 +235,16 @@ impl Account {
 
     pub(crate) fn sshkeys(&self) -> &BTreeMap<String, SshPublicKey> {
         &self.sshkeys
+    }
+
+    pub(crate) fn spn(&self) -> &str {
+        self.spn.as_str()
+    }
+
+    pub(crate) fn name(&self) -> &str {
+        self.name
+            .as_deref()
+            .unwrap_or(self.spn.as_str())
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -471,10 +494,8 @@ impl Account {
         self.mail.iter().for_each(|m| {
             inputs.push(m.as_str());
         });
-        inputs.push(
-            self.spn.as_str()
-        );
-        if let (name, _) = self.spn.split_once('@') {
+        inputs.push(self.spn.as_str());
+        if let Some(name) = self.name.as_ref() {
             inputs.push(name)
         }
         inputs.push(self.displayname.as_str());
@@ -791,7 +812,7 @@ impl Account {
         let groups: Vec<UnixGroupToken> = groups.iter().map(|g| g.to_unixgrouptoken()).collect();
 
         Ok(UnixUserToken {
-            name: self.name.unwnap_or(self.spn).clone(),
+            name: self.name().into(),
             spn: self.spn.clone(),
             displayname: self.displayname.clone(),
             gidnumber,
