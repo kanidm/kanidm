@@ -2440,7 +2440,7 @@ impl IdmServerProxyReadTransaction<'_> {
             let scope = scopes.clone();
 
             let preferred_username = if prefer_short_username {
-                Some(account.name.clone())
+                Some(account.name.unwrap_or(account.spn).clone())
             } else {
                 Some(account.spn.clone())
             };
@@ -2921,7 +2921,7 @@ fn s_claims_for_account(
     scopes: &BTreeSet<String>,
 ) -> OidcClaims {
     let preferred_username = if o2rs.prefer_short_username {
-        Some(account.name.clone())
+        Some(account.name.unwrap_or(account.spn).clone())
     } else {
         Some(account.spn.clone())
     };

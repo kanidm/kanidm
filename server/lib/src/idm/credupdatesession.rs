@@ -473,7 +473,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
             mfaregstate: match &session.mfaregstate {
                 MfaRegState::None => MfaRegStateStatus::None,
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
-                    token.to_proto(session.account.name.as_str(), session.issuer.as_str()),
+                    token.to_proto(session.account.spn.as_str(), session.issuer.as_str()),
                 ),
                 MfaRegState::TotpNameTryAgain(_, name) => {
                     MfaRegStateStatus::TotpNameTryAgain(name.clone())

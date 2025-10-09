@@ -2408,7 +2408,7 @@ mod tests {
     }
 
     fn setup_webauthn_securitykey(
-        name: &str,
+        spn: &str,
     ) -> (
         webauthn_rs::prelude::Webauthn,
         webauthn_authenticator_rs::WebauthnAuthenticator<SoftPasskey>,
@@ -2421,7 +2421,7 @@ mod tests {
         let uuid = Uuid::new_v4();
 
         let (chal, reg_state) = webauthn
-            .start_securitykey_registration(uuid, name, name, None, None, None)
+            .start_securitykey_registration(uuid, spn, spn, None, None, None)
             .expect("Failed to setup passkey rego challenge");
 
         let r = wa
@@ -2444,7 +2444,7 @@ mod tests {
         // create the ent
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
 
-        let (webauthn, mut wa, wan_cred) = setup_webauthn_passkey(account.name.as_str());
+        let (webauthn, mut wa, wan_cred) = setup_webauthn_passkey(account.spn.as_str());
 
         // Now create the credential for the account.
         account.passkeys = btreemap![(Uuid::new_v4(), ("soft".to_string(), wan_cred))];
@@ -2598,7 +2598,7 @@ mod tests {
         // create the ent
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
 
-        let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
+        let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.spn.as_str());
         let pw_good = "test_password";
         let pw_bad = "bad_password";
 
@@ -2791,7 +2791,7 @@ mod tests {
         // create the ent
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
 
-        let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
+        let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.spn.as_str());
 
         let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
         let totp_good = totp

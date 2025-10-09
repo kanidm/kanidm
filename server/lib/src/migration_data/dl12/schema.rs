@@ -813,6 +813,7 @@ pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
         Attribute::IdVerificationEcKey,
     ],
     systemmust: vec![
+        Attribute::Name,
     ],
     systemexcludes: vec![EntryClass::ServiceAccount.into(), EntryClass::Application.into()],
     ..Default::default()
@@ -895,7 +896,6 @@ pub static ref SCHEMA_CLASS_ACCOUNT_DL5: SchemaClass = SchemaClass {
     ],
     systemmust: vec![
         Attribute::DisplayName,
-        Attribute::Name,
         Attribute::Spn
     ],
     systemsupplements: vec![
@@ -922,6 +922,9 @@ pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL7: SchemaClass = SchemaClass {
         Attribute::Mail,
         Attribute::PrimaryCredential,
         Attribute::ApiTokenSession,
+    ],
+    systemmust: vec![
+        Attribute::Name
     ],
     systemexcludes: vec![EntryClass::Person.into()],
     ..Default::default()
@@ -1030,6 +1033,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_DL9: SchemaClass = SchemaClass {
     ],
     systemmust: vec![
         Attribute::OAuth2RsOriginLanding,
+        Attribute::Name,
     ],
     ..Default::default()
 };
