@@ -775,9 +775,16 @@ impl SchemaWriteTransaction<'_> {
             .collect()
     }
 
+    /// Generate the minimal in memory schema needed to begin the server bootstrap
+    /// process. This should contain the most critical schema definitions that the
+    /// server requires to be able to read in other schema objects and persist them
+    /// into our database.
+    ///
+    /// THIS IS FOR SYSTEM CRITICAL INTERNAL SCHEMA ONLY
+    ///
+    /// Schema should otherwise be in our migration data - not here.
     #[instrument(level = "debug", name = "schema::generate_in_memory", skip_all)]
     pub fn generate_in_memory(&mut self) -> Result<(), OperationError> {
-        //
         self.classes.clear();
         self.attributes.clear();
         // Bootstrap in definitions of our own schema types
@@ -1493,6 +1500,41 @@ impl SchemaWriteTransaction<'_> {
                 syntax: SyntaxType::ReferenceUuid,
             },
         );
+
+        self.attributes.insert(
+            Attribute::Refers,
+            SchemaAttribute {
+                name: Attribute::Refers,
+                uuid: UUID_SCHEMA_ATTR_REFERS,
+                description: String::from("A reference to another object"),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: Replicated::True,
+                indexed: true,
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
+
+        self.attributes.insert(
+            Attribute::CascadeDeleted,
+            SchemaAttribute {
+                name: Attribute::CascadeDeleted,
+                uuid: UUID_SCHEMA_ATTR_CASCADE_DELETED,
+                description: String::from("A marker attribute denoting that this entry was deleted by cascade when this UUID was deleted."),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: Replicated::True,
+                indexed: true,
+                // NOTE: This has to be Uuid so that referential integrity doesn't consider
+                // this value in its operation.
+                syntax: SyntaxType::Uuid,
+            },
+        );
+
         // Migration related
         self.attributes.insert(
             Attribute::Version,
@@ -1890,37 +1932,10 @@ impl SchemaWriteTransaction<'_> {
             },
         );
         // end LDAP masking phantoms
-        self.attributes.insert(
-            Attribute::Image,
-            SchemaAttribute {
-                name: Attribute::Image,
-                uuid: UUID_SCHEMA_ATTR_IMAGE,
-                description: String::from("An image for display to end users."),
-                multivalue: false,
-                unique: false,
-                phantom: false,
-                sync_allowed: true,
-                replicated: Replicated::True,
-                indexed: false,
-                syntax: SyntaxType::Image,
-            },
-        );
 
-        self.attributes.insert(
-            Attribute::OAuth2DeviceFlowEnable,
-            SchemaAttribute {
-                name: Attribute::OAuth2DeviceFlowEnable,
-                uuid: UUID_SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE,
-                description: String::from("Enable the OAuth2 Device Flow for this client."),
-                multivalue: false,
-                unique: true,
-                phantom: false,
-                sync_allowed: false,
-                replicated: Replicated::True,
-                indexed: false,
-                syntax: SyntaxType::Boolean,
-            },
-        );
+        // THIS IS FOR SYSTEM CRITICAL INTERNAL SCHEMA ONLY
+
+        // =================================================================
 
         self.classes.insert(
             EntryClass::AttributeType.into(),
@@ -2028,7 +2043,7 @@ impl SchemaWriteTransaction<'_> {
                     name: EntryClass::Recycled.into(),
                     uuid: UUID_SCHEMA_CLASS_RECYCLED,
                     description: String::from("An object that has been deleted, but still recoverable via the revive operation. Recycled objects are not modifiable, only revivable."),
-                    systemmay: vec![Attribute::RecycledDirectMemberOf],
+                    systemmay: vec![Attribute::RecycledDirectMemberOf, Attribute::CascadeDeleted],
                     .. Default::default()
                 },
             );

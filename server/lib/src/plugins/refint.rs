@@ -9,16 +9,13 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
-use std::collections::BTreeSet;
-use std::sync::Arc;
-
-use hashbrown::{HashMap, HashSet};
-
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::filter::{f_eq, FC};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::{SchemaAttribute, SchemaTransaction};
+use hashbrown::{HashMap, HashSet};
+use std::collections::BTreeSet;
+use std::sync::Arc;
 
 pub struct ReferentialIntegrity;
 
@@ -43,9 +40,8 @@ impl ReferentialIntegrity {
         // will fail. This will return the union of the inclusion after the
         // operation.
         let filt_in = filter!(f_inc(inner));
-        let b = qs.internal_exists(filt_in).map_err(|e| {
-            admin_error!(err = ?e, "internal exists failure");
-            e
+        let b = qs.internal_exists(&filt_in).inspect_err(|err| {
+            error!(?err, filter = ?filt_in, "internal exists failure");
         })?;
 
         // Is the existence of all id's confirmed?
@@ -71,9 +67,8 @@ impl ReferentialIntegrity {
         let mut missing = Vec::with_capacity(inner.len());
         for u in inner {
             let filt_in = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(*u)));
-            let b = qs.internal_exists(filt_in).map_err(|e| {
-                admin_error!(err = ?e, "internal exists failure");
-                e
+            let b = qs.internal_exists(&filt_in).inspect_err(|err| {
+                error!(?err, filter = ?filt_in, "internal exists failure");
             })?;
 
             // If it's missing, we push it to the missing set.
@@ -85,6 +80,11 @@ impl ReferentialIntegrity {
         Ok(missing)
     }
 
+    /// This function performs two actions. It needs to cleanup any reference entries that should
+    /// be removed (aka delete cascade) as a related entry has been removed. Second, it needs to
+    /// remove dangling references from entries that are still alive. Importantly, we need to perform
+    /// these actions in *order* so that reference entries that relate to something retain their
+    /// references to their related entry, so that revival of those entries works as we expect.
     fn remove_references(
         qs: &mut QueryServerWriteTransaction,
         uuids: Vec<Uuid>,
@@ -100,7 +100,7 @@ impl ReferentialIntegrity {
         // Generate a filter which is the set of all schema reference types
         // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
         // types too!
-        let filt = filter_all!(FC::Or(
+        let filt = filter_all!(f_or(
             uuids
                 .into_iter()
                 .flat_map(|u| ref_types
@@ -120,6 +120,77 @@ impl ReferentialIntegrity {
         }
 
         qs.internal_apply_writable(work_set)
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn check_refers_to_target_loop_fast(
+        qs: &mut QueryServerWriteTransaction,
+        inner: &[Uuid],
+    ) -> Result<bool, OperationError> {
+        if inner.is_empty() {
+            // There is nothing to check! Move on.
+            trace!("no refers types modified, skipping check");
+            return Ok(false);
+        }
+
+        let inner: Vec<_> = inner
+            .iter()
+            .map(|u| {
+                f_and(vec![
+                    f_eq(Attribute::Uuid, PartialValue::Uuid(*u)),
+                    f_andnot(f_pres(Attribute::Refers)),
+                ])
+            })
+            .collect();
+
+        // F_inc(lusion). All items of inner must be 1 or more, or the filter
+        // will fail. This will return the union of the inclusion after the
+        // operation.
+        let filt_in = filter!(f_inc(inner));
+
+        let b = qs.internal_exists(&filt_in).inspect_err(|err| {
+            error!(?err, filter = ?filt_in, "internal exists failure");
+        })?;
+
+        // If this is true, it means all uuids do NOT have the attribute refers
+        // present. So we have to invert this boolean here as we do not have a loop.
+        if b {
+            Ok(false)
+        } else {
+            // A loop exists
+            Ok(true)
+        }
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn check_refers_to_target_loop_slow(
+        qs: &mut QueryServerWriteTransaction,
+        inner: &[Uuid],
+    ) -> Result<Vec<Uuid>, OperationError> {
+        if inner.is_empty() {
+            // There is nothing to check! Move on.
+            // Should be unreachable.
+            trace!("no refers types modified, skipping check");
+            return Ok(Vec::with_capacity(0));
+        }
+
+        let mut looping = Vec::with_capacity(inner.len());
+        for u in inner {
+            let filt_in = filter!(f_and(vec![
+                f_eq(Attribute::Uuid, PartialValue::Uuid(*u)),
+                f_pres(Attribute::Refers)
+            ]));
+            let b = qs.internal_exists(&filt_in).inspect_err(|err| {
+                error!(?err, filter = ?filt_in, "internal exists failure");
+            })?;
+
+            // If it's missing, we push it to the missing set.
+            if !b {
+                looping.push(*u)
+            }
+        }
+
+        Ok(looping)
     }
 }
 
@@ -177,6 +248,60 @@ impl Plugin for ReferentialIntegrity {
         cand: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
         Self::post_modify_inner(qs, None, cand)
+    }
+
+    #[instrument(level = "debug", name = "attrunique_post_repl_incremental", skip_all)]
+    fn post_repl_incremental_conflict(
+        qs: &mut QueryServerWriteTransaction,
+        _cand: &[(EntrySealedCommitted, Arc<EntrySealedCommitted>)],
+        conflict_uuids: &mut BTreeSet<Uuid>,
+    ) -> Result<(), OperationError> {
+        // Any item that is now a conflict, must have all refers that point to it removed.
+        // This is because we can't tell the intent of the refers any more, and so we don't
+        // want a refers to linger pointing to an entry that it should not.
+        if conflict_uuids.is_empty() {
+            return Ok(());
+        }
+
+        // Find anything that is a refers to the conflicted uuids.
+        let filt_inner = conflict_uuids
+            .iter()
+            .copied()
+            .map(|conflict_uuid| f_eq(Attribute::Refers, PartialValue::Refer(conflict_uuid)))
+            .collect::<Vec<_>>();
+
+        let filt = filter!(f_or(filt_inner));
+
+        // Does anything match?
+        let conflict_cand = qs.internal_exists(&filt).inspect_err(|err| {
+            error!(?err, "internal exists error");
+        })?;
+
+        // If so, time to run the filter again on the slow path and actually conflict them.
+        if conflict_cand {
+            let mut work_set = qs.internal_search_writeable(&filt)?;
+
+            for (_, entry) in work_set.iter_mut() {
+                let Some(uuid) = entry.get_uuid() else {
+                    error!("Impossible state. Entry that was declared in conflict map does not have a uuid.");
+                    return Err(OperationError::InvalidState);
+                };
+
+                // Add the uuid to the conflict uuids now.
+                conflict_uuids.insert(uuid);
+
+                // Mark that we conflicted against ourself.
+                entry.to_conflict([uuid]);
+            }
+
+            qs.internal_apply_writable(work_set).map_err(|e| {
+                admin_error!("Failed to commit memberof group set {:?}", e);
+                e
+            })?;
+        }
+
+        // Okay we *finally got here. We are done!
+        Ok(())
     }
 
     #[instrument(level = "debug", name = "refint_post_repl_incremental", skip_all)]
@@ -406,6 +531,13 @@ impl ReferentialIntegrity {
             .collect())
     }
 
+    fn cand_refers_to_target_uuid(post_cand: &[EntrySealedCommitted]) -> Vec<Uuid> {
+        post_cand
+            .iter()
+            .filter_map(|entry| entry.get_ava_single_refer(Attribute::Refers))
+            .collect()
+    }
+
     fn post_modify_inner(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: Option<&[Arc<EntrySealedCommitted>]>,
@@ -415,36 +547,55 @@ impl ReferentialIntegrity {
 
         let all_exist_fast = Self::check_uuids_exist_fast(qs, uuids.as_slice())?;
 
-        if all_exist_fast {
-            // All good!
-            return Ok(());
+        if !all_exist_fast {
+            // Okay taking the slow path now ...
+            let missing_uuids = Self::check_uuids_exist_slow(qs, uuids.as_slice())?;
+
+            error!("some uuids that were referenced in this operation do not exist.");
+            for missing in missing_uuids {
+                error!(?missing);
+            }
+
+            return Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                "Uuid referenced not found in database".to_string(),
+            )));
         }
 
-        // Okay taking the slow path now ...
-        let missing_uuids = Self::check_uuids_exist_slow(qs, uuids.as_slice())?;
+        // Now we prevent refers from ouroborosing.
 
-        error!("some uuids that were referenced in this operation do not exist.");
-        for missing in missing_uuids {
-            error!(?missing);
+        // These are the targets that Refers point at.
+        let refers_target_uuids = Self::cand_refers_to_target_uuid(post_cand);
+
+        // Now search to ensure that these targets also do NOT have an Attribute::Refers
+        // present. If they do, that means we have a Refers pointing to a Refers.
+        let loops_present =
+            Self::check_refers_to_target_loop_fast(qs, refers_target_uuids.as_slice())?;
+
+        if loops_present {
+            let looping_uuids =
+                Self::check_refers_to_target_loop_slow(qs, refers_target_uuids.as_slice())?;
+
+            error!("some entries introduce an invalid reference to another reference.");
+            error!(?looping_uuids);
+
+            return Err(OperationError::ReferenceLoop);
         }
 
-        Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
-            "Uuid referenced not found in database".to_string(),
-        )))
+        // All good!
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use kanidm_proto::internal::Filter as ProtoFilter;
-
+    use crate::credential::Credential;
     use crate::event::CreateEvent;
     use crate::prelude::*;
     use crate::value::{AuthType, Oauth2Session, OauthClaimMapJoin, Session, SessionState};
-    use time::OffsetDateTime;
-
-    use crate::credential::Credential;
+    use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
     use kanidm_lib_crypto::CryptoPolicy;
+    use kanidm_proto::internal::Filter as ProtoFilter;
+    use time::OffsetDateTime;
 
     const TEST_TESTGROUP_A_UUID: &str = "d2b496bd-8493-47b7-8142-f568b5cf47ee";
     const TEST_TESTGROUP_B_UUID: &str = "8cef42bc-2cac-43e4-96b3-8f54561885ca";
@@ -1325,4 +1476,238 @@ mod tests {
             }
         );
     }
+
+    // =======================================================================
+    // This section tests behaviour of reference *entries* rather than just
+    // referential ID's. The reason this is different is because reference
+    // entries similar to SQL are cascade deleted. That means we need to
+    // handle this case cleanly when we delete entries that their
+    // referencing entries are also deleted. Similar we need to ensure they
+    // are also revived correctly.
+    //
+    // What is tricky here is the case when you delete a reference entry
+    // intentionally, rather than just the parent entry. In this case you
+    // don't want the manually deleted reference entry to be revived.
+    //
+    // Similar we also need to test when we delete an entry, that if we revive
+    // something that references it, that the operation is rejected as the
+    // reference would then be invalid.
+
+    #[qs_test]
+    async fn test_reference_entry_basic(server: &QueryServer) {
+        // Create
+        let curtime = duration_from_epoch_now();
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        let user_uuid = Uuid::new_v4();
+        let ref_uuid = Uuid::new_v4();
+        let cert_data = Box::new(
+            Certificate::from_pem(TEST_X509_CERT_DATA)
+                .expect("Unable to parse test X509 cert data"),
+        );
+
+        let user_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(user_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        );
+
+        let ref_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClientCertificate.to_value()),
+            (Attribute::Uuid, Value::Uuid(ref_uuid)),
+            (Attribute::Refers, Value::Refer(user_uuid)),
+            (
+                Attribute::Certificate,
+                Value::Certificate(cert_data.clone())
+            )
+        );
+
+        assert!(server_txn
+            .internal_create(vec![user_entry, ref_entry])
+            .is_ok());
+
+        // Delete
+        assert!(server_txn.internal_delete_uuid(user_uuid).is_ok());
+
+        // Assert the referenced cert is gone.
+        assert!(!server_txn
+            .internal_exists_uuid(ref_uuid)
+            .expect("Unable to check if entry exists"));
+
+        assert!(server_txn.commit().is_ok());
+        // =========== new txn
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        // You can't revive just the cert.
+        assert!(matches!(
+            server_txn.internal_revive_uuid(ref_uuid).unwrap_err(),
+            OperationError::Plugin(PluginError::ReferentialIntegrity(_))
+        ));
+
+        // Roll back
+        drop(server_txn);
+
+        // Revive
+        // Assert both the user and the ref are back
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        assert!(server_txn.internal_revive_uuid(user_uuid).is_ok());
+
+        assert!(server_txn
+            .internal_exists_uuid(user_uuid)
+            .expect("Unable to check if entry exists"));
+
+        assert!(server_txn
+            .internal_exists_uuid(ref_uuid)
+            .expect("Unable to check if entry exists"));
+
+        assert!(server_txn.commit().is_ok());
+
+        // ===========================================
+        // Now test when you delete the cert separately to the user,
+        // that when you revive the user the cert stays deleted.
+
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        assert!(server_txn.internal_delete_uuid(ref_uuid).is_ok());
+
+        assert!(server_txn
+            .internal_exists_uuid(user_uuid)
+            .expect("Unable to check if entry exists"));
+
+        assert!(!server_txn
+            .internal_exists_uuid(ref_uuid)
+            .expect("Unable to check if entry exists"));
+
+        assert!(server_txn.internal_delete_uuid(user_uuid).is_ok());
+
+        assert!(server_txn.commit().is_ok());
+        // =========== new txn
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        // You can't revive just the cert.
+        assert!(server_txn.internal_revive_uuid(ref_uuid).is_err());
+
+        // Roll back
+        drop(server_txn);
+        // =========== new txn
+        let mut server_txn = server.write(curtime).await.unwrap();
+        assert!(server_txn.internal_revive_uuid(user_uuid).is_ok());
+
+        assert!(server_txn
+            .internal_exists_uuid(user_uuid)
+            .expect("Unable to check if entry exists"));
+
+        // But the cert was NOT revived at the same time!!!
+        assert!(!server_txn
+            .internal_exists_uuid(ref_uuid)
+            .expect("Unable to check if entry exists"));
+
+        assert!(server_txn.commit().is_ok());
+    }
+
+    // Add in a test to assert a refers can't refers to another refers. No bad ouroboros
+    #[qs_test]
+    async fn test_reference_ouroboros_denied(server: &QueryServer) {
+        // Create
+        let curtime = duration_from_epoch_now();
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        let user_uuid = Uuid::new_v4();
+        let ref_uuid = Uuid::new_v4();
+        let ref_ouroboros_uuid = Uuid::new_v4();
+        let cert_data = Box::new(
+            Certificate::from_pem(TEST_X509_CERT_DATA)
+                .expect("Unable to parse test X509 cert data"),
+        );
+
+        let user_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(user_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        );
+
+        let ref_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClientCertificate.to_value()),
+            (Attribute::Uuid, Value::Uuid(ref_uuid)),
+            (Attribute::Refers, Value::Refer(user_uuid)),
+            (
+                Attribute::Certificate,
+                Value::Certificate(cert_data.clone())
+            )
+        );
+
+        assert!(server_txn
+            .internal_create(vec![user_entry, ref_entry])
+            .is_ok());
+
+        assert!(server_txn.commit().is_ok());
+
+        // =========== new txn
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        // May not create a reference to a reference.
+        // This is a naughty entry.
+        let ref_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClientCertificate.to_value()),
+            (Attribute::Uuid, Value::Uuid(ref_ouroboros_uuid)),
+            (Attribute::Refers, Value::Refer(ref_uuid)),
+            (
+                Attribute::Certificate,
+                Value::Certificate(cert_data.clone())
+            )
+        );
+
+        assert!(server_txn.internal_create(vec![ref_entry]).is_err());
+
+        // Roll back
+        drop(server_txn);
+
+        // =========== new txn
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        // May not create a reference to a reference.
+        // This is a naughty entry.
+        let ref_entry = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClientCertificate.to_value()),
+            (Attribute::Uuid, Value::Uuid(ref_ouroboros_uuid)),
+            // Start by referencing the person.
+            (Attribute::Refers, Value::Refer(user_uuid)),
+            (
+                Attribute::Certificate,
+                Value::Certificate(cert_data.clone())
+            )
+        );
+
+        assert!(server_txn.internal_create(vec![ref_entry]).is_ok());
+
+        // Now, modify to make it point at the other reference.
+        let modlist = modlist!([
+            Modify::Purged(Attribute::Refers),
+            Modify::Present(Attribute::Refers, Value::Refer(ref_uuid)),
+        ]);
+
+        assert!(server_txn
+            .internal_modify_uuid(ref_ouroboros_uuid, &modlist)
+            .is_err());
+
+        // Roll back
+        drop(server_txn);
+    }
+
+    // Test with replication that on a conflict that the refers is deleted too?
+
+    // Ensure that the refers are all removed when conflict occurs.
 }

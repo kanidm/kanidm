@@ -140,6 +140,8 @@ pub enum OperationError {
     /// When the DB is potentially over-loaded a timeout can occur starting
     /// your operation.
     DatabaseLockAcquisitionTimeout,
+    /// Your change would introduce a reference loop
+    ReferenceLoop,
 
     // Specific internal errors.
     AU0001InvalidState,
@@ -413,6 +415,7 @@ impl OperationError {
             Self::TransactionAlreadyCommitted => None,
             Self::ValueDenyName => None,
             Self::DatabaseLockAcquisitionTimeout => Some("Unable to acquire a database lock - the current server may be too busy. Try again later.".into()),
+            Self::ReferenceLoop => Some("The change you have made would introduce an invalid reference loop. Unable to proceed.".into()),
 
     Self::AU0001InvalidState => Some("Invalid authentication session state for request".into()),
     Self::AU0002JwsSerialisation => Some("JWS serialisation failed".into()),

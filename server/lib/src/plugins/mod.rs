@@ -397,7 +397,9 @@ impl Plugins {
         conflict_uuids: &mut BTreeSet<Uuid>,
     ) -> Result<(), OperationError> {
         // Attr unique MUST BE FIRST.
-        attrunique::AttrUnique::post_repl_incremental_conflict(qs, cand, conflict_uuids)
+        attrunique::AttrUnique::post_repl_incremental_conflict(qs, cand, conflict_uuids)?;
+        // refint probably needs to be last to ensure all refers are correctly cleaned.
+        refint::ReferentialIntegrity::post_repl_incremental_conflict(qs, cand, conflict_uuids)
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_repl_incremental", skip_all)]

@@ -267,8 +267,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         // TODO: This could benefit from a search that only grabs uuids?
         let existing_entries = self
             .qs_write
-            // .internal_search(f_all_sync.clone())
-            .internal_exists(f_all_sync.clone())
+            .internal_exists(&f_all_sync)
             .inspect_err(|_e| {
                 error!("Failed to determine existing entries set");
             })?;

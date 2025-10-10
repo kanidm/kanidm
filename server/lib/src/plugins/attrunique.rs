@@ -131,9 +131,8 @@ fn enforce_unique<VALID, STATE>(
     trace!(?filt_in);
 
     // If any results, reject.
-    let conflict_cand = qs.internal_exists(filt_in).map_err(|e| {
-        admin_error!("internal exists error {:?}", e);
-        e
+    let conflict_cand = qs.internal_exists(&filt_in).inspect_err(|err| {
+        error!(?err, "internal exists error");
     })?;
 
     // TODO! Need to make this show what conflicted!
@@ -320,9 +319,8 @@ impl Plugin for AttrUnique {
         trace!(?filt_in);
 
         // If any results, reject.
-        let conflict_cand = qs.internal_exists(filt_in).map_err(|e| {
-            admin_error!("internal exists error {:?}", e);
-            e
+        let conflict_cand = qs.internal_exists(&filt_in).inspect_err(|err| {
+            error!(?err, "internal exists error");
         })?;
 
         if conflict_cand {
