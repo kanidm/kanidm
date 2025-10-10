@@ -242,9 +242,7 @@ impl Account {
     }
 
     pub(crate) fn name(&self) -> &str {
-        self.name
-            .as_deref()
-            .unwrap_or(self.spn.as_str())
+        self.name.as_deref().unwrap_or(self.spn.as_str())
     }
 
     #[instrument(level = "trace", skip_all)]
