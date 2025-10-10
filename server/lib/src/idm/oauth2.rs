@@ -3132,9 +3132,9 @@ mod tests {
     use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 
     use compact_jwt::{
-        OidcToken,
         compact::JwkUse, crypto::JwsRs256Verifier, dangernoverify::JwsDangerReleaseWithoutVerify,
-        JwaAlg, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, OidcSubject, OidcUnverified,
+        JwaAlg, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, OidcSubject, OidcToken,
+        OidcUnverified,
     };
     use kanidm_proto::constants::*;
     use kanidm_proto::internal::{SshPublicKey, UserAuthToken};
@@ -3555,11 +3555,7 @@ mod tests {
         token_response
     }
 
-    async fn validate_id_token(
-        idms: &IdmServer,
-        ct: Duration,
-        id_token: &str,
-    ) -> OidcToken {
+    async fn validate_id_token(idms: &IdmServer, ct: Duration, id_token: &str) -> OidcToken {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         let mut jwkset = idms_prox_read
@@ -3570,8 +3566,7 @@ mod tests {
         let jws_validator =
             JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
 
-        let oidc_unverified =
-            OidcUnverified::from_str(id_token).expect("Failed to parse id_token");
+        let oidc_unverified = OidcUnverified::from_str(id_token).expect("Failed to parse id_token");
 
         let iat = ct.as_secs() as i64;
 
