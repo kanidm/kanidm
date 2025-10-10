@@ -191,14 +191,14 @@ impl IdmServerAuthTransaction<'_> {
                 security_info!(
                     "Starting session {} for {} {} with application {}:{:?}",
                     session_id,
-                    account.spn,
+                    account.spn(),
                     account.uuid,
                     application.name,
                     application.uuid,
                 );
 
                 Ok(Some(LdapBoundToken {
-                    spn: account.spn,
+                    spn: account.spn().into(),
                     session_id,
                     effective_session: LdapSession::UnixBind(account.uuid),
                 }))

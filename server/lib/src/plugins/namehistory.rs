@@ -124,7 +124,7 @@ mod tests {
         );
         let ea = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("old_name")),
             (
                 Attribute::Uuid,
@@ -169,7 +169,7 @@ mod tests {
         // Add another uuid to a type
         let ea = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("old_name")),
             (
                 Attribute::Uuid,
@@ -211,7 +211,7 @@ mod tests {
         // Add another uuid to a type
         let mut ea = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("old_name8")),
             (
                 Attribute::Uuid,
