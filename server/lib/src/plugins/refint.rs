@@ -41,7 +41,7 @@ impl ReferentialIntegrity {
         // operation.
         let filt_in = filter!(f_inc(inner));
         let b = qs.internal_exists(&filt_in).inspect_err(|err| {
-            error!(?err, "internal exists failure");
+            error!(?err, filter = ?filt_in, "internal exists failure");
         })?;
 
         // Is the existence of all id's confirmed?
@@ -68,7 +68,7 @@ impl ReferentialIntegrity {
         for u in inner {
             let filt_in = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(*u)));
             let b = qs.internal_exists(&filt_in).inspect_err(|err| {
-                error!(?err, "internal exists failure");
+                error!(?err, filter = ?filt_in, "internal exists failure");
             })?;
 
             // If it's missing, we push it to the missing set.
@@ -149,7 +149,7 @@ impl ReferentialIntegrity {
         let filt_in = filter!(f_inc(inner));
 
         let b = qs.internal_exists(&filt_in).inspect_err(|err| {
-            error!(?err, "internal exists failure");
+            error!(?err, filter = ?filt_in, "internal exists failure");
         })?;
 
         // If this is true, it means all uuids do NOT have the attribute refers
@@ -181,7 +181,7 @@ impl ReferentialIntegrity {
                 f_pres(Attribute::Refers)
             ]));
             let b = qs.internal_exists(&filt_in).inspect_err(|err| {
-                error!(?err, "internal exists failure");
+                error!(?err, filter = ?filt_in, "internal exists failure");
             })?;
 
             // If it's missing, we push it to the missing set.
@@ -576,9 +576,7 @@ impl ReferentialIntegrity {
                 Self::check_refers_to_target_loop_slow(qs, refers_target_uuids.as_slice())?;
 
             error!("some entries introduce an invalid reference to another reference.");
-            for looping in looping_uuids {
-                error!(?looping);
-            }
+            error!(?looping_uuids);
 
             return Err(OperationError::ReferenceLoop);
         }

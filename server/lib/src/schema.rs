@@ -775,11 +775,16 @@ impl SchemaWriteTransaction<'_> {
             .collect()
     }
 
+    /// Generate the minimal in memory schema needed to begin the server bootstrap
+    /// process. This should contain the most critical schema definitions that the
+    /// server requires to be able to read in other schema objects and persist them
+    /// into our database.
+    ///
+    /// THIS IS FOR SYSTEM CRITICAL INTERNAL SCHEMA ONLY
+    ///
+    /// Schema should otherwise be in our migration data - not here.
     #[instrument(level = "debug", name = "schema::generate_in_memory", skip_all)]
     pub fn generate_in_memory(&mut self) -> Result<(), OperationError> {
-        //
-        // THIS IS FOR SYSTEM CRITICAL INTERNAL SCHEMA ONLY
-        //
         self.classes.clear();
         self.attributes.clear();
         // Bootstrap in definitions of our own schema types
@@ -1501,7 +1506,7 @@ impl SchemaWriteTransaction<'_> {
             SchemaAttribute {
                 name: Attribute::Refers,
                 uuid: UUID_SCHEMA_ATTR_REFERS,
-                description: String::from("A reference to linked object"),
+                description: String::from("A reference to another object"),
                 multivalue: false,
                 unique: false,
                 phantom: false,
@@ -1525,7 +1530,7 @@ impl SchemaWriteTransaction<'_> {
                 replicated: Replicated::True,
                 indexed: true,
                 // NOTE: This has to be Uuid so that referential integrity doesn't consider
-                // this value in it's operation.
+                // this value in its operation.
                 syntax: SyntaxType::Uuid,
             },
         );

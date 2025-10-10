@@ -63,7 +63,7 @@ impl QueryServerWriteTransaction<'_> {
             .internal_search(references_filt)
             .inspect_err(|err| error!(?err, "unable to find reference entries"))?;
 
-        #[cfg(debug_assertions)]
+        #[cfg(any(test, debug_assertions))]
         {
             use std::collections::BTreeSet;
 

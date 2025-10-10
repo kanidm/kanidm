@@ -212,7 +212,7 @@ impl QueryServerWriteTransaction<'_> {
         let mut dm_mods: BTreeMap<Uuid, ModifyList<ModifyInvalid>> = Default::default();
 
         for entry in &pre_candidates {
-            // Get this entries uuid.
+            // Get this entry's uuid.
             let u: Uuid = entry.get_uuid();
 
             if let Some(riter) = entry.get_ava_as_refuuid(Attribute::RecycledDirectMemberOf) {
