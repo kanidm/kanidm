@@ -748,6 +748,50 @@ pub static ref SCHEMA_ATTR_APPLICATION_URL: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_MESSAGE_TEMPLATE: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_MESSAGE_TEMPLATE,
+    name: Attribute::MessageTemplate,
+    description: "A JSON object containing the named message template and fields related to a message that can be substituted into the template.".to_string(),
+    syntax: SyntaxType::Message,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_SEND_AFTER: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_SEND_AFTER,
+    name: Attribute::SendAfter,
+    description: "The datetime after which this message is allowed to be released to the destination".to_string(),
+    syntax: SyntaxType::DateTime,
+    indexed: true,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_DELETE_AFTER: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_DELETE_AFTER,
+    name: Attribute::DeleteAfter,
+    description: "The datetime after which this entry will be deleted.".to_string(),
+    syntax: SyntaxType::DateTime,
+    indexed: true,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_SENT_AT: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_SENT_AT,
+    name: Attribute::SentAt,
+    indexed: true,
+    description: "The datetime when this message was sent.".to_string(),
+    syntax: SyntaxType::DateTime,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_MAIL_DESTINATION: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_MAIL_DESTINATION,
+    name: Attribute::MailDestination,
+    description: "The destination addresses that will recieve this message.".to_string(),
+    multivalue: true,
+    syntax: SyntaxType::EmailAddress,
+    ..Default::default()
+};
+
 // === classes ===
 pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
@@ -1129,5 +1173,26 @@ pub static ref SCHEMA_CLASS_APPLICATION: SchemaClass = SchemaClass {
     systemsupplements: vec![EntryClass::ServiceAccount.into()],
     ..Default::default()
 };
+
+// Messaging
+
+pub static ref SCHEMA_CLASS_OUTBOUND_MESSAGE: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OUTBOUND_MESSAGE,
+    name: EntryClass::OutboundMessage.into(),
+
+    description: "A class representing a message that is to be sent externally to a user in some way, generally via email.".to_string(),
+    systemmust: vec![
+        Attribute::MessageTemplate,
+        Attribute::SendAfter,
+        Attribute::DeleteAfter,
+    ],
+    systemmay: vec![
+        Attribute::SentAt,
+        Attribute::MailDestination,
+    ],
+    ..Default::default()
+
+};
+
 
 );

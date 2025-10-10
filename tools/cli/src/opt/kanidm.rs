@@ -615,7 +615,8 @@ pub enum ServiceAccountApiToken {
         /// After this time the api token will no longer be valid.
         #[clap(value_parser = clap::builder::NonEmptyStringValueParser::new())]
         expiry: Option<String>,
-        #[clap(long = "rw")]
+        /// Generate this token with read-write permissions - default is read-only
+        #[clap(short = 'w', long = "readwrite")]
         read_write: bool,
     },
     /// Destroy / revoke an api token from this service account. Access to the
@@ -1162,6 +1163,32 @@ pub enum DomainOpt {
 }
 
 #[derive(Debug, Subcommand, Clone)]
+pub enum MessageOpt {
+    #[clap(name = "list")]
+    /// List all queued messages
+    List,
+
+    #[clap(name = "get")]
+    /// Display the message identified by it's message id.
+    Get {
+        message_id: Uuid
+    },
+
+    #[clap(name = "mark-as-sent")]
+    /// Mark the message with this message id as sent. This will prevent it
+    /// being sent by any mail sender.
+    MarkAsSent {
+        message_id: Uuid
+    },
+
+    #[clap(name = "send-test-message")]
+    SendTestMessage {
+        /// The account name of the person who this message should be sent to.
+        to: String,
+    }
+}
+
+#[derive(Debug, Subcommand, Clone)]
 pub enum SynchOpt {
     #[clap(name = "list")]
     /// List all configured IDM sync accounts
@@ -1352,6 +1379,12 @@ pub enum SystemOpt {
     Synch {
         #[clap(subcommand)]
         commands: SynchOpt,
+    },
+    #[clap(name = "message-queue", alias = "message")]
+    /// Manage the outbound message queue
+    Message {
+        #[clap(subcommand)]
+        commands: MessageOpt,
     },
     #[clap(name = "api")]
     /// API related things

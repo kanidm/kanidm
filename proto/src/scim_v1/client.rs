@@ -1,7 +1,9 @@
 //! These are types that a client will send to the server.
 use super::ScimEntryGetQuery;
+use super::ScimMail;
 use super::ScimOauth2ClaimMapJoinChar;
 use crate::attribute::Attribute;
+use crate::v1::OutboundMessage;
 use scim_proto::ScimEntryHeader;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -131,7 +133,35 @@ pub struct ScimListApplication {
 }
 
 #[serde_as]
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct ScimEntryMessage {
+    #[serde(flatten)]
+    pub header: ScimEntryHeader,
+
+    pub message_template: OutboundMessage,
+    pub send_after: ScimDateTime,
+    pub delete_after: ScimDateTime,
+    pub sent_at: Option<ScimDateTime>,
+    pub mail_destination: Vec<ScimMail>,
+
+    #[serde(flatten)]
+    pub attrs: BTreeMap<Attribute, JsonValue>,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimListMessage {
+    pub schemas: Vec<String>,
+    pub total_results: u64,
+    pub items_per_page: Option<NonZeroU64>,
+    pub start_index: Option<NonZeroU64>,
+    pub resources: Vec<ScimEntryMessage>,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct ScimEntrySchemaClass {
     #[serde(flatten)]

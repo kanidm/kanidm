@@ -109,6 +109,11 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         // DL11
         SCHEMA_ATTR_APPLICATION_URL.clone().into(),
         // DL12
+        SCHEMA_ATTR_MESSAGE_TEMPLATE.clone().into(),
+        SCHEMA_ATTR_SEND_AFTER.clone().into(),
+        SCHEMA_ATTR_DELETE_AFTER.clone().into(),
+        SCHEMA_ATTR_SENT_AT.clone().into(),
+        SCHEMA_ATTR_MAIL_DESTINATION.clone().into(),
     ]
 }
 
@@ -146,6 +151,8 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         SCHEMA_CLASS_KEY_OBJECT_JWT_RS256.clone().into(),
         // DL11
         SCHEMA_CLASS_APPLICATION.clone().into(),
+        // DL12
+        SCHEMA_CLASS_OUTBOUND_MESSAGE.clone().into(),
     ]
 }
 
@@ -204,6 +211,8 @@ pub fn phase_6_builtin_non_admin_entries() -> Result<Vec<EntryInitNew>, Operatio
             .clone()
             .try_into()?,
         BUILTIN_GROUP_APPLICATION_ADMINS_DL8.clone().try_into()?,
+        BUILTIN_GROUP_MESSAGE_ADMINS.clone().try_into()?,
+        BUILTIN_GROUP_MESSAGE_SENDERS.clone().try_into()?,
         // Write deps on read.clone().try_into()?, so write must be added first.
         // All members must exist before we write HP
         IDM_HIGH_PRIVILEGE_DL8.clone().try_into()?,
@@ -273,5 +282,8 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         IDM_ACP_DOMAIN_ADMIN_DL9.clone().into(),
         // DL10
         IDM_ACP_OAUTH2_MANAGE.clone().into(),
+        // DL12
+        IDM_ACP_MESSAGE_MANAGE.clone().into(),
+        IDM_ACP_MESSAGE_SENDER.clone().into(),
     ]
 }

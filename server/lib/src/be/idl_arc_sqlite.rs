@@ -162,17 +162,6 @@ macro_rules! get_identry_raw {
     }};
 }
 
-// macro_rules! exists_idx {
-//     (
-//         $self:expr,
-//         $attr:expr,
-//         $itype:expr
-//     ) => {{
-//         // As a cache we have no concept of this, so we just bypass to the db.
-//         $self.db.exists_idx($attr, $itype)
-//     }};
-// }
-
 macro_rules! get_idl {
     (
         $self:expr,
@@ -1177,6 +1166,9 @@ impl IdlArcSqliteWriteTransaction<'_> {
     }
 
     pub fn create_idx(&mut self, attr: &Attribute, itype: IndexType) -> Result<(), OperationError> {
+        // TODO: Distinguish between in memory and db indexes
+        // and if there is an in memory one, create it here.
+
         self.db.create_idx(attr, itype)?;
 
         // Cache that this exists since we just made it.

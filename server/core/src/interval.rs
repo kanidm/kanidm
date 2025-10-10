@@ -16,7 +16,9 @@ use crate::CoreAction;
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use kanidmd_lib::constants::PURGE_FREQUENCY;
-use kanidmd_lib::event::{OnlineBackupEvent, PurgeRecycledEvent, PurgeTombstoneEvent};
+use kanidmd_lib::event::{
+    OnlineBackupEvent, PurgeDeleteAfterEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
+};
 
 pub(crate) struct IntervalActor;
 
@@ -35,6 +37,9 @@ impl IntervalActor {
                     .await;
                 server
                     .handle_purgerecycledevent(PurgeRecycledEvent::new())
+                    .await;
+                server
+                    .handle_purge_delete_after_event(PurgeDeleteAfterEvent::new())
                     .await;
 
                 tokio::select! {
