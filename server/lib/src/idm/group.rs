@@ -30,6 +30,7 @@ where
 {
     inner: T,
     spn: String,
+    name: Option<String>,
     uuid: Uuid,
     // We'll probably add policy and claims later to this
     ui_hints: BTreeSet<UiHint>,
@@ -41,6 +42,10 @@ macro_rules! try_from_entry {
             .get_ava_single_proto_string(Attribute::Spn)
             .ok_or_else(|| OperationError::MissingAttribute(Attribute::Spn))?;
 
+        let name = $value
+            .get_ava_single_iname(Attribute::Name)
+            .map(|s| s.to_string());
+
         let uuid = $value.get_uuid();
 
         let ui_hints = $value
@@ -50,6 +55,7 @@ macro_rules! try_from_entry {
 
         Ok(Self {
             inner: $inner,
+            name,
             spn,
             uuid,
             ui_hints,
@@ -61,12 +67,19 @@ impl<T: GroupType> Group<T> {
     pub fn spn(&self) -> &String {
         &self.spn
     }
+
     pub fn uuid(&self) -> &Uuid {
         &self.uuid
     }
+
+    pub fn name(&self) -> Option<&String> {
+        self.name.as_ref()
+    }
+
     pub fn ui_hints(&self) -> &BTreeSet<UiHint> {
         &self.ui_hints
     }
+
     pub fn to_proto(&self) -> ProtoGroup {
         ProtoGroup {
             spn: self.spn.clone(),
