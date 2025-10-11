@@ -9,6 +9,7 @@ use openssl::pkey::{PKey, Private, Public};
 use openssl::pkey_ctx::PkeyCtx;
 use std::sync::Arc;
 use uuid::Uuid;
+use crypto_glue::hmac_s256::HmacSha256Key;
 
 // This is longer than a normal TOTP step as we expect users to be talking
 // to each other, so it could take a few minutes.
@@ -184,75 +185,31 @@ impl IdmServerProxyReadTransaction<'_> {
             .inspect_err(|err| error!(?err, ?target, "Failed to retrieve entry",))
     }
 
-    fn get_user_own_key(
+    fn get_totp(
         &mut self,
-        ident_entry: &EntrySealedCommitted,
-    ) -> Result<EcKey<Private>, OperationError> {
-        ident_entry
-            .get_ava_single_eckey_private(Attribute::IdVerificationEcKey)
-            .cloned()
-            .ok_or(OperationError::AU0001InvalidState)
-    }
-
-    fn get_user_public_key(
-        &mut self,
-        target_entry: &EntrySealedCommitted,
-    ) -> Result<EcKey<Public>, OperationError> {
-        target_entry
-            .get_ava_single_eckey_public(Attribute::IdVerificationEcKey)
-            .cloned()
-            .ok_or(OperationError::AU0001InvalidState)
-    }
-
-    fn get_self_totp(
-        &mut self,
-        ident_entry: &EntrySealedCommitted,
-        target_entry: &EntrySealedCommitted,
+        initiating_entry: &EntrySealedCommitted,
+        receiving_entry: &EntrySealedCommitted,
     ) -> Result<Totp, OperationError> {
-        let self_private = self.get_user_own_key(ident_entry)?;
-        let other_user_public_key = self.get_user_public_key(target_entry)?;
-        let mut shared_key = self.derive_shared_key(self_private, other_user_public_key)?;
-        shared_key.extend_from_slice(ident_entry.get_uuid().as_bytes());
+
+        let key_object = self.qs_read
+            .get_key_providers()
+            .get_key_object_handle( UUID_DOMAIN_ID_VERIFICATION_KEY )
+            .ok_or(OperationError::KP0078KeyObjectNotFound)?;
+
+        let initiating_uuid = initiating_entry.get_uuid();
+        let receiving_uuid = receiving_entry.get_uuid();
+
+        // Uuid's are always 16 bytes, so this is 32.
+        let mut info_bytes: [u8; 32] = [0; 32];
+        info_bytes[..16].copy_from_slice(initiating_uuid.as_bytes());
+        info_bytes[16..].copy_from_slice(receiving_uuid.as_bytes());
+
+        let mut shared_key = HmacSha256Key::default();
+        key_object.
+
 
         let totp = Totp::new(shared_key, TOTP_STEP, TotpAlgo::Sha256, TotpDigits::Six);
         Ok(totp)
-    }
-
-    fn get_user_totp(
-        &mut self,
-        ident_entry: &EntrySealedCommitted,
-        target_entry: &EntrySealedCommitted,
-    ) -> Result<Totp, OperationError> {
-        let self_private = self.get_user_own_key(ident_entry)?;
-        let other_user_public_key = self.get_user_public_key(target_entry)?;
-        let mut shared_key = self.derive_shared_key(self_private, other_user_public_key)?;
-        shared_key.extend_from_slice(target_entry.get_uuid().as_bytes());
-        let totp = Totp::new(shared_key, TOTP_STEP, TotpAlgo::Sha256, TotpDigits::Six);
-        Ok(totp)
-    }
-
-    fn derive_shared_key(
-        &self,
-        private: EcKey<Private>,
-        public: EcKey<Public>,
-    ) -> Result<Vec<u8>, OperationError> {
-        let cryptography_error = |_| OperationError::CryptographyError;
-        let pkey_private = PKey::from_ec_key(private).map_err(cryptography_error)?;
-        let pkey_public = PKey::from_ec_key(public).map_err(cryptography_error)?;
-
-        let mut private_key_ctx: PkeyCtx<Private> =
-            PkeyCtx::new(&pkey_private).map_err(cryptography_error)?;
-        private_key_ctx.derive_init().map_err(cryptography_error)?;
-        private_key_ctx
-            .derive_set_peer(&pkey_public)
-            .map_err(cryptography_error)?;
-        let keylen = private_key_ctx.derive(None).map_err(cryptography_error)?;
-        let mut tmp_vec = vec![0; keylen];
-        let buffer = tmp_vec.as_mut_slice();
-        private_key_ctx
-            .derive(Some(buffer))
-            .map_err(cryptography_error)?;
-        Ok(buffer.to_vec())
     }
 }
 

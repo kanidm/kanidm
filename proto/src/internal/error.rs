@@ -311,6 +311,7 @@ pub enum OperationError {
     KP0075KeyObjectHmacInvalidLength,
     KP0076KeyObjectHkdfOutputLengthInvalid,
     KP0077KeyProviderNoSuchKey,
+    KP0078KeyObjectNotFound,
 
     // Plugins
     PL0001GidOverlapsSystemRange,
