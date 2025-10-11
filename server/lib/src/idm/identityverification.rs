@@ -211,7 +211,9 @@ impl IdmServerProxyReadTransaction<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::idm::identityverification::{IdentifyUserStartEvent, IdentifyUserSubmitCodeEvent};
+    use crate::idm::identityverification::{
+        IdentifyUserDisplayCodeEvent, IdentifyUserStartEvent, IdentifyUserSubmitCodeEvent,
+    };
     use crate::prelude::*;
     use kanidm_proto::internal::IdentifyUserResponse;
 
@@ -323,6 +325,24 @@ mod test {
             }
         };
 
+        // DisplayCode shows the same result.
+        let res_higher_user = idms_prox_read
+            .handle_identify_user_display_code(
+                &IdentifyUserDisplayCodeEvent::new(user_a_uuid, user_b.clone()),
+                ct,
+            )
+            .expect("Failed to retrieve code.");
+
+        let higher_user_totp_display = match res_higher_user {
+            IdentifyUserResponse::ProvideCode { totp, .. } => totp,
+            state => {
+                error!(?state);
+                unreachable!()
+            }
+        };
+
+        assert_eq!(higher_user_totp_display, higher_user_totp);
+
         // The lower user is in state "wait"
         let lower_user_state = idms_prox_read
             .handle_identify_user_start(
@@ -374,6 +394,24 @@ mod test {
 
         debug!(?higher_user_totp, ?lower_user_totp);
         assert_ne!(higher_user_totp, lower_user_totp);
+
+        // Assert that the lower user code display is correct.
+        let lower_user_state = idms_prox_read
+            .handle_identify_user_display_code(
+                &IdentifyUserDisplayCodeEvent::new(user_b_uuid, user_a.clone()),
+                ct,
+            )
+            .expect("Failed to retrieve code.");
+
+        let lower_user_totp_display = match lower_user_state {
+            IdentifyUserResponse::ProvideCode { totp, .. } => totp,
+            state => {
+                error!(?state);
+                unreachable!()
+            }
+        };
+
+        assert_eq!(lower_user_totp_display, lower_user_totp);
 
         // Submit the wrong code as the higher user
         let higher_user_state = idms_prox_read
