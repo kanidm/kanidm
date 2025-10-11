@@ -13,16 +13,36 @@ use compact_jwt::{
     JwaAlg, Jwk, JwkKeySet, Jws, JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsHs256Signer,
     JwsSigner, JwsSignerToVerifier,
 };
-use crypto_glue::{aes128, traits::Zeroizing};
+use crypto_glue::{
+    aes128,
+    hkdf_s256::HkdfSha256,
+    hmac_s256::{self, HmacSha256, HmacSha256Key},
+    traits::{Mac, Zeroizing},
+};
 use smolset::SmolSet;
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Bound::{Included, Unbounded};
 use std::sync::Arc;
 
+const KID_LEN: usize = 32;
+
 pub struct KeyProviderInternal {
     uuid: Uuid,
     name: String,
+}
+
+#[derive(Clone)]
+pub struct KeyObjectInternal {
+    provider: Arc<KeyProviderInternal>,
+    uuid: Uuid,
+    jws_es256: Option<KeyObjectInternalJwtEs256>,
+    jws_hs256: Option<KeyObjectInternalJwtHs256>,
+    jws_rs256: Option<KeyObjectInternalJwtRs256>,
+    jwe_a128gcm: Option<KeyObjectInternalJweA128GCM>,
+    hkdf_s256: Option<KeyObjectInternalHkdfS256>,
+    // If you add more types here you need to add these to rotate
+    // and revoke.
 }
 
 impl KeyProviderInternal {
@@ -63,6 +83,7 @@ impl KeyProviderInternal {
             jws_hs256: None,
             jwe_a128gcm: None,
             jws_rs256: None,
+            hkdf_s256: None,
         }))
     }
 
@@ -78,6 +99,7 @@ impl KeyProviderInternal {
         let mut jws_hs256: Option<KeyObjectInternalJwtHs256> = None;
         let mut jws_rs256: Option<KeyObjectInternalJwtRs256> = None;
         let mut jwe_a128gcm: Option<KeyObjectInternalJweA128GCM> = None;
+        let mut hkdf_s256: Option<KeyObjectInternalHkdfS256> = None;
 
         if let Some(key_internal_map) = entry
             .get_ava_set(Attribute::KeyInternalData)
@@ -144,6 +166,18 @@ impl KeyProviderInternal {
                             *valid_from,
                         )?;
                     }
+                    KeyUsage::HkdfS256 => {
+                        let hkdf_s256_ref =
+                            hkdf_s256.get_or_insert_with(KeyObjectInternalHkdfS256::default);
+
+                        hkdf_s256_ref.load(
+                            key_id,
+                            *status,
+                            status_cid.clone(),
+                            der,
+                            *valid_from,
+                        )?;
+                    }
                 }
             }
         }
@@ -155,6 +189,7 @@ impl KeyProviderInternal {
             jws_hs256,
             jwe_a128gcm,
             jws_rs256,
+            hkdf_s256,
         })))
     }
 
@@ -1165,18 +1200,6 @@ impl KeyObjectInternalJwtRs256 {
     }
 }
 
-#[derive(Clone)]
-pub struct KeyObjectInternal {
-    provider: Arc<KeyProviderInternal>,
-    uuid: Uuid,
-    jws_es256: Option<KeyObjectInternalJwtEs256>,
-    jws_hs256: Option<KeyObjectInternalJwtHs256>,
-    jws_rs256: Option<KeyObjectInternalJwtRs256>,
-    jwe_a128gcm: Option<KeyObjectInternalJweA128GCM>,
-    // If you add more types here you need to add these to rotate
-    // and revoke.
-}
-
 #[cfg(test)]
 impl KeyObjectInternal {
     pub fn new_test() -> Arc<KeyObject> {
@@ -1216,6 +1239,14 @@ impl KeyObjectT for KeyObjectInternal {
             jwe_a128_gcm.new_active(rotation_time, cid)?;
         }
 
+        if let Some(jws_hs256_object) = &mut self.jws_hs256 {
+            jws_hs256_object.new_active(rotation_time, cid)?;
+        }
+
+        if let Some(hkdf_s256_object) = &mut self.hkdf_s256 {
+            hkdf_s256_object.new_active(rotation_time, cid)?;
+        }
+
         Ok(())
     }
 
@@ -1241,6 +1272,18 @@ impl KeyObjectT for KeyObjectInternal {
 
             if let Some(jwe_a128_gcm) = &mut self.jwe_a128gcm {
                 if jwe_a128_gcm.revoke(revoke_key_id, cid)? {
+                    has_revoked = true;
+                }
+            };
+
+            if let Some(jws_hs256_object) = &mut self.jws_hs256 {
+                if jws_hs256_object.revoke(revoke_key_id, cid)? {
+                    has_revoked = true;
+                }
+            };
+
+            if let Some(hkdf_s256_object) = &mut self.hkdf_s256 {
+                if hkdf_s256_object.revoke(revoke_key_id, cid)? {
                     has_revoked = true;
                 }
             };
@@ -1431,6 +1474,11 @@ impl KeyObjectT for KeyObjectInternal {
                 self.jws_rs256
                     .iter()
                     .flat_map(|jws_rs256| jws_rs256.to_key_iter()),
+            )
+            .chain(
+                self.hkdf_s256
+                    .iter()
+                    .flat_map(|hkdf_s256| hkdf_s256.to_key_iter()),
             );
         let key_vs = ValueSetKeyInternal::from_key_iter(key_iter)? as ValueSet;
 
@@ -1486,6 +1534,30 @@ impl KeyObjectT for KeyObjectInternal {
         self.jws_rs256
             .as_ref()
             .map(|jws_rs256_object| jws_rs256_object.public_jwks())
+    }
+
+    fn hkdf_s256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let koi = self
+            .hkdf_s256
+            .get_or_insert_with(KeyObjectInternalHkdfS256::default);
+
+        koi.assert_active(valid_from, cid)
+    }
+
+    /// Given some external and unique info, expand (aka derive) a new key into
+    /// output_key using hmac key derivation.
+    fn hkdf_s256_expand(
+        &self,
+        info: &[u8],
+        output_key: &mut [u8],
+        current_time: Duration,
+    ) -> Result<(), OperationError> {
+        if let Some(hkdf_s256_object) = &self.hkdf_s256 {
+            hkdf_s256_object.hkdf_s256_expand(info, output_key, current_time)
+        } else {
+            error!(provider_uuid = ?self.uuid, "hkdf s256 not available on this provider");
+            Err(OperationError::KP0077KeyProviderNoSuchKey)
+        }
     }
 }
 
@@ -1772,6 +1844,226 @@ impl KeyObjectInternalJwtHs256 {
                 InternalJwtHs256Status::Valid { .. } => KeyStatus::Valid,
                 InternalJwtHs256Status::Retained { .. } => KeyStatus::Retained,
                 InternalJwtHs256Status::Revoked => KeyStatus::Revoked,
+            };
+            Ok(Some(status))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+#[derive(Clone)]
+enum InternalHkdfS256Status {
+    Valid { verifier: HmacSha256Key },
+    Retained { verifier: HmacSha256Key },
+    Revoked,
+}
+
+#[derive(Clone)]
+struct InternalHkdfS256 {
+    valid_from: u64,
+    status: InternalHkdfS256Status,
+    status_cid: Cid,
+}
+
+#[derive(Default, Clone)]
+struct KeyObjectInternalHkdfS256 {
+    // active signing keys are in a BTreeMap indexed by their valid_from
+    // time so that we can retrieve the active key.
+    //
+    // We don't need to worry about manipulating this at runtime, since any expiry
+    // event will cause the keyObject to reload, which will reflect to this map.
+    active: BTreeMap<u64, HmacSha256Key>,
+
+    // All keys are stored by their KeyId for fast lookup. Keys internally have a
+    // current status which is checked for signature validation.
+    all: BTreeMap<KeyId, InternalHkdfS256>,
+}
+
+// Needed temporarily until we consume this type in other areas.
+#[allow(dead_code)]
+impl KeyObjectInternalHkdfS256 {
+    fn get_valid_signer(&self, time: Duration) -> Option<&HmacSha256Key> {
+        let ct_secs = time.as_secs();
+
+        self.active
+            .range((Unbounded, Included(ct_secs)))
+            .next_back()
+            .map(|(_time, signer)| signer)
+    }
+
+    fn assert_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        if self.get_valid_signer(valid_from).is_none() {
+            // This means there is no active signing key, so we need to create one.
+            debug!("no active hs256 found, creating a new one ...");
+            self.new_active(valid_from, cid)
+        } else {
+            Ok(())
+        }
+    }
+
+    #[instrument(level = "debug", name = "keyobject::hs256::new", skip_all)]
+    fn new_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let valid_from = valid_from.as_secs();
+
+        let signer = hmac_s256::new_key();
+        let verifier = signer.clone();
+
+        self.active.insert(valid_from, signer.clone());
+
+        // Needed to disambiguate the various traits.
+        // let kid = JwsVerifier::get_kid(&signer).to_string();
+
+        let mut hmac = HmacSha256::new(&signer);
+        hmac.update(b"key identifier");
+        let hashout = hmac.finalize();
+        let mut kid = hex::encode(hashout.into_bytes());
+        kid.truncate(KID_LEN);
+
+        self.all.insert(
+            kid,
+            InternalHkdfS256 {
+                valid_from,
+                status: InternalHkdfS256Status::Valid { verifier },
+                status_cid: cid.clone(),
+            },
+        );
+
+        Ok(())
+    }
+
+    fn revoke(&mut self, revoke_key_id: &KeyId, cid: &Cid) -> Result<bool, OperationError> {
+        if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
+            if matches!(&key_to_revoke.status, InternalHkdfS256Status::Revoked) {
+                return Ok(false);
+            }
+
+            key_to_revoke.status_cid = cid.clone();
+            key_to_revoke.status = InternalHkdfS256Status::Revoked;
+
+            let valid_from = key_to_revoke.valid_from;
+
+            // Remove it from the active set.
+            self.active.remove(&valid_from);
+
+            Ok(true)
+        } else {
+            // We didn't revoke anything
+            Ok(false)
+        }
+    }
+
+    fn load(
+        &mut self,
+        id: &str,
+        status: KeyStatus,
+        status_cid: Cid,
+        der: &[u8],
+        valid_from: u64,
+    ) -> Result<(), OperationError> {
+        let id: KeyId = id.to_string();
+
+        let status = match status {
+            KeyStatus::Valid => {
+                let signer = hmac_s256::key_from_slice(der).ok_or_else(|| {
+                    error!(?id, "Unable to load hs256 verifier");
+                    OperationError::KP0072KeyObjectHs256Invalid
+                })?;
+
+                let verifier = signer.clone();
+
+                self.active.insert(valid_from, signer);
+
+                InternalHkdfS256Status::Valid { verifier }
+            }
+            KeyStatus::Retained => {
+                let verifier = hmac_s256::key_from_slice(der).ok_or_else(|| {
+                    error!(?id, "Unable to load hs256 verifier");
+                    OperationError::KP0073KeyObjectHs256Invalid
+                })?;
+
+                InternalHkdfS256Status::Retained { verifier }
+            }
+            KeyStatus::Revoked => InternalHkdfS256Status::Revoked,
+        };
+
+        let internal = InternalHkdfS256 {
+            valid_from,
+            status,
+            status_cid,
+        };
+
+        self.all.insert(id, internal);
+
+        Ok(())
+    }
+
+    fn to_key_iter(&self) -> impl Iterator<Item = (KeyId, KeyInternalData)> + '_ {
+        self.all.iter().map(|(key_id, internal_jwt)| {
+            let usage = KeyUsage::HkdfS256;
+
+            let valid_from = internal_jwt.valid_from;
+            let status_cid = internal_jwt.status_cid.clone();
+
+            let (status, der) = match &internal_jwt.status {
+                InternalHkdfS256Status::Valid { verifier } => {
+                    (KeyStatus::Valid, verifier.as_slice().to_vec().into())
+                }
+                InternalHkdfS256Status::Retained { verifier } => {
+                    (KeyStatus::Retained, verifier.as_slice().to_vec().into())
+                }
+                InternalHkdfS256Status::Revoked => {
+                    (KeyStatus::Revoked, Vec::with_capacity(0).into())
+                }
+            };
+
+            (
+                key_id.clone(),
+                KeyInternalData {
+                    usage,
+                    valid_from,
+                    der,
+                    status,
+                    status_cid,
+                },
+            )
+        })
+    }
+
+    fn hkdf_s256_expand(
+        &self,
+        info: &[u8],
+        output_key: &mut [u8],
+        current_time: Duration,
+    ) -> Result<(), OperationError> {
+        let Some(signing_key) = self.get_valid_signer(current_time) else {
+            error!("No signing keys available. This may indicate that no keys are valid yet!");
+            return Err(OperationError::KP0074KeyObjectNoActiveSigningKeys);
+        };
+
+        // See https://github.com/RustCrypto/KDFs/issues/153 for why we need to do
+        // this little slice dance.
+        let hkdf = HkdfSha256::from_prk(signing_key.as_slice()).map_err(|err| {
+            error!(?err, "Invalid PRK length - THIS SHOULD NEVER HAPPEN!!!!");
+            OperationError::KP0075KeyObjectHmacInvalidLength
+        })?;
+
+        hkdf.expand(info, output_key).map_err(|err| {
+            error!(
+                ?err,
+                "Requested output key size is too large to safely derive."
+            );
+            OperationError::KP0076KeyObjectHkdfOutputLengthInvalid
+        })
+    }
+
+    #[cfg(test)]
+    fn kid_status(&self, key_id: &KeyId) -> Result<Option<KeyStatus>, OperationError> {
+        if let Some(key_to_check) = self.all.get(key_id) {
+            let status = match &key_to_check.status {
+                InternalHkdfS256Status::Valid { .. } => KeyStatus::Valid,
+                InternalHkdfS256Status::Retained { .. } => KeyStatus::Retained,
+                InternalHkdfS256Status::Revoked => KeyStatus::Revoked,
             };
             Ok(Some(status))
         } else {

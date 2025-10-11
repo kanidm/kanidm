@@ -341,6 +341,8 @@ pub const UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_RS256: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000192");
 pub const UUID_SCHEMA_ATTR_APPLICATION_URL: Uuid = uuid!("00000000-0000-0000-0000-ffff00000193");
 pub const UUID_SCHEMA_ATTR_CASCADE_DELETED: Uuid = uuid!("00000000-0000-0000-0000-ffff00000194");
+pub const UUID_SCHEMA_CLASS_KEY_OBJECT_HKDF_S256: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000195");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
@@ -348,7 +350,6 @@ pub const UUID_SYSTEM: Uuid = uuid!("00000000-0000-0000-0000-ffffff000000");
 pub const UUID_SYSTEM_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000001");
 pub const STR_UUID_DOMAIN_INFO: &str = "00000000-0000-0000-0000-ffffff000025";
 pub const UUID_DOMAIN_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000025");
-
 // DO NOT allocate here, allocate below.
 
 // Access controls
@@ -463,6 +464,7 @@ pub const UUID_IDM_ACP_APPLICATION_MANAGE: Uuid = uuid!("00000000-0000-0000-0000
 pub const UUID_IDM_ACP_MAIL_SERVERS: Uuid = uuid!("00000000-0000-0000-0000-ffffff000074");
 pub const UUID_SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000075");
+pub const UUID_DOMAIN_ID_VERIFICATION_KEY: Uuid = uuid!("00000000-0000-0000-0000-ffffff000076");
 
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");

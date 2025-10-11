@@ -147,6 +147,8 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         SCHEMA_CLASS_KEY_OBJECT_JWT_RS256.clone().into(),
         // DL11
         SCHEMA_CLASS_APPLICATION.clone().into(),
+        // DL12
+        SCHEMA_CLASS_KEY_OBJECT_HKDF_S256.clone().into(),
     ]
 }
 
@@ -159,6 +161,7 @@ pub fn phase_4_system_entries() -> Vec<EntryInitNew> {
         E_SYSTEM_INFO_V1.clone(),
         E_DOMAIN_INFO_DL6.clone(),
         E_SYSTEM_CONFIG_V1.clone(),
+        E_UUID_DOMAIN_ID_VERIFICATION_KEY_V1.clone(),
     ]
 }
 

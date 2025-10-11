@@ -33,6 +33,19 @@ lazy_static! {
             Value::new_utf8s("This local domain's info and metadata object.")
         )
     );
+    pub static ref E_UUID_DOMAIN_ID_VERIFICATION_KEY_V1: EntryInitNew = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::KeyObject.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectHkdfS256.to_value()),
+        (
+            Attribute::Uuid,
+            Value::Uuid(UUID_DOMAIN_ID_VERIFICATION_KEY)
+        ),
+        (
+            Attribute::Description,
+            Value::new_utf8s("The domain local id verification HMAC key.")
+        )
+    );
     pub static ref E_SYSTEM_CONFIG_V1: EntryInitNew = entry_init!(
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::SystemConfig.to_value()),
