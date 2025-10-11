@@ -114,9 +114,18 @@ impl Plugin for KeyObjectManagement {
                 }
 
                 // Every key object needs at least *one* key it stores.
-                if !key_object_entry
-                    .attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into())
-                {
+                let has_jwt_es256 = key_object_entry
+                    .attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into());
+
+                let has_jwt_rs256 = key_object_entry
+                    .attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtRs256.into());
+
+                let has_hkdf_s256 = key_object_entry
+                    .attribute_equality(Attribute::Class, &EntryClass::KeyObjectHkdfS256.into());
+
+                let has_key = has_jwt_es256 || has_jwt_rs256 || has_hkdf_s256;
+
+                if !has_key {
                     error!(?object_uuid, "Invalid key object, contains no keys.");
                     return Some(ConsistencyError::KeyProviderNoKeys {
                         key_object: object_uuid,

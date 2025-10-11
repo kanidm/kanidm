@@ -528,6 +528,7 @@ impl OperationError {
             Self::KP0075KeyObjectHmacInvalidLength => None,
             Self::KP0076KeyObjectHkdfOutputLengthInvalid => None,
             Self::KP0077KeyProviderNoSuchKey => None,
+            Self::KP0078KeyObjectNotFound => None,
 
             Self::KU001InitWhileSessionActive => Some("The session was active when the init function was called.".into()),
             Self::KU002ContinueWhileSessionInActive => Some("Attempted to continue auth session while current session is inactive".into()),
