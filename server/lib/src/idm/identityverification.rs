@@ -213,6 +213,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let other_user_public_key = self.get_user_public_key(target_entry)?;
         let mut shared_key = self.derive_shared_key(self_private, other_user_public_key)?;
         shared_key.extend_from_slice(ident_entry.get_uuid().as_bytes());
+
         let totp = Totp::new(shared_key, TOTP_STEP, TotpAlgo::Sha256, TotpDigits::Six);
         Ok(totp)
     }
@@ -431,9 +432,10 @@ mod test {
         ));
     }
 
-    #[idm_test] // actually this is somewhat a duplicate of `test_full_identification_flow` inside the testkit, with the exception that this
-                //tests ONLY the totp code correctness and not the flow correctness. To test the correctness it obviously needs to also
-                // enforce some flow checks, but this is not the primary scope of this test
+    // actually this is somewhat a duplicate of `test_full_identification_flow` inside the testkit, with the exception that this
+    // tests ONLY the totp code correctness and not the flow correctness. To test the correctness it obviously needs to also
+    // enforce some flow checks, but this is not the primary scope of this test
+    #[idm_test]
     async fn test_code_correctness(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();

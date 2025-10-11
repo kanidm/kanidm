@@ -211,6 +211,11 @@ impl KeyObjectManagement {
                     key_object.rotate_keys(rotation_time, &txn_cid)?;
                 }
 
+                if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectHkdfS256.into())
+                {
+                    key_object.hkdf_s256_assert(Duration::ZERO, &txn_cid)?;
+                }
+
                 if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into())
                 {
                     // Assert that this object has a valid es256 key present. Post revoke, it may NOT

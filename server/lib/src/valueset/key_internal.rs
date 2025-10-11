@@ -87,6 +87,7 @@ impl ValueSetKeyInternal {
                             DbValueKeyUsage::JwsHs256 => KeyUsage::JwsHs256,
                             DbValueKeyUsage::JwsRs256 => KeyUsage::JwsRs256,
                             DbValueKeyUsage::JweA128GCM => KeyUsage::JweA128GCM,
+                            DbValueKeyUsage::HkdfS256 => KeyUsage::HkdfS256,
                         };
                         let status_cid = status_cid.into();
                         let status = match status {
@@ -137,6 +138,7 @@ impl ValueSetKeyInternal {
                         KeyUsage::JwsHs256 => DbValueKeyUsage::JwsHs256,
                         KeyUsage::JwsRs256 => DbValueKeyUsage::JwsRs256,
                         KeyUsage::JweA128GCM => DbValueKeyUsage::JweA128GCM,
+                        KeyUsage::HkdfS256 => DbValueKeyUsage::HkdfS256,
                     };
                     let status_cid = status_cid.into();
                     let status = match status {

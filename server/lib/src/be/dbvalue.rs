@@ -682,6 +682,7 @@ pub enum DbValueKeyUsage {
     JwsHs256,
     JwsRs256,
     JweA128GCM,
+    HkdfS256,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]

@@ -774,9 +774,9 @@ pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
         Attribute::Mail,
         Attribute::LegalName,
         Attribute::ApplicationPassword,
+        Attribute::IdVerificationEcKey,
     ],
     systemmust: vec![
-        Attribute::IdVerificationEcKey
     ],
     systemexcludes: vec![EntryClass::ServiceAccount.into(), EntryClass::Application.into()],
     ..Default::default()
@@ -1085,6 +1085,16 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6: SchemaClass = SchemaClas
     uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM,
     name: EntryClass::KeyObjectJweA128GCM.into(),
     description: "A marker class indicating that this keyobject must provide jwe aes-256-gcm capability.".to_string(),
+    systemsupplements: vec![
+        EntryClass::KeyObject.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_KEY_OBJECT_HKDF_S256: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_HKDF_S256,
+    name: EntryClass::KeyObjectHkdfS256.into(),
+    description: "A marker class indicating that this keyobject must provide hmac kdf sha256 capability.".to_string(),
     systemsupplements: vec![
         EntryClass::KeyObject.into(),
     ],
