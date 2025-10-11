@@ -336,7 +336,27 @@ mod test {
             IdentifyUserResponse::WaitForCode
         ));
 
-        // Submit the code as the lower user,
+        // Submit an incorrect code as the lower user.
+        let lower_user_state = idms_prox_read
+            .handle_identify_user_submit_code(
+                &IdentifyUserSubmitCodeEvent::new(
+                    user_b_uuid,
+                    user_a.clone(),
+                    higher_user_totp + 1,
+                ),
+                ct,
+            )
+            .expect("Failed to retrieve code.");
+
+        match lower_user_state {
+            IdentifyUserResponse::CodeFailure => {}
+            state => {
+                error!(?state);
+                unreachable!()
+            }
+        };
+
+        // Submit the correct code as the lower user,
         let lower_user_state = idms_prox_read
             .handle_identify_user_submit_code(
                 &IdentifyUserSubmitCodeEvent::new(user_b_uuid, user_a.clone(), higher_user_totp),
@@ -354,6 +374,22 @@ mod test {
 
         debug!(?higher_user_totp, ?lower_user_totp);
         assert_ne!(higher_user_totp, lower_user_totp);
+
+        // Submit the wrong code as the higher user
+        let higher_user_state = idms_prox_read
+            .handle_identify_user_submit_code(
+                &IdentifyUserSubmitCodeEvent::new(user_a_uuid, user_b.clone(), lower_user_totp + 1),
+                ct,
+            )
+            .expect("Failed to retrieve code.");
+
+        match higher_user_state {
+            IdentifyUserResponse::CodeFailure => {}
+            state => {
+                error!(?state);
+                unreachable!()
+            }
+        };
 
         // Now check that the higher user can submit correctly.
         let higher_user_state = idms_prox_read
