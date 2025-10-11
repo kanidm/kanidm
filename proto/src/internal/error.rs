@@ -305,6 +305,14 @@ pub enum OperationError {
     KP0070KeyObjectJwsHs256Signature,
     KP0071KeyObjectPrivateToDer,
 
+    KP0072KeyObjectHs256Invalid,
+    KP0073KeyObjectHs256Invalid,
+    KP0074KeyObjectNoActiveSigningKeys,
+    KP0075KeyObjectHmacInvalidLength,
+    KP0076KeyObjectHkdfOutputLengthInvalid,
+    KP0077KeyProviderNoSuchKey,
+    KP0078KeyObjectNotFound,
+
     // Plugins
     PL0001GidOverlapsSystemRange,
 
@@ -505,18 +513,22 @@ impl OperationError {
             Self::KP0060KeyObjectJwsPublicJwk => None,
             Self::KP0061KeyObjectNoActiveSigningKeys => None,
             Self::KP0062KeyProviderNoSuchKey => None,
-
             Self::KP0063KeyObjectJwsHs256DerInvalid => None,
             Self::KP0064KeyObjectSignerToVerifier => None,
             Self::KP0065KeyObjectJwtHs256Generation => None,
-
             Self::KP0066KeyObjectJwsHs256DerInvalid => None,
             Self::KP0067KeyObjectSignerToVerifier => None,
             Self::KP0068KeyObjectJwsHs256DerInvalid => None,
             Self::KP0069KeyObjectNoActiveSigningKeys => None,
             Self::KP0070KeyObjectJwsHs256Signature => None,
             Self::KP0071KeyObjectPrivateToDer => None,
-
+            Self::KP0072KeyObjectHs256Invalid => None,
+            Self::KP0073KeyObjectHs256Invalid => None,
+            Self::KP0074KeyObjectNoActiveSigningKeys => None,
+            Self::KP0075KeyObjectHmacInvalidLength => None,
+            Self::KP0076KeyObjectHkdfOutputLengthInvalid => None,
+            Self::KP0077KeyProviderNoSuchKey => None,
+            Self::KP0078KeyObjectNotFound => None,
 
             Self::KU001InitWhileSessionActive => Some("The session was active when the init function was called.".into()),
             Self::KU002ContinueWhileSessionInActive => Some("Attempted to continue auth session while current session is inactive".into()),
