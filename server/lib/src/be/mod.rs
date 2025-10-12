@@ -2482,7 +2482,9 @@ mod tests {
             let vr2 = r2.into_sealed_committed();
 
             // Modify single
-            assert!(be.modify(&CID_ZERO, &[pre1], std::slice::from_ref(&vr1)).is_ok());
+            assert!(be
+                .modify(&CID_ZERO, &[pre1], std::slice::from_ref(&vr1))
+                .is_ok());
             // Assert no other changes
             assert!(entry_attr_pres!(be, vr1, Attribute::TestAttr));
             assert!(!entry_attr_pres!(be, vr2, Attribute::TestAttr));
@@ -2555,7 +2557,9 @@ mod tests {
             // This sets up the RUV with the changes.
             let r1_ts = r1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
 
-            assert!(be.modify(&CID_ONE, &[r1], std::slice::from_ref(&r1_ts)).is_ok());
+            assert!(be
+                .modify(&CID_ONE, &[r1], std::slice::from_ref(&r1_ts))
+                .is_ok());
 
             let r2_ts = r2.to_tombstone(CID_TWO.clone()).into_sealed_committed();
             let r3_ts = r3.to_tombstone(CID_TWO.clone()).into_sealed_committed();
