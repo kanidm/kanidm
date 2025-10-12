@@ -727,33 +727,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                     } => {
                                         // Reload TLS certificates
-                                        // systemd has a special reload handler for this.
-                                        #[cfg(target_os = "linux")]
-                                        {
-                                            if let Ok(monotonic_usec) = sd_notify::NotifyState::monotonic_usec_now() {
-                                                let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Reloading, monotonic_usec]);
-                                                let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Status("Reloading ...")]);
-                                            } else {
-                                                error!("CRITICAL!!! Unable to access clock monotonic time. SYSTEMD WILL KILL US.");
-                                            };
-                                        }
-
                                         sctx.tls_acceptor_reload().await;
-
-                                        // Systemd freaks out if you send the ready state too fast after the
-                                        // reload state and can kill Kanidmd as a result.
-                                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-
-                                        #[cfg(target_os = "linux")]
-                                        {
-                                            if let Ok(monotonic_usec) = sd_notify::NotifyState::monotonic_usec_now() {
-                                                let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready, monotonic_usec]);
-                                                let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Status("Reload Success")]);
-                                            } else {
-                                                error!("CRITICAL!!! Unable to access clock monotonic time. SYSTEMD WILL KILL US.");
-                                            };
-                                        }
-
                                         info!("Reload complete");
                                     }
                                     Some(()) = async move {

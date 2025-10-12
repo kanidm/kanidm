@@ -8,7 +8,7 @@ Wants=time-sync.target network-online.target
 Before=radiusd.service
 
 [Service]
-Type=notify-reload
+Type=notify
 DynamicUser=yes
 StateDirectory=kanidm
 StateDirectoryMode=0750
