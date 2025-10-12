@@ -524,7 +524,7 @@ impl Oauth2ResourceServers {
         }
     }
 
-    pub fn write(&self) -> Oauth2ResourceServersWriteTransaction {
+    pub fn write(&self) -> Oauth2ResourceServersWriteTransaction<'_> {
         Oauth2ResourceServersWriteTransaction {
             inner: self.inner.write(),
         }
