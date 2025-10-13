@@ -372,6 +372,8 @@ publish:
 	cargo publish -p kanidm_lib_crypto
 	cargo publish -p kanidm_client
 	cargo publish -p kanidm_tools
+	cargo publish -p kanidm-ldap-sync
+	cargo publish -p kanidm-ipa-sync
 
 .PHONY: rust_container
 rust_container: # Build and run a container based on the Linux rust base container, with our requirements included

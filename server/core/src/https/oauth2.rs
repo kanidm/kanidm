@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+//! OAuth2/OIDC HTTPs handlers
 
 use super::errors::WebError;
 use super::middleware::KOpId;
@@ -36,7 +36,9 @@ use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "dev-oauth2-device-flow")]
 use serde_with::formats::CommaSeparator;
+#[cfg(feature = "dev-oauth2-device-flow")]
 use serde_with::{serde_as, StringWithSeparator};
 
 #[cfg(feature = "dev-oauth2-device-flow")]
@@ -726,14 +728,15 @@ pub async fn oauth2_preflight_options() -> Response {
         .into_response()
 }
 
+#[cfg(feature = "dev-oauth2-device-flow")]
 #[serde_as]
 #[derive(Deserialize, Debug, Serialize)]
 pub(crate) struct DeviceFlowForm {
     client_id: String,
     #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, String>>")]
-    scope: Option<BTreeSet<String>>,
+    scope: Option<std::collections::BTreeSet<String>>,
     #[serde(flatten)]
-    extra: BTreeMap<String, String>, // catches any extra nonsense that gets sent through
+    extra: std::collections::BTreeMap<String, String>, // catches any extra nonsense that gets sent through
 }
 
 /// Device flow! [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628)

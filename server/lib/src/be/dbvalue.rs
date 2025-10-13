@@ -147,11 +147,11 @@ impl std::fmt::Debug for DbBackupCodeV1 {
     }
 }
 
-// We have to allow this as serde expects &T for the fn sig.
-#[allow(clippy::trivially_copy_pass_by_ref)]
-fn is_false(b: &bool) -> bool {
-    !b
-}
+// // We have to allow this as serde expects &T for the fn sig.
+// #[allow(clippy::trivially_copy_pass_by_ref)]
+// fn is_false(b: &bool) -> bool {
+//     !b
+// }
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
@@ -422,20 +422,6 @@ pub struct DbValueTaggedStringV1 {
     pub tag: String,
     #[serde(rename = "d")]
     pub data: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct DbValueEmailAddressV1 {
-    pub d: String,
-    #[serde(skip_serializing_if = "is_false", default)]
-    pub p: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct DbValuePhoneNumberV1 {
-    pub d: String,
-    #[serde(skip_serializing_if = "is_false", default)]
-    pub p: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
