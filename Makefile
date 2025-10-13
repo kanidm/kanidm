@@ -370,8 +370,10 @@ publish:
 	cargo publish -p kanidm_utils_users
 	cargo publish -p kanidm_lib_file_permissions
 	cargo publish -p kanidm_lib_crypto
-	cargo publish -p kanidm_client
+	cargo publish -p kamanidm_client
 	cargo publish -p kanidm_tools
+	cargo publish -p kanidmd_lib_macros
+	cargo publish -p kanidmd_lib
 	cargo publish -p kanidm-ldap-sync
 	cargo publish -p kanidm-ipa-sync
 
