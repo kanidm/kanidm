@@ -43,7 +43,7 @@ lazy_static! {
         ),
         (
             Attribute::Description,
-            Value::new_utf8s("The domain local id verification HMAC key.")
+            Value::new_utf8s("The domain-local HMAC key used for user ID verification.")
         )
     );
     pub static ref E_SYSTEM_CONFIG_V1: EntryInitNew = entry_init!(
