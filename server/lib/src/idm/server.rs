@@ -1449,14 +1449,14 @@ impl IdmServerAuthTransaction<'_> {
             security_info!(
                 "Starting session {} for {} {}",
                 session_id,
-                account.spn,
+                account.spn(),
                 account.uuid
             );
 
             // Account must be anon, so we can gen the uat.
             Ok(Some(LdapBoundToken {
                 session_id,
-                spn: account.spn,
+                spn: account.spn().into(),
                 effective_session: LdapSession::UnixBind(UUID_ANONYMOUS),
             }))
         } else {
@@ -1475,12 +1475,12 @@ impl IdmServerAuthTransaction<'_> {
                     security_info!(
                         "Starting session {} for {} {}",
                         session_id,
-                        account.spn,
+                        account.spn(),
                         account.uuid
                     );
 
                     Ok(Some(LdapBoundToken {
-                        spn: account.spn,
+                        spn: account.spn().into(),
                         session_id,
                         effective_session: LdapSession::UnixBind(account.uuid),
                     }))

@@ -37,7 +37,7 @@ impl IdmServerAuthTransaction<'_> {
             Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_read)?;
 
         security_info!(
-            username = %account.name,
+            spn = %account.spn(),
             issue = ?issue,
             uuid = %account.uuid,
             "Initiating Re-Authentication Session",
