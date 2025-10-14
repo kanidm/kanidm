@@ -8,9 +8,10 @@ use crate::value::{
     Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, OauthClaimMapJoin, Session,
 };
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
+use crypto_glue::s256::Sha256Output;
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
-use kanidm_lib_crypto::{x509_cert::Certificate, Sha256Digest};
+use kanidm_lib_crypto::x509_cert::Certificate;
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::JsonValue;
@@ -642,7 +643,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Digest, Box<Certificate>>> {
+    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Output, Box<Certificate>>> {
         debug_assert!(false);
         None
     }

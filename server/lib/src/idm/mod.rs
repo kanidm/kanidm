@@ -25,7 +25,8 @@ pub mod serviceaccount;
 use crate::prelude::OperationError;
 use crate::server::identity::Source;
 use compact_jwt::JwsCompact;
-use kanidm_lib_crypto::{x509_cert::Certificate, Sha256Digest};
+use crypto_glue::s256::Sha256Output;
+use kanidm_lib_crypto::x509_cert::Certificate;
 use kanidm_proto::{
     internal::UserAuthToken,
     v1::{AuthAllowed, AuthIssueSession, AuthMech},
@@ -105,7 +106,7 @@ impl ClientAuthInfo {
 
 #[derive(Debug, Clone)]
 pub struct ClientCertInfo {
-    pub public_key_s256: Sha256Digest,
+    pub public_key_s256: Sha256Output,
     pub certificate: Certificate,
 }
 
