@@ -63,6 +63,15 @@ pub trait KeyObjectT {
 
     fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError>;
 
+    fn hkdf_s256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError>;
+
+    fn hkdf_s256_expand(
+        &self,
+        info: &[u8],
+        output_key: &mut [u8],
+        current_time: Duration,
+    ) -> Result<(), OperationError>;
+
     fn as_valuesets(&self) -> Result<Vec<(Attribute, ValueSet)>, OperationError>;
 
     fn duplicate(&self) -> KeyObject;

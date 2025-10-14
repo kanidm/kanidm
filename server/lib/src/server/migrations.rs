@@ -678,6 +678,12 @@ impl QueryServerWriteTransaction<'_> {
 
         self.reload()?;
 
+        // Cleanup any leftover id keys
+        let modlist = ModifyList::new_purge(Attribute::IdVerificationEcKey);
+        let filter = filter_all!(f_pres(Attribute::IdVerificationEcKey));
+
+        self.internal_modify(&filter, &modlist)?;
+
         Ok(())
     }
 
@@ -943,6 +949,29 @@ mod tests {
 
         assert_eq!(db_domain_version, DOMAIN_LEVEL_11);
 
+        // Make a new person.
+        let tuuid = Uuid::new_v4();
+        let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(tuuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        );
+
+        write_txn
+            .internal_create(vec![e1])
+            .expect("Unable to create user");
+
+        let user = write_txn
+            .internal_search_uuid(tuuid)
+            .expect("Unable to load user");
+
+        // They still have an id verification key
+        assert!(user.get_ava_set(Attribute::IdVerificationEcKey).is_some());
+
         write_txn.commit().expect("Unable to commit");
 
         // == pre migration verification. ==
@@ -961,6 +990,35 @@ mod tests {
             .expect("Unable to set domain level to version 12");
 
         // post migration verification.
+        let user = write_txn
+            .internal_search_uuid(tuuid)
+            .expect("Unable to load user");
+
+        // The key has been removed.
+        assert!(user.get_ava_set(Attribute::IdVerificationEcKey).is_none());
+
+        // New users don't get a key
+        let t2uuid = Uuid::new_v4();
+        let e2 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson2")),
+            (Attribute::Uuid, Value::Uuid(t2uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson2")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson2"))
+        );
+
+        write_txn
+            .internal_create(vec![e2])
+            .expect("Unable to create user");
+
+        let user = write_txn
+            .internal_search_uuid(t2uuid)
+            .expect("Unable to load user");
+
+        // No key!
+        assert!(user.get_ava_set(Attribute::IdVerificationEcKey).is_none());
 
         write_txn.commit().expect("Unable to commit");
     }

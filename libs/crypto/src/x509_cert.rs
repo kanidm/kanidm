@@ -1,12 +1,12 @@
-use crate::Sha256Digest;
-
 pub use ::x509_cert::der;
 pub use ::x509_cert::der::pem;
 pub use ::x509_cert::Certificate;
+use crypto_glue::{
+    s256::{Sha256, Sha256Output},
+    traits::Digest,
+};
 
-use ::sha2::{Digest, Sha256};
-
-pub fn x509_public_key_s256(certificate: &Certificate) -> Option<Sha256Digest> {
+pub fn x509_public_key_s256(certificate: &Certificate) -> Option<Sha256Output> {
     let public_key_bytes = certificate
         .tbs_certificate
         .subject_public_key_info
