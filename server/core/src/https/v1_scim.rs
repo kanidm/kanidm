@@ -898,7 +898,10 @@ pub fn route_setup() -> Router<ServerState> {
         //  Message    /Message/{id}    GET                Fetch message by id
         .route("/scim/v1/Message/:id", get(scim_message_id_get))
         //  Message    /Message/{id}/_sent     POST         Mark this message as having been processed and sent
-        .route("/scim/v1/Message/:id/_sent", post(scim_message_id_sent_post))
+        .route(
+            "/scim/v1/Message/:id/_sent",
+            post(scim_message_id_sent_post),
+        )
         // Synchronisation routes.
         .route(
             "/scim/v1/Sync",
