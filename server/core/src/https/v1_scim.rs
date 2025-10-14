@@ -714,9 +714,9 @@ async fn scim_message_ready_get(
     ),
     security(("token_jwt" = [])),
     tag = "scim",
-    operation_id = "scim_message_id_sent_get"
+    operation_id = "scim_message_id_sent_post"
 )]
-async fn scim_message_id_sent_get(
+async fn scim_message_id_sent_post(
     State(state): State<ServerState>,
     Path(message_id): Path<Uuid>,
     Extension(kopid): Extension<KOpId>,
@@ -897,8 +897,8 @@ pub fn route_setup() -> Router<ServerState> {
         .route("/scim/v1/Message/_ready", get(scim_message_ready_get))
         //  Message    /Message/{id}    GET                Fetch message by id
         .route("/scim/v1/Message/:id", get(scim_message_id_get))
-        //  Message    /Message/{id}/_sent     GET         Mark this message as having been processed and sent
-        .route("/scim/v1/Message/:id/_sent", get(scim_message_id_sent_get))
+        //  Message    /Message/{id}/_sent     POST         Mark this message as having been processed and sent
+        .route("/scim/v1/Message/:id/_sent", post(scim_message_id_sent_post))
         // Synchronisation routes.
         .route(
             "/scim/v1/Sync",

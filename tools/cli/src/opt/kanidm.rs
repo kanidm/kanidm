@@ -1169,13 +1169,13 @@ pub enum MessageOpt {
     List,
 
     #[clap(name = "get")]
-    /// Display the message identified by it's message id.
+    /// Display the message identified by its message ID.
     Get {
         message_id: Uuid
     },
 
     #[clap(name = "mark-as-sent")]
-    /// Mark the message with this message id as sent. This will prevent it
+    /// Mark the message with this message ID as sent. This will prevent it
     /// being sent by any mail sender.
     MarkAsSent {
         message_id: Uuid

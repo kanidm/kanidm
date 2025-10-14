@@ -30,7 +30,7 @@ impl KanidmClient {
     }
 
     pub async fn idm_message_mark_sent(&self, message_id: Uuid) -> Result<(), ClientError> {
-        self.perform_get_request(&format!("/scim/v1/Message/{message_id}/_sent"))
+        self.perform_post_request(&format!("/scim/v1/Message/{message_id}/_sent"), ())
             .await
     }
 }
