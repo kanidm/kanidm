@@ -182,6 +182,7 @@ pub enum IndexType {
     Equality,
     Presence,
     SubString,
+    Ordering,
 }
 
 impl TryFrom<&str> for IndexType {
@@ -193,6 +194,7 @@ impl TryFrom<&str> for IndexType {
             "EQUALITY" => Ok(IndexType::Equality),
             "PRESENCE" => Ok(IndexType::Presence),
             "SUBSTRING" => Ok(IndexType::SubString),
+            "ORDERING" => Ok(IndexType::Ordering),
             // UUID map?
             // UUID rev map?
             _ => Err(()),
@@ -206,6 +208,7 @@ impl IndexType {
             IndexType::Equality => "eq",
             IndexType::Presence => "pres",
             IndexType::SubString => "sub",
+            IndexType::Ordering => "ord",
         }
     }
 }
@@ -219,6 +222,7 @@ impl fmt::Display for IndexType {
                 IndexType::Equality => "EQUALITY",
                 IndexType::Presence => "PRESENCE",
                 IndexType::SubString => "SUBSTRING",
+                IndexType::Ordering => "ORDERING",
             }
         )
     }
@@ -284,6 +288,8 @@ pub enum SyntaxType {
     HexString = 39,
     Certificate = 40,
     ApplicationPassword = 41,
+    Json = 42,
+    Message = 43,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -334,6 +340,8 @@ impl TryFrom<&str> for SyntaxType {
             "HEX_STRING" => Ok(SyntaxType::HexString),
             "CERTIFICATE" => Ok(SyntaxType::Certificate),
             "APPLICATION_PASSWORD" => Ok(SyntaxType::ApplicationPassword),
+            "JSON" => Ok(SyntaxType::Json),
+            "MESSAGE" => Ok(SyntaxType::Message),
             _ => Err(()),
         }
     }
@@ -384,6 +392,8 @@ impl fmt::Display for SyntaxType {
             SyntaxType::HexString => "HEX_STRING",
             SyntaxType::Certificate => "CERTIFICATE",
             SyntaxType::ApplicationPassword => "APPLICATION_PASSWORD",
+            SyntaxType::Json => "JSON",
+            SyntaxType::Message => "MESSAGE",
         })
     }
 }
@@ -402,12 +412,8 @@ impl SyntaxType {
             ],
             SyntaxType::Uuid => &[IndexType::Equality, IndexType::Presence],
             SyntaxType::Boolean => &[IndexType::Equality],
-            SyntaxType::SyntaxId => &[],
-            SyntaxType::IndexId => &[],
             SyntaxType::ReferenceUuid => &[IndexType::Equality, IndexType::Presence],
-            SyntaxType::JsonFilter => &[],
             SyntaxType::Credential => &[IndexType::Equality],
-            SyntaxType::SecretUtf8String => &[],
             SyntaxType::SshKey => &[IndexType::Equality, IndexType::Presence],
             SyntaxType::SecurityPrincipalName => &[
                 IndexType::Equality,
@@ -415,34 +421,48 @@ impl SyntaxType {
                 IndexType::SubString,
             ],
             SyntaxType::Uint32 => &[IndexType::Equality, IndexType::Presence],
-            SyntaxType::Cid => &[],
+            SyntaxType::Cid => &[
+                IndexType::Equality,
+                IndexType::Presence,
+                IndexType::Ordering,
+            ],
             SyntaxType::NsUniqueId => &[IndexType::Equality, IndexType::Presence],
-            SyntaxType::DateTime => &[],
+            SyntaxType::DateTime => &[
+                IndexType::Equality,
+                IndexType::Presence,
+                IndexType::Ordering,
+            ],
             SyntaxType::EmailAddress => &[IndexType::Equality, IndexType::SubString],
-            SyntaxType::Url => &[],
-            SyntaxType::OauthScope => &[],
             SyntaxType::OauthScopeMap => &[IndexType::Equality],
-            SyntaxType::PrivateBinary => &[],
             SyntaxType::IntentToken => &[IndexType::Equality],
             SyntaxType::Passkey => &[IndexType::Equality],
             SyntaxType::AttestedPasskey => &[IndexType::Equality],
             SyntaxType::Session => &[IndexType::Equality],
+            SyntaxType::Oauth2Session => &[IndexType::Equality],
+            SyntaxType::ApiToken => &[IndexType::Equality],
+            SyntaxType::OauthClaimMap => &[IndexType::Equality],
+            SyntaxType::ApplicationPassword => &[IndexType::Equality],
+            SyntaxType::SecretUtf8String => &[],
+            SyntaxType::Url => &[],
+            SyntaxType::OauthScope => &[],
+            SyntaxType::PrivateBinary => &[],
             SyntaxType::JwsKeyEs256 => &[],
             SyntaxType::JwsKeyRs256 => &[],
-            SyntaxType::Oauth2Session => &[IndexType::Equality],
             SyntaxType::UiHint => &[],
             SyntaxType::TotpSecret => &[],
-            SyntaxType::ApiToken => &[IndexType::Equality],
             SyntaxType::AuditLogString => &[],
             SyntaxType::EcKeyPrivate => &[],
             SyntaxType::Image => &[],
             SyntaxType::CredentialType => &[],
             SyntaxType::WebauthnAttestationCaList => &[],
-            SyntaxType::OauthClaimMap => &[IndexType::Equality],
             SyntaxType::KeyInternal => &[],
             SyntaxType::HexString => &[],
             SyntaxType::Certificate => &[],
-            SyntaxType::ApplicationPassword => &[IndexType::Equality],
+            SyntaxType::SyntaxId => &[],
+            SyntaxType::IndexId => &[],
+            SyntaxType::JsonFilter => &[],
+            SyntaxType::Json => &[],
+            SyntaxType::Message => &[],
         }
     }
 }
@@ -579,6 +599,7 @@ pub enum PartialValue {
     OauthClaimValue(String, Uuid, String),
 
     HexString(String),
+    Json,
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -964,6 +985,7 @@ impl PartialValue {
             PartialValue::OauthClaim(_, _) => "_".to_string(),
             PartialValue::OauthClaimValue(_, _, _) => "_".to_string(),
             PartialValue::HexString(hexstr) => hexstr.to_string(),
+            PartialValue::Json => "_".to_string(),
         }
     }
 
@@ -1360,6 +1382,7 @@ pub enum Value {
 
     Certificate(Box<Certificate>),
     ApplicationPassword(ApplicationPassword),
+    Json(JsonValue),
 }
 
 impl PartialEq for Value {
@@ -2215,6 +2238,7 @@ impl Value {
             | Value::EcKeyPrivate(_)
             | Value::UiHint(_)
             | Value::CredentialType(_)
+            | Value::Json(_)
             | Value::WebauthnAttestationCaList(_) => true,
         }
     }

@@ -2177,3 +2177,74 @@ lazy_static! {
         ..Default::default()
     };
 }
+
+lazy_static! {
+    pub static ref IDM_ACP_MESSAGE_MANAGE: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch,
+            EntryClass::AccessControlCreate,
+        ],
+        name: "idm_acp_message_manage",
+        uuid: UUID_IDM_ACP_MESSAGE_MANAGE,
+        description: "Builtin IDM Control for allowing management of message entries.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_MESSAGE_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::OutboundMessage),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::MessageTemplate,
+            Attribute::SendAfter,
+            Attribute::DeleteAfter,
+            Attribute::SentAt,
+            Attribute::MailDestination,
+        ],
+        modify_present_attrs: vec![Attribute::SentAt, Attribute::SendAfter,],
+        modify_removed_attrs: vec![Attribute::SentAt, Attribute::SendAfter,],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::MessageTemplate,
+            Attribute::SendAfter,
+            Attribute::DeleteAfter,
+            Attribute::MailDestination,
+        ],
+        create_classes: vec![EntryClass::Object, EntryClass::OutboundMessage],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_MESSAGE_SENDER: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_message_sender",
+        uuid: UUID_IDM_ACP_MESSAGE_SENDER,
+        description: "Builtin IDM Control for allowing an external sender to process messages.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_MESSAGE_SENDERS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::OutboundMessage),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::MessageTemplate,
+            Attribute::SendAfter,
+            Attribute::DeleteAfter,
+            Attribute::SentAt,
+            Attribute::MailDestination,
+        ],
+        modify_present_attrs: vec![Attribute::SentAt,],
+        modify_removed_attrs: vec![Attribute::SentAt,],
+        ..Default::default()
+    };
+}

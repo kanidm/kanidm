@@ -1,0 +1,48 @@
+[package]
+name = "mail_sender"
+default-run = "kanidm_mail_sender"
+description = "Kanidm Mail Sender Service"
+documentation = "https://kanidm.github.io/kanidm/stable/"
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "kanidm_mail_sender"
+path = "src/main.rs"
+doc = false
+test = false
+doctest = false
+
+[dependencies]
+clap = { workspace = true, features = ["derive", "env"] }
+chrono = { workspace = true }
+cron = { workspace = true }
+hashbrown = { workspace = true }
+kanidm_client = { workspace = true }
+kanidm_proto = { workspace = true }
+kanidm_lib_file_permissions = { workspace = true }
+lettre = { workspace = true, default-features = false, features = ["builder", "pool", "hostname", "smtp-transport", "tokio1-rustls", "aws-lc-rs", "rustls-platform-verifier", "tokio1", "serde", "tracing"] }
+tokio = { workspace = true, features = ["rt", "macros", "net"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+toml = { workspace = true }
+url = { workspace = true, features = ["serde"] }
+uuid = { workspace = true, features = ["serde"] }
+
+
+[target.'cfg(target_family = "unix")'.dependencies]
+kanidm_utils_users = { workspace = true }
+
+[build-dependencies]
+clap = { workspace = true, features = ["derive"] }
+clap_complete = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = ["clap_complete"]

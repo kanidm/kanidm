@@ -102,6 +102,10 @@ pub const PURGE_FREQUENCY: u64 = 60;
 #[cfg(not(test))]
 pub const PURGE_FREQUENCY: u64 = 600;
 
+/// The duration for which messages will be retained after their send_after time. Defaults to
+/// 7 days
+pub const DEFAULT_MESSAGE_RETENTION: Duration = Duration::from_secs(86400 * 7);
+
 /// The number of delayed actions to consider per write transaction. Higher
 /// values allow more coalescing to occur, but may consume more ram and cause
 /// some latency while dequeuing and writing those operations.

@@ -41,6 +41,7 @@ use std::collections::BTreeSet;
 use std::num::NonZeroU64;
 use std::str::FromStr;
 use std::sync::Arc;
+use time::OffsetDateTime;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
@@ -738,6 +739,8 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::Certificate => Value::new_certificate_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid x509 certificate syntax".to_string())),
                     SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute("ApplicationPassword values can not be supplied through modification".to_string())),
+                    SyntaxType::Json => Err(OperationError::InvalidAttribute("Json values can not be supplied through modification".to_string())),
+                    SyntaxType::Message => Err(OperationError::InvalidAttribute("Message values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -869,6 +872,12 @@ pub trait QueryServerTransaction<'a> {
                             )
                         })
                     }
+                    SyntaxType::Json => Err(OperationError::InvalidAttribute(
+                        "Json values can not be validated by this interface".to_string(),
+                    )),
+                    SyntaxType::Message => Err(OperationError::InvalidAttribute(
+                        "Message values can not be validated by this interface".to_string(),
+                    )),
                 }
             }
             None => {
@@ -1520,9 +1529,7 @@ impl QueryServerReadTransaction<'_> {
         filter: ScimFilter,
         query: ScimEntryGetQuery,
     ) -> Result<ScimListResponse, OperationError> {
-        // Parse filter here?
-
-        let filter = if let Some(user_filter) = query.filter {
+        let filter = if let Some(ref user_filter) = query.filter {
             ScimFilter::And(Box::new(filter), Box::new(user_filter.clone()))
         } else {
             filter
@@ -1530,6 +1537,15 @@ impl QueryServerReadTransaction<'_> {
 
         let filter_intent = Filter::from_scim_ro(&ident, &filter, self)?;
 
+        self.scim_search_filter_ext(ident, &filter_intent, query)
+    }
+
+    pub fn scim_search_filter_ext(
+        &mut self,
+        ident: Identity,
+        filter_intent: &Filter<FilterInvalid>,
+        query: ScimEntryGetQuery,
+    ) -> Result<ScimListResponse, OperationError> {
         let f_intent_valid = filter_intent
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -1616,6 +1632,25 @@ impl QueryServerReadTransaction<'_> {
             start_index,
             resources,
         })
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn scim_search_message_ready_ext(
+        &mut self,
+        ident: Identity,
+        curtime: Duration,
+    ) -> Result<ScimListResponse, OperationError> {
+        let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
+
+        let filter_intent = filter_all!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::OutboundMessage.into()),
+            f_lt(Attribute::SendAfter, PartialValue::DateTime(curtime_odt)),
+            f_andnot(f_pres(Attribute::SentAt))
+        ]));
+
+        let query = ScimEntryGetQuery::default();
+
+        self.scim_search_filter_ext(ident, &filter_intent, query)
     }
 }
 
@@ -2041,6 +2076,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub(crate) fn get_curtime(&self) -> Duration {
         self.curtime
+    }
+
+    pub(crate) fn get_curtime_odt(&self) -> OffsetDateTime {
+        OffsetDateTime::UNIX_EPOCH + self.curtime
     }
 
     pub(crate) fn get_cid(&self) -> &Cid {

@@ -1,5 +1,7 @@
+use crate::prelude::JsonValue;
 use hashbrown::HashSet;
 use kanidm_proto::internal::ImageType;
+use kanidm_proto::v1::OutboundMessage;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::collections::{BTreeMap, BTreeSet};
@@ -819,6 +821,10 @@ pub enum DbValueSetV2 {
     Certificate(Vec<DbValueCertificate>),
     #[serde(rename = "AP")]
     ApplicationPassword(Vec<DbValueApplicationPassword>),
+    #[serde(rename = "JO")]
+    Json(JsonValue),
+    #[serde(rename = "MS")]
+    Message(OutboundMessage),
 }
 
 impl DbValueSetV2 {
@@ -872,6 +878,7 @@ impl DbValueSetV2 {
             DbValueSetV2::KeyInternal(set) => set.len(),
             DbValueSetV2::Certificate(set) => set.len(),
             DbValueSetV2::ApplicationPassword(set) => set.len(),
+            DbValueSetV2::Json(_) | DbValueSetV2::Message(_) => 1,
         }
     }
 
