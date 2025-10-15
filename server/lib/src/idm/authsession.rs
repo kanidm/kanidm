@@ -2,15 +2,28 @@
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
-use std::collections::BTreeMap;
-use std::sync::Arc;
-use std::time::Duration;
-
+use crate::credential::totp::Totp;
+use crate::credential::{BackupCodes, Credential, CredentialType, Password};
+use crate::idm::account::Account;
+use crate::idm::accountpolicy::ResolvedAccountPolicy;
+use crate::idm::audit::AuditEvent;
+use crate::idm::delayed::{
+    AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
+};
+use crate::idm::oauth2_trust::OAuth2TrustProvider;
+use crate::idm::AuthState;
+use crate::prelude::*;
+use crate::server::keys::KeyObject;
+use crate::value::{AuthType, Session, SessionState};
 use compact_jwt::Jws;
 use hashbrown::HashSet;
 use kanidm_proto::internal::UserAuthToken;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
 use nonempty::NonEmpty;
+use std::collections::BTreeMap;
+use std::sync::Arc;
+use std::time::Duration;
+use time::OffsetDateTime;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -18,21 +31,6 @@ use webauthn_rs::prelude::{
     CredentialID, Passkey as PasskeyV4, PasskeyAuthentication, RequestChallengeResponse,
     SecurityKeyAuthentication, Webauthn,
 };
-
-use crate::credential::totp::Totp;
-use crate::credential::{BackupCodes, Credential, CredentialType, Password};
-use crate::idm::account::Account;
-use crate::idm::audit::AuditEvent;
-use crate::idm::delayed::{
-    AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
-};
-use crate::idm::AuthState;
-use crate::prelude::*;
-use crate::server::keys::KeyObject;
-use crate::value::{AuthType, Session, SessionState};
-use time::OffsetDateTime;
-
-use super::accountpolicy::ResolvedAccountPolicy;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fulfilled. This is where MFA or other
@@ -1056,6 +1054,7 @@ pub(crate) struct AuthSessionData<'a> {
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) ct: Duration,
     pub(crate) client_auth_info: ClientAuthInfo,
+    pub(crate) oauth2_trust_provider: Option<&'a OAuth2TrustProvider>,
 }
 
 #[derive(Clone)]
@@ -1626,6 +1625,9 @@ impl AuthSession {
                             issued_by: IdentityId::User(self.account.uuid),
                             scope,
                             type_: auth_type,
+
+                            // Need to store access token + refresh token here from oauth2
+
                         }))
                         .map_err(|e| {
                             debug!(?e, "queue failure");
@@ -1695,17 +1697,6 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
-    use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
-    use hashbrown::HashSet;
-    use kanidm_proto::internal::{UatPurpose, UserAuthToken};
-    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
-    use tokio::sync::mpsc::unbounded_channel as unbounded;
-    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
-    use webauthn_authenticator_rs::WebauthnAuthenticator;
-    use webauthn_rs::prelude::{RequestChallengeResponse, Webauthn};
-
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{BackupCodes, Credential};
     use crate::idm::account::Account;
@@ -1716,12 +1707,22 @@ mod tests {
         BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
     };
     use crate::idm::delayed::DelayedAction;
+    use crate::idm::oauth2_trust::OAuth2TrustProvider;
     use crate::idm::AuthState;
     use crate::migration_data::{BUILTIN_ACCOUNT_ANONYMOUS, BUILTIN_ACCOUNT_TEST_PERSON};
     use crate::prelude::*;
     use crate::server::keys::KeyObjectInternal;
     use crate::utils::readable_password_from_random;
+    use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
+    use hashbrown::HashSet;
     use kanidm_lib_crypto::CryptoPolicy;
+    use kanidm_proto::internal::{UatPurpose, UserAuthToken};
+    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
+    use std::time::Duration;
+    use tokio::sync::mpsc::unbounded_channel as unbounded;
+    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    use webauthn_rs::prelude::{RequestChallengeResponse, Webauthn};
 
     fn create_pw_badlist_cache() -> HashSet<String> {
         let mut s = HashSet::new();
@@ -1753,6 +1754,7 @@ mod tests {
             webauthn: &webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
+            oauth2_trust_provider: None,
         };
 
         let key_object = KeyObjectInternal::new_test();
@@ -1791,6 +1793,7 @@ mod tests {
                 webauthn: $webauthn,
                 ct: duration_from_epoch_now(),
                 client_auth_info: Source::Internal.into(),
+                oauth2_trust_provider: None,
             };
             let key_object = KeyObjectInternal::new_test();
             let (session, state) = AuthSession::new(asd, $privileged, key_object);
@@ -1970,6 +1973,7 @@ mod tests {
             webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
+            oauth2_trust_provider: None,
         };
         let key_object = KeyObjectInternal::new_test();
         let (session, state) = AuthSession::new(asd, false, key_object);
@@ -2010,6 +2014,7 @@ mod tests {
             webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
+            oauth2_trust_provider: None,
         };
         let key_object = KeyObjectInternal::new_test();
         let (session, state) = AuthSession::new(asd, false, key_object);
@@ -2055,6 +2060,7 @@ mod tests {
             webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
+            oauth2_trust_provider: None,
         };
         let key_object = KeyObjectInternal::new_test();
         let (session, state) = AuthSession::new(asd, false, key_object);
@@ -2347,6 +2353,7 @@ mod tests {
                 webauthn: $webauthn,
                 ct: duration_from_epoch_now(),
                 client_auth_info: Source::Internal.into(),
+                oauth2_trust_provider: None,
             };
             let key_object = KeyObjectInternal::new_test();
             let (session, state) = AuthSession::new(asd, false, key_object);
@@ -3366,5 +3373,32 @@ mod tests {
         assert!(async_rx.blocking_recv().is_none());
         drop(audit_tx);
         assert!(audit_rx.blocking_recv().is_none());
+    }
+
+    #[test]
+    fn test_idm_authsession_oauth2_trust() {
+        sketching::test_init();
+        // Test if the oauth2 workflow operates as expected.
+
+        // create the trust provider
+        let oauth_trust_provider = OAuth2TrustProvider::new_test(
+            "test_trust_client",
+            "https://localhost",
+            ["openid"],
+            false,
+            false,
+        );
+
+        // Configure the account to use it.
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
+        account.setup_oauth2_trust_provider(&oauth_trust_provider);
+
+        // Start an auth session.
+
+        // Check that oauth2 is a mech.
+
+        // Select it.
+
+        // Should create an authorisation Request.
     }
 }

@@ -16,6 +16,7 @@ pub mod group;
 pub mod identityverification;
 pub mod ldap;
 pub mod oauth2;
+pub(crate) mod oauth2_trust;
 pub(crate) mod radius;
 pub(crate) mod reauth;
 pub mod scim;

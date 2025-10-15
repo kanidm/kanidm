@@ -170,15 +170,15 @@ unsafe impl Send for QueryServerReadTransaction<'_> {}
 
 bitflags::bitflags! {
     #[derive(Copy, Clone, Debug)]
-    pub struct ChangeFlag: u32 {
-        const SCHEMA =         0b0000_0001;
-        const ACP =            0b0000_0010;
-        const OAUTH2 =         0b0000_0100;
-        const DOMAIN =         0b0000_1000;
-        const SYSTEM_CONFIG =  0b0001_0000;
-        const SYNC_AGREEMENT = 0b0010_0000;
-        const KEY_MATERIAL   = 0b0100_0000;
-        const APPLICATION    = 0b1000_0000;
+    pub struct ChangeFlag: u64 {
+        const SCHEMA =         0b0000_0000_0000_0001;
+        const ACP =            0b0000_0000_0000_0010;
+        const OAUTH2 =         0b0000_0000_0000_0100;
+        const DOMAIN =         0b0000_0000_0000_1000;
+        const SYSTEM_CONFIG =  0b0000_0000_0001_0000;
+        const SYNC_AGREEMENT = 0b0000_0000_0010_0000;
+        const KEY_MATERIAL   = 0b0000_0000_0100_0000;
+        const APPLICATION    = 0b0000_0000_1000_0000;
     }
 }
 

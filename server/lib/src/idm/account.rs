@@ -61,6 +61,8 @@ pub struct Account {
     pub(crate) unix_extn: Option<UnixExtensions>,
     pub(crate) sshkeys: BTreeMap<String, SshPublicKey>,
     pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
+    pub(crate) oauth2_trust_provider: Option<Uuid>,
+    pub(crate) oauth2_trust_user_id: Option<String>,
 }
 
 #[cfg(test)]
@@ -200,6 +202,9 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
+        let oauth2_trust_provider = None;
+        let oauth2_trust_user_id = None;
+
         Ok(Account {
             uuid,
             name,
@@ -220,6 +225,8 @@ macro_rules! try_from_entry {
             unix_extn,
             sshkeys,
             apps_pwds,
+            oauth2_trust_provider,
+            oauth2_trust_user_id,
         })
     }};
 }
@@ -820,6 +827,22 @@ impl Account {
             sshkeys,
             valid: self.is_within_valid_time(ct),
         })
+    }
+
+    pub(crate) fn oauth2_trust_provider(&self) -> Option<(Uuid, &str)> {
+        match (self.oauth2_trust_provider, &self.oauth2_trust_user_id) {
+            (Some(uuid), Some(user_id)) => Some((uuid, user_id.as_str())),
+            _ => None,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn setup_oauth2_trust_provider(
+        &mut self,
+        trust_provider: &crate::idm::oauth2_trust::OAuth2TrustProvider,
+    ) {
+        self.oauth2_trust_provider = Some(trust_provider.uuid());
+        self.oauth2_trust_user_id = Some(self.name.clone());
     }
 }
 
