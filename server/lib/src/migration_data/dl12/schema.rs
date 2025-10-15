@@ -790,6 +790,72 @@ pub static ref SCHEMA_ATTR_MAIL_DESTINATION: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+
+pub static ref SCHEMA_ATTR_OAUTH2_TRUST_PROVIDER: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_TRUST_PROVIDER,
+    name: Attribute::OAuth2TrustProvider,
+    description: " .".to_string(),
+    syntax: SyntaxType::ReferenceUuid,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_OAUTH2_TRUST_UNIQUE_USER_ID: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_TRUST_UNIQUE_USER_ID,
+    name: Attribute::OAuth2TrustUniqueUserId,
+    description: " .".to_string(),
+    syntax: SyntaxType::Utf8String,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_OAUTH2_CLIENT_ID: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_CLIENT_ID,
+    name: Attribute::OAuth2ClientId,
+    description: " .".to_string(),
+    syntax: SyntaxType::Utf8String,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT,
+    name: Attribute::OAuth2AuthorisationEndpoint,
+    description: " .".to_string(),
+    syntax: SyntaxType::Url,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT,
+    name: Attribute::OAuth2TokenEndpoint,
+    description: " .".to_string(),
+    syntax: SyntaxType::Url,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_OAUTH2_REVOCATION_ENDPOINT: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_REVOCATION_ENDPOINT,
+    name: Attribute::OAuth2RevocationEndpoint,
+    description: " .".to_string(),
+    syntax: SyntaxType::Url,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_OAUTH2_INTROSPECTION_ENDPOINT: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_INTROSPECTION_ENDPOINT,
+    name: Attribute::OAuth2IntrospectionEndpoint,
+    description: " .".to_string(),
+    syntax: SyntaxType::Url,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES,
+    name: Attribute::OAuth2RequestScopes,
+    description: " .".to_string(),
+    multivalue: true,
+    syntax: SyntaxType::OauthScope,
+    ..Default::default()
+};
+
 // === classes ===
 pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
@@ -816,6 +882,22 @@ pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
         Attribute::Name,
     ],
     systemexcludes: vec![EntryClass::ServiceAccount.into(), EntryClass::Application.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_PERSON_OAUTH2_TRUST: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_PERSON_OAUTH2_TRUST,
+    name: EntryClass::PersonOAuth2Trust.into(),
+    description: "Marker class designating that a person can use OAuth2 trust for authentication.".to_string(),
+    sync_allowed: true,
+    systemmust: vec![
+        Attribute::OAuth2TrustProvider,
+        Attribute::OAuth2TrustUniqueUserId,
+        // How to store refresh/session tokens.
+        // Probably need a new session type
+        // Attribute::OAuth2TrustSession?
+    ],
+    systemsupplements: vec![EntryClass::Person.into()],
     ..Default::default()
 };
 
@@ -861,7 +943,7 @@ pub static ref SCHEMA_CLASS_DYNGROUP: SchemaClass = SchemaClass {
 
     systemmust: vec![Attribute::DynGroupFilter],
     systemmay: vec![Attribute::DynMember],
-    systemsupplements: vec![Attribute::Group.into()],
+    systemsupplements: vec![EntryClass::Group.into()],
     ..Default::default()
 };
 
@@ -880,7 +962,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT_POLICY_DL8: SchemaClass = SchemaClass {
         Attribute::LimitSearchMaxFilterTest,
         Attribute::AllowPrimaryCredFallback,
     ],
-    systemsupplements: vec![Attribute::Group.into()],
+    systemsupplements: vec![EntryClass::Group.into()],
     ..Default::default()
 };
 
@@ -979,7 +1061,7 @@ pub static ref SCHEMA_CLASS_POSIXGROUP: SchemaClass = SchemaClass {
 
     sync_allowed: true,
     systemmust: vec![Attribute::GidNumber],
-    systemsupplements: vec![Attribute::Group.into()],
+    systemsupplements: vec![EntryClass::Group.into()],
     ..Default::default()
 };
 
@@ -991,7 +1073,7 @@ pub static ref SCHEMA_CLASS_POSIXACCOUNT: SchemaClass = SchemaClass {
     sync_allowed: true,
     systemmay: vec![Attribute::LoginShell, Attribute::UnixPassword],
     systemmust: vec![Attribute::GidNumber],
-    systemsupplements: vec![Attribute::Account.into()],
+    systemsupplements: vec![EntryClass::Account.into()],
     ..Default::default()
 };
 
@@ -1060,6 +1142,25 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4: SchemaClass = SchemaClass {
 
     systemmay: vec![Attribute::OAuth2AllowLocalhostRedirect],
     systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_OAUTH2_TRUST_CLIENT: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_TRUST_CLIENT,
+    name: EntryClass::OAuth2TrustClient.into(),
+    description: "The class representing a configured OAuth2 Confidential Client acting as an authentication trust source".to_string(),
+    systemmust: vec![
+        Attribute::Name,
+        Attribute::OAuth2ClientId,
+        Attribute::OAuth2RsBasicSecret,
+        Attribute::OAuth2AuthorisationEndpoint,
+        Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2RequestScopes,
+    ],
+    systemmay: vec![
+        Attribute::OAuth2IntrospectionEndpoint,
+        Attribute::OAuth2RevocationEndpoint,
+    ],
     ..Default::default()
 };
 

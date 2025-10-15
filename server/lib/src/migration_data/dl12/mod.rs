@@ -114,6 +114,14 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_DELETE_AFTER.clone().into(),
         SCHEMA_ATTR_SENT_AT.clone().into(),
         SCHEMA_ATTR_MAIL_DESTINATION.clone().into(),
+        SCHEMA_ATTR_OAUTH2_TRUST_PROVIDER.clone().into(),
+        SCHEMA_ATTR_OAUTH2_TRUST_UNIQUE_USER_ID.clone().into(),
+        SCHEMA_ATTR_OAUTH2_CLIENT_ID.clone().into(),
+        SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT.clone().into(),
+        SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT.clone().into(),
+        SCHEMA_ATTR_OAUTH2_REVOCATION_ENDPOINT.clone().into(),
+        SCHEMA_ATTR_OAUTH2_INTROSPECTION_ENDPOINT.clone().into(),
+        SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES.clone().into(),
     ]
 }
 
@@ -154,6 +162,8 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         // DL12
         SCHEMA_CLASS_KEY_OBJECT_HKDF_S256.clone().into(),
         SCHEMA_CLASS_OUTBOUND_MESSAGE.clone().into(),
+        SCHEMA_CLASS_PERSON_OAUTH2_TRUST.clone().into(),
+        SCHEMA_CLASS_OAUTH2_TRUST_CLIENT.clone().into(),
     ]
 }
 
