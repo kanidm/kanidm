@@ -2616,12 +2616,12 @@ mod tests {
     use crate::credential::totp::Totp;
     use crate::event::CreateEvent;
     use crate::idm::audit::AuditEvent;
+    use crate::idm::authentication::AuthState;
     use crate::idm::delayed::DelayedAction;
     use crate::idm::event::{
         AuthEvent, AuthResult, RegenerateRadiusSecretEvent, UnixUserAuthEvent,
     };
     use crate::idm::server::{IdmServer, IdmServerCredUpdateTransaction, IdmServerDelayed};
-    use crate::idm::AuthState;
     use crate::prelude::*;
     use crate::utils::password_from_random_len;
     use crate::value::CredentialType;

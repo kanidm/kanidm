@@ -21,11 +21,9 @@ use kanidm_proto::internal::{
     UserAuthToken, COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN,
     COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
 };
-use kanidm_proto::v1::{
-    AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep,
-};
+use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+use kanidmd_lib::idm::authentication::{AuthCredential, AuthState, AuthStep};
 use kanidmd_lib::idm::event::AuthResult;
-use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::OperationError;
 use kanidmd_lib::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -441,12 +439,10 @@ pub async fn view_login_begin_post(
         .qe_r_ref
         .handle_auth(
             None,
-            AuthRequest {
-                step: AuthStep::Init2 {
-                    username: username.clone(),
-                    issue: AuthIssueSession::Cookie,
-                    privileged: false,
-                },
+            AuthStep::Init2 {
+                username: username.clone(),
+                issue: AuthIssueSession::Cookie,
+                privileged: false,
             },
             kopid.eventid,
             client_auth_info.clone(),
@@ -541,9 +537,7 @@ pub async fn view_login_mech_choose_post(
         .qe_r_ref
         .handle_auth(
             session_context.id,
-            AuthRequest {
-                step: AuthStep::Begin(mech),
-            },
+            AuthStep::Begin(mech),
             kopid.eventid,
             client_auth_info.clone(),
         )
@@ -751,9 +745,7 @@ async fn credential_step(
         .qe_r_ref
         .handle_auth(
             session_context.id,
-            AuthRequest {
-                step: AuthStep::Cred(auth_cred),
-            },
+            AuthStep::Cred(auth_cred),
             kopid.eventid,
             client_auth_info.clone(),
         )
@@ -847,9 +839,7 @@ async fn view_login_step(
                             .qe_r_ref
                             .handle_auth(
                                 Some(sessionid),
-                                AuthRequest {
-                                    step: AuthStep::Begin(mech),
-                                },
+                                AuthStep::Begin(mech),
                                 kopid.eventid,
                                 client_auth_info.clone(),
                             )

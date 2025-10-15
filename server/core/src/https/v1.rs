@@ -26,8 +26,8 @@ use kanidm_proto::v1::{
     AuthState as ProtoAuthState, Entry as ProtoEntry, GroupUnixExtend, SingleStringRequest,
     UatStatus, UnixGroupToken, UnixUserToken, WhoamiResponse,
 };
+use kanidmd_lib::idm::authentication::{AuthState, AuthStep};
 use kanidmd_lib::idm::event::AuthResult;
-use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use std::net::IpAddr;
@@ -2839,7 +2839,7 @@ pub async fn auth(
     jar: CookieJar,
     headers: HeaderMap,
     Extension(kopid): Extension<KOpId>,
-    Json(obj): Json<AuthRequest>,
+    Json(auth_req): Json<AuthRequest>,
 ) -> Result<Response, WebError> {
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
@@ -2848,12 +2848,15 @@ pub async fn auth(
     let maybe_sessionid = state.get_current_auth_session_id(&headers, &jar);
     debug!("Session ID: {:?}", maybe_sessionid);
 
+    // Transform the external protocol version to an internal version.
+    let auth_step = AuthStep::from(auth_req.step);
+
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
     // invalid.
     let inter = state // This may change in the future ...
         .qe_r_ref
-        .handle_auth(maybe_sessionid, obj, kopid.eventid, client_auth_info)
+        .handle_auth(maybe_sessionid, auth_step, kopid.eventid, client_auth_info)
         .await;
     debug!("Auth result: {:?}", inter);
     auth_session_state_management(&state, jar, inter)

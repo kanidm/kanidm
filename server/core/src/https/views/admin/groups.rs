@@ -22,7 +22,7 @@ use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidm_proto::scim_v1::{client::ScimEntryPutKanidm, ScimFilter};
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::filter::{f_eq, Filter};
-use kanidmd_lib::idm::ClientAuthInfo;
+use kanidmd_lib::idm::authentication::ClientAuthInfo;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;

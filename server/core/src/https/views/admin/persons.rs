@@ -20,7 +20,8 @@ use kanidm_proto::scim_v1::server::{
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidm_proto::scim_v1::ScimFilter;
 use kanidmd_lib::constants::EntryClass;
-use kanidmd_lib::idm::ClientAuthInfo;
+use kanidmd_lib::idm::authentication::ClientAuthInfo;
+use std::str::FromStr;
 use uuid::Uuid;
 
 pub const PERSON_ATTRIBUTES: [Attribute; 9] = [

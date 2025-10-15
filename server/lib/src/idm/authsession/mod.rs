@@ -2,23 +2,24 @@
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
+use self::handler_oauth2_trust::CredHandlerOAuth2Trust;
 use crate::credential::totp::Totp;
 use crate::credential::{BackupCodes, Credential, CredentialType, Password};
 use crate::idm::account::Account;
 use crate::idm::accountpolicy::ResolvedAccountPolicy;
 use crate::idm::audit::AuditEvent;
+use crate::idm::authentication::{AuthCredential, AuthState};
 use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
 };
 use crate::idm::oauth2_trust::OAuth2TrustProvider;
-use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::server::keys::KeyObject;
 use crate::value::{AuthType, Session, SessionState};
 use compact_jwt::Jws;
 use hashbrown::HashSet;
 use kanidm_proto::internal::UserAuthToken;
-use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
+use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
 use nonempty::NonEmpty;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -31,6 +32,8 @@ use webauthn_rs::prelude::{
     CredentialID, Passkey as PasskeyV4, PasskeyAuthentication, RequestChallengeResponse,
     SecurityKeyAuthentication, Webauthn,
 };
+
+mod handler_oauth2_trust;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fulfilled. This is where MFA or other
@@ -152,6 +155,9 @@ enum CredHandler {
         att_ca_list: AttestationCaList,
         // AP does `PartialEq` on cred_id
         creds: BTreeMap<AttestedPasskeyV4, Uuid>,
+    },
+    OAuth2Trust {
+        handler: Arc<CredHandlerOAuth2Trust>,
     },
 }
 
@@ -970,25 +976,31 @@ impl CredHandler {
                 async_tx,
                 att_ca_list,
             ),
+            CredHandler::OAuth2Trust { handler } => handler.validate(cred),
         }
     }
 
     /// Determine based on the current status, what is the next allowed step that
     /// can proceed.
-    pub fn next_auth_allowed(&self) -> Vec<AuthAllowed> {
+    pub fn next_auth_state(&self) -> AuthState {
         match &self {
-            CredHandler::Anonymous { .. } => vec![AuthAllowed::Anonymous],
-            CredHandler::Password { .. } => vec![AuthAllowed::Password],
-            CredHandler::PasswordTotp { .. } => vec![AuthAllowed::Totp],
-            CredHandler::PasswordBackupCode { .. } => vec![AuthAllowed::BackupCode],
+            CredHandler::Anonymous { .. } => AuthState::Continue(vec![AuthAllowed::Anonymous]),
+            CredHandler::Password { .. } => AuthState::Continue(vec![AuthAllowed::Password]),
+            CredHandler::PasswordTotp { .. } => AuthState::Continue(vec![AuthAllowed::Totp]),
+            CredHandler::PasswordBackupCode { .. } => {
+                AuthState::Continue(vec![AuthAllowed::BackupCode])
+            }
 
             CredHandler::PasswordSecurityKey { ref cmfa, .. } => {
-                vec![AuthAllowed::SecurityKey(cmfa.chal.clone())]
+                AuthState::Continue(vec![AuthAllowed::SecurityKey(cmfa.chal.clone())])
             }
-            CredHandler::Passkey { c_wan, .. } => vec![AuthAllowed::Passkey(c_wan.chal.clone())],
+            CredHandler::Passkey { c_wan, .. } => {
+                AuthState::Continue(vec![AuthAllowed::Passkey(c_wan.chal.clone())])
+            }
             CredHandler::AttestedPasskey { c_wan, .. } => {
-                vec![AuthAllowed::Passkey(c_wan.chal.clone())]
+                AuthState::Continue(vec![AuthAllowed::Passkey(c_wan.chal.clone())])
             }
+            CredHandler::OAuth2Trust { .. } => AuthState::Denied("Unable to proceed".into()),
         }
     }
 
@@ -1001,7 +1013,8 @@ impl CredHandler {
             | (CredHandler::PasswordBackupCode { .. }, AuthMech::PasswordBackupCode)
             | (CredHandler::PasswordSecurityKey { .. }, AuthMech::PasswordSecurityKey)
             | (CredHandler::Passkey { .. }, AuthMech::Passkey)
-            | (CredHandler::AttestedPasskey { .. }, AuthMech::Passkey) => true,
+            | (CredHandler::AttestedPasskey { .. }, AuthMech::Passkey)
+            | (CredHandler::OAuth2Trust { .. }, AuthMech::OAuth2Trust) => true,
             (_, _) => false,
         }
     }
@@ -1015,6 +1028,7 @@ impl CredHandler {
             CredHandler::PasswordSecurityKey { .. } => AuthMech::PasswordSecurityKey,
             CredHandler::Passkey { .. } => AuthMech::Passkey,
             CredHandler::AttestedPasskey { .. } => AuthMech::Passkey,
+            CredHandler::OAuth2Trust { .. } => AuthMech::OAuth2Trust,
         }
     }
 }
@@ -1342,7 +1356,7 @@ impl AuthSession {
 
         match state {
             State::Proceed(handler) => {
-                let allow = handler.next_auth_allowed();
+                let next_auth_state = handler.next_auth_state();
                 let auth_session = AuthSession {
                     account: asd.account,
                     account_policy: asd.account_policy,
@@ -1356,8 +1370,7 @@ impl AuthSession {
                     key_object,
                 };
 
-                let as_state = AuthState::Continue(allow);
-                (Some(auth_session), as_state)
+                (Some(auth_session), next_auth_state)
             }
             State::Expired => {
                 security_info!("account expired");
@@ -1382,6 +1395,7 @@ impl AuthSession {
             AuthSessionState::InProgress(CredHandler::Anonymous { .. })
             | AuthSessionState::InProgress(CredHandler::PasswordSecurityKey { .. })
             | AuthSessionState::InProgress(CredHandler::Passkey { .. })
+            | AuthSessionState::InProgress(CredHandler::OAuth2Trust { .. })
             | AuthSessionState::InProgress(CredHandler::AttestedPasskey { .. }) => Ok(None),
 
             AuthSessionState::Init(_) => {
@@ -1429,22 +1443,12 @@ impl AuthSession {
                     .collect();
 
                 if let Some(allowed_handler) = allowed_handlers.pop() {
-                    let allowed: Vec<_> = allowed_handler.next_auth_allowed();
+                    let next_auth_state = allowed_handler.next_auth_state();
 
-                    if allowed.is_empty() {
-                        security_info!("Unable to negotiate credentials");
-                        (
-                            None,
-                            Err(OperationError::InvalidAuthState(
-                                "unable to negotiate credentials".to_string(),
-                            )),
-                        )
-                    } else {
-                        (
-                            Some(AuthSessionState::InProgress(allowed_handler)),
-                            Ok(AuthState::Continue(allowed)),
-                        )
-                    }
+                    (
+                        Some(AuthSessionState::InProgress(allowed_handler)),
+                        Ok(next_auth_state),
+                    )
                 } else {
                     security_error!("Unable to select a credential for authentication");
                     (
@@ -1702,13 +1706,13 @@ mod tests {
     use crate::idm::account::Account;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::audit::AuditEvent;
+    use crate::idm::authentication::{AuthCredential, AuthState};
     use crate::idm::authsession::{
         AuthSession, AuthSessionData, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG,
         BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
     };
     use crate::idm::delayed::DelayedAction;
     use crate::idm::oauth2_trust::OAuth2TrustProvider;
-    use crate::idm::AuthState;
     use crate::migration_data::{BUILTIN_ACCOUNT_ANONYMOUS, BUILTIN_ACCOUNT_TEST_PERSON};
     use crate::prelude::*;
     use crate::server::keys::KeyObjectInternal;
@@ -1717,7 +1721,7 @@ mod tests {
     use hashbrown::HashSet;
     use kanidm_lib_crypto::CryptoPolicy;
     use kanidm_proto::internal::{UatPurpose, UserAuthToken};
-    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
     use std::time::Duration;
     use tokio::sync::mpsc::unbounded_channel as unbounded;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;

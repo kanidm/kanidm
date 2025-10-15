@@ -1,19 +1,3 @@
-mod apidocs;
-pub(crate) mod cache_buster;
-pub(crate) mod errors;
-mod extractors;
-mod generic;
-mod javascript;
-mod manifest;
-pub(crate) mod middleware;
-mod oauth2;
-pub(crate) mod trace;
-mod v1;
-mod v1_domain;
-mod v1_oauth2;
-mod v1_scim;
-mod views;
-
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
@@ -37,7 +21,7 @@ use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
-use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
+use kanidmd_lib::{idm::authentication::ClientCertInfo, status::StatusActor};
 use serde::de::DeserializeOwned;
 use sketching::*;
 use std::fmt::Write;
@@ -60,6 +44,22 @@ use tower::Service;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use url::Url;
 use uuid::Uuid;
+
+mod apidocs;
+pub(crate) mod cache_buster;
+pub(crate) mod errors;
+mod extractors;
+mod generic;
+mod javascript;
+mod manifest;
+pub(crate) mod middleware;
+mod oauth2;
+pub(crate) mod trace;
+mod v1;
+mod v1_domain;
+mod v1_oauth2;
+mod v1_scim;
+mod views;
 
 #[derive(Clone)]
 pub struct ServerState {
