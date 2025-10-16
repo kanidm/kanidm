@@ -1739,6 +1739,7 @@ mod tests {
     use hashbrown::HashSet;
     use kanidm_lib_crypto::CryptoPolicy;
     use kanidm_proto::internal::{UatPurpose, UserAuthToken};
+    use kanidm_proto::oauth2::{AccessTokenResponse, AccessTokenType};
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
     use std::time::Duration;
     use tokio::sync::mpsc::unbounded_channel as unbounded;
@@ -3401,6 +3402,9 @@ mod tests {
     fn test_idm_authsession_oauth2_trust() {
         sketching::test_init();
         // Test if the oauth2 workflow operates as expected.
+        let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
+        let pw_badlist_cache = create_pw_badlist_cache();
         let current_time = duration_from_epoch_now();
         let webauthn = create_webauthn();
         let privileged = false;
@@ -3444,9 +3448,9 @@ mod tests {
         }
 
         // Select it.
+        let mut session = session.expect("Missing auth session?");
 
         let state = session
-            .expect("Missing auth session?")
             .start_session(&AuthMech::OAuth2Trust)
             .expect("Failed to select anonymous mech.");
 
@@ -3461,6 +3465,81 @@ mod tests {
             _ => unreachable!(),
         };
 
-        assert!(false);
+        // Forge a response and submit it.
+        // The response from oauth2 is a redirection to our landing pad url
+        // with a query parameter of "code" and optionally "state".
+        //
+        // We issued a state parameter, so we need to make sure it's the same here.
+        let state = session
+            .validate_creds(
+                &AuthCredential::OAuth2AuthorisationResponse {
+                    // This value doesn't matter, OAuth2 treats it as opaque.
+                    code: "abcdefg1234".into(),
+                    state: auth_req.state.clone(),
+                },
+                current_time,
+                &async_tx,
+                &audit_tx,
+                &webauthn,
+                &pw_badlist_cache,
+            )
+            .expect("Failed to perform credential validation step.");
+
+        let (token_url, token_request) = match state {
+            AuthState::External(AuthExternal::OAuth2AccessTokenRequest {
+                token_url,
+                client_id,
+                client_secret,
+                request,
+            }) => (token_url, request),
+            _ => unreachable!(),
+        };
+
+        // Here we assume we submitted the token request to the token url, and
+        // it gave us back an access token response.
+        let response = AccessTokenResponse {
+            access_token: "super_secret_access_token".to_string(),
+            token_type: AccessTokenType::Bearer,
+            expires_in: 300,
+            refresh_token: Some("super_secret_refresh_token".to_string()),
+            scope: oauth_trust_provider.request_scopes.clone(),
+            id_token: None,
+        };
+
+        let state = session
+            .validate_creds(
+                &AuthCredential::OAuth2AccessTokenResponse { response },
+                current_time,
+                &async_tx,
+                &audit_tx,
+                &webauthn,
+                &pw_badlist_cache,
+            )
+            .expect("Failed to perform credential validation step.");
+
+        // At this point the authentication is SUCCESS!!!
+        match state {
+            AuthState::Success(_, AuthIssueSession::Token) => {}
+            _ => unreachable!(),
+        }
+
+        // How do we record this session? We need to store the refresh token
+        // so that we can use it later ....
+        match async_rx.blocking_recv() {
+            Some(DelayedAction::AuthSessionRecord(_)) => {}
+            _ => panic!("Oh no"),
+        }
+
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
     }
+
+    // As an oauth2 *client* there is far less for us to test, because a lot
+    // depends on the other end to respond. I think the only things that we
+    // might encounter are:
+
+    // stripping of the csrf state check
+    // request scopes were reduced?
 }

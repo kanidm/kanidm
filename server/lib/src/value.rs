@@ -484,6 +484,9 @@ impl SyntaxType {
 #[repr(u16)]
 pub enum CredentialType {
     Any = 0,
+    /// Since we have no control over external authentication providers, we need
+    /// to rank these below our own authentication methods.
+    External = 5,
     #[default]
     Mfa = 10,
     Passkey = 20,
@@ -498,6 +501,7 @@ impl TryFrom<&str> for CredentialType {
     fn try_from(value: &str) -> Result<CredentialType, Self::Error> {
         match value {
             "any" => Ok(CredentialType::Any),
+            "external" => Ok(CredentialType::External),
             "mfa" => Ok(CredentialType::Mfa),
             "passkey" => Ok(CredentialType::Passkey),
             "attested_passkey" => Ok(CredentialType::AttestedPasskey),
@@ -512,6 +516,7 @@ impl fmt::Display for CredentialType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match self {
             CredentialType::Any => "any",
+            CredentialType::External => "external",
             CredentialType::Mfa => "mfa",
             CredentialType::Passkey => "passkey",
             CredentialType::AttestedPasskey => "attested_passkey",

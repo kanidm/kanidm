@@ -5,7 +5,7 @@ use crypto_glue::s256::Sha256Output;
 use kanidm_lib_crypto::x509_cert::Certificate;
 use kanidm_proto::{
     internal::UserAuthToken,
-    oauth2::AuthorisationRequest,
+    oauth2::{AccessTokenRequest, AccessTokenResponse, AuthorisationRequest},
     v1::{
         AuthAllowed, AuthCredential as ProtoAuthCredential, AuthIssueSession, AuthMech,
         AuthStep as ProtoAuthStep,
@@ -51,14 +51,19 @@ pub enum AuthExternal {
         authorisation_url: Url,
         request: AuthorisationRequest,
     },
-    // OAuth2CodeGrantExchange
-    // OAuth2UserInfo
+    OAuth2AccessTokenRequest {
+        token_url: Url,
+        client_id: String,
+        client_secret: String,
+        request: AccessTokenRequest,
+    },
 }
 
 impl fmt::Debug for AuthExternal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::OAuth2AuthorisationRequest { .. } => write!(f, "OAuth2AuthorisationRequest"),
+            Self::OAuth2AccessTokenRequest { .. } => write!(f, "OAuth2AccessTokenRequest"),
         }
     }
 }
@@ -94,8 +99,11 @@ pub enum AuthCredential {
     Totp(u32),
     SecurityKey(Box<PublicKeyCredential>),
     BackupCode(String),
-    // Should this just be discoverable?
     Passkey(Box<PublicKeyCredential>),
+
+    // Internal Credential Types
+    OAuth2AuthorisationResponse { code: String, state: Option<String> },
+    OAuth2AccessTokenResponse { response: AccessTokenResponse },
 }
 
 impl From<ProtoAuthCredential> for AuthCredential {
@@ -120,6 +128,12 @@ impl fmt::Debug for AuthCredential {
             AuthCredential::SecurityKey(_) => write!(fmt, "SecurityKey(_)"),
             AuthCredential::BackupCode(_) => write!(fmt, "BackupCode(_)"),
             AuthCredential::Passkey(_) => write!(fmt, "Passkey(_)"),
+            AuthCredential::OAuth2AuthorisationResponse { .. } => {
+                write!(fmt, "OAuth2AuthorisationResponse{{..}}")
+            }
+            AuthCredential::OAuth2AccessTokenResponse { .. } => {
+                write!(fmt, "OAuth2AccessTokenResponse{{..}}")
+            }
         }
     }
 }

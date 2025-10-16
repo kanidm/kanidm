@@ -27,15 +27,12 @@ use hashbrown::HashSet;
 use kanidm_proto::constants::*;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
-    OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions, Oauth2Rfc8414MetadataResponse,
-    OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, PkceRequest,
+    AccessTokenResponse, AccessTokenType, AuthorisationRequest, ClaimType, ClientAuth,
+    ClientPostAuth, CodeChallengeMethod, DeviceAuthorizationResponse, DisplayValue, ErrorResponse,
+    GrantType, GrantTypeReq, IdTokenSignAlg, OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions,
+    Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse,
+    PkceAlg, PkceRequest, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
     TokenRevokeRequest,
-};
-use kanidm_proto::oauth2::{
-    AccessTokenType, ClaimType, ClientAuth, ClientPostAuth, DeviceAuthorizationResponse,
-    DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
-    TokenEndpointAuthMethod,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
@@ -4508,7 +4505,6 @@ mod tests {
         let intr_request = AccessTokenIntrospectRequest {
             token: oauth2_token.access_token,
             token_type_hint: None,
-
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read

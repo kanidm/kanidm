@@ -214,7 +214,7 @@ impl CredentialUpdateSession {
 
         match cred_type_min {
             CredentialType::Any => {}
-            CredentialType::Mfa => {
+            CredentialType::External | CredentialType::Mfa => {
                 if self
                     .primary
                     .as_ref()
