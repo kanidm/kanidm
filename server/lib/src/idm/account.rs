@@ -61,6 +61,7 @@ pub struct Account {
     pub(crate) unix_extn: Option<UnixExtensions>,
     pub(crate) sshkeys: BTreeMap<String, SshPublicKey>,
     pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
+    // Might rethink how I access this later ...
     pub(crate) oauth2_trust_provider: Option<Uuid>,
     pub(crate) oauth2_trust_user_id: Option<String>,
 }

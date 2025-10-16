@@ -1,10 +1,11 @@
-use crate::prelude::OperationError;
+use crate::prelude::{OperationError, Url};
 use crate::server::identity::Source;
 use compact_jwt::JwsCompact;
 use crypto_glue::s256::Sha256Output;
 use kanidm_lib_crypto::x509_cert::Certificate;
 use kanidm_proto::{
     internal::UserAuthToken,
+    oauth2::AuthorisationRequest,
     v1::{
         AuthAllowed, AuthCredential as ProtoAuthCredential, AuthIssueSession, AuthMech,
         AuthStep as ProtoAuthStep,
@@ -44,14 +45,20 @@ impl From<ProtoAuthStep> for AuthStep {
     }
 }
 
-pub enum AuthNonInteractive {
-    None
+pub enum AuthExternal {
+    // Probably will make this a separate object.
+    OAuth2AuthorisationRequest {
+        authorisation_url: Url,
+        request: AuthorisationRequest,
+    },
+    // OAuth2CodeGrantExchange
+    // OAuth2UserInfo
 }
 
-impl fmt::Debug for AuthNonInteractive {
+impl fmt::Debug for AuthExternal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::None => write!(f, "None"),
+            Self::OAuth2AuthorisationRequest { .. } => write!(f, "OAuth2AuthorisationRequest"),
         }
     }
 }
@@ -60,10 +67,10 @@ pub enum AuthState {
     Choose(Vec<AuthMech>),
     Continue(Vec<AuthAllowed>),
 
-    /// Execute a non-interactive server side step.
+    /// Execute an authentication flow via an external provider.
     /// For example, we may need to issue a redirect to an external OAuth2.
     /// provider, or we may need to do a background query of some kind to proceed.
-    NonInteractive(AuthNonInteractive),
+    External(AuthExternal),
 
     Denied(String),
     Success(Box<JwsCompact>, AuthIssueSession),
@@ -74,7 +81,7 @@ impl fmt::Debug for AuthState {
         match self {
             AuthState::Choose(mechs) => write!(f, "AuthState::Choose({mechs:?})"),
             AuthState::Continue(allow) => write!(f, "AuthState::Continue({allow:?})"),
-            AuthState::NonInteractive(allow) => write!(f, "AuthState::NonInteractive({allow:?})"),
+            AuthState::External(allow) => write!(f, "AuthState::External({allow:?})"),
             AuthState::Denied(reason) => write!(f, "AuthState::Denied({reason:?})"),
             AuthState::Success(_token, issue) => write!(f, "AuthState::Success({issue:?})"),
         }

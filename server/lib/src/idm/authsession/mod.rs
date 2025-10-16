@@ -8,7 +8,7 @@ use crate::credential::{BackupCodes, Credential, CredentialType, Password};
 use crate::idm::account::Account;
 use crate::idm::accountpolicy::ResolvedAccountPolicy;
 use crate::idm::audit::AuditEvent;
-use crate::idm::authentication::{AuthCredential, AuthState};
+use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState};
 use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
 };
@@ -1000,7 +1000,13 @@ impl CredHandler {
             CredHandler::AttestedPasskey { c_wan, .. } => {
                 AuthState::Continue(vec![AuthAllowed::Passkey(c_wan.chal.clone())])
             }
-            CredHandler::OAuth2Trust { .. } => AuthState::Denied("Unable to proceed".into()),
+            CredHandler::OAuth2Trust { handler } => {
+                let (authorisation_url, request) = handler.start_auth_request();
+                AuthState::External(AuthExternal::OAuth2AuthorisationRequest {
+                    authorisation_url,
+                    request,
+                })
+            }
         }
     }
 
@@ -1068,6 +1074,7 @@ pub(crate) struct AuthSessionData<'a> {
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) ct: Duration,
     pub(crate) client_auth_info: ClientAuthInfo,
+
     pub(crate) oauth2_trust_provider: Option<&'a OAuth2TrustProvider>,
 }
 
@@ -1185,6 +1192,18 @@ impl AuthSession {
                         CredHandler::build_from_set_passkey(credential_iter, asd.webauthn)
                     {
                         handlers.push(ch);
+                    }
+                };
+
+                if let Some(oauth2_trust_provider) = asd.oauth2_trust_provider {
+                    // Is it possible to avoid this double Option?
+                    if let Some((_provider_id, trust_user_id)) = asd.account.oauth2_trust_provider()
+                    {
+                        let handler = Arc::new(CredHandlerOAuth2Trust::new(
+                            oauth2_trust_provider,
+                            trust_user_id,
+                        ));
+                        handlers.push(CredHandler::OAuth2Trust { handler })
                     }
                 };
 
@@ -1444,7 +1463,6 @@ impl AuthSession {
 
                 if let Some(allowed_handler) = allowed_handlers.pop() {
                     let next_auth_state = allowed_handler.next_auth_state();
-
                     (
                         Some(AuthSessionState::InProgress(allowed_handler)),
                         Ok(next_auth_state),
@@ -1706,7 +1724,7 @@ mod tests {
     use crate::idm::account::Account;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::audit::AuditEvent;
-    use crate::idm::authentication::{AuthCredential, AuthState};
+    use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState};
     use crate::idm::authsession::{
         AuthSession, AuthSessionData, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG,
         BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
@@ -3383,6 +3401,9 @@ mod tests {
     fn test_idm_authsession_oauth2_trust() {
         sketching::test_init();
         // Test if the oauth2 workflow operates as expected.
+        let current_time = duration_from_epoch_now();
+        let webauthn = create_webauthn();
+        let privileged = false;
 
         // create the trust provider
         let oauth_trust_provider = OAuth2TrustProvider::new_test(
@@ -3398,11 +3419,48 @@ mod tests {
         account.setup_oauth2_trust_provider(&oauth_trust_provider);
 
         // Start an auth session.
+        let asd = AuthSessionData {
+            account,
+            account_policy: ResolvedAccountPolicy::default(),
+            issue: AuthIssueSession::Token,
+            webauthn: &webauthn,
+            ct: current_time,
+            client_auth_info: Source::Internal.into(),
+            oauth2_trust_provider: Some(&oauth_trust_provider),
+        };
+        let key_object = KeyObjectInternal::new_test();
+
+        let (session, state) = AuthSession::new(asd, privileged, key_object);
+
+        trace!(?state);
 
         // Check that oauth2 is a mech.
+        if let AuthState::Choose(auth_mechs) = state {
+            assert!(auth_mechs
+                .iter()
+                .all(|x| matches!(x, AuthMech::OAuth2Trust)));
+        } else {
+            panic!("Invalid auth state")
+        }
 
         // Select it.
 
+        let state = session
+            .expect("Missing auth session?")
+            .start_session(&AuthMech::OAuth2Trust)
+            .expect("Failed to select anonymous mech.");
+
+        trace!(?state);
+
         // Should create an authorisation Request.
+        let (auth_url, auth_req) = match state {
+            AuthState::External(AuthExternal::OAuth2AuthorisationRequest {
+                authorisation_url,
+                request,
+            }) => (authorisation_url, request),
+            _ => unreachable!(),
+        };
+
+        assert!(false);
     }
 }
