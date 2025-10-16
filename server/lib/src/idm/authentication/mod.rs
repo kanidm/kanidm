@@ -44,9 +44,26 @@ impl From<ProtoAuthStep> for AuthStep {
     }
 }
 
+pub enum AuthNonInteractive {
+    None
+}
+
+impl fmt::Debug for AuthNonInteractive {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::None => write!(f, "None"),
+        }
+    }
+}
+
 pub enum AuthState {
     Choose(Vec<AuthMech>),
     Continue(Vec<AuthAllowed>),
+
+    /// Execute a non-interactive server side step.
+    /// For example, we may need to issue a redirect to an external OAuth2.
+    /// provider, or we may need to do a background query of some kind to proceed.
+    NonInteractive(AuthNonInteractive),
 
     Denied(String),
     Success(Box<JwsCompact>, AuthIssueSession),
@@ -57,6 +74,7 @@ impl fmt::Debug for AuthState {
         match self {
             AuthState::Choose(mechs) => write!(f, "AuthState::Choose({mechs:?})"),
             AuthState::Continue(allow) => write!(f, "AuthState::Continue({allow:?})"),
+            AuthState::NonInteractive(allow) => write!(f, "AuthState::NonInteractive({allow:?})"),
             AuthState::Denied(reason) => write!(f, "AuthState::Denied({reason:?})"),
             AuthState::Success(_token, issue) => write!(f, "AuthState::Success({issue:?})"),
         }
