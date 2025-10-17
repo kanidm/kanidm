@@ -942,6 +942,10 @@ async fn view_login_step(
                 // break acts as return in a loop.
                 break res;
             }
+            AuthState::External(_external) => {
+                debug!("🧩 -> AuthState::External");
+                todo!();
+            }
             AuthState::Success(token, issue) => {
                 debug!("🧩 -> AuthState::Success");
 

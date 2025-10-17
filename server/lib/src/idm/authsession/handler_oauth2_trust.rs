@@ -1,4 +1,4 @@
-use super::{CredState, BAD_AUTH_TYPE_MSG, BAD_OAUTH2_CSRF_STATE_MSG};
+use super::{CredState, ExtSessionMetadata, BAD_AUTH_TYPE_MSG, BAD_OAUTH2_CSRF_STATE_MSG};
 use crate::idm::account::OAuth2TrustProviderCred;
 use crate::idm::authentication::{AuthCredential, AuthExternal};
 use crate::idm::oauth2::PkceS256Secret;
@@ -137,11 +137,17 @@ impl CredHandlerOAuth2Trust {
         let cred_id = self.user_cred_id;
 
         // We need a way to bubble up extra session metadata now.
+        // Need to pass up the expiry, token, refresh token.
+        let ext_session_metadata = ExtSessionMetadata::OAuth2 {
+            access_token: response.access_token.clone(),
+            refresh_token: response.refresh_token.clone(),
+            expires_in: response.expires_in,
+        };
 
         CredState::Success {
             auth_type: AuthType::OAuth2Trust,
             cred_id,
-            // ext_session_metadata
+            ext_session_metadata,
         }
     }
 }

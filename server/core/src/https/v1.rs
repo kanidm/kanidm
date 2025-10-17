@@ -2940,6 +2940,10 @@ fn auth_session_state_management(
                         }
                     }
                 }
+                AuthState::External(_) => {
+                    warn!("🧩 -> AuthState::Denied - we tried to use an external handler within an API");
+                    Ok(ProtoAuthState::Denied("unable to use external authentication handler from this API.".into()))
+                }
                 AuthState::Denied(reason) => {
                     debug!("🧩 -> AuthState::Denied");
                     Ok(ProtoAuthState::Denied(reason))

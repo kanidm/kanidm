@@ -62,9 +62,24 @@ enum AuthIntent {
     },
 }
 
+#[derive(Default)]
+enum ExtSessionMetadata {
+    #[default]
+    None,
+    OAuth2 {
+        access_token: String,
+        refresh_token: Option<String>,
+        expires_in: u32,
+    },
+}
+
 /// A response type to indicate the progress and potential result of an authentication attempt.
 enum CredState {
-    Success { auth_type: AuthType, cred_id: Uuid },
+    Success {
+        auth_type: AuthType,
+        cred_id: Uuid,
+        ext_session_metadata: ExtSessionMetadata,
+    },
     Continue(Box<NonEmpty<AuthAllowed>>),
     External(AuthExternal),
     Denied(&'static str),
@@ -418,6 +433,7 @@ impl CredHandler {
                 CredState::Success {
                     auth_type: AuthType::Anonymous,
                     cred_id,
+                    ext_session_metadata: Default::default(),
                 }
             }
             _ => {
@@ -452,11 +468,13 @@ impl CredHandler {
                             CredState::Success {
                                 auth_type: AuthType::GeneratedPassword,
                                 cred_id,
+                                ext_session_metadata: Default::default(),
                             }
                         } else {
                             CredState::Success {
                                 auth_type: AuthType::Password,
                                 cred_id,
+                                ext_session_metadata: Default::default(),
                             }
                         }
                     }
@@ -544,6 +562,7 @@ impl CredHandler {
                                 CredState::Success {
                                     auth_type: AuthType::PasswordTotp,
                                     cred_id,
+                                    ext_session_metadata: Default::default(),
                                 }
                             }
                         } else {
@@ -647,6 +666,7 @@ impl CredHandler {
                                 CredState::Success {
                                     auth_type: AuthType::PasswordSecurityKey,
                                     cred_id,
+                                    ext_session_metadata: Default::default(),
                                 }
                             }
                         } else {
@@ -736,6 +756,7 @@ impl CredHandler {
                                 CredState::Success {
                                     auth_type: AuthType::PasswordBackupCode,
                                     cred_id,
+                                    ext_session_metadata: Default::default(),
                                 }
                             }
                         } else {
@@ -799,6 +820,7 @@ impl CredHandler {
                             CredState::Success {
                                 auth_type: AuthType::Passkey,
                                 cred_id,
+                                ext_session_metadata: Default::default(),
                             }
                         } else {
                             wan_cred.state = CredVerifyState::Fail;
@@ -875,6 +897,7 @@ impl CredHandler {
                             CredState::Success {
                                 auth_type: AuthType::AttestedPasskey,
                                 cred_id: *cred_id,
+                                ext_session_metadata: Default::default(),
                             }
                         } else {
                             wan_cred.state = CredVerifyState::Fail;
@@ -1512,9 +1535,19 @@ impl AuthSession {
                     webauthn,
                     pw_badlist,
                 ) {
-                    CredState::Success { auth_type, cred_id } => {
+                    CredState::Success {
+                        auth_type,
+                        cred_id,
+                        ext_session_metadata,
+                    } => {
                         // Issue the uat based on a set of factors.
-                        let uat = self.issue_uat(auth_type, time, async_tx, cred_id)?;
+                        let uat = self.issue_uat(
+                            auth_type,
+                            time,
+                            async_tx,
+                            cred_id,
+                            ext_session_metadata,
+                        )?;
 
                         let jwt = Jws::into_json(&uat).map_err(|e| {
                             admin_error!(?e, "Failed to serialise into Jws");
@@ -1587,6 +1620,7 @@ impl AuthSession {
         time: Duration,
         async_tx: &Sender<DelayedAction>,
         cred_id: Uuid,
+        ext_session_metadata: ExtSessionMetadata,
     ) -> Result<UserAuthToken, OperationError> {
         security_debug!("Successful cred handling");
         match self.intent {
