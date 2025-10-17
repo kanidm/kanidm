@@ -1,5 +1,8 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::scim_v1::{ScimEntryGeneric, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState, client::{ScimListEntry, ScimEntryPostGeneric, ScimEntryPutGeneric} };
+use kanidm_proto::scim_v1::{
+    client::{ScimEntryPostGeneric, ScimEntryPutGeneric, ScimListEntry},
+    ScimEntryGeneric, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+};
 
 impl KanidmClient {
     pub async fn scim_v1_sync_status(&self) -> Result<ScimSyncState, ClientError> {
@@ -59,10 +62,7 @@ impl KanidmClient {
             .await
     }
 
-    pub async fn scim_v1_entry_delete(
-        &self,
-        id: &str
-    ) -> Result<(), ClientError> {
+    pub async fn scim_v1_entry_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/scim/v1/Entry/{id}").as_str())
             .await
     }

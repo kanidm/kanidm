@@ -1,5 +1,5 @@
 //! These are types that a client will send to the server.
-use super::{ScimEntryGetQuery, ScimMail, ScimOauth2ClaimMapJoinChar, ScimEntryGeneric};
+use super::{ScimEntryGeneric, ScimEntryGetQuery, ScimMail, ScimOauth2ClaimMapJoinChar};
 use crate::attribute::Attribute;
 use crate::v1::OutboundMessage;
 use scim_proto::ScimEntryHeader;

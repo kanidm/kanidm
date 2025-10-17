@@ -772,8 +772,8 @@ pub enum RawOpt {
     Create {
         file: PathBuf
     },
-    #[clap(name = "modify")]
-    Modify {
+    #[clap(name = "update")]
+    Update {
         file: PathBuf
     },
     #[clap(name = "delete")]

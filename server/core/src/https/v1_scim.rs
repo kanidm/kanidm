@@ -952,9 +952,12 @@ pub fn route_setup() -> Router<ServerState> {
         //  Entry    /Entry/{id}      GET                    Retrieve a generic entry
         //                                                   of any kind from the database.
         //                                                   {id} is any unique id.
-        .route("/scim/v1/Entry",
+        .route(
+            "/scim/v1/Entry",
             get(scim_entry_get)
-            .post(scim_entry_post).put(scim_entry_put))
+                .post(scim_entry_post)
+                .put(scim_entry_put),
+        )
         .route(
             "/scim/v1/Entry/{id}",
             get(scim_entry_id_get).delete(scim_entry_id_delete),

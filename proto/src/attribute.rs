@@ -1,11 +1,10 @@
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-
 use crate::constants::*;
 use crate::internal::OperationError;
+use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::fmt;
 use std::str::FromStr;
+use utoipa::ToSchema;
 
 pub use smartstring::alias::String as AttrString;
 
@@ -13,7 +12,7 @@ pub use smartstring::alias::String as AttrString;
     Serialize, Deserialize, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, Default, ToSchema,
 )]
 #[cfg_attr(test, derive(enum_iterator::Sequence))]
-#[serde(rename_all = "lowercase", try_from = "&str", into = "AttrString")]
+#[serde(rename_all = "lowercase", from = "String", into = "AttrString")]
 pub enum Attribute {
     Account,
     AccountExpire,
@@ -247,6 +246,12 @@ impl TryFrom<&AttrString> for Attribute {
 impl From<&str> for Attribute {
     fn from(value: &str) -> Self {
         Self::inner_from_str(value)
+    }
+}
+
+impl From<String> for Attribute {
+    fn from(value: String) -> Self {
+        Self::inner_from_str(value.as_str())
     }
 }
 

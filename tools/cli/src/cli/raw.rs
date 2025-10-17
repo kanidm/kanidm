@@ -1,10 +1,13 @@
 use kanidm_proto::cli::OpType;
+use kanidm_proto::scim_v1::{
+    client::{ScimEntryPostGeneric, ScimEntryPutGeneric},
+    ScimEntryGetQuery,
+};
+use serde::de::DeserializeOwned;
 use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
-use kanidm_proto::scim_v1::{ScimEntryGetQuery, client::{ ScimEntryPutGeneric, ScimEntryPostGeneric }};
-use serde::de::DeserializeOwned;
 
 use crate::{KanidmClientParser, OutputMode, RawOpt};
 
@@ -42,7 +45,8 @@ impl RawOpt {
                         OutputMode::Text => {
                             println!(
                                 "{}",
-                                serde_json::to_string_pretty(&rset).expect("Failed to serialize entry!")
+                                serde_json::to_string_pretty(&rset)
+                                    .expect("Failed to serialize entry!")
                             )
                         }
                     },
@@ -64,7 +68,7 @@ impl RawOpt {
                     error!("Error -> {:?}", e);
                 }
             }
-            RawOpt::Modify { file } => {
+            RawOpt::Update { file } => {
                 let client = opt.to_client(OpType::Write).await;
 
                 let entry: ScimEntryPutGeneric = match read_file(&file) {
