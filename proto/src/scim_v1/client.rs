@@ -97,6 +97,27 @@ pub struct ScimOAuth2ScopeMap {
 }
 
 #[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct ScimEntry {
+    #[serde(flatten)]
+    pub header: ScimEntryHeader,
+    #[serde(flatten)]
+    pub attrs: BTreeMap<Attribute, JsonValue>,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimListEntry {
+    pub schemas: Vec<String>,
+    pub total_results: u64,
+    pub items_per_page: Option<NonZeroU64>,
+    pub start_index: Option<NonZeroU64>,
+    pub resources: Vec<ScimEntry>,
+}
+
+#[serde_as]
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct ScimEntryApplicationPost {

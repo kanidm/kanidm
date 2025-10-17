@@ -324,6 +324,36 @@ async fn scim_sync_get(
 }
 
 #[utoipa::path(
+    get,
+    path = "/scim/v1/Entry",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_entry_get"
+)]
+async fn scim_entry_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Query(scim_entry_get_query): Query<ScimEntryGetQuery>,
+) -> Result<Json<ScimListResponse>, WebError> {
+    state
+        .qe_r_ref
+        .scim_entry_search(
+            client_auth_info,
+            kopid.eventid,
+            EntryClass::Object.into(),
+            scim_entry_get_query,
+        )
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
     post,
     path = "/scim/v1/Entry",
     responses(
@@ -922,7 +952,9 @@ pub fn route_setup() -> Router<ServerState> {
         //  Entry    /Entry/{id}      GET                    Retrieve a generic entry
         //                                                   of any kind from the database.
         //                                                   {id} is any unique id.
-        .route("/scim/v1/Entry", post(scim_entry_post).put(scim_entry_put))
+        .route("/scim/v1/Entry",
+            get(scim_entry_get)
+            .post(scim_entry_post).put(scim_entry_put))
         .route(
             "/scim/v1/Entry/{id}",
             get(scim_entry_id_get).delete(scim_entry_id_delete),

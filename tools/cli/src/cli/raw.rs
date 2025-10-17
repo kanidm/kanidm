@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
-
+use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidm_proto::internal::{Filter, Modify, ModifyList};
 use kanidm_proto::v1::Entry;
 use serde::de::DeserializeOwned;
@@ -21,18 +21,19 @@ fn read_file<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, Box<dyn 
 impl RawOpt {
     pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
-            RawOpt::Search(sopt) => {
+            RawOpt::Search { filter } => {
                 let client = opt.to_client(OpType::Read).await;
 
-                let filter: Filter = match serde_json::from_str(sopt.filter.as_str()) {
-                    Ok(f) => f,
-                    Err(e) => {
-                        error!("Error parsing filter -> {:?}", e);
-                        return;
-                    }
+                let query = ScimEntryGetQuery {
+                    // attributes,
+                    // ext_access_check
+                    // count
+                    // start_index
+                    filter: Some(filter.clone()),
+                    ..Default::default()
                 };
 
-                match client.search(filter).await {
+                match client.scim_v1_entry_query(query).await {
                     Ok(rset) => match opt.output_mode {
                         #[allow(clippy::expect_used)]
                         OutputMode::Json => {
@@ -42,7 +43,10 @@ impl RawOpt {
                             )
                         }
                         OutputMode::Text => {
-                            rset.iter().for_each(|e| println!("{e}"));
+                            println!(
+                                "{}",
+                                serde_json::to_string_pretty(&rset).expect("Failed to serialize entry!")
+                            )
                         }
                     },
                     Err(e) => error!("Error -> {:?}", e),
@@ -89,17 +93,10 @@ impl RawOpt {
                     error!("Error -> {:?}", e);
                 }
             }
-            RawOpt::Delete(dopt) => {
+            RawOpt::Delete { id } => {
                 let client = opt.to_client(OpType::Write).await;
-                let filter: Filter = match serde_json::from_str(dopt.filter.as_str()) {
-                    Ok(f) => f,
-                    Err(e) => {
-                        error!("Error -> {:?}", e);
-                        return;
-                    }
-                };
 
-                if let Err(e) = client.delete(filter).await {
+                if let Err(e) = client.scim_v1_entry_delete(id).await {
                     error!("Error -> {:?}", e);
                 }
             }
