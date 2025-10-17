@@ -374,12 +374,7 @@ async fn scim_entry_post(
 ) -> Result<Json<ScimEntryKanidm>, WebError> {
     state
         .qe_w_ref
-        .scim_entry_create(
-            client_auth_info,
-            kopid.eventid,
-            &[],
-            post_generic
-        )
+        .scim_entry_create(client_auth_info, kopid.eventid, &[], post_generic)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -404,11 +399,7 @@ async fn scim_entry_put(
 ) -> Result<Json<ScimEntryKanidm>, WebError> {
     state
         .qe_w_ref
-        .handle_scim_entry_put(
-            client_auth_info,
-            kopid.eventid,
-            put_generic
-        )
+        .handle_scim_entry_put(client_auth_info, kopid.eventid, put_generic)
         .await
         .map(Json::from)
         .map_err(WebError::from)
