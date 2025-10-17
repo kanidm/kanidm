@@ -1137,6 +1137,7 @@ pub enum AuthType {
     PasswordSecurityKey,
     Passkey,
     AttestedPasskey,
+    OAuth2Trust,
 }
 
 impl fmt::Display for AuthType {
@@ -1150,6 +1151,7 @@ impl fmt::Display for AuthType {
             AuthType::PasswordSecurityKey => write!(f, "passwordsecuritykey"),
             AuthType::Passkey => write!(f, "passkey"),
             AuthType::AttestedPasskey => write!(f, "attested_passkey"),
+            AuthType::OAuth2Trust => write!(f, "oauth2_trust"),
         }
     }
 }

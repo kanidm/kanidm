@@ -144,6 +144,10 @@ impl PkceS256Secret {
         }
     }
 
+    pub(crate) fn verifier(&self) -> &str {
+        &self.secret
+    }
+
     pub fn to_verifier(self) -> String {
         self.secret
     }

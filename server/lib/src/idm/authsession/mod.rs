@@ -49,6 +49,7 @@ const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 const BAD_CREDENTIALS: &str = "invalid credential message";
 const ACCOUNT_EXPIRED: &str = "account expired";
 const PW_BADLIST_MSG: &str = "password is in badlist";
+const BAD_OAUTH2_CSRF_STATE_MSG: &str = "invalid oauth2 csrf state";
 
 #[derive(Debug, Clone)]
 enum AuthIntent {
@@ -65,6 +66,7 @@ enum AuthIntent {
 enum CredState {
     Success { auth_type: AuthType, cred_id: Uuid },
     Continue(Box<NonEmpty<AuthAllowed>>),
+    External(AuthExternal),
     Denied(&'static str),
 }
 
@@ -1197,11 +1199,10 @@ impl AuthSession {
 
                 if let Some(oauth2_trust_provider) = asd.oauth2_trust_provider {
                     // Is it possible to avoid this double Option?
-                    if let Some((_provider_id, trust_user_id)) = asd.account.oauth2_trust_provider()
-                    {
+                    if let Some(trust_user) = asd.account.oauth2_trust_provider() {
                         let handler = Arc::new(CredHandlerOAuth2Trust::new(
                             oauth2_trust_provider,
-                            trust_user_id,
+                            trust_user,
                         ));
                         handlers.push(CredHandler::OAuth2Trust { handler })
                     }
@@ -1348,7 +1349,7 @@ impl AuthSession {
                         }
                     }
                 }
-                AuthType::Anonymous => {}
+                AuthType::Anonymous | AuthType::OAuth2Trust => {}
             }
 
             // Did anything get set-up?
@@ -1535,6 +1536,10 @@ impl AuthSession {
                         security_info!(?allowed, "Request credential continuation");
                         (None, Ok(AuthState::Continue(allowed.into_iter().collect())))
                     }
+                    CredState::External(allowed) => {
+                        security_info!(?allowed, "Request excternal credential continuation");
+                        (None, Ok(AuthState::External(allowed)))
+                    }
                     CredState::Denied(reason) => {
                         if audit_tx
                             .send(AuditEvent::AuthenticationDenied {
@@ -1590,7 +1595,7 @@ impl AuthSession {
                 // We need to actually work this out better, and then
                 // pass it to to_userauthtoken
                 let scope = match auth_type {
-                    AuthType::Anonymous => SessionScope::ReadOnly,
+                    AuthType::Anonymous | AuthType::OAuth2Trust => SessionScope::ReadOnly,
                     AuthType::GeneratedPassword => SessionScope::ReadWrite,
                     AuthType::Password
                     | AuthType::PasswordTotp
@@ -1635,7 +1640,8 @@ impl AuthSession {
                     | AuthType::PasswordBackupCode
                     | AuthType::PasswordSecurityKey
                     | AuthType::Passkey
-                    | AuthType::AttestedPasskey => {
+                    | AuthType::AttestedPasskey
+                    | AuthType::OAuth2Trust => {
                         trace!("⚠️   Queued AuthSessionRecord for {}", self.account.uuid);
                         async_tx.send(DelayedAction::AuthSessionRecord(AuthSessionRecord {
                             target_uuid: self.account.uuid,
@@ -1668,7 +1674,7 @@ impl AuthSession {
                 // Sanity check - We have already been really strict about what session types
                 // can actually trigger a re-auth, but we recheck here for paranoia!
                 let scope = match auth_type {
-                    AuthType::Anonymous | AuthType::GeneratedPassword => {
+                    AuthType::Anonymous | AuthType::GeneratedPassword | AuthType::OAuth2Trust => {
                         error!("AuthType used in Reauth is not valid for session re-issuance. Rejecting");
                         return Err(OperationError::AU0006CredentialMayNotReauthenticate);
                     }

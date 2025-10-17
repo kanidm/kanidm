@@ -82,6 +82,7 @@ impl ValueSetSession {
                     AuthType::PasswordSecurityKey => DbValueAuthTypeV1::PasswordSecurityKey,
                     AuthType::Passkey => DbValueAuthTypeV1::Passkey,
                     AuthType::AttestedPasskey => DbValueAuthTypeV1::AttestedPasskey,
+                    AuthType::OAuth2Trust => DbValueAuthTypeV1::OAuth2Trust,
                 },
             })
             .collect()
@@ -167,6 +168,7 @@ impl ValueSetSession {
                             DbValueAuthTypeV1::PasswordSecurityKey => AuthType::PasswordSecurityKey,
                             DbValueAuthTypeV1::Passkey => AuthType::Passkey,
                             DbValueAuthTypeV1::AttestedPasskey => AuthType::AttestedPasskey,
+                            DbValueAuthTypeV1::OAuth2Trust => AuthType::OAuth2Trust,
                         };
 
                         Some((

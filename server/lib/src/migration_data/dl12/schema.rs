@@ -799,6 +799,14 @@ pub static ref SCHEMA_ATTR_OAUTH2_TRUST_PROVIDER: SchemaAttribute = SchemaAttrib
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_OAUTH2_TRUST_CREDENTIAL_UUID: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_TRUST_CREDENTIAL_UUID,
+    name: Attribute::OAuth2TrustCredentialUuid,
+    description: " .".to_string(),
+    syntax: SyntaxType::Uuid,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_OAUTH2_TRUST_UNIQUE_USER_ID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_TRUST_UNIQUE_USER_ID,
     name: Attribute::OAuth2TrustUniqueUserId,
@@ -826,22 +834,6 @@ pub static ref SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT: SchemaAttribute = Sche
 pub static ref SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT,
     name: Attribute::OAuth2TokenEndpoint,
-    description: " .".to_string(),
-    syntax: SyntaxType::Url,
-    ..Default::default()
-};
-
-pub static ref SCHEMA_ATTR_OAUTH2_REVOCATION_ENDPOINT: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_OAUTH2_REVOCATION_ENDPOINT,
-    name: Attribute::OAuth2RevocationEndpoint,
-    description: " .".to_string(),
-    syntax: SyntaxType::Url,
-    ..Default::default()
-};
-
-pub static ref SCHEMA_ATTR_OAUTH2_INTROSPECTION_ENDPOINT: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_OAUTH2_INTROSPECTION_ENDPOINT,
-    name: Attribute::OAuth2IntrospectionEndpoint,
     description: " .".to_string(),
     syntax: SyntaxType::Url,
     ..Default::default()
@@ -893,9 +885,8 @@ pub static ref SCHEMA_CLASS_PERSON_OAUTH2_TRUST: SchemaClass = SchemaClass {
     systemmust: vec![
         Attribute::OAuth2TrustProvider,
         Attribute::OAuth2TrustUniqueUserId,
-        // How to store refresh/session tokens.
-        // Probably need a new session type
-        // Attribute::OAuth2TrustSession?
+        // This is the "credential id" that allows us to link this trust to a session.
+        Attribute::OAuth2TrustCredentialUuid,
     ],
     systemsupplements: vec![EntryClass::Person.into()],
     ..Default::default()
@@ -1157,10 +1148,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_TRUST_CLIENT: SchemaClass = SchemaClass {
         Attribute::OAuth2TokenEndpoint,
         Attribute::OAuth2RequestScopes,
     ],
-    systemmay: vec![
-        Attribute::OAuth2IntrospectionEndpoint,
-        Attribute::OAuth2RevocationEndpoint,
-    ],
+    systemmay: vec![],
     ..Default::default()
 };
 

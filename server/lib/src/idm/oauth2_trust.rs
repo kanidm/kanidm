@@ -1,3 +1,4 @@
+use crate::idm::account::OAuth2TrustProviderCred;
 use crate::prelude::*;
 use crate::utils;
 use std::collections::BTreeSet;

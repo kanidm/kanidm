@@ -119,9 +119,8 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_OAUTH2_CLIENT_ID.clone().into(),
         SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT.clone().into(),
         SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT.clone().into(),
-        SCHEMA_ATTR_OAUTH2_REVOCATION_ENDPOINT.clone().into(),
-        SCHEMA_ATTR_OAUTH2_INTROSPECTION_ENDPOINT.clone().into(),
         SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES.clone().into(),
+        SCHEMA_ATTR_OAUTH2_TRUST_CREDENTIAL_UUID.clone().into(),
     ]
 }
 

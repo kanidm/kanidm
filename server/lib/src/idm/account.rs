@@ -39,6 +39,13 @@ impl UnixExtensions {
 }
 
 #[derive(Default, Debug, Clone)]
+pub struct OAuth2TrustProviderCred {
+    pub(crate) provider: Uuid,
+    pub(crate) cred_id: Uuid,
+    pub(crate) user_id: String,
+}
+
+#[derive(Default, Debug, Clone)]
 pub struct Account {
     // To make this self-referential, we'll need to likely make Entry Pin<Arc<_>>
     // so that we can make the references work.
@@ -61,9 +68,7 @@ pub struct Account {
     pub(crate) unix_extn: Option<UnixExtensions>,
     pub(crate) sshkeys: BTreeMap<String, SshPublicKey>,
     pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
-    // Might rethink how I access this later ...
-    pub(crate) oauth2_trust_provider: Option<Uuid>,
-    pub(crate) oauth2_trust_user_id: Option<String>,
+    pub(crate) oauth2_trust_provider: Option<OAuth2TrustProviderCred>,
 }
 
 #[cfg(test)]
@@ -204,7 +209,6 @@ macro_rules! try_from_entry {
             .unwrap_or_default();
 
         let oauth2_trust_provider = None;
-        let oauth2_trust_user_id = None;
 
         Ok(Account {
             uuid,
@@ -227,7 +231,6 @@ macro_rules! try_from_entry {
             sshkeys,
             apps_pwds,
             oauth2_trust_provider,
-            oauth2_trust_user_id,
         })
     }};
 }
@@ -830,11 +833,8 @@ impl Account {
         })
     }
 
-    pub(crate) fn oauth2_trust_provider(&self) -> Option<(Uuid, &str)> {
-        match (self.oauth2_trust_provider, &self.oauth2_trust_user_id) {
-            (Some(uuid), Some(user_id)) => Some((uuid, user_id.as_str())),
-            _ => None,
-        }
+    pub(crate) fn oauth2_trust_provider(&self) -> Option<&OAuth2TrustProviderCred> {
+        self.oauth2_trust_provider.as_ref()
     }
 
     #[cfg(test)]
@@ -842,8 +842,11 @@ impl Account {
         &mut self,
         trust_provider: &crate::idm::oauth2_trust::OAuth2TrustProvider,
     ) {
-        self.oauth2_trust_provider = Some(trust_provider.uuid());
-        self.oauth2_trust_user_id = Some(self.name.clone());
+        self.oauth2_trust_provider = Some(OAuth2TrustProviderCred {
+            provider: trust_provider.uuid(),
+            cred_id: Uuid::new_v4(),
+            user_id: self.name.clone(),
+        });
     }
 }
 

@@ -1,20 +1,27 @@
-use super::CredState;
-use crate::idm::authentication::AuthCredential;
+use super::{CredState, BAD_AUTH_TYPE_MSG, BAD_OAUTH2_CSRF_STATE_MSG};
+use crate::idm::account::OAuth2TrustProviderCred;
+use crate::idm::authentication::{AuthCredential, AuthExternal};
 use crate::idm::oauth2::PkceS256Secret;
 use crate::idm::oauth2_trust::OAuth2TrustProvider;
 use crate::prelude::*;
 use crate::utils;
-use kanidm_proto::oauth2::{AuthorisationRequest, ResponseType};
+use crate::value::AuthType;
+use kanidm_proto::oauth2::{
+    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, GrantTypeReq, ResponseType,
+};
 use std::collections::BTreeSet;
 use std::fmt;
 
 pub struct CredHandlerOAuth2Trust {
-    // For logging
+    // For logging - this is the trust provider we are using.
     provider_id: Uuid,
     provider_name: String,
+
+    user_id: String,
+    user_cred_id: Uuid,
+
     // The users ID as the remote trust provider knows them.
     request_scopes: BTreeSet<String>,
-    user_id: String,
     client_id: String,
     client_secret: String,
     client_redirect_url: Url,
@@ -40,7 +47,10 @@ impl fmt::Debug for CredHandlerOAuth2Trust {
 }
 
 impl CredHandlerOAuth2Trust {
-    pub fn new(trust_provider: &OAuth2TrustProvider, trust_user_id: &str) -> Self {
+    pub fn new(
+        trust_provider: &OAuth2TrustProvider,
+        trust_user_cred: &OAuth2TrustProviderCred,
+    ) -> Self {
         let pkce_secret = PkceS256Secret::default();
         let csrf_state = utils::password_from_random();
 
@@ -48,7 +58,8 @@ impl CredHandlerOAuth2Trust {
             provider_id: trust_provider.uuid,
             provider_name: trust_provider.name.clone(),
             request_scopes: trust_provider.request_scopes.clone(),
-            user_id: trust_user_id.to_string(),
+            user_id: trust_user_cred.user_id.to_string(),
+            user_cred_id: trust_user_cred.cred_id,
             client_id: trust_provider.client_id.clone(),
             client_secret: trust_provider.basic_secret.clone(),
             client_redirect_url: trust_provider.client_redirect_uri.clone(),
@@ -81,6 +92,56 @@ impl CredHandlerOAuth2Trust {
     }
 
     pub fn validate(&self, cred: &AuthCredential) -> CredState {
-        todo!();
+        match cred {
+            AuthCredential::OAuth2AuthorisationResponse { code, state } => {
+                self.validate_authorisation_response(code, state.as_deref())
+            }
+            AuthCredential::OAuth2AccessTokenResponse { response } => {
+                self.validate_access_token_response(response)
+            }
+            _ => CredState::Denied(BAD_AUTH_TYPE_MSG),
+        }
+    }
+
+    fn validate_authorisation_response(&self, code: &str, state: Option<&str>) -> CredState {
+        // Validate our csrf state
+
+        let csrf_valid = state.map(|s| s == self.csrf_state).unwrap_or_default();
+
+        if !csrf_valid {
+            return CredState::Denied(BAD_OAUTH2_CSRF_STATE_MSG);
+        }
+
+        // How to handle this cleanly?
+        let code_verifier = Some(self.pkce_secret.verifier().to_string());
+
+        let grant_type_req = GrantTypeReq::AuthorizationCode {
+            code: code.into(),
+            redirect_uri: self.client_redirect_url.clone(),
+            code_verifier,
+        };
+
+        let request = AccessTokenRequest::from(grant_type_req);
+
+        CredState::External(AuthExternal::OAuth2AccessTokenRequest {
+            token_url: self.token_endpoint.clone(),
+            client_id: self.client_id.clone(),
+            client_secret: self.client_secret.clone(),
+            request,
+        })
+    }
+
+    fn validate_access_token_response(&self, response: &AccessTokenResponse) -> CredState {
+        // What is the credential id here? The provider id?
+        // How do we make sure that session plugin doesn't kill us?
+        let cred_id = self.user_cred_id;
+
+        // We need a way to bubble up extra session metadata now.
+
+        CredState::Success {
+            auth_type: AuthType::OAuth2Trust,
+            cred_id,
+            // ext_session_metadata
+        }
     }
 }
