@@ -762,20 +762,6 @@ pub enum SessionOpt {
     Cleanup,
 }
 
-#[derive(Debug, Args, Clone)]
-pub struct CreateOpt {
-    #[clap(value_parser)]
-    file: PathBuf,
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct ModifyOpt {
-    #[clap()]
-    filter: String,
-    #[clap(value_parser)]
-    file: PathBuf,
-}
-
 #[derive(Debug, Subcommand, Clone)]
 pub enum RawOpt {
     #[clap(name = "search")]
@@ -783,9 +769,13 @@ pub enum RawOpt {
         filter: ScimFilter
     },
     #[clap(name = "create")]
-    Create(CreateOpt),
+    Create {
+        file: PathBuf
+    },
     #[clap(name = "modify")]
-    Modify(ModifyOpt),
+    Modify {
+        file: PathBuf
+    },
     #[clap(name = "delete")]
     Delete {
         id: String

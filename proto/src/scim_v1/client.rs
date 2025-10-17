@@ -1,7 +1,5 @@
 //! These are types that a client will send to the server.
-use super::ScimEntryGetQuery;
-use super::ScimMail;
-use super::ScimOauth2ClaimMapJoinChar;
+use super::{ScimEntryGetQuery, ScimMail, ScimOauth2ClaimMapJoinChar, ScimEntryGeneric};
 use crate::attribute::Attribute;
 use crate::v1::OutboundMessage;
 use scim_proto::ScimEntryHeader;
@@ -97,16 +95,6 @@ pub struct ScimOAuth2ScopeMap {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct ScimEntry {
-    #[serde(flatten)]
-    pub header: ScimEntryHeader,
-    #[serde(flatten)]
-    pub attrs: BTreeMap<Attribute, JsonValue>,
-}
-
-#[serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimListEntry {
@@ -114,7 +102,7 @@ pub struct ScimListEntry {
     pub total_results: u64,
     pub items_per_page: Option<NonZeroU64>,
     pub start_index: Option<NonZeroU64>,
-    pub resources: Vec<ScimEntry>,
+    pub resources: Vec<ScimEntryGeneric>,
 }
 
 #[serde_as]
@@ -246,7 +234,7 @@ pub struct ScimEntryPutKanidm {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ScimStrings(#[serde_as(as = "OneOrMany<_, PreferMany>")] pub Vec<String>);
 
-#[derive(Debug, Clone, Deserialize, Default, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
 pub struct ScimEntryPostGeneric {
     /// Create an attribute to contain the following value state.
     #[serde(flatten)]
@@ -254,7 +242,7 @@ pub struct ScimEntryPostGeneric {
     pub attrs: BTreeMap<Attribute, JsonValue>,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ScimEntryPutGeneric {
     // id is only used to target the entry in question
     pub id: Uuid,

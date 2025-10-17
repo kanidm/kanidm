@@ -1,12 +1,9 @@
 use kanidm_proto::cli::OpType;
-use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
-use kanidm_proto::scim_v1::ScimEntryGetQuery;
-use kanidm_proto::internal::{Filter, Modify, ModifyList};
-use kanidm_proto::v1::Entry;
+use kanidm_proto::scim_v1::{ScimEntryGetQuery, client::{ ScimEntryPutGeneric, ScimEntryPostGeneric }};
 use serde::de::DeserializeOwned;
 
 use crate::{KanidmClientParser, OutputMode, RawOpt};
@@ -52,10 +49,10 @@ impl RawOpt {
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
-            RawOpt::Create(copt) => {
+            RawOpt::Create { file } => {
                 let client = opt.to_client(OpType::Write).await;
                 // Read the file?
-                let r_entries: Vec<BTreeMap<String, Vec<String>>> = match read_file(&copt.file) {
+                let entry: ScimEntryPostGeneric = match read_file(&file) {
                     Ok(r) => r,
                     Err(e) => {
                         error!("Error -> {:?}", e);
@@ -63,24 +60,14 @@ impl RawOpt {
                     }
                 };
 
-                let entries = r_entries.into_iter().map(|b| Entry { attrs: b }).collect();
-
-                if let Err(e) = client.create(entries).await {
+                if let Err(e) = client.scim_v1_entry_create(entry).await {
                     error!("Error -> {:?}", e);
                 }
             }
-            RawOpt::Modify(mopt) => {
+            RawOpt::Modify { file } => {
                 let client = opt.to_client(OpType::Write).await;
-                // Read the file?
-                let filter: Filter = match serde_json::from_str(mopt.filter.as_str()) {
-                    Ok(f) => f,
-                    Err(e) => {
-                        error!("Error -> {:?}", e);
-                        return;
-                    }
-                };
 
-                let r_list: Vec<Modify> = match read_file(&mopt.file) {
+                let entry: ScimEntryPutGeneric = match read_file(&file) {
                     Ok(r) => r,
                     Err(e) => {
                         error!("Error -> {:?}", e);
@@ -88,8 +75,7 @@ impl RawOpt {
                     }
                 };
 
-                let modlist = ModifyList::new_list(r_list);
-                if let Err(e) = client.modify(filter, modlist).await {
+                if let Err(e) = client.scim_v1_entry_update(entry).await {
                     error!("Error -> {:?}", e);
                 }
             }

@@ -1,5 +1,5 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::scim_v1::{ScimEntryGeneric, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState, client::{ScimListEntry} };
+use kanidm_proto::scim_v1::{ScimEntryGeneric, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState, client::{ScimListEntry, ScimEntryPostGeneric, ScimEntryPutGeneric} };
 
 impl KanidmClient {
     pub async fn scim_v1_sync_status(&self) -> Result<ScimSyncState, ClientError> {
@@ -40,6 +40,22 @@ impl KanidmClient {
         query: ScimEntryGetQuery,
     ) -> Result<ScimListEntry, ClientError> {
         self.perform_get_request_query(format!("/scim/v1/Entry").as_str(), Some(query))
+            .await
+    }
+
+    pub async fn scim_v1_entry_create(
+        &self,
+        entry: ScimEntryPostGeneric,
+    ) -> Result<ScimEntryGeneric, ClientError> {
+        self.perform_post_request(format!("/scim/v1/Entry").as_str(), entry)
+            .await
+    }
+
+    pub async fn scim_v1_entry_update(
+        &self,
+        entry: ScimEntryPutGeneric,
+    ) -> Result<ScimEntryGeneric, ClientError> {
+        self.perform_put_request(format!("/scim/v1/Entry").as_str(), entry)
             .await
     }
 
