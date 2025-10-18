@@ -1299,7 +1299,6 @@ lazy_static! {
             ProtoFilter::Or(vec![
                 match_class_filter!(EntryClass::Account),
                 match_class_filter!(EntryClass::Group),
-                // match_class_filter!(EntryClass::ServiceAccount),
             ]),
             FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
         ])),
