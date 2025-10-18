@@ -1285,7 +1285,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_ACCOUNT_MAIL_READ_DL12: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_ACCOUNT_MAIL_READ_DL6: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
