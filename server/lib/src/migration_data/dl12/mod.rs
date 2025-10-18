@@ -258,7 +258,6 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         // DL5
         // DL6
         IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
-        IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone().into(),
         // DL7
         IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
         IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7.clone().into(),
@@ -274,5 +273,7 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         IDM_ACP_DOMAIN_ADMIN_DL9.clone().into(),
         // DL10
         IDM_ACP_OAUTH2_MANAGE.clone().into(),
+        // DL12
+        IDM_ACP_ACCOUNT_MAIL_READ_DL12.clone().into(),
     ]
 }
