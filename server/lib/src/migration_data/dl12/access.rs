@@ -1829,6 +1829,7 @@ lazy_static! {
             Attribute::Description,
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
+            Attribute::Mail,
         ],
         create_classes: vec![
             EntryClass::Object,
@@ -1927,6 +1928,7 @@ lazy_static! {
             Attribute::AccountValidFrom,
             Attribute::ApiTokenSession,
             Attribute::UserAuthTokenSession,
+            Attribute::Mail,
         ],
         modify_removed_attrs: vec![
             Attribute::DisplayName,
@@ -1979,6 +1981,7 @@ lazy_static! {
             Attribute::Spn,
             Attribute::Uuid,
             Attribute::EntryManagedBy,
+            Attribute::Mail,
         ],
         modify_removed_attrs: vec![Attribute::EntryManagedBy],
         modify_present_attrs: vec![Attribute::EntryManagedBy],

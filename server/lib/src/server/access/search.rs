@@ -154,15 +154,14 @@ fn search_filter_entry(
             match &acs.target_condition {
                 AccessControlTargetCondition::Scope(f_res) => {
                     if !entry.entry_match_no_index(f_res) {
-                        security_debug!(entry = ?entry.get_display_id(), acs = %acs.acp.acp.name, "entry DOES NOT match acs");
+                        debug!(entry = ?entry.get_display_id(), acs = %acs.acp.acp.name, action="search_filter", "entry DOES NOT match acs");
                         return None
                     }
                 }
             };
 
             // -- Conditions pass -- release the attributes.
-
-            security_debug!(entry = ?entry.get_display_id(), acs = %acs.acp.acp.name, "acs applied to entry");
+            debug!(entry = ?entry.get_display_id(), acs = %acs.acp.acp.name, "acs applied to entry");
             // add search_attrs to allowed.
             Some(acs.acp.attrs.iter().cloned())
         })
