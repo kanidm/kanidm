@@ -302,7 +302,7 @@ pub async fn view_consent_post(
     }
 }
 
-#[derive(Template, Debug, Clone)]
+#[derive(Template, Debug, Clone, WebTemplate)]
 #[cfg(feature = "dev-oauth2-device-flow")]
 #[template(path = "oauth2_device_login.html")]
 pub struct Oauth2DeviceLoginView {
