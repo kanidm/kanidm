@@ -18,7 +18,10 @@ async fn test_ldap_basic_unix_bind(test_env: &AsyncTestEnvironment) {
     let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
 
     // Bind as anonymous
-    ldap_client.bind("".into(), "".into()).await.unwrap();
+    ldap_client
+        .bind("".to_string(), "".to_string())
+        .await
+        .unwrap();
 
     let whoami = ldap_client.whoami().await.unwrap();
 
