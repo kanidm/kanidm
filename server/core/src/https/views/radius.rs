@@ -3,25 +3,26 @@ use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
 use crate::https::ServerState;
 use askama::Template;
-use askama_axum::IntoResponse;
+use askama_web::WebTemplate;
+
 use axum::extract::State;
-use axum::response::Response;
+use axum::response::{IntoResponse, Response};
 use axum::Extension;
 use axum_extra::extract::CookieJar;
 use kanidm_proto::internal::UserAuthToken;
 
-use super::constants::{ProfileMenuItems, /*UiMessage,*/ Urls};
+use super::constants::{ProfileMenuItems, Urls};
 use super::navbar::NavbarCtx;
 use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "user_settings.html")]
 pub(crate) struct ProfileView {
     navbar_ctx: NavbarCtx,
     profile_partial: RadiusPartialView,
 }
 
-#[derive(Template, Clone)]
+#[derive(Template, Clone, WebTemplate)]
 #[template(path = "radius.html")]
 pub(crate) struct RadiusPartialView {
     menu_active_item: ProfileMenuItems,

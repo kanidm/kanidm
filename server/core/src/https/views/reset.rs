@@ -1,6 +1,7 @@
 use askama::Template;
+use askama_web::WebTemplate;
 use axum::extract::{Query, State};
-use axum::http::{StatusCode, Uri};
+use axum::http::StatusCode;
 use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
 use axum::{Extension, Form};
 use axum_extra::extract::cookie::SameSite;
@@ -42,21 +43,21 @@ use crate::https::ServerState;
 
 use super::UnrecoverableErrorView;
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "user_settings.html")]
 struct ProfileView {
     navbar_ctx: NavbarCtx,
     profile_partial: CredStatusView,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credentials_reset_form.html")]
 struct ResetCredFormView {
     domain_info: DomainInfoRead,
     wrong_code: bool,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credentials_reset.html")]
 struct CredResetView {
     domain_info: DomainInfoRead,
@@ -64,7 +65,7 @@ struct CredResetView {
     credentials_update_partial: CredResetPartialView,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credentials_status.html")]
 struct CredStatusView {
     domain_info: DomainInfoRead,
@@ -79,7 +80,7 @@ struct SshKey {
     comment: Option<String>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credentials_update_partial.html")]
 struct CredResetPartialView {
     ext_cred_portal: CUExtPortal,
@@ -104,19 +105,19 @@ pub(crate) struct ResetTokenParam {
     token: Option<String>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credential_update_add_password_partial.html")]
 struct AddPasswordPartial {
     check_res: PwdCheckResult,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credential_update_set_unixcred_partial.html")]
 struct SetUnixCredPartial {
     check_res: PwdCheckResult,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credential_update_add_ssh_publickey_partial.html")]
 struct AddSshPublicKeyPartial {
     key_title: Option<String>,
@@ -161,7 +162,7 @@ pub(crate) struct NewTotp {
     ignore_broken_app: bool,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credential_update_add_passkey_partial.html")]
 struct AddPasskeyPartial {
     // Passkey challenge for adding a new passkey
@@ -210,7 +211,7 @@ pub(crate) struct TotpCheck {
     taken_name: Option<String>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "credential_update_add_totp_partial.html")]
 struct AddTotpPartial {
     totp_init: Option<TotpInit>,
@@ -256,12 +257,7 @@ async fn end_session_response(
         Urls::Login.as_ref()
     };
 
-    Ok((
-        jar,
-        HxLocation::from(Uri::from_static(redirect_location)),
-        "",
-    )
-        .into_response())
+    Ok((jar, HxLocation::from(redirect_location), "").into_response())
 }
 
 pub(crate) async fn commit(
@@ -528,7 +524,7 @@ pub(crate) async fn view_new_passkey(
         HxResponseTrigger::after_swap([HxEvent::new("addPasskeySwapped".to_string())]);
     Ok((
         passkey_init_trigger,
-        HxPushUrl(Uri::from_static("/ui/reset/add_passkey")),
+        HxPushUrl("/ui/reset/add_passkey".to_string()),
         response,
     )
         .into_response())
@@ -541,7 +537,7 @@ pub(crate) async fn view_new_totp(
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
     let cu_session_token = get_cu_session(&jar).await?;
-    let push_url = HxPushUrl(Uri::from_static("/ui/reset/add_totp"));
+    let push_url = HxPushUrl("/ui/reset/add_totp".to_string());
 
     let cu_status = state
         .qe_r_ref
@@ -679,6 +675,7 @@ pub(crate) async fn add_totp(
         .into_response())
 }
 
+#[axum::debug_handler]
 pub(crate) async fn view_new_pwd(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -686,7 +683,7 @@ pub(crate) async fn view_new_pwd(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-    opt_form: Option<Form<NewPassword>>,
+    Form(opt_form): Form<Option<NewPassword>>,
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
@@ -702,7 +699,7 @@ pub(crate) async fn view_new_pwd(
             )
                 .into_response());
         }
-        Some(Form(new_passwords)) => new_passwords,
+        Some(new_passwords) => new_passwords,
     };
 
     let pwd_equal = new_passwords.new_password == new_passwords.new_password_check;
@@ -740,7 +737,7 @@ pub(crate) async fn view_new_pwd(
     Ok((
         status,
         swapped_handler_trigger,
-        HxPushUrl(Uri::from_static("/ui/reset/change_password")),
+        HxPushUrl("/ui/reset/change_password".to_string()),
         AddPasswordPartial { check_res },
     )
         .into_response())
@@ -819,7 +816,7 @@ pub(crate) async fn view_set_unixcred(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-    opt_form: Option<Form<NewPassword>>,
+    Form(opt_form): Form<Option<NewPassword>>,
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
@@ -835,7 +832,7 @@ pub(crate) async fn view_set_unixcred(
             )
                 .into_response());
         }
-        Some(Form(new_passwords)) => new_passwords,
+        Some(new_passwords) => new_passwords,
     };
 
     let pwd_equal = new_passwords.new_password == new_passwords.new_password_check;
@@ -873,7 +870,7 @@ pub(crate) async fn view_set_unixcred(
     Ok((
         status,
         swapped_handler_trigger,
-        HxPushUrl(Uri::from_static("/ui/reset/set_unixcred")),
+        HxPushUrl("/ui/reset/set_unixcred".to_string()),
         SetUnixCredPartial { check_res },
     )
         .into_response())
@@ -891,7 +888,7 @@ pub(crate) async fn view_add_ssh_publickey(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-    opt_form: Option<Form<NewPublicKey>>,
+    Form(opt_form): Form<Option<NewPublicKey>>,
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
@@ -905,7 +902,7 @@ pub(crate) async fn view_add_ssh_publickey(
             },)
                 .into_response());
         }
-        Some(Form(new_key)) => new_key,
+        Some(new_key) => new_key,
     };
 
     let (
@@ -963,7 +960,7 @@ pub(crate) async fn view_add_ssh_publickey(
 
     Ok((
         status,
-        HxPushUrl(Uri::from_static("/ui/reset/add_ssh_publickey")),
+        HxPushUrl("/ui/reset/add_ssh_publickey".to_string()),
         AddSshPublicKeyPartial {
             key_title: Some(new_key.title),
             title_error,
@@ -983,7 +980,7 @@ pub(crate) async fn view_reset_get(
     Query(params): Query<ResetTokenParam>,
     mut jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let push_url = HxPushUrl(Uri::from_static(Urls::CredReset.as_ref()));
+    let push_url = HxPushUrl(Urls::CredReset.to_string());
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     let is_logged_in = state
         .qe_r_ref
@@ -1120,7 +1117,7 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
 fn get_cu_partial_response(cu_status: CUStatus) -> Response {
     let credentials_update_partial = get_cu_partial(cu_status);
     (
-        HxPushUrl(Uri::from_static(Urls::CredReset.as_ref())),
+        HxPushUrl(Urls::CredReset.to_string()),
         HxRetarget("#credentialUpdateDynamicSection".to_string()),
         HxReselect("#credentialUpdateDynamicSection".to_string()),
         HxReswap(SwapOption::OuterHtml),
@@ -1150,7 +1147,7 @@ fn get_cu_response(
         };
 
         (
-            HxPushUrl(Uri::from_static(Urls::UpdateCredentials.as_ref())),
+            HxPushUrl(Urls::UpdateCredentials.to_string()),
             ProfileView {
                 navbar_ctx: NavbarCtx::new(domain_info, ui_hints),
                 profile_partial: cred_status_view,
@@ -1159,7 +1156,7 @@ fn get_cu_response(
             .into_response()
     } else {
         (
-            HxPushUrl(Uri::from_static(Urls::CredReset.as_ref())),
+            HxPushUrl(Urls::CredReset.to_string()),
             CredResetView {
                 domain_info,
                 names,

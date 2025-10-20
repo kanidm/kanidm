@@ -6,10 +6,10 @@ use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::ServerState;
 use askama::Template;
-use askama_axum::IntoResponse;
+use askama_web::WebTemplate;
+
 use axum::extract::{Query, State};
-use axum::http::Uri;
-use axum::response::{Redirect, Response};
+use axum::response::{IntoResponse, Redirect, Response};
 use axum::Extension;
 use axum_extra::extract::Form;
 use axum_htmx::{HxEvent, HxPushUrl, HxResponseTrigger};
@@ -26,14 +26,14 @@ use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "user_settings.html")]
 pub(crate) struct ProfileView {
     navbar_ctx: NavbarCtx,
     profile_partial: ProfilePartialView,
 }
 
-#[derive(Template, Clone)]
+#[derive(Template, Clone, WebTemplate)]
 #[template(path = "user_settings_profile_partial.html")]
 struct ProfilePartialView {
     menu_active_item: ProfileMenuItems,
@@ -75,7 +75,7 @@ pub(crate) struct ProfileAttributes {
     emails: Vec<ScimMail>,
 }
 
-#[derive(Template, Clone)]
+#[derive(Template, Clone, WebTemplate)]
 #[template(path = "user_settings/profile_changes_partial.html")]
 struct ProfileChangesPartialView {
     menu_active_item: ProfileMenuItems,
@@ -87,7 +87,7 @@ struct ProfileChangesPartialView {
     emails_are_same: bool,
 }
 
-#[derive(Template, Clone)]
+#[derive(Template, Clone, WebTemplate)]
 #[template(path = "user_settings/form_email_entry_partial.html")]
 pub(crate) struct FormEmailEntryListPartial {
     can_edit: bool,
@@ -127,7 +127,7 @@ pub(crate) async fn view_profile_get(
         HxResponseTrigger::after_swap([HxEvent::new("addEmailSwapped".to_string())]);
     Ok((
         rehook_email_removal_buttons,
-        HxPushUrl(Uri::from_static("/ui/profile")),
+        HxPushUrl("/ui/profile".to_string()),
         ProfileView {
             navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
             profile_partial: ProfilePartialView {
@@ -213,11 +213,7 @@ pub(crate) async fn view_profile_diff_start_save_post(
         emails_are_same,
     };
 
-    Ok((
-        HxPushUrl(Uri::from_static("/ui/profile/diff")),
-        profile_view,
-    )
-        .into_response())
+    Ok((HxPushUrl("/ui/profile/diff".to_string()), profile_view).into_response())
 }
 
 pub(crate) async fn view_profile_diff_confirm_save_post(

@@ -11,6 +11,7 @@ use kanidm_proto::internal::COOKIE_OAUTH2_REQ;
 use std::collections::BTreeSet;
 
 use askama::Template;
+use askama_web::WebTemplate;
 
 #[cfg(feature = "dev-oauth2-device-flow")]
 use axum::http::StatusCode;
@@ -27,7 +28,7 @@ use serde::Deserialize;
 use super::login::{LoginDisplayCtx, Oauth2Ctx};
 use super::{cookies, UnrecoverableErrorView};
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "oauth2_consent_request.html")]
 struct ConsentRequestView {
     client_name: String,
@@ -37,7 +38,7 @@ struct ConsentRequestView {
     redirect: Option<String>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "oauth2_access_denied.html")]
 struct AccessDeniedView {
     operation_id: Uuid,
@@ -124,7 +125,7 @@ async fn oauth2_auth_req(
                 [
                     (HX_REDIRECT, redirect_uri.as_str().to_string()),
                     (
-                        ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
+                        ACCESS_CONTROL_ALLOW_ORIGIN,
                         redirect_uri.origin().ascii_serialization(),
                     ),
                 ],
@@ -262,7 +263,7 @@ pub async fn view_consent_post(
                     [
                         (HX_REDIRECT, success.redirect_uri.as_str().to_string()),
                         (
-                            ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
+                            ACCESS_CONTROL_ALLOW_ORIGIN,
                             success.redirect_uri.origin().ascii_serialization(),
                         ),
                     ],
@@ -276,7 +277,7 @@ pub async fn view_consent_post(
                     [
                         (HX_REDIRECT, redirect_uri.as_str().to_string()),
                         (
-                            ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
+                            ACCESS_CONTROL_ALLOW_ORIGIN,
                             redirect_uri.origin().ascii_serialization(),
                         ),
                     ],

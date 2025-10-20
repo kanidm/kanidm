@@ -6,11 +6,12 @@ use crate::https::views::navbar::NavbarCtx;
 use crate::https::views::Urls;
 use crate::https::ServerState;
 use askama::Template;
+use askama_web::WebTemplate;
 use axum::extract::{Path, State};
-use axum::http::Uri;
 use axum::response::{IntoResponse, Response};
 use axum::Extension;
 use axum_htmx::{HxPushUrl, HxRequest};
+
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::internal::{OperationError, UserAuthToken};
 use kanidm_proto::scim_v1::server::{
@@ -20,7 +21,6 @@ use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidm_proto::scim_v1::ScimFilter;
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::idm::ClientAuthInfo;
-use std::str::FromStr;
 use uuid::Uuid;
 
 pub const PERSON_ATTRIBUTES: [Attribute; 9] = [
@@ -35,27 +35,27 @@ pub const PERSON_ATTRIBUTES: [Attribute; 9] = [
     Attribute::DirectMemberOf,
 ];
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_panel_template.html")]
 pub(crate) struct PersonsView {
     navbar_ctx: NavbarCtx,
     partial: PersonsPartialView,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_persons_partial.html")]
 struct PersonsPartialView {
     persons: Vec<(ScimPerson, ScimEffectiveAccess)>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_panel_template.html")]
 struct PersonView {
     partial: PersonViewPartial,
     navbar_ctx: NavbarCtx,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_person_view_partial.html")]
 struct PersonViewPartial {
     person: ScimPerson,
@@ -79,11 +79,7 @@ pub(crate) async fn view_person_view_get(
     let uat: &UserAuthToken = client_auth_info
         .pre_validated_uat()
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
-
-    let path_string = format!("/ui/admin/person/{uuid}/view");
-    let uri = Uri::from_str(path_string.as_str())
-        .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
-    let push_url = HxPushUrl(uri);
+    let push_url = HxPushUrl(format!("/ui/admin/person/{uuid}/view"));
     Ok(if is_htmx {
         (push_url, person_partial).into_response()
     } else {
@@ -110,7 +106,7 @@ pub(crate) async fn view_persons_get(
     let uat: &UserAuthToken = client_auth_info
         .pre_validated_uat()
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
-    let push_url = HxPushUrl(Uri::from_static("/ui/admin/persons"));
+    let push_url = HxPushUrl("/ui/admin/persons".to_string());
     Ok(if is_htmx {
         (push_url, persons_partial).into_response()
     } else {
