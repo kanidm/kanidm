@@ -1,5 +1,5 @@
 (% macro string_attr(dispname, name, value, editable, attribute) %)
-(% if scim_effective_access.search.check(attribute|as_ref) %)
+(% if scim_effective_access.search.check(&attribute) %)
 <div class="row mt-3">
     <label for="person(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
     <div class="col-12 col-md-8 col-lg-6">

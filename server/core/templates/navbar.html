@@ -31,7 +31,7 @@
                     <a class="nav-link" href=((Urls::Profile))>
                         <span data-feather="file"></span>Profile</a>
                 </li>
-                (% if navbar_ctx.ui_hints.contains(kanidm_proto::internal::UiHint::ExperimentalFeatures|as_ref) %)
+                (% if navbar_ctx.ui_hints.contains(&kanidm_proto::internal::UiHint::ExperimentalFeatures) %)
                 <li>
                     <a class="nav-link" href=((Urls::Admin))>
                         <span data-feather="file"></span>Admin</a>

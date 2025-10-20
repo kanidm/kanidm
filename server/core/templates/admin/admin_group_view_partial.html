@@ -3,7 +3,7 @@
 (% block groups_item_extra_classes %)active(% endblock %)
 
 (% macro string_attr(dispname, name, value, can_modify_any_attr, attribute) %)
-(% if scim_effective_access.search.check(attribute|as_ref) -%)
+(% if scim_effective_access.search.check(&attribute) -%)
 <div class="row mt-3">
     (% if can_rw && can_modify_any_attr -%)
     <label for="group(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0 py-md-2">(( dispname ))</label>
@@ -11,7 +11,7 @@
     <label for="group(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
     (% endif -%)
     <div class="col-12 col-md-8 col-lg-6">
-        (% if scim_effective_access.modify_present.check(attribute|as_ref) -%)
+        (% if scim_effective_access.modify_present.check(&attribute) -%)
         <input class="form-control py-0" id="group(( name ))" name="(( name ))" value="(( value ))"/>
         (% else -%)
         (( value ))
@@ -23,9 +23,10 @@
 
 
 (% block admin_page %)
+<!-- TODO: code like this shouldn't be in the template-->
 (%
 let can_modify_any_attr = scim_effective_access.modify_present.check_any(
-std::collections::BTreeSet::from(GROUP_ATTRIBUTES)|as_ref)
+&std::collections::BTreeSet::from(GROUP_ATTRIBUTES))
 %)
 
 <nav aria-label="breadcrumb">
@@ -58,8 +59,8 @@ std::collections::BTreeSet::from(GROUP_ATTRIBUTES)|as_ref)
     (% let description = group.description.clone().unwrap_or(String::new()) %)
     (% call string_attr("Description", "description", description, can_modify_any_attr, Attribute::Description) -%)
 </form>
-    (% if scim_effective_access.search.check(Attribute::Member|as_ref) %)
-        (% let can_edit_member = can_rw && scim_effective_access.modify_present.check(Attribute::Member|as_ref) %)
+    (% if scim_effective_access.search.check(&Attribute::Member) %)
+        (% let can_edit_member = can_rw && scim_effective_access.modify_present.check(&Attribute::Member) %)
         <label class="mt-3 fw-bold">Members</label>
         (% if can_edit_member %)
         <form hx-boost="true"

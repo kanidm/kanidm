@@ -14,7 +14,7 @@
 
 <hr>
 
-(% if scim_effective_access.search.check(Attribute::Mail|as_ref) %)
+(% if scim_effective_access.search.check(&Attribute::Mail) %)
 <label class="mt-3 fw-bold">Emails</label>
 <form hx-validate="true" hx-ext="bs-validation">
     (% if person.mails.len() == 0 %)
@@ -33,7 +33,7 @@
 </form>
 (% endif %)
 
-(% if scim_effective_access.search.check(Attribute::DirectMemberOf|as_ref) %)
+(% if scim_effective_access.search.check(&Attribute::DirectMemberOf) %)
 <label class="mt-3 fw-bold">DirectMemberOf</label>
 <form hx-validate="true" hx-ext="bs-validation">
     (% if person.groups.len() == 0 %)
