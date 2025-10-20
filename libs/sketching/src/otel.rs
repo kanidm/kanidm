@@ -5,7 +5,7 @@ use opentelemetry_otlp::{Protocol, WithExportConfig};
 use opentelemetry::{global, trace::TracerProvider as _, KeyValue};
 
 use opentelemetry_sdk::{
-    trace::{Sampler, TracerProvider},
+    trace::{Sampler, SdkTracerProvider},
     Resource,
 };
 use tracing::Subscriber;
@@ -17,7 +17,7 @@ pub const MAX_EVENTS_PER_SPAN: u32 = 64 * 1024;
 pub const MAX_ATTRIBUTES_PER_SPAN: u32 = 128;
 
 use opentelemetry_semantic_conventions::{
-    attribute::{SERVICE_NAME, SERVICE_VERSION},
+    attribute::{DEPLOYMENT_ENVIRONMENT_NAME, SERVICE_NAME, SERVICE_VERSION},
     SCHEMA_URL,
 };
 
@@ -43,7 +43,7 @@ pub fn start_logging_pipeline(
     otlp_endpoint: &Option<String>,
     log_filter: crate::LogLevel,
     service_name: &'static str,
-) -> Result<Box<dyn Subscriber + Send + Sync>, String> {
+) -> Result<(Option<SdkTracerProvider>, Box<dyn Subscriber + Send + Sync>), String> {
     let forest_filter: EnvFilter = EnvFilter::builder()
         .with_default_directive(log_filter.into())
         .from_env_lossy();
@@ -82,29 +82,32 @@ pub fn start_logging_pipeline(
             };
 
             let version = format!("{}{}", env!("CARGO_PKG_VERSION"), git_rev);
-            // let hostname = gethostname::gethostname();
-            // let hostname = hostname.to_string_lossy();
-            // let hostname = hostname.to_lowercase();
+            let hostname = gethostname::gethostname();
+            let hostname = hostname.to_string_lossy();
+            let hostname = hostname.to_lowercase();
 
-            let resource = Resource::from_schema_url(
-                [
-                    // TODO: it'd be really nice to be able to set the instance ID here, from the server UUID so we know *which* instance on this host is logging
-                    KeyValue::new(SERVICE_NAME, service_name),
-                    KeyValue::new(SERVICE_VERSION, version),
-                    // TODO: currently marked as an experimental flag, leaving it out for now
-                    // KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, hostname),
-                ],
-                SCHEMA_URL,
-            );
+            let resource = Resource::builder()
+                .with_schema_url(
+                    [
+                        // TODO: it'd be really nice to be able to set the instance ID here, from the server UUID so we know *which* instance on this host is logging
+                        KeyValue::new(SERVICE_NAME, service_name),
+                        KeyValue::new(SERVICE_VERSION, version),
+                        KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, hostname),
+                    ],
+                    SCHEMA_URL,
+                )
+                .build();
 
-            let provider = TracerProvider::builder()
-                .with_batch_exporter(otlp_exporter, opentelemetry_sdk::runtime::Tokio)
+            let provider = opentelemetry_sdk::trace::TracerProviderBuilder::default()
+                .with_batch_exporter(otlp_exporter)
                 // we want *everything!*
                 .with_sampler(Sampler::AlwaysOn)
                 .with_max_events_per_span(MAX_EVENTS_PER_SPAN)
                 .with_max_attributes_per_span(MAX_ATTRIBUTES_PER_SPAN)
                 .with_resource(resource)
                 .build();
+
+            let provider_handle = provider.clone();
 
             global::set_tracer_provider(provider.clone());
             provider.tracer("tracing-otel-subscriber");
@@ -121,22 +124,27 @@ pub fn start_logging_pipeline(
                     provider.tracer("tracing-otel-subscriber"),
                 ));
 
-            Ok(Box::new(registry))
+            Ok((Some(provider_handle), Box::new(registry)))
         }
         None => {
             let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
-            Ok(Box::new(Registry::default().with(forest_layer)))
+            Ok((None, Box::new(Registry::default().with(forest_layer))))
         }
     }
 }
 
 /// This helps with cleanly shutting down the tracing/logging providers when done,
 /// so we don't lose traces.
-pub struct TracingPipelineGuard {}
+pub struct TracingPipelineGuard(pub Option<SdkTracerProvider>);
 
 impl Drop for TracingPipelineGuard {
     fn drop(&mut self) {
-        opentelemetry::global::shutdown_tracer_provider();
-        eprintln!("Logging pipeline completed shutdown");
+        if let Some(provider) = self.0.take() {
+            if let Err(err) = provider.shutdown() {
+                eprintln!("Error shutting down logging pipeline: {}", err);
+            } else {
+                eprintln!("Logging pipeline completed shutdown");
+            }
+        }
     }
 }

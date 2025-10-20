@@ -320,7 +320,7 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
     // if we have a server config and it has an OTEL URL, then we'll start the logging pipeline now.
 
     // TODO: only send to stderr when we're not in a TTY
-    let sub = match sketching::otel::start_logging_pipeline(
+    let (provider, sub) = match sketching::otel::start_logging_pipeline(
         &config.otel_grpc_url,
         config.log_level,
         "kanidmd",
@@ -331,7 +331,6 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
         }
         Ok(val) => val,
     };
-
     if let Err(err) = tracing::subscriber::set_global_default(sub).map_err(|err| {
         eprintln!("Error starting logger - {err:} - Bailing on startup!");
         ExitCode::FAILURE
@@ -346,7 +345,7 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
     info!(version = %env!("KANIDM_PKG_VERSION"), "Starting Kanidmd");
 
     // guard which shuts down the logging/tracing providers when we close out
-    let _otelguard = TracingPipelineGuard {};
+    let _otelguard = TracingPipelineGuard(provider); // TODO: fix this up
 
     // ===========================================================================
     // Start pre-run checks
