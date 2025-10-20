@@ -59,11 +59,17 @@ pub enum UiHint {
 
 impl fmt::Display for UiHint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_ref())
+    }
+}
+
+impl AsRef<str> for UiHint {
+    fn as_ref(&self) -> &str {
         match self {
-            UiHint::PosixAccount => write!(f, "PosixAccount"),
-            UiHint::CredentialUpdate => write!(f, "CredentialUpdate"),
-            UiHint::ExperimentalFeatures => write!(f, "ExperimentalFeatures"),
-            UiHint::SynchronisedAccount => write!(f, "SynchronisedAccount"),
+            UiHint::PosixAccount => "PosixAccount",
+            UiHint::CredentialUpdate => "CredentialUpdate",
+            UiHint::ExperimentalFeatures => "ExperimentalFeatures",
+            UiHint::SynchronisedAccount => "SynchronisedAccount",
         }
     }
 }
