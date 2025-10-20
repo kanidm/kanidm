@@ -35,7 +35,8 @@ members = [
     "libs/profiles",
     "libs/scim_proto",
     "libs/sketching",
-    "libs/users", "tools/mail_sender",
+    "libs/users",
+    "tools/mail_sender",
 ]
 
 # Below follows some guides/estimates to system resources consumed during a build.
@@ -141,8 +142,8 @@ kanidm-hsm-crypto = { version = "^0.3.4" }
 
 anyhow = { version = "1.0.100" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
-askama = { version = "0.12.1", features = ["serde", "with-axum"] }
-askama_axum = { version = "0.5.0" }
+askama = { version = "0.14.0" }
+askama_web = { version = "0.14.6", features = ["axum-0.8"] }
 async-trait = "^0.1.89"
 axum = { version = "0.8.6", features = [
     "form",
