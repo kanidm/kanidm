@@ -11,8 +11,10 @@ jobs:
   dependabot:
     runs-on: ubuntu-latest
     # limit this to PRs opened by dependabot
-    if: ${{ github.actor == 'dependabot[bot]' }}
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
+      - name: Show creator of the PR
+        run: echo "PR created by ${{ github.event.pull_request.user.login }}"
       - name: Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@v2
