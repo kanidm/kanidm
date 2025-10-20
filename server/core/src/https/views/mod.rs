@@ -186,6 +186,27 @@ where
     }
 }
 
+/// Used for creating hx events
+pub(crate) enum KanidmHxEventName {
+    AddEmailSwapped,
+    AddTotpSwapped,
+    AddPasskeySwapped,
+    AddPasswordSwapped,
+    PermissionDenied,
+}
+
+impl From<KanidmHxEventName> for HxEvent {
+    fn from(event_name: KanidmHxEventName) -> Self {
+        match event_name {
+            KanidmHxEventName::AddEmailSwapped => HxEvent::new("addEmailSwapped"),
+            KanidmHxEventName::AddTotpSwapped => HxEvent::new("addTotpSwapped"),
+            KanidmHxEventName::AddPasskeySwapped => HxEvent::new("addPasskeySwapped"),
+            KanidmHxEventName::AddPasswordSwapped => HxEvent::new("addPasswordSwapped"),
+            KanidmHxEventName::PermissionDenied => HxEvent::new("permissionDenied"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -210,26 +231,5 @@ mod tests {
 
         // TODO: this really should be an error code :(
         assert_eq!(response.status(), 200);
-    }
-}
-
-/// Used for creating hx events
-pub(crate) enum KanidmHxEventName {
-    AddEmailSwapped,
-    AddTotpSwapped,
-    AddPasskeySwapped,
-    AddPasswordSwapped,
-    PermissionDenied,
-}
-
-impl From<KanidmHxEventName> for HxEvent {
-    fn from(event_name: KanidmHxEventName) -> Self {
-        match event_name {
-            KanidmHxEventName::AddEmailSwapped => HxEvent::new("addEmailSwapped"),
-            KanidmHxEventName::AddTotpSwapped => HxEvent::new("addTotpSwapped"),
-            KanidmHxEventName::AddPasskeySwapped => HxEvent::new("addPasskeySwapped"),
-            KanidmHxEventName::AddPasswordSwapped => HxEvent::new("addPasswordSwapped"),
-            KanidmHxEventName::PermissionDenied => HxEvent::new("permissionDenied"),
-        }
     }
 }
