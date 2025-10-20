@@ -131,7 +131,7 @@ window.onload = function () {
 ```
 
 ```rust
-#[derive(Template)]
+#[derive(Template,WebTemplate)]
 #[template(path = "profile_templates/ssh_keys_partial.html")]
 struct SshKeysPartialView {
     ssh_keys: Vec<SCIMSshKey>, // TODO: Use correct type
@@ -144,7 +144,7 @@ fn view_ssh_keys(...) {
     let ssh_keys_swapped_trigger = HxResponseTrigger::after_swap([HxEvent::new("profileSshKeysSwapped".to_string())]);
     Ok((
         ssh_keys_swapped_trigger,
-        HxPushUrl(Uri::from_static("/ui/profile/ssh_keys")),
+        HxPushUrl("/ui/profile/ssh_keys".to_string()),
         HtmlTemplate(SshKeysPartialView { ssh_keys,  })
     ).into_response())
 }
