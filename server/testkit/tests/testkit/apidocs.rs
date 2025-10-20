@@ -17,7 +17,7 @@ async fn check_that_the_swagger_api_loads(rsclient: &kanidm_client::KanidmClient
         .perform_get_request::<OpenAPIResponse>(url.as_str())
         .await
         .expect("Failed to get openapi.json");
-    assert_eq!(openapi_response.openapi, "3.0.3");
+    assert_eq!(openapi_response.openapi, "3.1.0");
 
     // this validates that it's valid JSON schema, but not that it's valid openapi... but it's a start.
     let schema = rsclient
