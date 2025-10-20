@@ -1,7 +1,7 @@
 use askama::Template;
+use askama_web::WebTemplate;
 use axum::{
     extract::State,
-    http::uri::Uri,
     response::{IntoResponse, Response},
     Extension,
 };
@@ -16,14 +16,14 @@ use crate::https::{
     extractors::DomainInfo, extractors::VerifiedClientInformation, middleware::KOpId, ServerState,
 };
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "apps.html")]
 struct AppsView {
     navbar_ctx: NavbarCtx,
     apps_partial: AppsPartialView,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "apps_partial.html")]
 struct AppsPartialView {
     apps: Vec<AppLink>,
@@ -56,6 +56,6 @@ pub(crate) async fn view_apps_get(
 
             apps_partial,
         };
-        (HxPushUrl(Uri::from_static(Urls::Apps.as_ref())), apps_view).into_response()
+        (HxPushUrl(Urls::Apps.to_string()), apps_view).into_response()
     })
 }
