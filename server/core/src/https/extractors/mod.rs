@@ -1,6 +1,5 @@
 use crate::https::ServerState;
 use axum::{
-    async_trait,
     extract::{connect_info::Connected, FromRequestParts},
     http::{header::AUTHORIZATION as AUTHORISATION, request::Parts, StatusCode},
 };
@@ -16,7 +15,6 @@ pub use kanidmd_lib::idm::server::DomainInfoRead;
 
 pub struct VerifiedClientInformation(pub ClientAuthInfo);
 
-#[async_trait]
 impl FromRequestParts<ServerState> for VerifiedClientInformation {
     type Rejection = (StatusCode, &'static str);
 
@@ -94,7 +92,6 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
 
 pub struct AuthorisationHeaders(pub ClientAuthInfo);
 
-#[async_trait]
 impl FromRequestParts<ServerState> for AuthorisationHeaders {
     type Rejection = (StatusCode, &'static str);
 
@@ -157,7 +154,6 @@ impl FromRequestParts<ServerState> for AuthorisationHeaders {
 
 pub struct DomainInfo(pub DomainInfoRead);
 
-#[async_trait]
 impl FromRequestParts<ServerState> for DomainInfo {
     type Rejection = (StatusCode, &'static str);
 
