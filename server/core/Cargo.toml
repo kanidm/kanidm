@@ -20,8 +20,8 @@ default = []
 dev-oauth2-device-flow = []
 
 [dependencies]
-askama = { workspace = true, features = ["with-axum"] }
-askama_axum = { workspace = true }
+askama = { workspace = true }
+askama_web = { workspace = true, features = ["axum-0.8"] }
 axum = { workspace = true }
 axum-htmx = { workspace = true }
 axum-extra = { workspace = true, features = ["form"] }

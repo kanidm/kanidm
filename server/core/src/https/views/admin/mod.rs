@@ -10,11 +10,11 @@ pub fn admin_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
         .route("/persons", get(persons::view_persons_get))
         .route(
-            "/person/:person_uuid/view",
+            "/person/{person_uuid}/view",
             get(persons::view_person_view_get),
         )
         .route("/groups", get(groups::view_groups_get))
-        .route("/group/:group_uuid/view", get(groups::view_group_view_get));
+        .route("/group/{group_uuid}/view", get(groups::view_group_view_get));
 
     let guarded_router = Router::new().layer(HxRequestGuardLayer::new("/ui"));
 
@@ -23,10 +23,10 @@ pub fn admin_router() -> Router<ServerState> {
 
 pub fn admin_api_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
-        .route("/group/:group_uuid", post(groups::edit_group))
-        .route("/group/:group_uuid/add_member", post(groups::add_member))
+        .route("/group/{group_uuid}", post(groups::edit_group))
+        .route("/group/{group_uuid}/add_member", post(groups::add_member))
         .route(
-            "/group/:group_uuid/remove_member",
+            "/group/{group_uuid}/remove_member",
             post(groups::remove_member),
         );
 

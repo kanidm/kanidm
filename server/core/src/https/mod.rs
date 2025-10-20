@@ -269,7 +269,7 @@ pub async fn create_https_server(
     let static_routes = match config.role {
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
             Router::new()
-                .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+                .route("/ui/images/oauth2/{rs_name}", get(oauth2::oauth2_image_get))
                 .route("/ui/images/domain", get(v1_domain::image_get))
                 .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
                 // Layers only apply to routes that are *already* added, not the ones
