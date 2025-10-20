@@ -141,7 +141,7 @@ struct SshKeysPartialView {
 fn view_ssh_keys(...) {
     // ...
 
-    let ssh_keys_swapped_trigger = HxResponseTrigger::after_swap([HxEvent::new("profileSshKeysSwapped".to_string())]);
+    let ssh_keys_swapped_trigger = HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::ProfileSshKeysSwapped)]);
     Ok((
         ssh_keys_swapped_trigger,
         HxPushUrl("/ui/profile/ssh_keys".to_string()),

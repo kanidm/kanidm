@@ -36,9 +36,9 @@ use super::navbar::NavbarCtx;
 use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::constants::ProfileMenuItems;
-use crate::https::views::cookies;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
+use crate::https::views::{cookies, KanidmHxEventName};
 use crate::https::ServerState;
 
 use super::UnrecoverableErrorView;
@@ -521,7 +521,7 @@ pub(crate) async fn view_new_passkey(
     };
 
     let passkey_init_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addPasskeySwapped".to_string())]);
+        HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddPasskeySwapped)]);
     Ok((
         passkey_init_trigger,
         HxPushUrl("/ui/reset/add_passkey".to_string()),
@@ -594,7 +594,7 @@ pub(crate) async fn add_totp(
 
     let check_totpcode = u32::from_str(&new_totp_form.check_totpcode).unwrap_or_default();
     let swapped_handler_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addTotpSwapped".to_string())]);
+        HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddTotpSwapped)]);
 
     // If the user has not provided a name or added only spaces we exit early
     if new_totp_form.name.trim().is_empty() {
@@ -687,7 +687,7 @@ pub(crate) async fn view_new_pwd(
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
+        HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddPasswordSwapped)]);
 
     let new_passwords = match opt_form {
         None => {
@@ -820,7 +820,7 @@ pub(crate) async fn view_set_unixcred(
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
+        HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddPasswordSwapped)]);
 
     let new_passwords = match opt_form {
         None => {

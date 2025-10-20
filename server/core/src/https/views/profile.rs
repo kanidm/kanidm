@@ -4,6 +4,7 @@ use super::navbar::NavbarCtx;
 use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
+use crate::https::views::KanidmHxEventName;
 use crate::https::ServerState;
 use askama::Template;
 use askama_web::WebTemplate;
@@ -124,7 +125,7 @@ pub(crate) async fn view_profile_get(
     let can_rw = uat.purpose_readwrite_active(time);
 
     let rehook_email_removal_buttons =
-        HxResponseTrigger::after_swap([HxEvent::new("addEmailSwapped".to_string())]);
+        HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddEmailSwapped)]);
     Ok((
         rehook_email_removal_buttons,
         HxPushUrl("/ui/profile".to_string()),
@@ -312,7 +313,7 @@ pub(crate) async fn view_new_email_entry_partial(
     Query(email_query): Query<AddEmailQuery>,
 ) -> axum::response::Result<Response> {
     let add_email_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addEmailSwapped".to_string())]);
+        HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddEmailSwapped)]);
     Ok((
         add_email_trigger,
         FormEmailEntryListPartial {

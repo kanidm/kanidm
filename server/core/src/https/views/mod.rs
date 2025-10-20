@@ -9,7 +9,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use axum_htmx::HxRequestGuardLayer;
+use axum_htmx::{HxEvent, HxRequestGuardLayer};
 use constants::Urls;
 use kanidmd_lib::{
     idm::server::DomainInfoRead,
@@ -210,5 +210,26 @@ mod tests {
 
         // TODO: this really should be an error code :(
         assert_eq!(response.status(), 200);
+    }
+}
+
+/// Used for creating hx events
+pub(crate) enum KanidmHxEventName {
+    AddEmailSwapped,
+    AddTotpSwapped,
+    AddPasskeySwapped,
+    AddPasswordSwapped,
+    PermissionDenied,
+}
+
+impl From<KanidmHxEventName> for HxEvent {
+    fn from(event_name: KanidmHxEventName) -> Self {
+        match event_name {
+            KanidmHxEventName::AddEmailSwapped => HxEvent::new("addEmailSwapped"),
+            KanidmHxEventName::AddTotpSwapped => HxEvent::new("addTotpSwapped"),
+            KanidmHxEventName::AddPasskeySwapped => HxEvent::new("addPasskeySwapped"),
+            KanidmHxEventName::AddPasswordSwapped => HxEvent::new("addPasswordSwapped"),
+            KanidmHxEventName::PermissionDenied => HxEvent::new("permissionDenied"),
+        }
     }
 }

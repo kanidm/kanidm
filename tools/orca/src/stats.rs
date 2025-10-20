@@ -271,9 +271,9 @@ type Percentile95 = f64;
 
 impl StatsContainer {
     fn new(
-        readop_times: &Vec<f64>,
-        writeop_times: &Vec<f64>,
-        replication_delays: &Vec<f64>,
+        readop_times: &[f64],
+        writeop_times: &[f64],
+        replication_delays: &[f64],
         node_count: usize,
         person_count: usize,
         group_count: usize,
