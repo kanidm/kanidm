@@ -27,7 +27,9 @@ opentelemetry-otlp = { workspace = true, default-features = false, features = [
     "grpc-tonic",
 ] }
 opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
-opentelemetry-semantic-conventions = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true, features = [
+    "semconv_experimental",
+] }
 
 serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true, features = ["attributes"] }
@@ -40,3 +42,4 @@ tracing-forest = { workspace = true, features = [
 ] }
 tracing-opentelemetry = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+gethostname = "1.1.0"
