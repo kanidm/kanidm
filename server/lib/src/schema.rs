@@ -283,6 +283,9 @@ impl SchemaAttribute {
             SyntaxType::ApplicationPassword => {
                 matches!(v, PartialValue::Uuid(_)) || matches!(v, PartialValue::Refer(_))
             }
+            // SyntaxType::Json => matches!(v, PartialValue::Json),
+            // Should not be queried
+            SyntaxType::Json | SyntaxType::Message => false,
         };
         if r {
             Ok(())
@@ -347,6 +350,8 @@ impl SchemaAttribute {
                 SyntaxType::HexString => matches!(v, Value::HexString(_)),
                 SyntaxType::Certificate => matches!(v, Value::Certificate(_)),
                 SyntaxType::ApplicationPassword => matches!(v, Value::ApplicationPassword(..)),
+                SyntaxType::Json => matches!(v, Value::Json(_)),
+                SyntaxType::Message => false,
             };
         if r {
             Ok(())

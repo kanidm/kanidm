@@ -289,9 +289,22 @@ pub trait BackendTransaction {
                     (IdList::AllIds, FilterPlan::PresUnindexed(attr.clone()))
                 }
             }
-            FilterResolved::LessThan(attr, _subvalue, _idx) => {
-                // We have no process for indexing this right now.
-                (IdList::AllIds, FilterPlan::LessThanUnindexed(attr.clone()))
+            FilterResolved::LessThan(attr, _subvalue, idx) => {
+                if idx.is_some() {
+                    // TODO: Temporary but we get the PRESENCE index for Ordering operations to
+                    // reduce the amount of entries we need to filter in memory. In future we need
+                    // a true ordering index, but that's a large block of work on it's own. For now
+                    // this already helps a lot for in memory processing.
+                    match self.get_idlayer().get_idl(attr, IndexType::Presence, "_")? {
+                        Some(idl) => (
+                            IdList::Partial(idl),
+                            FilterPlan::LessThanIndexed(attr.clone()),
+                        ),
+                        None => (IdList::AllIds, FilterPlan::LessThanCorrupt(attr.clone())),
+                    }
+                } else {
+                    (IdList::AllIds, FilterPlan::LessThanUnindexed(attr.clone()))
+                }
             }
             FilterResolved::Or(l, _) => {
                 // Importantly if this has no inner elements, this returns
@@ -1463,6 +1476,11 @@ impl<'a> BackendWriteTransaction<'a> {
             warn!("No indexing slopes available. You should consider reindexing to generate these");
         };
 
+        // TODO: I think anytime we update idx meta is when we should reindex in memory
+        // indexes.
+        // Probably needs to be similar to create_idxs so we iterate over the set of
+        // purely in memory idxs.
+
         // Setup idxkeys here. By default we set these all to "max slope" aka
         // all indexes are "equal" but also worse case unless analysed. If they
         // have been analysed, we can set the slope factor into here.
@@ -1745,9 +1763,11 @@ impl<'a> BackendWriteTransaction<'a> {
         );
 
         // Purge the idxs
+        // TODO: Purge in memory idxs.
         self.idlayer.danger_purge_idxs()?;
 
         // Using the index metadata on the txn, create all our idx tables
+        // TODO: Needs to create all the in memory indexes.
         self.create_idxs()?;
 
         // Now, we need to iterate over everything in id2entry and index them
@@ -2156,6 +2176,7 @@ fn get_idx_slope_default(ikey: &IdxKey) -> IdxSlope {
         (_, IndexType::Equality) => 45,
         (_, IndexType::SubString) => 90,
         (_, IndexType::Presence) => 90,
+        (_, IndexType::Ordering) => 120,
     }
 }
 
@@ -2215,6 +2236,10 @@ impl Backend {
                 admin_error!(?e, "Failed to setup idlayer");
                 e
             })?;
+
+        // Load/generate any in memory indexes.
+        // I think here we don't actually care about in memory indexes until
+        // later?
 
         // Now rebuild the ruv.
         let mut be_write = be.write()?;

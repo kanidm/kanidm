@@ -3,23 +3,20 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
+use crypto_glue::s256::Sha256Output;
+use kanidm_lib_crypto::x509_cert::{
+    der::{Decode, Encode, EncodePem},
+    pem::LineEnding,
+    x509_public_key_s256, Certificate,
+};
 use kanidm_proto::scim_v1::client::ScimCertificate as ClientScimCertificate;
 use kanidm_proto::scim_v1::server::ScimCertificate;
 use kanidm_proto::scim_v1::JsonValue;
 use std::collections::BTreeMap;
 
-use kanidm_lib_crypto::{
-    x509_cert::{
-        der::{Decode, Encode, EncodePem},
-        pem::LineEnding,
-        x509_public_key_s256, Certificate,
-    },
-    Sha256Digest,
-};
-
 #[derive(Debug, Clone)]
 pub struct ValueSetCertificate {
-    map: BTreeMap<Sha256Digest, Box<Certificate>>,
+    map: BTreeMap<Sha256Output, Box<Certificate>>,
 }
 
 impl ValueSetCertificate {
@@ -164,7 +161,7 @@ impl ValueSetT for ValueSetCertificate {
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::HexString(hs) => {
-                let mut buf = Sha256Digest::default();
+                let mut buf = Sha256Output::default();
                 if hex::decode_to_slice(hs, &mut buf).is_ok() {
                     self.map.remove(&buf).is_some()
                 } else {
@@ -178,7 +175,7 @@ impl ValueSetT for ValueSetCertificate {
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
             PartialValue::HexString(hs) => {
-                let mut buf = Sha256Digest::default();
+                let mut buf = Sha256Output::default();
                 if hex::decode_to_slice(hs, &mut buf).is_ok() {
                     self.map.contains_key(&buf)
                 } else {
@@ -302,7 +299,7 @@ impl ValueSetT for ValueSetCertificate {
         }
     }
 
-    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Digest, Box<Certificate>>> {
+    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Output, Box<Certificate>>> {
         Some(&self.map)
     }
 }

@@ -3,6 +3,7 @@ use super::ScimOauth2ClaimMapJoinChar;
 use super::ScimSshPublicKey;
 use crate::attribute::Attribute;
 use crate::internal::UiHint;
+use crate::v1::OutboundMessage;
 use scim_proto::ScimEntryHeader;
 use serde::Serialize;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
@@ -296,6 +297,8 @@ pub enum ScimValueKanidm {
     OAuth2ClaimMap(Vec<ScimOAuth2ClaimMap>),
     KeyInternal(Vec<ScimKeyInternal>),
     UiHints(Vec<UiHint>),
+
+    Message(OutboundMessage),
 }
 
 #[serde_as]
@@ -539,5 +542,11 @@ impl From<Vec<ScimOAuth2ClaimMap>> for ScimValueKanidm {
 impl From<Vec<ScimKeyInternal>> for ScimValueKanidm {
     fn from(set: Vec<ScimKeyInternal>) -> Self {
         Self::KeyInternal(set)
+    }
+}
+
+impl From<OutboundMessage> for ScimValueKanidm {
+    fn from(message: OutboundMessage) -> Self {
+        Self::Message(message)
     }
 }

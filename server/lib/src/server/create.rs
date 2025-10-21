@@ -182,11 +182,17 @@ impl QueryServerWriteTransaction<'_> {
         }
     }
 
-    pub fn internal_create(
-        &mut self,
-        entries: Vec<Entry<EntryInit, EntryNew>>,
-    ) -> Result<(), OperationError> {
+    pub fn internal_create(&mut self, entries: Vec<EntryInitNew>) -> Result<(), OperationError> {
         let ce = CreateEvent::new_internal(entries);
+        self.create(&ce).map(|_| ())
+    }
+
+    pub fn impersonate_create(
+        &mut self,
+        ident: &Identity,
+        entries: Vec<EntryInitNew>,
+    ) -> Result<(), OperationError> {
+        let ce = CreateEvent::new_impersonate_identity(ident.clone(), entries);
         self.create(&ce).map(|_| ())
     }
 }
@@ -256,17 +262,6 @@ mod tests {
         e.add_ava(
             Attribute::NameHistory,
             Value::AuditLogString(server_txn.get_txn_cid().clone(), "testperson".to_string()),
-        );
-        // this is kinda ugly but since ecdh keys are generated we don't have any other way
-        let key = r2
-            .first()
-            .unwrap()
-            .get_ava_single_eckey_private(Attribute::IdVerificationEcKey)
-            .unwrap();
-
-        e.add_ava(
-            Attribute::IdVerificationEcKey,
-            Value::EcKeyPrivate(key.clone()),
         );
 
         let expected = vec![Arc::new(e.into_sealed_committed())];

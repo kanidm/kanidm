@@ -78,6 +78,9 @@ pub const UUID_IDM_MAIL_ADMINS: Uuid = uuid!("00000000-0000-0000-0000-0000000000
 pub const UUID_IDM_MAIL_SERVERS: Uuid = uuid!("00000000-0000-0000-0000-000000000052");
 pub const UUID_IDM_UNIX_AUTHENTICATION_READ: Uuid = uuid!("00000000-0000-0000-0000-000000000053");
 
+pub const UUID_IDM_MESSAGE_ADMINS: Uuid = uuid!("00000000-0000-0000-0000-000000000054");
+pub const UUID_IDM_MESSAGE_SENDERS: Uuid = uuid!("00000000-0000-0000-0000-000000000055");
+
 //
 pub const UUID_IDM_HIGH_PRIVILEGE: Uuid = uuid!("00000000-0000-0000-0000-000000001000");
 
@@ -341,14 +344,27 @@ pub const UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_RS256: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000192");
 pub const UUID_SCHEMA_ATTR_APPLICATION_URL: Uuid = uuid!("00000000-0000-0000-0000-ffff00000193");
 pub const UUID_SCHEMA_ATTR_CASCADE_DELETED: Uuid = uuid!("00000000-0000-0000-0000-ffff00000194");
+pub const UUID_SCHEMA_CLASS_KEY_OBJECT_HKDF_S256: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000195");
+pub const UUID_SCHEMA_ATTR_MESSAGE_TEMPLATE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000196");
+pub const UUID_SCHEMA_ATTR_SEND_AFTER: Uuid = uuid!("00000000-0000-0000-0000-ffff00000197");
+pub const UUID_SCHEMA_ATTR_DELETE_AFTER: Uuid = uuid!("00000000-0000-0000-0000-ffff00000198");
+pub const UUID_SCHEMA_ATTR_SENT_AT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000199");
+pub const UUID_SCHEMA_ATTR_MAIL_DESTINATION: Uuid = uuid!("00000000-0000-0000-0000-ffff00000200");
+pub const UUID_SCHEMA_CLASS_OUTBOUND_MESSAGE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000201");
 
+// =====
+// Incorrectly name spaced.
+pub const UUID_SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE: Uuid =
+    uuid!("00000000-0000-0000-0000-ffffff000075");
+
+// =====
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
 pub const UUID_SYSTEM: Uuid = uuid!("00000000-0000-0000-0000-ffffff000000");
 pub const UUID_SYSTEM_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000001");
 pub const STR_UUID_DOMAIN_INFO: &str = "00000000-0000-0000-0000-ffffff000025";
 pub const UUID_DOMAIN_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000025");
-
 // DO NOT allocate here, allocate below.
 
 // Access controls
@@ -461,8 +477,10 @@ pub const UUID_IDM_ACP_APPLICATION_ENTRY_MANAGER: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000072");
 pub const UUID_IDM_ACP_APPLICATION_MANAGE: Uuid = uuid!("00000000-0000-0000-0000-ffffff000073");
 pub const UUID_IDM_ACP_MAIL_SERVERS: Uuid = uuid!("00000000-0000-0000-0000-ffffff000074");
-pub const UUID_SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE: Uuid =
-    uuid!("00000000-0000-0000-0000-ffffff000075");
+// skip 75, due to incorrect namespaceing of oauth2 device flow.
+pub const UUID_DOMAIN_ID_VERIFICATION_KEY: Uuid = uuid!("00000000-0000-0000-0000-ffffff000076");
+pub const UUID_IDM_ACP_MESSAGE_MANAGE: Uuid = uuid!("00000000-0000-0000-0000-ffffff000077");
+pub const UUID_IDM_ACP_MESSAGE_SENDER: Uuid = uuid!("00000000-0000-0000-0000-ffffff000078");
 
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");

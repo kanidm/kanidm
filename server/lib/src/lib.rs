@@ -76,6 +76,7 @@ pub mod prelude {
     pub use kanidm_proto::attribute::{AttrString, Attribute};
     pub use kanidm_proto::constants::*;
     pub use kanidm_proto::internal::{ConsistencyError, OperationError, PluginError, SchemaError};
+    pub use kanidm_proto::scim_v1::JsonValue;
     pub use sketching::{
         admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
         filter_warn, perf_trace, request_error, request_info, request_trace, request_warn,
@@ -95,8 +96,8 @@ pub mod prelude {
     };
     pub use crate::event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, SearchEvent};
     pub use crate::filter::{
-        f_and, f_andnot, f_eq, f_id, f_inc, f_invalid, f_lt, f_or, f_pres, f_self, f_spn_name,
-        f_sub, Filter, FilterInvalid, FilterValid, FC,
+        f_and, f_andnot, f_eq, f_gt, f_id, f_inc, f_invalid, f_lt, f_or, f_pres, f_self,
+        f_spn_name, f_sub, Filter, FilterInvalid, FilterValid, FC,
     };
     pub use crate::idm::server::{IdmServer, IdmServerAudit, IdmServerDelayed};
     pub use crate::idm::{ClientAuthInfo, ClientCertInfo};

@@ -99,7 +99,6 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_APPLICATION_PASSWORD_DL8.clone().into(),
         SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8.clone().into(),
         // DL9
-        SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9.clone().into(),
         SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9.clone().into(),
         // DL10
         SCHEMA_ATTR_DENIED_NAME_DL10.clone().into(),
@@ -110,6 +109,11 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         // DL12
         SCHEMA_ATTR_IMAGE.clone().into(),
         SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE.clone().into(),
+        SCHEMA_ATTR_MESSAGE_TEMPLATE.clone().into(),
+        SCHEMA_ATTR_SEND_AFTER.clone().into(),
+        SCHEMA_ATTR_DELETE_AFTER.clone().into(),
+        SCHEMA_ATTR_SENT_AT.clone().into(),
+        SCHEMA_ATTR_MAIL_DESTINATION.clone().into(),
     ]
 }
 
@@ -147,6 +151,9 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         SCHEMA_CLASS_KEY_OBJECT_JWT_RS256.clone().into(),
         // DL11
         SCHEMA_CLASS_APPLICATION.clone().into(),
+        // DL12
+        SCHEMA_CLASS_KEY_OBJECT_HKDF_S256.clone().into(),
+        SCHEMA_CLASS_OUTBOUND_MESSAGE.clone().into(),
     ]
 }
 
@@ -159,6 +166,7 @@ pub fn phase_4_system_entries() -> Vec<EntryInitNew> {
         E_SYSTEM_INFO_V1.clone(),
         E_DOMAIN_INFO_DL6.clone(),
         E_SYSTEM_CONFIG_V1.clone(),
+        E_UUID_DOMAIN_ID_VERIFICATION_KEY_V1.clone(),
     ]
 }
 
@@ -205,6 +213,8 @@ pub fn phase_6_builtin_non_admin_entries() -> Result<Vec<EntryInitNew>, Operatio
             .clone()
             .try_into()?,
         BUILTIN_GROUP_APPLICATION_ADMINS_DL8.clone().try_into()?,
+        BUILTIN_GROUP_MESSAGE_ADMINS.clone().try_into()?,
+        BUILTIN_GROUP_MESSAGE_SENDERS.clone().try_into()?,
         // Write deps on read.clone().try_into()?, so write must be added first.
         // All members must exist before we write HP
         IDM_HIGH_PRIVILEGE_DL8.clone().try_into()?,
@@ -274,5 +284,8 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         IDM_ACP_DOMAIN_ADMIN_DL9.clone().into(),
         // DL10
         IDM_ACP_OAUTH2_MANAGE.clone().into(),
+        // DL12
+        IDM_ACP_MESSAGE_MANAGE.clone().into(),
+        IDM_ACP_MESSAGE_SENDER.clone().into(),
     ]
 }

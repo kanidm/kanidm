@@ -8,13 +8,15 @@ use crate::value::{
     Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, OauthClaimMapJoin, Session,
 };
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
+use crypto_glue::s256::Sha256Output;
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
-use kanidm_lib_crypto::{x509_cert::Certificate, Sha256Digest};
+use kanidm_lib_crypto::x509_cert::Certificate;
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::JsonValue;
 use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
+use kanidm_proto::v1::OutboundMessage;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use openssl::pkey::Public;
@@ -45,9 +47,10 @@ use self::image::ValueSetImage;
 pub use self::iname::ValueSetIname;
 pub use self::index::ValueSetIndex;
 pub use self::iutf8::ValueSetIutf8;
-pub use self::json::ValueSetJsonFilter;
+pub use self::json::{ValueSetJson, ValueSetJsonFilter};
 pub use self::jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256};
 pub use self::key_internal::{KeyInternalData, ValueSetKeyInternal};
+pub use self::message::ValueSetMessage;
 pub use self::nsuniqueid::ValueSetNsUniqueId;
 pub use self::oauth::{
     OauthClaimMapping, ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap,
@@ -83,6 +86,7 @@ mod iutf8;
 mod json;
 mod jws;
 mod key_internal;
+mod message;
 mod nsuniqueid;
 mod oauth;
 mod restricted;
@@ -134,9 +138,15 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn len(&self) -> usize;
 
-    fn generate_idx_eq_keys(&self) -> Vec<String>;
+    fn generate_idx_eq_keys(&self) -> Vec<String> {
+        Vec::with_capacity(0)
+    }
 
     fn generate_idx_sub_keys(&self) -> Vec<String> {
+        Vec::with_capacity(0)
+    }
+
+    fn generate_idx_ord_keys(&self) -> Vec<String> {
         Vec::with_capacity(0)
     }
 
@@ -642,7 +652,17 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Digest, Box<Certificate>>> {
+    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Output, Box<Certificate>>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_json_object(&self) -> Option<&JsonValue> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_message(&self) -> Option<&OutboundMessage> {
         debug_assert!(false);
         None
     }
@@ -856,6 +876,7 @@ pub fn from_result_value_iter(
         | Value::JwsKeyEs256(_)
         | Value::JwsKeyRs256(_)
         | Value::HexString(_)
+        | Value::Json(_)
         | Value::KeyInternal { .. } => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -934,12 +955,15 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
             der,
         } => ValueSetKeyInternal::new(id, usage, valid_from, status, status_cid, der),
         Value::Certificate(certificate) => ValueSetCertificate::new(certificate)?,
-
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
         }
         Value::ApplicationPassword(ap) => ValueSetApplicationPassword::new(ap),
+        Value::Json(_) => {
+            debug_assert!(false);
+            return Err(OperationError::InvalidValueState);
+        }
     };
 
     for v in iter {
@@ -1001,6 +1025,8 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::HexString(set) => ValueSetHexString::from_dbvs2(set),
         DbValueSetV2::Certificate(set) => ValueSetCertificate::from_dbvs2(set),
         DbValueSetV2::ApplicationPassword(set) => ValueSetApplicationPassword::from_dbvs2(set),
+        DbValueSetV2::Json(object) => Ok(ValueSetJson::new(object)),
+        DbValueSetV2::Message(object) => Ok(ValueSetMessage::new(object)),
     }
 }
 

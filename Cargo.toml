@@ -35,7 +35,7 @@ members = [
     "libs/profiles",
     "libs/scim_proto",
     "libs/sketching",
-    "libs/users",
+    "libs/users", "tools/mail_sender",
 ]
 
 # Below follows some guides/estimates to system resources consumed during a build.
@@ -171,7 +171,7 @@ compact_jwt = "^0.5.3-dev"
 concread = "^0.5.5"
 cron = "0.15.0"
 crossbeam = "0.8.4"
-crypto-glue = "^0.1.9"
+crypto-glue = "^0.1.11"
 csv = "1.3.1"
 dialoguer = "0.11.0"
 dhat = "0.3.3"
@@ -203,7 +203,7 @@ jsonschema = "0.30.0"
 lazy_static = "^1.5.0"
 ldap3_client = "^0.5.2"
 ldap3_proto = { version = "^0.5.2", features = ["serde"] }
-
+lettre = { version = "0.11.18", default-features = false }
 libc = "0.2.177"
 libnss = "^0.9.0"
 lodepng = "3.11.0"

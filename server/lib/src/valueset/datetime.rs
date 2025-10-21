@@ -104,8 +104,11 @@ impl ValueSetT for ValueSetDateTime {
         false
     }
 
-    fn lessthan(&self, _pv: &PartialValue) -> bool {
-        false
+    fn lessthan(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::DateTime(u) => self.set.iter().all(|set_value| set_value < u),
+            _ => false,
+        }
     }
 
     fn len(&self) -> usize {

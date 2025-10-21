@@ -148,6 +148,7 @@ impl SystemOpt {
             SystemOpt::DeniedNames { commands } => commands.exec(opt).await,
             SystemOpt::Oauth2 { commands } => commands.exec(opt).await,
             SystemOpt::Domain { commands } => commands.exec(opt).await,
+            SystemOpt::Message { commands } => commands.exec(opt).await,
             SystemOpt::Synch { commands } => commands.exec(opt).await,
         }
     }
