@@ -9,7 +9,7 @@ mod types;
 pub(crate) use dl11::accounts::BUILTIN_ACCOUNT_ANONYMOUS_DL6 as BUILTIN_ACCOUNT_ANONYMOUS;
 
 #[cfg(test)]
-use self::types::BuiltinAccount;
+pub use self::types::BuiltinAccount;
 
 #[cfg(test)]
 lazy_static! {

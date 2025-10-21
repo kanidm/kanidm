@@ -1,13 +1,11 @@
 // Generate and manage spn's for all entries in the domain. Also deals with
 // the infrequent - but possible - case where a domain is renamed.
-use std::collections::BTreeSet;
-use std::iter::once;
-use std::sync::Arc;
-
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
+use std::collections::BTreeSet;
+use std::sync::Arc;
 
 pub struct Spn {}
 
@@ -115,10 +113,10 @@ impl Plugin for Spn {
                 r.push(Err(ConsistencyError::InvalidSpn(e.get_id())));
                 continue;
             };
-            match e.get_ava_single(Attribute::Spn) {
+            match e.get_ava_set(Attribute::Spn) {
                 Some(r_spn) => {
                     trace!("verify spn: s {:?} == ex {:?} ?", r_spn, g_spn);
-                    if r_spn != g_spn {
+                    if r_spn != &g_spn {
                         admin_error!(
                             uuid = ?e.get_uuid(),
                             "Entry SPN does not match expected s {:?} != ex {:?}",
@@ -150,23 +148,18 @@ impl Spn {
             if ent.attribute_equality(Attribute::Class, &EntryClass::Group.into())
                 || ent.attribute_equality(Attribute::Class, &EntryClass::Account.into())
             {
-                let spn = ent
+                let spn_valueset = ent
                     .generate_spn(domain_name)
                     .ok_or(OperationError::InvalidEntryState)
                     .map_err(|e| {
-                        admin_error!(
+                        error!(
                             "Account or group missing name, unable to generate spn!? {:?} entry_id = {:?}",
                             e, ent.get_uuid()
                         );
                         e
                     })?;
-                trace!(
-                    "plugin_{}: set {} to {:?}",
-                    Attribute::Spn,
-                    Attribute::Spn,
-                    spn
-                );
-                ent.set_ava(&Attribute::Spn, once(spn));
+                trace!("plugin_spn: set spn to {:?}", spn_valueset);
+                ent.set_ava_set(&Attribute::Spn, spn_valueset);
             }
         }
         Ok(())

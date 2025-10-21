@@ -187,7 +187,7 @@ impl fmt::Debug for CredentialUpdateSession {
             })
             .collect();
         f.debug_struct("CredentialUpdateSession")
-            .field("account.spn", &self.account.spn)
+            .field("account.spn", &self.account.spn())
             .field("account.unix", &self.account.unix_extn().is_some())
             .field("resolved_account_policy", &self.resolved_account_policy)
             .field("intent_token_id", &self.intent_token_id)
@@ -437,7 +437,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
             .collect();
 
         CredentialUpdateSessionStatus {
-            spn: session.account.spn.clone(),
+            spn: session.account.spn().into(),
             displayname: session.account.displayname.clone(),
             ext_cred_portal: session.ext_cred_portal.clone(),
             can_commit,
@@ -473,7 +473,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
             mfaregstate: match &session.mfaregstate {
                 MfaRegState::None => MfaRegStateStatus::None,
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
-                    token.to_proto(session.account.name.as_str(), session.issuer.as_str()),
+                    token.to_proto(session.account.spn(), session.issuer.as_str()),
                 ),
                 MfaRegState::TotpNameTryAgain(_, name) => {
                     MfaRegStateStatus::TotpNameTryAgain(name.clone())
@@ -2205,7 +2205,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             .webauthn
             .start_passkey_registration(
                 session.account.uuid,
-                &session.account.spn,
+                session.account.spn(),
                 &session.account.displayname,
                 session.account.existing_credential_id_list(),
             )
@@ -2335,7 +2335,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             .webauthn
             .start_attested_passkey_registration(
                 session.account.uuid,
-                &session.account.spn,
+                session.account.spn(),
                 &session.account.displayname,
                 session.account.existing_credential_id_list(),
                 att_ca_list,

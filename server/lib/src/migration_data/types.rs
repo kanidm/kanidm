@@ -33,21 +33,6 @@ impl Default for BuiltinAccount {
     }
 }
 
-#[cfg(test)]
-impl From<BuiltinAccount> for crate::idm::account::Account {
-    fn from(value: BuiltinAccount) -> Self {
-        Self {
-            name: value.name.to_string(),
-            uuid: value.uuid,
-            displayname: value.displayname.to_string(),
-            spn: format!("{}@example.com", value.name),
-            mail_primary: None,
-            mail: Vec::with_capacity(0),
-            ..Default::default()
-        }
-    }
-}
-
 impl From<BuiltinAccount> for EntryInitNew {
     fn from(value: BuiltinAccount) -> Self {
         let mut entry = EntryInitNew::new();

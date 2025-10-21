@@ -42,7 +42,7 @@ use crate::value::{
     ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session,
     SyntaxType, Value,
 };
-use crate::valueset::{self, ScimResolveStatus, ValueSet};
+use crate::valueset::{self, ScimResolveStatus, ValueSet, ValueSetSpn};
 use compact_jwt::JwsEs256Signer;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::ImageValue;
@@ -2924,9 +2924,25 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     /// Return a single security principle name, if valid to transform this value.
-    pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
-        self.get_ava_single_iname(Attribute::Name)
-            .map(|name| Value::new_spn_str(name, domain_name))
+    pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<ValueSet> {
+        if let Some(name) = self.get_ava_single_iname(Attribute::Name) {
+            // There is a name attribute, lets return it.
+            return Some(ValueSetSpn::new((name.into(), domain_name.into())));
+        }
+
+        // Some entries may not have a name. There are now three paths.
+        let spn_set = self.get_ava_set(Attribute::Spn)?;
+
+        if spn_set.syntax() == SyntaxType::SecurityPrincipalName {
+            // - we already have a valid spn
+            Some(spn_set.clone())
+        } else if let Some(name) = spn_set.to_iname_single() {
+            // - we have an iname stashed into the spn attr for generation.
+            Some(ValueSetSpn::new((name.into(), domain_name.into())))
+        } else {
+            // - We have no way to proceed
+            None
+        }
     }
 
     /// Assert if an attribute of this name is present on this entry.
