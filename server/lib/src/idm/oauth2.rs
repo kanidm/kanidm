@@ -2641,7 +2641,7 @@ impl IdmServerProxyReadTransaction<'_> {
             acr: None,
             amr,
             azp: Some(client_id.to_string()),
-            jti: None,
+            jti: Some(session_id.to_string()),
             s_claims,
             claims: extra_claims,
         })
@@ -5307,7 +5307,10 @@ mod tests {
         assert!(oidc.acr.is_none());
         assert!(oidc.amr.is_none());
         assert_eq!(oidc.azp, Some("test_resource_server".to_string()));
-        assert!(oidc.jti.is_none());
+        assert!(oidc.jti.is_some());
+        if let Some(jti) = &oidc.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.s_claims.name, Some("Test Person 1".to_string()));
         assert_eq!(
             oidc.s_claims.preferred_username,
@@ -5335,7 +5338,10 @@ mod tests {
         assert!(userinfo.acr.is_none());
         assert_eq!(oidc.amr, userinfo.amr);
         assert_eq!(oidc.azp, userinfo.azp);
-        assert!(userinfo.jti.is_none());
+        assert!(userinfo.jti.is_some());
+        if let Some(jti) = &userinfo.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert!(userinfo.claims.is_empty());
 
@@ -5380,7 +5386,10 @@ mod tests {
         assert!(userinfo.acr.is_none());
         assert_eq!(oidc.amr, userinfo.amr);
         assert_eq!(oidc.azp, userinfo.azp);
-        assert!(userinfo.jti.is_none());
+        assert!(userinfo.jti.is_some());
+        if let Some(jti) = &userinfo.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert!(userinfo.claims.is_empty());
     }
@@ -7138,7 +7147,10 @@ mod tests {
         assert!(oidc.acr.is_none());
         assert!(oidc.amr.is_none());
         assert_eq!(oidc.azp, Some("test_resource_server".to_string()));
-        assert!(oidc.jti.is_none());
+        assert!(oidc.jti.is_some());
+        if let Some(jti) = &oidc.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.s_claims.name, Some("Test Person 1".to_string()));
         assert_eq!(
             oidc.s_claims.preferred_username,
@@ -7172,10 +7184,16 @@ mod tests {
         assert!(userinfo.auth_time.is_none());
         assert_eq!(userinfo.nonce, Some("abcdef".to_string()));
         assert!(userinfo.at_hash.is_none());
-        assert!(userinfo.acr.is_none());
+        assert!(userinfo.jti.is_some());
+        if let Some(jti) = &userinfo.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.amr, userinfo.amr);
         assert_eq!(oidc.azp, userinfo.azp);
-        assert!(userinfo.jti.is_none());
+        assert!(userinfo.jti.is_some());
+        if let Some(jti) = &userinfo.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert_eq!(oidc.claims, userinfo.claims);
 
