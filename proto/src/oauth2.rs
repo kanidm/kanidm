@@ -367,7 +367,7 @@ pub struct AccessTokenIntrospectResponse {
 }
 
 impl AccessTokenIntrospectResponse {
-    pub fn inactive() -> Self {
+    pub fn inactive(session_id: Uuid) -> Self {
         AccessTokenIntrospectResponse {
             active: false,
             scope: BTreeSet::default(),
@@ -380,7 +380,7 @@ impl AccessTokenIntrospectResponse {
             sub: None,
             aud: None,
             iss: None,
-            jti: uuid::Uuid::new_v4(),
+            jti: session_id,
         }
     }
 }

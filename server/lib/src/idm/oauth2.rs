@@ -2397,7 +2397,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 exp,
                 nbf,
                 iat,
-                jti: _,
+                jti,
                 client_id: _,
                 extensions:
                     OAuth2RFC9068TokenExtensions {
@@ -2414,7 +2414,7 @@ impl IdmServerProxyReadTransaction<'_> {
             // Has this token expired?
             if exp <= ct.as_secs() as i64 {
                 security_info!(?sub, "access token has expired, returning inactive");
-                return Ok(AccessTokenIntrospectResponse::inactive());
+                return Ok(AccessTokenIntrospectResponse::inactive(jti));
             }
 
             // Is the user expired, or the OAuth2 session invalid?
@@ -2427,7 +2427,7 @@ impl IdmServerProxyReadTransaction<'_> {
                     ?sub,
                     "access token account is not valid, returning inactive"
                 );
-                return Ok(AccessTokenIntrospectResponse::inactive());
+                return Ok(AccessTokenIntrospectResponse::inactive(jti));
             };
 
             let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
@@ -2458,7 +2458,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 sub: Some(sub.to_string()),
                 aud: Some(client_auth.client_id),
                 iss: None,
-                jti: session_id,
+                jti,
             })
         } else {
             let jwe_compact = JweCompact::from_str(&intr_req.token).map_err(|_| {
@@ -2492,7 +2492,7 @@ impl IdmServerProxyReadTransaction<'_> {
                     // Has this token expired?
                     if exp <= ct.as_secs() as i64 {
                         security_info!(?uuid, "access token has expired, returning inactive");
-                        return Ok(AccessTokenIntrospectResponse::inactive());
+                        return Ok(AccessTokenIntrospectResponse::inactive(session_id));
                     }
 
                     // We can't do the same validity check for the client as we do with an account
@@ -2505,7 +2505,7 @@ impl IdmServerProxyReadTransaction<'_> {
                             ?uuid,
                             "access token account is not valid, returning inactive"
                         );
-                        return Ok(AccessTokenIntrospectResponse::inactive());
+                        return Ok(AccessTokenIntrospectResponse::inactive(session_id));
                     };
 
                     let scope = scopes.clone();
@@ -2535,7 +2535,9 @@ impl IdmServerProxyReadTransaction<'_> {
                         jti: session_id,
                     })
                 }
-                Oauth2TokenType::Refresh { .. } => Ok(AccessTokenIntrospectResponse::inactive()),
+                Oauth2TokenType::Refresh { session_id, .. } => {
+                    Ok(AccessTokenIntrospectResponse::inactive(session_id))
+                }
             }
         }
     }
@@ -3534,7 +3536,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
-            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .check_oauth2_authorise_permit(ident, &consent_token, ct)
             .expect("Failed to perform OAuth2 permit");
 
         // == Submit the token exchange code.
