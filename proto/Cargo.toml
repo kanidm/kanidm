@@ -43,6 +43,7 @@ sshkeys = { workspace = true }
 [dev-dependencies]
 enum-iterator = { workspace = true }
 serde_urlencoded = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

@@ -1714,7 +1714,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                 acr: None,
                 amr,
                 azp: Some(o2rs.name.clone()),
-                jti: None,
+                jti: Some(session_id.to_string()),
                 s_claims,
                 claims: extra_claims,
             };
@@ -1750,7 +1750,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             exp,
             nbf: iat,
             iat,
-            jti: None,
+            jti: session_id,
             client_id,
             extensions: OAuth2RFC9068TokenExtensions {
                 auth_time: None,
@@ -2458,7 +2458,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 sub: Some(sub.to_string()),
                 aud: Some(client_auth.client_id),
                 iss: None,
-                jti: None,
+                jti: session_id,
             })
         } else {
             let jwe_compact = JweCompact::from_str(&intr_req.token).map_err(|_| {
@@ -2532,7 +2532,7 @@ impl IdmServerProxyReadTransaction<'_> {
                         sub: Some(uuid.to_string()),
                         aud: Some(client_auth.client_id),
                         iss: None,
-                        jti: None,
+                        jti: session_id,
                     })
                 }
                 Oauth2TokenType::Refresh { .. } => Ok(AccessTokenIntrospectResponse::inactive()),

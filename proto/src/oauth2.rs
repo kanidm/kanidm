@@ -204,8 +204,8 @@ where
     pub nbf: i64,
     /// Issued at time.
     pub iat: i64,
-    /// -- NOT used, but part of the spec.
-    pub jti: Option<String>,
+    /// JWT ID <https://www.rfc-editor.org/rfc/rfc7519#section-4.1.7> - we set it to the session ID
+    pub jti: Uuid,
     pub client_id: String,
     #[serde(flatten)]
     pub extensions: V,
@@ -362,7 +362,8 @@ pub struct AccessTokenIntrospectResponse {
     pub sub: Option<String>,
     pub aud: Option<String>,
     pub iss: Option<String>,
-    pub jti: Option<String>,
+    // JWT ID <https://www.rfc-editor.org/rfc/rfc7519#section-4.1.7> set to session ID
+    pub jti: Uuid,
 }
 
 impl AccessTokenIntrospectResponse {
@@ -379,7 +380,7 @@ impl AccessTokenIntrospectResponse {
             sub: None,
             aud: None,
             iss: None,
-            jti: None,
+            jti: uuid::Uuid::new_v4(),
         }
     }
 }

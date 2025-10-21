@@ -457,7 +457,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     assert!(tir.sub.is_some());
     assert_eq!(tir.aud.as_deref(), Some(TEST_INTEGRATION_RS_ID));
     assert!(tir.iss.is_none());
-    assert!(tir.jti.is_none());
+    assert_ne!(tir.jti.to_string().is_empty());
 
     // Step 5 - check that the id_token (openid) matches the userinfo endpoint.
     let oidc_unverified =
