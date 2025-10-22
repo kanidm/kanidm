@@ -245,6 +245,28 @@ impl QueryServerWriteTransaction<'_> {
             self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
 
+        if !self
+            .changed_flags
+            .contains(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+            && norm_cand
+                .iter()
+                .zip(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|(post, pre)| {
+                    // This is in the modify path only - because sessions can update the RS
+                    // this can trigger reloads of all the oauth2 clients. That would make
+                    // client credentials grant pretty expensive in these cases. To avoid this
+                    // we check if "anything else" beside the oauth2session changed in this
+                    // txn.
+                    post.attribute_equality(Attribute::Class, &EntryClass::OAuth2TrustClient.into())
+                        || pre.attribute_equality(
+                            Attribute::Class,
+                            &EntryClass::OAuth2TrustClient.into(),
+                        )
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+        }
+
         if !self.changed_flags.contains(ChangeFlag::DOMAIN)
             && norm_cand
                 .iter()
@@ -440,6 +462,17 @@ impl QueryServerWriteTransaction<'_> {
         {
             self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
+
+        if !self
+            .changed_flags
+            .contains(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+            && norm_cand.iter().any(|e| {
+                e.attribute_equality(Attribute::Class, &EntryClass::OAuth2TrustClient.into())
+            })
+        {
+            self.changed_flags.insert(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+        }
+
         if !self.changed_flags.contains(ChangeFlag::DOMAIN)
             && norm_cand
                 .iter()

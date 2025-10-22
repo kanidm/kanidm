@@ -1,4 +1,5 @@
 use crate::idm::account::OAuth2TrustProviderCred;
+use crate::idm::server::IdmServerProxyWriteTransaction;
 use crate::prelude::*;
 use crate::utils;
 use std::collections::BTreeSet;
@@ -8,6 +9,7 @@ use std::collections::BTreeSet;
 // I'm pretty sure this can preserve query strings if we wanted to stash info or flag things?
 pub const OAUTH2_CLIENT_AUTHORISATION_RESPONSE_PATH: &str = "/login/oauth2_trust_landing";
 
+#[derive(Clone)]
 pub struct OAuth2TrustProvider {
     pub(crate) name: String,
     pub(crate) uuid: Uuid,
@@ -74,5 +76,11 @@ impl OAuth2TrustProvider {
             introspection_endpoint,
             revocation_endpoint,
         }
+    }
+}
+
+impl IdmServerProxyWriteTransaction<'_> {
+    pub(crate) fn reload_oauth2_trust_providers(&mut self) -> Result<(), OperationError> {
+        Ok(())
     }
 }

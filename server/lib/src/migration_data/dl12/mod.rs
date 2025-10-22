@@ -117,6 +117,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_OAUTH2_TRUST_PROVIDER.clone().into(),
         SCHEMA_ATTR_OAUTH2_TRUST_UNIQUE_USER_ID.clone().into(),
         SCHEMA_ATTR_OAUTH2_CLIENT_ID.clone().into(),
+        SCHEMA_ATTR_OAUTH2_CLIENT_SECRET.clone().into(),
         SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT.clone().into(),
         SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT.clone().into(),
         SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES.clone().into(),
@@ -224,6 +225,7 @@ pub fn phase_6_builtin_non_admin_entries() -> Result<Vec<EntryInitNew>, Operatio
         BUILTIN_GROUP_APPLICATION_ADMINS_DL8.clone().try_into()?,
         BUILTIN_GROUP_MESSAGE_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_MESSAGE_SENDERS.clone().try_into()?,
+        BUILTIN_GROUP_TRUST_ADMINS.clone().try_into()?,
         // Write deps on read.clone().try_into()?, so write must be added first.
         // All members must exist before we write HP
         IDM_HIGH_PRIVILEGE_DL8.clone().try_into()?,
@@ -296,5 +298,7 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         // DL12
         IDM_ACP_MESSAGE_MANAGE.clone().into(),
         IDM_ACP_MESSAGE_SENDER.clone().into(),
+        IDM_ACP_OAUTH2_TRUST_ADMIN.clone().into(),
+        IDM_ACP_OAUTH2_TRUST_ENROL.clone().into(),
     ]
 }

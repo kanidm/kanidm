@@ -262,6 +262,19 @@ impl QueryServerWriteTransaction<'_> {
             self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
 
+        if !self
+            .changed_flags
+            .contains(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+            && cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| {
+                    e.attribute_equality(Attribute::Class, &EntryClass::OAuth2TrustClient.into())
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+        }
+
         if !self.changed_flags.contains(ChangeFlag::APPLICATION)
             && cand
                 .iter()
@@ -655,6 +668,7 @@ impl QueryServerWriteTransaction<'_> {
             ChangeFlag::SCHEMA
                 | ChangeFlag::ACP
                 | ChangeFlag::OAUTH2
+                | ChangeFlag::OAUTH2_TRUST_PROVIDER
                 | ChangeFlag::DOMAIN
                 | ChangeFlag::APPLICATION
                 | ChangeFlag::SYSTEM_CONFIG

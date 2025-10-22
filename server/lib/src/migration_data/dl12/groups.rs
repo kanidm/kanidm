@@ -332,6 +332,15 @@ lazy_static! {
         ..Default::default()
     };
 
+    pub static ref BUILTIN_GROUP_TRUST_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_trust_admins",
+        description: "Builtin Domain Trust Administration Group.",
+        uuid: UUID_IDM_TRUST_ADMINS,
+        // TODO: Should be SYSTEM admins. Need to split this to two groups.
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
 }
 
 // at some point vs code just gives up on syntax highlighting inside lazy_static...
@@ -427,6 +436,7 @@ lazy_static! {
             UUID_IDM_MAIL_ADMINS,
             UUID_IDM_MESSAGE_ADMINS,
             UUID_IDM_MESSAGE_SENDERS,
+            UUID_IDM_TRUST_ADMINS,
             UUID_IDM_HIGH_PRIVILEGE,
         ],
         ..Default::default()

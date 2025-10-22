@@ -163,6 +163,7 @@ pub const ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str =
 pub const ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT: &str = "oauth2_allow_localhost_redirect";
 pub const ATTR_OAUTH2_AUTHORISATION_ENDPOINT: &str = "oauth2_authorisation_endpoint";
 pub const ATTR_OAUTH2_CLIENT_ID: &str = "oauth2_client_id";
+pub const ATTR_OAUTH2_CLIENT_SECRET: &str = "oauth2_client_secret";
 pub const ATTR_OAUTH2_CONSENT_SCOPE_MAP: &str = "oauth2_consent_scope_map";
 pub const ATTR_OAUTH2_DEVICE_FLOW_ENABLE: &str = "oauth2_device_flow_enable";
 pub const ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: &str = "oauth2_jwt_legacy_crypto_enable";

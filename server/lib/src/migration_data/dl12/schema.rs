@@ -823,6 +823,15 @@ pub static ref SCHEMA_ATTR_OAUTH2_CLIENT_ID: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_OAUTH2_CLIENT_SECRET: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_CLIENT_SECRET,
+    name: Attribute::OAuth2ClientSecret,
+    description: " .".to_string(),
+    // TODO: We may need a new secret type that CAN be imported from externally.
+    syntax: SyntaxType::Utf8String,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT,
     name: Attribute::OAuth2AuthorisationEndpoint,
@@ -1143,7 +1152,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_TRUST_CLIENT: SchemaClass = SchemaClass {
     systemmust: vec![
         Attribute::Name,
         Attribute::OAuth2ClientId,
-        Attribute::OAuth2RsBasicSecret,
+        Attribute::OAuth2ClientSecret,
         Attribute::OAuth2AuthorisationEndpoint,
         Attribute::OAuth2TokenEndpoint,
         Attribute::OAuth2RequestScopes,

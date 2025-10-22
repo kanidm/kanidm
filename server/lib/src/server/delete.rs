@@ -185,6 +185,17 @@ impl QueryServerWriteTransaction<'_> {
         {
             self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
+
+        if !self
+            .changed_flags
+            .contains(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+            && del_cand.iter().any(|e| {
+                e.attribute_equality(Attribute::Class, &EntryClass::OAuth2TrustClient.into())
+            })
+        {
+            self.changed_flags.insert(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+        }
+
         if !self.changed_flags.contains(ChangeFlag::DOMAIN)
             && del_cand
                 .iter()
@@ -192,6 +203,7 @@ impl QueryServerWriteTransaction<'_> {
         {
             self.changed_flags.insert(ChangeFlag::DOMAIN)
         }
+
         if !self.changed_flags.contains(ChangeFlag::SYSTEM_CONFIG)
             && del_cand
                 .iter()
@@ -199,6 +211,7 @@ impl QueryServerWriteTransaction<'_> {
         {
             self.changed_flags.insert(ChangeFlag::SYSTEM_CONFIG)
         }
+
         if !self.changed_flags.contains(ChangeFlag::SYNC_AGREEMENT)
             && del_cand
                 .iter()
@@ -206,6 +219,7 @@ impl QueryServerWriteTransaction<'_> {
         {
             self.changed_flags.insert(ChangeFlag::SYNC_AGREEMENT)
         }
+
         if !self.changed_flags.contains(ChangeFlag::KEY_MATERIAL)
             && del_cand.iter().any(|e| {
                 e.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into())

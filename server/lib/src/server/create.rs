@@ -128,6 +128,17 @@ impl QueryServerWriteTransaction<'_> {
         {
             self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
+
+        if !self
+            .changed_flags
+            .contains(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+            && commit_cand.iter().any(|e| {
+                e.attribute_equality(Attribute::Class, &EntryClass::OAuth2TrustClient.into())
+            })
+        {
+            self.changed_flags.insert(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+        }
+
         if !self.changed_flags.contains(ChangeFlag::DOMAIN)
             && commit_cand
                 .iter()

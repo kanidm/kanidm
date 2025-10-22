@@ -50,6 +50,9 @@ impl OAuth2 {
     ) -> Result<(), OperationError> {
         let domain_level = qs.get_domain_version();
 
+        // Do I need some other kind of uuid generator here for oauth2 trust provider creds?
+        todo!();
+
         cand.iter_mut()
             .filter(|entry| {
                 entry.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())

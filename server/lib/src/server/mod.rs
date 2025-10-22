@@ -171,14 +171,16 @@ unsafe impl Send for QueryServerReadTransaction<'_> {}
 bitflags::bitflags! {
     #[derive(Copy, Clone, Debug)]
     pub struct ChangeFlag: u64 {
-        const SCHEMA =         0b0000_0000_0000_0001;
-        const ACP =            0b0000_0000_0000_0010;
-        const OAUTH2 =         0b0000_0000_0000_0100;
-        const DOMAIN =         0b0000_0000_0000_1000;
-        const SYSTEM_CONFIG =  0b0000_0000_0001_0000;
-        const SYNC_AGREEMENT = 0b0000_0000_0010_0000;
-        const KEY_MATERIAL   = 0b0000_0000_0100_0000;
-        const APPLICATION    = 0b0000_0000_1000_0000;
+        const SCHEMA =                      0b0000_0000_0000_0001;
+        const ACP =                         0b0000_0000_0000_0010;
+        const OAUTH2 =                      0b0000_0000_0000_0100;
+        const DOMAIN =                      0b0000_0000_0000_1000;
+        const SYSTEM_CONFIG =               0b0000_0000_0001_0000;
+        const SYNC_AGREEMENT =              0b0000_0000_0010_0000;
+        const KEY_MATERIAL   =              0b0000_0000_0100_0000;
+        const APPLICATION    =              0b0000_0000_1000_0000;
+        const OAUTH2_TRUST_PROVIDER    =    0b0000_0001_0000_0000;
+
     }
 }
 
@@ -2624,6 +2626,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[inline]
     pub(crate) fn clear_changed_oauth2(&mut self) {
         self.changed_flags.remove(ChangeFlag::OAUTH2)
+    }
+
+    #[inline]
+    pub(crate) fn get_changed_oauth2_trust_providers(&self) -> bool {
+        self.changed_flags
+            .contains(ChangeFlag::OAUTH2_TRUST_PROVIDER)
     }
 
     /// Indicate that we are about to re-bootstrap this server. You should ONLY
