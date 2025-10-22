@@ -1714,7 +1714,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                 acr: None,
                 amr,
                 azp: Some(o2rs.name.clone()),
-                jti: None,
+                jti: Some(session_id.to_string()),
                 s_claims,
                 claims: extra_claims,
             };
@@ -1750,7 +1750,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             exp,
             nbf: iat,
             iat,
-            jti: None,
+            jti: session_id,
             client_id,
             extensions: OAuth2RFC9068TokenExtensions {
                 auth_time: None,
@@ -2397,7 +2397,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 exp,
                 nbf,
                 iat,
-                jti: _,
+                jti,
                 client_id: _,
                 extensions:
                     OAuth2RFC9068TokenExtensions {
@@ -2414,7 +2414,7 @@ impl IdmServerProxyReadTransaction<'_> {
             // Has this token expired?
             if exp <= ct.as_secs() as i64 {
                 security_info!(?sub, "access token has expired, returning inactive");
-                return Ok(AccessTokenIntrospectResponse::inactive());
+                return Ok(AccessTokenIntrospectResponse::inactive(jti));
             }
 
             // Is the user expired, or the OAuth2 session invalid?
@@ -2427,7 +2427,7 @@ impl IdmServerProxyReadTransaction<'_> {
                     ?sub,
                     "access token account is not valid, returning inactive"
                 );
-                return Ok(AccessTokenIntrospectResponse::inactive());
+                return Ok(AccessTokenIntrospectResponse::inactive(jti));
             };
 
             let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
@@ -2458,7 +2458,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 sub: Some(sub.to_string()),
                 aud: Some(client_auth.client_id),
                 iss: None,
-                jti: None,
+                jti,
             })
         } else {
             let jwe_compact = JweCompact::from_str(&intr_req.token).map_err(|_| {
@@ -2492,7 +2492,7 @@ impl IdmServerProxyReadTransaction<'_> {
                     // Has this token expired?
                     if exp <= ct.as_secs() as i64 {
                         security_info!(?uuid, "access token has expired, returning inactive");
-                        return Ok(AccessTokenIntrospectResponse::inactive());
+                        return Ok(AccessTokenIntrospectResponse::inactive(session_id));
                     }
 
                     // We can't do the same validity check for the client as we do with an account
@@ -2505,7 +2505,7 @@ impl IdmServerProxyReadTransaction<'_> {
                             ?uuid,
                             "access token account is not valid, returning inactive"
                         );
-                        return Ok(AccessTokenIntrospectResponse::inactive());
+                        return Ok(AccessTokenIntrospectResponse::inactive(session_id));
                     };
 
                     let scope = scopes.clone();
@@ -2532,10 +2532,12 @@ impl IdmServerProxyReadTransaction<'_> {
                         sub: Some(uuid.to_string()),
                         aud: Some(client_auth.client_id),
                         iss: None,
-                        jti: None,
+                        jti: session_id,
                     })
                 }
-                Oauth2TokenType::Refresh { .. } => Ok(AccessTokenIntrospectResponse::inactive()),
+                Oauth2TokenType::Refresh { session_id, .. } => {
+                    Ok(AccessTokenIntrospectResponse::inactive(session_id))
+                }
             }
         }
     }
@@ -2641,7 +2643,7 @@ impl IdmServerProxyReadTransaction<'_> {
             acr: None,
             amr,
             azp: Some(client_id.to_string()),
-            jti: None,
+            jti: Some(session_id.to_string()),
             s_claims,
             claims: extra_claims,
         })
@@ -3534,7 +3536,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
-            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .check_oauth2_authorise_permit(ident, &consent_token, ct)
             .expect("Failed to perform OAuth2 permit");
 
         // == Submit the token exchange code.
@@ -5307,7 +5309,10 @@ mod tests {
         assert!(oidc.acr.is_none());
         assert!(oidc.amr.is_none());
         assert_eq!(oidc.azp, Some("test_resource_server".to_string()));
-        assert!(oidc.jti.is_none());
+        assert!(oidc.jti.is_some());
+        if let Some(jti) = &oidc.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.s_claims.name, Some("Test Person 1".to_string()));
         assert_eq!(
             oidc.s_claims.preferred_username,
@@ -5335,7 +5340,10 @@ mod tests {
         assert!(userinfo.acr.is_none());
         assert_eq!(oidc.amr, userinfo.amr);
         assert_eq!(oidc.azp, userinfo.azp);
-        assert!(userinfo.jti.is_none());
+        assert!(userinfo.jti.is_some());
+        if let Some(jti) = &userinfo.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert!(userinfo.claims.is_empty());
 
@@ -5380,7 +5388,10 @@ mod tests {
         assert!(userinfo.acr.is_none());
         assert_eq!(oidc.amr, userinfo.amr);
         assert_eq!(oidc.azp, userinfo.azp);
-        assert!(userinfo.jti.is_none());
+        assert!(userinfo.jti.is_some());
+        if let Some(jti) = &userinfo.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert!(userinfo.claims.is_empty());
     }
@@ -7138,7 +7149,10 @@ mod tests {
         assert!(oidc.acr.is_none());
         assert!(oidc.amr.is_none());
         assert_eq!(oidc.azp, Some("test_resource_server".to_string()));
-        assert!(oidc.jti.is_none());
+        assert!(oidc.jti.is_some());
+        if let Some(jti) = &oidc.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.s_claims.name, Some("Test Person 1".to_string()));
         assert_eq!(
             oidc.s_claims.preferred_username,
@@ -7172,10 +7186,16 @@ mod tests {
         assert!(userinfo.auth_time.is_none());
         assert_eq!(userinfo.nonce, Some("abcdef".to_string()));
         assert!(userinfo.at_hash.is_none());
-        assert!(userinfo.acr.is_none());
+        assert!(userinfo.jti.is_some());
+        if let Some(jti) = &userinfo.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.amr, userinfo.amr);
         assert_eq!(oidc.azp, userinfo.azp);
-        assert!(userinfo.jti.is_none());
+        assert!(userinfo.jti.is_some());
+        if let Some(jti) = &userinfo.jti {
+            assert!(Uuid::from_str(jti).is_ok());
+        }
         assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert_eq!(oidc.claims, userinfo.claims);
 

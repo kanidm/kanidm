@@ -35,7 +35,7 @@ time = { workspace = true, features = ["serde", "std"] }
 url = { workspace = true, features = ["serde"] }
 urlencoding = { workspace = true }
 utoipa = { workspace = true }
-uuid = { workspace = true, features = ["serde"] }
+uuid = { workspace = true, features = ["v4", "serde"] }
 webauthn-rs-proto = { workspace = true }
 sshkey-attest = { workspace = true }
 sshkeys = { workspace = true }
