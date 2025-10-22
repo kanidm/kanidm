@@ -89,12 +89,10 @@ impl ValueSetSession {
                 ext_metadata: match &m.ext_metadata {
                     SessionExtMetadata::None => DbValueSessionExtMetadataV1::None,
                     SessionExtMetadata::OAuth2 {
-                        provider_id,
                         access_expires_at,
                         access_token,
                         refresh_token,
                     } => DbValueSessionExtMetadataV1::OAuth2 {
-                        provider_id: *provider_id,
                         access_expires_at: *access_expires_at,
                         access_token: access_token.clone(),
                         refresh_token: refresh_token.clone(),
@@ -191,12 +189,10 @@ impl ValueSetSession {
                         let ext_metadata = match ext_metadata {
                             DbValueSessionExtMetadataV1::None => SessionExtMetadata::None,
                             DbValueSessionExtMetadataV1::OAuth2 {
-                                provider_id,
                                 access_expires_at,
                                 access_token,
                                 refresh_token,
                             } => SessionExtMetadata::OAuth2 {
-                                provider_id: *provider_id,
                                 access_expires_at: *access_expires_at,
                                 access_token: access_token.clone(),
                                 refresh_token: refresh_token.clone(),

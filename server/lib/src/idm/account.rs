@@ -862,7 +862,7 @@ impl Account {
         trust_provider: &crate::idm::oauth2_trust::OAuth2TrustProvider,
     ) {
         self.oauth2_trust_provider = Some(OAuth2TrustProviderCred {
-            provider: trust_provider.uuid(),
+            provider: trust_provider.uuid,
             cred_id: Uuid::new_v4(),
             user_id: self.name.clone(),
         });

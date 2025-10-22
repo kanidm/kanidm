@@ -68,6 +68,9 @@ impl fmt::Debug for AuthExternal {
     }
 }
 
+// We have to allow large enum variant here because else we can't match on External
+// due to boxing.
+#[allow(clippy::large_enum_variant)]
 pub enum AuthState {
     Choose(Vec<AuthMech>),
     Continue(Vec<AuthAllowed>),

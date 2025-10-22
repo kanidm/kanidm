@@ -1,7 +1,5 @@
-use crate::idm::account::OAuth2TrustProviderCred;
 use crate::idm::server::IdmServerProxyWriteTransaction;
 use crate::prelude::*;
-use crate::utils;
 use std::collections::BTreeSet;
 use std::fmt;
 
@@ -34,17 +32,11 @@ impl fmt::Debug for OAuth2TrustProvider {
 }
 
 impl OAuth2TrustProvider {
-    pub fn uuid(&self) -> Uuid {
-        self.uuid
-    }
-
     #[cfg(test)]
     pub fn new_test<'a, I: IntoIterator<Item = &'a str>>(
         client_id: &str,
         domain: &str,
         request_scopes: I,
-        introspection_endpoint: bool,
-        revocation_endpoint: bool,
     ) -> OAuth2TrustProvider {
         // In prod will be build from our true origin + the actual landing pad.
         let mut client_redirect_uri =
@@ -59,7 +51,7 @@ impl OAuth2TrustProvider {
         domain.set_path("/oauth2/token");
         let token_endpoint = domain.clone();
 
-        let client_basic_secret = utils::password_from_random();
+        let client_basic_secret = crate::utils::password_from_random();
 
         let request_scopes = request_scopes.into_iter().map(String::from).collect();
 

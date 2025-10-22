@@ -1,11 +1,11 @@
-use super::{CredState, ExtSessionMetadata, BAD_AUTH_TYPE_MSG, BAD_OAUTH2_CSRF_STATE_MSG};
+use super::{CredState, BAD_AUTH_TYPE_MSG, BAD_OAUTH2_CSRF_STATE_MSG};
 use crate::idm::account::OAuth2TrustProviderCred;
 use crate::idm::authentication::{AuthCredential, AuthExternal};
 use crate::idm::oauth2::PkceS256Secret;
 use crate::idm::oauth2_trust::OAuth2TrustProvider;
 use crate::prelude::*;
 use crate::utils;
-use crate::value::AuthType;
+use crate::value::{AuthType, SessionExtMetadata};
 use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, GrantTypeReq, ResponseType,
 };
@@ -91,13 +91,13 @@ impl CredHandlerOAuth2Trust {
         )
     }
 
-    pub fn validate(&self, cred: &AuthCredential) -> CredState {
+    pub fn validate(&self, cred: &AuthCredential, current_time: Duration) -> CredState {
         match cred {
             AuthCredential::OAuth2AuthorisationResponse { code, state } => {
                 self.validate_authorisation_response(code, state.as_deref())
             }
             AuthCredential::OAuth2AccessTokenResponse { response } => {
-                self.validate_access_token_response(response)
+                self.validate_access_token_response(response, current_time)
             }
             _ => CredState::Denied(BAD_AUTH_TYPE_MSG),
         }
@@ -131,17 +131,22 @@ impl CredHandlerOAuth2Trust {
         })
     }
 
-    fn validate_access_token_response(&self, response: &AccessTokenResponse) -> CredState {
+    fn validate_access_token_response(
+        &self,
+        response: &AccessTokenResponse,
+        current_time: Duration,
+    ) -> CredState {
         // What is the credential id here? The provider id?
         // How do we make sure that session plugin doesn't kill us?
         let cred_id = self.user_cred_id;
+        let access_expires_at = current_time + Duration::from_secs(response.expires_in as u64);
 
         // We need a way to bubble up extra session metadata now.
         // Need to pass up the expiry, token, refresh token.
-        let ext_session_metadata = ExtSessionMetadata::OAuth2 {
+        let ext_session_metadata = SessionExtMetadata::OAuth2 {
             access_token: response.access_token.clone(),
             refresh_token: response.refresh_token.clone(),
-            expires_in: response.expires_in,
+            access_expires_at,
         };
 
         CredState::Success {

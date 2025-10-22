@@ -42,7 +42,7 @@ impl KanidmClient {
         &self,
         query: ScimEntryGetQuery,
     ) -> Result<ScimListEntry, ClientError> {
-        self.perform_get_request_query(format!("/scim/v1/Entry").as_str(), Some(query))
+        self.perform_get_request_query("/scim/v1/Entry", Some(query))
             .await
     }
 
@@ -50,16 +50,14 @@ impl KanidmClient {
         &self,
         entry: ScimEntryPostGeneric,
     ) -> Result<ScimEntryGeneric, ClientError> {
-        self.perform_post_request(format!("/scim/v1/Entry").as_str(), entry)
-            .await
+        self.perform_post_request("/scim/v1/Entry", entry).await
     }
 
     pub async fn scim_v1_entry_update(
         &self,
         entry: ScimEntryPutGeneric,
     ) -> Result<ScimEntryGeneric, ClientError> {
-        self.perform_put_request(format!("/scim/v1/Entry").as_str(), entry)
-            .await
+        self.perform_put_request("/scim/v1/Entry", entry).await
     }
 
     pub async fn scim_v1_entry_delete(&self, id: &str) -> Result<(), ClientError> {

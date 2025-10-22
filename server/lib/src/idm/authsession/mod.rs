@@ -15,7 +15,7 @@ use crate::idm::delayed::{
 use crate::idm::oauth2_trust::OAuth2TrustProvider;
 use crate::prelude::*;
 use crate::server::keys::KeyObject;
-use crate::value::{AuthType, Session, SessionState};
+use crate::value::{AuthType, Session, SessionExtMetadata, SessionState};
 use compact_jwt::Jws;
 use hashbrown::HashSet;
 use kanidm_proto::internal::UserAuthToken;
@@ -62,23 +62,15 @@ enum AuthIntent {
     },
 }
 
-#[derive(Default)]
-enum ExtSessionMetadata {
-    #[default]
-    None,
-    OAuth2 {
-        access_token: String,
-        refresh_token: Option<String>,
-        expires_in: u32,
-    },
-}
-
 /// A response type to indicate the progress and potential result of an authentication attempt.
+// We have to allow large enum variant here because else we can't match on External
+// due to boxing.
+#[allow(clippy::large_enum_variant)]
 enum CredState {
     Success {
         auth_type: AuthType,
         cred_id: Uuid,
-        ext_session_metadata: ExtSessionMetadata,
+        ext_session_metadata: SessionExtMetadata,
     },
     Continue(Box<NonEmpty<AuthAllowed>>),
     External(AuthExternal),
@@ -1001,7 +993,7 @@ impl CredHandler {
                 async_tx,
                 att_ca_list,
             ),
-            CredHandler::OAuth2Trust { handler } => handler.validate(cred),
+            CredHandler::OAuth2Trust { handler } => handler.validate(cred, ts),
         }
     }
 
@@ -1620,7 +1612,7 @@ impl AuthSession {
         time: Duration,
         async_tx: &Sender<DelayedAction>,
         cred_id: Uuid,
-        ext_session_metadata: ExtSessionMetadata,
+        ext_metadata: SessionExtMetadata,
     ) -> Result<UserAuthToken, OperationError> {
         security_debug!("Successful cred handling");
         match self.intent {
@@ -1687,9 +1679,7 @@ impl AuthSession {
                             issued_by: IdentityId::User(self.account.uuid),
                             scope,
                             type_: auth_type,
-
-                            // Need to store access token + refresh token here from oauth2
-
+                            ext_metadata,
                         }))
                         .map_err(|e| {
                             debug!(?e, "queue failure");
@@ -3450,13 +3440,8 @@ mod tests {
         let privileged = false;
 
         // create the trust provider
-        let oauth_trust_provider = OAuth2TrustProvider::new_test(
-            "test_trust_client",
-            "https://localhost",
-            ["openid"],
-            false,
-            false,
-        );
+        let oauth_trust_provider =
+            OAuth2TrustProvider::new_test("test_trust_client", "https://localhost", ["openid"]);
 
         // Configure the account to use it.
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
@@ -3497,7 +3482,7 @@ mod tests {
         trace!(?state);
 
         // Should create an authorisation Request.
-        let (auth_url, auth_req) = match state {
+        let (_auth_url, auth_req) = match state {
             AuthState::External(AuthExternal::OAuth2AuthorisationRequest {
                 authorisation_url,
                 request,
@@ -3525,11 +3510,11 @@ mod tests {
             )
             .expect("Failed to perform credential validation step.");
 
-        let (token_url, token_request) = match state {
+        let (_token_url, _token_request) = match state {
             AuthState::External(AuthExternal::OAuth2AccessTokenRequest {
                 token_url,
-                client_id,
-                client_secret,
+                client_id: _,
+                client_secret: _,
                 request,
             }) => (token_url, request),
             _ => unreachable!(),

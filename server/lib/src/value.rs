@@ -1161,11 +1161,24 @@ pub enum SessionExtMetadata {
     #[default]
     None,
     OAuth2 {
-        provider_id: Uuid,
         access_expires_at: Duration,
         access_token: String,
-        refresh_token: String,
+        refresh_token: Option<String>,
     },
+}
+
+impl fmt::Debug for SessionExtMetadata {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::None => f.debug_struct("SessionExtMetadata::None").finish(),
+            Self::OAuth2 {
+                access_expires_at, ..
+            } => f
+                .debug_struct("SessionExtMetadata::OAuth2")
+                .field("access_expires_at", access_expires_at)
+                .finish(),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq)]

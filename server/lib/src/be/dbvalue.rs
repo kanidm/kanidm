@@ -537,10 +537,9 @@ pub enum DbValueSessionExtMetadataV1 {
     #[default]
     None,
     OAuth2 {
-        provider_id: Uuid,
         access_expires_at: Duration,
         access_token: String,
-        refresh_token: String,
+        refresh_token: Option<String>,
     },
 }
 

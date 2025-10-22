@@ -73,7 +73,6 @@ impl SessionConsistency {
                 )
                 .chain(
                     entry.get_ava_single_uuid(Attribute::OAuth2TrustCredentialUuid)
-                        .into_iter()
                 )
                 .collect();
 

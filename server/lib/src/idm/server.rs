@@ -3614,6 +3614,7 @@ mod tests {
             issued_by: IdentityId::User(UUID_ADMIN),
             scope: SessionScope::ReadOnly,
             type_: AuthType::Passkey,
+            ext_metadata: Default::default(),
         });
         // Persist it.
         let r = idms.delayed_action(ct, da).await;
@@ -3646,6 +3647,7 @@ mod tests {
             issued_by: IdentityId::User(UUID_ADMIN),
             scope: SessionScope::ReadOnly,
             type_: AuthType::Passkey,
+            ext_metadata: Default::default(),
         });
         // Persist it.
         let r = idms.delayed_action(expiry_a, da).await;
