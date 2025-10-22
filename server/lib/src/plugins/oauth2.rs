@@ -1,10 +1,10 @@
-use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
-use std::sync::Arc;
-
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::utils::password_from_random;
+use crate::valueset::ValueSetUuid;
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
+use std::sync::Arc;
 
 pub struct OAuth2 {}
 
@@ -51,8 +51,23 @@ impl OAuth2 {
         let domain_level = qs.get_domain_version();
 
         // Do I need some other kind of uuid generator here for oauth2 trust provider creds?
-        todo!();
+        cand.iter_mut()
+            .filter(|entry| {
+                entry.attribute_equality(Attribute::Class, &EntryClass::PersonOAuth2Trust.into())
+            })
+            .for_each(|entry| {
+                if entry
+                    .get_ava_set(Attribute::OAuth2TrustCredentialUuid)
+                    .is_none()
+                {
+                    entry.set_ava_set(
+                        &Attribute::OAuth2TrustCredentialUuid,
+                        ValueSetUuid::new(Uuid::new_v4()),
+                    )
+                }
+            });
 
+        // Populate attributes into the oauth2 clients.
         cand.iter_mut()
             .filter(|entry| {
                 entry.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
