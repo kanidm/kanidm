@@ -1168,9 +1168,12 @@ impl IdmServerAuthTransaction<'_> {
                 // Does the account have any auth trusts?
                 let oauth2_trust_provider =
                     account.oauth2_trust_provider().and_then(|trust_provider| {
+                        debug!(?trust_provider);
                         // Now get the provider, if it'still linked and exists.
                         self.oauth2_trust_providers.get(&trust_provider.provider)
                     });
+
+                debug!(?oauth2_trust_provider);
 
                 let asd: AuthSessionData = AuthSessionData {
                     account,
@@ -2158,6 +2161,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                 // for auditing purposes.
                 scope: asr.scope,
                 type_: asr.type_,
+                ext_metadata: Default::default(),
             },
         );
 

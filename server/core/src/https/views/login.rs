@@ -11,7 +11,7 @@ use askama_web::WebTemplate;
 
 use axum::http::HeaderMap;
 use axum::{
-    extract::State,
+    extract::{Query, State},
     response::{IntoResponse, Redirect, Response},
     Extension, Form, Json,
 };
@@ -21,8 +21,11 @@ use kanidm_proto::internal::{
     UserAuthToken, COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN,
     COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
 };
-use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
-use kanidmd_lib::idm::authentication::{AuthCredential, AuthState, AuthStep};
+use kanidm_proto::{
+    oauth2::AccessTokenResponse,
+    v1::{AuthAllowed, AuthIssueSession, AuthMech},
+};
+use kanidmd_lib::idm::authentication::{AuthCredential, AuthExternal, AuthState, AuthStep};
 use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::prelude::OperationError;
 use kanidmd_lib::prelude::*;
@@ -722,6 +725,32 @@ pub async fn view_login_seckey_post(
     credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
 }
 
+#[derive(Deserialize)]
+pub struct Oauth2AuthorisationResponse {
+    code: String,
+    state: Option<String>,
+}
+
+pub async fn view_login_oauth2_trust_landing(
+    State(app_state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
+    jar: CookieJar,
+    Query(Oauth2AuthorisationResponse { code, state }): Query<Oauth2AuthorisationResponse>,
+) -> Response {
+    let auth_cred = AuthCredential::OAuth2AuthorisationResponse { code, state };
+    credential_step(
+        app_state,
+        kopid,
+        jar,
+        client_auth_info,
+        auth_cred,
+        domain_info,
+    )
+    .await
+}
+
 async fn credential_step(
     state: ServerState,
     kopid: KOpId,
@@ -942,9 +971,66 @@ async fn view_login_step(
                 // break acts as return in a loop.
                 break res;
             }
-            AuthState::External(_external) => {
+            AuthState::External(external) => {
                 debug!("🧩 -> AuthState::External");
-                todo!();
+                match external {
+                    AuthExternal::OAuth2AuthorisationRequest {
+                        mut authorisation_url,
+                        request,
+                    } => {
+                        // Encode the request.
+                        let encoded = serde_urlencoded::to_string(&request).unwrap();
+                        authorisation_url.set_query(Some(&encoded));
+
+                        let res = Redirect::to(authorisation_url.as_str()).into_response();
+                        break res;
+                    }
+                    AuthExternal::OAuth2AccessTokenRequest {
+                        token_url,
+                        client_id,
+                        client_secret,
+                        request,
+                    } => {
+                        // Setup a client and post the req.
+                        // TODO: Lots of settings we need to be able to configure here,
+                        // but for a proof of concept defaults are okay.
+                        //
+                        // We would probably move the client into the auth server state
+                        // if anything.
+                        let client = reqwest::ClientBuilder::new().build().unwrap();
+
+                        let res = client
+                            .post(token_url.as_str())
+                            .basic_auth(client_id, Some(client_secret))
+                            .form(&request)
+                            .send()
+                            .await
+                            .unwrap();
+
+                        // Now depending on the result we have to choose how to proceed.
+                        if res.status() == reqwest::StatusCode::OK {
+                            let response = res.json::<AccessTokenResponse>().await.unwrap();
+                            let auth_cred = AuthCredential::OAuth2AccessTokenResponse { response };
+
+                            // submit the choice and then loop updating our auth_state.
+                            let inter = state // This may change in the future ...
+                                .qe_r_ref
+                                .handle_auth(
+                                    Some(sessionid),
+                                    AuthStep::Cred(auth_cred),
+                                    kopid.eventid,
+                                    client_auth_info.clone(),
+                                )
+                                .await?;
+
+                            // Set the state now for the next loop.
+                            auth_state = inter.state;
+                            continue;
+                        } else {
+                            todo!();
+                        }
+                    }
+                }
             }
             AuthState::Success(token, issue) => {
                 debug!("🧩 -> AuthState::Success");
@@ -1022,8 +1108,8 @@ fn add_session_cookie(
 ) -> Result<CookieJar, OperationError> {
     cookies::make_signed(state, COOKIE_AUTH_SESSION_ID, session_context)
         .map(|mut cookie| {
-            // Not needed when redirecting into this site
-            cookie.set_same_site(SameSite::Strict);
+            // Needs to be lax now for when we come back from an oauth2 trust
+            cookie.set_same_site(SameSite::Lax);
             jar.add(cookie)
         })
         .ok_or(OperationError::InvalidSessionState)

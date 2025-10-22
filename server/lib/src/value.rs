@@ -1156,6 +1156,18 @@ impl fmt::Display for AuthType {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Default)]
+pub enum SessionExtMetadata {
+    #[default]
+    None,
+    OAuth2 {
+        provider_id: Uuid,
+        access_expires_at: Duration,
+        access_token: String,
+        refresh_token: String,
+    },
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Session {
     pub label: String,
@@ -1166,6 +1178,7 @@ pub struct Session {
     pub cred_id: Uuid,
     pub scope: SessionScope,
     pub type_: AuthType,
+    pub ext_metadata: SessionExtMetadata,
 }
 
 impl fmt::Debug for Session {

@@ -3,11 +3,12 @@ use crate::idm::server::IdmServerProxyWriteTransaction;
 use crate::prelude::*;
 use crate::utils;
 use std::collections::BTreeSet;
+use std::fmt;
 
 // TODO: Move to constants once we have a good path here. Will probably need to be part
 // of the axum config etc.
 // I'm pretty sure this can preserve query strings if we wanted to stash info or flag things?
-pub const OAUTH2_CLIENT_AUTHORISATION_RESPONSE_PATH: &str = "/login/oauth2_trust_landing";
+pub const OAUTH2_CLIENT_AUTHORISATION_RESPONSE_PATH: &str = "/ui/login/oauth2_trust_landing";
 
 #[derive(Clone)]
 pub struct OAuth2TrustProvider {
@@ -20,6 +21,16 @@ pub struct OAuth2TrustProvider {
     pub(crate) request_scopes: BTreeSet<String>,
     pub(crate) authorisation_endpoint: Url,
     pub(crate) token_endpoint: Url,
+}
+
+impl fmt::Debug for OAuth2TrustProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OAuth2TrustProvider")
+            .field("provider_id", &self.name)
+            .field("provider_name", &self.uuid)
+            .field("client_id", &self.client_id)
+            .finish()
+    }
 }
 
 impl OAuth2TrustProvider {
@@ -66,10 +77,11 @@ impl OAuth2TrustProvider {
 }
 
 impl IdmServerProxyWriteTransaction<'_> {
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_oauth2_trust_providers(&mut self) -> Result<(), OperationError> {
         let oauth2_trust_provider_entries = self.qs_write.internal_search(filter!(f_eq(
             Attribute::Class,
-            EntryClass::OAuth2ResourceServer.into(),
+            EntryClass::OAuth2TrustClient.into(),
         )))?;
 
         // Preprocess

@@ -3374,6 +3374,7 @@ mod tests {
                 cred_id,
                 scope: SessionScope::ReadWrite,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -3510,6 +3511,7 @@ mod tests {
                 cred_id,
                 scope: SessionScope::ReadWrite,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 

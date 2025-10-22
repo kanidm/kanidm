@@ -208,7 +208,26 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
-        let oauth2_trust_provider = None;
+        let maybe_trust_provider = $value.get_ava_single_refer(Attribute::OAuth2TrustProvider);
+
+        let maybe_trust_unique_user_id =
+            $value.get_ava_single_utf8(Attribute::OAuth2TrustUniqueUserId);
+
+        let maybe_trust_credential_id =
+            $value.get_ava_single_uuid(Attribute::OAuth2TrustCredentialUuid);
+
+        let oauth2_trust_provider = match (
+            maybe_trust_provider,
+            maybe_trust_unique_user_id,
+            maybe_trust_credential_id,
+        ) {
+            (Some(provider), Some(user_id), Some(cred_id)) => Some(OAuth2TrustProviderCred {
+                provider,
+                cred_id,
+                user_id: user_id.to_string(),
+            }),
+            _ => None,
+        };
 
         Ok(Account {
             uuid,
