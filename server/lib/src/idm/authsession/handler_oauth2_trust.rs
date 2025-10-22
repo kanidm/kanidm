@@ -23,7 +23,7 @@ pub struct CredHandlerOAuth2Trust {
     // The users ID as the remote trust provider knows them.
     request_scopes: BTreeSet<String>,
     client_id: String,
-    client_secret: String,
+    client_basic_secret: String,
     client_redirect_url: Url,
     authorisation_endpoint: Url,
     token_endpoint: Url,
@@ -61,7 +61,7 @@ impl CredHandlerOAuth2Trust {
             user_id: trust_user_cred.user_id.to_string(),
             user_cred_id: trust_user_cred.cred_id,
             client_id: trust_provider.client_id.clone(),
-            client_secret: trust_provider.basic_secret.clone(),
+            client_basic_secret: trust_provider.client_basic_secret.clone(),
             client_redirect_url: trust_provider.client_redirect_uri.clone(),
             authorisation_endpoint: trust_provider.authorisation_endpoint.clone(),
             token_endpoint: trust_provider.token_endpoint.clone(),
@@ -126,7 +126,7 @@ impl CredHandlerOAuth2Trust {
         CredState::External(AuthExternal::OAuth2AccessTokenRequest {
             token_url: self.token_endpoint.clone(),
             client_id: self.client_id.clone(),
-            client_secret: self.client_secret.clone(),
+            client_secret: self.client_basic_secret.clone(),
             request,
         })
     }

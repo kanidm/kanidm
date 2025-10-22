@@ -84,6 +84,7 @@ pub struct IdmServer {
     applications: Arc<LdapApplications>,
 
     /// OAuth2TrustProviders
+    origin: Url,
     oauth2_trust_providers: HashMap<Uuid, OAuth2TrustProvider>,
 }
 
@@ -130,6 +131,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
     pub(crate) applications: LdapApplicationsWriteTransaction<'a>,
 
+    pub(crate) origin: &'a Url,
     pub(crate) oauth2_trust_providers: HashMapWriteTxn<'a, Uuid, OAuth2TrustProvider>,
 }
 
@@ -222,6 +224,7 @@ impl IdmServer {
             webauthn,
             oauth2rs: Arc::new(oauth2rs),
             applications: Arc::new(applications),
+            origin: origin.clone(),
             oauth2_trust_providers: HashMap::new(),
         };
         let idm_server_delayed = IdmServerDelayed { async_rx };
@@ -298,6 +301,7 @@ impl IdmServer {
             webauthn: &self.webauthn,
             oauth2rs: self.oauth2rs.write(),
             applications: self.applications.write(),
+            origin: &self.origin,
             oauth2_trust_providers: self.oauth2_trust_providers.write(),
         })
     }
