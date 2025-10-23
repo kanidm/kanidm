@@ -257,6 +257,44 @@ Once you've got everything working, you may wish configure GitLab to:
 
 More information about these features is available in GitLab's documentation.
 
+## Home Assistant
+
+These instructions are for
+[hass-openid](https://github.com/cavefire/hass-openid) integration
+for [Home Assistant](https://www.home-assistant.io/).
+Other integrations are under development, but have not been tested.
+
+1. Configure an oauth2 service for Home Assistant
+   ```sh
+   kanidm group create homeassistant_access
+   kanidm group add-members homeassistant_access your_username
+
+   kanidm system oauth2 create homeassistant "Home Assitant" https://homeassistant.example.com
+   kanidm system oauth2 add-redirect-url homeassistant https://homeassistant.example.com/auth/openid/callback
+   kanidm system oauth2 update-scope-map homeassistant homeassistant_access email openid profile
+   kanidm system oauth2 set-image homeassistant ${PWD}/homeassistant.png png
+   kanidm system oauth2 warning-insecure-client-disable-pkce homeassistant
+   kanidm system oauth2 show-basic-secret homeassistant
+   ```
+
+2. Click the link on the instegration page to add to Home Assistant
+   and restart if necessary
+
+3. Add the following to `/config/configuration.yaml`
+   ```yaml
+   openid:
+     client_id: homeassistant
+     client_secret: "<BASIC_SECRET>"
+     configure_url: "https://idm.example.com/oauth2/openid/homeassistant/.well-known/openid-configuration"
+     username_field: "preferred_username"
+     scope: "openid profile email"
+     block_login: false
+     openid_text: "Login with Kanidm"
+   ```
+
+If you would prefer to disable local signin, change the value of
+`block_login` to `true`.
+
 ## JetBrains Hub and YouTrack
 
 > These instructions were tested with the on-prem version of JetBrains YouTrack 2024.3.44799 and its built-in Hub.
