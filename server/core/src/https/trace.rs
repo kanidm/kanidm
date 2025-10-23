@@ -3,26 +3,13 @@
 use axum::http::{Request, StatusCode};
 use kanidm_proto::constants::KOPID;
 use sketching::event_dynamic_lvl;
-use tower_http::LatencyUnit;
+use tower_http::trace::OnRequest;
 use tracing::{Level, Span};
 
 /// The default way Spans will be created for Trace.
 ///
 #[derive(Debug, Clone)]
 pub struct DefaultMakeSpanKanidmd {}
-
-impl DefaultMakeSpanKanidmd {
-    /// Create a new `DefaultMakeSpanKanidmd`.
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Default for DefaultMakeSpanKanidmd {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
     fn make_span(&mut self, request: &Request<B>) -> Span {
@@ -34,46 +21,45 @@ impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
             method = %request.method(),
             uri = %request.uri(),
             version = ?request.version(),
+            kopid = tracing::field::Empty, // filled in later
+            connection_addr = tracing::field::Empty, // filled in later
+            client_ip_addr = tracing::field::Empty, // filled in later
+            status_code = tracing::field::Empty, // filled in later
+            latency = tracing::field::Empty, // filled in later
             // Defer logging this span until there is child information attached.
             defer = true,
         )
     }
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct DefaultOnResponseKanidmd {
-    #[allow(dead_code)]
-    level: Level,
-    #[allow(dead_code)]
-    latency_unit: LatencyUnit,
-    #[allow(dead_code)]
-    include_headers: bool,
+#[derive(Clone, Debug, Default)]
+pub(crate) struct DefaultOnRequestKanidmd {}
+
+impl<B> OnRequest<B> for DefaultOnRequestKanidmd {
+    fn on_request(&mut self, _request: &axum::http::Request<B>, _span: &Span) {}
 }
 
-impl DefaultOnResponseKanidmd {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl Default for DefaultOnResponseKanidmd {
-    fn default() -> Self {
-        Self {
-            level: Level::INFO,
-            latency_unit: LatencyUnit::Millis,
-            include_headers: false,
-        }
-    }
-}
+#[derive(Clone, Debug, Default)]
+pub(crate) struct DefaultOnResponseKanidmd {}
 
 impl<B> tower_http::trace::OnResponse<B> for DefaultOnResponseKanidmd {
     fn on_response(
         self,
         response: &axum::response::Response<B>,
         latency: std::time::Duration,
-        _span: &Span,
+        span: &Span,
     ) {
+        if let Some(client_conn_info) = response.extensions().get::<crate::https::ClientConnInfo>()
+        {
+            span.record(
+                "connection_addr",
+                client_conn_info.connection_addr.to_string(),
+            );
+            span.record(
+                "client_ip_addr",
+                client_conn_info.client_ip_addr.to_string(),
+            );
+        };
         let kopid = match response.headers().get(KOPID) {
             Some(val) => val.to_str().unwrap_or("<invalid kopid>"),
             None => "<unknown>",
@@ -95,11 +81,11 @@ impl<B> tower_http::trace::OnResponse<B> for DefaultOnResponseKanidmd {
                     }
                 }
             };
+        span.record("latency", latency.as_millis());
+        span.record("kopid", kopid);
+        span.record("status_code", response.status().as_u16());
         event_dynamic_lvl!(
-            level,
-            ?latency,
-            status_code = response.status().as_u16(),
-            kopid = kopid,
+            level, // ?latency,
             msg
         );
     }

@@ -35,7 +35,8 @@ members = [
     "libs/profiles",
     "libs/scim_proto",
     "libs/sketching",
-    "libs/users", "tools/mail_sender",
+    "libs/users",
+    "tools/mail_sender",
 ]
 
 # Below follows some guides/estimates to system resources consumed during a build.
@@ -281,7 +282,10 @@ tracing = { version = "^0.1.41", features = [
     "release_max_level_debug",
 ] }
 tracing-subscriber = { version = "^0.3.20", features = ["env-filter"] }
-tracing-forest = { version = "^0.2.0", features = ["defer"] }
+# tracing-forest = { version = "^0.2.0", features = ["defer"] }
+tracing-forest = { git = "https://github.com/yaleman/tracing-forest", rev = "da32a26281098052576cc7543a44e9165954f8cc", features = [
+    "defer",
+] }
 url = "^2.5.2"
 urlencoding = "2.1.3"
 utoipa = { version = "4.2.0", features = ["url", "uuid"] }

@@ -314,8 +314,9 @@ pub async fn create_https_server(
 
     // this sets up the default span which logs the URL etc.
     let trace_layer = TraceLayer::new_for_http()
-        .make_span_with(trace::DefaultMakeSpanKanidmd::new())
-        .on_response(trace::DefaultOnResponseKanidmd::new());
+        .make_span_with(trace::DefaultMakeSpanKanidmd {})
+        .on_request(trace::DefaultOnRequestKanidmd::default())
+        .on_response(trace::DefaultOnResponseKanidmd::default());
 
     let app = app
         .merge(static_routes)
