@@ -14,17 +14,23 @@ use std::str::FromStr;
 // Re-export
 pub use kanidmd_lib::idm::server::DomainInfoRead;
 
-pub type VCIRejection = (StatusCode, &'static str);
-
 pub struct VerifiedClientInformation(pub ClientAuthInfo);
 
-impl VerifiedClientInformation {
-    pub fn from_parts(parts: &mut Parts) -> Result<Self, VCIRejection> {
+#[async_trait]
+impl FromRequestParts<ServerState> for VerifiedClientInformation {
+    type Rejection = (StatusCode, &'static str);
+
+    // Need to skip all to prevent leaking tokens to logs.
+    #[instrument(level = "debug", skip_all)]
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &ServerState,
+    ) -> Result<Self, Self::Rejection> {
         let ClientConnInfo {
             connection_addr: _,
             client_ip_addr,
             client_cert,
-        } = parts.extensions.get::<ClientConnInfo>().ok_or((
+        } = parts.extensions.remove::<ClientConnInfo>().ok_or((
             StatusCode::INTERNAL_SERVER_ERROR,
             "request info contains invalid data",
         ))?;
@@ -67,36 +73,22 @@ impl VerifiedClientInformation {
             (None, maybe_bearer)
         };
 
-        Ok(VerifiedClientInformation(ClientAuthInfo::new(
-            Source::Https(*client_ip_addr),
-            client_cert.clone(),
+        let mut client_auth_info = ClientAuthInfo::new(
+            Source::Https(client_ip_addr),
+            client_cert,
             bearer_token,
             basic_authz,
-        )))
-    }
-}
-
-#[async_trait]
-impl FromRequestParts<ServerState> for VerifiedClientInformation {
-    type Rejection = VCIRejection;
-
-    // Need to skip all to prevent leaking tokens to logs.
-    #[instrument(level = "debug", skip_all)]
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &ServerState,
-    ) -> Result<Self, Self::Rejection> {
-        let mut client_auth_info = VerifiedClientInformation::from_parts(parts)?;
+        );
 
         // now, we want to update the client auth info with the sessions user-auth-token
         // if any. We ignore errors here as the auth info MAY NOT be a valid token
         // and so in that case no prevalidation will occur.
         let _ = state
             .qe_r_ref
-            .pre_validate_client_auth_info(&mut client_auth_info.0)
+            .pre_validate_client_auth_info(&mut client_auth_info)
             .await;
 
-        Ok(client_auth_info)
+        Ok(VerifiedClientInformation(client_auth_info))
     }
 }
 
@@ -116,7 +108,7 @@ impl FromRequestParts<ServerState> for AuthorisationHeaders {
             connection_addr: _,
             client_ip_addr,
             client_cert,
-        } = parts.extensions.get::<ClientConnInfo>().ok_or((
+        } = parts.extensions.remove::<ClientConnInfo>().ok_or((
             StatusCode::INTERNAL_SERVER_ERROR,
             "request info contains invalid data",
         ))?;
@@ -153,8 +145,8 @@ impl FromRequestParts<ServerState> for AuthorisationHeaders {
         };
 
         let client_auth_info = ClientAuthInfo::new(
-            Source::Https(client_ip_addr.to_owned()),
-            client_cert.to_owned(),
+            Source::Https(client_ip_addr),
+            client_cert,
             bearer_token,
             basic_authz,
         );
