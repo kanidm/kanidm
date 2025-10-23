@@ -1,13 +1,15 @@
 use crate::https::views::admin::{admin_api_router, admin_router};
 use crate::https::{middleware, ServerState};
 use askama::Template;
+use askama_web::WebTemplate;
+
 use axum::{
     middleware::from_fn_with_state,
     response::Redirect,
     routing::{get, post},
     Router,
 };
-use axum_htmx::HxRequestGuardLayer;
+use axum_htmx::{HxEvent, HxRequestGuardLayer};
 use constants::Urls;
 use kanidmd_lib::{
     idm::server::DomainInfoRead,
@@ -27,7 +29,7 @@ mod profile;
 mod radius;
 mod reset;
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "unrecoverable_error.html")]
 struct UnrecoverableErrorView {
     err_code: OperationError,
@@ -36,7 +38,7 @@ struct UnrecoverableErrorView {
     domain_info: DomainInfoRead,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/error_toast.html")]
 struct ErrorToastPartial {
     err_code: OperationError,
@@ -184,9 +186,31 @@ where
     }
 }
 
+/// Used for creating hx events
+pub(crate) enum KanidmHxEventName {
+    AddEmailSwapped,
+    AddTotpSwapped,
+    AddPasskeySwapped,
+    AddPasswordSwapped,
+    PermissionDenied,
+}
+
+impl From<KanidmHxEventName> for HxEvent {
+    fn from(event_name: KanidmHxEventName) -> Self {
+        match event_name {
+            KanidmHxEventName::AddEmailSwapped => HxEvent::new("addEmailSwapped"),
+            KanidmHxEventName::AddTotpSwapped => HxEvent::new("addTotpSwapped"),
+            KanidmHxEventName::AddPasskeySwapped => HxEvent::new("addPasskeySwapped"),
+            KanidmHxEventName::AddPasswordSwapped => HxEvent::new("addPasswordSwapped"),
+            KanidmHxEventName::PermissionDenied => HxEvent::new("permissionDenied"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use askama_axum::IntoResponse;
+
+    use axum::response::IntoResponse;
 
     use super::*;
     #[tokio::test]

@@ -109,6 +109,8 @@ pub struct ScimMail {
 #[serde(rename_all = "camelCase")]
 pub struct ScimSshPublicKey {
     pub label: String,
+
+    #[schema(value_type = String)]
     pub value: SshPublicKey,
 }
 

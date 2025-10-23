@@ -11,6 +11,7 @@ use axum::extract::{rejection::JsonRejection, DefaultBodyLimit, Path, Query, Sta
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{delete, get, post};
 use axum::{Extension, Json, Router};
+use kanidm_proto::scim_v1::ScimEntry;
 use kanidm_proto::scim_v1::{
     client::ScimEntryPostGeneric,
     server::{ScimEntryKanidm, ScimListResponse},
@@ -755,6 +756,7 @@ async fn scim_person_id_message_send_test_get(
         .map_err(WebError::from)
 }
 
+#[instrument(level = "debug", skip_all, name = "https_v1_scim_route_setup")]
 pub fn route_setup() -> Router<ServerState> {
     Router::new()
         .route(
@@ -762,23 +764,23 @@ pub fn route_setup() -> Router<ServerState> {
             get(sync_account_get).post(sync_account_post),
         )
         .route(
-            "/v1/sync_account/:id",
+            "/v1/sync_account/{id}",
             get(sync_account_id_get).patch(sync_account_id_patch),
         )
         .route(
-            "/v1/sync_account/:id/_attr/:attr",
+            "/v1/sync_account/{id}/_attr/{attr}",
             get(sync_account_id_attr_get).put(sync_account_id_attr_put),
         )
         .route(
-            "/v1/sync_account/:id/_finalise",
+            "/v1/sync_account/{id}/_finalise",
             get(sync_account_id_finalise_get),
         )
         .route(
-            "/v1/sync_account/:id/_terminate",
+            "/v1/sync_account/{id}/_terminate",
             get(sync_account_id_terminate_get),
         )
         .route(
-            "/v1/sync_account/:id/_sync_token",
+            "/v1/sync_account/{id}/_sync_token",
             post(sync_account_token_post).delete(sync_account_token_delete),
         )
         // https://datatracker.ietf.org/doc/html/rfc7644#section-3.2
@@ -845,22 +847,22 @@ pub fn route_setup() -> Router<ServerState> {
         //  Entry    /Entry/{id}      GET                    Retrieve a generic entry
         //                                                   of any kind from the database.
         //                                                   {id} is any unique id.
-        .route("/scim/v1/Entry/:id", get(scim_entry_id_get))
+        .route("/scim/v1/Entry/{id}", get(scim_entry_id_get))
         //  Person   /Person/{id}     GET                    Retrieve a a person from the
         //                                                   database.
         //                                                   {id} is any unique id.
-        .route("/scim/v1/Person/:id", get(scim_person_id_get))
+        .route("/scim/v1/Person/{id}", get(scim_person_id_get))
         .route(
-            "/scim/v1/Person/:id/Application/_create_password",
+            "/scim/v1/Person/{id}/Application/_create_password",
             post(scim_person_id_application_create_password),
         )
         .route(
-            "/scim/v1/Person/:id/Application/:apppwd_id",
+            "/scim/v1/Person/{id}/Application/{apppwd_id}",
             delete(scim_person_id_application_delete_password),
         )
         //  Person   /Person/{id}/_messages/_send_test
         .route(
-            "/scim/v1/Person/:id/_message/_send_test",
+            "/scim/v1/Person/{id}/_message/_send_test",
             get(scim_person_id_message_send_test_get),
         )
         //
@@ -881,7 +883,7 @@ pub fn route_setup() -> Router<ServerState> {
         //  Application   /Application/{id}     Delete      Delete the application identified by id
         //
         .route(
-            "/scim/v1/Application/:id",
+            "/scim/v1/Application/{id}",
             get(scim_application_id_get).delete(scim_application_id_delete),
         )
         //  Class      /Class          GET                  List or query Schema Classes
@@ -896,10 +898,10 @@ pub fn route_setup() -> Router<ServerState> {
         //  Message    /Message/_ready   GET               List Messages that are ready to be sent
         .route("/scim/v1/Message/_ready", get(scim_message_ready_get))
         //  Message    /Message/{id}    GET                Fetch message by id
-        .route("/scim/v1/Message/:id", get(scim_message_id_get))
+        .route("/scim/v1/Message/{id}", get(scim_message_id_get))
         //  Message    /Message/{id}/_sent     POST         Mark this message as having been processed and sent
         .route(
-            "/scim/v1/Message/:id/_sent",
+            "/scim/v1/Message/{id}/_sent",
             post(scim_message_id_sent_post),
         )
         // Synchronisation routes.

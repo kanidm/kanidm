@@ -1900,7 +1900,6 @@ pub async fn person_id_radius_token_get(
     person_id_radius_handler(state, id, kopid, client_auth_info).await
 }
 
-// /v1/account/:id/_radius/_token
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_radius/_token",
@@ -3025,11 +3024,17 @@ pub async fn debug_ipinfo(
     Ok(Json::from(trusted_client_ip.client_ip_addr))
 }
 
+#[derive(utoipa::ToSchema)]
+#[schema [value_type=HashMap<String, String>]]
+/// Used entirely to trick Utoipa into generating the correct schema for JWK
+#[allow(dead_code)]
+struct SchemaJwk(Jwk);
+
 #[utoipa::path(
     get,
     path = "/v1/jwk/{key_id}",
     responses(
-        (status=200, body=Jwk, content_type="application/json"),
+        (status=200, body=SchemaJwk, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -3055,21 +3060,21 @@ pub async fn public_jwk_key_id_get(
 
 fn cacheable_routes(state: ServerState) -> Router<ServerState> {
     Router::new()
-        .route("/v1/jwk/:key_id", get(public_jwk_key_id_get))
+        .route("/v1/jwk/{key_id}", get(public_jwk_key_id_get))
         .route(
-            "/v1/person/:id/_radius/_token",
+            "/v1/person/{id}/_radius/_token",
             get(person_id_radius_token_get),
         )
-        .route("/v1/account/:id/_unix/_token", get(account_id_unix_token))
+        .route("/v1/account/{id}/_unix/_token", get(account_id_unix_token))
         .route(
-            "/v1/account/:id/_radius/_token",
+            "/v1/account/{id}/_radius/_token",
             get(account_id_radius_token_get),
         )
         .layer(from_fn(cache_me_short))
         .with_state(state)
 }
 
-#[instrument(skip(state))]
+#[instrument(skip(state), name = "https_v1_route_setup")]
 pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
     Router::new()
         .route("/v1/oauth2", get(super::v1_oauth2::oauth2_get))
@@ -3082,42 +3087,42 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
             post(super::v1_oauth2::oauth2_public_post),
         )
         .route(
-            "/v1/oauth2/:rs_name",
+            "/v1/oauth2/{rs_name}",
             get(super::v1_oauth2::oauth2_id_get)
                 .patch(super::v1_oauth2::oauth2_id_patch)
                 .delete(super::v1_oauth2::oauth2_id_delete),
         )
         .route(
-            "/v1/oauth2/:rs_name/_attr/:attr",
+            "/v1/oauth2/{rs_name}/_attr/{attr}",
             post(super::v1_oauth2::oauth2_id_attr_post)
                 .delete(super::v1_oauth2::oauth2_id_attr_delete),
         )
         .route(
-            "/v1/oauth2/:rs_name/_image",
+            "/v1/oauth2/{rs_name}/_image",
             post(super::v1_oauth2::oauth2_id_image_post)
                 .delete(super::v1_oauth2::oauth2_id_image_delete),
         )
         .route(
-            "/v1/oauth2/:rs_name/_basic_secret",
+            "/v1/oauth2/{rs_name}/_basic_secret",
             get(super::v1_oauth2::oauth2_id_get_basic_secret),
         )
         .route(
-            "/v1/oauth2/:rs_name/_scopemap/:group",
+            "/v1/oauth2/{rs_name}/_scopemap/{group}",
             post(super::v1_oauth2::oauth2_id_scopemap_post)
                 .delete(super::v1_oauth2::oauth2_id_scopemap_delete),
         )
         .route(
-            "/v1/oauth2/:rs_name/_sup_scopemap/:group",
+            "/v1/oauth2/{rs_name}/_sup_scopemap/{group}",
             post(super::v1_oauth2::oauth2_id_sup_scopemap_post)
                 .delete(super::v1_oauth2::oauth2_id_sup_scopemap_delete),
         )
         .route(
-            "/v1/oauth2/:rs_name/_claimmap/:claim_name/:group",
+            "/v1/oauth2/{rs_name}/_claimmap/{claim_name}/{group}",
             post(super::v1_oauth2::oauth2_id_claimmap_post)
                 .delete(super::v1_oauth2::oauth2_id_claimmap_delete),
         )
         .route(
-            "/v1/oauth2/:rs_name/_claimmap/:claim_name",
+            "/v1/oauth2/{rs_name}/_claimmap/{claim_name}",
             post(super::v1_oauth2::oauth2_id_claimmap_join_post),
         )
         .route("/v1/raw/create", post(raw_create))
@@ -3130,24 +3135,24 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
             get(schema_attributetype_get), // post(|| async { "TODO" })
         )
         .route(
-            "/v1/schema/attributetype/:id",
+            "/v1/schema/attributetype/{id}",
             get(schema_attributetype_get_id),
         )
-        // .route("/schema/attributetype/:id", put(|| async { "TODO" }).patch(|| async { "TODO" }))
+        // .route("/schema/attributetype/{id}", put(|| async { "TODO" }).patch(|| async { "TODO" }))
         .route(
             "/v1/schema/classtype",
             get(schema_classtype_get), // .post(|| async { "TODO" })
         )
         .route(
-            "/v1/schema/classtype/:id",
+            "/v1/schema/classtype/{id}",
             get(schema_classtype_get_id), //         .put(|| async { "TODO" })
                                           //         .patch(|| async { "TODO" }),
         )
         .route("/v1/self", get(whoami))
         .route("/v1/self/_uat", get(whoami_uat))
-        // .route("/v1/self/_attr/:attr", get(|| async { "TODO" }))
+        // .route("/v1/self/_attr/{attr}", get(|| async { "TODO" }))
         // .route("/v1/self/_credential", get(|| async { "TODO" }))
-        // .route("/v1/self/_credential/:cid/_lock", get(|| async { "TODO" }))
+        // .route("/v1/self/_credential/{cid}/_lock", get(|| async { "TODO" }))
         // .route(
         //     "/v1/self/_radius",
         //     get(|| async { "TODO" })
@@ -3155,70 +3160,70 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         //         .post(|| async { "TODO" }),
         // )
         // .route("/v1/self/_radius/_config", post(|| async { "TODO" }))
-        // .route("/v1/self/_radius/_config/:token", get(|| async { "TODO" }))
+        // .route("/v1/self/_radius/_config/{token}", get(|| async { "TODO" }))
         // .route(
-        //     "/v1/self/_radius/_config/:token/apple",
+        //     "/v1/self/_radius/_config/{token}/apple",
         //     get(|| async { "TODO" }),
         // )
         // Applinks are the list of apps this account can access.
         .route("/v1/self/_applinks", get(applinks_get))
         // Person routes
         .route("/v1/person", get(person_get).post(person_post))
-        .route("/v1/person/_search/:id", get(person_search_id))
+        .route("/v1/person/_search/{id}", get(person_search_id))
         .route(
-            "/v1/person/:id",
+            "/v1/person/{id}",
             get(person_id_get)
                 .patch(person_id_patch)
                 .delete(person_id_delete),
         )
         .route(
-            "/v1/person/:id/_attr/:attr",
+            "/v1/person/{id}/_attr/{attr}",
             get(person_id_get_attr)
                 .put(person_id_put_attr)
                 .post(person_id_post_attr)
                 .delete(person_id_delete_attr),
         )
         .route(
-            "/v1/person/:id/_certificate",
+            "/v1/person/{id}/_certificate",
             get(person_get_id_certificate).post(person_post_id_certificate),
         )
         .route(
-            "/v1/person/:id/_credential/_status",
+            "/v1/person/{id}/_credential/_status",
             get(person_get_id_credential_status),
         )
         .route(
-            "/v1/person/:id/_credential/_update",
+            "/v1/person/{id}/_credential/_update",
             get(person_id_credential_update_get),
         )
         .route(
-            "/v1/person/:id/_credential/_update_intent/:ttl",
+            "/v1/person/{id}/_credential/_update_intent/{ttl}",
             get(person_id_credential_update_intent_ttl_get),
         )
         .route(
-            "/v1/person/:id/_credential/_update_intent",
+            "/v1/person/{id}/_credential/_update_intent",
             get(person_id_credential_update_intent_get),
         )
         .route(
-            "/v1/person/:id/_ssh_pubkeys",
+            "/v1/person/{id}/_ssh_pubkeys",
             get(person_id_ssh_pubkeys_get).post(person_id_ssh_pubkeys_post),
         )
         .route(
-            "/v1/person/:id/_ssh_pubkeys/:tag",
+            "/v1/person/{id}/_ssh_pubkeys/{tag}",
             get(person_id_ssh_pubkeys_tag_get).delete(person_id_ssh_pubkeys_tag_delete),
         )
         .route(
-            "/v1/person/:id/_radius",
+            "/v1/person/{id}/_radius",
             get(person_id_radius_get)
                 .post(person_id_radius_post)
                 .delete(person_id_radius_delete),
         )
-        .route("/v1/person/:id/_unix", post(person_id_unix_post))
+        .route("/v1/person/{id}/_unix", post(person_id_unix_post))
         .route(
-            "/v1/person/:id/_unix/_credential",
+            "/v1/person/{id}/_unix/_credential",
             put(person_id_unix_credential_put).delete(person_id_unix_credential_delete),
         )
         .route(
-            "/v1/person/:id/_identify_user",
+            "/v1/person/{id}/_identify_user",
             post(person_identify_user_post),
         )
         // Service accounts
@@ -3231,85 +3236,85 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
             get(service_account_get).post(service_account_post),
         )
         .route(
-            "/v1/service_account/:id",
+            "/v1/service_account/{id}",
             get(service_account_id_get)
                 .delete(service_account_id_delete)
                 .patch(service_account_id_patch),
         )
         .route(
-            "/v1/service_account/:id/_attr/:attr",
+            "/v1/service_account/{id}/_attr/{attr}",
             get(service_account_id_get_attr)
                 .put(service_account_id_put_attr)
                 .post(service_account_id_post_attr)
                 .delete(service_account_id_delete_attr),
         )
-        // .route("/v1/service_account/:id/_lock", get(|| async { "TODO" }))
+        // .route("/v1/service_account/{id}/_lock", get(|| async { "TODO" }))
         .route(
-            "/v1/service_account/:id/_into_person",
+            "/v1/service_account/{id}/_into_person",
             #[allow(deprecated)]
             post(service_account_into_person),
         )
         .route(
-            "/v1/service_account/:id/_api_token",
+            "/v1/service_account/{id}/_api_token",
             post(service_account_api_token_post).get(service_account_api_token_get),
         )
         .route(
-            "/v1/service_account/:id/_api_token/:token_id",
+            "/v1/service_account/{id}/_api_token/{token_id}",
             delete(service_account_api_token_delete),
         )
         // .route(
-        //     "/v1/service_account/:id/_credential",
+        //     "/v1/service_account/{id}/_credential",
         //     get(|| async { "TODO" }),
         // )
         .route(
-            "/v1/service_account/:id/_credential/_generate",
+            "/v1/service_account/{id}/_credential/_generate",
             get(service_account_credential_generate),
         )
         .route(
-            "/v1/service_account/:id/_credential/_status",
+            "/v1/service_account/{id}/_credential/_status",
             get(service_account_id_credential_status_get),
         )
         // .route(
-        //     "/v1/service_account/:id/_credential/:cid/_lock",
+        //     "/v1/service_account/{id}/_credential/{cid}/_lock",
         //     get(|| async { "TODO" }),
         // )
         .route(
-            "/v1/service_account/:id/_ssh_pubkeys",
+            "/v1/service_account/{id}/_ssh_pubkeys",
             get(service_account_id_ssh_pubkeys_get).post(service_account_id_ssh_pubkeys_post),
         )
         .route(
-            "/v1/service_account/:id/_ssh_pubkeys/:tag",
+            "/v1/service_account/{id}/_ssh_pubkeys/{tag}",
             get(service_account_id_ssh_pubkeys_tag_get)
                 .delete(service_account_id_ssh_pubkeys_tag_delete),
         )
         .route(
-            "/v1/service_account/:id/_unix",
+            "/v1/service_account/{id}/_unix",
             post(service_account_id_unix_post),
         )
         .route(
-            "/v1/account/:id/_unix/_auth",
+            "/v1/account/{id}/_unix/_auth",
             post(account_id_unix_auth_post),
         )
-        .route("/v1/account/:id/_unix/_token", post(account_id_unix_token))
+        .route("/v1/account/{id}/_unix/_token", post(account_id_unix_token))
         .route(
-            "/v1/account/:id/_radius/_token",
+            "/v1/account/{id}/_radius/_token",
             post(account_id_radius_token_post),
         )
         .route(
-            "/v1/account/:id/_ssh_pubkeys",
+            "/v1/account/{id}/_ssh_pubkeys",
             #[allow(deprecated)]
             get(account_id_ssh_pubkeys_get),
         )
         .route(
-            "/v1/account/:id/_ssh_pubkeys/:tag",
+            "/v1/account/{id}/_ssh_pubkeys/{tag}",
             get(account_id_ssh_pubkeys_tag_get),
         )
         .route(
-            "/v1/account/:id/_user_auth_token",
+            "/v1/account/{id}/_user_auth_token",
             get(account_id_user_auth_token_get),
         )
         .route(
-            "/v1/account/:id/_user_auth_token/:token_id",
+            "/v1/account/{id}/_user_auth_token/{token_id}",
             delete(account_user_auth_token_delete),
         )
         .route(
@@ -3327,23 +3332,23 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
             post(super::v1_domain::image_post).delete(super::v1_domain::image_delete),
         )
         .route(
-            "/v1/domain/_attr/:attr",
+            "/v1/domain/_attr/{attr}",
             get(domain_attr_get)
                 .put(domain_attr_put)
                 .delete(domain_attr_delete),
         )
-        .route("/v1/group/:id/_unix/_token", get(group_id_unix_token_get))
-        .route("/v1/group/:id/_unix", post(group_id_unix_post))
+        .route("/v1/group/{id}/_unix/_token", get(group_id_unix_token_get))
+        .route("/v1/group/{id}/_unix", post(group_id_unix_post))
         .route("/v1/group", get(group_get).post(group_post))
-        .route("/v1/group/_search/:id", get(group_search_id))
+        .route("/v1/group/_search/{id}", get(group_search_id))
         .route(
-            "/v1/group/:id",
+            "/v1/group/{id}",
             get(group_id_get)
                 .patch(group_id_patch)
                 .delete(group_id_delete),
         )
         .route(
-            "/v1/group/:id/_attr/:attr",
+            "/v1/group/{id}/_attr/{attr}",
             delete(group_id_attr_delete)
                 .get(group_id_attr_get)
                 .put(group_id_attr_put)
@@ -3352,22 +3357,22 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .with_state(state.clone())
         .route("/v1/system", get(system_get))
         .route(
-            "/v1/system/_attr/:attr",
+            "/v1/system/_attr/{attr}",
             get(system_attr_get)
                 .post(system_attr_post)
                 .put(system_attr_put)
                 .delete(system_attr_delete),
         )
         .route("/v1/recycle_bin", get(recycle_bin_get))
-        .route("/v1/recycle_bin/:id", get(recycle_bin_id_get))
+        .route("/v1/recycle_bin/{id}", get(recycle_bin_id_get))
         .route(
-            "/v1/recycle_bin/:id/_revive",
+            "/v1/recycle_bin/{id}/_revive",
             post(recycle_bin_revive_id_post),
         )
         // .route("/v1/access_profile", get(|| async { "TODO" }))
-        // .route("/v1/access_profile/:id", get(|| async { "TODO" }))
+        // .route("/v1/access_profile/{id}", get(|| async { "TODO" }))
         // .route(
-        //     "/v1/access_profile/:id/_attr/:attr",
+        //     "/v1/access_profile/{id}/_attr/{attr}",
         //     get(|| async { "TODO" }),
         // )
         .route("/v1/auth", post(auth))

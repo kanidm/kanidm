@@ -8,15 +8,7 @@ use uuid::Uuid;
 use kanidm_proto::internal::OperationError;
 
 use crate::https::middleware::KOpId;
-use crate::https::views::{ErrorToastPartial, UnrecoverableErrorView};
-// #[derive(Template)]
-// #[template(path = "recoverable_error_partial.html")]
-// struct ErrorPartialView {
-//     error_message: String,
-//     operation_id: Uuid,
-//     recovery_path: String,
-//     recovery_boosted: bool,
-// }
+use crate::https::views::{ErrorToastPartial, KanidmHxEventName, UnrecoverableErrorView};
 
 /// The web app's top level error type, this takes an `OperationError` and converts it into a HTTP response.
 #[derive(Debug, ToSchema)]
@@ -41,8 +33,8 @@ impl IntoResponse for HtmxError {
                     | OperationError::SessionExpired
                     | OperationError::InvalidSessionState => Redirect::to("/ui").into_response(),
                     OperationError::SystemProtectedObject | OperationError::AccessDenied => {
-                        let trigger = HxResponseTrigger::after_swap([HxEvent::new(
-                            "permissionDenied".to_string(),
+                        let trigger = HxResponseTrigger::after_swap([HxEvent::from(
+                            KanidmHxEventName::PermissionDenied,
                         )]);
                         (
                             trigger,

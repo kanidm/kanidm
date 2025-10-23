@@ -28,7 +28,7 @@ time = { workspace = true, features = [
     "serde",
 ] }
 url = { workspace = true, features = ["serde"] }
-utoipa = { workspace = true }
+utoipa = { workspace = true, features = ["time"] }
 uuid = { workspace = true, features = ["serde"] }
 [dev-dependencies]
 tracing = { workspace = true }

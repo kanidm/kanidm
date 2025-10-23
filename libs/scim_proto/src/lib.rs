@@ -41,7 +41,7 @@ pub enum ScimAttr {
     // this point.
     #[serde(with = "time::serde::rfc3339")]
     DateTime(OffsetDateTime),
-
+    #[schema(value_type = String)]
     Binary(Base64UrlSafeData),
     Reference(Url),
 }

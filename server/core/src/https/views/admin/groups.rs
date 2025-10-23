@@ -6,8 +6,8 @@ use crate::https::views::navbar::NavbarCtx;
 use crate::https::views::{ErrorToastPartial, Urls};
 use crate::https::ServerState;
 use askama::Template;
+use askama_web::WebTemplate;
 use axum::extract::{Path, State};
-use axum::http::Uri;
 use axum::response::{IntoResponse, Response};
 use axum::Extension;
 use axum_extra::extract::Form;
@@ -25,7 +25,6 @@ use kanidmd_lib::filter::{f_eq, Filter};
 use kanidmd_lib::idm::ClientAuthInfo;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::str::FromStr;
 use uuid::Uuid;
 
 pub const GROUP_ATTRIBUTES: [Attribute; 4] = [
@@ -35,27 +34,27 @@ pub const GROUP_ATTRIBUTES: [Attribute; 4] = [
     Attribute::Member,
 ];
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_panel_template.html")]
 pub(crate) struct GroupsView {
     navbar_ctx: NavbarCtx,
     partial: GroupsPartialView,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_groups_partial.html")]
 struct GroupsPartialView {
     groups: Vec<(ScimGroup, ScimEffectiveAccess)>,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_panel_template.html")]
 struct GroupView {
     partial: GroupViewPartial,
     navbar_ctx: NavbarCtx,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/admin_group_view_partial.html")]
 struct GroupViewPartial {
     group: ScimGroup,
@@ -63,7 +62,7 @@ struct GroupViewPartial {
     scim_effective_access: ScimEffectiveAccess,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(
     ext = "html",
     source = "\
@@ -77,7 +76,7 @@ struct GroupMemberEntryResponse {
     can_edit_member: bool,
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "admin/saved_toast.html")]
 struct SavedToast {}
 
@@ -104,9 +103,7 @@ pub(crate) async fn view_group_view_get(
     };
 
     let path_string = format!("/ui/admin/group/{uuid}/view");
-    let uri = Uri::from_str(path_string.as_str())
-        .map_err(|_| HtmxError::new(&kopid, OperationError::Backend, domain_info.clone()))?;
-    let push_url = HxPushUrl(uri);
+    let push_url = HxPushUrl(path_string);
     Ok(if is_htmx {
         (push_url, group_partial).into_response()
     } else {
@@ -134,7 +131,7 @@ pub(crate) async fn view_groups_get(
         .pre_validated_uat()
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
-    let push_url = HxPushUrl(Uri::from_static("/ui/admin/groups"));
+    let push_url = HxPushUrl("/ui/admin/groups".to_string());
     Ok(if is_htmx {
         (push_url, groups_partial).into_response()
     } else {

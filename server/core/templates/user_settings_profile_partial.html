@@ -5,11 +5,11 @@ Profile
 (% endblock %)
 
 (% macro string_attr(dispname, name, value, editable, attribute) %)
-(% if scim_effective_access.search.check(attribute|as_ref) %)
+(% if scim_effective_access.search.check(&attribute) %)
 <div class="row g-0 mt-3">
     <label for="person(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
     <div class="col-12 col-md-8 col-lg-6">
-        (% if scim_effective_access.modify_present.check(attribute|as_ref) %)
+        (% if scim_effective_access.modify_present.check(&attribute) %)
         <input class="form-control py-0" id="person(( name ))" name="(( name ))" value="(( value ))">
         (% else %)
         <input readonly class="form-control-plaintext py-0" id="person(( name ))" name="(( name ))" value="(( value ))">
@@ -32,7 +32,7 @@ Profile
 
     (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)
 
-    (% let can_edit_email = can_rw && scim_effective_access.modify_present.check(Attribute::Mail|as_ref) %)
+    (% let can_edit_email = can_rw && scim_effective_access.modify_present.check(&Attribute::Mail) %)
     <div class="mb-2">
         <div class="mt-3 mb-2 col-12 col-md-11 col-lg-8">
             <label for="profileEmail" class="fw-bold">Email addresses (% if can_edit_email %)(select primary)(% endif %)</label>
