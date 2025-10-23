@@ -341,14 +341,15 @@ pub async fn create_https_server(
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging
         // coherence to be maintained.
+        .layer(from_fn(middleware::kopid_middleware))
+        .merge(apidocs::router())
+        // this MUST be the last functional layer before with_state else the span never starts and everything breaks.
+        .layer(trace_layer)
+        // OK except for the ip_address_middleware.
         .layer(from_fn_with_state(
             state.clone(),
             middleware::ip_address_middleware,
         ))
-        .layer(from_fn(middleware::kopid_middleware))
-        .merge(apidocs::router())
-        // this MUST be the last layer before with_state else the span never starts and everything breaks.
-        .layer(trace_layer)
         .with_state(state)
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<ClientConnInfo>();
@@ -602,8 +603,6 @@ async fn process_client_hyper<T>(
 where
     T: AsyncRead + AsyncWrite + std::marker::Unpin + std::marker::Send + 'static,
 {
-    debug!(?client_conn_info);
-
     let svc = tower::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
         &mut app,
         client_conn_info,

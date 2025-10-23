@@ -1,8 +1,7 @@
 //! Reimplementation of tower-http's DefaultMakeSpan that only runs at "INFO" level for our own needs.
 
-use axum::http::{Request, StatusCode};
+use axum::http::Request;
 use kanidm_proto::constants::KOPID;
-use sketching::event_dynamic_lvl;
 use tower_http::trace::OnRequest;
 use tracing::{Level, Span};
 
@@ -26,8 +25,6 @@ impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
             client_ip_addr = tracing::field::Empty, // filled in later
             status_code = tracing::field::Empty, // filled in later
             latency = tracing::field::Empty, // filled in later
-            // Defer logging this span until there is child information attached.
-            defer = true,
         )
     }
 }
@@ -36,7 +33,18 @@ impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
 pub(crate) struct DefaultOnRequestKanidmd {}
 
 impl<B> OnRequest<B> for DefaultOnRequestKanidmd {
-    fn on_request(&mut self, _request: &axum::http::Request<B>, _span: &Span) {}
+    fn on_request(&mut self, request: &axum::http::Request<B>, span: &Span) {
+        if let Some(client_conn_info) = request.extensions().get::<crate::https::ClientConnInfo>() {
+            span.record(
+                "connection_addr",
+                client_conn_info.connection_addr.to_string(),
+            );
+            span.record(
+                "client_ip_addr",
+                client_conn_info.client_ip_addr.to_string(),
+            );
+        };
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -64,29 +72,9 @@ impl<B> tower_http::trace::OnResponse<B> for DefaultOnResponseKanidmd {
             Some(val) => val.to_str().unwrap_or("<invalid kopid>"),
             None => "<unknown>",
         };
-        let (level, msg) =
-            match response.status().is_success() || response.status().is_informational() {
-                true => (Level::DEBUG, "response sent"),
-                false => {
-                    if response.status().is_redirection() {
-                        (Level::INFO, "client redirection sent")
-                    } else if response.status().is_client_error() {
-                        if response.status() == StatusCode::NOT_FOUND {
-                            (Level::INFO, "client error")
-                        } else {
-                            (Level::WARN, "client error") // it worked, but there was an input error
-                        }
-                    } else {
-                        (Level::ERROR, "error handling request") // oh no the server failed
-                    }
-                }
-            };
+
         span.record("latency", latency.as_millis());
         span.record("kopid", kopid);
         span.record("status_code", response.status().as_u16());
-        event_dynamic_lvl!(
-            level, // ?latency,
-            msg
-        );
     }
 }
