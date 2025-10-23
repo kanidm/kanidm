@@ -22,7 +22,7 @@ use kanidm_proto::internal::{
     COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
 };
 use kanidm_proto::{
-    oauth2::AccessTokenResponse,
+    oauth2::{AccessTokenRequest, AccessTokenResponse},
     v1::{AuthAllowed, AuthIssueSession, AuthMech},
 };
 use kanidmd_lib::idm::authentication::{AuthCredential, AuthExternal, AuthState, AuthStep};
@@ -731,7 +731,7 @@ pub struct Oauth2AuthorisationResponse {
     state: Option<String>,
 }
 
-pub async fn view_login_oauth2_trust_landing(
+pub async fn view_login_oauth2_landing(
     State(app_state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
@@ -978,8 +978,13 @@ async fn view_login_step(
                         mut authorisation_url,
                         request,
                     } => {
-                        // Encode the request.
-                        let encoded = serde_urlencoded::to_string(&request).unwrap();
+                        // Encode the request
+                        let Ok(encoded) = serde_urlencoded::to_string(&request) else {
+                            error!("Unable to encode request, THIS IS A BUG!!!");
+                            debug!(?request);
+                            return Err(OperationError::InvalidState);
+                        };
+
                         authorisation_url.set_query(Some(&encoded));
 
                         let res = Redirect::to(authorisation_url.as_str()).into_response();
@@ -991,44 +996,30 @@ async fn view_login_step(
                         client_secret,
                         request,
                     } => {
-                        // Setup a client and post the req.
-                        // TODO: Lots of settings we need to be able to configure here,
-                        // but for a proof of concept defaults are okay.
-                        //
-                        // We would probably move the client into the auth server state
-                        // if anything.
-                        let client = reqwest::ClientBuilder::new().build().unwrap();
+                        let response = submit_access_token_request(
+                            token_url,
+                            client_id,
+                            client_secret,
+                            request,
+                        )
+                        .await?;
 
-                        let res = client
-                            .post(token_url.as_str())
-                            .basic_auth(client_id, Some(client_secret))
-                            .form(&request)
-                            .send()
-                            .await
-                            .unwrap();
+                        let auth_cred = AuthCredential::OAuth2AccessTokenResponse { response };
 
-                        // Now depending on the result we have to choose how to proceed.
-                        if res.status() == reqwest::StatusCode::OK {
-                            let response = res.json::<AccessTokenResponse>().await.unwrap();
-                            let auth_cred = AuthCredential::OAuth2AccessTokenResponse { response };
+                        // submit the choice and then loop updating our auth_state.
+                        let inter = state // This may change in the future ...
+                            .qe_r_ref
+                            .handle_auth(
+                                Some(sessionid),
+                                AuthStep::Cred(auth_cred),
+                                kopid.eventid,
+                                client_auth_info.clone(),
+                            )
+                            .await?;
 
-                            // submit the choice and then loop updating our auth_state.
-                            let inter = state // This may change in the future ...
-                                .qe_r_ref
-                                .handle_auth(
-                                    Some(sessionid),
-                                    AuthStep::Cred(auth_cred),
-                                    kopid.eventid,
-                                    client_auth_info.clone(),
-                                )
-                                .await?;
-
-                            // Set the state now for the next loop.
-                            auth_state = inter.state;
-                            continue;
-                        } else {
-                            todo!();
-                        }
+                        // Set the state now for the next loop.
+                        auth_state = inter.state;
+                        continue;
                     }
                 }
             }
@@ -1099,6 +1090,51 @@ async fn view_login_step(
     };
 
     Ok((jar, response).into_response())
+}
+
+async fn submit_access_token_request(
+    token_url: Url,
+    client_id: String,
+    client_secret: String,
+    request: AccessTokenRequest,
+) -> Result<AccessTokenResponse, OperationError> {
+    // Setup a client and post the req.
+    // TODO: Lots of settings we need to be able to configure here,
+    // but for a proof of concept defaults are okay.
+    //
+    // We would probably move the client into the auth server state
+    // if anything.
+    let client = reqwest::ClientBuilder::new().build().map_err(|err| {
+        error!(?err, "Invalid oauth2 http client builder parameters");
+        OperationError::InvalidState
+    })?;
+
+    let res = client
+        .post(token_url.as_str())
+        .basic_auth(&client_id, Some(client_secret))
+        .form(&request)
+        .send()
+        .await
+        .map_err(|err| {
+            error!(
+                ?err,
+                ?token_url,
+                ?client_id,
+                "Unable to submit access token request"
+            );
+            OperationError::InvalidState
+        })?;
+
+    // Now depending on the result we have to choose how to proceed.
+    if res.status() == reqwest::StatusCode::OK {
+        res.json::<AccessTokenResponse>().await.map_err(|err| {
+            error!(?err, "response was not a valid JSON access token response");
+            OperationError::InvalidState
+        })
+    } else {
+        error!(status = ?res.status(), "access token request failed");
+        Err(OperationError::InvalidState)
+    }
 }
 
 fn add_session_cookie(

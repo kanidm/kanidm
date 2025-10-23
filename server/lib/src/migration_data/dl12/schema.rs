@@ -791,25 +791,25 @@ pub static ref SCHEMA_ATTR_MAIL_DESTINATION: SchemaAttribute = SchemaAttribute {
 };
 
 
-pub static ref SCHEMA_ATTR_OAUTH2_TRUST_PROVIDER: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_OAUTH2_TRUST_PROVIDER,
-    name: Attribute::OAuth2TrustProvider,
+pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_PROVIDER: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_PROVIDER,
+    name: Attribute::OAuth2AccountProvider,
     description: " .".to_string(),
     syntax: SyntaxType::ReferenceUuid,
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_OAUTH2_TRUST_CREDENTIAL_UUID: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_OAUTH2_TRUST_CREDENTIAL_UUID,
-    name: Attribute::OAuth2TrustCredentialUuid,
+pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID,
+    name: Attribute::OAuth2AccountCredentialUuid,
     description: " .".to_string(),
     syntax: SyntaxType::Uuid,
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_OAUTH2_TRUST_UNIQUE_USER_ID: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_OAUTH2_TRUST_UNIQUE_USER_ID,
-    name: Attribute::OAuth2TrustUniqueUserId,
+pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID,
+    name: Attribute::OAuth2AccountUniqueUserId,
     description: " .".to_string(),
     syntax: SyntaxType::Utf8String,
     ..Default::default()
@@ -886,16 +886,16 @@ pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-pub static ref SCHEMA_CLASS_PERSON_OAUTH2_TRUST: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_PERSON_OAUTH2_TRUST,
-    name: EntryClass::PersonOAuth2Trust.into(),
-    description: "Marker class designating that a person can use OAuth2 trust for authentication.".to_string(),
+pub static ref SCHEMA_CLASS_OAUTH2_ACCOUNT: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_ACCOUNT,
+    name: EntryClass::OAuth2Account.into(),
+    description: "Marker class designating that an can use OAuth2 for authentication.".to_string(),
     sync_allowed: true,
     systemmust: vec![
-        Attribute::OAuth2TrustProvider,
-        Attribute::OAuth2TrustUniqueUserId,
+        Attribute::OAuth2AccountProvider,
+        Attribute::OAuth2AccountUniqueUserId,
         // This is the "credential id" that allows us to link this trust to a session.
-        Attribute::OAuth2TrustCredentialUuid,
+        Attribute::OAuth2AccountCredentialUuid,
     ],
     systemsupplements: vec![EntryClass::Person.into()],
     ..Default::default()
@@ -1145,10 +1145,10 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-pub static ref SCHEMA_CLASS_OAUTH2_TRUST_CLIENT: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_OAUTH2_TRUST_CLIENT,
-    name: EntryClass::OAuth2TrustClient.into(),
-    description: "The class representing a configured OAuth2 Confidential Client acting as an authentication trust source".to_string(),
+pub static ref SCHEMA_CLASS_OAUTH2_CLIENT: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_CLIENT,
+    name: EntryClass::OAuth2Client.into(),
+    description: "The class representing a configured OAuth2 Confidential Client acting as an authentication source".to_string(),
     systemmust: vec![
         Attribute::Name,
         Attribute::OAuth2ClientId,

@@ -1,8 +1,8 @@
 use super::{CredState, BAD_AUTH_TYPE_MSG, BAD_OAUTH2_CSRF_STATE_MSG};
-use crate::idm::account::OAuth2TrustProviderCred;
+use crate::idm::account::OAuth2AccountCredential;
 use crate::idm::authentication::{AuthCredential, AuthExternal};
 use crate::idm::oauth2::PkceS256Secret;
-use crate::idm::oauth2_trust::OAuth2TrustProvider;
+use crate::idm::oauth2_client::OAuth2ClientProvider;
 use crate::prelude::*;
 use crate::utils;
 use crate::value::{AuthType, SessionExtMetadata};
@@ -12,7 +12,7 @@ use kanidm_proto::oauth2::{
 use std::collections::BTreeSet;
 use std::fmt;
 
-pub struct CredHandlerOAuth2Trust {
+pub struct CredHandlerOAuth2Client {
     // For logging - this is the trust provider we are using.
     provider_id: Uuid,
     provider_name: String,
@@ -33,7 +33,7 @@ pub struct CredHandlerOAuth2Trust {
     csrf_state: String,
 }
 
-impl fmt::Debug for CredHandlerOAuth2Trust {
+impl fmt::Debug for CredHandlerOAuth2Client {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CredHandlerOauth2Trust")
             .field("provider_id", &self.provider_id)
@@ -46,25 +46,25 @@ impl fmt::Debug for CredHandlerOAuth2Trust {
     }
 }
 
-impl CredHandlerOAuth2Trust {
+impl CredHandlerOAuth2Client {
     pub fn new(
-        trust_provider: &OAuth2TrustProvider,
-        trust_user_cred: &OAuth2TrustProviderCred,
+        client_provider: &OAuth2ClientProvider,
+        client_user_cred: &OAuth2AccountCredential,
     ) -> Self {
         let pkce_secret = PkceS256Secret::default();
         let csrf_state = utils::password_from_random();
 
-        CredHandlerOAuth2Trust {
-            provider_id: trust_provider.uuid,
-            provider_name: trust_provider.name.clone(),
-            request_scopes: trust_provider.request_scopes.clone(),
-            user_id: trust_user_cred.user_id.to_string(),
-            user_cred_id: trust_user_cred.cred_id,
-            client_id: trust_provider.client_id.clone(),
-            client_basic_secret: trust_provider.client_basic_secret.clone(),
-            client_redirect_url: trust_provider.client_redirect_uri.clone(),
-            authorisation_endpoint: trust_provider.authorisation_endpoint.clone(),
-            token_endpoint: trust_provider.token_endpoint.clone(),
+        CredHandlerOAuth2Client {
+            provider_id: client_provider.uuid,
+            provider_name: client_provider.name.clone(),
+            request_scopes: client_provider.request_scopes.clone(),
+            user_id: client_user_cred.user_id.to_string(),
+            user_cred_id: client_user_cred.cred_id,
+            client_id: client_provider.client_id.clone(),
+            client_basic_secret: client_provider.client_basic_secret.clone(),
+            client_redirect_url: client_provider.client_redirect_uri.clone(),
+            authorisation_endpoint: client_provider.authorisation_endpoint.clone(),
+            token_endpoint: client_provider.token_endpoint.clone(),
             pkce_secret,
             csrf_state,
         }

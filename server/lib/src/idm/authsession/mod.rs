@@ -2,7 +2,7 @@
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
-use self::handler_oauth2_trust::CredHandlerOAuth2Trust;
+use self::handler_oauth2_client::CredHandlerOAuth2Client;
 use crate::credential::totp::Totp;
 use crate::credential::{BackupCodes, Credential, CredentialType, Password};
 use crate::idm::account::Account;
@@ -12,7 +12,7 @@ use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState};
 use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
 };
-use crate::idm::oauth2_trust::OAuth2TrustProvider;
+use crate::idm::oauth2_client::OAuth2ClientProvider;
 use crate::prelude::*;
 use crate::server::keys::KeyObject;
 use crate::value::{AuthType, Session, SessionExtMetadata, SessionState};
@@ -33,7 +33,7 @@ use webauthn_rs::prelude::{
     SecurityKeyAuthentication, Webauthn,
 };
 
-mod handler_oauth2_trust;
+mod handler_oauth2_client;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fulfilled. This is where MFA or other
@@ -166,7 +166,7 @@ enum CredHandler {
         creds: BTreeMap<AttestedPasskeyV4, Uuid>,
     },
     OAuth2Trust {
-        handler: Arc<CredHandlerOAuth2Trust>,
+        handler: Arc<CredHandlerOAuth2Client>,
     },
 }
 
@@ -1092,7 +1092,7 @@ pub(crate) struct AuthSessionData<'a> {
     pub(crate) ct: Duration,
     pub(crate) client_auth_info: ClientAuthInfo,
 
-    pub(crate) oauth2_trust_provider: Option<&'a OAuth2TrustProvider>,
+    pub(crate) oauth2_client_provider: Option<&'a OAuth2ClientProvider>,
 }
 
 #[derive(Clone)]
@@ -1212,11 +1212,11 @@ impl AuthSession {
                     }
                 };
 
-                if let Some(oauth2_trust_provider) = asd.oauth2_trust_provider {
+                if let Some(oauth2_client_provider) = asd.oauth2_client_provider {
                     // Is it possible to avoid this double Option?
-                    if let Some(trust_user) = asd.account.oauth2_trust_provider() {
-                        let handler = Arc::new(CredHandlerOAuth2Trust::new(
-                            oauth2_trust_provider,
+                    if let Some(trust_user) = asd.account.oauth2_client_provider() {
+                        let handler = Arc::new(CredHandlerOAuth2Client::new(
+                            oauth2_client_provider,
                             trust_user,
                         ));
                         handlers.push(CredHandler::OAuth2Trust { handler })
@@ -1760,7 +1760,7 @@ mod tests {
         BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
     };
     use crate::idm::delayed::DelayedAction;
-    use crate::idm::oauth2_trust::OAuth2TrustProvider;
+    use crate::idm::oauth2_client::OAuth2ClientProvider;
     use crate::migration_data::{BUILTIN_ACCOUNT_ANONYMOUS, BUILTIN_ACCOUNT_TEST_PERSON};
     use crate::prelude::*;
     use crate::server::keys::KeyObjectInternal;
@@ -1807,7 +1807,7 @@ mod tests {
             webauthn: &webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
-            oauth2_trust_provider: None,
+            oauth2_client_provider: None,
         };
 
         let key_object = KeyObjectInternal::new_test();
@@ -1846,7 +1846,7 @@ mod tests {
                 webauthn: $webauthn,
                 ct: duration_from_epoch_now(),
                 client_auth_info: Source::Internal.into(),
-                oauth2_trust_provider: None,
+                oauth2_client_provider: None,
             };
             let key_object = KeyObjectInternal::new_test();
             let (session, state) = AuthSession::new(asd, $privileged, key_object);
@@ -2026,7 +2026,7 @@ mod tests {
             webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
-            oauth2_trust_provider: None,
+            oauth2_client_provider: None,
         };
         let key_object = KeyObjectInternal::new_test();
         let (session, state) = AuthSession::new(asd, false, key_object);
@@ -2067,7 +2067,7 @@ mod tests {
             webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
-            oauth2_trust_provider: None,
+            oauth2_client_provider: None,
         };
         let key_object = KeyObjectInternal::new_test();
         let (session, state) = AuthSession::new(asd, false, key_object);
@@ -2113,7 +2113,7 @@ mod tests {
             webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
-            oauth2_trust_provider: None,
+            oauth2_client_provider: None,
         };
         let key_object = KeyObjectInternal::new_test();
         let (session, state) = AuthSession::new(asd, false, key_object);
@@ -2406,7 +2406,7 @@ mod tests {
                 webauthn: $webauthn,
                 ct: duration_from_epoch_now(),
                 client_auth_info: Source::Internal.into(),
-                oauth2_trust_provider: None,
+                oauth2_client_provider: None,
             };
             let key_object = KeyObjectInternal::new_test();
             let (session, state) = AuthSession::new(asd, false, key_object);
@@ -3429,7 +3429,7 @@ mod tests {
     }
 
     #[test]
-    fn test_idm_authsession_oauth2_trust() {
+    fn test_idm_authsession_oauth2_client() {
         sketching::test_init();
         // Test if the oauth2 workflow operates as expected.
         let (async_tx, mut async_rx) = unbounded();
@@ -3440,12 +3440,12 @@ mod tests {
         let privileged = false;
 
         // create the trust provider
-        let oauth_trust_provider =
-            OAuth2TrustProvider::new_test("test_trust_client", "https://localhost", ["openid"]);
+        let oauth2_client_provider =
+            OAuth2ClientProvider::new_test("test_trust_client", "https://localhost", ["openid"]);
 
         // Configure the account to use it.
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
-        account.setup_oauth2_trust_provider(&oauth_trust_provider);
+        account.setup_oauth2_client_provider(&oauth2_client_provider);
 
         // Start an auth session.
         let asd = AuthSessionData {
@@ -3455,7 +3455,7 @@ mod tests {
             webauthn: &webauthn,
             ct: current_time,
             client_auth_info: Source::Internal.into(),
-            oauth2_trust_provider: Some(&oauth_trust_provider),
+            oauth2_client_provider: Some(&oauth2_client_provider),
         };
         let key_object = KeyObjectInternal::new_test();
 
@@ -3527,7 +3527,7 @@ mod tests {
             token_type: AccessTokenType::Bearer,
             expires_in: 300,
             refresh_token: Some("super_secret_refresh_token".to_string()),
-            scope: oauth_trust_provider.request_scopes.clone(),
+            scope: oauth2_client_provider.request_scopes.clone(),
             id_token: None,
         };
 

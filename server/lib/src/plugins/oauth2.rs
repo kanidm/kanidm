@@ -53,15 +53,15 @@ impl OAuth2 {
         // Do I need some other kind of uuid generator here for oauth2 trust provider creds?
         cand.iter_mut()
             .filter(|entry| {
-                entry.attribute_equality(Attribute::Class, &EntryClass::PersonOAuth2Trust.into())
+                entry.attribute_equality(Attribute::Class, &EntryClass::OAuth2Account.into())
             })
             .for_each(|entry| {
                 if entry
-                    .get_ava_set(Attribute::OAuth2TrustCredentialUuid)
+                    .get_ava_set(Attribute::OAuth2AccountCredentialUuid)
                     .is_none()
                 {
                     entry.set_ava_set(
-                        &Attribute::OAuth2TrustCredentialUuid,
+                        &Attribute::OAuth2AccountCredentialUuid,
                         ValueSetUuid::new(Uuid::new_v4()),
                     )
                 }

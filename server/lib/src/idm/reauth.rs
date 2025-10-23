@@ -136,7 +136,7 @@ impl IdmServerAuthTransaction<'_> {
             webauthn: self.webauthn,
             ct,
             client_auth_info,
-            oauth2_trust_provider: None,
+            oauth2_client_provider: None,
         };
 
         let domain_keys = self.qs_read.get_domain_key_object_handle()?;

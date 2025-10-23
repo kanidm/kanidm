@@ -179,7 +179,7 @@ bitflags::bitflags! {
         const SYNC_AGREEMENT =              0b0000_0000_0010_0000;
         const KEY_MATERIAL   =              0b0000_0000_0100_0000;
         const APPLICATION    =              0b0000_0000_1000_0000;
-        const OAUTH2_TRUST_PROVIDER    =    0b0000_0001_0000_0000;
+        const OAUTH2_CLIENT            =    0b0000_0001_0000_0000;
 
     }
 }
@@ -2629,9 +2629,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[inline]
-    pub(crate) fn get_changed_oauth2_trust_providers(&self) -> bool {
-        self.changed_flags
-            .contains(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+    pub(crate) fn get_changed_oauth2_client(&self) -> bool {
+        self.changed_flags.contains(ChangeFlag::OAUTH2_CLIENT)
     }
 
     /// Indicate that we are about to re-bootstrap this server. You should ONLY

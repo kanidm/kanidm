@@ -6,10 +6,10 @@ use std::fmt;
 // TODO: Move to constants once we have a good path here. Will probably need to be part
 // of the axum config etc.
 // I'm pretty sure this can preserve query strings if we wanted to stash info or flag things?
-pub const OAUTH2_CLIENT_AUTHORISATION_RESPONSE_PATH: &str = "/ui/login/oauth2_trust_landing";
+pub const OAUTH2_CLIENT_AUTHORISATION_RESPONSE_PATH: &str = "/ui/login/oauth2_landing";
 
 #[derive(Clone)]
-pub struct OAuth2TrustProvider {
+pub struct OAuth2ClientProvider {
     pub(crate) name: String,
     pub(crate) uuid: Uuid,
     pub(crate) client_id: String,
@@ -21,9 +21,9 @@ pub struct OAuth2TrustProvider {
     pub(crate) token_endpoint: Url,
 }
 
-impl fmt::Debug for OAuth2TrustProvider {
+impl fmt::Debug for OAuth2ClientProvider {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OAuth2TrustProvider")
+        f.debug_struct("OAuth2ClientProvider")
             .field("provider_id", &self.name)
             .field("provider_name", &self.uuid)
             .field("client_id", &self.client_id)
@@ -31,13 +31,13 @@ impl fmt::Debug for OAuth2TrustProvider {
     }
 }
 
-impl OAuth2TrustProvider {
+impl OAuth2ClientProvider {
     #[cfg(test)]
     pub fn new_test<'a, I: IntoIterator<Item = &'a str>>(
         client_id: &str,
         domain: &str,
         request_scopes: I,
-    ) -> OAuth2TrustProvider {
+    ) -> Self {
         // In prod will be build from our true origin + the actual landing pad.
         let mut client_redirect_uri =
             Url::parse("https://idm.example.com").expect("invalid test data");
@@ -55,8 +55,8 @@ impl OAuth2TrustProvider {
 
         let request_scopes = request_scopes.into_iter().map(String::from).collect();
 
-        OAuth2TrustProvider {
-            name: "test_trust_provider".to_string(),
+        Self {
+            name: "test_client_provider".to_string(),
             uuid: Uuid::new_v4(),
             client_id: client_id.to_string(),
             client_basic_secret,
@@ -70,20 +70,20 @@ impl OAuth2TrustProvider {
 
 impl IdmServerProxyWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
-    pub(crate) fn reload_oauth2_trust_providers(&mut self) -> Result<(), OperationError> {
-        let oauth2_trust_provider_entries = self.qs_write.internal_search(filter!(f_eq(
+    pub(crate) fn reload_oauth2_client_providers(&mut self) -> Result<(), OperationError> {
+        let oauth2_client_provider_entries = self.qs_write.internal_search(filter!(f_eq(
             Attribute::Class,
-            EntryClass::OAuth2TrustClient.into(),
+            EntryClass::OAuth2Client.into(),
         )))?;
 
         // Preprocess
-        let mut oauth2_trust_provider_structs =
-            Vec::with_capacity(oauth2_trust_provider_entries.len());
+        let mut oauth2_client_provider_structs =
+            Vec::with_capacity(oauth2_client_provider_entries.len());
 
         let mut client_redirect_uri = self.origin.clone();
         client_redirect_uri.set_path(OAUTH2_CLIENT_AUTHORISATION_RESPONSE_PATH);
 
-        for provider_entry in oauth2_trust_provider_entries {
+        for provider_entry in oauth2_client_provider_entries {
             let uuid = provider_entry.get_uuid();
             trace!(?uuid, "Checking OAuth2 Provider configuration");
 
@@ -118,7 +118,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                 .map(str::to_string)
                 .collect();
 
-            let provider = OAuth2TrustProvider {
+            let provider = OAuth2ClientProvider {
                 name,
                 uuid,
                 client_id,
@@ -129,15 +129,15 @@ impl IdmServerProxyWriteTransaction<'_> {
                 token_endpoint,
             };
 
-            oauth2_trust_provider_structs.push((uuid, provider));
+            oauth2_client_provider_structs.push((uuid, provider));
         }
 
         // Clear the existing set.
-        self.oauth2_trust_providers.clear();
+        self.oauth2_client_providers.clear();
 
         // Add them all
-        self.oauth2_trust_providers
-            .extend(oauth2_trust_provider_structs);
+        self.oauth2_client_providers
+            .extend(oauth2_client_provider_structs);
 
         // Done!
         Ok(())

@@ -84,8 +84,8 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
             post(login::view_login_pw_post).get(|| async { Redirect::to("/ui") }),
         )
         .route(
-            "/login/oauth2_trust_landing",
-            get(login::view_login_oauth2_trust_landing),
+            "/login/oauth2_landing",
+            get(login::view_login_oauth2_landing),
         )
         .layer(from_fn_with_state(
             state,

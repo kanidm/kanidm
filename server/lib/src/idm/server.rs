@@ -22,7 +22,7 @@ use crate::idm::oauth2::{
     Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
     Oauth2ResourceServersWriteTransaction,
 };
-use crate::idm::oauth2_trust::OAuth2TrustProvider;
+use crate::idm::oauth2_client::OAuth2ClientProvider;
 use crate::idm::radius::RadiusAccount;
 use crate::idm::scim::SyncAccount;
 use crate::idm::serviceaccount::ServiceAccount;
@@ -83,9 +83,9 @@ pub struct IdmServer {
     oauth2rs: Arc<Oauth2ResourceServers>,
     applications: Arc<LdapApplications>,
 
-    /// OAuth2TrustProviders
+    /// OAuth2ClientProviders
     origin: Url,
-    oauth2_trust_providers: HashMap<Uuid, OAuth2TrustProvider>,
+    oauth2_client_providers: HashMap<Uuid, OAuth2ClientProvider>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -93,7 +93,7 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) session_ticket: &'a Semaphore,
     pub(crate) sessions: &'a BptreeMap<Uuid, AuthSessionMutex>,
     pub(crate) softlocks: &'a HashMap<Uuid, CredSoftLockMutex>,
-    pub(crate) oauth2_trust_providers: HashMapReadTxn<'a, Uuid, OAuth2TrustProvider>,
+    pub(crate) oauth2_client_providers: HashMapReadTxn<'a, Uuid, OAuth2ClientProvider>,
 
     pub qs_read: QueryServerReadTransaction<'a>,
     /// Thread/Server ID
@@ -132,7 +132,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub(crate) applications: LdapApplicationsWriteTransaction<'a>,
 
     pub(crate) origin: &'a Url,
-    pub(crate) oauth2_trust_providers: HashMapWriteTxn<'a, Uuid, OAuth2TrustProvider>,
+    pub(crate) oauth2_client_providers: HashMapWriteTxn<'a, Uuid, OAuth2ClientProvider>,
 }
 
 pub struct IdmServerDelayed {
@@ -225,7 +225,7 @@ impl IdmServer {
             oauth2rs: Arc::new(oauth2rs),
             applications: Arc::new(applications),
             origin: origin.clone(),
-            oauth2_trust_providers: HashMap::new(),
+            oauth2_client_providers: HashMap::new(),
         };
         let idm_server_delayed = IdmServerDelayed { async_rx };
         let idm_server_audit = IdmServerAudit { audit_rx };
@@ -234,7 +234,7 @@ impl IdmServer {
 
         idm_write_txn.reload_applications()?;
         idm_write_txn.reload_oauth2()?;
-        idm_write_txn.reload_oauth2_trust_providers()?;
+        idm_write_txn.reload_oauth2_client_providers()?;
 
         idm_write_txn.commit()?;
 
@@ -259,7 +259,7 @@ impl IdmServer {
             audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
             applications: self.applications.read(),
-            oauth2_trust_providers: self.oauth2_trust_providers.read(),
+            oauth2_client_providers: self.oauth2_client_providers.read(),
         })
     }
 
@@ -302,7 +302,7 @@ impl IdmServer {
             oauth2rs: self.oauth2rs.write(),
             applications: self.applications.write(),
             origin: &self.origin,
-            oauth2_trust_providers: self.oauth2_trust_providers.write(),
+            oauth2_client_providers: self.oauth2_client_providers.write(),
         })
     }
 
@@ -1166,14 +1166,14 @@ impl IdmServerAuthTransaction<'_> {
                         });
 
                 // Does the account have any auth trusts?
-                let oauth2_trust_provider =
-                    account.oauth2_trust_provider().and_then(|trust_provider| {
+                let oauth2_client_provider =
+                    account.oauth2_client_provider().and_then(|trust_provider| {
                         debug!(?trust_provider);
                         // Now get the provider, if it'still linked and exists.
-                        self.oauth2_trust_providers.get(&trust_provider.provider)
+                        self.oauth2_client_providers.get(&trust_provider.provider)
                     });
 
-                debug!(?oauth2_trust_provider);
+                debug!(?oauth2_client_provider);
 
                 let asd: AuthSessionData = AuthSessionData {
                     account,
@@ -1182,7 +1182,7 @@ impl IdmServerAuthTransaction<'_> {
                     webauthn: self.webauthn,
                     ct,
                     client_auth_info,
-                    oauth2_trust_provider,
+                    oauth2_client_provider,
                 };
 
                 let domain_keys = self.qs_read.get_domain_key_object_handle()?;
@@ -2230,15 +2230,15 @@ impl IdmServerProxyWriteTransaction<'_> {
             self.reload_oauth2()?;
         }
 
-        if self.qs_write.get_changed_oauth2_trust_providers() {
-            self.reload_oauth2_trust_providers()?;
+        if self.qs_write.get_changed_oauth2_client() {
+            self.reload_oauth2_client_providers()?;
         }
 
         // Commit everything.
         self.applications.commit();
         self.oauth2rs.commit();
         self.cred_update_sessions.commit();
-        self.oauth2_trust_providers.commit();
+        self.oauth2_client_providers.commit();
 
         trace!("cred_update_session.commit");
         self.qs_write.commit()

@@ -245,9 +245,7 @@ impl QueryServerWriteTransaction<'_> {
             self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
 
-        if !self
-            .changed_flags
-            .contains(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+        if !self.changed_flags.contains(ChangeFlag::OAUTH2_CLIENT)
             && norm_cand
                 .iter()
                 .zip(pre_candidates.iter().map(|e| e.as_ref()))
@@ -257,14 +255,12 @@ impl QueryServerWriteTransaction<'_> {
                     // client credentials grant pretty expensive in these cases. To avoid this
                     // we check if "anything else" beside the oauth2session changed in this
                     // txn.
-                    post.attribute_equality(Attribute::Class, &EntryClass::OAuth2TrustClient.into())
-                        || pre.attribute_equality(
-                            Attribute::Class,
-                            &EntryClass::OAuth2TrustClient.into(),
-                        )
+                    post.attribute_equality(Attribute::Class, &EntryClass::OAuth2Client.into())
+                        || pre
+                            .attribute_equality(Attribute::Class, &EntryClass::OAuth2Client.into())
                 })
         {
-            self.changed_flags.insert(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+            self.changed_flags.insert(ChangeFlag::OAUTH2_CLIENT)
         }
 
         if !self.changed_flags.contains(ChangeFlag::DOMAIN)
@@ -463,14 +459,12 @@ impl QueryServerWriteTransaction<'_> {
             self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
 
-        if !self
-            .changed_flags
-            .contains(ChangeFlag::OAUTH2_TRUST_PROVIDER)
-            && norm_cand.iter().any(|e| {
-                e.attribute_equality(Attribute::Class, &EntryClass::OAuth2TrustClient.into())
-            })
+        if !self.changed_flags.contains(ChangeFlag::OAUTH2_CLIENT)
+            && norm_cand
+                .iter()
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::OAuth2Client.into()))
         {
-            self.changed_flags.insert(ChangeFlag::OAUTH2_TRUST_PROVIDER)
+            self.changed_flags.insert(ChangeFlag::OAUTH2_CLIENT)
         }
 
         if !self.changed_flags.contains(ChangeFlag::DOMAIN)

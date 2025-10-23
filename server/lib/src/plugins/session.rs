@@ -72,7 +72,7 @@ impl SessionConsistency {
                         .flat_map(|pks| pks.keys().copied())
                 )
                 .chain(
-                    entry.get_ava_single_uuid(Attribute::OAuth2TrustCredentialUuid)
+                    entry.get_ava_single_uuid(Attribute::OAuth2AccountCredentialUuid)
                 )
                 .collect();
 
