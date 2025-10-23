@@ -269,7 +269,7 @@ Other integrations are under development, but have not been tested.
    kanidm group create homeassistant_access
    kanidm group add-members homeassistant_access your_username
 
-   kanidm system oauth2 create homeassistant "Home Assitant" https://homeassistant.example.com
+   kanidm system oauth2 create homeassistant "Home Assistant" https://homeassistant.example.com
    kanidm system oauth2 add-redirect-url homeassistant https://homeassistant.example.com/auth/openid/callback
    kanidm system oauth2 update-scope-map homeassistant homeassistant_access email openid profile
    kanidm system oauth2 set-image homeassistant ${PWD}/homeassistant.png png
