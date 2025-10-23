@@ -310,9 +310,9 @@ pub async fn create_https_server(
 
     // this sets up the default span which logs the URL etc.
     let trace_layer = TraceLayer::new_for_http()
-        .make_span_with(trace::DefaultMakeSpanKanidmd::new())
-        // setting these to trace because all they do is print "started processing request", and we are already doing that enough!
-        .on_response(trace::DefaultOnResponseKanidmd::new());
+        .make_span_with(trace::DefaultMakeSpanKanidmd {})
+        .on_request(trace::DefaultOnRequestKanidmd::default())
+        .on_response(trace::DefaultOnResponseKanidmd::default());
 
     let app = app
         .merge(static_routes)
@@ -337,16 +337,17 @@ pub async fn create_https_server(
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging
         // coherence to be maintained.
-        .layer(from_fn_with_state(
-            state.clone(),
-            middleware::ip_address_middleware,
-        ))
         .layer(from_fn(middleware::kopid_middleware))
         .merge(apidocs::router())
         // Apply Request Timeouts
         .layer(TimeoutLayer::new(HTTPS_CLIENT_REQUEST_TIMEOUT))
-        // this MUST be the last layer before with_state else the span never starts and everything breaks.
+        // this MUST be the last functional layer before with_state else the span never starts and everything breaks.
         .layer(trace_layer)
+        // OK except for the ip_address_middleware.
+        .layer(from_fn_with_state(
+            state.clone(),
+            middleware::ip_address_middleware,
+        ))
         .with_state(state)
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<ClientConnInfo>();
