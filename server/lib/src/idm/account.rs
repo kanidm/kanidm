@@ -864,7 +864,7 @@ impl Account {
         self.oauth2_client_provider = Some(OAuth2AccountCredential {
             provider: client_provider.uuid,
             cred_id: Uuid::new_v4(),
-            user_id: self.name.clone(),
+            user_id: self.spn.clone(),
         });
     }
 }

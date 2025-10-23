@@ -723,7 +723,7 @@ impl From<Attribute> for String {
 
 /// Sub attributes are a component of SCIM, allowing tagged sub properties of a complex
 /// attribute to be accessed.
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, ToSchema)]
 #[serde(rename_all = "lowercase", try_from = "&str", into = "AttrString")]
 pub enum SubAttribute {
     /// Denotes a primary value.
@@ -734,6 +734,7 @@ pub enum SubAttribute {
     Value,
 
     #[cfg(not(test))]
+    #[schema(value_type = String)]
     Custom(AttrString),
 }
 

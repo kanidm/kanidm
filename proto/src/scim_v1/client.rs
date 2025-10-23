@@ -242,7 +242,7 @@ pub struct ScimEntryPostGeneric {
     pub attrs: BTreeMap<Attribute, JsonValue>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
 pub struct ScimEntryPutGeneric {
     // id is only used to target the entry in question
     pub id: Uuid,
@@ -258,6 +258,7 @@ pub struct ScimEntryPutGeneric {
     // Schemas are decoded as part of "attrs".
     /// Update an attribute to contain the following value state.
     /// If the attribute is None, it is removed.
+    #[schema(value_type = BTreeMap<String, Value>)]
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, Option<JsonValue>>,
 }
