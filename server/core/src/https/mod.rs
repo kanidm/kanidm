@@ -315,7 +315,6 @@ pub async fn create_https_server(
     // this sets up the default span which logs the URL etc.
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(trace::DefaultMakeSpanKanidmd::new())
-        // setting these to trace because all they do is print "started processing request", and we are already doing that enough!
         .on_response(trace::DefaultOnResponseKanidmd::new());
 
     let app = app
