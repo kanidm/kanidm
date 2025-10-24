@@ -10,6 +10,7 @@ use crate::idm::server::{
 };
 use crate::prelude::*;
 use crate::server::keys::{KeyObject, KeyProvidersTransaction, KeyProvidersWriteTransaction};
+use crate::utils;
 use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 use base64::{engine::general_purpose, Engine as _};
 pub use compact_jwt::{compact::JwkKeySet, OidcToken};
@@ -20,21 +21,19 @@ use compact_jwt::{
     JweCompact, JwsCompact, OidcClaims, OidcSubject,
 };
 use concread::cowcell::*;
+use crypto_glue::{s256::Sha256, traits::Digest};
 use hashbrown::HashMap;
 use hashbrown::HashSet;
 use kanidm_proto::constants::*;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
-    OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions, Oauth2Rfc8414MetadataResponse,
-    OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, TokenRevokeRequest,
+    AccessTokenResponse, AccessTokenType, AuthorisationRequest, ClaimType, ClientAuth,
+    ClientPostAuth, CodeChallengeMethod, DeviceAuthorizationResponse, DisplayValue, ErrorResponse,
+    GrantType, GrantTypeReq, IdTokenSignAlg, OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions,
+    Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse,
+    PkceAlg, PkceRequest, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
+    TokenRevokeRequest,
 };
-use kanidm_proto::oauth2::{
-    AccessTokenType, ClaimType, ClientAuth, ClientPostAuth, DeviceAuthorizationResponse,
-    DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
-    TokenEndpointAuthMethod,
-};
-use openssl::sha;
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
 use std::collections::btree_map::Entry as BTreeEntry;
@@ -112,6 +111,53 @@ impl std::fmt::Display for Oauth2Error {
             Oauth2Error::AuthorizationPending => "authorization_pending",
             Oauth2Error::ExpiredToken => "expired_token",
         })
+    }
+}
+
+pub struct PkceS256Secret {
+    secret: String,
+}
+
+impl Default for PkceS256Secret {
+    fn default() -> Self {
+        Self {
+            secret: utils::password_from_random(),
+        }
+    }
+}
+
+impl From<String> for PkceS256Secret {
+    fn from(secret: String) -> Self {
+        Self { secret }
+    }
+}
+
+impl PkceS256Secret {
+    pub fn to_request(&self) -> PkceRequest {
+        let mut hasher = Sha256::new();
+        hasher.update(self.secret.as_bytes());
+        let code_challenge = hasher.finalize();
+
+        PkceRequest {
+            code_challenge: code_challenge.to_vec(),
+            code_challenge_method: CodeChallengeMethod::S256,
+        }
+    }
+
+    pub(crate) fn verifier(&self) -> &str {
+        &self.secret
+    }
+
+    pub fn to_verifier(self) -> String {
+        self.secret
+    }
+
+    pub fn verify<V: AsRef<[u8]>>(&self, challenge: V) -> bool {
+        let mut hasher = Sha256::new();
+        hasher.update(self.secret.as_bytes());
+        let code_challenge = hasher.finalize();
+
+        challenge.as_ref() == code_challenge.as_slice()
     }
 }
 
@@ -1315,11 +1361,10 @@ impl IdmServerProxyWriteTransaction<'_> {
                         security_info!("PKCE code verification failed - code challenge is present, but no verifier was provided");
                         Oauth2Error::InvalidRequest
                     })?;
-            let mut hasher = sha::Sha256::new();
-            hasher.update(code_verifier.as_bytes());
-            let code_verifier_hash: Vec<u8> = hasher.finish().to_vec();
 
-            if code_challenge != code_verifier_hash {
+            let verifier_secret = PkceS256Secret::from(code_verifier.to_string());
+
+            if !verifier_secret.verify(code_challenge) {
                 security_info!(
                     "PKCE code verification failed - this may indicate malicious activity"
                 );
@@ -3126,34 +3171,29 @@ fn check_is_loopback(redirect_uri: &Url) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use base64::{engine::general_purpose, Engine as _};
-    use std::collections::{BTreeMap, BTreeSet};
-    use std::convert::TryFrom;
-    use std::str::FromStr;
-    use std::time::Duration;
-    use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
-
-    use compact_jwt::{
-        compact::JwkUse, crypto::JwsRs256Verifier, dangernoverify::JwsDangerReleaseWithoutVerify,
-        JwaAlg, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, OidcSubject, OidcToken,
-        OidcUnverified,
-    };
-    use kanidm_proto::constants::*;
-    use kanidm_proto::internal::{SshPublicKey, UserAuthToken};
-    use kanidm_proto::oauth2::*;
-    use openssl::sha;
-
+    use super::{Oauth2TokenType, PkceS256Secret};
+    use crate::credential::Credential;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::oauth2::{host_is_local, AuthoriseResponse, Oauth2Error, OauthRSType};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
     use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
     use crate::valueset::{ValueSetOauthScopeMap, ValueSetSshKey};
-
-    use crate::credential::Credential;
+    use base64::{engine::general_purpose, Engine as _};
+    use compact_jwt::{
+        compact::JwkUse, crypto::JwsRs256Verifier, dangernoverify::JwsDangerReleaseWithoutVerify,
+        JwaAlg, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, OidcSubject, OidcToken,
+        OidcUnverified,
+    };
     use kanidm_lib_crypto::CryptoPolicy;
-
-    use super::Oauth2TokenType;
+    use kanidm_proto::constants::*;
+    use kanidm_proto::internal::{SshPublicKey, UserAuthToken};
+    use kanidm_proto::oauth2::*;
+    use std::collections::{BTreeMap, BTreeSet};
+    use std::convert::TryFrom;
+    use std::str::FromStr;
+    use std::time::Duration;
+    use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 
     const TEST_CURRENT_TIME: u64 = 6000;
     const UAT_EXPIRE: u64 = 5;
@@ -3161,22 +3201,12 @@ mod tests {
 
     const UUID_TESTGROUP: Uuid = uuid!("a3028223-bf20-47d5-8b65-967b5d2bb3eb");
 
-    macro_rules! create_code_verifier {
-        ($key:expr) => {{
-            let code_verifier = $key.to_string();
-            let mut hasher = sha::Sha256::new();
-            hasher.update(code_verifier.as_bytes());
-            let code_challenge: Vec<u8> = hasher.finish().iter().copied().collect();
-            (Some(code_verifier), code_challenge)
-        }};
-    }
-
     macro_rules! good_authorisation_request {
         (
             $idms_prox_read:expr,
             $ident:expr,
             $ct:expr,
-            $code_challenge:expr,
+            $pkce_request:expr,
             $scope:expr
         ) => {{
             #[allow(clippy::unnecessary_to_owned)]
@@ -3187,10 +3217,7 @@ mod tests {
                 response_mode: None,
                 client_id: "test_resource_server".to_string(),
                 state: Some("123".to_string()),
-                pkce_request: Some(PkceRequest {
-                    code_challenge: $code_challenge.into(),
-                    code_challenge_method: CodeChallengeMethod::S256,
-                }),
+                pkce_request: Some($pkce_request),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope,
                 nonce: Some("abcdef".to_string()),
@@ -3347,6 +3374,7 @@ mod tests {
                 cred_id,
                 scope: SessionScope::ReadWrite,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -3483,6 +3511,7 @@ mod tests {
                 cred_id,
                 scope: SessionScope::ReadWrite,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -3522,10 +3551,15 @@ mod tests {
     ) -> AccessTokenResponse {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
-        let consent_request =
-            good_authorisation_request!(idms_prox_read, ident, ct, code_challenge, scopes);
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            ident,
+            ct,
+            pkce_secret.to_request(),
+            scopes
+        );
 
         let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
             unreachable!();
@@ -3543,8 +3577,7 @@ mod tests {
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            // From the first step.
-            code_verifier,
+            code_verifier: Some(pkce_secret.to_verifier()),
         }
         .into();
 
@@ -3614,13 +3647,13 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -3646,8 +3679,7 @@ mod tests {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                // From the first step.
-                code_verifier,
+                code_verifier: Some(pkce_secret.to_verifier()),
             },
             client_post_auth: ClientPostAuth {
                 client_id: Some("test_resource_server".to_string()),
@@ -3678,13 +3710,13 @@ mod tests {
         // Get an ident/uat for now.
 
         // == Setup the authorisation request
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -3711,7 +3743,7 @@ mod tests {
                 code: permit_success.code,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 // From the first step.
-                code_verifier,
+                code_verifier: Some(pkce_secret.to_verifier()),
             },
 
             client_post_auth: ClientPostAuth {
@@ -3746,12 +3778,9 @@ mod tests {
         // Need a uat from a user not in the group. Probs anonymous.
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
-        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
-        let pkce_request = Some(PkceRequest {
-            code_challenge,
-            code_challenge_method: CodeChallengeMethod::S256,
-        });
+        let pkce_request = pkce_secret.to_request();
 
         //  * response type != code.
         let auth_req = AuthorisationRequest {
@@ -3760,7 +3789,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: pkce_request.clone(),
+            pkce_request: Some(pkce_request.clone()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
@@ -3804,7 +3833,7 @@ mod tests {
             response_mode: None,
             client_id: "NOT A REAL RESOURCE SERVER".to_string(),
             state: Some("123".to_string()),
-            pkce_request: pkce_request.clone(),
+            pkce_request: Some(pkce_request.clone()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
@@ -3826,7 +3855,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: pkce_request.clone(),
+            pkce_request: Some(pkce_request.clone()),
             redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
@@ -3848,7 +3877,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: pkce_request.clone(),
+            pkce_request: Some(pkce_request.clone()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/wrong_place").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
@@ -3870,7 +3899,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: pkce_request.clone(),
+            pkce_request: Some(pkce_request.clone()),
             redirect_uri: Url::parse("https://portal.example.com/?custom=foo&too=many").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
@@ -3891,7 +3920,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: pkce_request.clone(),
+            pkce_request: Some(pkce_request.clone()),
             redirect_uri: Url::parse("https://portal.example.com").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
@@ -3912,7 +3941,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: pkce_request.clone(),
+            pkce_request: Some(pkce_request.clone()),
             redirect_uri: Url::parse("https://portal.example.com/?wrong=queryparam").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
@@ -3934,7 +3963,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: pkce_request.clone(),
+            pkce_request: Some(pkce_request.clone()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
@@ -3958,7 +3987,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: pkce_request.clone(),
+            pkce_request: Some(pkce_request.clone()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset!["invalid_scope".to_string(), "read".to_string()],
             nonce: None,
@@ -3980,7 +4009,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: pkce_request.clone(),
+            pkce_request: Some(pkce_request.clone()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset!["openid".to_string(), "read".to_string()],
             nonce: None,
@@ -4002,7 +4031,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request,
+            pkce_request: Some(pkce_request),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset!["openid".to_string(), "read".to_string()],
             nonce: None,
@@ -4059,13 +4088,13 @@ mod tests {
 
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
-        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -4137,14 +4166,17 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
+
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
+
+        let code_verifier = Some(pkce_secret.to_verifier());
 
         let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
             unreachable!();
@@ -4248,7 +4280,7 @@ mod tests {
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code.clone(),
             redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
-            code_verifier,
+            code_verifier: code_verifier.clone(),
         }
         .into();
         assert!(
@@ -4287,7 +4319,7 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let redirect_uri = Url::parse("https://portal.example.com/?custom=foo").unwrap();
 
@@ -4296,10 +4328,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: None,
-            pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.clone(),
-                code_challenge_method: CodeChallengeMethod::S256,
-            }),
+            pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: redirect_uri.clone(),
             scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
             nonce: Some("abcdef".to_string()),
@@ -4346,8 +4375,7 @@ mod tests {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
                 redirect_uri,
-                // From the first step.
-                code_verifier: code_verifier.clone(),
+                code_verifier: Some(pkce_secret.to_verifier()),
             },
 
             client_post_auth: ClientPostAuth {
@@ -4375,15 +4403,14 @@ mod tests {
             .process_uat_to_identity(&uat, ct, Source::Internal)
             .expect("Unable to process uat");
 
+        let pkce_secret = PkceS256Secret::default();
+
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: Some(PkceRequest {
-                code_challenge,
-                code_challenge_method: CodeChallengeMethod::S256,
-            }),
+            pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: Url::parse("app://cheese").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
             nonce: Some("abcdef".to_string()),
@@ -4412,8 +4439,7 @@ mod tests {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
                 redirect_uri: Url::parse("app://cheese").unwrap(),
-                // From the first step.
-                code_verifier,
+                code_verifier: Some(pkce_secret.to_verifier()),
             },
 
             client_post_auth: ClientPostAuth {
@@ -4446,12 +4472,12 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -4470,7 +4496,7 @@ mod tests {
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            code_verifier,
+            code_verifier: Some(pkce_secret.to_verifier()),
         }
         .into();
         let oauth2_token = idms_prox_write
@@ -4485,7 +4511,6 @@ mod tests {
         let intr_request = AccessTokenIntrospectRequest {
             token: oauth2_token.access_token,
             token_type_hint: None,
-
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
@@ -4545,12 +4570,13 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
+
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -4570,7 +4596,7 @@ mod tests {
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            code_verifier,
+            code_verifier: Some(pkce_secret.to_verifier()),
         }
         .into();
         let oauth2_token = idms_prox_write
@@ -4716,12 +4742,13 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
+
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -4740,7 +4767,7 @@ mod tests {
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            code_verifier,
+            code_verifier: Some(pkce_secret.to_verifier()),
         }
         .into();
 
@@ -4834,14 +4861,15 @@ mod tests {
 
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let redirect_uri = Url::parse("https://demo.example.com/oauth2/result").unwrap();
-        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let pkce_secret = PkceS256Secret::default();
 
         // Check reject behaviour
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -5216,13 +5244,13 @@ mod tests {
 
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -5242,8 +5270,7 @@ mod tests {
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            // From the first step.
-            code_verifier,
+            code_verifier: Some(pkce_secret.to_verifier()),
         }
         .into();
 
@@ -5410,13 +5437,13 @@ mod tests {
 
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -5436,8 +5463,7 @@ mod tests {
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            // From the first step.
-            code_verifier,
+            code_verifier: Some(pkce_secret.to_verifier()),
         }
         .into();
 
@@ -5657,13 +5683,13 @@ mod tests {
 
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             "openid groups".to_string()
         );
 
@@ -5683,8 +5709,7 @@ mod tests {
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            // From the first step.
-            code_verifier,
+            code_verifier: Some(pkce_secret.to_verifier()),
         }
         .into();
 
@@ -5751,14 +5776,14 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
-        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         // Even in disable pkce mode, we will allow pkce
         let _consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -5848,13 +5873,13 @@ mod tests {
         };
 
         // Check that the id_token is signed with the correct key.
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -5875,8 +5900,7 @@ mod tests {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                // From the first step.
-                code_verifier,
+                code_verifier: Some(pkce_secret.to_verifier()),
             },
 
             client_post_auth: ClientPostAuth {
@@ -5923,12 +5947,13 @@ mod tests {
 
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
-        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
+
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -5955,12 +5980,13 @@ mod tests {
             .process_uat_to_identity(&uat, ct, Source::Internal)
             .expect("Unable to process uat");
 
-        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
+
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -6004,17 +6030,14 @@ mod tests {
             .process_uat_to_identity(&uat, ct, Source::Internal)
             .expect("Unable to process uat");
 
-        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: Some(PkceRequest {
-                code_challenge,
-                code_challenge_method: CodeChallengeMethod::S256,
-            }),
+            pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset!["openid".to_string(), "email".to_string()],
             nonce: Some("abcdef".to_string()),
@@ -6063,17 +6086,14 @@ mod tests {
             .process_uat_to_identity(&uat, ct, Source::Internal)
             .expect("Unable to process uat");
 
-        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: Some(PkceRequest {
-                code_challenge,
-                code_challenge_method: CodeChallengeMethod::S256,
-            }),
+            pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             // Note the scope isn't requested here!
             scope: btreeset!["openid".to_string(), "email".to_string()],
@@ -6115,12 +6135,12 @@ mod tests {
 
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
-        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -6205,7 +6225,7 @@ mod tests {
 
         // == Setup the authorisation request
         // We attempt pkce even though the rs is set to not support pkce.
-        let (code_verifier, _code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         // First, the user does not request pkce in their exchange.
         let auth_req = AuthorisationRequest {
@@ -6246,8 +6266,7 @@ mod tests {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                // Note the code verifier is set to "something else"
-                code_verifier,
+                code_verifier: Some(pkce_secret.to_verifier()),
             },
             client_post_auth: ClientPostAuth {
                 client_id: Some("test_resource_server".to_string()),
@@ -6283,7 +6302,7 @@ mod tests {
 
         // == Setup the authorisation request
         // We attempt pkce even though the rs is set to not support pkce.
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         // First, NOTE the lack of https on the redir uri.
         let auth_req = AuthorisationRequest {
@@ -6291,10 +6310,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.clone(),
-                code_challenge_method: CodeChallengeMethod::S256,
-            }),
+            pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
@@ -6315,7 +6331,7 @@ mod tests {
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -6338,8 +6354,7 @@ mod tests {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
                 redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
-                // Note the code verifier is set to "something else"
-                code_verifier,
+                code_verifier: Some(pkce_secret.to_verifier()),
             },
 
             client_post_auth: ClientPostAuth {
@@ -6370,12 +6385,13 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
+
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -6394,7 +6410,7 @@ mod tests {
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            code_verifier,
+            code_verifier: Some(pkce_secret.to_verifier()),
         }
         .into();
         let access_token_response_1 = idms_prox_write
@@ -7063,13 +7079,13 @@ mod tests {
 
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let consent_request = good_authorisation_request!(
             idms_prox_read,
             &ident,
             ct,
-            code_challenge,
+            pkce_secret.to_request(),
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
@@ -7089,8 +7105,7 @@ mod tests {
         let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            // From the first step.
-            code_verifier,
+            code_verifier: Some(pkce_secret.to_verifier()),
         }
         .into();
 
@@ -7263,17 +7278,14 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
-        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: Some("123".to_string()),
-            pkce_request: Some(PkceRequest {
-                code_challenge,
-                code_challenge_method: CodeChallengeMethod::S256,
-            }),
+            pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: Some("abcdef".to_string()),
@@ -7307,8 +7319,7 @@ mod tests {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
                 redirect_uri,
-                // From the first step.
-                code_verifier,
+                code_verifier: Some(pkce_secret.to_verifier()),
             },
             client_post_auth: ClientPostAuth {
                 client_id: Some("test_resource_server".to_string()),
@@ -7619,7 +7630,7 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
-        let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let pkce_secret = PkceS256Secret::default();
 
         let scope: BTreeSet<String> = OAUTH2_SCOPE_OPENID
             .split(" ")
@@ -7631,10 +7642,7 @@ mod tests {
             response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: None,
-            pkce_request: Some(PkceRequest {
-                code_challenge,
-                code_challenge_method: CodeChallengeMethod::S256,
-            }),
+            pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope,
             nonce: Some("abcdef".to_string()),

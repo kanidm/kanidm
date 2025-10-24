@@ -39,6 +39,13 @@ impl UnixExtensions {
 }
 
 #[derive(Default, Debug, Clone)]
+pub struct OAuth2AccountCredential {
+    pub(crate) provider: Uuid,
+    pub(crate) cred_id: Uuid,
+    pub(crate) user_id: String,
+}
+
+#[derive(Default, Debug, Clone)]
 pub struct Account {
     // To make this self-referential, we'll need to likely make Entry Pin<Arc<_>>
     // so that we can make the references work.
@@ -61,6 +68,7 @@ pub struct Account {
     pub(crate) unix_extn: Option<UnixExtensions>,
     pub(crate) sshkeys: BTreeMap<String, SshPublicKey>,
     pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
+    pub(crate) oauth2_client_provider: Option<OAuth2AccountCredential>,
 }
 
 #[cfg(test)]
@@ -200,6 +208,27 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
+        let maybe_account_provider = $value.get_ava_single_refer(Attribute::OAuth2AccountProvider);
+
+        let maybe_account_unique_user_id =
+            $value.get_ava_single_utf8(Attribute::OAuth2AccountUniqueUserId);
+
+        let maybe_account_credential_id =
+            $value.get_ava_single_uuid(Attribute::OAuth2AccountCredentialUuid);
+
+        let oauth2_client_provider = match (
+            maybe_account_provider,
+            maybe_account_unique_user_id,
+            maybe_account_credential_id,
+        ) {
+            (Some(provider), Some(user_id), Some(cred_id)) => Some(OAuth2AccountCredential {
+                provider,
+                cred_id,
+                user_id: user_id.to_string(),
+            }),
+            _ => None,
+        };
+
         Ok(Account {
             uuid,
             name,
@@ -220,6 +249,7 @@ macro_rules! try_from_entry {
             unix_extn,
             sshkeys,
             apps_pwds,
+            oauth2_client_provider,
         })
     }};
 }
@@ -820,6 +850,22 @@ impl Account {
             sshkeys,
             valid: self.is_within_valid_time(ct),
         })
+    }
+
+    pub(crate) fn oauth2_client_provider(&self) -> Option<&OAuth2AccountCredential> {
+        self.oauth2_client_provider.as_ref()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn setup_oauth2_client_provider(
+        &mut self,
+        client_provider: &crate::idm::oauth2_client::OAuth2ClientProvider,
+    ) {
+        self.oauth2_client_provider = Some(OAuth2AccountCredential {
+            provider: client_provider.uuid,
+            cred_id: Uuid::new_v4(),
+            user_id: self.spn.clone(),
+        });
     }
 }
 

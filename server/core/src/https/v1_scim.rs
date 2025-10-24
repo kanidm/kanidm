@@ -13,7 +13,7 @@ use axum::routing::{delete, get, post};
 use axum::{Extension, Json, Router};
 use kanidm_proto::scim_v1::ScimEntry;
 use kanidm_proto::scim_v1::{
-    client::ScimEntryPostGeneric,
+    client::{ScimEntryPostGeneric, ScimEntryPutGeneric},
     server::{ScimEntryKanidm, ScimListResponse},
     ScimApplicationPassword, ScimApplicationPasswordCreate, ScimEntryGetQuery, ScimSyncRequest,
     ScimSyncState,
@@ -318,6 +318,111 @@ async fn scim_sync_get(
     state
         .qe_r_ref
         .handle_scim_sync_status(client_auth_info, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    get,
+    path = "/scim/v1/Entry",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_entry_get"
+)]
+async fn scim_entry_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Query(scim_entry_get_query): Query<ScimEntryGetQuery>,
+) -> Result<Json<ScimListResponse>, WebError> {
+    state
+        .qe_r_ref
+        .scim_entry_search(
+            client_auth_info,
+            kopid.eventid,
+            EntryClass::Object.into(),
+            scim_entry_get_query,
+        )
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    post,
+    path = "/scim/v1/Entry",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_entry_put"
+)]
+async fn scim_entry_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(post_generic): Json<ScimEntryPostGeneric>,
+) -> Result<Json<ScimEntryKanidm>, WebError> {
+    state
+        .qe_w_ref
+        .scim_entry_create(client_auth_info, kopid.eventid, &[], post_generic)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    put,
+    path = "/scim/v1/Entry",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_entry_put"
+)]
+async fn scim_entry_put(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(put_generic): Json<ScimEntryPutGeneric>,
+) -> Result<Json<ScimEntryKanidm>, WebError> {
+    state
+        .qe_w_ref
+        .handle_scim_entry_put(client_auth_info, kopid.eventid, put_generic)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    delete,
+    path = "/scim/v1/Entry/{id}",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_entry_id_delete"
+)]
+async fn scim_entry_id_delete(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<()>, WebError> {
+    state
+        .qe_w_ref
+        .scim_entry_id_delete(client_auth_info, kopid.eventid, id, EntryClass::Object)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -847,7 +952,16 @@ pub fn route_setup() -> Router<ServerState> {
         //  Entry    /Entry/{id}      GET                    Retrieve a generic entry
         //                                                   of any kind from the database.
         //                                                   {id} is any unique id.
-        .route("/scim/v1/Entry/{id}", get(scim_entry_id_get))
+        .route(
+            "/scim/v1/Entry",
+            get(scim_entry_get)
+                .post(scim_entry_post)
+                .put(scim_entry_put),
+        )
+        .route(
+            "/scim/v1/Entry/{id}",
+            get(scim_entry_id_get).delete(scim_entry_id_delete),
+        )
         //  Person   /Person/{id}     GET                    Retrieve a a person from the
         //                                                   database.
         //                                                   {id} is any unique id.

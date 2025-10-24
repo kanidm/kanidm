@@ -11,7 +11,6 @@ use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::Extension;
 use axum_htmx::{HxPushUrl, HxRequest};
-
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::internal::{OperationError, UserAuthToken};
 use kanidm_proto::scim_v1::server::{
@@ -20,7 +19,7 @@ use kanidm_proto::scim_v1::server::{
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidm_proto::scim_v1::ScimFilter;
 use kanidmd_lib::constants::EntryClass;
-use kanidmd_lib::idm::ClientAuthInfo;
+use kanidmd_lib::idm::authentication::ClientAuthInfo;
 use uuid::Uuid;
 
 pub const PERSON_ATTRIBUTES: [Attribute; 9] = [

@@ -1,7 +1,7 @@
-use crate::idm::AuthState;
+use crate::idm::authentication::{AuthCredential, AuthState, AuthStep};
 use crate::prelude::*;
 use compact_jwt::JwsCompact;
-use kanidm_proto::v1::{AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep};
+use kanidm_proto::v1::{AuthIssueSession, AuthMech};
 
 #[cfg(test)]
 use std::sync::Arc;
@@ -412,10 +412,13 @@ pub struct AuthEvent {
 }
 
 impl AuthEvent {
-    pub fn from_message(sessionid: Option<Uuid>, req: AuthRequest) -> Result<Self, OperationError> {
+    pub fn from_message(
+        sessionid: Option<Uuid>,
+        req_step: AuthStep,
+    ) -> Result<Self, OperationError> {
         Ok(AuthEvent {
             ident: None,
-            step: AuthEventStep::from_authstep(req.step, sessionid)?,
+            step: AuthEventStep::from_authstep(req_step, sessionid)?,
         })
     }
 

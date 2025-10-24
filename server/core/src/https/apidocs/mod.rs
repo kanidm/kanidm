@@ -75,7 +75,11 @@ impl Modify for SecurityAddon {
 
         super::v1_scim::scim_sync_post,
         super::v1_scim::scim_sync_get,
+        super::v1_scim::scim_entry_get,
+        super::v1_scim::scim_entry_post,
+        super::v1_scim::scim_entry_put,
         super::v1_scim::scim_entry_id_get,
+        super::v1_scim::scim_entry_id_delete,
         super::v1_scim::scim_person_id_get,
         super::v1_scim::scim_person_id_application_create_password,
         super::v1_scim::scim_person_id_application_delete_password,

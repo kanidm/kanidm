@@ -1,0 +1,9 @@
+{
+  "class": [
+    "account",
+    "object",
+    "person"
+  ],
+  "displayname": "Test",
+  "name": "test"
+}

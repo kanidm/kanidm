@@ -71,6 +71,9 @@ impl SessionConsistency {
                         .iter()
                         .flat_map(|pks| pks.keys().copied())
                 )
+                .chain(
+                    entry.get_ava_single_uuid(Attribute::OAuth2AccountCredentialUuid)
+                )
                 .collect();
 
             let invalidate: Option<BTreeSet<_>> = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession)
@@ -257,6 +260,7 @@ mod tests {
                 // for auditing purposes.
                 scope,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -420,6 +424,7 @@ mod tests {
                         // for auditing purposes.
                         scope,
                         type_: AuthType::Passkey,
+                        ext_metadata: Default::default(),
                     },
                 )
             ),
@@ -593,6 +598,7 @@ mod tests {
                         // for auditing purposes.
                         scope,
                         type_: AuthType::Passkey,
+                        ext_metadata: Default::default(),
                     },
                 )
             ),
@@ -841,6 +847,7 @@ mod tests {
                 // for auditing purposes.
                 scope,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 

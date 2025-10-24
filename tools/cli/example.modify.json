@@ -1,4 +1,0 @@
-[
-    { "purged": "name" },
-    { "present": ["name", "demo_group"] }
-]

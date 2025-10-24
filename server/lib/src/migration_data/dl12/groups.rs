@@ -332,6 +332,23 @@ lazy_static! {
         ..Default::default()
     };
 
+    pub static ref BUILTIN_GROUP_OAUTH2_CLIENT_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_oauth2_client_admins",
+        description: "Builtin Domain Trust Administration Group.",
+        uuid: UUID_IDM_OAUTH2_CLIENT_ADMINS,
+        entry_managed_by: Some(UUID_SYSTEM_ADMINS),
+        members: vec![UUID_SYSTEM_ADMINS],
+        ..Default::default()
+    };
+
+    pub static ref BUILTIN_GROUP_OAUTH2_ACCOUNT_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_oauth2_account_admins",
+        description: "Builtin Domain Trust Administration Group.",
+        uuid: UUID_IDM_OAUTH2_ACCOUNT_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
 }
 
 // at some point vs code just gives up on syntax highlighting inside lazy_static...
@@ -427,6 +444,8 @@ lazy_static! {
             UUID_IDM_MAIL_ADMINS,
             UUID_IDM_MESSAGE_ADMINS,
             UUID_IDM_MESSAGE_SENDERS,
+            UUID_IDM_OAUTH2_CLIENT_ADMINS,
+            UUID_IDM_OAUTH2_ACCOUNT_ADMINS,
             UUID_IDM_HIGH_PRIVILEGE,
         ],
         ..Default::default()

@@ -3296,6 +3296,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
             cred_id,
             scope,
             type_,
+            ext_metadata: Default::default(),
         },
     );
 
@@ -3337,6 +3338,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
             cred_id,
             scope,
             type_,
+            ext_metadata: Default::default(),
         },
     );
 

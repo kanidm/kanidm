@@ -484,6 +484,9 @@ impl SyntaxType {
 #[repr(u16)]
 pub enum CredentialType {
     Any = 0,
+    /// Since we have no control over external authentication providers, we need
+    /// to rank these below our own authentication methods.
+    External = 5,
     #[default]
     Mfa = 10,
     Passkey = 20,
@@ -498,6 +501,7 @@ impl TryFrom<&str> for CredentialType {
     fn try_from(value: &str) -> Result<CredentialType, Self::Error> {
         match value {
             "any" => Ok(CredentialType::Any),
+            "external" => Ok(CredentialType::External),
             "mfa" => Ok(CredentialType::Mfa),
             "passkey" => Ok(CredentialType::Passkey),
             "attested_passkey" => Ok(CredentialType::AttestedPasskey),
@@ -512,6 +516,7 @@ impl fmt::Display for CredentialType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match self {
             CredentialType::Any => "any",
+            CredentialType::External => "external",
             CredentialType::Mfa => "mfa",
             CredentialType::Passkey => "passkey",
             CredentialType::AttestedPasskey => "attested_passkey",
@@ -1132,6 +1137,7 @@ pub enum AuthType {
     PasswordSecurityKey,
     Passkey,
     AttestedPasskey,
+    OAuth2Trust,
 }
 
 impl fmt::Display for AuthType {
@@ -1145,6 +1151,32 @@ impl fmt::Display for AuthType {
             AuthType::PasswordSecurityKey => write!(f, "passwordsecuritykey"),
             AuthType::Passkey => write!(f, "passkey"),
             AuthType::AttestedPasskey => write!(f, "attested_passkey"),
+            AuthType::OAuth2Trust => write!(f, "oauth2_trust"),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Default)]
+pub enum SessionExtMetadata {
+    #[default]
+    None,
+    OAuth2 {
+        access_expires_at: Duration,
+        access_token: String,
+        refresh_token: Option<String>,
+    },
+}
+
+impl fmt::Debug for SessionExtMetadata {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::None => f.debug_struct("SessionExtMetadata::None").finish(),
+            Self::OAuth2 {
+                access_expires_at, ..
+            } => f
+                .debug_struct("SessionExtMetadata::OAuth2")
+                .field("access_expires_at", access_expires_at)
+                .finish(),
         }
     }
 }
@@ -1159,6 +1191,7 @@ pub struct Session {
     pub cred_id: Uuid,
     pub scope: SessionScope,
     pub type_: AuthType,
+    pub ext_metadata: SessionExtMetadata,
 }
 
 impl fmt::Debug for Session {

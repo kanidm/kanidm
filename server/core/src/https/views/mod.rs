@@ -83,6 +83,10 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
             "/login/pw",
             post(login::view_login_pw_post).get(|| async { Redirect::to("/ui") }),
         )
+        .route(
+            "/login/oauth2_landing",
+            get(login::view_login_oauth2_landing),
+        )
         .layer(from_fn_with_state(
             state,
             middleware::security_headers::csp_header_no_form_action_layer,

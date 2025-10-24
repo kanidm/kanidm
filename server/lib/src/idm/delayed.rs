@@ -1,10 +1,10 @@
 use crate::prelude::*;
 use crate::value::AuthType;
+use crate::value::SessionExtMetadata;
+use std::fmt;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::AuthenticationResult;
-
-use std::fmt;
 
 #[derive(Debug)]
 pub enum DelayedAction {
@@ -64,4 +64,5 @@ pub struct AuthSessionRecord {
     pub issued_by: IdentityId,
     pub scope: SessionScope,
     pub type_: AuthType,
+    pub ext_metadata: SessionExtMetadata,
 }

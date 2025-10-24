@@ -1,12 +1,14 @@
 use crate::be::dbvalue::{
     DbCidV1, DbValueAccessScopeV1, DbValueApiToken, DbValueApiTokenScopeV1, DbValueAuthTypeV1,
-    DbValueIdentityId, DbValueOauth2Session, DbValueSession, DbValueSessionStateV1,
+    DbValueIdentityId, DbValueOauth2Session, DbValueSession, DbValueSessionExtMetadataV1,
+    DbValueSessionStateV1,
 };
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
 use crate::value::{
-    ApiToken, ApiTokenScope, AuthType, Oauth2Session, Session, SessionScope, SessionState,
+    ApiToken, ApiTokenScope, AuthType, Oauth2Session, Session, SessionExtMetadata, SessionScope,
+    SessionState,
 };
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ValueSet};
 use kanidm_proto::scim_v1::server::ScimApiToken;
@@ -82,6 +84,19 @@ impl ValueSetSession {
                     AuthType::PasswordSecurityKey => DbValueAuthTypeV1::PasswordSecurityKey,
                     AuthType::Passkey => DbValueAuthTypeV1::Passkey,
                     AuthType::AttestedPasskey => DbValueAuthTypeV1::AttestedPasskey,
+                    AuthType::OAuth2Trust => DbValueAuthTypeV1::OAuth2Trust,
+                },
+                ext_metadata: match &m.ext_metadata {
+                    SessionExtMetadata::None => DbValueSessionExtMetadataV1::None,
+                    SessionExtMetadata::OAuth2 {
+                        access_expires_at,
+                        access_token,
+                        refresh_token,
+                    } => DbValueSessionExtMetadataV1::OAuth2 {
+                        access_expires_at: *access_expires_at,
+                        access_token: access_token.clone(),
+                        refresh_token: refresh_token.clone(),
+                    },
                 },
             })
             .collect()
@@ -107,6 +122,7 @@ impl ValueSetSession {
                         cred_id,
                         scope,
                         type_,
+                        ext_metadata,
                     } => {
                         // Convert things.
                         let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
@@ -167,6 +183,20 @@ impl ValueSetSession {
                             DbValueAuthTypeV1::PasswordSecurityKey => AuthType::PasswordSecurityKey,
                             DbValueAuthTypeV1::Passkey => AuthType::Passkey,
                             DbValueAuthTypeV1::AttestedPasskey => AuthType::AttestedPasskey,
+                            DbValueAuthTypeV1::OAuth2Trust => AuthType::OAuth2Trust,
+                        };
+
+                        let ext_metadata = match ext_metadata {
+                            DbValueSessionExtMetadataV1::None => SessionExtMetadata::None,
+                            DbValueSessionExtMetadataV1::OAuth2 {
+                                access_expires_at,
+                                access_token,
+                                refresh_token,
+                            } => SessionExtMetadata::OAuth2 {
+                                access_expires_at: *access_expires_at,
+                                access_token: access_token.clone(),
+                                refresh_token: refresh_token.clone(),
+                            },
                         };
 
                         Some((
@@ -179,6 +209,7 @@ impl ValueSetSession {
                                 cred_id: *cred_id,
                                 scope,
                                 type_,
+                                ext_metadata,
                             },
                         ))
                     }
@@ -1303,6 +1334,7 @@ mod tests {
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -1336,6 +1368,7 @@ mod tests {
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -1349,6 +1382,7 @@ mod tests {
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -1377,6 +1411,7 @@ mod tests {
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -1390,6 +1425,7 @@ mod tests {
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -1421,6 +1457,7 @@ mod tests {
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -1435,6 +1472,7 @@ mod tests {
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
+                    ext_metadata: Default::default(),
                 },
             ),
             (
@@ -1447,6 +1485,7 @@ mod tests {
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
+                    ext_metadata: Default::default(),
                 },
             ),
         ])
@@ -1482,6 +1521,7 @@ mod tests {
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -1496,6 +1536,7 @@ mod tests {
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
+                    ext_metadata: Default::default(),
                 },
             ),
             (
@@ -1508,6 +1549,7 @@ mod tests {
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
+                    ext_metadata: Default::default(),
                 },
             ),
         ])
@@ -1547,6 +1589,7 @@ mod tests {
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
+                    ext_metadata: Default::default(),
                 },
             ),
             (
@@ -1559,6 +1602,7 @@ mod tests {
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
+                    ext_metadata: Default::default(),
                 },
             ),
             (
@@ -1571,6 +1615,7 @@ mod tests {
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
+                    ext_metadata: Default::default(),
                 },
             ),
         ])
@@ -1602,6 +1647,7 @@ mod tests {
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         ))
         .chain((0..SESSION_MAXIMUM).map(|_| {
@@ -1615,6 +1661,7 @@ mod tests {
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
+                    ext_metadata: Default::default(),
                 },
             )
         }));
@@ -1905,6 +1952,7 @@ mod tests {
                 cred_id: s_uuid,
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
+                ext_metadata: Default::default(),
             },
         );
 

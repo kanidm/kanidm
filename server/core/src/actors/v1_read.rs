@@ -1,9 +1,4 @@
-use std::convert::TryFrom;
-use std::fs;
-use std::net::IpAddr;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-
+use compact_jwt::{JweCompact, Jwk, JwsCompact};
 use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::internal::{
     ApiToken, AppLink, CURequest, CUSessionToken, CUStatus, CredentialStatus, IdentifyUserRequest,
@@ -12,25 +7,18 @@ use kanidm_proto::internal::{
 };
 use kanidm_proto::oauth2::OidcWebfingerResponse;
 use kanidm_proto::v1::{
-    AuthIssueSession, AuthRequest, Entry as ProtoEntry, UatStatus, UnixGroupToken, UnixUserToken,
-    WhoamiResponse,
+    AuthIssueSession, Entry as ProtoEntry, UatStatus, UnixGroupToken, UnixUserToken, WhoamiResponse,
 };
+use kanidmd_lib::be::BackendTransaction;
 use kanidmd_lib::idm::identityverification::{
     IdentifyUserDisplayCodeEvent, IdentifyUserStartEvent, IdentifyUserSubmitCodeEvent,
 };
-use ldap3_proto::simple::*;
-use regex::Regex;
-use tracing::{error, info, instrument, trace};
-use uuid::Uuid;
-
-use compact_jwt::{JweCompact, Jwk, JwsCompact};
-
-use kanidmd_lib::be::BackendTransaction;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::{
     event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
     idm::account::ListUserAuthTokenEvent,
+    idm::authentication::AuthStep,
     idm::credupdatesession::CredentialUpdateSessionToken,
     idm::event::{
         AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, UnixGroupTokenEvent,
@@ -44,8 +32,16 @@ use kanidmd_lib::{
     },
     idm::server::{DomainInfoRead, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
-    idm::ClientAuthInfo,
 };
+use ldap3_proto::simple::*;
+use regex::Regex;
+use std::convert::TryFrom;
+use std::fs;
+use std::net::IpAddr;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+use tracing::{error, info, instrument, trace};
+use uuid::Uuid;
 
 use super::QueryServerReadV1;
 
@@ -106,7 +102,7 @@ impl QueryServerReadV1 {
     pub async fn handle_auth(
         &self,
         sessionid: Option<Uuid>,
-        req: AuthRequest,
+        req: AuthStep,
         eventid: Uuid,
         client_auth_info: ClientAuthInfo,
     ) -> Result<AuthResult, OperationError> {

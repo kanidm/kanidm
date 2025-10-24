@@ -5,28 +5,27 @@ use crate::idm::application::{
     LdapApplications, LdapApplicationsReadTransaction, LdapApplicationsWriteTransaction,
 };
 use crate::idm::audit::AuditEvent;
+use crate::idm::authentication::{AuthState, PreValidatedTokenStatus};
 use crate::idm::authsession::{AuthSession, AuthSessionData};
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
     WebauthnCounterIncrement,
 };
-use crate::idm::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::event::{
-    CredentialStatusEvent, LdapAuthEvent, LdapTokenAuthEvent, RadiusAuthTokenEvent,
-    RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
-    UnixUserTokenEvent,
+    AuthEvent, AuthEventStep, AuthResult, CredentialStatusEvent, LdapAuthEvent, LdapTokenAuthEvent,
+    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
+    UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
 use crate::idm::group::{Group, Unix};
 use crate::idm::oauth2::{
     Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
     Oauth2ResourceServersWriteTransaction,
 };
+use crate::idm::oauth2_client::OAuth2ClientProvider;
 use crate::idm::radius::RadiusAccount;
 use crate::idm::scim::SyncAccount;
 use crate::idm::serviceaccount::ServiceAccount;
-use crate::idm::AuthState;
-use crate::idm::PreValidatedTokenStatus;
 use crate::prelude::*;
 use crate::server::keys::KeyProvidersTransaction;
 use crate::server::DomainInfo;
@@ -35,7 +34,7 @@ use crate::value::{Session, SessionState};
 use compact_jwt::{Jwk, JwsCompact};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
 use concread::cowcell::CowCellReadTxn;
-use concread::hashmap::HashMap;
+use concread::hashmap::{HashMap, HashMapReadTxn, HashMapWriteTxn};
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_proto::internal::{
     ApiToken, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken, UatPurpose,
@@ -83,6 +82,10 @@ pub struct IdmServer {
     webauthn: Webauthn,
     oauth2rs: Arc<Oauth2ResourceServers>,
     applications: Arc<LdapApplications>,
+
+    /// OAuth2ClientProviders
+    origin: Url,
+    oauth2_client_providers: HashMap<Uuid, OAuth2ClientProvider>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -90,6 +93,7 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) session_ticket: &'a Semaphore,
     pub(crate) sessions: &'a BptreeMap<Uuid, AuthSessionMutex>,
     pub(crate) softlocks: &'a HashMap<Uuid, CredSoftLockMutex>,
+    pub(crate) oauth2_client_providers: HashMapReadTxn<'a, Uuid, OAuth2ClientProvider>,
 
     pub qs_read: QueryServerReadTransaction<'a>,
     /// Thread/Server ID
@@ -126,6 +130,9 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     webauthn: &'a Webauthn,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
     pub(crate) applications: LdapApplicationsWriteTransaction<'a>,
+
+    pub(crate) origin: &'a Url,
+    pub(crate) oauth2_client_providers: HashMapWriteTxn<'a, Uuid, OAuth2ClientProvider>,
 }
 
 pub struct IdmServerDelayed {
@@ -217,6 +224,8 @@ impl IdmServer {
             webauthn,
             oauth2rs: Arc::new(oauth2rs),
             applications: Arc::new(applications),
+            origin: origin.clone(),
+            oauth2_client_providers: HashMap::new(),
         };
         let idm_server_delayed = IdmServerDelayed { async_rx };
         let idm_server_audit = IdmServerAudit { audit_rx };
@@ -225,6 +234,7 @@ impl IdmServer {
 
         idm_write_txn.reload_applications()?;
         idm_write_txn.reload_oauth2()?;
+        idm_write_txn.reload_oauth2_client_providers()?;
 
         idm_write_txn.commit()?;
 
@@ -249,6 +259,7 @@ impl IdmServer {
             audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
             applications: self.applications.read(),
+            oauth2_client_providers: self.oauth2_client_providers.read(),
         })
     }
 
@@ -290,6 +301,8 @@ impl IdmServer {
             webauthn: &self.webauthn,
             oauth2rs: self.oauth2rs.write(),
             applications: self.applications.write(),
+            origin: &self.origin,
+            oauth2_client_providers: self.oauth2_client_providers.write(),
         })
     }
 
@@ -1152,6 +1165,16 @@ impl IdmServerAuthTransaction<'_> {
                             slock_ref
                         });
 
+                // Does the account have any auth trusts?
+                let oauth2_client_provider =
+                    account.oauth2_client_provider().and_then(|trust_provider| {
+                        debug!(?trust_provider);
+                        // Now get the provider, if it'still linked and exists.
+                        self.oauth2_client_providers.get(&trust_provider.provider)
+                    });
+
+                debug!(?oauth2_client_provider);
+
                 let asd: AuthSessionData = AuthSessionData {
                     account,
                     account_policy,
@@ -1159,6 +1182,7 @@ impl IdmServerAuthTransaction<'_> {
                     webauthn: self.webauthn,
                     ct,
                     client_auth_info,
+                    oauth2_client_provider,
                 };
 
                 let domain_keys = self.qs_read.get_domain_key_object_handle()?;
@@ -2137,6 +2161,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                 // for auditing purposes.
                 scope: asr.scope,
                 type_: asr.type_,
+                ext_metadata: Default::default(),
             },
         );
 
@@ -2205,10 +2230,15 @@ impl IdmServerProxyWriteTransaction<'_> {
             self.reload_oauth2()?;
         }
 
+        if self.qs_write.get_changed_oauth2_client() {
+            self.reload_oauth2_client_providers()?;
+        }
+
         // Commit everything.
         self.applications.commit();
         self.oauth2rs.commit();
         self.cred_update_sessions.commit();
+        self.oauth2_client_providers.commit();
 
         trace!("cred_update_session.commit");
         self.qs_write.commit()
@@ -2222,29 +2252,27 @@ mod tests {
     use std::convert::TryFrom;
     use std::time::Duration;
 
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
-    use time::OffsetDateTime;
-    use uuid::Uuid;
-
     use crate::credential::{Credential, Password};
     use crate::idm::account::DestroySessionTokenEvent;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::audit::AuditEvent;
+    use crate::idm::authentication::AuthState;
     use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
     use crate::idm::event::{AuthEvent, AuthResult};
     use crate::idm::event::{
         LdapAuthEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     };
-
     use crate::idm::server::{IdmServer, IdmServerTransaction, Token};
-    use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
     use crate::server::keys::KeyProvidersTransaction;
     use crate::value::{AuthType, SessionState};
     use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
     use kanidm_lib_crypto::CryptoPolicy;
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+    use time::OffsetDateTime;
+    use uuid::Uuid;
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
     const TEST_PASSWORD_INC: &str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
@@ -3586,6 +3614,7 @@ mod tests {
             issued_by: IdentityId::User(UUID_ADMIN),
             scope: SessionScope::ReadOnly,
             type_: AuthType::Passkey,
+            ext_metadata: Default::default(),
         });
         // Persist it.
         let r = idms.delayed_action(ct, da).await;
@@ -3618,6 +3647,7 @@ mod tests {
             issued_by: IdentityId::User(UUID_ADMIN),
             scope: SessionScope::ReadOnly,
             type_: AuthType::Passkey,
+            ext_metadata: Default::default(),
         });
         // Persist it.
         let r = idms.delayed_action(expiry_a, da).await;

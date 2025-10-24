@@ -2,10 +2,10 @@ use crate::prelude::*;
 
 use crate::credential::softlock::CredSoftLock;
 use crate::idm::account::Account;
+use crate::idm::authentication::AuthState;
 use crate::idm::authsession::{AuthSession, AuthSessionData};
 use crate::idm::event::AuthResult;
 use crate::idm::server::IdmServerAuthTransaction;
-use crate::idm::AuthState;
 use crate::utils::uuid_from_duration;
 
 // use webauthn_rs::prelude::Webauthn;
@@ -136,6 +136,7 @@ impl IdmServerAuthTransaction<'_> {
             webauthn: self.webauthn,
             ct,
             client_auth_info,
+            oauth2_client_provider: None,
         };
 
         let domain_keys = self.qs_read.get_domain_key_object_handle()?;
@@ -172,11 +173,11 @@ impl IdmServerAuthTransaction<'_> {
 mod tests {
     use crate::credential::totp::Totp;
     use crate::idm::audit::AuditEvent;
+    use crate::idm::authentication::AuthState;
     use crate::idm::credupdatesession::{InitCredentialUpdateEvent, MfaRegStateStatus};
     use crate::idm::delayed::DelayedAction;
     use crate::idm::event::{AuthEvent, AuthResult};
     use crate::idm::server::IdmServerTransaction;
-    use crate::idm::AuthState;
     use crate::prelude::*;
 
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
