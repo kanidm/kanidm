@@ -912,6 +912,64 @@ ownCloud's login page should now show "Alternative logins" below the normal logi
 [owncloud-ios-mdm]: https://doc.owncloud.com/ios-app/12.2/appendices/mdm.html#oauth2-based-authentication
 [occ]: https://doc.owncloud.com/server/next/admin_manual/configuration/server/occ_command.html
 
+## Portainer
+
+### Kanidm configuration
+
+```sh
+kanidm system oauth2 create portainer Portainer https://portainer.example.com
+kanidm group create portainer-access
+kanidm group add-members portainer-access <YOUR_USERNAME>
+kanidm system oauth2 update-scope-map portainer portainer-access openid profile email
+kanidm system oauth2 show-basic-secret portainer
+kanidm system oauth2 add-redirect-url portainer https://portainer.example.com/
+kanidm system oauth2 warning-insecure-client-disable-pkce portainer
+```
+
+### Portainer configuration
+
+[Portainer](portainer.io) is a container management platform.
+
+1. In *Settings/Authentication* select `Oauth`
+2. Select *Use SSO*
+3. Select *Automatic User Provisioning*
+4. Select *Provider* of *Custom*
+5. Add the following in *OAuth Configuration*
+   + *Client ID*: `portainer` (as specified to Kanidm)
+   + *Client secret*: <CLIENT_SECRET>
+   + *Authorization URL*: `https://idm.axample.com/ui/oauth2`
+   + *Access token URL*: `https://idm.example.com/oauth2/token`
+   * *Resource URL*: `https://idm.example.com/oauth2/openid/portainer/userinfo`
+   * *Redirect URL*: `https://portainer.example.com/`
+   * *User identifier*: `perferred_username`
+   * *Scopes*: `openid profile email`
+
+### Automatic team membership and administrator rights
+
+If you would like to automatically map team membership and/or
+administrator rights, add the following to Kanidm, assuming *home* is
+your team name.
+
+```sh
+kanidm group create portainer-admin
+kanidm group add-members portainer-admin <YOUR_USERNAME>
+kanidm group create portainer-team-home
+kanidm group add-members portainer-team-home <YOUR_USERNAME>
+kanidm system oauth2 update-scope-map portainer portainer-access openid profile email groups
+kanidm system oauth2 update-claim-map-join 'portainer' 'portainer_role' array
+kanidm system oauth2 update-claim-map portainer portainer_role portainer-admin Admin
+kanidm system oauth2 update-claim-map portainer portainer_role portainer-team-home Home
+```
+
+On the Portainer side:
+
+1. Select *Automatic user provisioning*
+2. Select *Automatic team membership*
+3. Set *Claim name* to `groups`
+4. Add a *teams mapping*:  `.*home.*` to `home`
+5. Select *Assign admin rights to group(s)*
+6. Add a *admin mapping* of `.*admin.*`
+
 ## Velociraptor
 
 Velociraptor supports OIDC. To configure it select "Authenticate with SSO" then "OIDC" during the interactive
