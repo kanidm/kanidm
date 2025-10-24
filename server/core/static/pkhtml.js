@@ -6,11 +6,11 @@
  * to get the user's credentials. Upon successful retrieval, it encodes the assertion
  * response back to Base64 and submits the form with the credential data.
  *
- * @function asskey_login
+ * @function passkey_login
  * @throws {Error} If the passkey authentication process fails.
  */
 
-function asskey_login() {
+function passkey_login() {
     let credentialRequestOptions = JSON.parse(document.getElementById("data").textContent);
     credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(credentialRequestOptions.publicKey.challenge);
     credentialRequestOptions.publicKey.allowCredentials?.forEach(function (listItem) {
@@ -45,7 +45,7 @@ function asskey_login() {
 try {
     const myButton = document.getElementById("start-passkey-button");
     myButton.addEventListener("click", () => {
-        asskey_login();
+        passkey_login();
     });
 } catch (error) {
     console.error(`Failed to add button event listener for passkey authentication: ${error}`);
@@ -54,7 +54,7 @@ try {
 try {
     const myButton = document.getElementById("start-seckey-button");
     myButton.addEventListener("click", () => {
-        asskey_login();
+        passkey_login();
     });
 } catch (error) {
     console.error(`Failed to add button event listener for security key authentication: ${error}`);
@@ -62,7 +62,7 @@ try {
 
 try {
     addEventListener("load", () => {
-        asskey_login();
+        passkey_login();
     });
 } catch (error) {
     console.error(`Failed to add load-time event listener for passkey authentication: ${error}`);
