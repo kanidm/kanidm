@@ -160,7 +160,7 @@ axum-macros = "0.5.0"
 axum-htmx = { version = "0.8.1", features = ["serde", "guards"] }
 base32 = "^0.5.1"
 base64 = "^0.22.1"
-base64urlsafedata = "0.5.2"
+base64urlsafedata = "0.5.3"
 bitflags = "^2.9.4"
 bytes = "^1.9.0"
 cidr = "0.3.1"
@@ -265,7 +265,7 @@ sha2 = "0.10.8"
 shellexpand = "3.1.1"
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
-sshkey-attest = "^0.5.2"
+sshkey-attest = "^0.5.3"
 sshkeys = "0.3.3"
 svg = "0.18.0"
 syn = { version = "2.0.107", features = ["full"] }
@@ -288,13 +288,13 @@ urlencoding = "2.1.3"
 utoipa = { version = "5.4.0", features = ["url", "uuid"] }
 utoipa-swagger-ui = "9.0.2"
 uuid = "^1.18.1"
-webauthn-authenticator-rs = { version = "0.5.2", features = [
+webauthn-authenticator-rs = { version = "0.5.3", features = [
     "softpasskey",
     "softtoken",
 ] }
-webauthn-rs = { version = "0.5.2", features = ["preview-features"] }
-webauthn-rs-core = "0.5.2"
-webauthn-rs-proto = "0.5.2"
+webauthn-rs = { version = "0.5.3", features = ["preview-features"] }
+webauthn-rs-core = "0.5.3"
+webauthn-rs-proto = "0.5.3"
 whoami = "^1.6.1"
 walkdir = "2"
 x509-cert = "0.2.5"
