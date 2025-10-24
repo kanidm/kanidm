@@ -17,10 +17,10 @@ pub struct CredHandlerOAuth2Client {
     provider_id: Uuid,
     provider_name: String,
 
+    // The users ID as the remote trust provider knows them.
     user_id: String,
     user_cred_id: Uuid,
 
-    // The users ID as the remote trust provider knows them.
     request_scopes: BTreeSet<String>,
     client_id: String,
     client_basic_secret: String,
@@ -28,8 +28,6 @@ pub struct CredHandlerOAuth2Client {
     authorisation_endpoint: Url,
     token_endpoint: Url,
     pkce_secret: PkceS256Secret,
-    // Post auth we need to verify the token in some manner?
-    // token_verification_method: None | JWT | userinfo | id_token
     csrf_state: String,
 }
 
@@ -112,7 +110,6 @@ impl CredHandlerOAuth2Client {
             return CredState::Denied(BAD_OAUTH2_CSRF_STATE_MSG);
         }
 
-        // How to handle this cleanly?
         let code_verifier = Some(self.pkce_secret.verifier().to_string());
 
         let grant_type_req = GrantTypeReq::AuthorizationCode {

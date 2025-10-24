@@ -1213,7 +1213,6 @@ impl AuthSession {
                 };
 
                 if let Some(oauth2_client_provider) = asd.oauth2_client_provider {
-                    // Is it possible to avoid this double Option?
                     if let Some(trust_user) = asd.account.oauth2_client_provider() {
                         let handler = Arc::new(CredHandlerOAuth2Client::new(
                             oauth2_client_provider,
@@ -3562,9 +3561,8 @@ mod tests {
     }
 
     // As an oauth2 *client* there is far less for us to test, because a lot
-    // depends on the other end to respond. I think the only things that we
-    // might encounter are:
-
-    // stripping of the csrf state check
-    // request scopes were reduced?
+    // depends on the other end to respond. This means there is a very narrow
+    // window of valid responses, and we can already carefully control pretty
+    // much every error state as we'll never get the accessTokenResponse at
+    // all.
 }

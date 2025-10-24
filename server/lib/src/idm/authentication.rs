@@ -46,7 +46,6 @@ impl From<ProtoAuthStep> for AuthStep {
 }
 
 pub enum AuthExternal {
-    // Probably will make this a separate object.
     OAuth2AuthorisationRequest {
         authorisation_url: Url,
         request: AuthorisationRequest,
@@ -156,7 +155,6 @@ pub struct ClientAuthInfo {
     pub(crate) client_cert: Option<ClientCertInfo>,
     pub(crate) bearer_token: Option<JwsCompact>,
     pub(crate) basic_authz: Option<String>,
-    /// we store the prevalidated
     pub(crate) pre_validated_token: PreValidatedTokenStatus,
 }
 

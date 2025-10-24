@@ -2311,7 +2311,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_OAUTH2_ACCOUNT_ENROL: BuiltinAcp = BuiltinAcp{
+    pub static ref IDM_ACP_OAUTH2_ACCOUNT_ENROL: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -2320,9 +2320,10 @@ lazy_static! {
         ],
         name: "idm_acp_oauth2_account_enrol",
         uuid: UUID_IDM_ACP_OAUTH2_ACCOUNT_ENROL,
-        description: "Builtin IDM Control for enroling other accounts as oauth2 authentication consumers.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_OAUTH2_ACCOUNT_ADMINS] ),
-        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+        description:
+            "Builtin IDM Control for enroling other accounts as oauth2 authentication consumers.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Person),
             FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
         ])),
@@ -2346,15 +2347,7 @@ lazy_static! {
             Attribute::OAuth2AccountUniqueUserId,
             Attribute::OAuth2AccountCredentialUuid,
         ],
-        modify_classes: vec![
-            // TODO: Needs to change for modify to work better. Shouldn't need all these.
-            // I think it's a quirk of how Scim updates work.
-            EntryClass::OAuth2Account,
-            EntryClass::Account,
-            EntryClass::Object,
-            EntryClass::Person,
-            EntryClass::MemberOf,
-        ],
+        modify_classes: vec![EntryClass::OAuth2Account,],
         ..Default::default()
     };
 }
