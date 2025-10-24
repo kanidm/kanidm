@@ -24,10 +24,6 @@ impl RawOpt {
                 let client = opt.to_client(OpType::Read).await;
 
                 let query = ScimEntryGetQuery {
-                    // attributes,
-                    // ext_access_check
-                    // count
-                    // start_index
                     filter: Some(filter.clone()),
                     ..Default::default()
                 };

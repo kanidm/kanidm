@@ -794,7 +794,7 @@ pub static ref SCHEMA_ATTR_MAIL_DESTINATION: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_PROVIDER: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_PROVIDER,
     name: Attribute::OAuth2AccountProvider,
-    description: " .".to_string(),
+    description: "The reference to the OAuth2 client that provides authentication for this entry.".to_string(),
     syntax: SyntaxType::ReferenceUuid,
     ..Default::default()
 };
@@ -802,7 +802,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_PROVIDER: SchemaAttribute = SchemaAttr
 pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID,
     name: Attribute::OAuth2AccountCredentialUuid,
-    description: " .".to_string(),
+    description: "The uuid of this credential for session tracking when OAuth2 is used to authenticate.".to_string(),
     syntax: SyntaxType::Uuid,
     ..Default::default()
 };
@@ -810,7 +810,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID: SchemaAttribute = Sch
 pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID,
     name: Attribute::OAuth2AccountUniqueUserId,
-    description: " .".to_string(),
+    description: "The unique user id of this account as known by the remote OAuth2 provider.".to_string(),
     syntax: SyntaxType::Utf8String,
     ..Default::default()
 };
@@ -818,7 +818,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID: SchemaAttribute = Sche
 pub static ref SCHEMA_ATTR_OAUTH2_CLIENT_ID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_CLIENT_ID,
     name: Attribute::OAuth2ClientId,
-    description: " .".to_string(),
+    description: "The OAuth2 Client ID".to_string(),
     syntax: SyntaxType::Utf8String,
     ..Default::default()
 };
@@ -826,8 +826,9 @@ pub static ref SCHEMA_ATTR_OAUTH2_CLIENT_ID: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_OAUTH2_CLIENT_SECRET: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_CLIENT_SECRET,
     name: Attribute::OAuth2ClientSecret,
-    description: " .".to_string(),
-    // TODO: We may need a new secret type that CAN be imported from externally.
+    description: "The OAuth2 Client Secret".to_string(),
+    // TODO: We may need a new secret type that CAN be imported from externally. Currently
+    // our secret string type denies external modification.
     syntax: SyntaxType::Utf8String,
     ..Default::default()
 };
@@ -835,7 +836,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_CLIENT_SECRET: SchemaAttribute = SchemaAttribu
 pub static ref SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT,
     name: Attribute::OAuth2AuthorisationEndpoint,
-    description: " .".to_string(),
+    description: "The authorisation url of the OAuth2 provider".to_string(),
     syntax: SyntaxType::Url,
     ..Default::default()
 };
@@ -843,7 +844,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT: SchemaAttribute = Sche
 pub static ref SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT,
     name: Attribute::OAuth2TokenEndpoint,
-    description: " .".to_string(),
+    description: "The token url of the OAuth2 provider".to_string(),
     syntax: SyntaxType::Url,
     ..Default::default()
 };
@@ -851,7 +852,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT: SchemaAttribute = SchemaAttrib
 pub static ref SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES,
     name: Attribute::OAuth2RequestScopes,
-    description: " .".to_string(),
+    description: "The set of scopes to request during OAuth2 authorisation requests.".to_string(),
     multivalue: true,
     syntax: SyntaxType::OauthScope,
     ..Default::default()

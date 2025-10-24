@@ -250,11 +250,6 @@ impl QueryServerWriteTransaction<'_> {
                 .iter()
                 .zip(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|(post, pre)| {
-                    // This is in the modify path only - because sessions can update the RS
-                    // this can trigger reloads of all the oauth2 clients. That would make
-                    // client credentials grant pretty expensive in these cases. To avoid this
-                    // we check if "anything else" beside the oauth2session changed in this
-                    // txn.
                     post.attribute_equality(Attribute::Class, &EntryClass::OAuth2Client.into())
                         || pre
                             .attribute_equality(Attribute::Class, &EntryClass::OAuth2Client.into())
