@@ -76,7 +76,7 @@ jobs:
           ACTIONS_RUNNER_DEBUG: true
       - name: Upload artifact
         # https://github.com/actions/upload-artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: "individual${{ inputs.tag }}"
           path: ${{ inputs.tag }}.tar.gz
