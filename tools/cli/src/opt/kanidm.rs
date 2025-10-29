@@ -1,6 +1,7 @@
 use clap::{builder::PossibleValue, Args, Subcommand, ValueEnum};
 use kanidm_proto::constants::CLIENT_TOKEN_CACHE;
 use kanidm_proto::internal::ImageType;
+use kanidm_proto::scim_v1::ScimFilter;
 use std::fmt;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
@@ -761,36 +762,24 @@ pub enum SessionOpt {
     Cleanup,
 }
 
-#[derive(Debug, Args, Clone)]
-pub struct FilterOpt {
-    #[clap()]
-    filter: String,
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct CreateOpt {
-    #[clap(value_parser)]
-    file: PathBuf,
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct ModifyOpt {
-    #[clap()]
-    filter: String,
-    #[clap(value_parser)]
-    file: PathBuf,
-}
-
 #[derive(Debug, Subcommand, Clone)]
 pub enum RawOpt {
     #[clap(name = "search")]
-    Search(FilterOpt),
+    Search {
+        filter: ScimFilter
+    },
     #[clap(name = "create")]
-    Create(CreateOpt),
-    #[clap(name = "modify")]
-    Modify(ModifyOpt),
+    Create {
+        file: PathBuf
+    },
+    #[clap(name = "update")]
+    Update {
+        file: PathBuf
+    },
     #[clap(name = "delete")]
-    Delete(FilterOpt),
+    Delete {
+        id: String
+    },
 }
 
 #[derive(Debug, Subcommand, Clone)]

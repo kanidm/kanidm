@@ -1253,6 +1253,7 @@ mod tests {
                         // for auditing purposes.
                         scope,
                         type_: AuthType::Passkey,
+                        ext_metadata: Default::default(),
                     },
                 )
             ),

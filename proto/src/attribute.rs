@@ -1,11 +1,10 @@
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-
 use crate::constants::*;
 use crate::internal::OperationError;
+use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::fmt;
 use std::str::FromStr;
+use utoipa::ToSchema;
 
 pub use smartstring::alias::String as AttrString;
 
@@ -13,7 +12,7 @@ pub use smartstring::alias::String as AttrString;
     Serialize, Deserialize, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, Default, ToSchema,
 )]
 #[cfg_attr(test, derive(enum_iterator::Sequence))]
-#[serde(rename_all = "lowercase", try_from = "&str", into = "AttrString")]
+#[serde(rename_all = "lowercase", from = "String", into = "AttrString")]
 pub enum Attribute {
     Account,
     AccountExpire,
@@ -122,10 +121,14 @@ pub enum Attribute {
     NsAccountLock,
     OAuth2AllowInsecureClientDisablePkce,
     OAuth2AllowLocalhostRedirect,
+    OAuth2AuthorisationEndpoint,
+    OAuth2ClientId,
+    OAuth2ClientSecret,
     OAuth2ConsentScopeMap,
     OAuth2DeviceFlowEnable,
     OAuth2JwtLegacyCryptoEnable,
     OAuth2PreferShortUsername,
+    OAuth2RequestScopes,
     OAuth2RsBasicSecret,
     OAuth2RsClaimMap,
     OAuth2RsImplicitScopes,
@@ -137,6 +140,10 @@ pub enum Attribute {
     OAuth2RsTokenKey,
     OAuth2Session,
     OAuth2StrictRedirectUri,
+    OAuth2TokenEndpoint,
+    OAuth2AccountCredentialUuid,
+    OAuth2AccountProvider,
+    OAuth2AccountUniqueUserId,
     ObjectClass,
     OtherNoIndex,
     PassKeys,
@@ -240,6 +247,12 @@ impl TryFrom<&AttrString> for Attribute {
 impl From<&str> for Attribute {
     fn from(value: &str) -> Self {
         Self::inner_from_str(value)
+    }
+}
+
+impl From<String> for Attribute {
+    fn from(value: String) -> Self {
+        Self::inner_from_str(value.as_str())
     }
 }
 
@@ -373,10 +386,14 @@ impl Attribute {
                 ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE
             }
             Attribute::OAuth2AllowLocalhostRedirect => ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
+            Attribute::OAuth2AuthorisationEndpoint => ATTR_OAUTH2_AUTHORISATION_ENDPOINT,
+            Attribute::OAuth2ClientId => ATTR_OAUTH2_CLIENT_ID,
+            Attribute::OAuth2ClientSecret => ATTR_OAUTH2_CLIENT_SECRET,
             Attribute::OAuth2ConsentScopeMap => ATTR_OAUTH2_CONSENT_SCOPE_MAP,
             Attribute::OAuth2DeviceFlowEnable => ATTR_OAUTH2_DEVICE_FLOW_ENABLE,
             Attribute::OAuth2JwtLegacyCryptoEnable => ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
             Attribute::OAuth2PreferShortUsername => ATTR_OAUTH2_PREFER_SHORT_USERNAME,
+            Attribute::OAuth2RequestScopes => ATTR_OAUTH2_REQUEST_SCOPES,
             Attribute::OAuth2RsBasicSecret => ATTR_OAUTH2_RS_BASIC_SECRET,
             Attribute::OAuth2RsClaimMap => ATTR_OAUTH2_RS_CLAIM_MAP,
             Attribute::OAuth2RsImplicitScopes => ATTR_OAUTH2_RS_IMPLICIT_SCOPES,
@@ -388,6 +405,10 @@ impl Attribute {
             Attribute::OAuth2RsTokenKey => ATTR_OAUTH2_RS_TOKEN_KEY,
             Attribute::OAuth2Session => ATTR_OAUTH2_SESSION,
             Attribute::OAuth2StrictRedirectUri => ATTR_OAUTH2_STRICT_REDIRECT_URI,
+            Attribute::OAuth2TokenEndpoint => ATTR_OAUTH2_TOKEN_ENDPOINT,
+            Attribute::OAuth2AccountCredentialUuid => ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID,
+            Attribute::OAuth2AccountProvider => ATTR_OAUTH2_ACCOUNT_PROVIDER,
+            Attribute::OAuth2AccountUniqueUserId => ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID,
             Attribute::ObjectClass => ATTR_OBJECTCLASS,
             Attribute::OtherNoIndex => ATTR_OTHER_NO_INDEX,
             Attribute::PassKeys => ATTR_PASSKEYS,
@@ -578,10 +599,14 @@ impl Attribute {
                 Attribute::OAuth2AllowInsecureClientDisablePkce
             }
             ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT => Attribute::OAuth2AllowLocalhostRedirect,
+            ATTR_OAUTH2_AUTHORISATION_ENDPOINT => Attribute::OAuth2AuthorisationEndpoint,
+            ATTR_OAUTH2_CLIENT_ID => Attribute::OAuth2ClientId,
+            ATTR_OAUTH2_CLIENT_SECRET => Attribute::OAuth2ClientSecret,
             ATTR_OAUTH2_CONSENT_SCOPE_MAP => Attribute::OAuth2ConsentScopeMap,
             ATTR_OAUTH2_DEVICE_FLOW_ENABLE => Attribute::OAuth2DeviceFlowEnable,
             ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE => Attribute::OAuth2JwtLegacyCryptoEnable,
             ATTR_OAUTH2_PREFER_SHORT_USERNAME => Attribute::OAuth2PreferShortUsername,
+            ATTR_OAUTH2_REQUEST_SCOPES => Attribute::OAuth2RequestScopes,
             ATTR_OAUTH2_RS_BASIC_SECRET => Attribute::OAuth2RsBasicSecret,
             ATTR_OAUTH2_RS_CLAIM_MAP => Attribute::OAuth2RsClaimMap,
             ATTR_OAUTH2_RS_IMPLICIT_SCOPES => Attribute::OAuth2RsImplicitScopes,
@@ -593,6 +618,10 @@ impl Attribute {
             ATTR_OAUTH2_RS_TOKEN_KEY => Attribute::OAuth2RsTokenKey,
             ATTR_OAUTH2_SESSION => Attribute::OAuth2Session,
             ATTR_OAUTH2_STRICT_REDIRECT_URI => Attribute::OAuth2StrictRedirectUri,
+            ATTR_OAUTH2_TOKEN_ENDPOINT => Attribute::OAuth2TokenEndpoint,
+            ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID => Attribute::OAuth2AccountCredentialUuid,
+            ATTR_OAUTH2_ACCOUNT_PROVIDER => Attribute::OAuth2AccountProvider,
+            ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID => Attribute::OAuth2AccountUniqueUserId,
             ATTR_OBJECTCLASS => Attribute::ObjectClass,
             ATTR_OTHER_NO_INDEX => Attribute::OtherNoIndex,
             ATTR_PASSKEYS => Attribute::PassKeys,
@@ -694,7 +723,7 @@ impl From<Attribute> for String {
 
 /// Sub attributes are a component of SCIM, allowing tagged sub properties of a complex
 /// attribute to be accessed.
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, ToSchema)]
 #[serde(rename_all = "lowercase", try_from = "&str", into = "AttrString")]
 pub enum SubAttribute {
     /// Denotes a primary value.
@@ -705,6 +734,7 @@ pub enum SubAttribute {
     Value,
 
     #[cfg(not(test))]
+    #[schema(value_type = String)]
     Custom(AttrString),
 }
 

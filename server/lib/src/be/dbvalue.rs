@@ -528,6 +528,19 @@ pub enum DbValueAuthTypeV1 {
     Passkey,
     #[serde(rename = "ap")]
     AttestedPasskey,
+    #[serde(rename = "ot")]
+    OAuth2Trust,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
+pub enum DbValueSessionExtMetadataV1 {
+    #[default]
+    None,
+    OAuth2 {
+        access_expires_at: Duration,
+        access_token: String,
+        refresh_token: Option<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -595,6 +608,8 @@ pub enum DbValueSession {
         scope: DbValueAccessScopeV1,
         #[serde(rename = "t")]
         type_: DbValueAuthTypeV1,
+        #[serde(rename = "x", default)]
+        ext_metadata: DbValueSessionExtMetadataV1,
     },
 }
 

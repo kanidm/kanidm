@@ -49,10 +49,12 @@ openssl = { workspace = true }
 opentelemetry = { workspace = true, features = ["logs"] }
 qrcode = { workspace = true, features = ["svg"] }
 regex = { workspace = true }
+reqwest = { workspace = true }
 rustls = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
+serde_urlencoded = { workspace = true }
 sketching = { workspace = true }
 sshkeys = { workspace = true }
 sshkey-attest = { workspace = true }

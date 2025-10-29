@@ -2251,3 +2251,103 @@ lazy_static! {
         ..Default::default()
     };
 }
+
+lazy_static! {
+    pub static ref IDM_ACP_OAUTH2_CLIENT_ADMIN: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_oauth2_client_admin",
+        uuid: UUID_IDM_ACP_OAUTH2_CLIENT_ADMIN,
+        description:
+            "Builtin IDM Control for granting oauth2 trust provider administration rights.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_CLIENT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::OAuth2Client),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::OAuth2ClientId,
+            Attribute::OAuth2ClientSecret,
+            Attribute::OAuth2AuthorisationEndpoint,
+            Attribute::OAuth2TokenEndpoint,
+            Attribute::OAuth2RequestScopes,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::OAuth2ClientId,
+            Attribute::OAuth2ClientSecret,
+            Attribute::OAuth2AuthorisationEndpoint,
+            Attribute::OAuth2TokenEndpoint,
+            Attribute::OAuth2RequestScopes,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::OAuth2ClientId,
+            Attribute::OAuth2ClientSecret,
+            Attribute::OAuth2AuthorisationEndpoint,
+            Attribute::OAuth2TokenEndpoint,
+            Attribute::OAuth2RequestScopes,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::OAuth2ClientId,
+            Attribute::OAuth2ClientSecret,
+            Attribute::OAuth2AuthorisationEndpoint,
+            Attribute::OAuth2TokenEndpoint,
+            Attribute::OAuth2RequestScopes,
+        ],
+        create_classes: vec![EntryClass::OAuth2Client,],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_OAUTH2_ACCOUNT_ENROL: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_oauth2_account_enrol",
+        uuid: UUID_IDM_ACP_OAUTH2_ACCOUNT_ENROL,
+        description:
+            "Builtin IDM Control for enroling other accounts as oauth2 authentication consumers.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::OAuth2AccountProvider,
+            Attribute::OAuth2AccountUniqueUserId,
+            Attribute::OAuth2AccountCredentialUuid,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Class,
+            Attribute::OAuth2AccountProvider,
+            Attribute::OAuth2AccountUniqueUserId,
+            Attribute::OAuth2AccountCredentialUuid,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Class,
+            Attribute::OAuth2AccountProvider,
+            Attribute::OAuth2AccountUniqueUserId,
+            Attribute::OAuth2AccountCredentialUuid,
+        ],
+        modify_classes: vec![EntryClass::OAuth2Account,],
+        ..Default::default()
+    };
+}

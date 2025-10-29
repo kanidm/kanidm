@@ -1,5 +1,8 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::scim_v1::{ScimEntryGeneric, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState};
+use kanidm_proto::scim_v1::{
+    client::{ScimEntryPostGeneric, ScimEntryPutGeneric, ScimListEntry},
+    ScimEntryGeneric, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+};
 
 impl KanidmClient {
     pub async fn scim_v1_sync_status(&self) -> Result<ScimSyncState, ClientError> {
@@ -32,6 +35,33 @@ impl KanidmClient {
         query: Option<ScimEntryGetQuery>,
     ) -> Result<ScimEntryGeneric, ClientError> {
         self.perform_get_request_query(format!("/scim/v1/Person/{name_or_uuid}").as_str(), query)
+            .await
+    }
+
+    pub async fn scim_v1_entry_query(
+        &self,
+        query: ScimEntryGetQuery,
+    ) -> Result<ScimListEntry, ClientError> {
+        self.perform_get_request_query("/scim/v1/Entry", Some(query))
+            .await
+    }
+
+    pub async fn scim_v1_entry_create(
+        &self,
+        entry: ScimEntryPostGeneric,
+    ) -> Result<ScimEntryGeneric, ClientError> {
+        self.perform_post_request("/scim/v1/Entry", entry).await
+    }
+
+    pub async fn scim_v1_entry_update(
+        &self,
+        entry: ScimEntryPutGeneric,
+    ) -> Result<ScimEntryGeneric, ClientError> {
+        self.perform_put_request("/scim/v1/Entry", entry).await
+    }
+
+    pub async fn scim_v1_entry_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/scim/v1/Entry/{id}").as_str())
             .await
     }
 }

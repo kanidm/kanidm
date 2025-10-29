@@ -1,10 +1,10 @@
-use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
-use std::sync::Arc;
-
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::utils::password_from_random;
+use crate::valueset::ValueSetUuid;
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
+use std::sync::Arc;
 
 pub struct OAuth2 {}
 
@@ -50,6 +50,23 @@ impl OAuth2 {
     ) -> Result<(), OperationError> {
         let domain_level = qs.get_domain_version();
 
+        cand.iter_mut()
+            .filter(|entry| {
+                entry.attribute_equality(Attribute::Class, &EntryClass::OAuth2Account.into())
+            })
+            .for_each(|entry| {
+                if entry
+                    .get_ava_set(Attribute::OAuth2AccountCredentialUuid)
+                    .is_none()
+                {
+                    entry.set_ava_set(
+                        &Attribute::OAuth2AccountCredentialUuid,
+                        ValueSetUuid::new(Uuid::new_v4()),
+                    )
+                }
+            });
+
+        // Populate attributes into the oauth2 clients.
         cand.iter_mut()
             .filter(|entry| {
                 entry.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())

@@ -48,7 +48,7 @@ pub struct ScimEntryGeneric {
     pub attrs: BTreeMap<Attribute, JsonValue>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum ScimSortOrder {
     #[default]
@@ -59,7 +59,7 @@ pub enum ScimSortOrder {
 /// SCIM Query Parameters used during the get of a single entry
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimEntryGetQuery {
     #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, Attribute>>")]
@@ -74,11 +74,14 @@ pub struct ScimEntryGetQuery {
     pub sort_order: Option<ScimSortOrder>,
 
     // Pagination https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.4
+    #[schema(value_type = u64)]
     pub start_index: Option<NonZeroU64>,
+    #[schema(value_type = u64)]
     pub count: Option<NonZeroU64>,
 
     // Strongly typed filter (rather than generic)
     #[serde_as(as = "Option<DisplayFromStr>")]
+    #[schema(value_type = JsonValue)]
     pub filter: Option<ScimFilter>,
 }
 
@@ -146,7 +149,7 @@ pub struct ScimApplicationPasswordCreate {
     pub label: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, ToSchema)]
 pub struct AttrPath {
     pub a: Attribute,
     pub s: Option<SubAttribute>,

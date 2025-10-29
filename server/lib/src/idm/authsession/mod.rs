@@ -2,15 +2,29 @@
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
-use std::collections::BTreeMap;
-use std::sync::Arc;
-use std::time::Duration;
-
+use self::handler_oauth2_client::CredHandlerOAuth2Client;
+use crate::credential::totp::Totp;
+use crate::credential::{BackupCodes, Credential, CredentialType, Password};
+use crate::idm::account::Account;
+use crate::idm::accountpolicy::ResolvedAccountPolicy;
+use crate::idm::audit::AuditEvent;
+use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState};
+use crate::idm::delayed::{
+    AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
+};
+use crate::idm::oauth2_client::OAuth2ClientProvider;
+use crate::prelude::*;
+use crate::server::keys::KeyObject;
+use crate::value::{AuthType, Session, SessionExtMetadata, SessionState};
 use compact_jwt::Jws;
 use hashbrown::HashSet;
 use kanidm_proto::internal::UserAuthToken;
-use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
+use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
 use nonempty::NonEmpty;
+use std::collections::BTreeMap;
+use std::sync::Arc;
+use std::time::Duration;
+use time::OffsetDateTime;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -19,20 +33,7 @@ use webauthn_rs::prelude::{
     SecurityKeyAuthentication, Webauthn,
 };
 
-use crate::credential::totp::Totp;
-use crate::credential::{BackupCodes, Credential, CredentialType, Password};
-use crate::idm::account::Account;
-use crate::idm::audit::AuditEvent;
-use crate::idm::delayed::{
-    AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
-};
-use crate::idm::AuthState;
-use crate::prelude::*;
-use crate::server::keys::KeyObject;
-use crate::value::{AuthType, Session, SessionState};
-use time::OffsetDateTime;
-
-use super::accountpolicy::ResolvedAccountPolicy;
+mod handler_oauth2_client;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fulfilled. This is where MFA or other
@@ -48,6 +49,7 @@ const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 const BAD_CREDENTIALS: &str = "invalid credential message";
 const ACCOUNT_EXPIRED: &str = "account expired";
 const PW_BADLIST_MSG: &str = "password is in badlist";
+const BAD_OAUTH2_CSRF_STATE_MSG: &str = "invalid oauth2 csrf state";
 
 #[derive(Debug, Clone)]
 enum AuthIntent {
@@ -61,9 +63,17 @@ enum AuthIntent {
 }
 
 /// A response type to indicate the progress and potential result of an authentication attempt.
+// We have to allow large enum variant here because else we can't match on External
+// due to boxing.
+#[allow(clippy::large_enum_variant)]
 enum CredState {
-    Success { auth_type: AuthType, cred_id: Uuid },
+    Success {
+        auth_type: AuthType,
+        cred_id: Uuid,
+        ext_session_metadata: SessionExtMetadata,
+    },
     Continue(Box<NonEmpty<AuthAllowed>>),
+    External(AuthExternal),
     Denied(&'static str),
 }
 
@@ -154,6 +164,9 @@ enum CredHandler {
         att_ca_list: AttestationCaList,
         // AP does `PartialEq` on cred_id
         creds: BTreeMap<AttestedPasskeyV4, Uuid>,
+    },
+    OAuth2Trust {
+        handler: Arc<CredHandlerOAuth2Client>,
     },
 }
 
@@ -412,6 +425,7 @@ impl CredHandler {
                 CredState::Success {
                     auth_type: AuthType::Anonymous,
                     cred_id,
+                    ext_session_metadata: Default::default(),
                 }
             }
             _ => {
@@ -446,11 +460,13 @@ impl CredHandler {
                             CredState::Success {
                                 auth_type: AuthType::GeneratedPassword,
                                 cred_id,
+                                ext_session_metadata: Default::default(),
                             }
                         } else {
                             CredState::Success {
                                 auth_type: AuthType::Password,
                                 cred_id,
+                                ext_session_metadata: Default::default(),
                             }
                         }
                     }
@@ -538,6 +554,7 @@ impl CredHandler {
                                 CredState::Success {
                                     auth_type: AuthType::PasswordTotp,
                                     cred_id,
+                                    ext_session_metadata: Default::default(),
                                 }
                             }
                         } else {
@@ -641,6 +658,7 @@ impl CredHandler {
                                 CredState::Success {
                                     auth_type: AuthType::PasswordSecurityKey,
                                     cred_id,
+                                    ext_session_metadata: Default::default(),
                                 }
                             }
                         } else {
@@ -730,6 +748,7 @@ impl CredHandler {
                                 CredState::Success {
                                     auth_type: AuthType::PasswordBackupCode,
                                     cred_id,
+                                    ext_session_metadata: Default::default(),
                                 }
                             }
                         } else {
@@ -793,6 +812,7 @@ impl CredHandler {
                             CredState::Success {
                                 auth_type: AuthType::Passkey,
                                 cred_id,
+                                ext_session_metadata: Default::default(),
                             }
                         } else {
                             wan_cred.state = CredVerifyState::Fail;
@@ -869,6 +889,7 @@ impl CredHandler {
                             CredState::Success {
                                 auth_type: AuthType::AttestedPasskey,
                                 cred_id: *cred_id,
+                                ext_session_metadata: Default::default(),
                             }
                         } else {
                             wan_cred.state = CredVerifyState::Fail;
@@ -972,24 +993,36 @@ impl CredHandler {
                 async_tx,
                 att_ca_list,
             ),
+            CredHandler::OAuth2Trust { handler } => handler.validate(cred, ts),
         }
     }
 
     /// Determine based on the current status, what is the next allowed step that
     /// can proceed.
-    pub fn next_auth_allowed(&self) -> Vec<AuthAllowed> {
+    pub fn next_auth_state(&self) -> AuthState {
         match &self {
-            CredHandler::Anonymous { .. } => vec![AuthAllowed::Anonymous],
-            CredHandler::Password { .. } => vec![AuthAllowed::Password],
-            CredHandler::PasswordTotp { .. } => vec![AuthAllowed::Totp],
-            CredHandler::PasswordBackupCode { .. } => vec![AuthAllowed::BackupCode],
+            CredHandler::Anonymous { .. } => AuthState::Continue(vec![AuthAllowed::Anonymous]),
+            CredHandler::Password { .. } => AuthState::Continue(vec![AuthAllowed::Password]),
+            CredHandler::PasswordTotp { .. } => AuthState::Continue(vec![AuthAllowed::Totp]),
+            CredHandler::PasswordBackupCode { .. } => {
+                AuthState::Continue(vec![AuthAllowed::BackupCode])
+            }
 
             CredHandler::PasswordSecurityKey { ref cmfa, .. } => {
-                vec![AuthAllowed::SecurityKey(cmfa.chal.clone())]
+                AuthState::Continue(vec![AuthAllowed::SecurityKey(cmfa.chal.clone())])
             }
-            CredHandler::Passkey { c_wan, .. } => vec![AuthAllowed::Passkey(c_wan.chal.clone())],
+            CredHandler::Passkey { c_wan, .. } => {
+                AuthState::Continue(vec![AuthAllowed::Passkey(c_wan.chal.clone())])
+            }
             CredHandler::AttestedPasskey { c_wan, .. } => {
-                vec![AuthAllowed::Passkey(c_wan.chal.clone())]
+                AuthState::Continue(vec![AuthAllowed::Passkey(c_wan.chal.clone())])
+            }
+            CredHandler::OAuth2Trust { handler } => {
+                let (authorisation_url, request) = handler.start_auth_request();
+                AuthState::External(AuthExternal::OAuth2AuthorisationRequest {
+                    authorisation_url,
+                    request,
+                })
             }
         }
     }
@@ -1003,7 +1036,8 @@ impl CredHandler {
             | (CredHandler::PasswordBackupCode { .. }, AuthMech::PasswordBackupCode)
             | (CredHandler::PasswordSecurityKey { .. }, AuthMech::PasswordSecurityKey)
             | (CredHandler::Passkey { .. }, AuthMech::Passkey)
-            | (CredHandler::AttestedPasskey { .. }, AuthMech::Passkey) => true,
+            | (CredHandler::AttestedPasskey { .. }, AuthMech::Passkey)
+            | (CredHandler::OAuth2Trust { .. }, AuthMech::OAuth2Trust) => true,
             (_, _) => false,
         }
     }
@@ -1017,6 +1051,7 @@ impl CredHandler {
             CredHandler::PasswordSecurityKey { .. } => AuthMech::PasswordSecurityKey,
             CredHandler::Passkey { .. } => AuthMech::Passkey,
             CredHandler::AttestedPasskey { .. } => AuthMech::Passkey,
+            CredHandler::OAuth2Trust { .. } => AuthMech::OAuth2Trust,
         }
     }
 }
@@ -1056,6 +1091,8 @@ pub(crate) struct AuthSessionData<'a> {
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) ct: Duration,
     pub(crate) client_auth_info: ClientAuthInfo,
+
+    pub(crate) oauth2_client_provider: Option<&'a OAuth2ClientProvider>,
 }
 
 #[derive(Clone)]
@@ -1172,6 +1209,16 @@ impl AuthSession {
                         CredHandler::build_from_set_passkey(credential_iter, asd.webauthn)
                     {
                         handlers.push(ch);
+                    }
+                };
+
+                if let Some(oauth2_client_provider) = asd.oauth2_client_provider {
+                    if let Some(trust_user) = asd.account.oauth2_client_provider() {
+                        let handler = Arc::new(CredHandlerOAuth2Client::new(
+                            oauth2_client_provider,
+                            trust_user,
+                        ));
+                        handlers.push(CredHandler::OAuth2Trust { handler })
                     }
                 };
 
@@ -1316,7 +1363,7 @@ impl AuthSession {
                         }
                     }
                 }
-                AuthType::Anonymous => {}
+                AuthType::Anonymous | AuthType::OAuth2Trust => {}
             }
 
             // Did anything get set-up?
@@ -1343,7 +1390,7 @@ impl AuthSession {
 
         match state {
             State::Proceed(handler) => {
-                let allow = handler.next_auth_allowed();
+                let next_auth_state = handler.next_auth_state();
                 let auth_session = AuthSession {
                     account: asd.account,
                     account_policy: asd.account_policy,
@@ -1357,8 +1404,7 @@ impl AuthSession {
                     key_object,
                 };
 
-                let as_state = AuthState::Continue(allow);
-                (Some(auth_session), as_state)
+                (Some(auth_session), next_auth_state)
             }
             State::Expired => {
                 security_info!("account expired");
@@ -1383,6 +1429,7 @@ impl AuthSession {
             AuthSessionState::InProgress(CredHandler::Anonymous { .. })
             | AuthSessionState::InProgress(CredHandler::PasswordSecurityKey { .. })
             | AuthSessionState::InProgress(CredHandler::Passkey { .. })
+            | AuthSessionState::InProgress(CredHandler::OAuth2Trust { .. })
             | AuthSessionState::InProgress(CredHandler::AttestedPasskey { .. }) => Ok(None),
 
             AuthSessionState::Init(_) => {
@@ -1430,22 +1477,11 @@ impl AuthSession {
                     .collect();
 
                 if let Some(allowed_handler) = allowed_handlers.pop() {
-                    let allowed: Vec<_> = allowed_handler.next_auth_allowed();
-
-                    if allowed.is_empty() {
-                        security_info!("Unable to negotiate credentials");
-                        (
-                            None,
-                            Err(OperationError::InvalidAuthState(
-                                "unable to negotiate credentials".to_string(),
-                            )),
-                        )
-                    } else {
-                        (
-                            Some(AuthSessionState::InProgress(allowed_handler)),
-                            Ok(AuthState::Continue(allowed)),
-                        )
-                    }
+                    let next_auth_state = allowed_handler.next_auth_state();
+                    (
+                        Some(AuthSessionState::InProgress(allowed_handler)),
+                        Ok(next_auth_state),
+                    )
                 } else {
                     security_error!("Unable to select a credential for authentication");
                     (
@@ -1490,9 +1526,19 @@ impl AuthSession {
                     webauthn,
                     pw_badlist,
                 ) {
-                    CredState::Success { auth_type, cred_id } => {
+                    CredState::Success {
+                        auth_type,
+                        cred_id,
+                        ext_session_metadata,
+                    } => {
                         // Issue the uat based on a set of factors.
-                        let uat = self.issue_uat(auth_type, time, async_tx, cred_id)?;
+                        let uat = self.issue_uat(
+                            auth_type,
+                            time,
+                            async_tx,
+                            cred_id,
+                            ext_session_metadata,
+                        )?;
 
                         let jwt = Jws::into_json(&uat).map_err(|e| {
                             admin_error!(?e, "Failed to serialise into Jws");
@@ -1513,6 +1559,10 @@ impl AuthSession {
                     CredState::Continue(allowed) => {
                         security_info!(?allowed, "Request credential continuation");
                         (None, Ok(AuthState::Continue(allowed.into_iter().collect())))
+                    }
+                    CredState::External(allowed) => {
+                        security_info!(?allowed, "Request excternal credential continuation");
+                        (None, Ok(AuthState::External(allowed)))
                     }
                     CredState::Denied(reason) => {
                         if audit_tx
@@ -1561,6 +1611,7 @@ impl AuthSession {
         time: Duration,
         async_tx: &Sender<DelayedAction>,
         cred_id: Uuid,
+        ext_metadata: SessionExtMetadata,
     ) -> Result<UserAuthToken, OperationError> {
         security_debug!("Successful cred handling");
         match self.intent {
@@ -1569,7 +1620,7 @@ impl AuthSession {
                 // We need to actually work this out better, and then
                 // pass it to to_userauthtoken
                 let scope = match auth_type {
-                    AuthType::Anonymous => SessionScope::ReadOnly,
+                    AuthType::Anonymous | AuthType::OAuth2Trust => SessionScope::ReadOnly,
                     AuthType::GeneratedPassword => SessionScope::ReadWrite,
                     AuthType::Password
                     | AuthType::PasswordTotp
@@ -1614,7 +1665,8 @@ impl AuthSession {
                     | AuthType::PasswordBackupCode
                     | AuthType::PasswordSecurityKey
                     | AuthType::Passkey
-                    | AuthType::AttestedPasskey => {
+                    | AuthType::AttestedPasskey
+                    | AuthType::OAuth2Trust => {
                         trace!("⚠️   Queued AuthSessionRecord for {}", self.account.uuid);
                         async_tx.send(DelayedAction::AuthSessionRecord(AuthSessionRecord {
                             target_uuid: self.account.uuid,
@@ -1626,6 +1678,7 @@ impl AuthSession {
                             issued_by: IdentityId::User(self.account.uuid),
                             scope,
                             type_: auth_type,
+                            ext_metadata,
                         }))
                         .map_err(|e| {
                             debug!(?e, "queue failure");
@@ -1644,7 +1697,7 @@ impl AuthSession {
                 // Sanity check - We have already been really strict about what session types
                 // can actually trigger a re-auth, but we recheck here for paranoia!
                 let scope = match auth_type {
-                    AuthType::Anonymous | AuthType::GeneratedPassword => {
+                    AuthType::Anonymous | AuthType::GeneratedPassword | AuthType::OAuth2Trust => {
                         error!("AuthType used in Reauth is not valid for session re-issuance. Rejecting");
                         return Err(OperationError::AU0006CredentialMayNotReauthenticate);
                     }
@@ -1695,33 +1748,33 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
-    use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
-    use hashbrown::HashSet;
-    use kanidm_proto::internal::{UatPurpose, UserAuthToken};
-    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
-    use tokio::sync::mpsc::unbounded_channel as unbounded;
-    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
-    use webauthn_authenticator_rs::WebauthnAuthenticator;
-    use webauthn_rs::prelude::{RequestChallengeResponse, Webauthn};
-
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{BackupCodes, Credential};
     use crate::idm::account::Account;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::audit::AuditEvent;
+    use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState};
     use crate::idm::authsession::{
         AuthSession, AuthSessionData, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG,
         BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
     };
     use crate::idm::delayed::DelayedAction;
-    use crate::idm::AuthState;
+    use crate::idm::oauth2_client::OAuth2ClientProvider;
     use crate::migration_data::{BUILTIN_ACCOUNT_ANONYMOUS, BUILTIN_ACCOUNT_TEST_PERSON};
     use crate::prelude::*;
     use crate::server::keys::KeyObjectInternal;
     use crate::utils::readable_password_from_random;
+    use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
+    use hashbrown::HashSet;
     use kanidm_lib_crypto::CryptoPolicy;
+    use kanidm_proto::internal::{UatPurpose, UserAuthToken};
+    use kanidm_proto::oauth2::{AccessTokenResponse, AccessTokenType};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+    use std::time::Duration;
+    use tokio::sync::mpsc::unbounded_channel as unbounded;
+    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    use webauthn_rs::prelude::{RequestChallengeResponse, Webauthn};
 
     fn create_pw_badlist_cache() -> HashSet<String> {
         let mut s = HashSet::new();
@@ -1753,6 +1806,7 @@ mod tests {
             webauthn: &webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
+            oauth2_client_provider: None,
         };
 
         let key_object = KeyObjectInternal::new_test();
@@ -1791,6 +1845,7 @@ mod tests {
                 webauthn: $webauthn,
                 ct: duration_from_epoch_now(),
                 client_auth_info: Source::Internal.into(),
+                oauth2_client_provider: None,
             };
             let key_object = KeyObjectInternal::new_test();
             let (session, state) = AuthSession::new(asd, $privileged, key_object);
@@ -1970,6 +2025,7 @@ mod tests {
             webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
+            oauth2_client_provider: None,
         };
         let key_object = KeyObjectInternal::new_test();
         let (session, state) = AuthSession::new(asd, false, key_object);
@@ -2010,6 +2066,7 @@ mod tests {
             webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
+            oauth2_client_provider: None,
         };
         let key_object = KeyObjectInternal::new_test();
         let (session, state) = AuthSession::new(asd, false, key_object);
@@ -2055,6 +2112,7 @@ mod tests {
             webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
+            oauth2_client_provider: None,
         };
         let key_object = KeyObjectInternal::new_test();
         let (session, state) = AuthSession::new(asd, false, key_object);
@@ -2347,6 +2405,7 @@ mod tests {
                 webauthn: $webauthn,
                 ct: duration_from_epoch_now(),
                 client_auth_info: Source::Internal.into(),
+                oauth2_client_provider: None,
             };
             let key_object = KeyObjectInternal::new_test();
             let (session, state) = AuthSession::new(asd, false, key_object);
@@ -3367,4 +3426,143 @@ mod tests {
         drop(audit_tx);
         assert!(audit_rx.blocking_recv().is_none());
     }
+
+    #[test]
+    fn test_idm_authsession_oauth2_client() {
+        sketching::test_init();
+        // Test if the oauth2 workflow operates as expected.
+        let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
+        let pw_badlist_cache = create_pw_badlist_cache();
+        let current_time = duration_from_epoch_now();
+        let webauthn = create_webauthn();
+        let privileged = false;
+
+        // create the trust provider
+        let oauth2_client_provider =
+            OAuth2ClientProvider::new_test("test_trust_client", "https://localhost", ["openid"]);
+
+        // Configure the account to use it.
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
+        account.setup_oauth2_client_provider(&oauth2_client_provider);
+
+        // Start an auth session.
+        let asd = AuthSessionData {
+            account,
+            account_policy: ResolvedAccountPolicy::default(),
+            issue: AuthIssueSession::Token,
+            webauthn: &webauthn,
+            ct: current_time,
+            client_auth_info: Source::Internal.into(),
+            oauth2_client_provider: Some(&oauth2_client_provider),
+        };
+        let key_object = KeyObjectInternal::new_test();
+
+        let (session, state) = AuthSession::new(asd, privileged, key_object);
+
+        trace!(?state);
+
+        // Check that oauth2 is a mech.
+        if let AuthState::Choose(auth_mechs) = state {
+            assert!(auth_mechs
+                .iter()
+                .all(|x| matches!(x, AuthMech::OAuth2Trust)));
+        } else {
+            panic!("Invalid auth state")
+        }
+
+        // Select it.
+        let mut session = session.expect("Missing auth session?");
+
+        let state = session
+            .start_session(&AuthMech::OAuth2Trust)
+            .expect("Failed to select anonymous mech.");
+
+        trace!(?state);
+
+        // Should create an authorisation Request.
+        let (_auth_url, auth_req) = match state {
+            AuthState::External(AuthExternal::OAuth2AuthorisationRequest {
+                authorisation_url,
+                request,
+            }) => (authorisation_url, request),
+            _ => unreachable!(),
+        };
+
+        // Forge a response and submit it.
+        // The response from oauth2 is a redirection to our landing pad url
+        // with a query parameter of "code" and optionally "state".
+        //
+        // We issued a state parameter, so we need to make sure it's the same here.
+        let state = session
+            .validate_creds(
+                &AuthCredential::OAuth2AuthorisationResponse {
+                    // This value doesn't matter, OAuth2 treats it as opaque.
+                    code: "abcdefg1234".into(),
+                    state: auth_req.state.clone(),
+                },
+                current_time,
+                &async_tx,
+                &audit_tx,
+                &webauthn,
+                &pw_badlist_cache,
+            )
+            .expect("Failed to perform credential validation step.");
+
+        let (_token_url, _token_request) = match state {
+            AuthState::External(AuthExternal::OAuth2AccessTokenRequest {
+                token_url,
+                client_id: _,
+                client_secret: _,
+                request,
+            }) => (token_url, request),
+            _ => unreachable!(),
+        };
+
+        // Here we assume we submitted the token request to the token url, and
+        // it gave us back an access token response.
+        let response = AccessTokenResponse {
+            access_token: "super_secret_access_token".to_string(),
+            token_type: AccessTokenType::Bearer,
+            expires_in: 300,
+            refresh_token: Some("super_secret_refresh_token".to_string()),
+            scope: oauth2_client_provider.request_scopes.clone(),
+            id_token: None,
+        };
+
+        let state = session
+            .validate_creds(
+                &AuthCredential::OAuth2AccessTokenResponse { response },
+                current_time,
+                &async_tx,
+                &audit_tx,
+                &webauthn,
+                &pw_badlist_cache,
+            )
+            .expect("Failed to perform credential validation step.");
+
+        // At this point the authentication is SUCCESS!!!
+        match state {
+            AuthState::Success(_, AuthIssueSession::Token) => {}
+            _ => unreachable!(),
+        }
+
+        // How do we record this session? We need to store the refresh token
+        // so that we can use it later ....
+        match async_rx.blocking_recv() {
+            Some(DelayedAction::AuthSessionRecord(_)) => {}
+            _ => panic!("Oh no"),
+        }
+
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
+    }
+
+    // As an oauth2 *client* there is far less for us to test, because a lot
+    // depends on the other end to respond. This means there is a very narrow
+    // window of valid responses, and we can already carefully control pretty
+    // much every error state as we'll never get the accessTokenResponse at
+    // all.
 }

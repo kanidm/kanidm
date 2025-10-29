@@ -1,7 +1,5 @@
 //! These are types that a client will send to the server.
-use super::ScimEntryGetQuery;
-use super::ScimMail;
-use super::ScimOauth2ClaimMapJoinChar;
+use super::{ScimEntryGeneric, ScimEntryGetQuery, ScimMail, ScimOauth2ClaimMapJoinChar};
 use crate::attribute::Attribute;
 use crate::v1::OutboundMessage;
 use scim_proto::ScimEntryHeader;
@@ -94,6 +92,17 @@ pub struct ScimOAuth2ScopeMap {
     pub group: Option<String>,
     pub group_uuid: Option<Uuid>,
     pub scopes: BTreeSet<String>,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimListEntry {
+    pub schemas: Vec<String>,
+    pub total_results: u64,
+    pub items_per_page: Option<NonZeroU64>,
+    pub start_index: Option<NonZeroU64>,
+    pub resources: Vec<ScimEntryGeneric>,
 }
 
 #[serde_as]
@@ -225,7 +234,7 @@ pub struct ScimEntryPutKanidm {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ScimStrings(#[serde_as(as = "OneOrMany<_, PreferMany>")] pub Vec<String>);
 
-#[derive(Debug, Clone, Deserialize, Default, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
 pub struct ScimEntryPostGeneric {
     /// Create an attribute to contain the following value state.
     #[serde(flatten)]
@@ -233,7 +242,7 @@ pub struct ScimEntryPostGeneric {
     pub attrs: BTreeMap<Attribute, JsonValue>,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
 pub struct ScimEntryPutGeneric {
     // id is only used to target the entry in question
     pub id: Uuid,
@@ -249,6 +258,7 @@ pub struct ScimEntryPutGeneric {
     // Schemas are decoded as part of "attrs".
     /// Update an attribute to contain the following value state.
     /// If the attribute is None, it is removed.
+    #[schema(value_type = BTreeMap<String, Value>)]
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, Option<JsonValue>>,
 }

@@ -741,13 +741,29 @@ pub trait AccessControlsTransaction<'a> {
                     }
                     Modify::Set(a, v) => {
                         if a == Attribute::Class.as_ref() {
-                            // This is a reasonably complex case - we actually have to contemplate
-                            // the difference between what exists and what doesn't, but that's per-entry.
-                            //
-                            // for now, we treat this as both pres and rem, but I think that ultimately
-                            // to fix this we need to make all modifies apply in terms of "batch mod"
-                            requested_pres_classes.extend(v.as_iutf8_iter().into_iter().flatten());
-                            requested_rem_classes.extend(v.as_iutf8_iter().into_iter().flatten());
+                            // When we apply the set of classes, we base the access control decision
+                            // only on what CHANGED, rather than the full set that is present.
+                            if let Some(current_classes) = e.get_ava_as_iutf8(Attribute::Class) {
+                                if let Some(requested_classes) = v.as_iutf8_set() {
+                                    // Diff the classes to determine what changed. We only perform access
+                                    // checks on what is different, rather than everything in the set. This
+                                    // is what allow's SCIM PUT to operate since you have to "set" every
+                                    // value in the set, even if it's not one you have access too.
+                                    requested_pres_classes.extend( requested_classes.difference(current_classes).map(|s| s.as_str()) );
+                                    requested_rem_classes.extend( current_classes.difference(requested_classes).map(|s| s.as_str()) );
+                                } else {
+                                    // This should be an impossible case - to have made it to this
+                                    // point, then the modify should have passed schema validation
+                                    // an must be a valid iutf8 set, and return a Some(). However
+                                    // in the interest of completeness, we defend from this and
+                                    // and deny the operation.
+                                    error!("invalid valueset state - requested class set is not valid");
+                                    return false;
+                                }
+                            } else {
+                                error!("invalid entry state - entry does not have attribute class and is not valid");
+                                return false;
+                            }
                         }
                     }
                     _ => {}
