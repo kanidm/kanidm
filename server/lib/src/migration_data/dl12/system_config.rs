@@ -46,6 +46,18 @@ lazy_static! {
             Value::new_utf8s("The domain-local HMAC key used for user ID verification.")
         )
     );
+    pub static ref E_HMAC_NAME_HISTORY_FEATURE: EntryInitNew = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Feature.to_value()),
+        (Attribute::Class, EntryClass::KeyObject.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectHkdfS256.to_value()),
+        (Attribute::Uuid, Value::Uuid(UUID_HMAC_NAME_FEATURE)),
+        (Attribute::Name, Value::new_iname("hmac_name_feature")),
+        (
+            Attribute::Description,
+            Value::new_utf8s("Configuration of the HMAC Name History Feature.")
+        )
+    );
     pub static ref E_SYSTEM_CONFIG_V1: EntryInitNew = entry_init!(
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::SystemConfig.to_value()),

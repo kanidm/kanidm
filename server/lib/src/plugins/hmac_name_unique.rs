@@ -1,8 +1,37 @@
 use crate::plugins::Plugin;
 use crate::prelude::*;
+use crate::valueset::ValueSetSha256;
+use crypto_glue::{hmac_s256::HmacSha256, traits::Mac};
+use std::ops::Deref;
 use std::sync::Arc;
 
 pub struct HmacNameUnique {}
+
+fn create_hmac_history(
+    qs: &mut QueryServerWriteTransaction,
+    cand: &mut [EntryInvalidNew],
+) -> Result<(), OperationError> {
+    let hmac_name_history_config = qs.get_feature_hmac_name_history_config();
+
+    for entry in cand.iter_mut() {
+        if entry.has_class(&EntryClass::Account) {
+            let Some(entry_name) = entry.get_ava_single_iname(Attribute::Name) else {
+                debug!(uuid = ?entry.get_uuid(), "Skipping entry without attribute name");
+                continue;
+            };
+
+            let hmac_key = hmac_name_history_config.key.deref();
+            let mut hmac = HmacSha256::new(hmac_key);
+            hmac.update(entry_name.as_bytes());
+            let name_hmac = hmac.finalize().into_bytes();
+
+            let hmac_set = ValueSetSha256::new(name_hmac);
+            entry.set_ava_set(&Attribute::HmacNameHistory, hmac_set);
+        }
+    }
+
+    Ok(())
+}
 
 impl Plugin for HmacNameUnique {
     fn id() -> &'static str {
@@ -11,42 +40,72 @@ impl Plugin for HmacNameUnique {
 
     #[instrument(level = "debug", skip_all)]
     fn pre_create_transform(
-        _qs: &mut QueryServerWriteTransaction,
-        _cand: &mut Vec<EntryInvalidNew>,
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<EntryInvalidNew>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
+        let domain_level = qs.get_domain_version();
+        if domain_level < DOMAIN_LEVEL_12 {
+            trace!("Skipping hmac name history generation");
+            return Ok(());
+        }
+
         // Self::handle_name_creation(cand, qs.get_txn_cid())
+        create_hmac_history(qs, cand)?;
+
+        // There are two stages to this - first, the recording of the names and their HMACs.
+        // Second, comparison of the HMAC's for uniqueness throughout the server.
+        //
+        // NOTE: We DO NOT need to check if there are duplicate HMAC's in this operation
+        // as the Name attribute is single value, and attrUnique will enforce that for us.
+
         Ok(())
     }
 
     #[instrument(level = "debug", skip_all)]
     fn pre_modify(
-        _qs: &mut QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
         _cand: &mut Vec<EntryInvalidCommitted>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
+        let domain_level = qs.get_domain_version();
+        if domain_level < DOMAIN_LEVEL_12 {
+            trace!("Skipping hmac name history generation");
+            return Ok(());
+        }
         // Self::handle_name_updates(pre_cand, cand, qs.get_txn_cid())
         Ok(())
     }
 
     #[instrument(level = "debug", skip_all)]
     fn pre_batch_modify(
-        _qs: &mut QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
         _cand: &mut Vec<EntryInvalidCommitted>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
+        let domain_level = qs.get_domain_version();
+        if domain_level < DOMAIN_LEVEL_12 {
+            trace!("Skipping hmac name history generation");
+            return Ok(());
+        }
         // Self::handle_name_updates(pre_cand, cand, qs.get_txn_cid())
         Ok(())
     }
 
     #[instrument(level = "debug", name = "refint_post_delete", skip_all)]
     fn post_delete(
-        _qs: &mut QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
+        let domain_level = qs.get_domain_version();
+        if domain_level < DOMAIN_LEVEL_12 {
+            trace!("Skipping hmac name history generation");
+            return Ok(());
+        }
+
         // What to do about deletes? We also need to consider what happens with an
         // entry revive?
 

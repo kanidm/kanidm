@@ -157,6 +157,7 @@ pub enum OperationError {
     KG001TaskTimeout,
     KG002TaskCommFailure,
     KG003CacheClearFailed,
+    KG004UnknownFeatureUuid,
 
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
@@ -313,6 +314,7 @@ pub enum OperationError {
     KP0076KeyObjectHkdfOutputLengthInvalid,
     KP0077KeyProviderNoSuchKey,
     KP0078KeyObjectNotFound,
+    KP0079KeyObjectNotFound,
 
     // Plugins
     PL0001GidOverlapsSystemRange,
@@ -450,6 +452,7 @@ impl OperationError {
             Self::KG001TaskTimeout => Some("Task timed out".into()),
             Self::KG002TaskCommFailure => Some("Inter-Task communication failure".into()),
             Self::KG003CacheClearFailed => Some("Failed to clear cache".into()),
+            Self::KG004UnknownFeatureUuid => None,
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,
             Self::KP0003KeyProviderInvalidType => None,
@@ -530,6 +533,7 @@ impl OperationError {
             Self::KP0076KeyObjectHkdfOutputLengthInvalid => None,
             Self::KP0077KeyProviderNoSuchKey => None,
             Self::KP0078KeyObjectNotFound => None,
+            Self::KP0079KeyObjectNotFound => None,
 
             Self::KU001InitWhileSessionActive => Some("The session was active when the init function was called.".into()),
             Self::KU002ContinueWhileSessionInActive => Some("Attempted to continue auth session while current session is inactive".into()),

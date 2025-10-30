@@ -137,6 +137,14 @@ impl QueryServerWriteTransaction<'_> {
             self.changed_flags.insert(ChangeFlag::OAUTH2_CLIENT)
         }
 
+        if !self.changed_flags.contains(ChangeFlag::FEATURE)
+            && commit_cand
+                .iter()
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::Feature.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::FEATURE)
+        }
+
         if !self.changed_flags.contains(ChangeFlag::DOMAIN)
             && commit_cand
                 .iter()

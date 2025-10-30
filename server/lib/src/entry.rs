@@ -2633,6 +2633,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .unwrap_or_else(|| "no entry id available".to_string())
     }
 
+    pub fn has_class(&self, class: &EntryClass) -> bool {
+        self.get_ava_set(Attribute::Class)
+            .and_then(|vs| vs.as_iutf8_set())
+            .map(|set| {
+                let class_name: &str = class.into();
+                set.contains(class_name)
+            })
+            .unwrap_or_default()
+    }
+
     /// Get an iterator over the current set of attribute names that this entry contains.
     pub fn get_ava_names(&self) -> impl Iterator<Item = &str> {
         // Get the set of all attribute names in the entry
