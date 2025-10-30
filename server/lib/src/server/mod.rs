@@ -31,6 +31,7 @@ use crate::value::{CredentialType, EXTRACT_VAL_DN};
 use crate::valueset::*;
 use concread::arcache::{ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
+use crypto_glue::s256::Sha256Output;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
 use kanidm_proto::scim_v1::{
@@ -742,6 +743,7 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid x509 certificate syntax".to_string())),
                     SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute("ApplicationPassword values can not be supplied through modification".to_string())),
                     SyntaxType::Json => Err(OperationError::InvalidAttribute("Json values can not be supplied through modification".to_string())),
+                    SyntaxType::Sha256 => Err(OperationError::InvalidAttribute("SHA256 values can not be supplied through modification".to_string())),
                     SyntaxType::Message => Err(OperationError::InvalidAttribute("Message values can not be supplied through modification".to_string())),
                 }
             }
@@ -873,6 +875,16 @@ pub trait QueryServerTransaction<'a> {
                                 "Invalid syntax, expected hex string".to_string(),
                             )
                         })
+                    }
+                    SyntaxType::Sha256 => {
+                        let mut sha256bytes = Sha256Output::default();
+                        if hex::decode_to_slice(value, &mut sha256bytes).is_ok() {
+                            Ok(PartialValue::Sha256(sha256bytes))
+                        } else {
+                            Err(OperationError::InvalidAttribute(
+                                "Invalid syntax, expected sha256 hex string containing 64 characters".to_string(),
+                            ))
+                        }
                     }
                     SyntaxType::Json => Err(OperationError::InvalidAttribute(
                         "Json values can not be validated by this interface".to_string(),

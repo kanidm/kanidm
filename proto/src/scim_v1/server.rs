@@ -4,6 +4,7 @@ use super::ScimSshPublicKey;
 use crate::attribute::Attribute;
 use crate::internal::UiHint;
 use crate::v1::OutboundMessage;
+use crypto_glue::s256::Sha256Output;
 use scim_proto::ScimEntryHeader;
 use serde::Serialize;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
@@ -299,6 +300,11 @@ pub enum ScimValueKanidm {
     UiHints(Vec<UiHint>),
 
     Message(OutboundMessage),
+
+
+    #[schema(value_type = Vec<String>)]
+    Sha256(#[serde_as(as = "Vec<Hex>")] Vec<Sha256Output>),
+
 }
 
 #[serde_as]
@@ -548,5 +554,11 @@ impl From<Vec<ScimKeyInternal>> for ScimValueKanidm {
 impl From<OutboundMessage> for ScimValueKanidm {
     fn from(message: OutboundMessage) -> Self {
         Self::Message(message)
+    }
+}
+
+impl From<Vec<Sha256Output>> for ScimValueKanidm {
+    fn from(set: Vec<Sha256Output>) -> Self {
+        Self::Sha256(set)
     }
 }

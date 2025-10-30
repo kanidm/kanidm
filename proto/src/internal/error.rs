@@ -219,6 +219,7 @@ pub enum OperationError {
     SC0027ClassSetInvalid,
     SC0028CreatedUuidsInvalid,
     SC0029PaginationOutOfBounds,
+    SC0030Sha256SyntaxInvalid,
     // Migration
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
@@ -577,6 +578,7 @@ impl OperationError {
             Self::SC0027ClassSetInvalid => Some("The internal set of class templates used in this create operation was invalid. THIS IS A BUG.".into()),
             Self::SC0028CreatedUuidsInvalid => Some("The internal create query did not return the set of created UUIDs. THIS IS A BUG".into()),
             Self::SC0029PaginationOutOfBounds => Some("The requested range for pagination was out of bounds of the result set".into()),
+            Self::SC0030Sha256SyntaxInvalid => Some("A SCIM SHA256 hex string was invalid.".into()),
 
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::entry::{EntryInvalidCommitted, EntrySealedCommitted};
 use crate::event::ModifyEvent;
 use crate::plugins::Plugin;
@@ -7,6 +5,7 @@ use crate::prelude::*;
 use crate::prelude::{BatchModifyEvent, QueryServerWriteTransaction};
 use crate::repl::cid::Cid;
 use crate::value::PartialValue;
+use std::sync::Arc;
 
 pub struct NameHistory {}
 

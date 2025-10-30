@@ -44,6 +44,7 @@ use crate::value::{
 };
 use crate::valueset::{self, ScimResolveStatus, ValueSet, ValueSetSpn};
 use compact_jwt::JwsEs256Signer;
+use crypto_glue::s256::Sha256Output;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{
@@ -2727,6 +2728,13 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     ) -> Option<&std::collections::BTreeMap<Uuid, Oauth2Session>> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.as_oauth2session_map())
+    }
+
+    pub fn get_ava_as_s256_set<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<&std::collections::BTreeSet<Sha256Output>> {
+        self.get_ava_set(attr).and_then(|vs| vs.as_s256_set())
     }
 
     /// If possible, return an iterator over the set of values transformed into a `&str`.

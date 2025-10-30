@@ -18,6 +18,7 @@ mod domain;
 pub(crate) mod dyngroup;
 mod eckeygen;
 pub(crate) mod gidnumber;
+mod hmac_name_unique;
 mod keyobject;
 mod memberof;
 mod namehistory;
@@ -241,6 +242,7 @@ impl Plugins {
         spn::Spn::pre_create_transform(qs, cand, ce)?;
         default_values::DefaultValues::pre_create_transform(qs, cand, ce)?;
         namehistory::NameHistory::pre_create_transform(qs, cand, ce)?;
+        hmac_name_unique::HmacNameUnique::pre_create_transform(qs, cand, ce)?;
         // Should always be last
         attrunique::AttrUnique::pre_create_transform(qs, cand, ce)
     }
@@ -285,6 +287,7 @@ impl Plugins {
         session::SessionConsistency::pre_modify(qs, pre_cand, cand, me)?;
         default_values::DefaultValues::pre_modify(qs, pre_cand, cand, me)?;
         namehistory::NameHistory::pre_modify(qs, pre_cand, cand, me)?;
+        hmac_name_unique::HmacNameUnique::pre_modify(qs, pre_cand, cand, me)?;
         // attr unique should always be last
         attrunique::AttrUnique::pre_modify(qs, pre_cand, cand, me)
     }
@@ -322,6 +325,7 @@ impl Plugins {
         session::SessionConsistency::pre_batch_modify(qs, pre_cand, cand, me)?;
         default_values::DefaultValues::pre_batch_modify(qs, pre_cand, cand, me)?;
         namehistory::NameHistory::pre_batch_modify(qs, pre_cand, cand, me)?;
+        hmac_name_unique::HmacNameUnique::pre_batch_modify(qs, pre_cand, cand, me)?;
         // attr unique should always be last
         attrunique::AttrUnique::pre_batch_modify(qs, pre_cand, cand, me)
     }
@@ -353,6 +357,7 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
+        hmac_name_unique::HmacNameUnique::post_delete(qs, cand, de)?;
         refint::ReferentialIntegrity::post_delete(qs, cand, de)?;
         memberof::MemberOf::post_delete(qs, cand, de)
     }

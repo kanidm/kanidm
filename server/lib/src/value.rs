@@ -15,7 +15,7 @@ use crate::server::keys::KeyId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
-use crypto_glue::traits::Zeroizing;
+use crypto_glue::{s256::Sha256Output, traits::Zeroizing};
 use hashbrown::HashSet;
 use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
 use kanidm_proto::internal::ImageValue;
@@ -290,6 +290,7 @@ pub enum SyntaxType {
     ApplicationPassword = 41,
     Json = 42,
     Message = 43,
+    Sha256 = 44,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -342,6 +343,7 @@ impl TryFrom<&str> for SyntaxType {
             "APPLICATION_PASSWORD" => Ok(SyntaxType::ApplicationPassword),
             "JSON" => Ok(SyntaxType::Json),
             "MESSAGE" => Ok(SyntaxType::Message),
+            "SHA256" => Ok(SyntaxType::Sha256),
             _ => Err(()),
         }
     }
@@ -394,6 +396,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::ApplicationPassword => "APPLICATION_PASSWORD",
             SyntaxType::Json => "JSON",
             SyntaxType::Message => "MESSAGE",
+            SyntaxType::Sha256 => "SHA256",
         })
     }
 }
@@ -463,6 +466,7 @@ impl SyntaxType {
             SyntaxType::JsonFilter => &[],
             SyntaxType::Json => &[],
             SyntaxType::Message => &[],
+            SyntaxType::Sha256 => &[IndexType::Equality],
         }
     }
 }
@@ -605,6 +609,7 @@ pub enum PartialValue {
 
     HexString(String),
     Json,
+    Sha256(Sha256Output),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -652,6 +657,12 @@ impl From<OffsetDateTime> for PartialValue {
 impl From<Url> for PartialValue {
     fn from(i: Url) -> Self {
         PartialValue::Url(i)
+    }
+}
+
+impl From<Sha256Output> for PartialValue {
+    fn from(i: Sha256Output) -> Self {
+        PartialValue::Sha256(i)
     }
 }
 
@@ -991,6 +1002,7 @@ impl PartialValue {
             PartialValue::OauthClaimValue(_, _, _) => "_".to_string(),
             PartialValue::HexString(hexstr) => hexstr.to_string(),
             PartialValue::Json => "_".to_string(),
+            PartialValue::Sha256(bytes) => hex::encode(bytes),
         }
     }
 
@@ -1416,6 +1428,7 @@ pub enum Value {
     Certificate(Box<Certificate>),
     ApplicationPassword(ApplicationPassword),
     Json(JsonValue),
+    Sha256(Sha256Output),
 }
 
 impl PartialEq for Value {
@@ -2272,6 +2285,7 @@ impl Value {
             | Value::UiHint(_)
             | Value::CredentialType(_)
             | Value::Json(_)
+            | Value::Sha256(_)
             | Value::WebauthnAttestationCaList(_) => true,
         }
     }

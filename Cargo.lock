@@ -3696,6 +3696,7 @@ dependencies = [
  "base32",
  "base64 0.22.1",
  "clap",
+ "crypto-glue",
  "enum-iterator",
  "kanidm_build_profiles",
  "num_enum",
