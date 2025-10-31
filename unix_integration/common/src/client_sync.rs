@@ -4,6 +4,7 @@ use crate::unix_proto::{ClientRequest, ClientResponse};
 use bytes::BytesMut;
 use std::error::Error;
 use std::io::{self, ErrorKind, Read, Write};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -11,19 +12,39 @@ pub use std::os::unix::net::UnixStream;
 
 type ClientCodec = JsonCodec<ClientResponse, ClientRequest>;
 
-pub struct DaemonClientBlocking {
+static CLIENT: OnceLock<Arc<Mutex<DaemonClientBlockingInner>>> = OnceLock::new();
+
+struct DaemonClientBlockingInner {
     stream: UnixStream,
     codec: ClientCodec,
     default_timeout: u64,
 }
 
-impl From<UnixStream> for DaemonClientBlocking {
+impl From<UnixStream> for DaemonClientBlockingInner {
     fn from(stream: UnixStream) -> Self {
-        DaemonClientBlocking {
+        Self {
             stream,
             codec: ClientCodec::default(),
             default_timeout: DEFAULT_CONN_TIMEOUT,
         }
+    }
+}
+
+pub struct DaemonClientBlocking {
+    inner: Arc<Mutex<DaemonClientBlockingInner>>,
+}
+
+impl From<UnixStream> for DaemonClientBlocking {
+    fn from(stream: UnixStream) -> Self {
+        let inner = Arc::new(Mutex::new(DaemonClientBlockingInner {
+            stream,
+            codec: ClientCodec::default(),
+            default_timeout: DEFAULT_CONN_TIMEOUT,
+        }));
+
+        let _ = CLIENT.set(inner.clone());
+
+        DaemonClientBlocking { inner }
     }
 }
 
@@ -45,6 +66,13 @@ impl DaemonClientBlocking {
 
         trace!(%path);
 
+        if let Some(inner) = CLIENT.get() {
+            // Already a client,
+            return Ok(DaemonClientBlocking {
+                inner: inner.clone(),
+            });
+        }
+
         let stream = UnixStream::connect(path).map_err(|err| {
             error!(
                 ?err, %path,
@@ -53,14 +81,32 @@ impl DaemonClientBlocking {
             Box::new(err)
         })?;
 
-        Ok(DaemonClientBlocking {
+        let inner = Arc::new(Mutex::new(DaemonClientBlockingInner {
             stream,
             codec: ClientCodec::default(),
             default_timeout,
-        })
+        }));
+
+        let _ = CLIENT.set(inner.clone());
+
+        Ok(DaemonClientBlocking { inner })
     }
 
     pub fn call_and_wait(
+        &mut self,
+        req: ClientRequest,
+        timeout: Option<u64>,
+    ) -> Result<ClientResponse, Box<dyn Error>> {
+        let mut guard = self
+            .inner
+            .lock()
+            .expect("Unable to access daemon client as the lock is poisoned!!!");
+        guard.call_and_wait(req, timeout)
+    }
+}
+
+impl DaemonClientBlockingInner {
+    fn call_and_wait(
         &mut self,
         req: ClientRequest,
         timeout: Option<u64>,
