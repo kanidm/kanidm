@@ -50,14 +50,18 @@ impl Plugin for HmacNameUnique {
             return Ok(());
         }
 
-        // Self::handle_name_creation(cand, qs.get_txn_cid())
         create_hmac_history(qs, cand)?;
 
-        // There are two stages to this - first, the recording of the names and their HMACs.
-        // Second, comparison of the HMAC's for uniqueness throughout the server.
-        //
-        // NOTE: We DO NOT need to check if there are duplicate HMAC's in this operation
+        // NOTE: We DO NOT need to check if there are duplicate HMAC's in this set of candidates.
         // as the Name attribute is single value, and attrUnique will enforce that for us.
+
+        // We DO need to check if the new names collide on any HMAC's though.
+
+
+        // for all cands.
+        // Gather their HMACs paired to uuid.
+
+        // Do an "exists" search.
 
         Ok(())
     }
