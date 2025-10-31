@@ -97,6 +97,7 @@ impl DaemonClientBlocking {
         req: ClientRequest,
         timeout: Option<u64>,
     ) -> Result<ClientResponse, Box<dyn Error>> {
+        #![allow(clippy::expect_used)]
         let mut guard = self
             .inner
             .lock()
