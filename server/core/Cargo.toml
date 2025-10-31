@@ -70,6 +70,7 @@ tower-http = { version = "0.6.6", features = [
     "tokio",
     "trace",
     "tracing",
+    "timeout",
     "uuid",
 ] }
 tracing = { workspace = true, features = ["attributes"] }

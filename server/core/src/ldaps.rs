@@ -11,12 +11,16 @@ use ldap3_proto::LdapCodec;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
+use tokio::time::timeout;
 use tokio_rustls::TlsAcceptor;
 use tokio_util::codec::{FramedRead, FramedWrite};
+
+const LDAP_CLIENT_IO_TIMEOUT: Duration = Duration::from_secs(300);
+const LDAP_CLIENT_CONN_TIMEOUT: Duration = Duration::from_secs(30);
 
 struct LdapSession {
     uat: Option<LdapBoundToken>,
@@ -55,7 +59,7 @@ async fn client_process<STREAM>(
     connection_address: SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
 ) where
-    STREAM: AsyncRead + AsyncWrite,
+    STREAM: AsyncRead + AsyncWrite + AsyncWriteExt + Unpin,
 {
     let (r, w) = tokio::io::split(stream);
     let mut r = FramedRead::new(r, LdapCodec::default());
@@ -64,7 +68,23 @@ async fn client_process<STREAM>(
     // This is a connected client session. we need to associate some state to the session
     let mut session = LdapSession::new();
     // Now that we have the session we begin an event loop to process input OR we return.
-    while let Some(Ok(protomsg)) = r.next().await {
+    loop {
+        let protomsg = match timeout(LDAP_CLIENT_IO_TIMEOUT, r.next()).await {
+            Ok(Some(Ok(protomsg))) => protomsg,
+            Ok(Some(Err(req_err))) => {
+                error!(?req_err, "Invalid LDAP request");
+                break;
+            }
+            Ok(None) => {
+                debug!("connection closed");
+                break;
+            }
+            Err(_) => {
+                debug!("client IO timeout, closing connection");
+                break;
+            }
+        };
+
         // Start the event
         let uat = session.uat.clone();
         let caddr = client_address;
@@ -74,7 +94,7 @@ async fn client_process<STREAM>(
         match client_process_msg(uat, caddr, protomsg, qe_r_ref).await {
             // I'd really have liked to have put this near the [LdapResponseState::Bind] but due
             // to the handing of `audit` it isn't possible due to borrows, etc.
-            Some(LdapResponseState::Unbind) => return,
+            Some(LdapResponseState::Unbind) => break,
             Some(LdapResponseState::Disconnect(rmsg)) => {
                 if w.send(rmsg).await.is_err() {
                     break;
@@ -113,6 +133,19 @@ async fn client_process<STREAM>(
             }
         };
     }
+
+    // Attempt to close the connection cleanly if possible.
+
+    let r = r.into_inner();
+    let w = w.into_inner();
+
+    let mut stream = r.unsplit(w);
+
+    match timeout(LDAP_CLIENT_IO_TIMEOUT, stream.shutdown()).await {
+        Ok(Ok(_)) => debug!("Connection closed successfully"),
+        Ok(Err(tls_err)) => warn!(?tls_err, "Unable to cleanly shutdown client connection"),
+        Err(_) => error!("Timeout attempting to close connection"),
+    }
 }
 
 async fn client_tls_accept(
@@ -130,9 +163,14 @@ async fn client_tls_accept(
         })
         .unwrap_or_default();
 
-    let (stream, client_addr) = if enable_proxy_v2_hdr {
-        match ProxyHdrV2::parse_from_read(stream).await {
-            Ok((stream, hdr)) => {
+    let (mut stream, client_addr) = if enable_proxy_v2_hdr {
+        match timeout(
+            LDAP_CLIENT_CONN_TIMEOUT,
+            ProxyHdrV2::parse_from_read(stream),
+        )
+        .await
+        {
+            Ok(Ok((stream, hdr))) => {
                 let remote_socket_addr = match hdr.to_remote_addr() {
                     RemoteAddress::Local => {
                         debug!("PROXY protocol liveness check - will not contain client data");
@@ -149,8 +187,12 @@ async fn client_tls_accept(
 
                 (stream, remote_socket_addr)
             }
-            Err(err) => {
+            Ok(Err(err)) => {
                 error!(?connection_addr, ?err, "Unable to process proxy v2 header");
+                return;
+            }
+            Err(_) => {
+                error!(?connection_addr, "Timeout receiving proxy v2 header");
                 return;
             }
         }
@@ -158,10 +200,27 @@ async fn client_tls_accept(
         (stream, connection_addr)
     };
 
-    let tlsstream = match tls_acceptor.accept(stream).await {
-        Ok(ta) => ta,
-        Err(err) => {
+    let mut zero_buf: [u8; 0] = [];
+    match timeout(LDAP_CLIENT_CONN_TIMEOUT, stream.read(&mut zero_buf)).await {
+        Ok(Ok(_)) => {}
+        Ok(Err(_)) => {
+            debug!(%client_addr, %connection_addr, "Connection closed before we recieved initial data");
+            return;
+        }
+        Err(_) => {
+            error!(%client_addr, %connection_addr, "LDAP timeout waiting for initial data");
+            return;
+        }
+    };
+
+    let tlsstream = match timeout(LDAP_CLIENT_CONN_TIMEOUT, tls_acceptor.accept(stream)).await {
+        Ok(Ok(ta)) => ta,
+        Ok(Err(err)) => {
             error!(?err, %client_addr, %connection_addr, "LDAP TLS setup error");
+            return;
+        }
+        Err(_) => {
+            error!(%client_addr, %connection_addr, "LDAP TLS timeout error");
             return;
         }
     };
