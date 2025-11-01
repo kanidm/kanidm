@@ -682,6 +682,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn as_s256_set_mut(&mut self) -> Option<&mut BTreeSet<Sha256Output>> {
+        debug_assert!(false);
+        None
+    }
+
     fn repl_merge_valueset(
         &self,
         _older: &ValueSet,

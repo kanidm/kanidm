@@ -863,6 +863,7 @@ pub static ref SCHEMA_ATTR_HMAC_NAME_HISTORY: SchemaAttribute = SchemaAttribute 
     name: Attribute::HmacNameHistory,
     description: "The set of all names used on an entry, HMACed to preserve privacy.".to_string(),
     multivalue: true,
+    unique: true,
     indexed: true,
     syntax: SyntaxType::Sha256,
     ..Default::default()

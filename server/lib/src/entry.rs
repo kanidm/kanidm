@@ -1139,9 +1139,13 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         &mut self,
         attr: A,
     ) -> Option<&mut BTreeSet<Uuid>> {
-        self.attrs
-            .get_mut(attr.as_ref())
-            .and_then(|vs| vs.as_refer_set_mut())
+        self.get_ava_mut(attr).and_then(|vs| vs.as_refer_set_mut())
+    }
+
+    pub(crate) fn get_ava_mut<A: AsRef<Attribute>>(&mut self, attr: A) -> Option<&mut ValueSet> {
+        let attr_ref = attr.as_ref();
+        self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
+        self.attrs.get_mut(attr.as_ref())
     }
 }
 

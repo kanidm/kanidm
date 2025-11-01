@@ -18,7 +18,7 @@ mod domain;
 pub(crate) mod dyngroup;
 mod eckeygen;
 pub(crate) mod gidnumber;
-mod hmac_name_unique;
+pub(crate) mod hmac_name_unique;
 mod keyobject;
 mod memberof;
 mod namehistory;

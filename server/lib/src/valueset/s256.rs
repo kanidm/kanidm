@@ -147,4 +147,8 @@ impl ValueSetT for ValueSetSha256 {
     fn as_s256_set(&self) -> Option<&BTreeSet<Sha256Output>> {
         Some(&self.set)
     }
+
+    fn as_s256_set_mut(&mut self) -> Option<&mut BTreeSet<Sha256Output>> {
+        Some(&mut self.set)
+    }
 }

@@ -1,9 +1,7 @@
 use std::fmt::{Display, Formatter};
-
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
-
 use super::credupdate::PasswordFeedback;
 use crate::attribute::Attribute;
 
@@ -28,7 +26,6 @@ pub enum SchemaError {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum PluginError {
-    AttrUnique(String),
     Base(String),
     ReferentialIntegrity(String),
     CredImport(String),
@@ -105,6 +102,7 @@ pub enum OperationError {
     // Serialize & Deserialize this enum...
     MissingClass(String),
     MissingAttribute(Attribute),
+    AttributeUniqueness,
     MissingEntries,
     ModifyAssertionFailed,
     BackendEngine,
@@ -158,6 +156,8 @@ pub enum OperationError {
     KG002TaskCommFailure,
     KG003CacheClearFailed,
     KG004UnknownFeatureUuid,
+    KG005HowDidYouEvenManageThis,
+    KG006DatastructureCorruption,
 
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
@@ -396,6 +396,7 @@ impl OperationError {
             Self::InvalidAccountState(val) => Some(format!("Invalid account state: {val}")),
             Self::MissingClass(val) => Some(format!("Missing class: {val}")),
             Self::MissingAttribute(val) => Some(format!("Missing attribute: {val}")),
+            Self::AttributeUniqueness => Some(format!("The value of some attributes is not unique.")),
             Self::MissingEntries => None,
             Self::ModifyAssertionFailed => None,
             Self::BackendEngine => None,
@@ -453,6 +454,8 @@ impl OperationError {
             Self::KG002TaskCommFailure => Some("Inter-Task communication failure".into()),
             Self::KG003CacheClearFailed => Some("Failed to clear cache".into()),
             Self::KG004UnknownFeatureUuid => None,
+            Self::KG005HowDidYouEvenManageThis => Some("You have damaged the fabric of space time and managed to perform an impossible action.".into()),
+            Self::KG006DatastructureCorruption => None,
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,
             Self::KP0003KeyProviderInvalidType => None,

@@ -87,7 +87,9 @@ fn enforce_unique<VALID, STATE>(
 
     // Now we have to identify and error on anything that has multiple items.
     let mut cand_attr = Vec::with_capacity(cand_attr_set.len());
-    let mut err = false;
+
+    let mut err_attr: BTreeSet<Attribute> = Default::default();
+
     for (key, mut uuid_set) in cand_attr_set.into_iter() {
         if let Some(uuid) = uuid_set.pop() {
             if uuid_set.is_empty() {
@@ -96,22 +98,18 @@ fn enforce_unique<VALID, STATE>(
             } else {
                 // Multiple uuid(s) may remain, this is a conflict. We already warned on it
                 // before in the processing. Do we need to warn again?
-                err = true;
+                err_attr.insert(key.0);
             }
         } else {
             // Corrupt? How did we even get here?
             warn!("datastructure corruption occurred while processing candidate attribute set");
             debug_assert!(false);
-            return Err(OperationError::Plugin(PluginError::AttrUnique(
-                "corruption detected".to_string(),
-            )));
+            return Err(OperationError::KG006DatastructureCorruption);
         }
     }
 
-    if err {
-        return Err(OperationError::Plugin(PluginError::AttrUnique(
-            "duplicate value detected".to_string(),
-        )));
+    if !err_attr.is_empty() {
+        return Err(OperationError::AttributeUniqueness);
     }
 
     // Now do an internal search on name and !uuid for each
@@ -192,9 +190,7 @@ fn enforce_unique<VALID, STATE>(
             // End logging / warning iterator
         }
 
-        Err(OperationError::Plugin(PluginError::AttrUnique(
-            "duplicate value detected".to_string(),
-        )))
+        Err(OperationError::AttributeUniqueness)
     } else {
         // If all okay, okay!
         Ok(())
@@ -505,9 +501,7 @@ mod tests {
         let preload = vec![e];
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::AttrUnique(
-                "duplicate value detected".to_string()
-            ))),
+            Err(OperationError::AttributeUniqueness),
             preload,
             create,
             None,
@@ -530,9 +524,7 @@ mod tests {
         let preload = Vec::with_capacity(0);
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::AttrUnique(
-                "ava already exists".to_string()
-            ))),
+            Err(OperationError::AttributeUniqueness),
             preload,
             create,
             None,
@@ -560,9 +552,7 @@ mod tests {
         let preload = vec![ea, eb];
 
         run_modify_test!(
-            Err(OperationError::Plugin(PluginError::AttrUnique(
-                "duplicate value detected".to_string()
-            ))),
+            Err(OperationError::AttributeUniqueness),
             preload,
             filter!(f_or!([f_eq(
                 Attribute::Name,
@@ -595,9 +585,7 @@ mod tests {
         let preload = vec![ea, eb];
 
         run_modify_test!(
-            Err(OperationError::Plugin(PluginError::AttrUnique(
-                "ava already exists".to_string()
-            ))),
+            Err(OperationError::AttributeUniqueness),
             preload,
             filter!(f_or!([
                 f_eq(Attribute::Name, PartialValue::new_iname("testgroup_a")),

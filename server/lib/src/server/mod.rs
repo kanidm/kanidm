@@ -17,8 +17,11 @@ use crate::filter::{
     Filter, FilterInvalid, FilterValid, FilterValidResolved, ResolveFilterCache,
     ResolveFilterCacheReadTxn,
 };
-use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
-use crate::plugins::Plugins;
+use crate::plugins::{
+    self,
+    dyngroup::{DynGroup, DynGroupCache},
+    Plugins,
+};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::proto::ReplRuvRange;
@@ -2615,6 +2618,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let current_time = self.get_curtime();
         let domain_level = self.get_domain_version();
 
+        let mut hmac_name_history_fixup = false;
+
+        // TODO: How to handle disabling on a delete? Needs thought ... but also
+        // should be impossible for someone TO delete a feature config entry?
+
         for feature_entry in feature_configs {
             match feature_entry.get_uuid() {
                 UUID_HMAC_NAME_FEATURE => {
@@ -2637,11 +2645,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
                     drop(key_object);
 
-                    let feature_config_txn = self.feature_config.get_mut();
-
-                    feature_config_txn.hmac_name_history.enabled = feature_entry
+                    let new_feature_enabled_state = feature_entry
                         .get_ava_single_bool(Attribute::Enabled)
                         .unwrap_or_default();
+
+                    let feature_config_txn = self.feature_config.get_mut();
+
+                    hmac_name_history_fixup =
+                        !feature_config_txn.hmac_name_history.enabled && new_feature_enabled_state;
+
+                    feature_config_txn.hmac_name_history.enabled = new_feature_enabled_state;
 
                     std::mem::swap(&mut key, &mut feature_config_txn.hmac_name_history.key);
                 }
@@ -2653,6 +2666,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     return Err(OperationError::KG004UnknownFeatureUuid);
                 }
             }
+        }
+
+        if hmac_name_history_fixup {
+            plugins::hmac_name_unique::HmacNameUnique::fixup(self)?;
         }
 
         Ok(())
@@ -2751,7 +2768,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload(&mut self) -> Result<(), OperationError> {
         // First, check if the domain version has changed. This can trigger
         // changes to schema, access controls and more.
-        if self.changed_flags.contains(ChangeFlag::DOMAIN) {
+        if self.changed_flags.intersects(ChangeFlag::DOMAIN) {
             self.reload_domain_info_version()?;
         }
 
@@ -2759,7 +2776,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // in an operation so we can check if we need to do the reload or not
         //
         // Reload the schema from qs.
-        if self.changed_flags.contains(ChangeFlag::SCHEMA) {
+        if self.changed_flags.intersects(ChangeFlag::SCHEMA) {
             self.reload_schema()?;
 
             // If the server is in a late phase of start up or is
@@ -2799,15 +2816,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
             //    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
         }
 
-        if self.changed_flags.contains(ChangeFlag::SYSTEM_CONFIG) {
+        if self.changed_flags.intersects(ChangeFlag::SYSTEM_CONFIG) {
             self.reload_system_config()?;
         }
 
-        if self.changed_flags.contains(ChangeFlag::DOMAIN) {
+        if self.changed_flags.intersects(ChangeFlag::DOMAIN) {
             self.reload_domain_info()?;
         }
 
-        if self.changed_flags.contains(ChangeFlag::FEATURE) {
+        if self
+            .changed_flags
+            .intersects(ChangeFlag::FEATURE | ChangeFlag::KEY_MATERIAL)
+        {
             self.reload_feature_config()?;
         }
 

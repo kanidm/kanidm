@@ -11,7 +11,18 @@ fn create_hmac_history(
     qs: &mut QueryServerWriteTransaction,
     cand: &mut [EntryInvalidNew],
 ) -> Result<(), OperationError> {
+    let domain_level = qs.get_domain_version();
+    if domain_level < DOMAIN_LEVEL_12 {
+        trace!("Skipping hmac name history generation");
+        return Ok(());
+    }
+
     let hmac_name_history_config = qs.get_feature_hmac_name_history_config();
+
+    if !hmac_name_history_config.enabled {
+        debug!("hmac name history not enabled");
+        return Ok(());
+    }
 
     for entry in cand.iter_mut() {
         if entry.has_class(&EntryClass::Account) {
@@ -33,6 +44,104 @@ fn create_hmac_history(
     Ok(())
 }
 
+fn update_hmac_history(
+    qs: &mut QueryServerWriteTransaction,
+    pre_cand: &[Arc<EntrySealedCommitted>],
+    cand: &mut [EntryInvalidCommitted],
+) -> Result<(), OperationError> {
+    let domain_level = qs.get_domain_version();
+    if domain_level < DOMAIN_LEVEL_12 {
+        trace!("Skipping hmac name history generation");
+        return Ok(());
+    }
+
+    let hmac_name_history_config = qs.get_feature_hmac_name_history_config();
+
+    if !hmac_name_history_config.enabled {
+        debug!("hmac name history not enabled");
+        return Ok(());
+    }
+
+    for (pre, post) in pre_cand.iter().zip(cand) {
+        if post.has_class(&EntryClass::Account) {
+            let pre_name_option = pre.get_ava_single_iname(Attribute::Name);
+            let post_name_option = post.get_ava_single_iname(Attribute::Name);
+
+            if let (Some(pre_name), Some(post_name)) = (pre_name_option, post_name_option) {
+                if pre_name != post_name {
+                    // Okay, update the hmacs now.
+
+                    let hmac_key = hmac_name_history_config.key.deref();
+                    let mut hmac = HmacSha256::new(hmac_key);
+                    hmac.update(post_name.as_bytes());
+                    let name_hmac = hmac.finalize().into_bytes();
+
+                    if let Some(hmac_set) = post
+                        .get_ava_mut(Attribute::HmacNameHistory)
+                        .and_then(|s| s.as_s256_set_mut())
+                    {
+                        hmac_set.insert(name_hmac);
+                    } else {
+                        let hmac_set = ValueSetSha256::new(name_hmac);
+                        post.set_ava_set(&Attribute::HmacNameHistory, hmac_set);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+impl HmacNameUnique {
+    #[instrument(level = "debug", name = "hmac_name_unique::fixup", skip_all)]
+    pub(crate) fn fixup(qs: &mut QueryServerWriteTransaction) -> Result<(), OperationError> {
+        let domain_level = qs.get_domain_version();
+        if domain_level < DOMAIN_LEVEL_12 {
+            trace!("Skipping hmac name history generation");
+            // should be IMPOSSIBLE to activate fixup from a lower domain level!!!
+            debug_assert!(false);
+            return Err(OperationError::KG005HowDidYouEvenManageThis);
+        }
+
+        let hmac_name_history_config_enabled = qs.get_feature_hmac_name_history_config().enabled;
+
+        if !hmac_name_history_config_enabled {
+            debug!("hmac name history not enabled");
+            // should be IMPOSSIBLE to activate fixup when the feature is disabled!!!
+            debug_assert!(false);
+            return Err(OperationError::KG005HowDidYouEvenManageThis);
+        }
+
+        // Delete any remaining HMAC headstones.
+
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::Account.into()));
+        let mut work_set = qs.internal_search_writeable(&filt)?;
+
+        let hmac_name_history_config = qs.get_feature_hmac_name_history_config();
+
+        for (_pre, entry) in work_set.iter_mut() {
+            let Some(entry_name) = entry.get_ava_single_iname(Attribute::Name) else {
+                debug!(uuid = ?entry.get_uuid(), "Skipping entry without attribute name");
+                continue;
+            };
+
+            let hmac_key = hmac_name_history_config.key.deref();
+            let mut hmac = HmacSha256::new(hmac_key);
+            hmac.update(entry_name.as_bytes());
+            let name_hmac = hmac.finalize().into_bytes();
+
+            let hmac_set = ValueSetSha256::new(name_hmac);
+            // Just stomp whatever value was there.
+            entry.set_ava_set(&Attribute::HmacNameHistory, hmac_set);
+        }
+
+        qs.internal_apply_writable(work_set).inspect_err(|err| {
+            error!(?err, "Failed to commit memberof group set");
+        })
+    }
+}
+
 impl Plugin for HmacNameUnique {
     fn id() -> &'static str {
         "plugin_hmac_name_unique"
@@ -44,61 +153,30 @@ impl Plugin for HmacNameUnique {
         cand: &mut Vec<EntryInvalidNew>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        let domain_level = qs.get_domain_version();
-        if domain_level < DOMAIN_LEVEL_12 {
-            trace!("Skipping hmac name history generation");
-            return Ok(());
-        }
-
-        create_hmac_history(qs, cand)?;
-
-        // NOTE: We DO NOT need to check if there are duplicate HMAC's in this set of candidates.
-        // as the Name attribute is single value, and attrUnique will enforce that for us.
-
-        // We DO need to check if the new names collide on any HMAC's though.
-
-
-        // for all cands.
-        // Gather their HMACs paired to uuid.
-
-        // Do an "exists" search.
-
-        Ok(())
+        create_hmac_history(qs, cand)
     }
 
     #[instrument(level = "debug", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
-        _pre_cand: &[Arc<EntrySealedCommitted>],
-        _cand: &mut Vec<EntryInvalidCommitted>,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &mut Vec<EntryInvalidCommitted>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        let domain_level = qs.get_domain_version();
-        if domain_level < DOMAIN_LEVEL_12 {
-            trace!("Skipping hmac name history generation");
-            return Ok(());
-        }
-        // Self::handle_name_updates(pre_cand, cand, qs.get_txn_cid())
-        Ok(())
+        update_hmac_history(qs, pre_cand, cand)
     }
 
     #[instrument(level = "debug", skip_all)]
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
-        _pre_cand: &[Arc<EntrySealedCommitted>],
-        _cand: &mut Vec<EntryInvalidCommitted>,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &mut Vec<EntryInvalidCommitted>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        let domain_level = qs.get_domain_version();
-        if domain_level < DOMAIN_LEVEL_12 {
-            trace!("Skipping hmac name history generation");
-            return Ok(());
-        }
-        // Self::handle_name_updates(pre_cand, cand, qs.get_txn_cid())
-        Ok(())
+        update_hmac_history(qs, pre_cand, cand)
     }
 
-    #[instrument(level = "debug", name = "refint_post_delete", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn post_delete(
         qs: &mut QueryServerWriteTransaction,
         _cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -127,9 +205,6 @@ impl Plugin for HmacNameUnique {
 mod tests {
     use crate::prelude::*;
     use crate::valueset::ValueSetIname;
-
-    // Do I need a migration to update all the hmac values of existing names?
-    // Probably yes?
 
     #[qs_test]
     async fn hmac_name_unique_basic(server: &QueryServer) {
@@ -165,6 +240,39 @@ mod tests {
 
         server_txn.commit().expect("Unable to commit");
 
+        // First check there are no HMAC's before we enable the feature
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        let entry_1 = server_txn
+            .internal_search_uuid(uuid_e1)
+            .expect("Unable to access entry 1");
+
+        let entry_2 = server_txn
+            .internal_search_uuid(uuid_e2)
+            .expect("Unable to access entry 2");
+
+        assert!(entry_1
+            .get_ava_as_s256_set(Attribute::HmacNameHistory)
+            .is_none());
+
+        assert!(entry_2
+            .get_ava_as_s256_set(Attribute::HmacNameHistory)
+            .is_none());
+
+        drop(server_txn);
+
+        // Enable the feature
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        server_txn
+            .internal_modify_uuid(
+                UUID_HMAC_NAME_FEATURE,
+                &ModifyList::new_set(Attribute::Enabled, ValueSetBool::new(true)),
+            )
+            .expect("Unable to activate hmac name history feature");
+
+        server_txn.commit().expect("Unable to commit");
+
         // They should have an hmac of the name?
         let mut server_txn = server.write(curtime).await.unwrap();
 
@@ -187,7 +295,6 @@ mod tests {
         assert_eq!(hmac_name_history_1.len(), 1);
         assert_eq!(hmac_name_history_2.len(), 1);
         assert_ne!(hmac_name_history_1, hmac_name_history_2);
-
         // Change the name
         let new_name = ValueSetIname::new("test_person_name_update");
         let modlist = ModifyList::new_set(Attribute::Name, new_name);
@@ -220,12 +327,11 @@ mod tests {
         let new_name = ValueSetIname::new("test_person_1");
         let modlist = ModifyList::new_set(Attribute::Name, new_name);
 
-        let _result = server_txn
+        let result = server_txn
             .internal_modify_uuid(uuid_e2, &modlist)
             .expect_err("Should not succeed!");
 
-        // Assert the result
-        assert!(false);
+        assert!(matches!(result, OperationError::AttributeUniqueness));
 
         // But the first CAN go back to it's original name.
         server_txn
@@ -235,87 +341,20 @@ mod tests {
         server_txn.commit().expect("Unable to commit");
     }
 
-    // Test that if we have two accounts that both flip-flop on a name, once the feature turns
-    // on, neither can claim it again.
-    #[qs_test]
-    async fn hmac_name_unique_flip_flop(server: &QueryServer) {
-        let curtime = duration_from_epoch_now();
-
-        // Create person x2
-        let uuid_e1 = Uuid::new_v4();
-        let uuid_e2 = Uuid::new_v4();
-
-        let e1: EntryInitNew = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Uuid, Value::Uuid(uuid_e1)),
-            (Attribute::Name, Value::new_iname("test_person_1")),
-            (Attribute::DisplayName, Value::new_utf8s("Test Person 1"))
-        );
-
-        let e2: EntryInitNew = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Uuid, Value::Uuid(uuid_e2)),
-            (Attribute::Name, Value::new_iname("test_person_2")),
-            (Attribute::DisplayName, Value::new_utf8s("Test Person 2"))
-        );
-
-        let mut server_txn = server.write(curtime).await.unwrap();
-
-        server_txn
-            .internal_create(vec![e1, e2])
-            .expect("Unable to create test entries");
-
-        server_txn.commit().expect("Unable to commit");
-
-        let mut server_txn = server.write(curtime).await.unwrap();
-
-        let new_name = ValueSetIname::new("test_person_1");
-        let modlist_name_1 = ModifyList::new_set(Attribute::Name, new_name);
-
-        let new_name = ValueSetIname::new("test_person_2");
-        let modlist_name_2 = ModifyList::new_set(Attribute::Name, new_name);
-
-        let new_name = ValueSetIname::new("test_person_name_update");
-        let modlist_name_update = ModifyList::new_set(Attribute::Name, new_name);
-
-        server_txn
-            .internal_modify_uuid(uuid_e1, &modlist_name_update)
-            .expect("Unable to update users name");
-
-        server_txn
-            .internal_modify_uuid(uuid_e1, &modlist_name_1)
-            .expect("Unable to update users name");
-
-        server_txn
-            .internal_modify_uuid(uuid_e2, &modlist_name_update)
-            .expect("Unable to update users name");
-
-        server_txn
-            .internal_modify_uuid(uuid_e2, &modlist_name_2)
-            .expect("Unable to update users name");
-
-        // Enable the feature.
-        server_txn.reload().expect("Unable to reload");
-
-        // Now none of you can have it.
-        let _result = server_txn
-            .internal_modify_uuid(uuid_e1, &modlist_name_update)
-            .expect_err("Should not succeed!");
-
-        let _result = server_txn
-            .internal_modify_uuid(uuid_e2, &modlist_name_update)
-            .expect_err("Should not succeed!");
-
-        server_txn.commit().expect("Unable to commit");
-    }
-
     #[qs_test]
     async fn hmac_name_unique_beyond_the_grave(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
+
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        server_txn
+            .internal_modify_uuid(
+                UUID_HMAC_NAME_FEATURE,
+                &ModifyList::new_set(Attribute::Enabled, ValueSetBool::new(true)),
+            )
+            .expect("Unable to activate hmac name history feature");
+
+        server_txn.commit().expect("Unable to commit");
 
         // Create person x2
         let uuid_e1 = Uuid::new_v4();
@@ -330,9 +369,6 @@ mod tests {
         );
 
         let mut server_txn = server.write(curtime).await.unwrap();
-
-        // TURN ON the hmac feature here.
-        assert!(false);
 
         server_txn
             .internal_create(vec![e1])
@@ -362,10 +398,11 @@ mod tests {
             (Attribute::DisplayName, Value::new_utf8s("Test Person 2"))
         );
 
-        let _result = server_txn
+        let result = server_txn
             .internal_create(vec![e2.clone()])
             .expect_err("Should not be able to create the entry");
-        // check the result
+
+        assert!(matches!(result, OperationError::AttributeUniqueness));
 
         drop(server_txn);
 
@@ -383,14 +420,27 @@ mod tests {
 
         let mut server_txn = server.write(curtime).await.unwrap();
 
-        let _result = server_txn
+        let result = server_txn
             .internal_create(vec![e2])
             .expect_err("Should not be able to create the entry");
+
+        assert!(matches!(result, OperationError::AttributeUniqueness));
     }
 
     #[qs_test]
     async fn hmac_name_unique_revive_merge(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
+
+        let mut server_txn = server.write(curtime).await.unwrap();
+
+        server_txn
+            .internal_modify_uuid(
+                UUID_HMAC_NAME_FEATURE,
+                &ModifyList::new_set(Attribute::Enabled, ValueSetBool::new(true)),
+            )
+            .expect("Unable to activate hmac name history feature");
+
+        server_txn.commit().expect("Unable to commit");
 
         // Create person
         let uuid_e1 = Uuid::new_v4();
@@ -405,9 +455,6 @@ mod tests {
         );
 
         let mut server_txn = server.write(curtime).await.unwrap();
-
-        // TURN ON the hmac feature here.
-        assert!(false);
 
         server_txn
             .internal_create(vec![e1])
