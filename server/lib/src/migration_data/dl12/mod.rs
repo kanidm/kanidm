@@ -124,6 +124,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES.clone().into(),
         SCHEMA_ATTR_HMAC_NAME_HISTORY.clone().into(),
         SCHEMA_ATTR_ENABLED.clone().into(),
+        SCHEMA_ATTR_IN_MEMORIAM.clone().into(),
     ]
 }
 
@@ -167,6 +168,7 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         SCHEMA_CLASS_OAUTH2_ACCOUNT.clone().into(),
         SCHEMA_CLASS_OAUTH2_CLIENT.clone().into(),
         SCHEMA_CLASS_FEATURE.clone().into(),
+        SCHEMA_CLASS_MEMORIAL.clone().into(),
     ]
 }
 

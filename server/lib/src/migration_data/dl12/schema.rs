@@ -869,6 +869,14 @@ pub static ref SCHEMA_ATTR_HMAC_NAME_HISTORY: SchemaAttribute = SchemaAttribute 
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_IN_MEMORIAM: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_IN_MEMORIAM_UUID,
+    name: Attribute::InMemoriam,
+    description: "The uuid of the entry that this memorial is dedicated to.".to_string(),
+    syntax: SyntaxType::Uuid,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_ENABLED: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ENABLED,
     name: Attribute::Enabled,
@@ -1337,6 +1345,19 @@ pub static ref SCHEMA_CLASS_FEATURE: SchemaClass = SchemaClass {
     ],
     systemmay: vec![
         Attribute::Enabled,
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_MEMORIAL: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_MEMORIAL,
+    name: EntryClass::Memorial.into(),
+    description: "The class representing a memorial to an entry that has been deleted.".to_string(),
+    systemmust: vec![
+        Attribute::InMemoriam
+    ],
+    systemmay: vec![
+        Attribute::HmacNameHistory
     ],
     ..Default::default()
 };
