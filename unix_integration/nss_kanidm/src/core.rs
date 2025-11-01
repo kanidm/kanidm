@@ -5,10 +5,10 @@ use kanidm_unix_common::unix_passwd::{
     read_etc_group_file, read_etc_passwd_file, EtcGroup, EtcUser,
 };
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser};
-
 use libnss::group::Group;
 use libnss::interop::Response;
 use libnss::passwd::Passwd;
+use std::cell::RefCell;
 
 #[cfg(test)]
 use kanidm_unix_common::client_sync::UnixStream;
@@ -25,6 +25,10 @@ pub enum RequestOptions {
     },
 }
 
+thread_local! {
+    pub static CLIENT: RefCell<Option<DaemonClientBlocking>> = const { RefCell::new(None) };
+}
+
 enum Source {
     Daemon(DaemonClientBlocking),
     Fallback {
@@ -35,6 +39,13 @@ enum Source {
 
 impl RequestOptions {
     fn connect_to_daemon(self) -> Source {
+        let maybe_blocking_client = CLIENT.with_borrow(|tls_value| tls_value.clone());
+
+        if let Some(client) = maybe_blocking_client {
+            // We already initialised the client in this thread, return it.
+            return Source::Daemon(client);
+        }
+
         match self {
             RequestOptions::Main { config_path } => {
                 let maybe_client = PamNssConfig::new()
@@ -46,6 +57,8 @@ impl RequestOptions {
                     });
 
                 if let Some(client) = maybe_client {
+                    // Store a copy of the client in thread local storage.
+                    let _ = CLIENT.replace(Some(client.clone()));
                     Source::Daemon(client)
                 } else {
                     let users = read_etc_passwd_file(SYSTEM_PASSWD_PATH).unwrap_or_default();
@@ -62,7 +75,9 @@ impl RequestOptions {
                 groups,
             } => {
                 if let Some(socket) = socket {
-                    Source::Daemon(DaemonClientBlocking::from(socket))
+                    let client = DaemonClientBlocking::from(socket);
+                    let _ = CLIENT.replace(Some(client.clone()));
+                    Source::Daemon(client)
                 } else {
                     Source::Fallback { users, groups }
                 }
@@ -73,7 +88,7 @@ impl RequestOptions {
 
 pub fn get_all_user_entries(req_options: RequestOptions) -> Response<Vec<Passwd>> {
     match req_options.connect_to_daemon() {
-        Source::Daemon(mut daemon_client) => {
+        Source::Daemon(daemon_client) => {
             let req = ClientRequest::NssAccounts;
 
             daemon_client
@@ -101,7 +116,7 @@ pub fn get_all_user_entries(req_options: RequestOptions) -> Response<Vec<Passwd>
 
 pub fn get_user_entry_by_uid(uid: libc::uid_t, req_options: RequestOptions) -> Response<Passwd> {
     match req_options.connect_to_daemon() {
-        Source::Daemon(mut daemon_client) => {
+        Source::Daemon(daemon_client) => {
             let req = ClientRequest::NssAccountByUid(uid);
             daemon_client
                 .call_and_wait(req, None)
@@ -141,7 +156,7 @@ pub fn get_user_entry_by_uid(uid: libc::uid_t, req_options: RequestOptions) -> R
 
 pub fn get_user_entry_by_name(name: String, req_options: RequestOptions) -> Response<Passwd> {
     match req_options.connect_to_daemon() {
-        Source::Daemon(mut daemon_client) => {
+        Source::Daemon(daemon_client) => {
             let req = ClientRequest::NssAccountByName(name);
             daemon_client
                 .call_and_wait(req, None)
@@ -181,7 +196,7 @@ pub fn get_user_entry_by_name(name: String, req_options: RequestOptions) -> Resp
 
 pub fn get_all_group_entries(req_options: RequestOptions) -> Response<Vec<Group>> {
     match req_options.connect_to_daemon() {
-        Source::Daemon(mut daemon_client) => {
+        Source::Daemon(daemon_client) => {
             let req = ClientRequest::NssGroups;
             daemon_client
                 .call_and_wait(req, None)
@@ -208,7 +223,7 @@ pub fn get_all_group_entries(req_options: RequestOptions) -> Response<Vec<Group>
 
 pub fn get_group_entry_by_gid(gid: libc::gid_t, req_options: RequestOptions) -> Response<Group> {
     match req_options.connect_to_daemon() {
-        Source::Daemon(mut daemon_client) => {
+        Source::Daemon(daemon_client) => {
             let req = ClientRequest::NssGroupByGid(gid);
             daemon_client
                 .call_and_wait(req, None)
@@ -248,7 +263,7 @@ pub fn get_group_entry_by_gid(gid: libc::gid_t, req_options: RequestOptions) -> 
 
 pub fn get_group_entry_by_name(name: String, req_options: RequestOptions) -> Response<Group> {
     match req_options.connect_to_daemon() {
-        Source::Daemon(mut daemon_client) => {
+        Source::Daemon(daemon_client) => {
             let req = ClientRequest::NssGroupByName(name);
             daemon_client
                 .call_and_wait(req, None)
