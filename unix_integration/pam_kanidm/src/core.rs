@@ -11,9 +11,9 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 use kanidm_unix_common::unix_proto::{
     DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo,
 };
+use std::cell::RefCell;
 use std::time::Duration;
 use time::OffsetDateTime;
-
 use tracing::{debug, error};
 
 #[cfg(test)]
@@ -32,6 +32,10 @@ pub enum RequestOptions {
     },
 }
 
+thread_local! {
+    pub static CLIENT: RefCell<Option<DaemonClientBlocking>> = const { RefCell::new(None) };
+}
+
 enum Source {
     Daemon(DaemonClientBlocking),
     Fallback {
@@ -43,6 +47,13 @@ enum Source {
 
 impl RequestOptions {
     fn connect_to_daemon(self) -> Source {
+        let maybe_blocking_client = CLIENT.with_borrow(|tls_value| tls_value.clone());
+
+        if let Some(client) = maybe_blocking_client {
+            // We already initialised the client in this thread, return it.
+            return Source::Daemon(client);
+        }
+
         match self {
             RequestOptions::Main { config_path } => {
                 let maybe_client = PamNssConfig::new()
@@ -54,6 +65,8 @@ impl RequestOptions {
                     });
 
                 if let Some(client) = maybe_client {
+                    // Store a copy of the client in thread local storage.
+                    let _ = CLIENT.replace(Some(client.clone()));
                     Source::Daemon(client)
                 } else {
                     let users = read_etc_passwd_file(SYSTEM_PASSWD_PATH).unwrap_or_default();
@@ -74,7 +87,9 @@ impl RequestOptions {
                 shadow,
             } => {
                 if let Some(socket) = socket {
-                    Source::Daemon(DaemonClientBlocking::from(socket))
+                    let client = DaemonClientBlocking::from(socket);
+                    let _ = CLIENT.replace(Some(client.clone()));
+                    Source::Daemon(client)
                 } else {
                     Source::Fallback { users, shadow }
                 }
@@ -108,7 +123,7 @@ pub fn sm_authenticate_connected<P: PamHandler>(
     pamh: &P,
     opts: &ModuleOptions,
     _current_time: OffsetDateTime,
-    mut daemon_client: DaemonClientBlocking,
+    daemon_client: &DaemonClientBlocking,
 ) -> PamResultCode {
     let info = match pamh.service_info() {
         Ok(info) => info,
@@ -396,7 +411,7 @@ pub fn sm_authenticate<P: PamHandler>(
 ) -> PamResultCode {
     match req_opt.connect_to_daemon() {
         Source::Daemon(daemon_client) => {
-            sm_authenticate_connected(pamh, opts, current_time, daemon_client)
+            sm_authenticate_connected(pamh, opts, current_time, &daemon_client)
         }
         Source::Fallback { users, shadow } => {
             sm_authenticate_fallback(pamh, opts, current_time, users, shadow)
@@ -416,7 +431,7 @@ pub fn acct_mgmt<P: PamHandler>(
     };
 
     match req_opt.connect_to_daemon() {
-        Source::Daemon(mut daemon_client) => {
+        Source::Daemon(daemon_client) => {
             let req = ClientRequest::PamAccountAllowed(account_id);
             match daemon_client.call_and_wait(req, None) {
                 Ok(r) => match r {
@@ -497,7 +512,7 @@ pub fn sm_open_session<P: PamHandler>(
     };
 
     match req_opt.connect_to_daemon() {
-        Source::Daemon(mut daemon_client) => {
+        Source::Daemon(daemon_client) => {
             let req = ClientRequest::PamAccountBeginSession(account_id);
 
             match daemon_client.call_and_wait(req, None) {
