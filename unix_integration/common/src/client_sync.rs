@@ -4,6 +4,7 @@ use crate::unix_proto::{ClientRequest, ClientResponse};
 use bytes::BytesMut;
 use std::error::Error;
 use std::io::{self, ErrorKind, Read, Write};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -11,7 +12,12 @@ pub use std::os::unix::net::UnixStream;
 
 type ClientCodec = JsonCodec<ClientResponse, ClientRequest>;
 
+#[derive(Clone)]
 pub struct DaemonClientBlocking {
+    inner: Arc<Mutex<DaemonClientBlockingInner>>,
+}
+
+struct DaemonClientBlockingInner {
     stream: UnixStream,
     codec: ClientCodec,
     default_timeout: u64,
@@ -20,9 +26,11 @@ pub struct DaemonClientBlocking {
 impl From<UnixStream> for DaemonClientBlocking {
     fn from(stream: UnixStream) -> Self {
         DaemonClientBlocking {
-            stream,
-            codec: ClientCodec::default(),
-            default_timeout: DEFAULT_CONN_TIMEOUT,
+            inner: Arc::new(Mutex::new(DaemonClientBlockingInner {
+                stream,
+                codec: ClientCodec::default(),
+                default_timeout: DEFAULT_CONN_TIMEOUT,
+            })),
         }
     }
 }
@@ -54,13 +62,30 @@ impl DaemonClientBlocking {
         })?;
 
         Ok(DaemonClientBlocking {
-            stream,
-            codec: ClientCodec::default(),
-            default_timeout,
+            inner: Arc::new(Mutex::new(DaemonClientBlockingInner {
+                stream,
+                codec: ClientCodec::default(),
+                default_timeout,
+            })),
         })
     }
 
     pub fn call_and_wait(
+        &self,
+        req: ClientRequest,
+        timeout: Option<u64>,
+    ) -> Result<ClientResponse, Box<dyn Error + '_>> {
+        let mut guard = self.inner.lock().map_err(|err| {
+            error!(?err, "critical, daemon client mutex has been poisoned!!!");
+            Box::new(err)
+        })?;
+
+        guard.call_and_wait(req, timeout)
+    }
+}
+
+impl DaemonClientBlockingInner {
+    fn call_and_wait(
         &mut self,
         req: ClientRequest,
         timeout: Option<u64>,
