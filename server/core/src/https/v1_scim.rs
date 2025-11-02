@@ -362,7 +362,7 @@ async fn scim_entry_get(
     ),
     security(("token_jwt" = [])),
     tag = "scim",
-    operation_id = "scim_entry_put"
+    operation_id = "scim_entry_post"
 )]
 async fn scim_entry_post(
     State(state): State<ServerState>,
