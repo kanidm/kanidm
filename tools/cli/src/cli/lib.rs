@@ -53,8 +53,10 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMod
                 std::process::exit(1);
             } else if status == StatusCode::NOT_FOUND {
                 error!("Item not found: Check all names are correct.");
+                std::process::exit(1);
             } else {
                 error!("HTTP Error: {}{}", status, error_msg);
+                std::process::exit(1);
             }
         }
         ClientError::Transport(e) => {
@@ -67,6 +69,7 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMod
         }
         _ => {
             eprintln!("{response:?}");
+            std::process::exit(1);
         }
     };
 }
