@@ -25,7 +25,7 @@ fn determine_git_rev() -> Option<String> {
         }
     };
     let mut head = repo.head().ok()?;
-    let commit = head.peel_to_commit_in_place().ok()?;
+    let commit = head.peel_to_commit().ok()?;
     let mut commit_id = commit.id().to_string();
     // Now we actually want to trim this to only 10 chars?
     commit_id.truncate(10);
