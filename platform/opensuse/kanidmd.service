@@ -21,6 +21,9 @@ ExecStart=/usr/sbin/kanidmd server -c /etc/kanidm/server.toml
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 
+# Prevent FD limits from being hit under load.
+LimitNOFILE=65536
+
 # If OOM occurs, request a clean stop
 OOMPolicy=stop
 # Adjust our weight toward *not* being killed under pressure.

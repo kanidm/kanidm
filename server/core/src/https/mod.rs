@@ -18,7 +18,7 @@ use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
 use futures::pin_mut;
 use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
 use hyper::body::Incoming;
-use hyper_util::rt::{TokioExecutor, TokioIo};
+use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::authentication::ClientCertInfo, status::StatusActor};
@@ -28,22 +28,28 @@ use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
 };
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
+    io::{AsyncRead, AsyncReadExt, AsyncWrite},
     net::{TcpListener, TcpStream},
     sync::broadcast,
     sync::mpsc,
     task,
+    time::timeout,
 };
 use tokio_rustls::TlsAcceptor;
 use tower::Service;
-use tower_http::{services::ServeDir, trace::TraceLayer};
+use tower_http::{services::ServeDir, timeout::TimeoutLayer, trace::TraceLayer};
 use url::Url;
 use uuid::Uuid;
+
+const HTTPS_CLIENT_CONN_TIMEOUT: Duration = Duration::from_secs(30);
+const HTTPS_CLIENT_IO_TIMEOUT: Duration = Duration::from_secs(60);
+const HTTPS_CLIENT_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
 
 mod apidocs;
 pub(crate) mod cache_buster;
@@ -347,6 +353,8 @@ pub async fn create_https_server(
         ))
         .layer(from_fn(middleware::kopid_middleware))
         .merge(apidocs::router())
+        // Apply Request Timeouts
+        .layer(TimeoutLayer::new(HTTPS_CLIENT_REQUEST_TIMEOUT))
         // this MUST be the last layer before with_state else the span never starts and everything breaks.
         .layer(trace_layer)
         .with_state(state)
@@ -497,13 +505,36 @@ pub(crate) async fn handle_tls_conn(
     connection_addr: SocketAddr,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) -> Result<(), std::io::Error> {
-    let (stream, client_ip_addr) =
+    let (mut stream, client_ip_addr) =
         process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
 
-    let tls_stream = acceptor.accept(stream).await.map_err(|err| {
-        error!(?err, "Failed to create TLS stream");
-        std::io::Error::from(ErrorKind::ConnectionAborted)
-    })?;
+    // Don't both starting to build anything until there is actually something to do.
+    // This is pretty common with "health checks" that open a connection and then just
+    // quit.
+    let mut zero_buf: [u8; 0] = [];
+    match timeout(HTTPS_CLIENT_CONN_TIMEOUT, stream.read(&mut zero_buf)).await {
+        Ok(Ok(_)) => {}
+        Ok(Err(err)) => {
+            debug!(?err, "Connection closed before we recieved initial data");
+            return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+        }
+        Err(_) => {
+            error!("Timeout waiting for initial data");
+            return Err(std::io::Error::from(ErrorKind::TimedOut));
+        }
+    };
+
+    let tls_stream = match timeout(HTTPS_CLIENT_CONN_TIMEOUT, acceptor.accept(stream)).await {
+        Ok(Ok(tls_stream)) => tls_stream,
+        Ok(Err(err)) => {
+            error!(?err, "Failed to create TLS stream");
+            return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+        }
+        Err(_) => {
+            error!("Timeout creating TLS stream");
+            return Err(std::io::Error::from(ErrorKind::TimedOut));
+        }
+    };
 
     let maybe_peer_cert = tls_stream
         .get_ref()
@@ -564,8 +595,13 @@ async fn process_client_addr(
         .unwrap_or_default();
 
     let (stream, client_addr) = if enable_proxy_v2_hdr {
-        match ProxyHdrV2::parse_from_read(stream).await {
-            Ok((stream, hdr)) => {
+        match timeout(
+            HTTPS_CLIENT_CONN_TIMEOUT,
+            ProxyHdrV2::parse_from_read(stream),
+        )
+        .await
+        {
+            Ok(Ok((stream, hdr))) => {
                 let remote_socket_addr = match hdr.to_remote_addr() {
                     RemoteAddress::Local => {
                         debug!("PROXY protocol liveness check - will not contain client data");
@@ -582,9 +618,13 @@ async fn process_client_addr(
 
                 (stream, remote_socket_addr)
             }
-            Err(err) => {
+            Ok(Err(err)) => {
                 error!(?connection_addr, ?err, "Unable to process proxy v2 header");
                 return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+            }
+            Err(_) => {
+                error!(?connection_addr, "Timeout receiving proxy v2 header");
+                return Err(std::io::Error::from(ErrorKind::TimedOut));
             }
         }
     } else {
@@ -595,7 +635,7 @@ async fn process_client_addr(
 }
 
 async fn process_client_hyper<T>(
-    stream: TokioIo<T>,
+    mut stream: TokioIo<T>,
     mut app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     client_conn_info: ClientConnInfo,
 ) -> Result<(), std::io::Error>
@@ -603,6 +643,27 @@ where
     T: AsyncRead + AsyncWrite + std::marker::Unpin + std::marker::Send + 'static,
 {
     debug!(?client_conn_info);
+    // Don't both starting to build anything until there is actually something to do.
+    let mut zero_buf: [u8; 0] = [];
+    match timeout(
+        HTTPS_CLIENT_CONN_TIMEOUT,
+        stream.inner_mut().read(&mut zero_buf),
+    )
+    .await
+    {
+        Ok(Ok(_)) => {}
+        Ok(Err(err)) => {
+            debug!(
+                ?err,
+                "connection was closed before initial data could be sent"
+            );
+            return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+        }
+        Err(_) => {
+            error!("connection timed out waiting for initial request data");
+            return Err(std::io::Error::from(ErrorKind::TimedOut));
+        }
+    };
 
     let svc = tower::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
         &mut app,
@@ -625,7 +686,20 @@ where
         svc.clone().call(request)
     });
 
-    hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+    let mut builder = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new());
+
+    builder
+        .http1()
+        .timer(TokioTimer::new())
+        .header_read_timeout(HTTPS_CLIENT_IO_TIMEOUT);
+
+    builder
+        .http2()
+        .timer(TokioTimer::new())
+        .keep_alive_timeout(HTTPS_CLIENT_IO_TIMEOUT)
+        .keep_alive_interval(HTTPS_CLIENT_IO_TIMEOUT);
+
+    builder
         .serve_connection_with_upgrades(stream, hyper_service)
         .await
         .map_err(|e| {
