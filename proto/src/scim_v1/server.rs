@@ -301,10 +301,8 @@ pub enum ScimValueKanidm {
 
     Message(OutboundMessage),
 
-
     #[schema(value_type = Vec<String>)]
     Sha256(#[serde_as(as = "Vec<Hex>")] Vec<Sha256Output>),
-
 }
 
 #[serde_as]

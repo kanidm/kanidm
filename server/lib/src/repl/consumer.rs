@@ -34,9 +34,8 @@ impl QueryServerWriteTransaction<'_> {
             EntryIncrementalNew::rehydrate
         )
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| {
-            error!(err = ?e, "Unable to process replication incremental entries to valid entry states for replication");
-            e
+        .inspect_err(|err| {
+            error!(?err, "Unable to process replication incremental entries to valid entry states for replication");
         })?;
 
         trace!(?ctx_entries);
@@ -54,7 +53,8 @@ impl QueryServerWriteTransaction<'_> {
         // need to be pushed to a separate list where they are then "created"
         // as a conflict.
 
-        // First find if entries are in a conflict state.
+        // First find if entries are in a conflict state. Remember, these conflicts are purely
+        // UUID creation conflicts at this phase in the process.
 
         let (conflicts, proceed): (Vec<_>, Vec<_>) = ctx_entries
             .iter()

@@ -1,9 +1,9 @@
-use std::fmt::{Display, Formatter};
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-use uuid::Uuid;
 use super::credupdate::PasswordFeedback;
 use crate::attribute::Attribute;
+use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
+use utoipa::ToSchema;
+use uuid::Uuid;
 
 /* ===== errors ===== */
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
