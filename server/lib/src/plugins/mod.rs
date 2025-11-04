@@ -3,12 +3,11 @@
 //! helps to ensure that data is always in specific known states within the
 //! `QueryServer`
 
-use std::collections::BTreeSet;
-use std::sync::Arc;
-
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
-use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
+use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent};
 use crate::prelude::*;
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 mod attrunique;
 mod base;
@@ -36,7 +35,7 @@ trait Plugin {
         _cand: &mut Vec<EntryInvalidNew>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        admin_error!(
+        error!(
             "plugin {} has an unimplemented pre_create_transform!",
             Self::id()
         );
@@ -51,7 +50,7 @@ trait Plugin {
         _cand: &[EntrySealedNew],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        admin_error!("plugin {} has an unimplemented pre_create!", Self::id());
+        error!("plugin {} has an unimplemented pre_create!", Self::id());
         debug_assert!(false);
         Err(OperationError::InvalidState)
     }
@@ -62,7 +61,17 @@ trait Plugin {
         _cand: &[EntrySealedCommitted],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        admin_error!("plugin {} has an unimplemented post_create!", Self::id());
+        error!("plugin {} has an unimplemented post_create!", Self::id());
+        debug_assert!(false);
+        Err(OperationError::InvalidState)
+    }
+
+    fn teardown_memorials(
+        _qs: &mut QueryServerWriteTransaction,
+        _memorial_pairs: &mut [(&EntrySealedCommitted, &mut EntryInvalidCommitted)],
+        _re: &ReviveRecycledEvent,
+    ) -> Result<(), OperationError> {
+        error!("plugin {} has an unimplemented pre_modify!", Self::id());
         debug_assert!(false);
         Err(OperationError::InvalidState)
     }
@@ -73,7 +82,7 @@ trait Plugin {
         _cand: &mut Vec<EntryInvalidCommitted>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        admin_error!("plugin {} has an unimplemented pre_modify!", Self::id());
+        error!("plugin {} has an unimplemented pre_modify!", Self::id());
         debug_assert!(false);
         Err(OperationError::InvalidState)
     }
@@ -85,7 +94,7 @@ trait Plugin {
         _cand: &[EntrySealedCommitted],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        admin_error!("plugin {} has an unimplemented post_modify!", Self::id());
+        error!("plugin {} has an unimplemented post_modify!", Self::id());
         debug_assert!(false);
         Err(OperationError::InvalidState)
     }
@@ -96,7 +105,7 @@ trait Plugin {
         _cand: &mut Vec<EntryInvalidCommitted>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        admin_error!(
+        error!(
             "plugin {} has an unimplemented pre_batch_modify!",
             Self::id()
         );
@@ -111,8 +120,22 @@ trait Plugin {
         _cand: &[EntrySealedCommitted],
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        admin_error!(
+        error!(
             "plugin {} has an unimplemented post_batch_modify!",
+            Self::id()
+        );
+        debug_assert!(false);
+        Err(OperationError::InvalidState)
+    }
+
+    fn build_memorials(
+        _qs: &mut QueryServerWriteTransaction,
+        _cand: &[Arc<EntrySealedCommitted>],
+        _memorials: &mut BTreeMap<Uuid, EntryInitNew>,
+        _de: &DeleteEvent,
+    ) -> Result<(), OperationError> {
+        error!(
+            "plugin {} has an unimplemented run_build_memorials!",
             Self::id()
         );
         debug_assert!(false);
@@ -124,7 +147,7 @@ trait Plugin {
         _cand: &mut Vec<EntryInvalidCommitted>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        admin_error!("plugin {} has an unimplemented pre_delete!", Self::id());
+        error!("plugin {} has an unimplemented pre_delete!", Self::id());
         debug_assert!(false);
         Err(OperationError::InvalidState)
     }
@@ -135,7 +158,7 @@ trait Plugin {
         _cand: &[EntrySealedCommitted],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        admin_error!("plugin {} has an unimplemented post_delete!", Self::id());
+        error!("plugin {} has an unimplemented post_delete!", Self::id());
         debug_assert!(false);
         Err(OperationError::InvalidState)
     }
@@ -144,7 +167,7 @@ trait Plugin {
         _qs: &mut QueryServerWriteTransaction,
         _cand: &[EntryRefreshNew],
     ) -> Result<(), OperationError> {
-        admin_error!(
+        error!(
             "plugin {} has an unimplemented pre_repl_refresh!",
             Self::id()
         );
@@ -156,7 +179,7 @@ trait Plugin {
         _qs: &mut QueryServerWriteTransaction,
         _cand: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
-        admin_error!(
+        error!(
             "plugin {} has an unimplemented post_repl_refresh!",
             Self::id()
         );
@@ -168,7 +191,7 @@ trait Plugin {
     //     _qs: &mut QueryServerWriteTransaction,
     //     _cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
     // ) -> Result<(), OperationError> {
-    //     admin_error!(
+    //     error!(
     //         "plugin {} has an unimplemented pre_repl_incremental!",
     //         Self::id()
     //     );
@@ -181,7 +204,7 @@ trait Plugin {
         _cand: &[(EntrySealedCommitted, Arc<EntrySealedCommitted>)],
         _conflict_uuids: &mut BTreeSet<Uuid>,
     ) -> Result<(), OperationError> {
-        admin_error!(
+        error!(
             "plugin {} has an unimplemented post_repl_incremental_conflict!",
             Self::id()
         );
@@ -195,7 +218,7 @@ trait Plugin {
         _cand: &[EntrySealedCommitted],
         _conflict_uuids: &BTreeSet<Uuid>,
     ) -> Result<(), OperationError> {
-        admin_error!(
+        error!(
             "plugin {} has an unimplemented post_repl_incremental!",
             Self::id()
         );
@@ -204,7 +227,7 @@ trait Plugin {
     }
 
     fn verify(_qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
-        admin_error!("plugin {} has an unimplemented verify!", Self::id());
+        error!("plugin {} has an unimplemented verify!", Self::id());
         vec![Err(ConsistencyError::Unknown)]
     }
 }
@@ -264,6 +287,15 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         refint::ReferentialIntegrity::post_create(qs, cand, ce)?;
         memberof::MemberOf::post_create(qs, cand, ce)
+    }
+
+    #[instrument(level = "debug", name = "plugins::run_teardown_memorials", skip_all)]
+    pub fn run_teardown_memorials(
+        qs: &mut QueryServerWriteTransaction,
+        memorial_pairs: &mut [(&EntrySealedCommitted, &mut EntryInvalidCommitted)],
+        re: &ReviveRecycledEvent,
+    ) -> Result<(), OperationError> {
+        hmac_name_unique::HmacNameUnique::teardown_memorials(qs, memorial_pairs, re)
     }
 
     #[instrument(level = "debug", name = "plugins::run_pre_modify", skip_all)]
@@ -342,6 +374,16 @@ impl Plugins {
         memberof::MemberOf::post_batch_modify(qs, pre_cand, cand, me)
     }
 
+    #[instrument(level = "debug", name = "plugins::run_build_memorials", skip_all)]
+    pub fn run_build_memorials(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[Arc<EntrySealedCommitted>],
+        memorials: &mut BTreeMap<Uuid, EntryInitNew>,
+        de: &DeleteEvent,
+    ) -> Result<(), OperationError> {
+        hmac_name_unique::HmacNameUnique::build_memorials(qs, cand, memorials, de)
+    }
+
     #[instrument(level = "debug", name = "plugins::run_pre_delete", skip_all)]
     pub fn run_pre_delete(
         qs: &mut QueryServerWriteTransaction,
@@ -357,7 +399,6 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        hmac_name_unique::HmacNameUnique::post_delete(qs, cand, de)?;
         refint::ReferentialIntegrity::post_delete(qs, cand, de)?;
         memberof::MemberOf::post_delete(qs, cand, de)
     }

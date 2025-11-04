@@ -204,16 +204,84 @@ impl QueryServerWriteTransaction<'_> {
 
         // Are they all revived?
         if candidates.iter().all(|e| e.mask_recycled().is_none()) {
-            admin_error!("Not all candidates were correctly revived, unable to proceed");
+            error!("Not all candidates were correctly revived, unable to proceed");
             return Err(OperationError::InvalidEntryState);
         }
 
+        // Were there any established memorials to these entries?
+        let memoriam_filters = candidates
+            .iter()
+            .filter_map(|entry| {
+                entry
+                    .get_uuid()
+                    .map(PartialValue::Uuid)
+                    .map(|pv| f_eq(Attribute::InMemoriam, pv))
+            })
+            .collect::<Vec<_>>();
+
+        let memorial_candidates = self.internal_search(filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::Memorial.into()),
+            f_or(memoriam_filters)
+        ])))?;
+
+        if !memorial_candidates.is_empty() {
+            // We need to create a linkage between the memorial and the entry.
+            let memorial_map: BTreeMap<Uuid, &EntrySealedCommitted> = memorial_candidates
+                .iter()
+                .map(|entry| (entry.get_uuid(), entry.as_ref()))
+                .collect();
+
+            // We need to setup a map of the pairs, so we can mod candidates based on the content
+            // of their memorials. For example, we want to ensure that any hmacNameHistories
+            // that were merged on memorials, are all brought back together.
+            let mut memorial_candidate_pairs: Vec<(
+                &EntrySealedCommitted,
+                &mut EntryInvalidCommitted,
+            )> = candidates
+                .iter_mut()
+                .filter_map(|entry| {
+                    entry
+                        .get_uuid()
+                        .and_then(|uuid| memorial_map.get(&uuid).map(|memorial| (*memorial, entry)))
+                })
+                .collect();
+
+            // If so, we need to clean them up NOW!
+            Plugins::run_teardown_memorials(self, &mut memorial_candidate_pairs, &re).inspect_err(
+                |err| {
+                    error!(?err, "Revive operation failed (plugin)");
+                },
+            )?;
+
+            // Delete the memorials NOW! Unlike a normal delete, go STRAIGHT TO TOMBSTONE!!!
+            let tombstone_cand = memorial_candidates
+                .iter()
+                .map(|e| {
+                    e.to_tombstone(self.cid.clone())
+                        .validate(&self.schema)
+                        .map_err(|e| {
+                            error!("Schema Violation in teardown memorials validation: {:?}", e);
+                            OperationError::SchemaViolation(e)
+                        })
+                        // seal if it worked.
+                        .map(|e| e.seal(&self.schema))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            self.be_txn
+                .modify(&self.cid, &memorial_candidates, &tombstone_cand)
+                .inspect_err(|err| {
+                    error!(?err, "Teardown memorials operation failed (backend)");
+                })?;
+        };
+
         // Do we need to apply pre-mod?
         // Very likely, in case domain has renamed etc.
-        Plugins::run_pre_modify(self, &pre_candidates, &mut candidates, &me).map_err(|e| {
-            admin_error!("Revive operation failed (plugin), {:?}", e);
-            e
-        })?;
+        Plugins::run_pre_modify(self, &pre_candidates, &mut candidates, &me).inspect_err(
+            |err| {
+                error!(?err, "Revive operation failed (plugin)");
+            },
+        )?;
 
         // Schema validate
         let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates

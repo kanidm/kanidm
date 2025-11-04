@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::server::DeleteEvent;
 use crate::server::{ChangeFlag, Plugins};
+use std::collections::BTreeMap;
 
 impl QueryServerWriteTransaction<'_> {
     #[allow(clippy::cognitive_complexity)]
@@ -114,10 +115,64 @@ impl QueryServerWriteTransaction<'_> {
 
         trace!(?candidates, "delete: candidates");
 
+        // If we need to build a memorial to the candidate, ask plugins now.
+        let mut memorials: BTreeMap<Uuid, EntryInitNew> = BTreeMap::new();
+
+        Plugins::run_build_memorials(self, &pre_candidates, &mut memorials, de).inspect_err(
+            |err| {
+                error!(?err, "Delete operation failed (plugin)");
+            },
+        )?;
+
+        if !memorials.is_empty() {
+            let candidates: Vec<Entry<EntryInvalid, EntryNew>> = memorials
+                .into_iter()
+                .map(|(source_uuid, mut entry)| {
+                    // First, ensure that the only class is Memorial.
+                    entry.remove_ava(&Attribute::Class);
+                    entry.set_ava_set(&Attribute::Uuid, ValueSetUuid::new(Uuid::new_v4()));
+                    entry.set_ava_set(&Attribute::InMemoriam, ValueSetUuid::new(source_uuid));
+                    entry.set_ava_set(
+                        &Attribute::Class,
+                        vs_iutf8![EntryClass::Object.into(), EntryClass::Memorial.into()],
+                    );
+                    // Now setup replication metadata so that we can put this entry
+                    // into the invalid state.
+                    entry.assign_cid(self.cid.clone(), &self.schema)
+                })
+                .collect();
+
+            if candidates.iter().any(|e| e.mask_recycled_ts().is_none()) {
+                warn!("Refusing to create invalid entries that are attempting to bypass replication state machine.");
+                return Err(OperationError::AccessDenied);
+            }
+
+            let norm_cand = candidates
+                .into_iter()
+                .map(|e| {
+                    e.validate(&self.schema)
+                        .map_err(|e| {
+                            error!("Schema Violation in create validate {:?}", e);
+                            OperationError::SchemaViolation(e)
+                        })
+                        .map(|e| {
+                            // Then seal the changes?
+                            e.seal(&self.schema)
+                        })
+                })
+                .collect::<Result<Vec<EntrySealedNew>, _>>()?;
+
+            let _commit_cand = self
+                .be_txn
+                .create(&self.cid, norm_cand)
+                .inspect_err(|err| {
+                    error!(?err, "betxn create failure");
+                })?;
+        }
+
         // Pre delete plugs
-        Plugins::run_pre_delete(self, &mut candidates, de).map_err(|e| {
-            admin_error!("Delete operation failed (plugin), {:?}", e);
-            e
+        Plugins::run_pre_delete(self, &mut candidates, de).inspect_err(|err| {
+            error!(?err, "Delete operation failed (plugin)");
         })?;
 
         trace!(?candidates, "delete: now marking candidates as recycled");

@@ -41,7 +41,7 @@ impl QueryServerWriteTransaction<'_> {
         // are valid to create within the set of replication transitions. This
         // means they *can not* be recycled or tombstones!
         if candidates.iter().any(|e| e.mask_recycled_ts().is_none()) {
-            admin_warn!("Refusing to create invalid entries that are attempting to bypass replication state machine.");
+            warn!("Refusing to create invalid entries that are attempting to bypass replication state machine.");
             return Err(OperationError::AccessDenied);
         }
 

@@ -873,6 +873,7 @@ pub static ref SCHEMA_ATTR_IN_MEMORIAM: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_IN_MEMORIAM_UUID,
     name: Attribute::InMemoriam,
     description: "The uuid of the entry that this memorial is dedicated to.".to_string(),
+    indexed: true,
     syntax: SyntaxType::Uuid,
     ..Default::default()
 };

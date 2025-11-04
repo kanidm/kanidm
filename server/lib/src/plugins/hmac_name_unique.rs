@@ -1,7 +1,9 @@
+use crate::event::ReviveRecycledEvent;
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::valueset::ValueSetSha256;
 use crypto_glue::{hmac_s256::HmacSha256, traits::Mac};
+use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -93,6 +95,68 @@ fn update_hmac_history(
     Ok(())
 }
 
+fn build_memorials(
+    qs: &mut QueryServerWriteTransaction,
+    cand: &[Arc<EntrySealedCommitted>],
+    memorials: &mut BTreeMap<Uuid, EntryInitNew>,
+) -> Result<(), OperationError> {
+    let domain_level = qs.get_domain_version();
+    if domain_level < DOMAIN_LEVEL_12 {
+        trace!("Skipping hmac name history generation");
+        return Ok(());
+    }
+
+    let hmac_name_history_config = qs.get_feature_hmac_name_history_config();
+
+    if !hmac_name_history_config.enabled {
+        debug!("hmac name history not enabled");
+        return Ok(());
+    }
+
+    for delete_cand in cand {
+        if delete_cand.has_class(&EntryClass::Account) {
+            if let Some(hmac_set) = delete_cand.get_ava_set(Attribute::HmacNameHistory) {
+                // Okay, they have an hmac name set, so we either need to add it to an
+                // inprogress memorial, or we need to make a new one.
+                let memorial_entry = memorials
+                    .entry(delete_cand.get_uuid())
+                    .or_insert_with(EntryInitNew::default);
+                memorial_entry.set_ava_set(&Attribute::HmacNameHistory, hmac_set.clone());
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn teardown_memorials(
+    qs: &mut QueryServerWriteTransaction,
+    memorial_pairs: &mut [(&EntrySealedCommitted, &mut EntryInvalidCommitted)],
+) -> Result<(), OperationError> {
+    let domain_level = qs.get_domain_version();
+    if domain_level < DOMAIN_LEVEL_12 {
+        trace!("Skipping hmac name history generation");
+        return Ok(());
+    }
+
+    let hmac_name_history_config = qs.get_feature_hmac_name_history_config();
+
+    if !hmac_name_history_config.enabled {
+        debug!("hmac name history not enabled");
+        return Ok(());
+    }
+
+    for (memorial, revived) in memorial_pairs.iter_mut() {
+        if revived.has_class(&EntryClass::Account) {
+            if let Some(hmac_set) = memorial.get_ava_set(Attribute::HmacNameHistory) {
+                revived.set_ava_set(&Attribute::HmacNameHistory, hmac_set.clone());
+            }
+        }
+    }
+
+    Ok(())
+}
+
 impl HmacNameUnique {
     #[instrument(level = "debug", name = "hmac_name_unique::fixup", skip_all)]
     pub(crate) fn fixup(qs: &mut QueryServerWriteTransaction) -> Result<(), OperationError> {
@@ -113,7 +177,10 @@ impl HmacNameUnique {
             return Err(OperationError::KG005HowDidYouEvenManageThis);
         }
 
-        // Delete any remaining HMAC headstones.
+        // Delete any remaining HMAC memorials.
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::Memorial.into()));
+        let modlist = ModifyList::new_purge(Attribute::HmacNameHistory);
+        qs.internal_modify(&filt, &modlist)?;
 
         let filt = filter!(f_eq(Attribute::Class, EntryClass::Account.into()));
         let mut work_set = qs.internal_search_writeable(&filt)?;
@@ -177,27 +244,22 @@ impl Plugin for HmacNameUnique {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn post_delete(
+    fn build_memorials(
         qs: &mut QueryServerWriteTransaction,
-        _cand: &[Entry<EntrySealed, EntryCommitted>],
-        _ce: &DeleteEvent,
+        cand: &[Arc<EntrySealedCommitted>],
+        memorials: &mut BTreeMap<Uuid, EntryInitNew>,
+        _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        let domain_level = qs.get_domain_version();
-        if domain_level < DOMAIN_LEVEL_12 {
-            trace!("Skipping hmac name history generation");
-            return Ok(());
-        }
+        build_memorials(qs, cand, memorials)
+    }
 
-        // What to do about deletes? We also need to consider what happens with an
-        // entry revive?
-
-        // on-delete -> make an hmac-tombstone.
-
-        // on-revive -> merge back into the origin entry.
-
-        // We also need an on-revive handle
-
-        Ok(())
+    #[instrument(level = "debug", skip_all)]
+    fn teardown_memorials(
+        qs: &mut QueryServerWriteTransaction,
+        memorial_pairs: &mut [(&EntrySealedCommitted, &mut EntryInvalidCommitted)],
+        _re: &ReviveRecycledEvent,
+    ) -> Result<(), OperationError> {
+        teardown_memorials(qs, memorial_pairs)
     }
 }
 
@@ -481,21 +543,19 @@ mod tests {
         server_txn.commit().expect("Unable to commit");
 
         // Now check that the hmac entry exists
-        // query for something that related?
-
         let mut server_txn = server.write(curtime).await.unwrap();
 
-        assert!(false);
+        let filter = filter!(f_eq(Attribute::InMemoriam, PartialValue::Uuid(uuid_e1)));
 
-        let filter = filter!(f_eq(Attribute::Name, PartialValue::Uuid(uuid_e1)));
-
-        let entry_1 = server_txn
+        let memorial = server_txn
             .internal_search(filter)
             .expect("Unable to access entry 1")
             .pop()
             .expect("No results were returned!");
 
-        let hmac_name_history_1_step_2 = entry_1
+        let memorial_uuid = memorial.get_uuid();
+
+        let hmac_name_history_1_memorial = entry_1
             .get_ava_as_s256_set(Attribute::HmacNameHistory)
             .expect("No name history recorded");
 
@@ -505,6 +565,9 @@ mod tests {
             .expect("Unable to revive the entry");
 
         // Now check the related entry is gone.
+        assert!(!server_txn
+            .internal_exists_uuid(memorial_uuid)
+            .expect("Unable to complete exists query"));
 
         // The hmac values are back in the entry.
         let entry_1 = server_txn
@@ -516,7 +579,7 @@ mod tests {
             .expect("No name history recorded");
 
         assert_eq!(hmac_name_history_1_step_1, hmac_name_history_1_step_3);
-        assert_eq!(hmac_name_history_1_step_1, hmac_name_history_1_step_2);
+        assert_eq!(hmac_name_history_1_step_1, hmac_name_history_1_memorial);
 
         server_txn.commit().expect("Unable to commit");
     }
