@@ -1,20 +1,15 @@
-//! [`Schema`] is one of the foundational concepts of the server. It provides a
-//! set of rules to enforce that [`Entries`] ava's must be compliant to, to be
+//! [Schema] are one of the foundational concepts of the server. They provide a
+//! set of rules to enforce that an [Entry]'s values must be compliant to, to be
 //! considered valid for commit to the database. This allows us to provide
-//! requirements and structure as to what an [`Entry`] must have and may contain
+//! requirements and structure as to what an [Entry] must have and may contain
 //! which enables many other parts to function.
 //!
-//! To define this structure we define [`Attributes`] that provide rules for how
-//! and ava should be structured. We also define [`Classes`] that define
-//! the rules of which [`Attributes`] may or must exist on an [`Entry`] for it
-//! to be considered valid. An [`Entry`] must have at least 1 to infinite
-//! [`Classes`]. [`Classes'] are additive.
+//! To define this structure we define [Attribute]s that provide rules for how
+//! an ava should be structured. We also define the [SchemaClass]es that define
+//! the rules of which [Attribute]s may or must exist on an [Entry] for it
+//! to be considered valid. An [Entry] must have at between 1 and infinite
+//! [SchemaClass]es. [SchemaClass] entries are additive.
 //!
-//! [`Schema`]: struct.Schema.html
-//! [`Entries`]: ../entry/index.html
-//! [`Entry`]: ../entry/index.html
-//! [`Attributes`]: struct.SchemaAttribute.html
-//! [`Classes`]: struct.SchemaClass.html
 
 use crate::be::IdxKey;
 use crate::prelude::*;
