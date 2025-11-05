@@ -1,8 +1,9 @@
 :root {
   --totp-width-and-height: 30px;
   --totp-stroke-width: 60px;
-  --navbar-colors-transition: color 0.15s ease-in-out,
-    background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+  --navbar-colors-transition:
+    color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -203,4 +204,29 @@ nav a.navbar-brand {
 
 .cursor-pointer:hover {
   cursor: pointer;
+}
+
+@media (forced-colors: active) and (prefers-color-scheme: light) {
+  .form-check-input:checked {
+    background-color: ButtonText !important;
+  }
+  .form-switch .form-check-input:checked {
+    forced-color-adjust: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .form-check-input:focus {
+    outline: 1px solid Highlight;
+  }
+  .form-check-input:disabled ~ .form-check-label,
+  .form-check-input[disabled] ~ .form-check-label {
+    color: GrayText;
+  }
+  .form-select:focus {
+    outline: 1px solid transparent;
+  }
+  .form-switch .form-check-input {
+    border: 1px solid;
+  }
 }
