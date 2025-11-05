@@ -10,6 +10,7 @@ use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
 use serde::Deserialize;
+use serde_with::{formats::PreferOne, serde_as, OneOrMany};
 use sketching::LogLevel;
 use std::fmt::{self, Display};
 use std::fs::File;
@@ -338,6 +339,7 @@ impl ServerConfigUntagged {
     }
 }
 
+#[serde_as]
 #[derive(Debug, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ServerConfigV2 {
@@ -350,8 +352,12 @@ pub struct ServerConfigV2 {
     tls_chain: Option<PathBuf>,
     tls_key: Option<PathBuf>,
     tls_client_ca: Option<PathBuf>,
-    bindaddress: Option<String>,
-    ldapbindaddress: Option<String>,
+
+    #[serde_as(as = "Option<OneOrMany<_, PreferOne>>")]
+    bindaddress: Option<Vec<String>>,
+    #[serde_as(as = "Option<OneOrMany<_, PreferOne>>")]
+    ldapbindaddress: Option<Vec<String>>,
+
     role: Option<ServerRole>,
     log_level: Option<LogLevel>,
     online_backup: Option<OnlineBackup>,
@@ -624,8 +630,8 @@ pub struct IntegrationReplConfig {
 /// The internal configuration of the server. User-facing configuration is in [ServerConfig], as the configuration file is parsed by that object.
 #[derive(Debug, Clone)]
 pub struct Configuration {
-    pub address: String,
-    pub ldapbindaddress: Option<String>,
+    pub address: Vec<String>,
+    pub ldapbindaddress: Option<Vec<String>>,
     pub adminbindpath: String,
     pub threads: usize,
     // db type later
@@ -687,7 +693,7 @@ impl Configuration {
     pub fn new_for_test() -> Self {
         #[allow(clippy::expect_used)]
         Configuration {
-            address: DEFAULT_SERVER_ADDRESS.to_string(),
+            address: vec![DEFAULT_SERVER_ADDRESS.to_string()],
             ldapbindaddress: None,
             adminbindpath: env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string(),
             threads: 1,
@@ -715,12 +721,18 @@ impl Configuration {
 
 impl fmt::Display for Configuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "address: {}, ", self.address)?;
+        for a in &self.address {
+            write!(f, "address: {a}, ")?;
+        }
         write!(f, "domain: {}, ", self.domain)?;
         match &self.ldapbindaddress {
-            Some(la) => write!(f, "ldap address: {la}, "),
-            None => write!(f, "ldap address: disabled, "),
-        }?;
+            Some(las) => {
+                for la in las {
+                    write!(f, "ldap address: {la}, ")?;
+                }
+            }
+            None => write!(f, "ldap address: disabled, ")?,
+        };
         write!(f, "origin: {} ", self.origin)?;
         write!(f, "admin bind path: {}, ", self.adminbindpath)?;
         write!(f, "thread count: {}, ", self.threads)?;
@@ -794,8 +806,8 @@ impl fmt::Display for Configuration {
 /// The internal configuration of the server. User-facing configuration is in [ServerConfig], as the configuration file is parsed by that object.
 #[derive(Debug, Clone)]
 pub struct ConfigurationBuilder {
-    bindaddress: Option<String>,
-    ldapbindaddress: Option<String>,
+    bindaddress: Option<Vec<String>>,
+    ldapbindaddress: Option<Vec<String>>,
     adminbindpath: Option<String>,
     threads: usize,
     db_path: Option<PathBuf>,
@@ -829,11 +841,11 @@ impl ConfigurationBuilder {
 
     pub fn add_env_config(mut self, env_config: EnvironmentConfig) -> Self {
         if env_config.bindaddress.is_some() {
-            self.bindaddress = env_config.bindaddress;
+            self.bindaddress = env_config.bindaddress.map(|a| vec![a]);
         }
 
         if env_config.ldapbindaddress.is_some() {
-            self.ldapbindaddress = env_config.ldapbindaddress;
+            self.ldapbindaddress = env_config.ldapbindaddress.map(|a| vec![a]);
         }
 
         if env_config.adminbindpath.is_some() {
@@ -943,11 +955,11 @@ impl ConfigurationBuilder {
         }
 
         if config.bindaddress.is_some() {
-            self.bindaddress = config.bindaddress;
+            self.bindaddress = config.bindaddress.map(|a| vec![a]);
         }
 
         if config.ldapbindaddress.is_some() {
-            self.ldapbindaddress = config.ldapbindaddress;
+            self.ldapbindaddress = config.ldapbindaddress.map(|a| vec![a]);
         }
 
         if config.adminbindpath.is_some() {
@@ -1151,7 +1163,7 @@ impl ConfigurationBuilder {
         // Apply any defaults if needed
         let adminbindpath =
             adminbindpath.unwrap_or(env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string());
-        let address = bindaddress.unwrap_or(DEFAULT_SERVER_ADDRESS.to_string());
+        let address = bindaddress.unwrap_or(vec![DEFAULT_SERVER_ADDRESS.to_string()]);
         let output_mode = output_mode.unwrap_or_default();
         let role = role.unwrap_or(ServerRole::WriteReplica);
         let log_level = log_level.unwrap_or_default();

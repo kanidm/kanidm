@@ -14,7 +14,6 @@ use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
-use tokio::sync::mpsc;
 use tokio::time::timeout;
 use tokio_rustls::TlsAcceptor;
 use tokio_util::codec::{FramedRead, FramedWrite};
@@ -240,7 +239,7 @@ async fn ldap_tls_acceptor(
     mut tls_acceptor: TlsAcceptor,
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
-    mut tls_acceptor_reload_rx: mpsc::Receiver<TlsAcceptor>,
+    mut tls_acceptor_reload_rx: broadcast::Receiver<TlsAcceptor>,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) {
     loop {
@@ -261,7 +260,7 @@ async fn ldap_tls_acceptor(
                     }
                 }
             }
-            Some(mut new_tls_acceptor) = tls_acceptor_reload_rx.recv() => {
+            Ok(mut new_tls_acceptor) = tls_acceptor_reload_rx.recv() => {
                 std::mem::swap(&mut tls_acceptor, &mut new_tls_acceptor);
                 info!("Reloaded ldap tls acceptor");
             }
@@ -299,48 +298,60 @@ async fn ldap_plaintext_acceptor(
 }
 
 pub(crate) async fn create_ldap_server(
-    address: &str,
+    addresses: &[String],
     opt_ssl_acceptor: Option<TlsAcceptor>,
     qe_r_ref: &'static QueryServerReadV1,
-    rx: broadcast::Receiver<CoreAction>,
-    tls_acceptor_reload_rx: mpsc::Receiver<TlsAcceptor>,
+    server_message_tx: &broadcast::Sender<CoreAction>,
+    tls_acceptor_reload_tx: &broadcast::Sender<TlsAcceptor>,
     trusted_proxy_v2_ips: Option<Vec<IpCidr>>,
-) -> Result<tokio::task::JoinHandle<()>, ()> {
-    if address.starts_with(":::") {
-        // takes :::xxxx to xxxx
-        let port = address.replacen(":::", "", 1);
-        error!("Address '{}' looks like an attempt to wildcard bind with IPv6 on port {} - please try using ldapbindaddress = '[::]:{}'", address, port, port);
-    };
-
-    let addr = SocketAddr::from_str(address).map_err(|e| {
-        error!("Could not parse LDAP server address {} -> {:?}", address, e);
-    })?;
-
-    let listener = TcpListener::bind(&addr).await.map_err(|e| {
-        error!(
-            "Could not bind to LDAP server address {} -> {:?}",
-            address, e
-        );
-    })?;
+) -> Result<Vec<tokio::task::JoinHandle<()>>, ()> {
+    let mut ldap_acceptor_handles = Vec::with_capacity(addresses.len());
 
     let trusted_proxy_v2_ips = trusted_proxy_v2_ips.map(Arc::new);
 
-    let ldap_acceptor_handle = match opt_ssl_acceptor {
-        Some(ssl_acceptor) => {
-            info!("Starting LDAPS interface ldaps://{} ...", address);
+    for address in addresses {
+        if address.starts_with(":::") {
+            // takes :::xxxx to xxxx
+            let port = address.replacen(":::", "", 1);
+            error!("Address '{}' looks like an attempt to wildcard bind with IPv6 on port {} - please try using ldapbindaddress = '[::]:{}'", address, port, port);
+        };
 
-            tokio::spawn(ldap_tls_acceptor(
-                listener,
-                ssl_acceptor,
-                qe_r_ref,
-                rx,
-                tls_acceptor_reload_rx,
-                trusted_proxy_v2_ips,
-            ))
-        }
-        None => tokio::spawn(ldap_plaintext_acceptor(listener, qe_r_ref, rx)),
-    };
+        let addr = SocketAddr::from_str(address).map_err(|e| {
+            error!("Could not parse LDAP server address {} -> {:?}", address, e);
+        })?;
 
-    info!("Created LDAP interface");
-    Ok(ldap_acceptor_handle)
+        let listener = TcpListener::bind(&addr).await.map_err(|e| {
+            error!(
+                "Could not bind to LDAP server address {} -> {:?}",
+                address, e
+            );
+        })?;
+
+        let tls_acceptor_reload_rx = tls_acceptor_reload_tx.subscribe();
+        let rx = server_message_tx.subscribe();
+
+        let ldap_acceptor_handle = match &opt_ssl_acceptor {
+            Some(ssl_acceptor) => {
+                info!("Starting LDAPS interface ldaps://{} ...", address);
+
+                let trusted_proxy_v2_ips = trusted_proxy_v2_ips.clone();
+                let ssl_acceptor = ssl_acceptor.clone();
+
+                tokio::spawn(ldap_tls_acceptor(
+                    listener,
+                    ssl_acceptor,
+                    qe_r_ref,
+                    rx,
+                    tls_acceptor_reload_rx,
+                    trusted_proxy_v2_ips,
+                ))
+            }
+            None => tokio::spawn(ldap_plaintext_acceptor(listener, qe_r_ref, rx)),
+        };
+
+        info!("Created LDAP interface");
+        ldap_acceptor_handles.push(ldap_acceptor_handle);
+    }
+
+    Ok(ldap_acceptor_handles)
 }

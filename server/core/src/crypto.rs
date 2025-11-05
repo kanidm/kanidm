@@ -295,16 +295,12 @@ pub(crate) fn write_ca(
         })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum KeyType {
+    #[default]
+    Ec,
     #[allow(dead_code)]
     Rsa,
-    Ec,
-}
-impl Default for KeyType {
-    fn default() -> Self {
-        Self::Ec
-    }
 }
 
 #[derive(Debug)]

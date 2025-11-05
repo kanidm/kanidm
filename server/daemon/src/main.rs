@@ -988,7 +988,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                     // the replace covers when you specify an ipv6-capable "all" address
                     format!(
                         "https://{}/status",
-                        config.address.replace("[::]", "localhost")
+                        config.address[0].replace("[::]", "localhost")
                     )
                 }
             };
