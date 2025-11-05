@@ -37,6 +37,8 @@ pub enum IdpError {
     KeyStore,
     /// The idp failed to interact with the configured TPM
     Tpm,
+    /// The cached usertoken has no offline credentials available
+    NoOfflineCredentials,
 }
 
 pub enum UserTokenState {
@@ -210,6 +212,10 @@ pub trait IdProvider {
     /// Attempt to go online *immediately*
     async fn attempt_online(&self, _tpm: &mut BoxedDynTpm, _now: SystemTime) -> bool;
 
+    /// Indicate if this provider is online or offline at this point in time. This will
+    /// not attempt to go online.
+    async fn is_online(&self) -> bool;
+
     /// Mark that this provider should attempt to go online next time it
     /// receives a request
     async fn mark_next_check(&self, _now: SystemTime);
@@ -266,6 +272,10 @@ pub trait IdProvider {
         _tpm: &mut BoxedDynTpm,
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<Option<(AuthRequest, AuthCredHandler)>, IdpError>;
+
+    /// Determine if this cached user *could* continue with offline authentication. This
+    /// MUST NOT perform network checks or requests.
+    async fn unix_user_can_offline_auth(&self, _token: &UserToken) -> bool;
 
     async fn unix_user_offline_auth_init(
         &self,
