@@ -67,7 +67,7 @@ fn parse_attributes(
             "ldap" => {
                 flags.target_wants_test_env = true;
                 field_modifications.extend(quote! {
-                ldapbindaddress: Some("on".to_string()),})
+                ldapbindaddress: Some( vec!["on".to_string()]  ),})
             }
             _ => {
                 let field_name = p.value().left.to_token_stream(); // here we can use to_token_stream as we know we're iterating over ExprAssigns

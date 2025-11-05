@@ -37,7 +37,6 @@ use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite},
     net::{TcpListener, TcpStream},
     sync::broadcast,
-    sync::mpsc,
     task,
     time::timeout,
 };
@@ -183,10 +182,8 @@ pub async fn create_https_server(
     qe_r_ref: &'static QueryServerReadV1,
     server_message_tx: broadcast::Sender<CoreAction>,
     maybe_tls_acceptor: Option<TlsAcceptor>,
-    tls_acceptor_reload_rx: mpsc::Receiver<TlsAcceptor>,
-) -> Result<task::JoinHandle<()>, ()> {
-    let rx = server_message_tx.subscribe();
-
+    tls_acceptor_reload_tx: &broadcast::Sender<TlsAcceptor>,
+) -> Result<Vec<task::JoinHandle<()>>, ()> {
     let all_js_files = get_js_files(config.role)?;
     // set up the CSP headers
     // script-src 'self'
@@ -361,40 +358,63 @@ pub async fn create_https_server(
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<ClientConnInfo>();
 
-    let addr = SocketAddr::from_str(&config.address).map_err(|err| {
-        error!(
-            "Failed to parse address ({:?}) from config: {:?}",
-            config.address, err
-        );
-    })?;
+    let addrs: Vec<SocketAddr> = config
+        .address
+        .iter()
+        .map(|addr_str| {
+            SocketAddr::from_str(addr_str).map_err(|err| {
+                error!(
+                    "Failed to parse address ({:?}) from config: {:?}",
+                    addr_str, err
+                );
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     info!("Starting the web server...");
 
-    let listener = match TcpListener::bind(addr).await {
-        Ok(l) => l,
-        Err(err) => {
-            error!(?err, "Failed to bind tcp listener");
-            return Err(());
-        }
-    };
+    let mut listener_handles = Vec::with_capacity(addrs.len());
+    for addr in addrs {
+        let listener = match TcpListener::bind(addr).await {
+            Ok(l) => l,
+            Err(err) => {
+                error!(?err, "Failed to bind tcp listener");
+                return Err(());
+            }
+        };
 
-    match maybe_tls_acceptor {
-        Some(tls_acceptor) => Ok(task::spawn(server_tls_loop(
-            tls_acceptor,
-            listener,
-            app,
-            rx,
-            server_message_tx,
-            tls_acceptor_reload_rx,
-            trusted_proxy_v2_ips,
-        ))),
-        None => Ok(task::spawn(server_plaintext_loop(
-            listener,
-            app,
-            rx,
-            trusted_proxy_v2_ips,
-        ))),
+        let app = app.clone();
+        let rx = server_message_tx.subscribe();
+        let trusted_proxy_v2_ips = trusted_proxy_v2_ips.clone();
+
+        let handle = match &maybe_tls_acceptor {
+            Some(tls_acceptor) => {
+                let tls_acceptor = tls_acceptor.clone();
+                let server_message_tx = server_message_tx.clone();
+                let tls_acceptor_reload_rx = tls_acceptor_reload_tx.subscribe();
+
+                task::spawn(server_tls_loop(
+                    tls_acceptor,
+                    listener,
+                    app,
+                    rx,
+                    server_message_tx,
+                    tls_acceptor_reload_rx,
+                    trusted_proxy_v2_ips,
+                ))
+            }
+            None => task::spawn(server_plaintext_loop(
+                listener,
+                app,
+                rx,
+                trusted_proxy_v2_ips,
+            )),
+        };
+
+        listener_handles.push(handle);
     }
+
+    Ok(listener_handles)
 }
 
 async fn server_tls_loop(
@@ -403,7 +423,7 @@ async fn server_tls_loop(
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
-    mut tls_acceptor_reload_rx: mpsc::Receiver<TlsAcceptor>,
+    mut tls_acceptor_reload_rx: broadcast::Receiver<TlsAcceptor>,
     trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
 ) {
     pin_mut!(listener);
@@ -431,7 +451,7 @@ async fn server_tls_loop(
                     }
                 }
             }
-            Some(mut new_tls_acceptor) = tls_acceptor_reload_rx.recv() => {
+            Ok(mut new_tls_acceptor) = tls_acceptor_reload_rx.recv() => {
                 std::mem::swap(&mut tls_acceptor, &mut new_tls_acceptor);
                 info!("Reloaded http tls acceptor");
             }

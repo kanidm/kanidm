@@ -56,7 +56,6 @@ use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use tokio::sync::mpsc;
 use tokio::sync::Notify;
 use tokio::task;
 
@@ -1015,9 +1014,8 @@ pub async fn create_server_core(
     let tls_accepter_reload_task_notify = tls_acceptor_reload_notify.clone();
     let tls_config = config.tls_config.clone();
 
-    let ldap_configured = config.ldapbindaddress.is_some();
-    let (ldap_tls_acceptor_reload_tx, ldap_tls_acceptor_reload_rx) = mpsc::channel(1);
-    let (http_tls_acceptor_reload_tx, http_tls_acceptor_reload_rx) = mpsc::channel(1);
+    let (tls_acceptor_reload_tx, _tls_acceptor_reload_rx) = broadcast::channel(1);
+    let tls_acceptor_reload_tx_c = tls_acceptor_reload_tx.clone();
 
     let tls_acceptor_reload_handle = task::spawn(async move {
         loop {
@@ -1042,14 +1040,10 @@ pub async fn create_server_core(
 
                     // We don't log here as the receivers will notify when they have completed
                     // the reload.
-                    if ldap_configured &&
-                        ldap_tls_acceptor_reload_tx.send(tls_acceptor.clone()).await.is_err() {
-                            error!("ldap tls acceptor did not accept the reload, the server may have failed!");
-                        };
-                    if http_tls_acceptor_reload_tx.send(tls_acceptor.clone()).await.is_err() {
-                        error!("http tls acceptor did not accept the reload, the server may have failed!");
-                        break;
+                    if tls_acceptor_reload_tx_c.send(tls_acceptor).is_err() {
+                        error!("tls acceptor did not accept the reload, the server may have failed!");
                     };
+                    info!("tls acceptor reload notification sent");
                 }
             }
         }
@@ -1080,16 +1074,16 @@ pub async fn create_server_core(
     };
 
     // If we have been requested to init LDAP, configure it now.
-    let maybe_ldap_acceptor_handle = match &config.ldapbindaddress {
+    let maybe_ldap_acceptor_handles = match &config.ldapbindaddress {
         Some(la) => {
             let opt_ldap_ssl_acceptor = maybe_tls_acceptor.clone();
 
             let h = ldaps::create_ldap_server(
-                la.as_str(),
+                la,
                 opt_ldap_ssl_acceptor,
                 server_read_ref,
-                broadcast_tx.subscribe(),
-                ldap_tls_acceptor_reload_rx,
+                &broadcast_tx,
+                &tls_acceptor_reload_tx,
                 config.ldap_client_address_info.trusted_proxy_v2(),
             )
             .await?;
@@ -1121,11 +1115,11 @@ pub async fn create_server_core(
         }
     };
 
-    let maybe_http_acceptor_handle = if config_test {
+    let maybe_http_acceptor_handles = if config_test {
         admin_info!("This config rocks! 🪨 ");
         None
     } else {
-        let h: task::JoinHandle<()> = match https::create_https_server(
+        let handles: Vec<task::JoinHandle<()>> = https::create_https_server(
             config.clone(),
             jws_signer,
             status_ref,
@@ -1133,22 +1127,19 @@ pub async fn create_server_core(
             server_read_ref,
             broadcast_tx.clone(),
             maybe_tls_acceptor,
-            http_tls_acceptor_reload_rx,
+            &tls_acceptor_reload_tx,
         )
         .await
-        {
-            Ok(h) => h,
-            Err(e) => {
-                error!("Failed to start HTTPS server -> {:?}", e);
-                return Err(());
-            }
-        };
+        .inspect_err(|err| {
+            error!(?err, "Failed to start HTTPS server");
+        })?;
+
         if config.role != ServerRole::WriteReplicaNoUI {
             admin_info!("ready to rock! 🪨  UI available at: {}", config.origin);
         } else {
             admin_info!("ready to rock! 🪨 ");
         }
-        Some(h)
+        Some(handles)
     };
 
     // If we are NOT in integration test mode, start the admin socket now
@@ -1184,12 +1175,16 @@ pub async fn create_server_core(
         handles.push((TaskName::AdminSocket, admin_sock_handle))
     }
 
-    if let Some(ldap_handle) = maybe_ldap_acceptor_handle {
-        handles.push((TaskName::LdapActor, ldap_handle))
+    if let Some(ldap_handles) = maybe_ldap_acceptor_handles {
+        for ldap_handle in ldap_handles {
+            handles.push((TaskName::LdapActor, ldap_handle))
+        }
     }
 
-    if let Some(http_handle) = maybe_http_acceptor_handle {
-        handles.push((TaskName::HttpsServer, http_handle))
+    if let Some(http_handles) = maybe_http_acceptor_handles {
+        for http_handle in http_handles {
+            handles.push((TaskName::HttpsServer, http_handle))
+        }
     }
 
     if let Some(repl_handle) = maybe_repl_handle {

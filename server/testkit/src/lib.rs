@@ -93,7 +93,7 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
     let ldap_url = if config.ldapbindaddress.is_some() {
         let ldapport = port_loop();
         let ldap_sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), ldapport);
-        config.ldapbindaddress = Some(ldap_sock_addr.to_string());
+        config.ldapbindaddress = Some(vec![ldap_sock_addr.to_string()]);
         Url::parse(&format!("ldap://{ldap_sock_addr}"))
             .inspect_err(|err| error!(?err, "ldap address setup"))
             .ok()
@@ -104,7 +104,7 @@ pub async fn setup_async_test(mut config: Configuration) -> AsyncTestEnvironment
     // Setup the address and origin..
     let http_sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
 
-    config.address = http_sock_addr.to_string();
+    config.address = vec![http_sock_addr.to_string()];
     config.integration_test_config = Some(int_config);
     config.domain = "localhost".to_string();
     config.origin.clone_from(&addr);
