@@ -1054,10 +1054,26 @@ impl Resolver {
                     error!(provider = ?token.provider, "Token was resolved by a provider that no longer appears to be present.");
                 })?;
 
-            let online_at_init = client.attempt_online(hsm_lock.deref_mut(), now).await;
-            // if we are online, we try and start an online auth.
-            debug!(?online_at_init);
+            // Can the auth proceed offline? This is important for us to make choices about
+            // if we attempt to force an online state check.
+            let can_proceed_offline = client.unix_user_can_offline_auth(&token).await;
 
+            // We can use is_online here because the earlier get_usertoken call leading up to this
+            // will have taken the provider online if possible. This way if we are already in an
+            // offline state, we don't needlessly delay the authentication operation.
+            // In addition as we now have background prefetching of accounts, this will also
+            // be checking frequently enough if we are online and will assist us to be online as
+            // much as possible.
+            let online_at_init = if can_proceed_offline {
+                // This is only for accounts we have previously resolved and authenticated.
+                client.is_online().await
+            } else {
+                // We know who the user is, but don't have cached credentials, so we need to try and
+                // force online if possible.
+                client.attempt_online(hsm_lock.deref_mut(), now).await
+            };
+
+            // We're online, go for it.
             if online_at_init {
                 let init_result = client
                     .unix_user_online_auth_init(
@@ -1085,9 +1101,7 @@ impl Resolver {
                     }
                 }
             } else {
-                // Can the auth proceed offline?
                 let init_result = client.unix_user_offline_auth_init(&token).await;
-
                 match init_result {
                     Ok((next_req, cred_handler)) => {
                         let auth_session = AuthSession::Offline {

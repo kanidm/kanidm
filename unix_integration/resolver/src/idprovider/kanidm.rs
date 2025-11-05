@@ -15,6 +15,9 @@ use kanidm_lib_crypto::DbPasswordV1;
 use kanidm_lib_crypto::Password;
 use kanidm_proto::internal::OperationError;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+use kanidm_unix_common::constants::{
+    DEFAULT_CACHE_TIMEOUT_JITTER_MS, DEFAULT_OFFLINE_PROVIDER_CHECK_TIME,
+};
 use kanidm_unix_common::unix_config::{GroupMap, KanidmConfig};
 use kanidm_unix_common::unix_proto::PamAuthRequest;
 use std::collections::BTreeSet;
@@ -24,8 +27,10 @@ use tokio::sync::{broadcast, Mutex};
 const KANIDM_HMAC_KEY: &str = "kanidm-hmac-key-v2";
 const KANIDM_PWV1_KEY: &str = "kanidm-pw-v1";
 
-// If the provider is offline, we need to backoff and wait a bit.
-const OFFLINE_NEXT_CHECK: Duration = Duration::from_secs(60);
+fn next_offline_check(now: SystemTime) -> SystemTime {
+    let jitter = rand::random_range(0..DEFAULT_CACHE_TIMEOUT_JITTER_MS);
+    now + (Duration::from_secs(DEFAULT_OFFLINE_PROVIDER_CHECK_TIME) - Duration::from_millis(jitter))
+}
 
 #[derive(Debug, Clone)]
 enum CacheState {
@@ -219,6 +224,10 @@ impl UserToken {
         debug!(spn = %self.spn, "Updated cached pw");
     }
 
+    pub fn kanidm_has_offline_credentials(&self) -> bool {
+        self.extra_keys.contains_key(KANIDM_PWV1_KEY)
+    }
+
     pub fn kanidm_check_cached_password(
         &self,
         cred: &str,
@@ -279,6 +288,11 @@ impl KanidmProviderInternal {
     }
 
     #[instrument(level = "debug", skip_all)]
+    async fn is_online(&mut self) -> bool {
+        matches!(self.state, CacheState::Online)
+    }
+
+    #[instrument(level = "debug", skip_all)]
     async fn attempt_online(&mut self, _tpm: &mut BoxedDynTpm, now: SystemTime) -> bool {
         let mut max_attempts = 3;
         while max_attempts > 0 {
@@ -309,7 +323,7 @@ impl KanidmProviderInternal {
                 }
                 Err(err) => {
                     error!(?err, "Provider online failed");
-                    self.state = CacheState::OfflineNextCheck(now + OFFLINE_NEXT_CHECK);
+                    self.state = CacheState::OfflineNextCheck(next_offline_check(now));
                     return false;
                 }
             }
@@ -328,6 +342,11 @@ impl IdProvider for KanidmProvider {
     async fn attempt_online(&self, tpm: &mut BoxedDynTpm, now: SystemTime) -> bool {
         let mut inner = self.inner.lock().await;
         inner.check_online_right_meow(tpm, now).await
+    }
+
+    async fn is_online(&self) -> bool {
+        let mut inner = self.inner.lock().await;
+        inner.is_online().await
     }
 
     async fn mark_next_check(&self, now: SystemTime) {
@@ -377,7 +396,7 @@ impl IdProvider for KanidmProvider {
             // Offline?
             Err(ClientError::Transport(err)) => {
                 error!(?err, "transport error");
-                inner.state = CacheState::OfflineNextCheck(now + OFFLINE_NEXT_CHECK);
+                inner.state = CacheState::OfflineNextCheck(next_offline_check(now));
                 Ok(UserTokenState::UseCached)
             }
             // Provider session error, need to re-auth
@@ -587,11 +606,19 @@ impl IdProvider for KanidmProvider {
         }
     }
 
+    async fn unix_user_can_offline_auth(&self, token: &UserToken) -> bool {
+        token.kanidm_has_offline_credentials()
+    }
+
     async fn unix_user_offline_auth_init(
         &self,
-        _token: &UserToken,
+        token: &UserToken,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
-        Ok((AuthRequest::Password, AuthCredHandler::Password))
+        if token.kanidm_has_offline_credentials() {
+            Ok((AuthRequest::Password, AuthCredHandler::Password))
+        } else {
+            Err(IdpError::NoOfflineCredentials)
+        }
     }
 
     async fn unix_user_offline_auth_step(
@@ -657,7 +684,7 @@ impl IdProvider for KanidmProvider {
             // Offline?
             Err(ClientError::Transport(err)) => {
                 error!(?err, "transport error");
-                inner.state = CacheState::OfflineNextCheck(now + OFFLINE_NEXT_CHECK);
+                inner.state = CacheState::OfflineNextCheck(next_offline_check(now));
                 Ok(GroupTokenState::UseCached)
             }
             // Provider session error, need to re-auth
@@ -676,7 +703,7 @@ impl IdProvider for KanidmProvider {
                         e, opid
                     ),
                 };
-                inner.state = CacheState::OfflineNextCheck(now + OFFLINE_NEXT_CHECK);
+                inner.state = CacheState::OfflineNextCheck(next_offline_check(now));
                 Ok(GroupTokenState::UseCached)
             }
             // 404 / Removed.
