@@ -84,7 +84,10 @@ origin = "https://idm.example.com"
 #   To preserve the original IP of the caller, these systems
 #   will often add a header such as "Forwarded" or
 #   "X-Forwarded-For". Some other proxies can use the PROXY
-#   protocol v2 header.
+#   protocol v2 header. While we support the PROXY protocol
+#   v1 header, we STRONGLY discourage it's use as it has
+#   significantly greater overheads compared to v2 during
+#   processing.
 #   This setting allows configuration of the list of trusted
 #   IPs or IP ranges which can supply this header information,
 #   and which format the information is provided in.
@@ -95,16 +98,27 @@ origin = "https://idm.example.com"
 #   # OR
 # [http_client_address_info]
 # x-forward-for = ["127.0.0.1", "127.0.0.0/8"]
+#   # OR
+# [http_client_address_info]
+# # AVOID IF POSSIBLE!!!
+# proxy-v1 = ["127.0.0.1", "127.0.0.0/8"]
 
 #   LDAPS requests can be reverse proxied by a loadbalancer.
 #   To preserve the original IP of the caller, these systems
 #   can add a header such as the PROXY protocol v2 header.
+#   While we support the PROXY protocol v1 header, we STRONGLY
+#   discourage it's use as it has significantly greater
+#   overheads compared to v2 during processing.
 #   This setting allows configuration of the list of trusted
 #   IPs or IP ranges which can supply this header information,
 #   and which format the information is provided in.
 #   Defaults to "none" (no trusted sources)
 # [ldap_client_address_info]
 # proxy-v2 = ["127.0.0.1", "127.0.0.0/8"]
+#   # OR
+# [ldap_client_address_info]
+# # AVOID IF POSSIBLE!!!
+# proxy-v1 = ["127.0.0.1", "127.0.0.0/8"]
 
 [online_backup]
 #   The path to the output folder for online backups

@@ -34,6 +34,7 @@ mod https;
 mod interval;
 mod ldaps;
 mod repl;
+mod tcp;
 mod utils;
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
@@ -1084,7 +1085,7 @@ pub async fn create_server_core(
                 server_read_ref,
                 &broadcast_tx,
                 &tls_acceptor_reload_tx,
-                config.ldap_client_address_info.trusted_proxy_v2(),
+                config.ldap_client_address_info.trusted_tcp_info(),
             )
             .await?;
             Some(h)

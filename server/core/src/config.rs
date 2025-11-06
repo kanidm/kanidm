@@ -18,6 +18,7 @@ use std::io::Read;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Arc;
 use url::Url;
 
 use crate::repl::config::ReplicationConfiguration;
@@ -113,21 +114,31 @@ pub struct TlsConfiguration {
     pub client_ca: Option<PathBuf>,
 }
 
+#[derive(Debug, Default)]
+pub enum TcpAddressInfo {
+    #[default]
+    None,
+    ProxyV2(Vec<IpCidr>),
+    ProxyV1(Vec<IpCidr>),
+}
+
 #[derive(Deserialize, Debug, Clone, Default)]
 pub enum LdapAddressInfo {
     #[default]
     None,
     #[serde(rename = "proxy-v2")]
     ProxyV2(Vec<IpCidr>),
+    #[serde(rename = "proxy-v1")]
+    ProxyV1(Vec<IpCidr>),
 }
 
 impl LdapAddressInfo {
-    pub fn trusted_proxy_v2(&self) -> Option<Vec<IpCidr>> {
-        if let Self::ProxyV2(trusted) = self {
-            Some(trusted.clone())
-        } else {
-            None
-        }
+    pub fn trusted_tcp_info(&self) -> Arc<TcpAddressInfo> {
+        Arc::new(match self {
+            LdapAddressInfo::None => TcpAddressInfo::None,
+            LdapAddressInfo::ProxyV2(trusted) => TcpAddressInfo::ProxyV2(trusted.clone()),
+            LdapAddressInfo::ProxyV1(trusted) => TcpAddressInfo::ProxyV1(trusted.clone()),
+        })
     }
 }
 
@@ -137,6 +148,13 @@ impl Display for LdapAddressInfo {
             Self::None => f.write_str("none"),
             Self::ProxyV2(trusted) => {
                 f.write_str("proxy-v2 [ ")?;
+                for ip in trusted {
+                    write!(f, "{ip} ")?;
+                }
+                f.write_str("]")
+            }
+            Self::ProxyV1(trusted) => {
+                f.write_str("proxy-v1 [ ")?;
                 for ip in trusted {
                     write!(f, "{ip} ")?;
                 }
@@ -174,6 +192,8 @@ pub enum HttpAddressInfo {
     XForwardForAllSourcesTrusted,
     #[serde(rename = "proxy-v2")]
     ProxyV2(Vec<IpCidr>),
+    #[serde(rename = "proxy-v1")]
+    ProxyV1(Vec<IpCidr>),
 }
 
 impl HttpAddressInfo {
@@ -185,12 +205,14 @@ impl HttpAddressInfo {
         }
     }
 
-    pub(crate) fn trusted_proxy_v2(&self) -> Option<Vec<IpCidr>> {
-        if let Self::ProxyV2(trusted) = self {
-            Some(trusted.clone())
-        } else {
-            None
-        }
+    pub fn trusted_tcp_info(&self) -> Arc<TcpAddressInfo> {
+        Arc::new(match self {
+            Self::ProxyV2(trusted) => TcpAddressInfo::ProxyV2(trusted.clone()),
+            Self::ProxyV1(trusted) => TcpAddressInfo::ProxyV1(trusted.clone()),
+            Self::None | Self::XForwardFor(_) | Self::XForwardForAllSourcesTrusted => {
+                TcpAddressInfo::None
+            }
+        })
     }
 }
 
@@ -211,6 +233,13 @@ impl Display for HttpAddressInfo {
             }
             Self::ProxyV2(trusted) => {
                 f.write_str("proxy-v2 [ ")?;
+                for ip in trusted {
+                    write!(f, "{ip} ")?;
+                }
+                f.write_str("]")
+            }
+            Self::ProxyV1(trusted) => {
+                f.write_str("proxy-v1 [ ")?;
                 for ip in trusted {
                     write!(f, "{ip} ")?;
                 }
