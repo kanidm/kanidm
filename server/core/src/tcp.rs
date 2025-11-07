@@ -58,11 +58,11 @@ pub(crate) async fn process_client_addr(
         }
         Ok(Err(err)) => {
             error!(?connection_addr, ?err, "Unable to process proxy header");
-            return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
+            Err(std::io::Error::from(ErrorKind::ConnectionAborted))
         }
         Err(_) => {
             error!(?connection_addr, "Timeout receiving proxy header");
-            return Err(std::io::Error::from(ErrorKind::TimedOut));
+            Err(std::io::Error::from(ErrorKind::TimedOut))
         }
     }
 }
