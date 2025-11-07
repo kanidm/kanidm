@@ -102,7 +102,7 @@ pub enum OperationError {
     // Serialize & Deserialize this enum...
     MissingClass(String),
     MissingAttribute(Attribute),
-    AttributeUniqueness,
+    AttributeUniqueness(Vec<Attribute>),
     MissingEntries,
     ModifyAssertionFailed,
     BackendEngine,
@@ -396,7 +396,7 @@ impl OperationError {
             Self::InvalidAccountState(val) => Some(format!("Invalid account state: {val}")),
             Self::MissingClass(val) => Some(format!("Missing class: {val}")),
             Self::MissingAttribute(val) => Some(format!("Missing attribute: {val}")),
-            Self::AttributeUniqueness => Some(format!("The value of some attributes is not unique.")),
+            Self::AttributeUniqueness(attrs) => Some(format!("The value of some attributes is not unique. {attrs:?}")),
             Self::MissingEntries => None,
             Self::ModifyAssertionFailed => None,
             Self::BackendEngine => None,

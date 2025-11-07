@@ -247,7 +247,7 @@ impl QueryServerWriteTransaction<'_> {
                 .collect();
 
             // If so, we need to clean them up NOW!
-            Plugins::run_teardown_memorials(self, &mut memorial_candidate_pairs, &re).inspect_err(
+            Plugins::run_teardown_memorials(self, &mut memorial_candidate_pairs, re).inspect_err(
                 |err| {
                     error!(?err, "Revive operation failed (plugin)");
                 },

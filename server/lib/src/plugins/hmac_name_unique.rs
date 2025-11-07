@@ -118,9 +118,7 @@ fn build_memorials(
             if let Some(hmac_set) = delete_cand.get_ava_set(Attribute::HmacNameHistory) {
                 // Okay, they have an hmac name set, so we either need to add it to an
                 // inprogress memorial, or we need to make a new one.
-                let memorial_entry = memorials
-                    .entry(delete_cand.get_uuid())
-                    .or_insert_with(EntryInitNew::default);
+                let memorial_entry = memorials.entry(delete_cand.get_uuid()).or_default();
                 memorial_entry.set_ava_set(&Attribute::HmacNameHistory, hmac_set.clone());
             }
         }
@@ -393,7 +391,7 @@ mod tests {
             .internal_modify_uuid(uuid_e2, &modlist)
             .expect_err("Should not succeed!");
 
-        assert!(matches!(result, OperationError::AttributeUniqueness));
+        assert!(matches!(result, OperationError::AttributeUniqueness(_)));
 
         // But the first CAN go back to it's original name.
         server_txn
@@ -464,7 +462,7 @@ mod tests {
             .internal_create(vec![e2.clone()])
             .expect_err("Should not be able to create the entry");
 
-        assert!(matches!(result, OperationError::AttributeUniqueness));
+        assert!(matches!(result, OperationError::AttributeUniqueness(_)));
 
         drop(server_txn);
 
@@ -486,7 +484,7 @@ mod tests {
             .internal_create(vec![e2])
             .expect_err("Should not be able to create the entry");
 
-        assert!(matches!(result, OperationError::AttributeUniqueness));
+        assert!(matches!(result, OperationError::AttributeUniqueness(_)));
     }
 
     #[qs_test]
