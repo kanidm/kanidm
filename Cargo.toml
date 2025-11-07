@@ -183,7 +183,7 @@ fs4 = "^0.13.0"
 futures = "^0.3.31"
 futures-util = { version = "^0.3.30", features = ["sink"] }
 gix = { version = "0.74.1", default-features = false }
-haproxy-protocol = { version = "0.0.2" }
+haproxy-protocol = { version = "0.0.3" }
 hashbrown = { version = "0.16.0", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
 http = "1.2.0"
