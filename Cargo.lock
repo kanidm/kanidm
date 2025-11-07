@@ -6607,8 +6607,9 @@ dependencies = [
 
 [[package]]
 name = "sshkeys"
-version = "0.3.3"
-source = "git+https://github.com/dnaeon/rust-sshkeys.git?rev=d736693769b9c4abebad8050fba92271f3c50226#d736693769b9c4abebad8050fba92271f3c50226"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43dd24cd9c70e02c48882a32b74e784d8f2aaddba2a3a30c403d5a6e416fa117"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
@@ -7177,9 +7178,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-forest"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3298fe855716711a00474eceb89cc7dc254bbe67f6bc4afafdeec5f0c538771c"
+checksum = "92bdb3c949c9e81b71f78ba782f956b896019d82cc2f31025d21e04adab4d695"
 dependencies = [
  "smallvec",
  "thiserror 2.0.17",
