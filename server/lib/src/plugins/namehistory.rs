@@ -1,26 +1,14 @@
-use std::sync::Arc;
-
 use crate::entry::{EntryInvalidCommitted, EntrySealedCommitted};
 use crate::event::ModifyEvent;
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::prelude::{BatchModifyEvent, QueryServerWriteTransaction};
 use crate::repl::cid::Cid;
-use crate::value::PartialValue;
+use std::sync::Arc;
 
 pub struct NameHistory {}
 
-lazy_static! {
-    // it contains all the partialvalues used to match against an Entry's class,
-    // we just need a partialvalue to match in order to target the entry
-    static ref CLASS_TO_UPDATE: PartialValue = PartialValue::new_iutf8(EntryClass::Account.into());
-}
-
 impl NameHistory {
-    fn is_entry_to_update<VALUE, STATE>(entry: &mut Entry<VALUE, STATE>) -> bool {
-        entry.attribute_equality(Attribute::Class, &CLASS_TO_UPDATE)
-    }
-
     fn handle_name_updates(
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<EntryInvalidCommitted>,
@@ -28,7 +16,7 @@ impl NameHistory {
     ) -> Result<(), OperationError> {
         for (pre, post) in pre_cand.iter().zip(cand) {
             // here we check if the current entry has at least one of the classes we intend to target
-            if Self::is_entry_to_update(post) {
+            if post.has_class(&EntryClass::Account) {
                 let pre_name_option = pre.get_ava_single(Attribute::Name);
                 let post_name_option = post.get_ava_single(Attribute::Name);
                 if let (Some(pre_name), Some(post_name)) = (pre_name_option, post_name_option) {
@@ -52,7 +40,7 @@ impl NameHistory {
         cid: &Cid,
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
-            if Self::is_entry_to_update(cand) {
+            if cand.has_class(&EntryClass::Account) {
                 if let Some(name) = cand.get_ava_single(Attribute::Name) {
                     match name {
                         Value::Iname(n) => cand.add_ava_if_not_exist(

@@ -17,8 +17,11 @@ use crate::filter::{
     Filter, FilterInvalid, FilterValid, FilterValidResolved, ResolveFilterCache,
     ResolveFilterCacheReadTxn,
 };
-use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
-use crate::plugins::Plugins;
+use crate::plugins::{
+    self,
+    dyngroup::{DynGroup, DynGroupCache},
+    Plugins,
+};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::proto::ReplRuvRange;
@@ -31,6 +34,7 @@ use crate::value::{CredentialType, EXTRACT_VAL_DN};
 use crate::valueset::*;
 use concread::arcache::{ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
+use crypto_glue::{hmac_s256::HmacSha256Key, s256::Sha256Output};
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
 use kanidm_proto::scim_v1::{
@@ -130,11 +134,23 @@ pub struct SystemConfig {
     pub(crate) pw_badlist: HashSet<String>,
 }
 
+#[derive(Clone, Default)]
+pub struct HmacNameHistoryConfig {
+    pub(crate) enabled: bool,
+    pub(crate) key: HmacSha256Key,
+}
+
+#[derive(Clone, Default)]
+pub struct FeatureConfig {
+    pub(crate) hmac_name_history: HmacNameHistoryConfig,
+}
+
 #[derive(Clone)]
 pub struct QueryServer {
     phase: Arc<CowCell<ServerPhase>>,
     pub(crate) d_info: Arc<CowCell<DomainInfo>>,
     system_config: Arc<CowCell<SystemConfig>>,
+    feature_config: Arc<CowCell<FeatureConfig>>,
     be: Backend,
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
@@ -153,6 +169,7 @@ pub struct QueryServerReadTransaction<'a> {
     // type, maybe others?
     pub(crate) d_info: CowCellReadTxn<DomainInfo>,
     system_config: CowCellReadTxn<SystemConfig>,
+    feature_config: CowCellReadTxn<FeatureConfig>,
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
     key_providers: KeyProvidersReadTransaction,
@@ -180,7 +197,7 @@ bitflags::bitflags! {
         const KEY_MATERIAL   =              0b0000_0000_0100_0000;
         const APPLICATION    =              0b0000_0000_1000_0000;
         const OAUTH2_CLIENT            =    0b0000_0001_0000_0000;
-
+        const FEATURE                  =    0b0000_0010_0000_0000;
     }
 }
 
@@ -189,6 +206,7 @@ pub struct QueryServerWriteTransaction<'a> {
     phase: CowCellWriteTxn<'a, ServerPhase>,
     d_info: CowCellWriteTxn<'a, DomainInfo>,
     system_config: CowCellWriteTxn<'a, SystemConfig>,
+    feature_config: CowCellWriteTxn<'a, FeatureConfig>,
     curtime: Duration,
     cid: CowCellWriteTxn<'a, Cid>,
     trim_cid: Cid,
@@ -268,6 +286,8 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_image_value(&self) -> Option<ImageValue>;
 
     fn get_resolve_filter_cache(&mut self) -> Option<&mut ResolveFilterCacheReadTxn<'a>>;
+
+    fn get_feature_hmac_name_history_config(&self) -> &HmacNameHistoryConfig;
 
     // Because of how borrowck in rust works, if we need to get two inner types we have to get them
     // in a single fn.
@@ -742,6 +762,7 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid x509 certificate syntax".to_string())),
                     SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute("ApplicationPassword values can not be supplied through modification".to_string())),
                     SyntaxType::Json => Err(OperationError::InvalidAttribute("Json values can not be supplied through modification".to_string())),
+                    SyntaxType::Sha256 => Err(OperationError::InvalidAttribute("SHA256 values can not be supplied through modification".to_string())),
                     SyntaxType::Message => Err(OperationError::InvalidAttribute("Message values can not be supplied through modification".to_string())),
                 }
             }
@@ -873,6 +894,16 @@ pub trait QueryServerTransaction<'a> {
                                 "Invalid syntax, expected hex string".to_string(),
                             )
                         })
+                    }
+                    SyntaxType::Sha256 => {
+                        let mut sha256bytes = Sha256Output::default();
+                        if hex::decode_to_slice(value, &mut sha256bytes).is_ok() {
+                            Ok(PartialValue::Sha256(sha256bytes))
+                        } else {
+                            Err(OperationError::InvalidAttribute(
+                                "Invalid syntax, expected sha256 hex string containing 64 characters".to_string(),
+                            ))
+                        }
                     }
                     SyntaxType::Json => Err(OperationError::InvalidAttribute(
                         "Json values can not be validated by this interface".to_string(),
@@ -1355,6 +1386,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         Some(&mut self.resolve_filter_cache)
     }
 
+    fn get_feature_hmac_name_history_config(&self) -> &HmacNameHistoryConfig {
+        &self.feature_config.hmac_name_history
+    }
+
     fn get_resolve_filter_cache_and_be_txn(
         &mut self,
     ) -> (
@@ -1692,6 +1727,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         }
     }
 
+    fn get_feature_hmac_name_history_config(&self) -> &HmacNameHistoryConfig {
+        &self.feature_config.hmac_name_history
+    }
+
     fn get_resolve_filter_cache_and_be_txn(
         &mut self,
     ) -> (
@@ -1788,6 +1827,8 @@ impl QueryServer {
         // These default to empty, but they'll be populated shortly.
         let system_config = Arc::new(CowCell::new(SystemConfig::default()));
 
+        let feature_config = Arc::new(CowCell::new(FeatureConfig::default()));
+
         let dyngroup_cache = Arc::new(CowCell::new(DynGroupCache::default()));
 
         let phase = Arc::new(CowCell::new(ServerPhase::Bootstrap));
@@ -1814,6 +1855,7 @@ impl QueryServer {
             phase,
             d_info,
             system_config,
+            feature_config,
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::default()),
@@ -1908,6 +1950,7 @@ impl QueryServer {
             schema,
             d_info: self.d_info.read(),
             system_config: self.system_config.read(),
+            feature_config: self.feature_config.read(),
             accesscontrols: self.accesscontrols.read(),
             key_providers: self.key_providers.read(),
             _db_ticket: db_ticket,
@@ -1987,6 +2030,7 @@ impl QueryServer {
         let schema_write = self.schema.write();
         let d_info = self.d_info.write();
         let system_config = self.system_config.write();
+        let feature_config = self.feature_config.write();
         let phase = self.phase.write();
 
         let mut cid = self.cid_max.write();
@@ -2006,6 +2050,7 @@ impl QueryServer {
             phase,
             d_info,
             system_config,
+            feature_config,
             curtime,
             cid,
             trim_cid,
@@ -2561,6 +2606,75 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
+    /// Reloads feature configurations if they have changed in this operation
+    #[instrument(level = "debug", skip_all)]
+    pub(crate) fn reload_feature_config(&mut self) -> Result<(), OperationError> {
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::Feature.into()));
+
+        let feature_configs = self.internal_search(filt).inspect_err(|err| {
+            error!(?err, "reload feature configuration internal search failed",)
+        })?;
+
+        let current_time = self.get_curtime();
+        let domain_level = self.get_domain_version();
+
+        let mut hmac_name_history_fixup = false;
+
+        // TODO: How to handle disabling on a delete? Needs thought ... but also
+        // should be impossible for someone TO delete a feature config entry?
+
+        for feature_entry in feature_configs {
+            match feature_entry.get_uuid() {
+                UUID_HMAC_NAME_FEATURE => {
+                    if domain_level < DOMAIN_LEVEL_12 {
+                        trace!("Skipping hmac name history config");
+                        continue;
+                    }
+
+                    let key_object = self
+                        .get_key_providers()
+                        .get_key_object_handle(UUID_HMAC_NAME_FEATURE)
+                        .ok_or(OperationError::KP0079KeyObjectNotFound)?;
+
+                    let mut key = HmacSha256Key::default();
+                    key_object.hkdf_s256_expand(
+                        UUID_HMAC_NAME_FEATURE.as_bytes(),
+                        key.as_mut_slice(),
+                        current_time,
+                    )?;
+
+                    drop(key_object);
+
+                    let new_feature_enabled_state = feature_entry
+                        .get_ava_single_bool(Attribute::Enabled)
+                        .unwrap_or_default();
+
+                    let feature_config_txn = self.feature_config.get_mut();
+
+                    hmac_name_history_fixup =
+                        !feature_config_txn.hmac_name_history.enabled && new_feature_enabled_state;
+
+                    feature_config_txn.hmac_name_history.enabled = new_feature_enabled_state;
+
+                    std::mem::swap(&mut key, &mut feature_config_txn.hmac_name_history.key);
+                }
+                feature_uuid => {
+                    error!(
+                        ?feature_uuid,
+                        "Unrecognised feature uuid, unable to proceed"
+                    );
+                    return Err(OperationError::KG004UnknownFeatureUuid);
+                }
+            }
+        }
+
+        if hmac_name_history_fixup {
+            plugins::hmac_name_unique::HmacNameUnique::fixup(self)?;
+        }
+
+        Ok(())
+    }
+
     /// Initiate a domain display name change process. This isn't particularly scary
     /// because it's just a wibbly human-facing thing, not used for secure
     /// activities (yet)
@@ -2654,7 +2768,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload(&mut self) -> Result<(), OperationError> {
         // First, check if the domain version has changed. This can trigger
         // changes to schema, access controls and more.
-        if self.changed_flags.contains(ChangeFlag::DOMAIN) {
+        if self.changed_flags.intersects(ChangeFlag::DOMAIN) {
             self.reload_domain_info_version()?;
         }
 
@@ -2662,7 +2776,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // in an operation so we can check if we need to do the reload or not
         //
         // Reload the schema from qs.
-        if self.changed_flags.contains(ChangeFlag::SCHEMA) {
+        if self.changed_flags.intersects(ChangeFlag::SCHEMA) {
             self.reload_schema()?;
 
             // If the server is in a late phase of start up or is
@@ -2702,18 +2816,26 @@ impl<'a> QueryServerWriteTransaction<'a> {
             //    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
         }
 
-        if self.changed_flags.contains(ChangeFlag::SYSTEM_CONFIG) {
+        if self.changed_flags.intersects(ChangeFlag::SYSTEM_CONFIG) {
             self.reload_system_config()?;
         }
 
-        if self.changed_flags.contains(ChangeFlag::DOMAIN) {
+        if self.changed_flags.intersects(ChangeFlag::DOMAIN) {
             self.reload_domain_info()?;
+        }
+
+        if self
+            .changed_flags
+            .intersects(ChangeFlag::FEATURE | ChangeFlag::KEY_MATERIAL)
+        {
+            self.reload_feature_config()?;
         }
 
         // Clear flags
         self.changed_flags.remove(
             ChangeFlag::DOMAIN
                 | ChangeFlag::SCHEMA
+                | ChangeFlag::FEATURE
                 | ChangeFlag::SYSTEM_CONFIG
                 | ChangeFlag::ACP
                 | ChangeFlag::SYNC_AGREEMENT
@@ -2739,6 +2861,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             phase,
             d_info,
             system_config,
+            feature_config,
             mut be_txn,
             schema,
             accesscontrols,
@@ -2782,6 +2905,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .commit()
             .map(|_| d_info.commit())
             .map(|_| system_config.commit())
+            .map(|_| feature_config.commit())
             .map(|_| phase.commit())
             .map(|_| dyngroup_cache.commit())
             .and_then(|_| key_providers.commit())

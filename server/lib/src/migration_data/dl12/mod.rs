@@ -122,6 +122,9 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT.clone().into(),
         SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT.clone().into(),
         SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES.clone().into(),
+        SCHEMA_ATTR_HMAC_NAME_HISTORY.clone().into(),
+        SCHEMA_ATTR_ENABLED.clone().into(),
+        SCHEMA_ATTR_IN_MEMORIAM.clone().into(),
     ]
 }
 
@@ -164,6 +167,8 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         SCHEMA_CLASS_OUTBOUND_MESSAGE.clone().into(),
         SCHEMA_CLASS_OAUTH2_ACCOUNT.clone().into(),
         SCHEMA_CLASS_OAUTH2_CLIENT.clone().into(),
+        SCHEMA_CLASS_FEATURE.clone().into(),
+        SCHEMA_CLASS_MEMORIAL.clone().into(),
     ]
 }
 
@@ -177,6 +182,7 @@ pub fn phase_4_system_entries() -> Vec<EntryInitNew> {
         E_DOMAIN_INFO_DL6.clone(),
         E_SYSTEM_CONFIG_V1.clone(),
         E_UUID_DOMAIN_ID_VERIFICATION_KEY_V1.clone(),
+        E_HMAC_NAME_HISTORY_FEATURE.clone(),
     ]
 }
 

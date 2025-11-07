@@ -34,9 +34,8 @@ impl QueryServerWriteTransaction<'_> {
             EntryIncrementalNew::rehydrate
         )
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| {
-            error!(err = ?e, "Unable to process replication incremental entries to valid entry states for replication");
-            e
+        .inspect_err(|err| {
+            error!(?err, "Unable to process replication incremental entries to valid entry states for replication");
         })?;
 
         trace!(?ctx_entries);
@@ -54,7 +53,8 @@ impl QueryServerWriteTransaction<'_> {
         // need to be pushed to a separate list where they are then "created"
         // as a conflict.
 
-        // First find if entries are in a conflict state.
+        // First find if entries are in a conflict state. Remember, these conflicts are purely
+        // UUID creation conflicts at this phase in the process.
 
         let (conflicts, proceed): (Vec<_>, Vec<_>) = ctx_entries
             .iter()
@@ -269,6 +269,15 @@ impl QueryServerWriteTransaction<'_> {
                 .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::OAuth2Client.into()))
         {
             self.changed_flags.insert(ChangeFlag::OAUTH2_CLIENT)
+        }
+
+        if !self.changed_flags.contains(ChangeFlag::FEATURE)
+            && cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::Feature.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::FEATURE)
         }
 
         if !self.changed_flags.contains(ChangeFlag::APPLICATION)
@@ -665,6 +674,7 @@ impl QueryServerWriteTransaction<'_> {
                 | ChangeFlag::ACP
                 | ChangeFlag::OAUTH2
                 | ChangeFlag::OAUTH2_CLIENT
+                | ChangeFlag::FEATURE
                 | ChangeFlag::DOMAIN
                 | ChangeFlag::APPLICATION
                 | ChangeFlag::SYSTEM_CONFIG

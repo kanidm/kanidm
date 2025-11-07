@@ -4,16 +4,13 @@
 // both change approaches.
 //
 //
-use std::collections::VecDeque;
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
-
-use tracing::trace;
-
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+use tracing::trace;
 
 pub struct AttrUnique;
 
@@ -87,7 +84,9 @@ fn enforce_unique<VALID, STATE>(
 
     // Now we have to identify and error on anything that has multiple items.
     let mut cand_attr = Vec::with_capacity(cand_attr_set.len());
-    let mut err = false;
+
+    let mut err_attr: Vec<Attribute> = Default::default();
+
     for (key, mut uuid_set) in cand_attr_set.into_iter() {
         if let Some(uuid) = uuid_set.pop() {
             if uuid_set.is_empty() {
@@ -96,22 +95,18 @@ fn enforce_unique<VALID, STATE>(
             } else {
                 // Multiple uuid(s) may remain, this is a conflict. We already warned on it
                 // before in the processing. Do we need to warn again?
-                err = true;
+                err_attr.push(key.0);
             }
         } else {
             // Corrupt? How did we even get here?
             warn!("datastructure corruption occurred while processing candidate attribute set");
             debug_assert!(false);
-            return Err(OperationError::Plugin(PluginError::AttrUnique(
-                "corruption detected".to_string(),
-            )));
+            return Err(OperationError::KG006DatastructureCorruption);
         }
     }
 
-    if err {
-        return Err(OperationError::Plugin(PluginError::AttrUnique(
-            "duplicate value detected".to_string(),
-        )));
+    if !err_attr.is_empty() {
+        return Err(OperationError::AttributeUniqueness(err_attr));
     }
 
     // Now do an internal search on name and !uuid for each
@@ -135,66 +130,29 @@ fn enforce_unique<VALID, STATE>(
         error!(?err, "internal exists error");
     })?;
 
-    // TODO! Need to make this show what conflicted!
-    // We can probably bisect over the filter to work this out?
-
     if conflict_cand {
         // Some kind of conflict exists. We need to isolate which parts of the filter were suspect.
-        // To do this, we bisect over the filter and it's suspect elements.
-        //
-        // In most cases there is likely only 1 suspect element. But in some there are more. To make
-        // this process faster we "bisect" over chunks of the filter remaining until we have only single elements left.
-        //
-        // We do a bisect rather than a linear one-at-a-time search because we want to try to somewhat minimise calls
-        // through internal exists since that has a filter resolve and validate step.
+        let mut err_attr: Vec<Attribute> = Default::default();
 
-        // Fast-ish path. There is 0 or 1 element, so we just fast return.
-        if cand_filters.len() < 2 {
-            error!(
-                ?cand_filters,
-                "The following filter conditions failed to assert uniqueness"
-            );
-        } else {
-            // First iteration, we already failed and we know that, so we just prime and setup two
-            // chunks here.
+        for ((attr, v), uuid) in cand_attr.iter() {
+            let filt_in = filter!(f_and(vec![
+                FC::Eq(attr.clone(), v.clone()),
+                f_andnot(FC::Eq(Attribute::Uuid, PartialValue::Uuid(*uuid))),
+            ]));
 
-            let mid = cand_filters.len() / 2;
-            let (left, right) = cand_filters.split_at(mid);
+            let conflict_cand = qs.internal_search(filt_in).inspect_err(|err| {
+                error!(?err, "internal exists error");
+            })?;
 
-            let mut queue = VecDeque::new();
-            queue.push_back(left);
-            queue.push_back(right);
-
-            // Ok! We are setup to go
-
-            while let Some(cand_query) = queue.pop_front() {
-                let filt_in = filter!(f_or(cand_query.to_vec()));
-                let conflict_cand = qs.internal_search(filt_in).map_err(|e| {
-                    admin_error!("internal exists error {:?}", e);
-                    e
-                })?;
-
-                // A conflict was found!
-                if let Some(conflict_cand_zero) = conflict_cand.first() {
-                    if cand_query.len() >= 2 {
-                        // Continue to split to isolate.
-                        let mid = cand_query.len() / 2;
-                        let (left, right) = cand_query.split_at(mid);
-                        queue.push_back(left);
-                        queue.push_back(right);
-                        // Continue!
-                    } else {
-                        // Report this as a failing query.
-                        error!(cand_filters = ?cand_query, conflicting_with = %conflict_cand_zero.get_display_id(), "The following filter conditions failed to assert uniqueness");
-                    }
-                }
+            // A conflict was found!
+            if let Some(conflict_cand_zero) = conflict_cand.first() {
+                // Report this as a failing query.
+                error!(?attr, value = ?v, conflicting_with = %conflict_cand_zero.get_display_id(), "The following filter conditions failed to assert uniqueness");
+                err_attr.push(attr.clone());
             }
-            // End logging / warning iterator
-        }
+        } // End logging / warning iterator
 
-        Err(OperationError::Plugin(PluginError::AttrUnique(
-            "duplicate value detected".to_string(),
-        )))
+        Err(OperationError::AttributeUniqueness(err_attr))
     } else {
         // If all okay, okay!
         Ok(())
@@ -505,9 +463,7 @@ mod tests {
         let preload = vec![e];
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::AttrUnique(
-                "duplicate value detected".to_string()
-            ))),
+            Err(OperationError::AttributeUniqueness(vec![Attribute::Name])),
             preload,
             create,
             None,
@@ -530,9 +486,7 @@ mod tests {
         let preload = Vec::with_capacity(0);
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::AttrUnique(
-                "ava already exists".to_string()
-            ))),
+            Err(OperationError::AttributeUniqueness(vec![Attribute::Name])),
             preload,
             create,
             None,
@@ -560,9 +514,7 @@ mod tests {
         let preload = vec![ea, eb];
 
         run_modify_test!(
-            Err(OperationError::Plugin(PluginError::AttrUnique(
-                "duplicate value detected".to_string()
-            ))),
+            Err(OperationError::AttributeUniqueness(vec![Attribute::Name])),
             preload,
             filter!(f_or!([f_eq(
                 Attribute::Name,
@@ -595,9 +547,7 @@ mod tests {
         let preload = vec![ea, eb];
 
         run_modify_test!(
-            Err(OperationError::Plugin(PluginError::AttrUnique(
-                "ava already exists".to_string()
-            ))),
+            Err(OperationError::AttributeUniqueness(vec![Attribute::Name])),
             preload,
             filter!(f_or!([
                 f_eq(Attribute::Name, PartialValue::new_iname("testgroup_a")),

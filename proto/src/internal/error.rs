@@ -1,11 +1,9 @@
-use std::fmt::{Display, Formatter};
-
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-use uuid::Uuid;
-
 use super::credupdate::PasswordFeedback;
 use crate::attribute::Attribute;
+use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
+use utoipa::ToSchema;
+use uuid::Uuid;
 
 /* ===== errors ===== */
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
@@ -28,7 +26,6 @@ pub enum SchemaError {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum PluginError {
-    AttrUnique(String),
     Base(String),
     ReferentialIntegrity(String),
     CredImport(String),
@@ -105,6 +102,7 @@ pub enum OperationError {
     // Serialize & Deserialize this enum...
     MissingClass(String),
     MissingAttribute(Attribute),
+    AttributeUniqueness(Vec<Attribute>),
     MissingEntries,
     ModifyAssertionFailed,
     BackendEngine,
@@ -157,6 +155,9 @@ pub enum OperationError {
     KG001TaskTimeout,
     KG002TaskCommFailure,
     KG003CacheClearFailed,
+    KG004UnknownFeatureUuid,
+    KG005HowDidYouEvenManageThis,
+    KG006DatastructureCorruption,
 
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
@@ -219,6 +220,7 @@ pub enum OperationError {
     SC0027ClassSetInvalid,
     SC0028CreatedUuidsInvalid,
     SC0029PaginationOutOfBounds,
+    SC0030Sha256SyntaxInvalid,
     // Migration
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
@@ -312,6 +314,7 @@ pub enum OperationError {
     KP0076KeyObjectHkdfOutputLengthInvalid,
     KP0077KeyProviderNoSuchKey,
     KP0078KeyObjectNotFound,
+    KP0079KeyObjectNotFound,
 
     // Plugins
     PL0001GidOverlapsSystemRange,
@@ -393,6 +396,7 @@ impl OperationError {
             Self::InvalidAccountState(val) => Some(format!("Invalid account state: {val}")),
             Self::MissingClass(val) => Some(format!("Missing class: {val}")),
             Self::MissingAttribute(val) => Some(format!("Missing attribute: {val}")),
+            Self::AttributeUniqueness(attrs) => Some(format!("The value of some attributes is not unique. {attrs:?}")),
             Self::MissingEntries => None,
             Self::ModifyAssertionFailed => None,
             Self::BackendEngine => None,
@@ -449,6 +453,9 @@ impl OperationError {
             Self::KG001TaskTimeout => Some("Task timed out".into()),
             Self::KG002TaskCommFailure => Some("Inter-Task communication failure".into()),
             Self::KG003CacheClearFailed => Some("Failed to clear cache".into()),
+            Self::KG004UnknownFeatureUuid => None,
+            Self::KG005HowDidYouEvenManageThis => Some("You have damaged the fabric of space time and managed to perform an impossible action.".into()),
+            Self::KG006DatastructureCorruption => None,
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,
             Self::KP0003KeyProviderInvalidType => None,
@@ -529,6 +536,7 @@ impl OperationError {
             Self::KP0076KeyObjectHkdfOutputLengthInvalid => None,
             Self::KP0077KeyProviderNoSuchKey => None,
             Self::KP0078KeyObjectNotFound => None,
+            Self::KP0079KeyObjectNotFound => None,
 
             Self::KU001InitWhileSessionActive => Some("The session was active when the init function was called.".into()),
             Self::KU002ContinueWhileSessionInActive => Some("Attempted to continue auth session while current session is inactive".into()),
@@ -577,6 +585,7 @@ impl OperationError {
             Self::SC0027ClassSetInvalid => Some("The internal set of class templates used in this create operation was invalid. THIS IS A BUG.".into()),
             Self::SC0028CreatedUuidsInvalid => Some("The internal create query did not return the set of created UUIDs. THIS IS A BUG".into()),
             Self::SC0029PaginationOutOfBounds => Some("The requested range for pagination was out of bounds of the result set".into()),
+            Self::SC0030Sha256SyntaxInvalid => Some("A SCIM SHA256 hex string was invalid.".into()),
 
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),

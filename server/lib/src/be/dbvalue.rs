@@ -16,7 +16,7 @@ use webauthn_rs::prelude::{
 use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 // Re-export this as though it was here.
 use crate::repl::cid::Cid;
-use crypto_glue::traits::Zeroizing;
+use crypto_glue::{s256::Sha256Output, traits::Zeroizing};
 pub use kanidm_lib_crypto::DbPasswordV1;
 
 #[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq, Clone)]
@@ -840,6 +840,8 @@ pub enum DbValueSetV2 {
     Json(JsonValue),
     #[serde(rename = "MS")]
     Message(OutboundMessage),
+    #[serde(rename = "S256")]
+    Sha256(BTreeSet<Sha256Output>),
 }
 
 impl DbValueSetV2 {
@@ -893,6 +895,7 @@ impl DbValueSetV2 {
             DbValueSetV2::KeyInternal(set) => set.len(),
             DbValueSetV2::Certificate(set) => set.len(),
             DbValueSetV2::ApplicationPassword(set) => set.len(),
+            DbValueSetV2::Sha256(set) => set.len(),
             DbValueSetV2::Json(_) | DbValueSetV2::Message(_) => 1,
         }
     }

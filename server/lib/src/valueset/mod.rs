@@ -56,6 +56,7 @@ pub use self::oauth::{
     OauthClaimMapping, ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap,
 };
 pub use self::restricted::ValueSetRestricted;
+pub use self::s256::ValueSetSha256;
 pub use self::secret::ValueSetSecret;
 pub use self::session::{ValueSetApiToken, ValueSetOauth2Session, ValueSetSession};
 pub use self::spn::ValueSetSpn;
@@ -90,6 +91,7 @@ mod message;
 mod nsuniqueid;
 mod oauth;
 mod restricted;
+mod s256;
 mod secret;
 mod session;
 mod spn;
@@ -128,13 +130,21 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn contains(&self, pv: &PartialValue) -> bool;
 
-    fn substring(&self, pv: &PartialValue) -> bool;
+    fn substring(&self, _pv: &crate::value::PartialValue) -> bool {
+        false
+    }
 
-    fn startswith(&self, pv: &PartialValue) -> bool;
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
 
-    fn endswith(&self, pv: &PartialValue) -> bool;
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
 
-    fn lessthan(&self, pv: &PartialValue) -> bool;
+    fn lessthan(&self, _pv: &crate::value::PartialValue) -> bool {
+        false
+    }
 
     fn len(&self) -> usize;
 
@@ -667,6 +677,16 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn as_s256_set(&self) -> Option<&BTreeSet<Sha256Output>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_s256_set_mut(&mut self) -> Option<&mut BTreeSet<Sha256Output>> {
+        debug_assert!(false);
+        None
+    }
+
     fn repl_merge_valueset(
         &self,
         _older: &ValueSet,
@@ -877,6 +897,7 @@ pub fn from_result_value_iter(
         | Value::JwsKeyRs256(_)
         | Value::HexString(_)
         | Value::Json(_)
+        | Value::Sha256(_)
         | Value::KeyInternal { .. } => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -960,6 +981,10 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
             return Err(OperationError::InvalidValueState);
         }
         Value::ApplicationPassword(ap) => ValueSetApplicationPassword::new(ap),
+        Value::Sha256(_) => {
+            debug_assert!(false);
+            return Err(OperationError::InvalidValueState);
+        }
         Value::Json(_) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -1026,6 +1051,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Certificate(set) => ValueSetCertificate::from_dbvs2(set),
         DbValueSetV2::ApplicationPassword(set) => ValueSetApplicationPassword::from_dbvs2(set),
         DbValueSetV2::Json(object) => Ok(ValueSetJson::new(object)),
+        DbValueSetV2::Sha256(set) => ValueSetSha256::from_dbvs2(set),
         DbValueSetV2::Message(object) => Ok(ValueSetMessage::new(object)),
     }
 }

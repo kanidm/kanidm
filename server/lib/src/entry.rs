@@ -44,6 +44,7 @@ use crate::value::{
 };
 use crate::valueset::{self, ScimResolveStatus, ValueSet, ValueSetSpn};
 use compact_jwt::JwsEs256Signer;
+use crypto_glue::s256::Sha256Output;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{
@@ -1138,9 +1139,13 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         &mut self,
         attr: A,
     ) -> Option<&mut BTreeSet<Uuid>> {
-        self.attrs
-            .get_mut(attr.as_ref())
-            .and_then(|vs| vs.as_refer_set_mut())
+        self.get_ava_mut(attr).and_then(|vs| vs.as_refer_set_mut())
+    }
+
+    pub(crate) fn get_ava_mut<A: AsRef<Attribute>>(&mut self, attr: A) -> Option<&mut ValueSet> {
+        let attr_ref = attr.as_ref();
+        self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
+        self.attrs.get_mut(attr.as_ref())
     }
 }
 
@@ -2632,6 +2637,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .unwrap_or_else(|| "no entry id available".to_string())
     }
 
+    pub fn has_class(&self, class: &EntryClass) -> bool {
+        self.get_ava_set(Attribute::Class)
+            .and_then(|vs| vs.as_iutf8_set())
+            .map(|set| {
+                let class_name: &str = class.into();
+                set.contains(class_name)
+            })
+            .unwrap_or_default()
+    }
+
     /// Get an iterator over the current set of attribute names that this entry contains.
     pub fn get_ava_names(&self) -> impl Iterator<Item = &str> {
         // Get the set of all attribute names in the entry
@@ -2727,6 +2742,13 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     ) -> Option<&std::collections::BTreeMap<Uuid, Oauth2Session>> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.as_oauth2session_map())
+    }
+
+    pub fn get_ava_as_s256_set<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<&std::collections::BTreeSet<Sha256Output>> {
+        self.get_ava_set(attr).and_then(|vs| vs.as_s256_set())
     }
 
     /// If possible, return an iterator over the set of values transformed into a `&str`.

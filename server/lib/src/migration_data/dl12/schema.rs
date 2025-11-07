@@ -858,6 +858,35 @@ pub static ref SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES: SchemaAttribute = SchemaAttrib
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_HMAC_NAME_HISTORY: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_HMAC_NAME_HISTORY,
+    name: Attribute::HmacNameHistory,
+    description: "The set of all names used on an entry, HMACed to preserve privacy.".to_string(),
+    multivalue: true,
+    unique: true,
+    indexed: true,
+    syntax: SyntaxType::Sha256,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_IN_MEMORIAM: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_IN_MEMORIAM_UUID,
+    name: Attribute::InMemoriam,
+    description: "The uuid of the entry that this memorial is dedicated to.".to_string(),
+    indexed: true,
+    syntax: SyntaxType::Uuid,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_ENABLED: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_ENABLED,
+    name: Attribute::Enabled,
+    description: "A flag describing if a feature is enabled or disabled.".to_string(),
+    multivalue: false,
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+};
+
 // === classes ===
 pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
@@ -977,6 +1006,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT_DL5: SchemaClass = SchemaClass {
         Attribute::AccountExpire,
         Attribute::AccountValidFrom,
         Attribute::NameHistory,
+        Attribute::HmacNameHistory,
     ],
     systemmust: vec![
         Attribute::DisplayName,
@@ -1306,5 +1336,31 @@ pub static ref SCHEMA_CLASS_OUTBOUND_MESSAGE: SchemaClass = SchemaClass {
 
 };
 
+pub static ref SCHEMA_CLASS_FEATURE: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_FEATURE,
+    name: EntryClass::Feature.into(),
+    description: "The class representing the state of a feature.".to_string(),
+    systemmust: vec![
+        Attribute::Name,
+        Attribute::Description,
+    ],
+    systemmay: vec![
+        Attribute::Enabled,
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_MEMORIAL: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_MEMORIAL,
+    name: EntryClass::Memorial.into(),
+    description: "The class representing a memorial to an entry that has been deleted.".to_string(),
+    systemmust: vec![
+        Attribute::InMemoriam
+    ],
+    systemmay: vec![
+        Attribute::HmacNameHistory
+    ],
+    ..Default::default()
+};
 
 );
