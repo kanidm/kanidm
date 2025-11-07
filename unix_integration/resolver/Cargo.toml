@@ -55,7 +55,7 @@ doctest = false
 
 [dependencies]
 async-trait = { workspace = true }
-bytes = { workspace = true }
+# bytes = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 dialoguer = { workspace = true }
 dhat = { workspace = true, optional = true }

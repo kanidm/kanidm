@@ -14,6 +14,54 @@ We value your feedback! First, please see our [code of conduct]. If you have que
 
 ## Release Notes
 
+### 2025-10-07 - Kanidm 1.8.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
+
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
+
+Before upgrading you should review [our upgrade documentation]
+
+#### 1.8.0 Important Changes
+
+For distribution package users, systemd-notify reload has been removed due to ongoing bugs with the
+feature from the systemd side which would cause kanidmd to be killed ungracefully. If you rely on
+this to perform "systemctl reload kanidmd" actions, you should instead use "systemctl restart" or
+send a SIGHUP directly to the kanidmd process.
+
+#### 1.8.0 Release Highlights
+
+- Reduce logging verbosity (#3906)
+- Add support for PROXYv1 protocol (#3935)
+- Persist unixd connections in nss to improve response times (#3921)
+- Improve offline authentication with unixd for road-warriors (#3934)
+- Support listening on multiple sockets (#3933)
+- Fix a bug with replication certificate renewal that could cause a temporary replication freeze
+- Prevent users saving credentials if they would remove all credentials (#3805)
+- Fix a bug in an easter egg.
+- Remove systemd-notify reload support (#3885)
+- Support reference entries (#3863)
+- Allow group shortnames in OIDC claims (#3879)
+- Improve client address display by canonicalising v4 in v6 addrs (#3874)
+- Support client secret post for OAuth2 (#3833)
+- Skip UAT prevalidation in some routes (#3865)
+- Allow compression of backups (#3821)
+- Improve unixd performance (#3846)
+- Prevent memory exhaustion during FreeBSD builds (#3818)
+- Allow replication to operate with IP addresses (#3807)
+- Update email validation regex per whatwg (#3797)
+- Fix replication show-cert bug with rustls (#3792)
+- Improve IPC between unixd and other components (#3789)
+- Allow disabling of the "break-glass" accounts (#3780)
+- Improve messaging around why a user can't authenticate with unixd (#3778)
+- Improve argon2id parameter search speed (#3768)
+- Properly drop the "remember me" cookie when set to off (#3770)
+- Fix handling of SEC1 Private Keys (#3769)
+- Improve order of operations in Kanidm Unixd Tasks (#3762)
+- Fix an issue with RADIUS service account access controls (#3759)
+
 ### 2025-08-01 - Kanidm 1.7.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
