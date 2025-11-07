@@ -31,9 +31,7 @@ tokio = { workspace = true, features = ["rt", "macros", "net"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 toml = { workspace = true }
-url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde"] }
 
 
