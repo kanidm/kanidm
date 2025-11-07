@@ -103,6 +103,7 @@ origin = "https://idm.example.com"
 # x-forward-for = ["127.0.0.1", "127.0.0.0/8"]
 #   # OR
 # [http_client_address_info]
+# # AVOID IF POSSIBLE!!!
 # proxy-v1 = ["127.0.0.1", "127.0.0.0/8"]
 
 #   LDAPS requests can be reverse proxied by a loadbalancer.
@@ -119,6 +120,7 @@ origin = "https://idm.example.com"
 # proxy-v2 = ["127.0.0.1", "127.0.0.0/8"]
 #   # OR
 # [ldap_client_address_info]
+# # AVOID IF POSSIBLE!!!
 # proxy-v1 = ["127.0.0.1", "127.0.0.0/8"]
 
 [online_backup]
