@@ -1,7 +1,8 @@
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use crate::config::{AddressSet, Configuration, ServerRole};
+use crate::config::{AddressSet, Configuration, ServerRole, TcpAddressInfo};
+use crate::tcp::process_client_addr;
 use crate::CoreAction;
 use axum::{
     body::Body,
@@ -13,10 +14,8 @@ use axum::{
     Router,
 };
 use axum_extra::extract::cookie::CookieJar;
-use cidr::IpCidr;
 use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
 use futures::pin_mut;
-use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
@@ -29,10 +28,7 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{
-    net::{IpAddr, SocketAddr},
-    str::FromStr,
-};
+use std::{net::SocketAddr, str::FromStr};
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite},
     net::{TcpListener, TcpStream},
@@ -251,10 +247,7 @@ pub async fn create_https_server(
         .trusted_x_forward_for()
         .map(Arc::new);
 
-    let trusted_proxy_v2_ips = config
-        .http_client_address_info
-        .trusted_proxy_v2()
-        .map(Arc::new);
+    let trusted_tcp_info_ips = config.http_client_address_info.trusted_tcp_info();
 
     let state = ServerState {
         status_ref,
@@ -385,7 +378,7 @@ pub async fn create_https_server(
 
         let app = app.clone();
         let rx = server_message_tx.subscribe();
-        let trusted_proxy_v2_ips = trusted_proxy_v2_ips.clone();
+        let trusted_tcp_info_ips = trusted_tcp_info_ips.clone();
 
         let handle = match &maybe_tls_acceptor {
             Some(tls_acceptor) => {
@@ -400,14 +393,14 @@ pub async fn create_https_server(
                     rx,
                     server_message_tx,
                     tls_acceptor_reload_rx,
-                    trusted_proxy_v2_ips,
+                    trusted_tcp_info_ips,
                 ))
             }
             None => task::spawn(server_plaintext_loop(
                 listener,
                 app,
                 rx,
-                trusted_proxy_v2_ips,
+                trusted_tcp_info_ips,
             )),
         };
 
@@ -424,7 +417,7 @@ async fn server_tls_loop(
     mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
     mut tls_acceptor_reload_rx: broadcast::Receiver<TlsAcceptor>,
-    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
+    trusted_tcp_info_ips: Arc<TcpAddressInfo>,
 ) {
     pin_mut!(listener);
 
@@ -440,7 +433,7 @@ async fn server_tls_loop(
                     Ok((stream, addr)) => {
                         let tls_acceptor = tls_acceptor.clone();
                         let app = app.clone();
-                        task::spawn(handle_tls_conn(tls_acceptor, stream, app, addr, trusted_proxy_v2_ips.clone()));
+                        task::spawn(handle_tls_conn(tls_acceptor, stream, app, addr, trusted_tcp_info_ips.clone()));
                     }
                     Err(err) => {
                         error!("Web server exited with {:?}", err);
@@ -465,7 +458,7 @@ async fn server_plaintext_loop(
     listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     mut rx: broadcast::Receiver<CoreAction>,
-    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
+    trusted_tcp_info_ips: Arc<TcpAddressInfo>,
 ) {
     pin_mut!(listener);
 
@@ -480,7 +473,7 @@ async fn server_plaintext_loop(
                 match accept {
                     Ok((stream, addr)) => {
                         let app = app.clone();
-                        task::spawn(handle_conn(stream, app, addr, trusted_proxy_v2_ips.clone()));
+                        task::spawn(handle_conn(stream, app, addr, trusted_tcp_info_ips.clone()));
                     }
                     Err(err) => {
                         error!("Web server exited with {:?}", err);
@@ -499,10 +492,17 @@ pub(crate) async fn handle_conn(
     stream: TcpStream,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     connection_addr: SocketAddr,
-    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
+    trusted_tcp_info_ips: Arc<TcpAddressInfo>,
 ) -> Result<(), std::io::Error> {
-    let (stream, client_ip_addr) =
-        process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
+    let (stream, client_addr) = process_client_addr(
+        stream,
+        connection_addr,
+        HTTPS_CLIENT_CONN_TIMEOUT,
+        trusted_tcp_info_ips,
+    )
+    .await?;
+
+    let client_ip_addr = client_addr.ip();
 
     let client_conn_info = ClientConnInfo {
         connection_addr,
@@ -523,10 +523,17 @@ pub(crate) async fn handle_tls_conn(
     stream: TcpStream,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     connection_addr: SocketAddr,
-    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
+    trusted_tcp_info_ips: Arc<TcpAddressInfo>,
 ) -> Result<(), std::io::Error> {
-    let (mut stream, client_ip_addr) =
-        process_client_addr(stream, connection_addr, trusted_proxy_v2_ips).await?;
+    let (mut stream, client_addr) = process_client_addr(
+        stream,
+        connection_addr,
+        HTTPS_CLIENT_CONN_TIMEOUT,
+        trusted_tcp_info_ips,
+    )
+    .await?;
+
+    let client_ip_addr = client_addr.ip();
 
     // Don't both starting to build anything until there is actually something to do.
     // This is pretty common with "health checks" that open a connection and then just
@@ -599,59 +606,6 @@ pub(crate) async fn handle_tls_conn(
     let stream = TokioIo::new(tls_stream);
 
     process_client_hyper(stream, app, client_conn_info).await
-}
-
-async fn process_client_addr(
-    stream: TcpStream,
-    connection_addr: SocketAddr,
-    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
-) -> Result<(TcpStream, IpAddr), std::io::Error> {
-    let enable_proxy_v2_hdr = trusted_proxy_v2_ips
-        .map(|trusted| {
-            trusted
-                .iter()
-                .any(|ip_cidr| ip_cidr.contains(&connection_addr.ip().to_canonical()))
-        })
-        .unwrap_or_default();
-
-    let (stream, client_addr) = if enable_proxy_v2_hdr {
-        match timeout(
-            HTTPS_CLIENT_CONN_TIMEOUT,
-            ProxyHdrV2::parse_from_read(stream),
-        )
-        .await
-        {
-            Ok(Ok((stream, hdr))) => {
-                let remote_socket_addr = match hdr.to_remote_addr() {
-                    RemoteAddress::Local => {
-                        debug!("PROXY protocol liveness check - will not contain client data");
-                        // This is a check from the proxy, so just use the connection address.
-                        connection_addr
-                    }
-                    RemoteAddress::TcpV4 { src, dst: _ } => SocketAddr::from(src),
-                    RemoteAddress::TcpV6 { src, dst: _ } => SocketAddr::from(src),
-                    remote_addr => {
-                        error!(?remote_addr, "remote address in proxy header is invalid");
-                        return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
-                    }
-                };
-
-                (stream, remote_socket_addr)
-            }
-            Ok(Err(err)) => {
-                error!(?connection_addr, ?err, "Unable to process proxy v2 header");
-                return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
-            }
-            Err(_) => {
-                error!(?connection_addr, "Timeout receiving proxy v2 header");
-                return Err(std::io::Error::from(ErrorKind::TimedOut));
-            }
-        }
-    } else {
-        (stream, connection_addr)
-    };
-
-    Ok((stream, client_addr.ip()))
 }
 
 async fn process_client_hyper<T>(

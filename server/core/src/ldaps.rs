@@ -1,9 +1,9 @@
 use crate::actors::QueryServerReadV1;
+use crate::config::TcpAddressInfo;
+use crate::tcp::process_client_addr;
 use crate::CoreAction;
-use cidr::IpCidr;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
-use haproxy_protocol::{ProxyHdrV2, RemoteAddress};
 use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;
@@ -152,51 +152,18 @@ async fn client_tls_accept(
     tls_acceptor: TlsAcceptor,
     connection_addr: SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
-    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
+    trusted_tcp_info_ips: Arc<TcpAddressInfo>,
 ) {
-    let enable_proxy_v2_hdr = trusted_proxy_v2_ips
-        .map(|trusted| {
-            trusted
-                .iter()
-                .any(|ip_cidr| ip_cidr.contains(&connection_addr.ip().to_canonical()))
-        })
-        .unwrap_or_default();
-
-    let (mut stream, client_addr) = if enable_proxy_v2_hdr {
-        match timeout(
-            LDAP_CLIENT_CONN_TIMEOUT,
-            ProxyHdrV2::parse_from_read(stream),
-        )
-        .await
-        {
-            Ok(Ok((stream, hdr))) => {
-                let remote_socket_addr = match hdr.to_remote_addr() {
-                    RemoteAddress::Local => {
-                        debug!("PROXY protocol liveness check - will not contain client data");
-                        // This is a check from the proxy, so just use the connection address.
-                        connection_addr
-                    }
-                    RemoteAddress::TcpV4 { src, dst: _ } => SocketAddr::from(src),
-                    RemoteAddress::TcpV6 { src, dst: _ } => SocketAddr::from(src),
-                    remote_addr => {
-                        error!(?remote_addr, "remote address in proxy header is invalid");
-                        return;
-                    }
-                };
-
-                (stream, remote_socket_addr)
-            }
-            Ok(Err(err)) => {
-                error!(?connection_addr, ?err, "Unable to process proxy v2 header");
-                return;
-            }
-            Err(_) => {
-                error!(?connection_addr, "Timeout receiving proxy v2 header");
-                return;
-            }
-        }
-    } else {
-        (stream, connection_addr)
+    let Ok((mut stream, client_addr)) = process_client_addr(
+        stream,
+        connection_addr,
+        LDAP_CLIENT_CONN_TIMEOUT,
+        trusted_tcp_info_ips,
+    )
+    .await
+    else {
+        debug!(%connection_addr, "Unable to process client address");
+        return;
     };
 
     let mut zero_buf: [u8; 0] = [];
@@ -240,7 +207,7 @@ async fn ldap_tls_acceptor(
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
     mut tls_acceptor_reload_rx: broadcast::Receiver<TlsAcceptor>,
-    trusted_proxy_v2_ips: Option<Arc<Vec<IpCidr>>>,
+    trusted_tcp_info_ips: Arc<TcpAddressInfo>,
 ) {
     loop {
         tokio::select! {
@@ -253,7 +220,7 @@ async fn ldap_tls_acceptor(
                 match accept_result {
                     Ok((tcpstream, client_socket_addr)) => {
                         let clone_tls_acceptor = tls_acceptor.clone();
-                        tokio::spawn(client_tls_accept(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref, trusted_proxy_v2_ips.clone()));
+                        tokio::spawn(client_tls_accept(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref, trusted_tcp_info_ips.clone()));
                     }
                     Err(err) => {
                         warn!(?err, "LDAP acceptor error, continuing");
@@ -303,11 +270,9 @@ pub(crate) async fn create_ldap_server(
     qe_r_ref: &'static QueryServerReadV1,
     server_message_tx: &broadcast::Sender<CoreAction>,
     tls_acceptor_reload_tx: &broadcast::Sender<TlsAcceptor>,
-    trusted_proxy_v2_ips: Option<Vec<IpCidr>>,
+    trusted_tcp_info_ips: Arc<TcpAddressInfo>,
 ) -> Result<Vec<tokio::task::JoinHandle<()>>, ()> {
     let mut ldap_acceptor_handles = Vec::with_capacity(addresses.len());
-
-    let trusted_proxy_v2_ips = trusted_proxy_v2_ips.map(Arc::new);
 
     for address in addresses {
         if address.starts_with(":::") {
@@ -334,7 +299,7 @@ pub(crate) async fn create_ldap_server(
             Some(ssl_acceptor) => {
                 info!("Starting LDAPS interface ldaps://{} ...", address);
 
-                let trusted_proxy_v2_ips = trusted_proxy_v2_ips.clone();
+                let trusted_tcp_info_ips = trusted_tcp_info_ips.clone();
                 let ssl_acceptor = ssl_acceptor.clone();
 
                 tokio::spawn(ldap_tls_acceptor(
@@ -343,7 +308,7 @@ pub(crate) async fn create_ldap_server(
                     qe_r_ref,
                     rx,
                     tls_acceptor_reload_rx,
-                    trusted_proxy_v2_ips,
+                    trusted_tcp_info_ips,
                 ))
             }
             None => tokio::spawn(ldap_plaintext_acceptor(listener, qe_r_ref, rx)),

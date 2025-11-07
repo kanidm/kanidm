@@ -2611,7 +2611,7 @@ mod tests {
 
             // Discard the auth_state, we only need the invalid challenge.
             let (chal, _auth_state) = webauthn
-                .start_passkey_authentication(&vec![inv_cred])
+                .start_passkey_authentication(&[inv_cred])
                 .expect("Failed to generate challenge for in inv softtoken");
 
             // Create the response.
@@ -3481,12 +3481,12 @@ mod tests {
         trace!(?state);
 
         // Should create an authorisation Request.
-        let (_auth_url, auth_req) = match state {
-            AuthState::External(AuthExternal::OAuth2AuthorisationRequest {
-                authorisation_url,
-                request,
-            }) => (authorisation_url, request),
-            _ => unreachable!(),
+        let AuthState::External(AuthExternal::OAuth2AuthorisationRequest {
+            authorisation_url: _auth_url,
+            request: auth_req,
+        }) = state
+        else {
+            unreachable!()
         };
 
         // Forge a response and submit it.
@@ -3509,14 +3509,14 @@ mod tests {
             )
             .expect("Failed to perform credential validation step.");
 
-        let (_token_url, _token_request) = match state {
-            AuthState::External(AuthExternal::OAuth2AccessTokenRequest {
-                token_url,
-                client_id: _,
-                client_secret: _,
-                request,
-            }) => (token_url, request),
-            _ => unreachable!(),
+        let AuthState::External(AuthExternal::OAuth2AccessTokenRequest {
+            token_url: _token_url,
+            client_id: _,
+            client_secret: _,
+            request: _token_request,
+        }) = state
+        else {
+            unreachable!()
         };
 
         // Here we assume we submitted the token request to the token url, and

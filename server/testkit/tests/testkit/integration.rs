@@ -29,10 +29,7 @@ async fn get_webdriver_client() -> fantoccini::Client {
     use serde_json::json;
 
     // check if the env var "CI" is set
-    let in_ci = match std::env::var("CI") {
-        Ok(_) => true,
-        Err(_) => false,
-    };
+    let in_ci = std::env::var("CI").is_ok();
     if !in_ci {
         match fantoccini::ClientBuilder::native()
             .connect("http://localhost:4444")
@@ -89,7 +86,7 @@ async fn test_webdriver_user_login(rsclient: &KanidmClient) {
 
     handle_error!(
         c,
-        c.goto(rsclient.get_url().to_string()).await,
+        c.goto(rsclient.get_url().as_ref()).await,
         "Couldn't get URL"
     );
 
