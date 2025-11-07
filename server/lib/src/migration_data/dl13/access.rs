@@ -72,6 +72,8 @@ pub struct BuiltinAcp {
     modify_present_attrs: Vec<Attribute>,
     modify_removed_attrs: Vec<Attribute>,
     modify_classes: Vec<EntryClass>,
+    modify_present_classes: Vec<EntryClass>,
+    modify_remove_classes: Vec<EntryClass>,
     create_classes: Vec<EntryClass>,
     create_attrs: Vec<Attribute>,
 }
@@ -159,9 +161,19 @@ impl From<BuiltinAcp> for EntryInitNew {
         value.modify_removed_attrs.into_iter().for_each(|attr| {
             entry.add_ava(Attribute::AcpModifyRemovedAttr, Value::from(attr));
         });
+
         value.modify_classes.into_iter().for_each(|class| {
             entry.add_ava(Attribute::AcpModifyClass, Value::from(class));
         });
+
+        value.modify_present_classes.into_iter().for_each(|class| {
+            entry.add_ava(Attribute::AcpModifyPresentClass, Value::from(class));
+        });
+
+        value.modify_remove_classes.into_iter().for_each(|class| {
+            entry.add_ava(Attribute::AcpModifyRemoveClass, Value::from(class));
+        });
+
         value.create_classes.into_iter().for_each(|class| {
             entry.add_ava(Attribute::AcpCreateClass, Value::from(class));
         });
@@ -214,7 +226,7 @@ lazy_static! {
             ATTR_RECYCLED.to_string()
         )),
         modify_removed_attrs: vec![Attribute::Class],
-        modify_classes: vec![EntryClass::Recycled],
+        modify_remove_classes: vec![EntryClass::Recycled],
         ..Default::default()
     };
 }
@@ -425,6 +437,7 @@ lazy_static! {
             EntryClass::AccessControlCreate,
             EntryClass::AccessControlDelete,
         ],
+        ..Default::default()
     };
 }
 
@@ -456,6 +469,7 @@ lazy_static! {
             Attribute::Spn,
             Attribute::Description,
             Attribute::Member,
+            Attribute::MemberOf,
             Attribute::EntryManagedBy,
         ],
         ..Default::default()
@@ -601,315 +615,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_OAUTH2_MANAGE_DL4: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlCreate,
-            EntryClass::AccessControlDelete,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_hp_oauth2_manage_priv",
-        uuid: UUID_IDM_ACP_OAUTH2_MANAGE_V1,
-        description: "Builtin IDM Control for managing oauth2 resource server integrations.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ADMINS]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::OAuth2ResourceServer),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
-        ])),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Description,
-            Attribute::DisplayName,
-            Attribute::OAuth2RsName,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsBasicSecret,
-            Attribute::OAuth2RsTokenKey,
-            Attribute::Es256PrivateKeyDer,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::Rs256PrivateKeyDer,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::Description,
-            Attribute::DisplayName,
-            Attribute::OAuth2RsName,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsBasicSecret,
-            Attribute::OAuth2RsTokenKey,
-            Attribute::Es256PrivateKeyDer,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::Rs256PrivateKeyDer,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Description,
-            Attribute::DisplayName,
-            Attribute::OAuth2RsName,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-        ],
-        create_attrs: vec![
-            Attribute::Class,
-            Attribute::Description,
-            Attribute::DisplayName,
-            Attribute::OAuth2RsName,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-        ],
-        create_classes: vec![
-            EntryClass::Object,
-            EntryClass::OAuth2ResourceServer,
-            EntryClass::OAuth2ResourceServerBasic,
-            EntryClass::OAuth2ResourceServerPublic,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_OAUTH2_MANAGE_DL5: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlCreate,
-            EntryClass::AccessControlDelete,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_hp_oauth2_manage_priv",
-        uuid: UUID_IDM_ACP_OAUTH2_MANAGE_V1,
-        description: "Builtin IDM Control for managing oauth2 resource server integrations.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ADMINS]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::OAuth2ResourceServer),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
-        ])),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Description,
-            Attribute::DisplayName,
-            Attribute::Name,
-            Attribute::Spn,
-            Attribute::OAuth2Session,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsBasicSecret,
-            Attribute::OAuth2RsTokenKey,
-            Attribute::Es256PrivateKeyDer,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::Rs256PrivateKeyDer,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::Description,
-            Attribute::DisplayName,
-            Attribute::Name,
-            Attribute::OAuth2Session,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsBasicSecret,
-            Attribute::OAuth2RsTokenKey,
-            Attribute::Es256PrivateKeyDer,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::Rs256PrivateKeyDer,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Description,
-            Attribute::DisplayName,
-            Attribute::Name,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-        ],
-        create_attrs: vec![
-            Attribute::Class,
-            Attribute::Description,
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::OAuth2RsName,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-        ],
-        create_classes: vec![
-            EntryClass::Object,
-            EntryClass::Account,
-            EntryClass::OAuth2ResourceServer,
-            EntryClass::OAuth2ResourceServerBasic,
-            EntryClass::OAuth2ResourceServerPublic,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_OAUTH2_MANAGE_DL7: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlCreate,
-            EntryClass::AccessControlDelete,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_hp_oauth2_manage_priv",
-        uuid: UUID_IDM_ACP_OAUTH2_MANAGE_V1,
-        description: "Builtin IDM Control for managing oauth2 resource server integrations.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ADMINS]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::OAuth2ResourceServer),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
-        ])),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Description,
-            Attribute::DisplayName,
-            Attribute::Name,
-            Attribute::Spn,
-            Attribute::OAuth2Session,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsBasicSecret,
-            Attribute::OAuth2RsTokenKey,
-            Attribute::Es256PrivateKeyDer,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::Rs256PrivateKeyDer,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-            Attribute::OAuth2StrictRedirectUri,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::Description,
-            Attribute::DisplayName,
-            Attribute::Name,
-            Attribute::OAuth2Session,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsBasicSecret,
-            Attribute::OAuth2RsTokenKey,
-            Attribute::Es256PrivateKeyDer,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::Rs256PrivateKeyDer,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-            Attribute::OAuth2StrictRedirectUri,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Description,
-            Attribute::DisplayName,
-            Attribute::Name,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-            Attribute::OAuth2StrictRedirectUri,
-        ],
-        create_attrs: vec![
-            Attribute::Class,
-            Attribute::Description,
-            Attribute::Name,
-            Attribute::DisplayName,
-            Attribute::OAuth2RsName,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2RsOriginLanding,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::Image,
-            Attribute::OAuth2StrictRedirectUri,
-        ],
-        create_classes: vec![
-            EntryClass::Object,
-            EntryClass::Account,
-            EntryClass::OAuth2ResourceServer,
-            EntryClass::OAuth2ResourceServerBasic,
-            EntryClass::OAuth2ResourceServerPublic,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_OAUTH2_MANAGE_DL9: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_OAUTH2_MANAGE: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -938,10 +644,7 @@ lazy_static! {
             Attribute::OAuth2RsScopeMap,
             Attribute::OAuth2RsSupScopeMap,
             Attribute::OAuth2RsBasicSecret,
-            Attribute::OAuth2RsTokenKey,
-            Attribute::Es256PrivateKeyDer,
             Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::Rs256PrivateKeyDer,
             Attribute::OAuth2JwtLegacyCryptoEnable,
             Attribute::OAuth2PreferShortUsername,
             Attribute::OAuth2AllowLocalhostRedirect,
@@ -949,6 +652,7 @@ lazy_static! {
             Attribute::Image,
             Attribute::OAuth2StrictRedirectUri,
             Attribute::OAuth2DeviceFlowEnable,
+            Attribute::KeyInternalData,
         ],
         modify_removed_attrs: vec![
             Attribute::Description,
@@ -960,10 +664,7 @@ lazy_static! {
             Attribute::OAuth2RsScopeMap,
             Attribute::OAuth2RsSupScopeMap,
             Attribute::OAuth2RsBasicSecret,
-            Attribute::OAuth2RsTokenKey,
-            Attribute::Es256PrivateKeyDer,
             Attribute::OAuth2AllowInsecureClientDisablePkce,
-            Attribute::Rs256PrivateKeyDer,
             Attribute::OAuth2JwtLegacyCryptoEnable,
             Attribute::OAuth2PreferShortUsername,
             Attribute::OAuth2AllowLocalhostRedirect,
@@ -971,6 +672,8 @@ lazy_static! {
             Attribute::Image,
             Attribute::OAuth2StrictRedirectUri,
             Attribute::OAuth2DeviceFlowEnable,
+            Attribute::KeyActionRevoke,
+            Attribute::KeyActionRotate,
         ],
         modify_present_attrs: vec![
             Attribute::Description,
@@ -988,6 +691,8 @@ lazy_static! {
             Attribute::Image,
             Attribute::OAuth2StrictRedirectUri,
             Attribute::OAuth2DeviceFlowEnable,
+            Attribute::KeyActionRevoke,
+            Attribute::KeyActionRotate,
         ],
         create_attrs: vec![
             Attribute::Class,
@@ -1014,116 +719,6 @@ lazy_static! {
             EntryClass::OAuth2ResourceServer,
             EntryClass::OAuth2ResourceServerBasic,
             EntryClass::OAuth2ResourceServerPublic,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_DOMAIN_ADMIN_DL6: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_domain_admin",
-        uuid: UUID_IDM_ACP_DOMAIN_ADMIN_V1,
-        description: "Builtin IDM Control for granting domain info administration locally",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_DOMAIN_ADMINS]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            ProtoFilter::Eq(
-                Attribute::Uuid.to_string(),
-                STR_UUID_DOMAIN_INFO.to_string()
-            ),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
-        ])),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::DomainDisplayName,
-            Attribute::DomainName,
-            Attribute::DomainLdapBasedn,
-            Attribute::DomainSsid,
-            Attribute::DomainUuid,
-            // Grants read access to the key object.
-            // But this means we have to specify every type of key object?
-            // Future william problem ...
-            Attribute::KeyInternalData,
-            Attribute::LdapAllowUnixPwBind,
-            Attribute::Version,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::DomainDisplayName,
-            Attribute::DomainSsid,
-            Attribute::DomainLdapBasedn,
-            Attribute::LdapAllowUnixPwBind,
-            Attribute::KeyActionRevoke,
-            Attribute::KeyActionRotate,
-        ],
-        modify_present_attrs: vec![
-            Attribute::DomainDisplayName,
-            Attribute::DomainLdapBasedn,
-            Attribute::DomainSsid,
-            Attribute::LdapAllowUnixPwBind,
-            Attribute::KeyActionRevoke,
-            Attribute::KeyActionRotate,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_DOMAIN_ADMIN_DL8: BuiltinAcp = BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-        ],
-        name: "idm_acp_domain_admin",
-        uuid: UUID_IDM_ACP_DOMAIN_ADMIN_V1,
-        description: "Builtin IDM Control for granting domain info administration locally",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_DOMAIN_ADMINS]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            ProtoFilter::Eq(
-                Attribute::Uuid.to_string(),
-                STR_UUID_DOMAIN_INFO.to_string()
-            ),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
-        ])),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::DomainDisplayName,
-            Attribute::DomainName,
-            Attribute::DomainLdapBasedn,
-            Attribute::DomainSsid,
-            Attribute::DomainUuid,
-            Attribute::KeyInternalData,
-            Attribute::LdapAllowUnixPwBind,
-            Attribute::Version,
-            Attribute::Image,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::DomainDisplayName,
-            Attribute::DomainSsid,
-            Attribute::DomainLdapBasedn,
-            Attribute::LdapAllowUnixPwBind,
-            Attribute::KeyActionRevoke,
-            Attribute::KeyActionRotate,
-            Attribute::Image,
-        ],
-        modify_present_attrs: vec![
-            Attribute::DomainDisplayName,
-            Attribute::DomainLdapBasedn,
-            Attribute::DomainSsid,
-            Attribute::LdapAllowUnixPwBind,
-            Attribute::KeyActionRevoke,
-            Attribute::KeyActionRotate,
-            Attribute::Image,
         ],
         ..Default::default()
     };
@@ -1156,6 +751,7 @@ lazy_static! {
             Attribute::DomainDisplayName,
             Attribute::DomainName,
             Attribute::DomainLdapBasedn,
+            Attribute::LdapMaxQueryableAttrs,
             Attribute::DomainSsid,
             Attribute::DomainUuid,
             Attribute::KeyInternalData,
@@ -1167,6 +763,7 @@ lazy_static! {
             Attribute::DomainDisplayName,
             Attribute::DomainSsid,
             Attribute::DomainLdapBasedn,
+            Attribute::LdapMaxQueryableAttrs,
             Attribute::DomainAllowEasterEggs,
             Attribute::LdapAllowUnixPwBind,
             Attribute::KeyActionRevoke,
@@ -1176,6 +773,7 @@ lazy_static! {
         modify_present_attrs: vec![
             Attribute::DomainDisplayName,
             Attribute::DomainLdapBasedn,
+            Attribute::LdapMaxQueryableAttrs,
             Attribute::DomainSsid,
             Attribute::DomainAllowEasterEggs,
             Attribute::LdapAllowUnixPwBind,
@@ -1300,6 +898,8 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::MemberOf,
             Attribute::Spn,
             Attribute::Uuid,
             Attribute::RadiusSecret,
@@ -1655,13 +1255,13 @@ lazy_static! {
         name: "idm_acp_all_accounts_posix_read",
         uuid: UUID_IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1,
         description:
-            "Builtin IDM Control for reading minimal posix attrs - applies anonymous and all authenticated accounts.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_ACCOUNTS] ),
+            "Builtin IDM control for reading minimal POSIX attrs. Required for services to authenticate UNIX users.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_UNIX_AUTHENTICATION_READ] ),
         target: BuiltinAcpTarget::Filter( ProtoFilter::And(
             vec![
                 ProtoFilter::Or(vec![
-                    match_class_filter!(EntryClass::Account),
-                    match_class_filter!(EntryClass::Group),
+                    match_class_filter!(EntryClass::PosixAccount),
+                    match_class_filter!(EntryClass::PosixGroup),
                 ]),
                 FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
             ]
@@ -1779,6 +1379,7 @@ lazy_static! {
             Attribute::Spn,
             Attribute::Description,
             Attribute::Member,
+            Attribute::MemberOf,
             Attribute::GidNumber,
         ],
         modify_removed_attrs: vec![
@@ -1790,66 +1391,6 @@ lazy_static! {
         ],
         modify_classes: vec![
             EntryClass::PosixGroup,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
-    pub static ref IDM_ACP_GROUP_MANAGE_DL6: BuiltinAcp = BuiltinAcp{
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlCreate,
-            EntryClass::AccessControlDelete,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch
-            ],
-        name: "idm_acp_group_manage",
-        uuid: UUID_IDM_ACP_GROUP_MANAGE_V1,
-        description: "Builtin IDM Control for creating and deleting groups in the directory",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_GROUP_ADMINS] ),
-         // group which is not in HP, Recycled, Tombstone
-         target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Group),
-            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
-        ])),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Spn,
-            Attribute::Uuid,
-            Attribute::Description,
-            Attribute::Mail,
-            Attribute::Member,
-            Attribute::DynMember,
-            Attribute::EntryManagedBy,
-        ],
-        create_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::Description,
-            Attribute::Mail,
-            Attribute::Member,
-            Attribute::EntryManagedBy,
-        ],
-        create_classes: vec![
-            EntryClass::Object,
-            EntryClass::Group,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Name,
-            Attribute::Description,
-            Attribute::Mail,
-            Attribute::Member,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::Name,
-            Attribute::Description,
-            Attribute::Mail,
-            Attribute::Member,
         ],
         ..Default::default()
     };
@@ -1883,6 +1424,7 @@ lazy_static! {
             Attribute::Description,
             Attribute::Mail,
             Attribute::Member,
+            Attribute::MemberOf,
             Attribute::DynMember,
             Attribute::EntryManagedBy,
         ],
@@ -2287,6 +1829,7 @@ lazy_static! {
             Attribute::Description,
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
+            Attribute::Mail,
         ],
         create_classes: vec![
             EntryClass::Object,
@@ -2385,6 +1928,7 @@ lazy_static! {
             Attribute::AccountValidFrom,
             Attribute::ApiTokenSession,
             Attribute::UserAuthTokenSession,
+            Attribute::Mail,
         ],
         modify_removed_attrs: vec![
             Attribute::DisplayName,
@@ -2437,6 +1981,7 @@ lazy_static! {
             Attribute::Spn,
             Attribute::Uuid,
             Attribute::EntryManagedBy,
+            Attribute::Mail,
         ],
         modify_removed_attrs: vec![Attribute::EntryManagedBy],
         modify_present_attrs: vec![Attribute::EntryManagedBy],
@@ -2632,6 +2177,177 @@ lazy_static! {
             Attribute::UserAuthTokenSession,
             Attribute::LinkedGroup,
         ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_MESSAGE_MANAGE: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch,
+            EntryClass::AccessControlCreate,
+        ],
+        name: "idm_acp_message_manage",
+        uuid: UUID_IDM_ACP_MESSAGE_MANAGE,
+        description: "Builtin IDM Control for allowing management of message entries.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_MESSAGE_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::OutboundMessage),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::MessageTemplate,
+            Attribute::SendAfter,
+            Attribute::DeleteAfter,
+            Attribute::SentAt,
+            Attribute::MailDestination,
+        ],
+        modify_present_attrs: vec![Attribute::SentAt, Attribute::SendAfter,],
+        modify_removed_attrs: vec![Attribute::SentAt, Attribute::SendAfter,],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::MessageTemplate,
+            Attribute::SendAfter,
+            Attribute::DeleteAfter,
+            Attribute::MailDestination,
+        ],
+        create_classes: vec![EntryClass::Object, EntryClass::OutboundMessage],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_MESSAGE_SENDER: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_message_sender",
+        uuid: UUID_IDM_ACP_MESSAGE_SENDER,
+        description: "Builtin IDM Control for allowing an external sender to process messages.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_MESSAGE_SENDERS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::OutboundMessage),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::MessageTemplate,
+            Attribute::SendAfter,
+            Attribute::DeleteAfter,
+            Attribute::SentAt,
+            Attribute::MailDestination,
+        ],
+        modify_present_attrs: vec![Attribute::SentAt,],
+        modify_removed_attrs: vec![Attribute::SentAt,],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_OAUTH2_CLIENT_ADMIN: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_oauth2_client_admin",
+        uuid: UUID_IDM_ACP_OAUTH2_CLIENT_ADMIN,
+        description:
+            "Builtin IDM Control for granting oauth2 trust provider administration rights.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_CLIENT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::OAuth2Client),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::OAuth2ClientId,
+            Attribute::OAuth2ClientSecret,
+            Attribute::OAuth2AuthorisationEndpoint,
+            Attribute::OAuth2TokenEndpoint,
+            Attribute::OAuth2RequestScopes,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::OAuth2ClientId,
+            Attribute::OAuth2ClientSecret,
+            Attribute::OAuth2AuthorisationEndpoint,
+            Attribute::OAuth2TokenEndpoint,
+            Attribute::OAuth2RequestScopes,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::OAuth2ClientId,
+            Attribute::OAuth2ClientSecret,
+            Attribute::OAuth2AuthorisationEndpoint,
+            Attribute::OAuth2TokenEndpoint,
+            Attribute::OAuth2RequestScopes,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::OAuth2ClientId,
+            Attribute::OAuth2ClientSecret,
+            Attribute::OAuth2AuthorisationEndpoint,
+            Attribute::OAuth2TokenEndpoint,
+            Attribute::OAuth2RequestScopes,
+        ],
+        create_classes: vec![EntryClass::OAuth2Client,],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_OAUTH2_ACCOUNT_ENROL: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_oauth2_account_enrol",
+        uuid: UUID_IDM_ACP_OAUTH2_ACCOUNT_ENROL,
+        description:
+            "Builtin IDM Control for enroling other accounts as oauth2 authentication consumers.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ACCOUNT_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Person),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::OAuth2AccountProvider,
+            Attribute::OAuth2AccountUniqueUserId,
+            Attribute::OAuth2AccountCredentialUuid,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Class,
+            Attribute::OAuth2AccountProvider,
+            Attribute::OAuth2AccountUniqueUserId,
+            Attribute::OAuth2AccountCredentialUuid,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Class,
+            Attribute::OAuth2AccountProvider,
+            Attribute::OAuth2AccountUniqueUserId,
+            Attribute::OAuth2AccountCredentialUuid,
+        ],
+        modify_classes: vec![EntryClass::OAuth2Account,],
         ..Default::default()
     };
 }

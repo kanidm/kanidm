@@ -1,5 +1,5 @@
 mod access;
-mod accounts;
+pub(super) mod accounts;
 mod groups;
 mod key_providers;
 mod schema;
@@ -11,9 +11,10 @@ use self::groups::*;
 use self::key_providers::*;
 use self::schema::*;
 use self::system_config::*;
-
+use crate::constants::UUID_SCHEMA_ATTR_EC_KEY_PRIVATE;
 use crate::prelude::EntryInitNew;
 use kanidm_proto::internal::OperationError;
+use uuid::Uuid;
 
 pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
     vec![
@@ -36,7 +37,6 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_DOMAIN_TOKEN_KEY.clone().into(),
         SCHEMA_ATTR_DOMAIN_UUID.clone().into(),
         SCHEMA_ATTR_DYNGROUP_FILTER.clone().into(),
-        SCHEMA_ATTR_EC_KEY_PRIVATE.clone().into(),
         SCHEMA_ATTR_ES256_PRIVATE_KEY_DER.clone().into(),
         SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR.clone().into(),
         SCHEMA_ATTR_GIDNUMBER.clone().into(),
@@ -69,7 +69,6 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_SYNC_TOKEN_SESSION.clone().into(),
         SCHEMA_ATTR_UNIX_PASSWORD.clone().into(),
         SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION.clone().into(),
-        SCHEMA_ATTR_DENIED_NAME.clone().into(),
         SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM.clone().into(),
         SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST.clone().into(),
         // DL4
@@ -89,7 +88,6 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         // DL7
         SCHEMA_ATTR_PATCH_LEVEL_DL7.clone().into(),
         SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7.clone().into(),
-        SCHEMA_ATTR_REFERS_DL7.clone().into(),
         SCHEMA_ATTR_CERTIFICATE_DL7.clone().into(),
         SCHEMA_ATTR_OAUTH2_RS_ORIGIN_DL7.clone().into(),
         SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI_DL7.clone().into(),
@@ -101,9 +99,32 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_APPLICATION_PASSWORD_DL8.clone().into(),
         SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8.clone().into(),
         // DL9
-        SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9.clone().into(),
         SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9.clone().into(),
+        // DL10
+        SCHEMA_ATTR_DENIED_NAME_DL10.clone().into(),
+        SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES.clone().into(),
+        SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256_DL6.clone().into(),
+        // DL11
+        SCHEMA_ATTR_APPLICATION_URL.clone().into(),
+        // DL12
         SCHEMA_ATTR_IMAGE.clone().into(),
+        SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE.clone().into(),
+        SCHEMA_ATTR_MESSAGE_TEMPLATE.clone().into(),
+        SCHEMA_ATTR_SEND_AFTER.clone().into(),
+        SCHEMA_ATTR_DELETE_AFTER.clone().into(),
+        SCHEMA_ATTR_SENT_AT.clone().into(),
+        SCHEMA_ATTR_MAIL_DESTINATION.clone().into(),
+        SCHEMA_ATTR_OAUTH2_ACCOUNT_PROVIDER.clone().into(),
+        SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID.clone().into(),
+        SCHEMA_ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID.clone().into(),
+        SCHEMA_ATTR_OAUTH2_CLIENT_ID.clone().into(),
+        SCHEMA_ATTR_OAUTH2_CLIENT_SECRET.clone().into(),
+        SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT.clone().into(),
+        SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT.clone().into(),
+        SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES.clone().into(),
+        SCHEMA_ATTR_HMAC_NAME_HISTORY.clone().into(),
+        SCHEMA_ATTR_ENABLED.clone().into(),
+        SCHEMA_ATTR_IN_MEMORIAM.clone().into(),
     ]
 }
 
@@ -133,11 +154,21 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7.clone().into(),
         // DL8
         SCHEMA_CLASS_ACCOUNT_POLICY_DL8.clone().into(),
-        SCHEMA_CLASS_APPLICATION_DL8.clone().into(),
         SCHEMA_CLASS_PERSON_DL8.clone().into(),
         // DL9
         SCHEMA_CLASS_OAUTH2_RS_DL9.clone().into(),
-        SCHEMA_CLASS_DOMAIN_INFO_DL9.clone().into(),
+        // DL10
+        SCHEMA_CLASS_DOMAIN_INFO_DL10.clone().into(),
+        SCHEMA_CLASS_KEY_OBJECT_JWT_RS256.clone().into(),
+        // DL11
+        SCHEMA_CLASS_APPLICATION.clone().into(),
+        // DL12
+        SCHEMA_CLASS_KEY_OBJECT_HKDF_S256.clone().into(),
+        SCHEMA_CLASS_OUTBOUND_MESSAGE.clone().into(),
+        SCHEMA_CLASS_OAUTH2_ACCOUNT.clone().into(),
+        SCHEMA_CLASS_OAUTH2_CLIENT.clone().into(),
+        SCHEMA_CLASS_FEATURE.clone().into(),
+        SCHEMA_CLASS_MEMORIAL.clone().into(),
     ]
 }
 
@@ -150,6 +181,8 @@ pub fn phase_4_system_entries() -> Vec<EntryInitNew> {
         E_SYSTEM_INFO_V1.clone(),
         E_DOMAIN_INFO_DL6.clone(),
         E_SYSTEM_CONFIG_V1.clone(),
+        E_UUID_DOMAIN_ID_VERIFICATION_KEY_V1.clone(),
+        E_HMAC_NAME_HISTORY_FEATURE.clone(),
     ]
 }
 
@@ -166,10 +199,15 @@ pub fn phase_5_builtin_admin_entries() -> Result<Vec<EntryInitNew>, OperationErr
 
 pub fn phase_6_builtin_non_admin_entries() -> Result<Vec<EntryInitNew>, OperationError> {
     Ok(vec![
+        IDM_ALL_PERSONS.clone().try_into()?,
+        IDM_ALL_ACCOUNTS.clone().try_into()?,
         BUILTIN_GROUP_DOMAIN_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_SCHEMA_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_ACCESS_CONTROL_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_UNIX_ADMINS.clone().try_into()?,
+        BUILTIN_GROUP_IDM_UNIX_AUTHENTICATION_READ_V1
+            .clone()
+            .try_into()?,
         BUILTIN_GROUP_RECYCLE_BIN_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_SERVICE_DESK.clone().try_into()?,
         BUILTIN_GROUP_OAUTH2_ADMINS.clone().try_into()?,
@@ -181,8 +219,6 @@ pub fn phase_6_builtin_non_admin_entries() -> Result<Vec<EntryInitNew>, Operatio
         BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS.clone().try_into()?,
         BUILTIN_GROUP_MAIL_SERVICE_ADMINS_DL8.clone().try_into()?,
         IDM_GROUP_ADMINS_V1.clone().try_into()?,
-        IDM_ALL_PERSONS.clone().try_into()?,
-        IDM_ALL_ACCOUNTS.clone().try_into()?,
         BUILTIN_IDM_RADIUS_SERVERS_V1.clone().try_into()?,
         BUILTIN_IDM_MAIL_SERVERS_DL8.clone().try_into()?,
         BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7
@@ -193,6 +229,10 @@ pub fn phase_6_builtin_non_admin_entries() -> Result<Vec<EntryInitNew>, Operatio
             .clone()
             .try_into()?,
         BUILTIN_GROUP_APPLICATION_ADMINS_DL8.clone().try_into()?,
+        BUILTIN_GROUP_MESSAGE_ADMINS.clone().try_into()?,
+        BUILTIN_GROUP_MESSAGE_SENDERS.clone().try_into()?,
+        BUILTIN_GROUP_OAUTH2_CLIENT_ADMINS.clone().try_into()?,
+        BUILTIN_GROUP_OAUTH2_ACCOUNT_ADMINS.clone().try_into()?,
         // Write deps on read.clone().try_into()?, so write must be added first.
         // All members must exist before we write HP
         IDM_HIGH_PRIVILEGE_DL8.clone().try_into()?,
@@ -258,8 +298,18 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
         IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8.clone().into(),
         // DL9
-        IDM_ACP_OAUTH2_MANAGE_DL9.clone().into(),
         IDM_ACP_GROUP_MANAGE_DL9.clone().into(),
         IDM_ACP_DOMAIN_ADMIN_DL9.clone().into(),
+        // DL10
+        IDM_ACP_OAUTH2_MANAGE.clone().into(),
+        // DL12
+        IDM_ACP_MESSAGE_MANAGE.clone().into(),
+        IDM_ACP_MESSAGE_SENDER.clone().into(),
+        IDM_ACP_OAUTH2_CLIENT_ADMIN.clone().into(),
+        IDM_ACP_OAUTH2_ACCOUNT_ENROL.clone().into(),
     ]
+}
+
+pub fn phase_8_delete_uuids() -> Vec<Uuid> {
+    vec![UUID_SCHEMA_ATTR_EC_KEY_PRIVATE]
 }
