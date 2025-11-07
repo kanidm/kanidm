@@ -162,7 +162,7 @@ impl HmacNameUnique {
     pub(crate) fn fixup(qs: &mut QueryServerWriteTransaction) -> Result<(), OperationError> {
         let domain_level = qs.get_domain_version();
         if domain_level < DOMAIN_LEVEL_12 {
-            trace!("Skipping hmac name history generation");
+            error!("HMAC name history available, but fixup task was run, log this as a bug!");
             // should be IMPOSSIBLE to activate fixup from a lower domain level!!!
             debug_assert!(false);
             return Err(OperationError::KG005HowDidYouEvenManageThis);
@@ -171,7 +171,7 @@ impl HmacNameUnique {
         let hmac_name_history_config_enabled = qs.get_feature_hmac_name_history_config().enabled;
 
         if !hmac_name_history_config_enabled {
-            debug!("hmac name history not enabled");
+            error!("HMAC name history not enabled, but fixup task was run, log this as a bug!");
             // should be IMPOSSIBLE to activate fixup when the feature is disabled!!!
             debug_assert!(false);
             return Err(OperationError::KG005HowDidYouEvenManageThis);
