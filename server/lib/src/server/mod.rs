@@ -2517,17 +2517,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::MG0008SkipUpgradeAttempted);
         }
 
-        if previous_version <= DOMAIN_LEVEL_8 && domain_info_version >= DOMAIN_LEVEL_9 {
-            // 1.4 -> 1.5
-            self.migrate_domain_8_to_9()?;
-        }
-
+        // Commented as an example of patch application
+        /*
         if previous_patch_level < PATCH_LEVEL_2
             && domain_info_patch_level >= PATCH_LEVEL_2
             && domain_info_version == DOMAIN_LEVEL_9
         {
             self.migrate_domain_patch_level_2()?;
         }
+        */
 
         if previous_version <= DOMAIN_LEVEL_9 && domain_info_version >= DOMAIN_LEVEL_10 {
             // 1.5 -> 1.6
@@ -2547,6 +2545,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if previous_version <= DOMAIN_LEVEL_12 && domain_info_version >= DOMAIN_LEVEL_13 {
             // 1.8 -> 1.9
             self.migrate_domain_12_to_13()?;
+        }
+
+        if previous_version <= DOMAIN_LEVEL_13 && domain_info_version >= DOMAIN_LEVEL_14 {
+            // 1.9 -> 1.10
+            self.migrate_domain_13_to_14()?;
         }
 
         // This is here to catch when we increase domain levels but didn't create the migration
