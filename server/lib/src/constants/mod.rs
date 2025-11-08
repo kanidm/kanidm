@@ -73,20 +73,24 @@ pub const DOMAIN_LEVEL_12: DomainVersion = 12;
 /// Deprecated as of 1.11.0
 pub const DOMAIN_LEVEL_13: DomainVersion = 13;
 
+/// Domain Level introduced with 1.10.0.
+/// Deprecated as of 1.12.0
+pub const DOMAIN_LEVEL_14: DomainVersion = 14;
+
 // The target supported domain functional level. During development this is
 // the NEXT level that users will upgrade too. In other words if we are
 // developing 1.6.0-dev, then we need to set TGT_LEVEL to 10 which is
 // the corresponding level.
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_12;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_13;
 // The current patch level if any out of band fixes are required.
 pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_2;
 
 // The maximum supported domain functional level
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_13;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_14;
 
 // The minimum level that we can re-migrate from.
 // This should be DOMAIN_TGT_LEVEL minus 2
-pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_9;
+pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_10;
 
 // The minimum supported domain functional level (for replication)
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;

@@ -81,7 +81,7 @@ lazy_static! {
     // of roles. The intent is to allow a pretty generic and correct by default set
     // of these use cases.
     pub static ref BUILTIN_GROUP_SYSTEM_ADMINS_V1: BuiltinGroup = BuiltinGroup {
-        name: "system_admins",
+        name: NAME_SYSTEM_ADMINS,
         description: "Builtin System Administrators Group.",
         uuid: UUID_SYSTEM_ADMINS,
         entry_managed_by: Some(UUID_SYSTEM_ADMINS),
@@ -90,7 +90,7 @@ lazy_static! {
     };
 
     pub static ref BUILTIN_GROUP_IDM_ADMINS_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_admins",
+        name: NAME_IDM_ADMINS,
         description: "Builtin IDM Administrators Group.",
         uuid: UUID_IDM_ADMINS,
         entry_managed_by: Some(UUID_IDM_ADMINS),
@@ -173,7 +173,7 @@ lazy_static! {
 
     /// Builtin IDM Group for granting elevated people (personal data) read permissions.
     pub static ref BUILTIN_GROUP_PEOPLE_PII_READ: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_pii_read",
+        name: NAME_IDM_PEOPLE_PII_READ,
         description: "Builtin IDM Group for granting elevated people (personal data) read permissions.",
         uuid: UUID_IDM_PEOPLE_PII_READ,
         entry_managed_by: Some(UUID_IDM_ADMINS),
@@ -271,6 +271,19 @@ lazy_static! {
         ..Default::default()
     };
 
+    pub static ref BUILTIN_GROUP_IDM_UNIX_AUTHENTICATION_READ_V1: BuiltinGroup = BuiltinGroup {
+        name: "idm_unix_authentication_read",
+        description: "Builtin IDM group allowing service accounts to read and authenticate unix users.",
+        uuid: UUID_IDM_UNIX_AUTHENTICATION_READ,
+        entry_managed_by: Some(UUID_IDM_UNIX_ADMINS),
+        members: vec![
+            // This is to maintain compatibility right now, but will CHANGE in future.
+            UUID_ANONYMOUS,
+        ],
+        ..Default::default()
+    };
+
+
     /// Builtin IDM Group for managing client authentication certificates.
     pub static ref BUILTIN_GROUP_CLIENT_CERTIFICATE_ADMINS_DL7: BuiltinGroup = BuiltinGroup {
         name: "idm_client_certificate_admins",
@@ -297,6 +310,43 @@ lazy_static! {
         description: "Builtin IDM Group for people accounts to update their own mail.",
         uuid: UUID_IDM_PEOPLE_SELF_MAIL_WRITE,
         members: Vec::with_capacity(0),
+        ..Default::default()
+    };
+
+    pub static ref BUILTIN_GROUP_MESSAGE_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_message_admins",
+        description: "Builtin Message Administration Group.",
+        uuid: UUID_IDM_MESSAGE_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for message senders to relay and process queued messages.
+    pub static ref BUILTIN_GROUP_MESSAGE_SENDERS: BuiltinGroup = BuiltinGroup {
+        name: "idm_message_senders",
+        description: "Builtin IDM Group for message senders to read and process queued messages.",
+        uuid: UUID_IDM_MESSAGE_SENDERS,
+        entry_managed_by: Some(UUID_IDM_MESSAGE_ADMINS),
+        members: Vec::with_capacity(0),
+        ..Default::default()
+    };
+
+    pub static ref BUILTIN_GROUP_OAUTH2_CLIENT_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_oauth2_client_admins",
+        description: "Builtin Domain Trust Administration Group.",
+        uuid: UUID_IDM_OAUTH2_CLIENT_ADMINS,
+        entry_managed_by: Some(UUID_SYSTEM_ADMINS),
+        members: vec![UUID_SYSTEM_ADMINS],
+        ..Default::default()
+    };
+
+    pub static ref BUILTIN_GROUP_OAUTH2_ACCOUNT_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_oauth2_account_admins",
+        description: "Builtin Domain Trust Administration Group.",
+        uuid: UUID_IDM_OAUTH2_ACCOUNT_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
         ..Default::default()
     };
 }
@@ -327,7 +377,7 @@ lazy_static! {
     };
 
     pub static ref IDM_ALL_ACCOUNTS: BuiltinGroup = BuiltinGroup {
-        name: "idm_all_accounts",
+        name: NAME_IDM_ALL_ACCOUNTS,
         description: "Builtin IDM dynamic group containing all entries that can authenticate.",
         uuid: UUID_IDM_ALL_ACCOUNTS,
         members: Vec::with_capacity(0),
@@ -392,6 +442,10 @@ lazy_static! {
             UUID_IDM_CLIENT_CERTIFICATE_ADMINS,
             UUID_IDM_APPLICATION_ADMINS,
             UUID_IDM_MAIL_ADMINS,
+            UUID_IDM_MESSAGE_ADMINS,
+            UUID_IDM_MESSAGE_SENDERS,
+            UUID_IDM_OAUTH2_CLIENT_ADMINS,
+            UUID_IDM_OAUTH2_ACCOUNT_ADMINS,
             UUID_IDM_HIGH_PRIVILEGE,
         ],
         ..Default::default()

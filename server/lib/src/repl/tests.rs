@@ -1648,7 +1648,6 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
         Modify::Removed(Attribute::Class, EntryClass::Person.into()),
         Modify::Removed(Attribute::Class, EntryClass::Account.into()),
         Modify::Present(Attribute::Class, EntryClass::Group.into()),
-        Modify::Purged(Attribute::IdVerificationEcKey),
         Modify::Purged(Attribute::NameHistory),
         Modify::Purged(Attribute::DisplayName),
     ]);
