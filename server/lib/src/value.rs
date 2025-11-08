@@ -2250,7 +2250,7 @@ impl Value {
             Value::Address(_) => true,
             Value::Certificate(_) => true,
 
-            Value::Cred(_)
+            Value::Cred(_, _)
             | Value::Uuid(_)
             | Value::Bool(_)
             | Value::Syntax(_)
