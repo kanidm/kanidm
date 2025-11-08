@@ -106,7 +106,7 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
             // Note that here we don't advertise that we allow the nspawn range to be set, even
             // though we do allow it.
             error!(
-                "Requested GID ({}) overlaps a system range. Allowed ranges are {} to {}, {} to {} and {} to {}",
+                "Requested UID/GID ({}) overlaps a system range. Allowed ranges are {} to {}, {} to {} and {} to {}",
                 gid,
                 GID_REGULAR_USER_MIN, GID_REGULAR_USER_MAX,
                 GID_UNUSED_C_MIN, GID_UNUSED_C_MAX,
