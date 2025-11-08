@@ -595,6 +595,7 @@ mod tests {
     use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
     use kanidm_lib_crypto::CryptoPolicy;
     use kanidm_proto::internal::Filter as ProtoFilter;
+    use kanidm_proto::v1::CredentialTag;
     use time::OffsetDateTime;
 
     const TEST_TESTGROUP_A_UUID: &str = "d2b496bd-8493-47b7-8142-f568b5cf47ee";
@@ -1174,7 +1175,7 @@ mod tests {
             (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
                 Attribute::PrimaryCredential,
-                Value::Cred("primary".to_string(), cred.clone())
+                Value::Cred(CredentialTag::Primary, cred.clone())
             )
         );
 

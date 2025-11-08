@@ -195,6 +195,7 @@ mod tests {
     use crate::event::CreateEvent;
     use crate::value::{AuthType, Oauth2Session, Session, SessionState};
     use kanidm_proto::constants::OAUTH2_SCOPE_OPENID;
+    use kanidm_proto::v1::CredentialTag;
     use std::time::Duration;
     use time::OffsetDateTime;
     use uuid::uuid;
@@ -231,7 +232,7 @@ mod tests {
             (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
                 Attribute::PrimaryCredential,
-                Value::Cred("primary".to_string(), cred.clone())
+                Value::Cred(CredentialTag::Primary, cred.clone())
             )
         );
 
@@ -343,7 +344,7 @@ mod tests {
             (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
                 Attribute::PrimaryCredential,
-                Value::Cred("primary".to_string(), cred.clone())
+                Value::Cred(CredentialTag::Primary, cred.clone())
             )
         );
 
@@ -518,7 +519,7 @@ mod tests {
             (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
                 Attribute::PrimaryCredential,
-                Value::Cred("primary".to_string(), cred.clone())
+                Value::Cred(CredentialTag::Primary, cred.clone())
             )
         );
 
@@ -818,7 +819,7 @@ mod tests {
             (Attribute::DisplayName, Value::new_utf8s("testperson1")),
             (
                 Attribute::PrimaryCredential,
-                Value::Cred("primary".to_string(), cred.clone())
+                Value::Cred(CredentialTag::Primary, cred.clone())
             )
         );
 

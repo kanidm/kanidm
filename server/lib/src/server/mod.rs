@@ -834,7 +834,11 @@ pub trait QueryServerTransaction<'a> {
                             OperationError::InvalidAttribute("Invalid Filter syntax".to_string())
                         })
                     }
-                    SyntaxType::Credential => Ok(PartialValue::new_credential_tag(value)),
+                    SyntaxType::Credential => {
+                        PartialValue::new_credential_tag(value).ok_or_else(|| {
+                            OperationError::InvalidAttribute("Invalid credential tag".to_string())
+                        })
+                    }
                     SyntaxType::SecretUtf8String => Ok(PartialValue::new_secret_str()),
                     SyntaxType::SshKey => Ok(PartialValue::new_sshkey_tag_s(value)),
                     SyntaxType::SecurityPrincipalName => {

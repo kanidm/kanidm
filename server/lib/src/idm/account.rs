@@ -14,7 +14,7 @@ use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_proto::internal::{CredentialStatus, UatPurpose, UiHint, UserAuthToken};
-use kanidm_proto::v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken};
+use kanidm_proto::v1::{CredentialTag, UatStatus, UatStatusState, UnixGroupToken, UnixUserToken};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
@@ -559,8 +559,10 @@ impl Account {
         match &self.primary {
             // Change the cred
             Some(primary) => {
+                use kanidm_proto::v1::CredentialTag;
+
                 let ncred = primary.set_password(crypto_policy, cleartext)?;
-                let vcred = Value::new_credential("primary", ncred);
+                let vcred = Value::new_credential(CredentialTag::Primary, ncred);
                 Ok(ModifyList::new_purge_and_set(
                     Attribute::PrimaryCredential,
                     vcred,
@@ -569,7 +571,7 @@ impl Account {
             // Make a new credential instead
             None => {
                 let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
-                let vcred = Value::new_credential("primary", ncred);
+                let vcred = Value::new_credential(CredentialTag::Primary, ncred);
                 Ok(ModifyList::new_purge_and_set(
                     Attribute::PrimaryCredential,
                     vcred,
@@ -587,7 +589,7 @@ impl Account {
             // Change the cred
             Some(primary) => {
                 if let Some(ncred) = primary.upgrade_password(crypto_policy, cleartext)? {
-                    let vcred = Value::new_credential("primary", ncred);
+                    let vcred = Value::new_credential(CredentialTag::Primary, ncred);
                     Ok(Some(ModifyList::new_purge_and_set(
                         Attribute::PrimaryCredential,
                         vcred,
@@ -614,7 +616,7 @@ impl Account {
         };
 
         if let Some(ncred) = opt_ncred {
-            let vcred = Value::new_credential("primary", ncred);
+            let vcred = Value::new_credential(CredentialTag::Primary, ncred);
             ml.push(Modify::Purged(Attribute::PrimaryCredential));
             ml.push(Modify::Present(Attribute::PrimaryCredential, vcred));
         }
@@ -666,7 +668,7 @@ impl Account {
                 let r_ncred = primary.invalidate_backup_code(code_to_remove);
                 match r_ncred {
                     Ok(ncred) => {
-                        let vcred = Value::new_credential("primary", ncred);
+                        let vcred = Value::new_credential(CredentialTag::Primary, ncred);
                         Ok(ModifyList::new_purge_and_set(
                             Attribute::PrimaryCredential,
                             vcred,

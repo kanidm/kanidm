@@ -3704,6 +3704,7 @@ dependencies = [
  "sshkey-attest",
  "sshkeys",
  "time",
+ "tracing",
  "url",
  "urlencoding",
  "utoipa",

@@ -610,6 +610,7 @@ mod tests {
     use crate::credential::Credential;
     use crate::prelude::*;
     use kanidm_lib_crypto::CryptoPolicy;
+    use kanidm_proto::v1::CredentialTag;
 
     #[qs_test]
     async fn test_modify(server: &QueryServer) {
@@ -882,7 +883,7 @@ mod tests {
         // Build the credential.
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
-        let v_cred = Value::new_credential("primary", cred);
+        let v_cred = Value::new_credential(CredentialTag::Primary, cred);
         assert!(v_cred.validate());
 
         // now modify and provide a primary credential.

@@ -16,6 +16,8 @@ mod auth;
 mod message;
 mod unix;
 
+use crate::internal::OperationError;
+
 pub use self::auth::*;
 pub use self::message::*;
 pub use self::unix::*;
@@ -148,5 +150,49 @@ pub struct SingleStringRequest {
 impl SingleStringRequest {
     pub fn new(s: String) -> Self {
         SingleStringRequest { value: s }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord, Hash)]
+pub enum CredentialTag {
+    Primary,
+    Unix,
+}
+
+impl AsRef<str> for CredentialTag {
+    fn as_ref(&self) -> &str {
+        match self {
+            CredentialTag::Primary => "primary",
+            CredentialTag::Unix => "unix",
+        }
+    }
+}
+
+impl TryFrom<&str> for CredentialTag {
+    type Error = OperationError;
+
+    /// Convert from &str to CredentialTag
+    /// ```rust
+    /// use std::convert::TryFrom;
+    /// use kanidm_proto::internal::OperationError;
+    /// use kanidm_proto::v1::CredentialTag;
+    /// let tag = CredentialTag::try_from("primary").expect("valid tag");
+    /// assert_eq!(tag, CredentialTag::Primary);
+    /// ```
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "primary" => Ok(CredentialTag::Primary),
+            "unix" => Ok(CredentialTag::Unix),
+            _ => {
+                tracing::error!("Invalid credential tag: {} this is a bug!", value);
+                Err(OperationError::InvalidLabel)
+            }
+        }
+    }
+}
+
+impl ToString for CredentialTag {
+    fn to_string(&self) -> String {
+        self.as_ref().to_string()
     }
 }

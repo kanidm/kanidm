@@ -3189,6 +3189,7 @@ mod tests {
     use kanidm_proto::constants::*;
     use kanidm_proto::internal::{SshPublicKey, UserAuthToken};
     use kanidm_proto::oauth2::*;
+    use kanidm_proto::v1::CredentialTag;
     use std::collections::{BTreeMap, BTreeSet};
     use std::convert::TryFrom;
     use std::str::FromStr;
@@ -3383,7 +3384,7 @@ mod tests {
             Modify::Present(Attribute::UserAuthTokenSession, session),
             Modify::Present(
                 Attribute::PrimaryCredential,
-                Value::Cred("primary".to_string(), cred),
+                Value::Cred(CredentialTag::Primary, cred),
             ),
         ]);
 
@@ -3520,7 +3521,7 @@ mod tests {
             Modify::Present(Attribute::UserAuthTokenSession, session),
             Modify::Present(
                 Attribute::PrimaryCredential,
-                Value::Cred("primary".to_string(), cred),
+                Value::Cred(CredentialTag::Primary, cred),
             ),
         ]);
 

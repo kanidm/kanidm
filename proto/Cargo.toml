@@ -32,6 +32,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true, features = ["time_0_3", "base64", "hex"] }
 smartstring = { workspace = true, features = ["serde"] }
+tracing = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 url = { workspace = true, features = ["serde"] }
 urlencoding = { workspace = true }

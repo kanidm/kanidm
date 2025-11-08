@@ -9,6 +9,7 @@ use crate::repl::ruv::{RangeDiffStatus, ReplicationUpdateVector};
 use crate::value::{AuthType, Session, SessionState};
 use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
 use kanidm_lib_crypto::CryptoPolicy;
+use kanidm_proto::v1::CredentialTag;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 
@@ -3252,7 +3253,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
         (Attribute::DisplayName, Value::new_utf8s("testperson1")),
         (
             Attribute::PrimaryCredential,
-            Value::Cred("primary".to_string(), cred.clone())
+            Value::Cred(CredentialTag::Primary, cred.clone())
         )
     );
 

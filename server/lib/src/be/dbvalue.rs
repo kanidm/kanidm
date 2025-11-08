@@ -1,7 +1,7 @@
 use crate::prelude::JsonValue;
 use hashbrown::HashSet;
 use kanidm_proto::internal::ImageType;
-use kanidm_proto::v1::OutboundMessage;
+use kanidm_proto::v1::{CredentialTag, OutboundMessage};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::collections::{BTreeMap, BTreeSet};
@@ -359,7 +359,7 @@ impl fmt::Display for DbCred {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DbValueCredV1 {
     #[serde(rename = "t")]
-    pub tag: String,
+    pub tag: CredentialTag,
     #[serde(rename = "d")]
     pub data: DbCred,
 }

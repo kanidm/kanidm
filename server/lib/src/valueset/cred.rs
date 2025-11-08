@@ -11,6 +11,7 @@ use crate::valueset::{
 };
 use kanidm_proto::scim_v1::server::{ScimIntentToken, ScimIntentTokenState};
 use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::v1::CredentialTag;
 use smolset::SmolSet;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
@@ -21,17 +22,17 @@ use webauthn_rs::prelude::{
 
 #[derive(Debug, Clone)]
 pub struct ValueSetCredential {
-    map: BTreeMap<String, Credential>,
+    map: BTreeMap<CredentialTag, Credential>,
 }
 
 impl ValueSetCredential {
-    pub fn new(t: String, c: Credential) -> Box<Self> {
+    pub fn new(t: CredentialTag, c: Credential) -> Box<Self> {
         let mut map = BTreeMap::new();
         map.insert(t, c);
         Box::new(ValueSetCredential { map })
     }
 
-    pub fn push(&mut self, t: String, c: Credential) -> bool {
+    pub fn push(&mut self, t: CredentialTag, c: Credential) -> bool {
         self.map.insert(t, c).is_none()
     }
 
@@ -53,7 +54,7 @@ impl ValueSetCredential {
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
-        T: IntoIterator<Item = (String, Credential)>,
+        T: IntoIterator<Item = (CredentialTag, Credential)>,
     {
         let map = iter.into_iter().collect();
         Some(Box::new(ValueSetCredential { map }))
@@ -81,14 +82,14 @@ impl ValueSetT for ValueSetCredential {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Cred(t) => self.map.remove(t.as_str()).is_some(),
+            PartialValue::Cred(t) => self.map.remove(t).is_some(),
             _ => false,
         }
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Cred(t) => self.map.contains_key(t.as_str()),
+            PartialValue::Cred(t) => self.map.contains_key(t),
             _ => false,
         }
     }
@@ -114,11 +115,15 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
-        self.map.keys().cloned().collect()
+        self.map.keys().map(|v| v.to_string()).collect()
     }
 
     fn generate_idx_sub_keys(&self) -> Vec<String> {
-        let lower: Vec<_> = self.map.keys().map(|s| s.to_lowercase()).collect();
+        let lower: Vec<_> = self
+            .map
+            .keys()
+            .map(|s| s.to_string().to_lowercase())
+            .collect();
         let mut trigraphs: Vec<_> = lower.iter().flat_map(|v| trigraph_iter(v)).collect();
 
         trigraphs.sort_unstable();
@@ -132,13 +137,13 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        self.map
-            .iter()
-            .all(|(s, _)| Value::validate_str_escapes(s) && Value::validate_singleline(s))
+        self.map.iter().all(|(s, _)| {
+            Value::validate_str_escapes(s.as_ref()) && Value::validate_singleline(s.as_ref())
+        })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.map.keys().cloned())
+        Box::new(self.map.keys().map(|k| k.to_string()))
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
@@ -152,7 +157,7 @@ impl ValueSetT for ValueSetCredential {
             self.map
                 .iter()
                 .map(|(tag, cred)| DbValueCredV1 {
-                    tag: tag.clone(),
+                    tag: *tag,
                     data: cred.to_db_valuev1(),
                 })
                 .collect(),
@@ -160,7 +165,7 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(self.map.keys().cloned().map(PartialValue::Cred))
+        Box::new(self.map.keys().map(|c| PartialValue::Cred(*c)))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
@@ -198,7 +203,7 @@ impl ValueSetT for ValueSetCredential {
         }
     }
 
-    fn as_credential_map(&self) -> Option<&BTreeMap<String, Credential>> {
+    fn as_credential_map(&self) -> Option<&BTreeMap<CredentialTag, Credential>> {
         Some(&self.map)
     }
 }

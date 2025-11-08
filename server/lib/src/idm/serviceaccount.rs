@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use compact_jwt::{Jws, JwsCompact};
 use kanidm_proto::internal::ApiToken as ProtoApiToken;
+use kanidm_proto::v1::CredentialTag;
 use time::OffsetDateTime;
 
 use crate::credential::Credential;
@@ -296,7 +297,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                 admin_error!("Unable to generate password mod {:?}", e);
                 e
             })?;
-        let vcred = Value::new_credential("primary", ncred);
+        let vcred = Value::new_credential(CredentialTag::Primary, ncred);
         // We need to remove other credentials too.
         let modlist = ModifyList::new_list(vec![
             m_purge(Attribute::PassKeys),

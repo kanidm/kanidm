@@ -4,6 +4,7 @@ use std::fmt::{self, Display};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use kanidm_proto::v1::CredentialTag;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 use hashbrown::HashSet;
@@ -1412,7 +1413,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             CredentialState::Modifiable => {
                 modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential));
                 if let Some(ncred) = &session.primary {
-                    let vcred = Value::new_credential("primary", ncred.clone());
+                    let vcred = Value::new_credential(CredentialTag::Primary, ncred.clone());
                     modlist.push_mod(Modify::Present(Attribute::PrimaryCredential, vcred));
                 };
             }
@@ -1462,7 +1463,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             CredentialState::DeleteOnly | CredentialState::Modifiable => {
                 modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
                 if let Some(ncred) = &session.unixcred {
-                    let vcred = Value::new_credential("unix", ncred.clone());
+                    let vcred = Value::new_credential(CredentialTag::Unix, ncred.clone());
                     modlist.push_mod(Modify::Present(Attribute::UnixPassword, vcred));
                 }
             }

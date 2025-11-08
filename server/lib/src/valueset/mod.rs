@@ -16,7 +16,7 @@ use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::JsonValue;
 use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
-use kanidm_proto::v1::OutboundMessage;
+use kanidm_proto::v1::{CredentialTag, OutboundMessage};
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use openssl::pkey::Public;
@@ -357,7 +357,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_credential_map(&self) -> Option<&BTreeMap<String, Credential>> {
+    fn as_credential_map(&self) -> Option<&BTreeMap<CredentialTag, Credential>> {
         debug_assert!(false);
         None
     }

@@ -3,6 +3,8 @@ use std::convert::TryFrom;
 use std::iter::once;
 use std::sync::Arc;
 
+use kanidm_proto::v1::CredentialTag;
+
 use crate::credential::{Credential, Password};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
@@ -75,7 +77,7 @@ impl CredImport {
                         let c = c.update_password(pw);
                         entry.set_ava(
                             &Attribute::PrimaryCredential,
-                            once(Value::new_credential("primary", c)),
+                            once(Value::new_credential(CredentialTag::Primary, c)),
                         );
                     }
                     None => {
@@ -83,7 +85,7 @@ impl CredImport {
                         let c = Credential::new_from_password(pw);
                         entry.set_ava(
                             &Attribute::PrimaryCredential,
-                            once(Value::new_credential("primary", c)),
+                            once(Value::new_credential(CredentialTag::Primary, c)),
                         );
                     }
                 }
@@ -105,7 +107,7 @@ impl CredImport {
                     });
                     entry.set_ava(
                         &Attribute::PrimaryCredential,
-                        once(Value::new_credential("primary", c)),
+                        once(Value::new_credential(CredentialTag::Primary, c)),
                     );
                 } else {
                     return Err(OperationError::Plugin(PluginError::CredImport(
@@ -136,7 +138,11 @@ impl CredImport {
                         .unwrap_or("CORRUPT");
                     let id = entry.get_display_id();
 
-                    error!(%hint, entry_id = %id, "{} was unable to convert hash format", Attribute::UnixPasswordImport);
+                    error!(
+                        hash_hint = %hint,
+                        entry_id = %id,
+                        "{} was unable to convert hash format", Attribute::UnixPasswordImport
+                    );
 
                     OperationError::Plugin(PluginError::CredImport(
                         "unix_password_import was unable to convert hash format".to_string(),
@@ -147,7 +153,7 @@ impl CredImport {
                 let c = Credential::new_from_password(pw);
                 entry.set_ava(
                     &Attribute::UnixPassword,
-                    once(Value::new_credential("primary", c)),
+                    once(Value::new_credential(CredentialTag::Primary, c)),
                 );
             };
 
@@ -162,6 +168,7 @@ mod tests {
     use crate::credential::{Credential, CredentialType};
     use crate::prelude::*;
     use kanidm_lib_crypto::CryptoPolicy;
+    use kanidm_proto::v1::CredentialTag;
 
     const IMPORT_HASH: &str =
         "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
@@ -261,7 +268,7 @@ mod tests {
         let c = Credential::new_password_only(&p, "password").unwrap();
         ea.add_ava(
             Attribute::PrimaryCredential,
-            Value::new_credential("primary", c),
+            Value::new_credential(CredentialTag::Primary, c),
         );
 
         let preload = vec![ea];
@@ -307,7 +314,7 @@ mod tests {
             .append_totp("totp".to_string(), totp);
         ea.add_ava(
             Attribute::PrimaryCredential,
-            Value::new_credential("primary", c),
+            Value::new_credential(CredentialTag::Primary, c),
         );
 
         let preload = vec![ea];

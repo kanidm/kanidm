@@ -21,7 +21,7 @@ use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
-use kanidm_proto::v1::UatPurposeStatus;
+use kanidm_proto::v1::{CredentialTag, UatPurposeStatus};
 use num_enum::TryFromPrimitive;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
@@ -575,8 +575,7 @@ pub enum PartialValue {
     // Does this make sense?
     // TODO: We'll probably add tagging to this type for the partial matching
     JsonFilt(ProtoFilter),
-    // Tag, matches to a DataValue.
-    Cred(String),
+    Cred(CredentialTag),
     SshKey(String),
     SecretValue,
     Spn(String, String),
@@ -755,8 +754,11 @@ impl PartialValue {
         matches!(self, PartialValue::JsonFilt(_))
     }
 
-    pub fn new_credential_tag(s: &str) -> Self {
-        PartialValue::Cred(s.to_lowercase())
+    pub fn new_credential_tag(s: &str) -> Option<Self> {
+        match CredentialTag::try_from(s) {
+            Ok(c) => Some(PartialValue::Cred(c)),
+            Err(_) => None,
+        }
     }
 
     pub fn is_credential(&self) -> bool {
@@ -974,9 +976,8 @@ impl PartialValue {
                 #[allow(clippy::expect_used)]
                 serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
             }
-            PartialValue::Cred(tag)
-            | PartialValue::PublicBinary(tag)
-            | PartialValue::SshKey(tag) => tag.to_string(),
+            PartialValue::Cred(tag) => tag.to_string(),
+            PartialValue::PublicBinary(tag) | PartialValue::SshKey(tag) => tag.to_string(),
             // This will never match as we never index radius creds! See generate_idx_eq_keys
             PartialValue::SecretValue | PartialValue::PrivateBinary => "_".to_string(),
             PartialValue::Spn(name, realm) => format!("{name}@{realm}"),
@@ -1015,8 +1016,8 @@ impl PartialValue {
             | PartialValue::EmailAddress(s)
             | PartialValue::RestrictedString(s) => Some(s.to_lowercase()),
 
-            PartialValue::Cred(tag)
-            | PartialValue::PublicBinary(tag)
+            PartialValue::Cred(tag) => Some(tag.to_string().to_lowercase()),
+            PartialValue::PublicBinary(tag)
             | PartialValue::SshKey(tag) => Some(tag.to_lowercase()),
 
             // PartialValue::Spn(name, realm) => format!("{name}@{realm}"),
@@ -1374,7 +1375,7 @@ pub enum Value {
     Index(IndexType),
     Refer(Uuid),
     JsonFilt(ProtoFilter),
-    Cred(String, Credential),
+    Cred(CredentialTag, Credential),
     SshKey(String, SshPublicKey),
     SecretValue(String),
     Spn(String, String),
@@ -1437,7 +1438,6 @@ impl PartialEq for Value {
             (Value::Utf8(a), Value::Utf8(b))
             | (Value::Iutf8(a), Value::Iutf8(b))
             | (Value::Iname(a), Value::Iname(b))
-            | (Value::Cred(a, _), Value::Cred(b, _))
             | (Value::SshKey(a, _), Value::SshKey(b, _))
             | (Value::Nsuniqueid(a), Value::Nsuniqueid(b))
             | (Value::EmailAddress(a, _), Value::EmailAddress(b, _))
@@ -1445,6 +1445,8 @@ impl PartialEq for Value {
             | (Value::OauthScope(a), Value::OauthScope(b))
             | (Value::PublicBinary(a, _), Value::PublicBinary(b, _))
             | (Value::RestrictedString(a), Value::RestrictedString(b)) => a.eq(b),
+            // Cred - not a string
+            (Value::Cred(a, _), Value::Cred(b, _)) => a.eq(b),
             // Spn - need to check both name and domain.
             (Value::Spn(a, c), Value::Spn(b, d)) => a.eq(b) && c.eq(d),
             // Uuid, Refer
@@ -1691,8 +1693,8 @@ impl Value {
         }
     }
 
-    pub fn new_credential(tag: &str, cred: Credential) -> Self {
-        Value::Cred(tag.to_string(), cred)
+    pub fn new_credential(tag: CredentialTag, cred: Credential) -> Self {
+        Value::Cred(tag, cred)
     }
 
     pub fn is_credential(&self) -> bool {
@@ -2074,12 +2076,12 @@ impl Value {
         }
     }
 
-    pub fn to_cred(self) -> Option<(String, Credential)> {
-        match self {
-            Value::Cred(tag, c) => Some((tag, c)),
-            _ => None,
-        }
-    }
+    // pub fn to_cred(self) -> Option<(String, Credential)> {
+    //     match self {
+    //         Value::Cred(tag, c) => Some((tag.to_string(), c)),
+    //         _ => None,
+    //     }
+    // }
 
     /*
     pub(crate) fn to_sshkey(self) -> Option<(String, SshPublicKey)> {
@@ -2205,13 +2207,15 @@ impl Value {
             // String security is required here
             Value::Utf8(s)
             | Value::Iutf8(s)
-            | Value::Cred(s, _)
             | Value::PublicBinary(s, _)
             | Value::IntentToken(s, _)
             | Value::Passkey(_, s, _)
             | Value::AttestedPasskey(_, s, _)
             | Value::TotpSecret(s, _) => {
                 Value::validate_str_escapes(s) && Value::validate_singleline(s)
+            }
+            Value::Cred(s, _) => {
+                Value::validate_str_escapes(s.as_ref()) && Value::validate_singleline(s.as_ref())
             }
 
             Value::Spn(a, b) => {

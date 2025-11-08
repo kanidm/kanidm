@@ -40,7 +40,7 @@ use kanidm_proto::internal::{
     ApiToken, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken, UatPurpose,
     UserAuthToken,
 };
-use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+use kanidm_proto::v1::{CredentialTag, UnixGroupToken, UnixUserToken};
 use rand::prelude::*;
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -1560,7 +1560,7 @@ fn gen_password_mod(
     crypto_policy: &CryptoPolicy,
 ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
     let new_cred = Credential::new_password_only(crypto_policy, cleartext)?;
-    let cred_value = Value::new_credential("unix", new_cred);
+    let cred_value = Value::new_credential(CredentialTag::Unix, new_cred);
     Ok(ModifyList::new_purge_and_set(
         Attribute::UnixPassword,
         cred_value,
@@ -1573,7 +1573,7 @@ fn gen_password_upgrade_mod(
     crypto_policy: &CryptoPolicy,
 ) -> Result<Option<ModifyList<ModifyInvalid>>, OperationError> {
     if let Some(new_cred) = unix_cred.upgrade_password(crypto_policy, cleartext)? {
-        let cred_value = Value::new_credential("primary", new_cred);
+        let cred_value = Value::new_credential(CredentialTag::Primary, new_cred);
         Ok(Some(ModifyList::new_purge_and_set(
             Attribute::UnixPassword,
             cred_value,
@@ -1918,7 +1918,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             .inspect_err(|err| {
                 error!(?err, "unable to generate password modification");
             })?;
-        let vcred = Value::new_credential("primary", ncred);
+        let vcred = Value::new_credential(CredentialTag::Primary, ncred);
         let v_valid_from = Value::new_datetime_epoch(self.qs_write.get_curtime());
 
         let modlist = ModifyList::new_list(vec![
@@ -2270,7 +2270,7 @@ mod tests {
     use crate::value::{AuthType, SessionState};
     use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
     use kanidm_lib_crypto::CryptoPolicy;
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, CredentialTag};
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -2446,7 +2446,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw)?;
         let cred_id = cred.uuid;
-        let v_cred = Value::new_credential("primary", cred);
+        let v_cred = Value::new_credential(CredentialTag::Primary, cred);
         let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
 
         idms_write
@@ -2986,7 +2986,7 @@ mod tests {
         let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
         let pw = Password::try_from(im_pw).expect("failed to parse");
         let cred = Credential::new_from_password(pw);
-        let v_cred = Value::new_credential("unix", cred);
+        let v_cred = Value::new_credential(CredentialTag::Unix, cred);
 
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
@@ -4240,7 +4240,7 @@ mod tests {
                 (
                     Attribute::PrimaryCredential,
                     Value::Cred(
-                        "primary".to_string(),
+                        CredentialTag::Primary,
                         Credential::new_password_only(&p, "banana").unwrap()
                     )
                 )
@@ -4250,7 +4250,7 @@ mod tests {
                 e.add_ava(
                     Attribute::UnixPassword,
                     Value::Cred(
-                        "unix".to_string(),
+                        CredentialTag::Unix,
                         Credential::new_password_only(&p, "kampai").unwrap(),
                     ),
                 );
