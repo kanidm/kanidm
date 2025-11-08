@@ -1016,7 +1016,7 @@ impl PartialValue {
             | PartialValue::EmailAddress(s)
             | PartialValue::RestrictedString(s) => Some(s.to_lowercase()),
 
-            PartialValue::Cred(tag) => Some(tag.to_string().to_lowercase()),
+            PartialValue::Cred(tag) => Some(tag.to_string()),
             PartialValue::PublicBinary(tag)
             | PartialValue::SshKey(tag) => Some(tag.to_lowercase()),
 
@@ -2076,22 +2076,6 @@ impl Value {
         }
     }
 
-    // pub fn to_cred(self) -> Option<(String, Credential)> {
-    //     match self {
-    //         Value::Cred(tag, c) => Some((tag.to_string(), c)),
-    //         _ => None,
-    //     }
-    // }
-
-    /*
-    pub(crate) fn to_sshkey(self) -> Option<(String, SshPublicKey)> {
-        match self {
-            Value::SshKey(tag, k) => Some((tag, k)),
-            _ => None,
-        }
-    }
-    */
-
     pub fn to_spn(self) -> Option<(String, String)> {
         match self {
             Value::Spn(n, d) => Some((n, d)),
@@ -2214,9 +2198,6 @@ impl Value {
             | Value::TotpSecret(s, _) => {
                 Value::validate_str_escapes(s) && Value::validate_singleline(s)
             }
-            Value::Cred(s, _) => {
-                Value::validate_str_escapes(s.as_ref()) && Value::validate_singleline(s.as_ref())
-            }
 
             Value::Spn(a, b) => {
                 Value::validate_str_escapes(a)
@@ -2269,7 +2250,8 @@ impl Value {
             Value::Address(_) => true,
             Value::Certificate(_) => true,
 
-            Value::Uuid(_)
+            Value::Cred(_)
+            | Value::Uuid(_)
             | Value::Bool(_)
             | Value::Syntax(_)
             | Value::Index(_)

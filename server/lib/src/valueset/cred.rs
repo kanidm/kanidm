@@ -119,11 +119,7 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn generate_idx_sub_keys(&self) -> Vec<String> {
-        let lower: Vec<_> = self
-            .map
-            .keys()
-            .map(|s| s.to_string().to_lowercase())
-            .collect();
+        let lower: Vec<_> = self.map.keys().map(|s| s.to_string()).collect();
         let mut trigraphs: Vec<_> = lower.iter().flat_map(|v| trigraph_iter(v)).collect();
 
         trigraphs.sort_unstable();
@@ -137,9 +133,7 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        self.map.iter().all(|(s, _)| {
-            Value::validate_str_escapes(s.as_ref()) && Value::validate_singleline(s.as_ref())
-        })
+        true // since we use an internal enum
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
