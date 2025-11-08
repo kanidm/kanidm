@@ -14,7 +14,7 @@ ARG KANIDM_BUILD_OPTIONS=""
 
 # Set the build profile
 ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
-ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
+ENV RUSTFLAGS="-Clinker=clang"
 
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
@@ -33,8 +33,7 @@ RUN \
         systemd-devel \
         rsync \
         findutils \
-        which \
-        mold
+        which
 
 COPY . /usr/src/kanidm
 
