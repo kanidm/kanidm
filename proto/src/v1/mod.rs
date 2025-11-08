@@ -191,8 +191,8 @@ impl TryFrom<&str> for CredentialTag {
     }
 }
 
-impl ToString for CredentialTag {
-    fn to_string(&self) -> String {
-        self.as_ref().to_string()
+impl Display for CredentialTag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_ref())
     }
 }
