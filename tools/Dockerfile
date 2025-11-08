@@ -21,6 +21,7 @@ RUN \
         sccache \
         cargo \
         clang \
+        gcc \
         make \
         automake \
         autoconf \

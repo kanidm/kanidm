@@ -22,6 +22,7 @@ RUN \
         sccache \
         cargo \
         clang \
+        gcc \
         cmake \
         gawk \
         make \
