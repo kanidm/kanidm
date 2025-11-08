@@ -40,10 +40,9 @@ impl ValueSetCredential {
         let map = data
             .into_iter()
             .map(|dc| {
-                let t = dc.tag.clone();
                 Credential::try_from(dc.data)
                     .map_err(|()| OperationError::InvalidValueState)
-                    .map(|c| (t, c))
+                    .map(|c| (dc.tag, c))
             })
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetCredential { map }))
@@ -163,11 +162,7 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(
-            self.map
-                .iter()
-                .map(|(t, c)| Value::Cred(t.clone(), c.clone())),
-        )
+        Box::new(self.map.iter().map(|(t, c)| Value::Cred(*t, c.clone())))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {
