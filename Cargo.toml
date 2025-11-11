@@ -215,7 +215,7 @@ notify-debouncer-full = { version = "0.6" }
 num_enum = "0.7.5"
 oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
-openssl = "^0.10.74"
+openssl = "^0.10.75"
 opentelemetry = { version = "0.31.0" }
 opentelemetry-otlp = { version = "0.31.0", default-features = false, features = [
     "serde",
