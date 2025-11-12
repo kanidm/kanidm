@@ -5,7 +5,7 @@ CONTAINER_TOOL ?= docker
 CONTAINER_TOOL_ARGS ?=
 CONTAINER_BUILD_ARGS ?=
 CONTAINER_IMAGE_BASE ?= kanidm
-CONTAINER_IMAGE_VERSION ?= devel
+CONTAINER_IMAGE_VERSION ?= latest
 CONTAINER_IMAGE_EXT_VERSION ?= $(shell cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "daemon")  | .version')
 # CONTAINER_BUILDX_ACTION is used to specify the action for buildx, e.g., --push or --load
 CONTAINER_BUILDX_ACTION ?= --push
