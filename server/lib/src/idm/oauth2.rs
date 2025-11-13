@@ -2064,10 +2064,10 @@ impl IdmServerProxyReadTransaction<'_> {
             }
             Some(pkce_request.code_challenge.clone())
         } else if o2rs.require_pkce() {
-            security_error!(?o2rs.name, "No PKCE code challenge was provided with client in enforced PKCE mode.");
+            security_error!(?o2rs.name, "No PKCE code challenge was provided with client in enforced PKCE mode");
             return Err(Oauth2Error::InvalidRequest);
         } else {
-            security_info!(?o2rs.name, "Insecure client configuration - PKCE is not enforced.");
+            security_info!(?o2rs.name, "Insecure client configuration - PKCE is not enforced");
             None
         };
 
