@@ -10,6 +10,8 @@ sync_token = "eyJhb..."
 
 # If you want to monitor the status of the scheduled sync tool (you should)
 # then you can set a bind address here.
+# Example: If set to e.g. "[::1]:12345", status can be retrieved with netcat "nc ::1 12345".
+# Returns "Ok" or "Err".
 #
 # If not set, defaults to no status listener.
 # status_bind = ""
