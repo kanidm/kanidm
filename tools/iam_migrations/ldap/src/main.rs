@@ -836,7 +836,7 @@ fn config_security_checks(cfg_path: &Path) -> bool {
     if !cfg_path.exists() {
         // there's no point trying to start up if we can't read a usable config!
         error!(
-            "Config missing from {} - cannot start up. Quitting.",
+            "Couldn't find config file {} - cannot start up. Quitting.",
             cfg_path_str
         );
         false
