@@ -53,7 +53,7 @@ ldap_filter = "(|(objectclass=person)(objectclass=posixgroup))"
 #
 # person_attr_user_name = "uid"
 # person_attr_display_name = "cn"
-# person_attr_gidnumber = = "uidnumber"
+# person_attr_gidnumber = "uidnumber"
 # person_attr_login_shell = "loginshell"
 # person_attr_password = "userpassword"
 
