@@ -2029,12 +2029,12 @@ impl IdmServerProxyReadTransaction<'_> {
             if !(strict_redirect_uri_matched || origin_uri_matched || opaque_origin_matched) {
                 if o2rs.strict_redirect_uri {
                     warn!(
-                                "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {}",
+                                "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {} from resource server but configured uris do not match (check oauth2_rs_origin entries)",
                                 auth_req.redirect_uri.as_str()
                             );
                 } else {
                     warn!(
-                        "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?}",
+                        "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?} from resource server but configured uris differ (check oauth2_rs_origin_landing with oauth2_rs_origin entries)",
                         auth_req.redirect_uri.origin()
                     );
                 }
@@ -2046,7 +2046,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 && !opaque_origin_matched
             {
                 admin_warn!(
-                    "Invalid OAuth2 redirect_uri scheme (must be https for secure origin) - got {}",
+                    "Invalid OAuth2 redirect_uri scheme (must be https for secure origin) - got {} from resource server instead",
                     auth_req.redirect_uri.to_string()
                 );
                 return Err(Oauth2Error::InvalidOrigin);
