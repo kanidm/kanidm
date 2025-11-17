@@ -2034,7 +2034,7 @@ impl IdmServerProxyReadTransaction<'_> {
                             );
                 } else {
                     warn!(
-                        "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?} from resource server but configured uris differ (check oauth2_rs_origin_landing with oauth2_rs_origin entries)",
+                        "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?} from resource server but configured uris differ (compare oauth2_rs_origin_landing with oauth2_rs_origin entries)",
                         auth_req.redirect_uri.origin()
                     );
                 }
