@@ -1,6 +1,6 @@
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::extract::{Query, State};
+use axum::extract::{Query, RawForm, State};
 use axum::http::StatusCode;
 use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
 use axum::{Extension, Form};
@@ -683,8 +683,19 @@ pub(crate) async fn view_new_pwd(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-    Form(opt_form): Form<Option<NewPassword>>,
+    RawForm(raw_form_bytes): RawForm,
 ) -> axum::response::Result<Response> {
+    let opt_form: Option<NewPassword> = if raw_form_bytes.is_empty() {
+        None
+    } else {
+        serde_urlencoded::from_bytes(&raw_form_bytes)
+            .map(Some)
+            .map_err(|err| {
+                warn!(?err, "unprocessable entity when deserialised password form");
+                StatusCode::UNPROCESSABLE_ENTITY
+            })?
+    };
+
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddPasswordSwapped)]);
