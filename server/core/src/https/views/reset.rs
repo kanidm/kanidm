@@ -1,5 +1,6 @@
 use askama::Template;
 use askama_web::WebTemplate;
+use axum::body::Bytes;
 use axum::extract::{Query, RawForm, State};
 use axum::http::StatusCode;
 use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
@@ -685,16 +686,7 @@ pub(crate) async fn view_new_pwd(
     jar: CookieJar,
     RawForm(raw_form_bytes): RawForm,
 ) -> axum::response::Result<Response> {
-    let opt_form: Option<NewPassword> = if raw_form_bytes.is_empty() {
-        None
-    } else {
-        serde_urlencoded::from_bytes(&raw_form_bytes)
-            .map(Some)
-            .map_err(|err| {
-                warn!(?err, "unprocessable entity when deserialised password form");
-                StatusCode::UNPROCESSABLE_ENTITY
-            })?
-    };
+    let opt_form: Option<NewPassword> = raw_form_opt(&raw_form_bytes)?;
 
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
@@ -827,8 +819,10 @@ pub(crate) async fn view_set_unixcred(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-    Form(opt_form): Form<Option<NewPassword>>,
+    RawForm(raw_form_bytes): RawForm,
 ) -> axum::response::Result<Response> {
+    let opt_form: Option<NewPassword> = raw_form_opt(&raw_form_bytes)?;
+
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddPasswordSwapped)]);
@@ -899,8 +893,10 @@ pub(crate) async fn view_add_ssh_publickey(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-    Form(opt_form): Form<Option<NewPublicKey>>,
+    RawForm(raw_form_bytes): RawForm,
 ) -> axum::response::Result<Response> {
+    let opt_form: Option<NewPublicKey> = raw_form_opt(&raw_form_bytes)?;
+
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let new_key = match opt_form {
@@ -1176,6 +1172,25 @@ fn get_cu_response(
         )
             .into_response()
     }
+}
+
+#[allow(clippy::result_large_err)]
+fn raw_form_opt<'a, T>(raw_form_bytes: &'a Bytes) -> axum::response::Result<Option<T>>
+where
+    T: Deserialize<'a>,
+{
+    let opt_form: Option<T> = if raw_form_bytes.is_empty() {
+        None
+    } else {
+        serde_urlencoded::from_bytes(raw_form_bytes)
+            .map(Some)
+            .map_err(|err| {
+                warn!(?err, "unprocessable entity when deserialised password form");
+                StatusCode::UNPROCESSABLE_ENTITY
+            })?
+    };
+
+    Ok(opt_form)
 }
 
 async fn get_cu_session(jar: &CookieJar) -> Result<CUSessionToken, Response> {
