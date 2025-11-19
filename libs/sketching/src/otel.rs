@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 
 use opentelemetry_otlp::{Protocol, WithExportConfig};
 
@@ -11,7 +11,7 @@ use opentelemetry_sdk::{
 use tracing::Subscriber;
 use tracing_core::Level;
 
-use tracing_subscriber::{filter::Directive, prelude::*, EnvFilter, Registry};
+use tracing_subscriber::{prelude::*, EnvFilter, Registry};
 
 pub const MAX_EVENTS_PER_SPAN: u32 = 64 * 1024;
 pub const MAX_ATTRIBUTES_PER_SPAN: u32 = 128;
@@ -52,17 +52,17 @@ pub fn start_logging_pipeline(
     match otlp_endpoint {
         Some(endpoint) => {
             // adding these filters because when you close out the process the OTLP comms layer is NOISY
-            let forest_filter = forest_filter
-                .add_directive(
-                    Directive::from_str("tonic=info").expect("Failed to set tonic logging to info"),
-                )
-                .add_directive(
-                    Directive::from_str("h2=info").expect("Failed to set h2 logging to info"),
-                )
-                .add_directive(
-                    Directive::from_str("hyper=info").expect("Failed to set hyper logging to info"),
-                );
-            let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
+            // let forest_filter = forest_filter
+            //     .add_directive(
+            //         Directive::from_str("tonic=info").expect("Failed to set tonic logging to info"),
+            //     )
+            //     .add_directive(
+            //         Directive::from_str("h2=info").expect("Failed to set h2 logging to info"),
+            //     )
+            //     .add_directive(
+            //         Directive::from_str("hyper=info").expect("Failed to set hyper logging to info"),
+            //     );
+            // let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
             let t_filter: EnvFilter = EnvFilter::builder()
                 .with_default_directive(log_filter.into())
                 .from_env_lossy();
@@ -119,7 +119,7 @@ pub fn start_logging_pipeline(
                         .with_filter(t_filter),
                 )
                 // .with(MetricsLayer::new(meter_provider.clone()))
-                .with(forest_layer)
+                // .with(forest_layer)
                 .with(OpenTelemetryLayer::new(
                     provider.tracer("tracing-otel-subscriber"),
                 ));

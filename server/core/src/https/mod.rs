@@ -526,7 +526,7 @@ pub(crate) async fn handle_tls_conn(
     connection_addr: SocketAddr,
     trusted_tcp_info_ips: Arc<TcpAddressInfo>,
 ) -> Result<(), std::io::Error> {
-    let (mut stream, client_addr) = process_client_addr(
+    let (stream, client_addr) = process_client_addr(
         stream,
         connection_addr,
         HTTPS_CLIENT_CONN_TIMEOUT,
@@ -539,15 +539,14 @@ pub(crate) async fn handle_tls_conn(
     // Don't both starting to build anything until there is actually something to do.
     // This is pretty common with "health checks" that open a connection and then just
     // quit.
-    let mut zero_buf: [u8; 0] = [];
-    match timeout(HTTPS_CLIENT_CONN_TIMEOUT, stream.read(&mut zero_buf)).await {
+    match timeout(HTTPS_CLIENT_CONN_TIMEOUT, stream.readable()).await {
         Ok(Ok(_)) => {}
         Ok(Err(err)) => {
             debug!(?err, "Connection closed before we recieved initial data");
             return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
         }
         Err(_) => {
-            error!("Timeout waiting for initial data");
+            debug!("Timeout waiting for initial data");
             return Err(std::io::Error::from(ErrorKind::TimedOut));
         }
     };

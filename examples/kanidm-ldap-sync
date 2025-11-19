@@ -76,7 +76,7 @@ ldap_filter = "(|(objectclass=person)(objectclass=posixgroup))"
 
 # The sync tool can alter or exclude entries. These are mapped by their syncuuid
 # The syncuuid is derived from nsUniqueId in 389-ds. It is the entryUUID for OpenLDAP
-# This is chosen oven DN because DN's can change with modrdn where nsUniqueId/entryUUID is
+# This is chosen over DN because DN's can change with modrdn where nsUniqueId/entryUUID is
 # immutable and requires an entry to be deleted and recreated.
 
 [ac60034b-3498-11ed-a50d-919b4b1a5ec0]
