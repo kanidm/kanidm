@@ -156,8 +156,8 @@ You can perform a dry run with the sync tool manually to check your configuratio
 synchronise from LDAP.
 
 ```bash
-kanidm-ldap-sync [-c /path/to/kanidm/config] -i /path/to/kanidm-ldap-sync -n
-kanidm-ldap-sync -i /etc/kanidm/ldap-sync -n
+kanidm-ldap-sync [-c /path/to/kanidm/config] -l /path/to/kanidm-ldap-sync -n
+kanidm-ldap-sync -l /etc/kanidm/ldap-sync -n
 ```
 
 ## Running the Sync Tool Automatically
@@ -166,8 +166,8 @@ The sync tool can be run on a schedule if you configure the `schedule` parameter
 the cli
 
 ```bash
-kanidm-ldap-sync [-c /path/to/kanidm/config] -i /path/to/kanidm-ldap-sync --schedule
-kanidm-ldap-sync -i /etc/kanidm/ldap-sync --schedule
+kanidm-ldap-sync [-c /path/to/kanidm/config] -l /path/to/kanidm-ldap-sync --schedule
+kanidm-ldap-sync -l /etc/kanidm/ldap-sync --schedule
 ```
 
 As the sync tool is part of the tools container, you can run this with:
@@ -178,7 +178,7 @@ docker create --name kanidm-ldap-sync \
   -p 12345:12345 \
   -v /etc/kanidm/config:/etc/kanidm/config:ro \
   -v /path/to/ldap-sync:/etc/kanidm/ldap-sync:ro \
-  kanidm-ldap-sync -i /etc/kanidm/ldap-sync --schedule
+  kanidm-ldap-sync -l /etc/kanidm/ldap-sync --schedule
 ```
 
 ## Monitoring the Sync Tool

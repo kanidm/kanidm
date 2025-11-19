@@ -10,6 +10,8 @@ sync_token = "eyJhb..."
 
 # If you want to monitor the status of the scheduled sync tool (you should)
 # then you can set a bind address here.
+# Example: If set to e.g. "[::1]:12345", status can be retrieved with netcat "nc ::1 12345".
+# Returns "Ok" or "Err".
 #
 # If not set, defaults to no status listener.
 # status_bind = ""
@@ -51,7 +53,7 @@ ldap_filter = "(|(objectclass=person)(objectclass=posixgroup))"
 #
 # person_attr_user_name = "uid"
 # person_attr_display_name = "cn"
-# person_attr_gidnumber = = "uidnumber"
+# person_attr_gidnumber = "uidnumber"
 # person_attr_login_shell = "loginshell"
 # person_attr_password = "userpassword"
 
