@@ -213,17 +213,54 @@ fn create_home_directory(
             };
 
             if attr.file_type().is_symlink() {
-                // Probably need to update it.
-                if let Err(e) = fs::remove_file(&alias_path) {
-                    error!(err = ?e, ?alias_path, "Unable to remove existing alias path");
+                // If already correct, skip churn.
+                match fs::read_link(&alias_path) {
+                    Ok(current_target) if current_target == hd_mount_path => {
+                        debug!(
+                            ?alias_path,
+                            ?current_target,
+                            "alias symlink already correct, skipping update"
+                        );
+                        continue;
+                    }
+                    Ok(current_target) => {
+                        debug!(
+                            ?alias_path,
+                            ?current_target,
+                            ?hd_mount_path,
+                            "alias symlink target differs, updating atomically"
+                        );
+                    }
+                    Err(e) => {
+                        warn!(
+                            err=?e, ?alias_path,
+                            "unable to read existing symlink target, will replace atomically"
+                        );
+                    }
+                }
+
+                // Atomic replace: create temp symlink in same dir, then rename over existing.
+                let tmp = alias_path.with_extension("tmp");
+                // Best-effort cleanup of any stale tmp.
+                let _ = fs::remove_file(&tmp);
+
+                if let Err(e) = symlink(&hd_mount_path, &tmp) {
+                    error!(err=?e, ?tmp, "Unable to create temporary alias symlink");
                     return Err(format!("{e:?}"));
                 }
 
-                debug!("updating symlink {:?} -> {:?}", alias_path, hd_mount_path);
-                if let Err(e) = symlink(&hd_mount_path, &alias_path) {
-                    error!(err = ?e, ?alias_path, "Unable to update alias path");
+                // Rename is atomic within the same directory; no disappearance window.
+                if let Err(e) = fs::rename(&tmp, &alias_path) {
+                    error!(err=?e, from=?tmp, to=?alias_path, "Unable to atomically replace alias symlink");
+                    // Cleanup temp on failure.
+                    let _ = fs::remove_file(&tmp);
                     return Err(format!("{e:?}"));
                 }
+
+                debug!(
+                    "alias symlink updated atomically {:?} -> {:?}",
+                    alias_path, hd_mount_path
+                );
             } else {
                 warn!(
                     ?alias_path,
