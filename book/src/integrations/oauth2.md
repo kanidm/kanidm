@@ -496,3 +496,23 @@ WebFinger document for that client instead.
 [webfinger]: https://datatracker.ietf.org/doc/html/rfc7033
 [webfinger-oidc]: https://datatracker.ietf.org/doc/html/rfc7033#section-3.1
 [webfinger-rel]: https://datatracker.ietf.org/doc/html/rfc7033#section-4.3
+
+## Disabling the consent prompt in enterprise environments
+
+By default Kanidm will present the user with a consent prompt when they first authorize an app or
+when the requested scopes change - this is a requried part of the OIDC spec ([Section 3.1.2.4][oidc-consent]).
+
+In some cases, such as an enterprise deployment, this consent can be gathered by other means (eg.
+employee contract) and the interactive prompt is not necessary. To disable it:
+
+```bash
+kanidm system oauth2 disable-consent-prompt <name>
+```
+
+It should **not** be disabled if consent isn't granted non-interactively.
+
+The prompt cannot be disabled for public clients to secure against impersonating the application (as
+per [RFC-6819 5.2.3.2]).
+
+[oidc-consent]: https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.3.1.2.4
+[rfc6819s5232]: https://www.rfc-editor.org/rfc/rfc6819#section-5.2.3.2

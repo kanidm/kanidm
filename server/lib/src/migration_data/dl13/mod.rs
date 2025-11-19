@@ -125,6 +125,8 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_HMAC_NAME_HISTORY.clone().into(),
         SCHEMA_ATTR_ENABLED.clone().into(),
         SCHEMA_ATTR_IN_MEMORIAM.clone().into(),
+        // DL13
+        SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE.clone().into(),
     ]
 }
 
@@ -307,6 +309,8 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         IDM_ACP_MESSAGE_SENDER.clone().into(),
         IDM_ACP_OAUTH2_CLIENT_ADMIN.clone().into(),
         IDM_ACP_OAUTH2_ACCOUNT_ENROL.clone().into(),
+        // DL13
+        IDM_ACP_OAUTH2_MANAGE_BASIC.clone().into(),
     ]
 }
 
