@@ -11,7 +11,7 @@ use ldap3_proto::LdapCodec;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
 use tokio::time::timeout;
@@ -154,7 +154,7 @@ async fn client_tls_accept(
     qe_r_ref: &'static QueryServerReadV1,
     trusted_tcp_info_ips: Arc<TcpAddressInfo>,
 ) {
-    let Ok((mut stream, client_addr)) = process_client_addr(
+    let Ok((stream, client_addr)) = process_client_addr(
         stream,
         connection_addr,
         LDAP_CLIENT_CONN_TIMEOUT,
@@ -166,15 +166,14 @@ async fn client_tls_accept(
         return;
     };
 
-    let mut zero_buf: [u8; 0] = [];
-    match timeout(LDAP_CLIENT_CONN_TIMEOUT, stream.read(&mut zero_buf)).await {
+    match timeout(LDAP_CLIENT_CONN_TIMEOUT, stream.readable()).await {
         Ok(Ok(_)) => {}
         Ok(Err(_)) => {
             debug!(%client_addr, %connection_addr, "Connection closed before we recieved initial data");
             return;
         }
         Err(_) => {
-            error!(%client_addr, %connection_addr, "LDAP timeout waiting for initial data");
+            debug!(%client_addr, %connection_addr, "LDAP timeout waiting for initial data");
             return;
         }
     };
