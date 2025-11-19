@@ -1047,6 +1047,14 @@ pub enum Oauth2Opt {
     /// the revoked key will not be considered valid.
     #[clap(name = "revoke-cryptographic-key")]
     RevokeCryptographicKey { name: String, key_id: String },
+    /// Disable the prompt that asks for user consent when first authorizing or when scopes change.
+    /// When disabled the user will be redirected to the app immediately. Defaults to being
+    /// enabled.
+    #[clap(name = "disable-consent-prompt")]
+    DisableConsentPrompt(Named),
+    /// Enable the regular user consent prompt.
+    #[clap(name = "enable-consent-prompt")]
+    EnableConsentPrompt(Named),
 }
 
 #[derive(Args, Debug, Clone)]
