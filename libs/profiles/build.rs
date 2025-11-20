@@ -59,7 +59,7 @@ fn main() {
         println!("cargo:rustc-env=KANIDM_PKG_COMMIT_REV={commit_rev}");
     }
 
-    println!("cargo:rerun-if-changed={}", profile_path.to_str().unwrap());
+    println!("cargo:rerun-if-changed={}", profile_path.to_string_lossy());
 
     println!("cargo:rustc-env=KANIDM_BUILD_PROFILE={profile}");
     println!("cargo:rustc-env=KANIDM_BUILD_PROFILE_TOML={contents}");
