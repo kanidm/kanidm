@@ -100,6 +100,7 @@ impl IntoResponse for WebError {
                     OperationError::PasswordQuality(_)
                     | OperationError::EmptyRequest
                     | OperationError::InvalidAttribute(_)
+                    | OperationError::AttributeUniqueness(_)
                     | OperationError::InvalidAttributeName(_)
                     | OperationError::SchemaViolation(_)
                     | OperationError::CU0003WebauthnUserNotVerified
@@ -109,6 +110,7 @@ impl IntoResponse for WebError {
                     _ => (StatusCode::INTERNAL_SERVER_ERROR, None),
                 };
                 let body = serde_json::to_string(&inner).unwrap_or(inner.to_string());
+                debug!(?body);
 
                 match headers {
                     Some(headers) => (code, headers, body).into_response(),
