@@ -4,26 +4,29 @@ use std::{env, fs};
 use base64::{engine::general_purpose, Engine as _};
 
 /// Work out where the workspace dir is
-fn workspace_dir() -> PathBuf {
+fn workspace_dir() -> Option<PathBuf> {
     let output = std::process::Command::new(env!("CARGO"))
         .arg("locate-project")
         .arg("--workspace")
         .arg("--message-format=plain")
         .output()
-        .unwrap()
+        .ok()?
         .stdout;
-    let cargo_path = Path::new(std::str::from_utf8(&output).unwrap().trim());
-    cargo_path.parent().unwrap().to_path_buf()
+    let cargo_path = Path::new(std::str::from_utf8(&output).ok()?.trim());
+    cargo_path.parent().map(|p| p.to_path_buf())
 }
 
 // We do this here so it's only actually run and checked once at build time.
 fn determine_git_rev() -> Option<String> {
-    let repo = match gix::open(workspace_dir()) {
-        Ok(repo) => repo,
-        Err(_) => {
-            return None;
-        }
+    let Some(workspace_dir) = workspace_dir() else {
+        eprintln!("cargo:warning=Failed to determine workspace dir for git rev, incremental rebuilds could fail!");
+        return None;
     };
+
+    let Ok(repo) = gix::open(workspace_dir) else {
+        return None;
+    };
+
     let mut head = repo.head().ok()?;
     let commit = head.peel_to_commit().ok()?;
     let mut commit_id = commit.id().to_string();
