@@ -20,7 +20,6 @@ base64 = { workspace = true }
 base64urlsafedata = { workspace = true }
 crypto-glue = { workspace = true }
 hex = { workspace = true }
-kanidm_proto = { workspace = true }
 kanidm-hsm-crypto = { workspace = true }
 # We need to explicitly ask for openssl-sys so that we get the version propagated
 # into the build.rs for legacy feature checks.
