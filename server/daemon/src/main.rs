@@ -37,7 +37,7 @@ use kanidmd_core::admin::{
     AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
     ProtoDomainUpgradeCheckReport, ProtoDomainUpgradeCheckStatus,
 };
-use kanidmd_core::config::{Configuration, EnvironmentConfig, ServerConfigUntagged};
+use kanidmd_core::config::{Configuration, ServerConfigUntagged};
 use kanidmd_core::{
     backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
     dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
@@ -525,18 +525,9 @@ fn main() -> ExitCode {
         None
     };
 
-    let envconfig = match EnvironmentConfig::new() {
-        Ok(ec) => ec,
-        Err(err) => {
-            eprintln!("ERROR: Environment Configuration Parse Failure: {err:?}");
-            return ExitCode::FAILURE;
-        }
-    };
-
     let is_server = matches!(&opt.commands, KanidmdOpt::Server);
 
     let config = Configuration::build()
-        .add_env_config(envconfig)
         .add_opt_toml_config(maybe_sconfig)
         .add_cli_config(&opt.kanidmd_options)
         // set threads to 1 unless it's the main server.
