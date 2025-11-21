@@ -361,7 +361,7 @@ impl Credential {
         Password::new(policy, cleartext)
             .map_err(|e| {
                 error!(crypto_err = ?e);
-                e.into()
+                OperationError::CryptographyError
             })
             .map(Self::new_from_password)
     }
@@ -374,7 +374,7 @@ impl Credential {
         Password::new(policy, cleartext)
             .map_err(|e| {
                 error!(crypto_err = ?e);
-                e.into()
+                OperationError::CryptographyError
             })
             .map(Self::new_from_generatedpassword)
     }
@@ -389,7 +389,7 @@ impl Credential {
         Password::new(policy, cleartext)
             .map_err(|e| {
                 error!(crypto_err = ?e);
-                e.into()
+                OperationError::CryptographyError
             })
             .map(|pw| self.update_password(pw))
     }
@@ -402,14 +402,14 @@ impl Credential {
         let valid = self.password_ref().and_then(|pw| {
             pw.verify(cleartext).map_err(|e| {
                 error!(crypto_err = ?e);
-                e.into()
+                OperationError::CryptographyError
             })
         })?;
 
         if valid {
             let pw = Password::new(policy, cleartext).map_err(|e| {
                 error!(crypto_err = ?e);
-                e.into()
+                OperationError::CryptographyError
             })?;
 
             // Note, during update_password we normally rotate the uuid, here we
