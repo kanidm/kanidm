@@ -543,8 +543,8 @@ fn main() -> ExitCode {
     let config = Configuration::build()
         .add_env_config(envconfig)
         .add_opt_toml_config(maybe_sconfig)
-        // We always set threads to 1 unless it's the main server.
         .add_cli_config(cli_config)
+        // set threads to 1 unless it's the main server.
         .is_server_mode(is_server)
         .finish();
 
