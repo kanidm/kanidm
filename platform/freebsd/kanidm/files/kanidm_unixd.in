@@ -21,7 +21,7 @@ load_rc_config $name
 
 pidfile="/var/run/kanidm-unixd.pid"
 command=/usr/sbin/daemon
-command_args="-u _kanidm_unixd -p /var/run/kanidm-unixd.pid -T kanidm_unixd /usr/local/libexec/${name}"
+command_args="-u kanidm -p /var/run/kanidm-unixd.pid -T kanidm_unixd /usr/local/libexec/${name}"
 procname=/usr/local/libexec/${name}
 
 run_rc_command "$1"

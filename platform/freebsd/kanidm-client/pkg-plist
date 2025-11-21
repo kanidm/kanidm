@@ -1,0 +1,3 @@
+bin/kanidm
+@sample(root,root,444) %%ETCDIR%%/config.sample
+@dir(root,kanidm,770) %%ETCDIR%%
