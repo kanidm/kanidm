@@ -876,6 +876,14 @@ pub static ref SCHEMA_ATTR_ENABLED: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE,
+    name: Attribute::OAuth2ConsentPromptEnable,
+    description: "Enable the consent prompt when authorising for the first time or when scopes change.".to_string(),
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+};
+
 // === classes ===
 pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
@@ -1128,6 +1136,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_DL9: SchemaClass = SchemaClass {
         Attribute::OAuth2RsOrigin,
         Attribute::OAuth2StrictRedirectUri,
         Attribute::OAuth2DeviceFlowEnable,
+        Attribute::OAuth2ConsentPromptEnable,
         // Deprecated
         Attribute::Rs256PrivateKeyDer,
         Attribute::OAuth2RsTokenKey,
