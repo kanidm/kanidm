@@ -341,7 +341,6 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
     // ************************************************
     // HERE'S WHERE YOU CAN START USING THE LOGGER
     // ************************************************
-
     info!(version = %env!("KANIDM_PKG_VERSION"), "Starting Kanidmd");
 
     // guard which shuts down the logging/tracing providers when we close out
