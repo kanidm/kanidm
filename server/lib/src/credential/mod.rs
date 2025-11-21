@@ -595,7 +595,7 @@ impl Credential {
         self.password_ref().and_then(|pw| {
             pw.verify(cleartext).map_err(|e| {
                 error!(crypto_err = ?e);
-                e.into()
+                OperationError::CryptographyError
             })
         })
     }
