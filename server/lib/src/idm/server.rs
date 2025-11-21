@@ -1413,7 +1413,7 @@ impl IdmServerAuthTransaction<'_> {
         // Check the provided password against the stored hash
         let valid = password.verify(cleartext).map_err(|e| {
             error!(crypto_err = ?e);
-            e.into()
+            OperationError::CryptographyError
         })?;
 
         if !valid {

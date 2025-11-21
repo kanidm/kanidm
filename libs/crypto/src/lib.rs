@@ -16,7 +16,6 @@ use base64::engine::GeneralPurpose;
 use base64::{alphabet, Engine};
 use base64urlsafedata::Base64UrlSafeData;
 use kanidm_hsm_crypto::{provider::TpmHmacS256, structures::HmacS256Key};
-use kanidm_proto::internal::OperationError;
 use md4::{Digest, Md4};
 use openssl::error::ErrorStack as OpenSSLErrorStack;
 use openssl::hash::MessageDigest;
@@ -98,13 +97,6 @@ impl From<OpenSSLErrorStack> for CryptoError {
         let result = CryptoError::OpenSSL(code.into());
 
         result
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl Into<OperationError> for CryptoError {
-    fn into(self) -> OperationError {
-        OperationError::CryptographyError
     }
 }
 

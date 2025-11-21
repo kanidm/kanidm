@@ -3660,7 +3660,6 @@ dependencies = [
  "crypto-glue",
  "hex",
  "kanidm-hsm-crypto",
- "kanidm_proto",
  "md-5",
  "md4",
  "openssl",

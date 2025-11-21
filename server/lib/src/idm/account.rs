@@ -798,7 +798,7 @@ impl Account {
             for ap in v.iter() {
                 let password_verified = ap.password.verify(cleartext).map_err(|e| {
                     error!(crypto_err = ?e);
-                    e.into()
+                    OperationError::CryptographyError
                 })?;
 
                 if password_verified {

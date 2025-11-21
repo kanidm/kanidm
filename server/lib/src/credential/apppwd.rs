@@ -31,7 +31,7 @@ impl ApplicationPassword {
     ) -> Result<ApplicationPassword, OperationError> {
         let pw = Password::new(policy, cleartext).map_err(|e| {
             error!(crypto_err = ?e);
-            e.into()
+            OperationError::CryptographyError
         })?;
         let ap = ApplicationPassword {
             uuid: Uuid::new_v4(),
