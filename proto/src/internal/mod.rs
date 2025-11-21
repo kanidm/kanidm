@@ -218,6 +218,14 @@ impl TryFrom<&str> for FsType {
     }
 }
 
+impl FromStr for FsType {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FsType::try_from(s).map_err(|_| "Invalid FsType, must be either 'zfs' or 'generic'")
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, ToSchema)]
 pub enum Oauth2ClaimMapJoin {
     #[serde(rename = "csv")]
