@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use clap::{builder::PossibleValue, ValueEnum};
+use clap::{builder::PossibleValue, Parser, ValueEnum};
 use serde::Deserialize;
 
 #[derive(Debug, Copy, Clone, Deserialize)]
@@ -38,4 +38,23 @@ impl OpType {
             OpType::Write => "write",
         }
     }
+}
+
+#[derive(Debug, Parser, Clone)]
+pub struct KanidmdCli {
+    /// Output formatting
+    #[clap(
+        short,
+        long = "output",
+        env = "KANIDM_OUTPUT",
+        default_value = "text",
+        global = true
+    )]
+    pub output_mode: crate::messages::ConsoleOutputMode,
+
+    #[clap(env = "KANIDM_LOG_LEVEL", global = true)]
+    pub log_level: Option<sketching::LogLevel>,
+
+    #[clap(env = "KANIDM_OTEL_GRPC_URL", global = true)]
+    pub otel_grpc_url: Option<String>,
 }

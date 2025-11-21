@@ -37,7 +37,7 @@ use kanidmd_core::admin::{
     AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
     ProtoDomainUpgradeCheckReport, ProtoDomainUpgradeCheckStatus,
 };
-use kanidmd_core::config::{CliConfig, Configuration, EnvironmentConfig, ServerConfigUntagged};
+use kanidmd_core::config::{Configuration, EnvironmentConfig, ServerConfigUntagged};
 use kanidmd_core::{
     backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
     dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
@@ -533,16 +533,12 @@ fn main() -> ExitCode {
         }
     };
 
-    let cli_config = CliConfig {
-        output_mode: Some(opt.output_mode.to_owned().into()),
-    };
-
     let is_server = matches!(&opt.commands, KanidmdOpt::Server);
 
     let config = Configuration::build()
         .add_env_config(envconfig)
         .add_opt_toml_config(maybe_sconfig)
-        .add_cli_config(cli_config)
+        .add_cli_config(&opt.kanidmd_options)
         // set threads to 1 unless it's the main server.
         .is_server_mode(is_server)
         .finish();
@@ -799,21 +795,19 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         }
         KanidmdOpt::ShowReplicationCertificate => {
             info!("Running show replication certificate ...");
-            let output_mode: ConsoleOutputMode = opt.output_mode.into();
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::ShowReplicationCertificate,
-                output_mode,
+                opt.kanidmd_options.output_mode,
             )
             .await;
         }
         KanidmdOpt::RenewReplicationCertificate => {
             info!("Running renew replication certificate ...");
-            let output_mode: ConsoleOutputMode = opt.output_mode.into();
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::RenewReplicationCertificate,
-                output_mode,
+                opt.kanidmd_options.output_mode,
             )
             .await;
         }
@@ -822,36 +816,35 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             if !proceed {
                 error!("Unwilling to proceed. Check --help.");
             } else {
-                let output_mode: ConsoleOutputMode = opt.output_mode.into();
                 submit_admin_req(
                     config.adminbindpath.as_str(),
                     AdminTaskRequest::RefreshReplicationConsumer,
-                    output_mode,
+                    opt.kanidmd_options.output_mode,
                 )
                 .await;
             }
         }
         KanidmdOpt::RecoverAccount { name } => {
             info!("Running account recovery ...");
-            let output_mode: ConsoleOutputMode = opt.output_mode.into();
+
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::RecoverAccount {
                     name: name.to_owned(),
                 },
-                output_mode,
+                opt.kanidmd_options.output_mode,
             )
             .await;
         }
         KanidmdOpt::DisableAccount { name } => {
             info!("Running account disable ...");
-            let output_mode: ConsoleOutputMode = opt.output_mode.into();
+
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DisableAccount {
                     name: name.to_owned(),
                 },
-                output_mode,
+                opt.kanidmd_options.output_mode,
             )
             .await;
         }
@@ -924,11 +917,11 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             commands: DomainSettingsCmds::Show,
         } => {
             info!("Running domain show ...");
-            let output_mode: ConsoleOutputMode = opt.output_mode.into();
+
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainShow,
-                output_mode,
+                opt.kanidmd_options.output_mode,
             )
             .await;
         }
@@ -937,11 +930,11 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             commands: DomainSettingsCmds::UpgradeCheck,
         } => {
             info!("Running domain upgrade check ...");
-            let output_mode: ConsoleOutputMode = opt.output_mode.into();
+
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainUpgradeCheck,
-                output_mode,
+                opt.kanidmd_options.output_mode,
             )
             .await;
         }
@@ -950,11 +943,11 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             commands: DomainSettingsCmds::Raise,
         } => {
             info!("Running domain raise ...");
-            let output_mode: ConsoleOutputMode = opt.output_mode.to_owned().into();
+
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainRaise,
-                output_mode,
+                opt.kanidmd_options.output_mode,
             )
             .await;
         }
@@ -963,11 +956,11 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             commands: DomainSettingsCmds::Remigrate { level },
         } => {
             info!("⚠️  Running domain remigrate ...");
-            let output_mode: ConsoleOutputMode = opt.output_mode.into();
+
             submit_admin_req(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainRemigrate { level: *level },
-                output_mode,
+                opt.kanidmd_options.output_mode,
             )
             .await;
         }
@@ -1069,8 +1062,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                 }
             };
             debug!("Request: {req:?}");
-            let output_mode: ConsoleOutputMode = opt.output_mode.to_owned().into();
-            match output_mode {
+            match opt.kanidmd_options.output_mode {
                 ConsoleOutputMode::JSON => {
                     println!("{{\"result\":\"OK\"}}")
                 }

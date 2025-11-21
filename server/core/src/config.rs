@@ -589,10 +589,6 @@ impl EnvironmentConfig {
                         });
                     }
                 }
-                "OTEL_GRPC_URL" => {
-                    env_config.otel_grpc_url = Some(value.to_string());
-                }
-
                 _ => eprintln!("Ignoring env var KANIDM_{key}"),
             }
         }
@@ -704,7 +700,7 @@ impl Configuration {
             online_backup: None,
             domain: None,
             origin: None,
-            output_mode: None,
+            output_mode: ConsoleOutputMode::default(),
             log_level: None,
             role: None,
             repl_config: None,
@@ -845,7 +841,7 @@ pub struct ConfigurationBuilder {
     domain: Option<String>,
     origin: Option<Url>,
     role: Option<ServerRole>,
-    output_mode: Option<ConsoleOutputMode>,
+    output_mode: ConsoleOutputMode,
     log_level: Option<LogLevel>,
     repl_config: Option<ReplicationConfiguration>,
     otel_grpc_url: Option<String>,
@@ -853,10 +849,8 @@ pub struct ConfigurationBuilder {
 
 impl ConfigurationBuilder {
     #![allow(clippy::needless_pass_by_value)]
-    pub fn add_cli_config(mut self, cli_config: CliConfig) -> Self {
-        if cli_config.output_mode.is_some() {
-            self.output_mode = cli_config.output_mode;
-        }
+    pub fn add_cli_config(mut self, cli_config: &kanidm_proto::cli::KanidmdCli) -> Self {
+        self.output_mode = cli_config.output_mode;
 
         self
     }
@@ -1186,7 +1180,6 @@ impl ConfigurationBuilder {
         let adminbindpath =
             adminbindpath.unwrap_or(env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string());
         let address = bindaddress.unwrap_or(vec![DEFAULT_SERVER_ADDRESS.to_string()]);
-        let output_mode = output_mode.unwrap_or_default();
         let role = role.unwrap_or(ServerRole::WriteReplica);
         let log_level = log_level.unwrap_or_default();
 
