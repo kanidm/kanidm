@@ -135,7 +135,10 @@ struct KanidmdParser {
         default_value = "text",
         global = true
     )]
-    output_mode: String,
+    output_mode: kanidm_proto::messages::ConsoleOutputMode,
+
+    #[clap(env = "KANIDM_LOG_LEVEL", long, global = true)]
+    log_level: Option<sketching::LogLevel>,
 }
 
 // The main command parser for kanidmd

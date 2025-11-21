@@ -490,13 +490,6 @@ impl EnvironmentConfig {
                         format!("Failed to parse KANIDM_ROLE as ServerRole: {err}")
                     })?);
                 }
-                "LOG_LEVEL" => {
-                    env_config.log_level = LogLevel::from_str(&value)
-                        .map_err(|err| {
-                            format!("Failed to parse KANIDM_LOG_LEVEL as LogLevel: {err}")
-                        })
-                        .ok();
-                }
                 "ONLINE_BACKUP_PATH" => {
                     if let Some(backup) = &mut env_config.online_backup {
                         backup.path = Some(PathBuf::from(value.to_string()));
