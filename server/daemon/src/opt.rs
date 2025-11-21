@@ -127,18 +127,8 @@ struct KanidmdParser {
     #[clap(short, long, env = "KANIDM_CONFIG", global = true)]
     config_path: Option<PathBuf>,
 
-    /// Output formatting
-    #[clap(
-        short,
-        long = "output",
-        env = "KANIDM_OUTPUT",
-        default_value = "text",
-        global = true
-    )]
-    output_mode: kanidm_proto::messages::ConsoleOutputMode,
-
-    #[clap(env = "KANIDM_LOG_LEVEL", long, global = true)]
-    log_level: Option<sketching::LogLevel>,
+    #[clap(flatten)]
+    kanidmd_options: kanidm_proto::cli::KanidmdCli,
 }
 
 // The main command parser for kanidmd
