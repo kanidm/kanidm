@@ -684,10 +684,10 @@ impl ConfigurationBuilder {
 
         if let Some(replication_bindaddress) = &cli_config.replication_bindaddress {
             if let Some(repl_config) = &mut self.repl_config {
-                repl_config.bindaddress = replication_bindaddress.clone();
+                repl_config.bindaddress = *replication_bindaddress;
             } else {
                 self.repl_config = Some(ReplicationConfiguration {
-                    bindaddress: replication_bindaddress.clone(),
+                    bindaddress: *replication_bindaddress,
                     ..Default::default()
                 });
             }
@@ -732,7 +732,7 @@ impl ConfigurationBuilder {
         }
 
         if cli_config.db_arc_size.is_some() {
-            self.db_arc_size = cli_config.db_arc_size.clone();
+            self.db_arc_size = cli_config.db_arc_size;
         }
 
         // backup things
