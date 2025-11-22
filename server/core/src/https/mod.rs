@@ -1,7 +1,7 @@
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use crate::config::{AddressSet, Configuration, ServerRole, TcpAddressInfo};
+use crate::config::{AddressSet, Configuration, TcpAddressInfo};
 use crate::tcp::process_client_addr;
 use crate::CoreAction;
 use axum::{
@@ -19,7 +19,7 @@ use futures::pin_mut;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
-use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
+use kanidm_proto::{config::ServerRole, constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::authentication::ClientCertInfo, status::StatusActor};
 use serde::de::DeserializeOwned;
 use sketching::*;

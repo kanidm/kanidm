@@ -3700,6 +3700,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "serde_with",
+ "sketching",
  "smartstring",
  "sshkey-attest",
  "sshkeys",

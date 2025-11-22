@@ -6,6 +6,7 @@
 
 use cidr::IpCidr;
 use kanidm_proto::backup::BackupCompression;
+use kanidm_proto::config::ServerRole;
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
@@ -405,240 +406,6 @@ pub struct ServerConfigV2 {
     otel_grpc_url: Option<String>,
 }
 
-#[derive(Default)]
-pub struct CliConfig {
-    pub output_mode: Option<ConsoleOutputMode>,
-}
-
-#[derive(Default)]
-pub struct EnvironmentConfig {
-    domain: Option<String>,
-    origin: Option<Url>,
-    db_path: Option<PathBuf>,
-    tls_chain: Option<PathBuf>,
-    tls_key: Option<PathBuf>,
-    tls_client_ca: Option<PathBuf>,
-    bindaddress: Option<String>,
-    ldapbindaddress: Option<String>,
-    role: Option<ServerRole>,
-    log_level: Option<LogLevel>,
-    online_backup: Option<OnlineBackup>,
-    trust_x_forward_for: Option<bool>,
-    db_fs_type: Option<kanidm_proto::internal::FsType>,
-    adminbindpath: Option<String>,
-    db_arc_size: Option<usize>,
-    repl_config: Option<ReplicationConfiguration>,
-    otel_grpc_url: Option<String>,
-}
-
-impl EnvironmentConfig {
-    /// Updates the ServerConfig from environment variables starting with `KANIDM_`
-    pub fn new() -> Result<Self, String> {
-        let mut env_config = Self::default();
-
-        for (key, value) in std::env::vars() {
-            let Some(key) = key.strip_prefix("KANIDM_") else {
-                continue;
-            };
-
-            let ignorable_build_fields = [
-                "CPU_FLAGS",
-                "DEFAULT_CONFIG_PATH",
-                "DEFAULT_UNIX_SHELL_PATH",
-                "HTMX_UI_PKG_PATH",
-                "PKG_VERSION",
-                "PKG_VERSION_HASH",
-                "PRE_RELEASE",
-                "PROFILE_NAME",
-            ];
-
-            if ignorable_build_fields.contains(&key) {
-                #[cfg(any(debug_assertions, test))]
-                eprintln!("-- Ignoring build-time env var KANIDM_{key}");
-                continue;
-            }
-
-            match key {
-                "DOMAIN" => {
-                    env_config.domain = Some(value.to_string());
-                }
-                "ORIGIN" => {
-                    let url = Url::parse(value.as_str())
-                        .map_err(|err| format!("Failed to parse KANIDM_ORIGIN as URL: {err}"))?;
-                    env_config.origin = Some(url);
-                }
-                "DB_PATH" => {
-                    env_config.db_path = Some(PathBuf::from(value.to_string()));
-                }
-                "TLS_CHAIN" => {
-                    env_config.tls_chain = Some(PathBuf::from(value.to_string()));
-                }
-                "TLS_KEY" => {
-                    env_config.tls_key = Some(PathBuf::from(value.to_string()));
-                }
-                "TLS_CLIENT_CA" => {
-                    env_config.tls_client_ca = Some(PathBuf::from(value.to_string()));
-                }
-                "BINDADDRESS" => {
-                    env_config.bindaddress = Some(value.to_string());
-                }
-                "LDAPBINDADDRESS" => {
-                    env_config.ldapbindaddress = Some(value.to_string());
-                }
-                "ROLE" => {
-                    env_config.role = Some(ServerRole::from_str(&value).map_err(|err| {
-                        format!("Failed to parse KANIDM_ROLE as ServerRole: {err}")
-                    })?);
-                }
-                "LOG_LEVEL" => {
-                    env_config.log_level = LogLevel::from_str(&value)
-                        .map_err(|err| {
-                            format!("Failed to parse KANIDM_LOG_LEVEL as LogLevel: {err}")
-                        })
-                        .ok();
-                }
-                "ONLINE_BACKUP_PATH" => {
-                    if let Some(backup) = &mut env_config.online_backup {
-                        backup.path = Some(PathBuf::from(value.to_string()));
-                    } else {
-                        env_config.online_backup = Some(OnlineBackup {
-                            path: Some(PathBuf::from(value.to_string())),
-                            ..Default::default()
-                        });
-                    }
-                }
-                "ONLINE_BACKUP_SCHEDULE" => {
-                    if let Some(backup) = &mut env_config.online_backup {
-                        backup.schedule = value.to_string();
-                    } else {
-                        env_config.online_backup = Some(OnlineBackup {
-                            schedule: value.to_string(),
-                            ..Default::default()
-                        });
-                    }
-                }
-                "ONLINE_BACKUP_VERSIONS" => {
-                    let versions = value.parse().map_err(|_| {
-                        "Failed to parse KANIDM_ONLINE_BACKUP_VERSIONS as usize".to_string()
-                    })?;
-                    if let Some(backup) = &mut env_config.online_backup {
-                        backup.versions = versions;
-                    } else {
-                        env_config.online_backup = Some(OnlineBackup {
-                            versions,
-                            ..Default::default()
-                        })
-                    }
-                }
-                "TRUST_X_FORWARD_FOR" => {
-                    env_config.trust_x_forward_for = value
-                        .parse()
-                        .map_err(|_| {
-                            "Failed to parse KANIDM_TRUST_X_FORWARD_FOR as bool".to_string()
-                        })
-                        .ok();
-                }
-                "DB_FS_TYPE" => {
-                    env_config.db_fs_type = FsType::try_from(value.as_str())
-                        .map_err(|_| {
-                            "Failed to parse KANIDM_DB_FS_TYPE env var to valid value!".to_string()
-                        })
-                        .ok();
-                }
-                "DB_ARC_SIZE" => {
-                    env_config.db_arc_size = value
-                        .parse()
-                        .map_err(|_| "Failed to parse KANIDM_DB_ARC_SIZE as value".to_string())
-                        .ok();
-                }
-                "ADMIN_BIND_PATH" => {
-                    env_config.adminbindpath = Some(value.to_string());
-                }
-                "REPLICATION_ORIGIN" => {
-                    let repl_origin = Url::parse(value.as_str()).map_err(|err| {
-                        format!("Failed to parse KANIDM_REPLICATION_ORIGIN as URL: {err}")
-                    })?;
-                    if let Some(repl) = &mut env_config.repl_config {
-                        repl.origin = repl_origin
-                    } else {
-                        env_config.repl_config = Some(ReplicationConfiguration {
-                            origin: repl_origin,
-                            ..Default::default()
-                        });
-                    }
-                }
-                "REPLICATION_BINDADDRESS" => {
-                    let repl_bind_address = value
-                        .parse()
-                        .map_err(|_| "Failed to parse replication bind address".to_string())?;
-                    if let Some(repl) = &mut env_config.repl_config {
-                        repl.bindaddress = repl_bind_address;
-                    } else {
-                        env_config.repl_config = Some(ReplicationConfiguration {
-                            bindaddress: repl_bind_address,
-                            ..Default::default()
-                        });
-                    }
-                }
-                "REPLICATION_TASK_POLL_INTERVAL" => {
-                    let poll_interval = value
-                        .parse()
-                        .map_err(|_| {
-                            "Failed to parse replication task poll interval as u64".to_string()
-                        })
-                        .ok();
-                    if let Some(repl) = &mut env_config.repl_config {
-                        repl.task_poll_interval = poll_interval;
-                    } else {
-                        env_config.repl_config = Some(ReplicationConfiguration {
-                            task_poll_interval: poll_interval,
-                            ..Default::default()
-                        });
-                    }
-                }
-                "OTEL_GRPC_URL" => {
-                    env_config.otel_grpc_url = Some(value.to_string());
-                }
-
-                _ => eprintln!("Ignoring env var KANIDM_{key}"),
-            }
-        }
-
-        Ok(env_config)
-    }
-}
-
-#[derive(Debug, Deserialize, Clone, Copy, Default, Eq, PartialEq)]
-pub enum ServerRole {
-    #[default]
-    WriteReplica,
-    WriteReplicaNoUI,
-    ReadOnlyReplica,
-}
-
-impl Display for ServerRole {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ServerRole::WriteReplica => f.write_str("write replica"),
-            ServerRole::WriteReplicaNoUI => f.write_str("write replica (no ui)"),
-            ServerRole::ReadOnlyReplica => f.write_str("read only replica"),
-        }
-    }
-}
-
-impl FromStr for ServerRole {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "write_replica" => Ok(ServerRole::WriteReplica),
-            "write_replica_no_ui" => Ok(ServerRole::WriteReplicaNoUI),
-            "read_only_replica" => Ok(ServerRole::ReadOnlyReplica),
-            _ => Err("Must be one of write_replica, write_replica_no_ui, read_only_replica"),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct IntegrationTestConfig {
     pub admin_user: String,
@@ -692,7 +459,8 @@ impl Configuration {
         ConfigurationBuilder {
             bindaddress: None,
             ldapbindaddress: None,
-            adminbindpath: None,
+            // set by build profiles
+            adminbindpath: env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string(),
             threads: std::thread::available_parallelism()
                 .map(|t| t.get())
                 .unwrap_or_else(|_e| {
@@ -711,7 +479,7 @@ impl Configuration {
             online_backup: None,
             domain: None,
             origin: None,
-            output_mode: None,
+            output_mode: ConsoleOutputMode::default(),
             log_level: None,
             role: None,
             repl_config: None,
@@ -837,7 +605,7 @@ impl fmt::Display for Configuration {
 pub struct ConfigurationBuilder {
     bindaddress: Option<Vec<String>>,
     ldapbindaddress: Option<Vec<String>>,
-    adminbindpath: Option<String>,
+    adminbindpath: String,
     threads: usize,
     db_path: Option<PathBuf>,
     db_fs_type: Option<FsType>,
@@ -852,7 +620,7 @@ pub struct ConfigurationBuilder {
     domain: Option<String>,
     origin: Option<Url>,
     role: Option<ServerRole>,
-    output_mode: Option<ConsoleOutputMode>,
+    output_mode: ConsoleOutputMode,
     log_level: Option<LogLevel>,
     repl_config: Option<ReplicationConfiguration>,
     otel_grpc_url: Option<String>,
@@ -860,81 +628,150 @@ pub struct ConfigurationBuilder {
 
 impl ConfigurationBuilder {
     #![allow(clippy::needless_pass_by_value)]
-    pub fn add_cli_config(mut self, cli_config: CliConfig) -> Self {
-        if cli_config.output_mode.is_some() {
-            self.output_mode = cli_config.output_mode;
+    pub fn add_cli_config(mut self, cli_config: &kanidm_proto::cli::KanidmdCli) -> Self {
+        // logging
+        self.output_mode = cli_config.output_mode;
+
+        if let Some(log_level) = &cli_config.log_level {
+            self.log_level = Some(*log_level);
         }
 
-        self
-    }
-
-    pub fn add_env_config(mut self, env_config: EnvironmentConfig) -> Self {
-        if env_config.bindaddress.is_some() {
-            self.bindaddress = env_config.bindaddress.map(|a| vec![a]);
+        if let Some(otel_grpc_url) = &cli_config.otel_grpc_url {
+            self.otel_grpc_url = Some(otel_grpc_url.clone());
         }
 
-        if env_config.ldapbindaddress.is_some() {
-            self.ldapbindaddress = env_config.ldapbindaddress.map(|a| vec![a]);
+        // core domainy things
+        if let Some(domain) = &cli_config.domain {
+            self.domain = Some(domain.clone());
         }
 
-        if env_config.adminbindpath.is_some() {
-            self.adminbindpath = env_config.adminbindpath;
+        if let Some(origin) = &cli_config.origin {
+            self.origin = Some(origin.clone());
         }
 
-        if env_config.db_path.is_some() {
-            self.db_path = env_config.db_path;
+        if let Some(role) = &cli_config.role {
+            self.role = Some(*role);
         }
 
-        if env_config.db_fs_type.is_some() {
-            self.db_fs_type = env_config.db_fs_type;
+        // networking
+
+        if cli_config.bindaddress.is_some() {
+            self.bindaddress = cli_config
+                .bindaddress
+                .clone()
+                .map(|s| s.split(',').map(|s| s.to_string()).collect())
         }
 
-        if env_config.db_arc_size.is_some() {
-            self.db_arc_size = env_config.db_arc_size;
+        if cli_config.ldapbindaddress.is_some() {
+            self.ldapbindaddress = cli_config
+                .ldapbindaddress
+                .clone()
+                .map(|s| s.split(',').map(|s| s.to_string()).collect())
         }
 
-        if env_config.trust_x_forward_for == Some(true) {
+        // replication
+
+        if let Some(repl_origin) = cli_config.replication_origin.clone() {
+            if let Some(repl) = &mut self.repl_config {
+                repl.origin = repl_origin
+            } else {
+                self.repl_config = Some(ReplicationConfiguration {
+                    origin: repl_origin,
+                    ..Default::default()
+                });
+            }
+        }
+
+        if let Some(replication_bindaddress) = &cli_config.replication_bindaddress {
+            if let Some(repl_config) = &mut self.repl_config {
+                repl_config.bindaddress = *replication_bindaddress;
+            } else {
+                self.repl_config = Some(ReplicationConfiguration {
+                    bindaddress: *replication_bindaddress,
+                    ..Default::default()
+                });
+            }
+        }
+
+        if let Some(task_poll_interval) = cli_config.replication_task_poll_interval {
+            if let Some(repl) = &mut self.repl_config {
+                repl.task_poll_interval = Some(task_poll_interval);
+            } else {
+                self.repl_config = Some(ReplicationConfiguration {
+                    task_poll_interval: Some(task_poll_interval),
+                    ..Default::default()
+                });
+            }
+        }
+
+        // tls
+
+        if let Some(tls_key) = &cli_config.tls_key {
+            self.tls_key = Some(tls_key.clone());
+        }
+
+        if let Some(tls_chain) = &cli_config.tls_chain {
+            self.tls_chain = Some(tls_chain.clone());
+        }
+
+        if let Some(tls_client_ca) = &cli_config.tls_client_ca {
+            self.tls_client_ca = Some(tls_client_ca.clone());
+        }
+
+        // filesystem things
+        if let Some(adminbindpath) = &cli_config.admin_bind_path {
+            self.adminbindpath = adminbindpath.clone();
+        }
+
+        if let Some(db_path) = &cli_config.db_path {
+            self.db_path = Some(db_path.clone());
+        }
+
+        if let Some(db_fs_type) = &cli_config.db_fs_type {
+            self.db_fs_type = Some(*db_fs_type);
+        }
+
+        if cli_config.db_arc_size.is_some() {
+            self.db_arc_size = cli_config.db_arc_size;
+        }
+
+        // backup things
+        if let Some(online_backup_path) = &cli_config.online_backup_path {
+            if let Some(backup) = &mut self.online_backup {
+                backup.path = Some(online_backup_path.clone());
+            } else {
+                self.online_backup = Some(OnlineBackup {
+                    path: Some(online_backup_path.clone()),
+                    ..Default::default()
+                });
+            }
+        }
+
+        if let Some(online_backup_schedule) = &cli_config.online_backup_schedule {
+            if let Some(backup) = &mut self.online_backup {
+                backup.schedule = online_backup_schedule.clone();
+            } else {
+                self.online_backup = Some(OnlineBackup {
+                    schedule: online_backup_schedule.clone(),
+                    ..Default::default()
+                });
+            }
+        }
+
+        if let Some(online_backup_versions) = &cli_config.online_backup_versions {
+            if let Some(backup) = &mut self.online_backup {
+                backup.versions = *online_backup_versions;
+            } else {
+                self.online_backup = Some(OnlineBackup {
+                    versions: *online_backup_versions,
+                    ..Default::default()
+                });
+            }
+        }
+
+        // XFF handling
+        if let Some(true) = cli_config.trust_all_x_forwarded_for {
             self.http_client_address_info = HttpAddressInfo::XForwardForAllSourcesTrusted;
-        }
-
-        if env_config.tls_key.is_some() {
-            self.tls_key = env_config.tls_key;
-        }
-
-        if env_config.tls_chain.is_some() {
-            self.tls_chain = env_config.tls_chain;
-        }
-
-        if env_config.tls_client_ca.is_some() {
-            self.tls_client_ca = env_config.tls_client_ca;
-        }
-
-        if env_config.online_backup.is_some() {
-            self.online_backup = env_config.online_backup;
-        }
-
-        if env_config.domain.is_some() {
-            self.domain = env_config.domain;
-        }
-
-        if env_config.origin.is_some() {
-            self.origin = env_config.origin;
-        }
-
-        if env_config.role.is_some() {
-            self.role = env_config.role;
-        }
-
-        if env_config.log_level.is_some() {
-            self.log_level = env_config.log_level;
-        }
-
-        if env_config.repl_config.is_some() {
-            self.repl_config = env_config.repl_config;
-        }
-
-        if env_config.otel_grpc_url.is_some() {
-            self.otel_grpc_url = env_config.otel_grpc_url;
         }
 
         self
@@ -991,8 +828,8 @@ impl ConfigurationBuilder {
             self.ldapbindaddress = config.ldapbindaddress.map(|a| vec![a]);
         }
 
-        if config.adminbindpath.is_some() {
-            self.adminbindpath = config.adminbindpath;
+        if let Some(adminbindpath) = config.adminbindpath {
+            self.adminbindpath = adminbindpath;
         }
 
         if config.role.is_some() {
@@ -1071,8 +908,8 @@ impl ConfigurationBuilder {
             self.ldapbindaddress = config.ldapbindaddress;
         }
 
-        if config.adminbindpath.is_some() {
-            self.adminbindpath = config.adminbindpath;
+        if let Some(adminbindpath) = config.adminbindpath {
+            self.adminbindpath = adminbindpath;
         }
 
         if config.role.is_some() {
@@ -1190,10 +1027,7 @@ impl ConfigurationBuilder {
         };
 
         // Apply any defaults if needed
-        let adminbindpath =
-            adminbindpath.unwrap_or(env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string());
         let address = bindaddress.unwrap_or(vec![DEFAULT_SERVER_ADDRESS.to_string()]);
-        let output_mode = output_mode.unwrap_or_default();
         let role = role.unwrap_or(ServerRole::WriteReplica);
         let log_level = log_level.unwrap_or_default();
 
