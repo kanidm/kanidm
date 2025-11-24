@@ -32,7 +32,7 @@ jobs:
     outputs:
       latest: ${{ steps.branchname.outputs.latest }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Latest branch
@@ -87,7 +87,7 @@ jobs:
     # yamllint disable-line rule:line-length
     if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Download base artifact
