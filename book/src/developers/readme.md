@@ -253,7 +253,7 @@ git rebase --abort
 You'll need `mdbook` and the extensions to build the book:
 
 ```shell
-cargo install mdbook mdbook-mermaid mdbook-alerts
+cargo install mdbook mdbook-mermaid
 ```
 
 To build it:

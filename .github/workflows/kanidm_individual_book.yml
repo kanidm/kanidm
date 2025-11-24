@@ -35,11 +35,6 @@ jobs:
             libssl-dev \
             libudev-dev \
             libpam0g-dev
-      - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v2
-        with:
-          mdbook-version: "latest"
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -50,7 +45,7 @@ jobs:
 
       - name: Build the docs
         run: |
-          cargo install --quiet mdbook-mermaid
+          cargo install --quiet mdbook mdbook-mermaid
           cargo doc --no-deps
           mdbook build *book
           rm -rf ./docs/
