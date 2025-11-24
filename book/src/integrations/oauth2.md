@@ -48,7 +48,7 @@ Kanidm will expose its OAuth2 APIs at the following URLs, substituting `:client_
 [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html) URL **(recommended)**
 
 </dt>
-<dd>
+
 
 `https://idm.example.com/oauth2/openid/:client_id:/.well-known/openid-configuration`
 

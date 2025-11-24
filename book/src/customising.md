@@ -12,7 +12,7 @@ each application.
 
 ### Updating the display Name
 
-By default, the display name is 'Kanidm <hostname>' which is visible when logged in. To modify the display name, run the
+By default, the display name is `Kanidm <hostname>` which is visible when logged in. To modify the display name, run the
 following
 
 ```bash
