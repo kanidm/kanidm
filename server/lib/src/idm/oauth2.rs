@@ -2983,6 +2983,16 @@ fn s_claims_for_account(
         (None, None)
     };
 
+    let updated_at = if scopes.contains(OAUTH2_SCOPE_UPDATED_AT) {
+        if let Some(ua) = account.updated_at {
+            Some(ua.to_string())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
     OidcClaims {
         // Map from displayname
         name: Some(account.displayname.clone()),
@@ -2990,6 +3000,7 @@ fn s_claims_for_account(
         preferred_username,
         email,
         email_verified,
+        updated_at,
         ..Default::default()
     }
 }
@@ -6011,6 +6022,7 @@ mod tests {
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![
                         OAUTH2_SCOPE_EMAIL.to_string(),
+                        OAUTH2_SCOPE_UPDATED_AT.to_string(),
                         OAUTH2_SCOPE_OPENID.to_string()
                     ],
                 )
@@ -6039,7 +6051,7 @@ mod tests {
             state: Some("123".to_string()),
             pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset!["openid".to_string(), "email".to_string()],
+            scope: btreeset!["openid".to_string(), "email".to_string(), "updated_at".to_string()],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -6096,7 +6108,7 @@ mod tests {
             pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             // Note the scope isn't requested here!
-            scope: btreeset!["openid".to_string(), "email".to_string()],
+            scope: btreeset!["openid".to_string(), "email".to_string(), "updated_at".to_string()],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
