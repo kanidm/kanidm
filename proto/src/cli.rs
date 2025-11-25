@@ -144,6 +144,7 @@ pub struct KanidmdCli {
 
     #[clap(
         global = true,
+        hide = true,
         env = "KANIDM_TRUST_X_FORWARDED_FOR",
         help = "Whether to blindly trust the X-Forwarded-For header, regardless of source IP"
     )]
