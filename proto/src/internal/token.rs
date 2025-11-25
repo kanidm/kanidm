@@ -91,6 +91,8 @@ impl UserAuthToken {
     pub fn purpose_readwrite_active(&self, ct: time::OffsetDateTime) -> bool {
         match self.purpose {
             UatPurpose::ReadWrite { expiry: Some(exp) } => ct < exp,
+            // ReadWrite { None } shows the session is priv capable, but the
+            // privs aren't active *now*.
             _ => false,
         }
     }
