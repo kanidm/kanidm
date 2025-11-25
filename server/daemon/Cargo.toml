@@ -54,6 +54,8 @@ kanidm_utils_users = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace = true }
 kanidm_build_profiles = { workspace = true }
+kanidm_proto = { workspace = true }
+sketching = { workspace = true }
 
 ## Debian packaging
 [package.metadata.deb]
