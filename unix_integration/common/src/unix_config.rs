@@ -97,6 +97,13 @@ enum ConfigVersion {
     },
 }
 
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+enum HomeStrategyV2 {
+    #[default]
+    Symlink,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 /// This is the version 2 of the JSON configuration specification for the unixd suite.
@@ -112,6 +119,8 @@ struct ConfigV2 {
     home_mount_prefix: Option<String>,
     home_attr: Option<String>,
     home_alias: Option<String>,
+    #[serde(default)]
+    home_strategy: HomeStrategyV2,
     use_etc_skel: Option<bool>,
     uid_attr_map: Option<String>,
     gid_attr_map: Option<String>,
@@ -187,6 +196,12 @@ pub struct KanidmConfig {
     pub service_account_token: Option<String>,
 }
 
+#[derive(Debug, Default)]
+pub enum HomeStrategy {
+    #[default]
+    Symlink,
+}
+
 #[derive(Debug)]
 /// This is the parsed configuration for the Unixd resolver.
 pub struct UnixdConfig {
@@ -200,6 +215,7 @@ pub struct UnixdConfig {
     pub home_mount_prefix: Option<PathBuf>,
     pub home_attr: HomeAttr,
     pub home_alias: Option<HomeAttr>,
+    pub home_strategy: HomeStrategy,
     pub use_etc_skel: bool,
     pub uid_attr_map: UidAttr,
     pub gid_attr_map: UidAttr,
@@ -282,6 +298,7 @@ impl UnixdConfig {
             home_mount_prefix: None,
             home_attr: DEFAULT_HOME_ATTR,
             home_alias: DEFAULT_HOME_ALIAS,
+            home_strategy: HomeStrategy::default(),
             use_etc_skel: DEFAULT_USE_ETC_SKEL,
             uid_attr_map: DEFAULT_UID_ATTR_MAP,
             gid_attr_map: DEFAULT_GID_ATTR_MAP,
@@ -409,6 +426,7 @@ impl UnixdConfig {
                     }
                 })
                 .unwrap_or(self.home_alias),
+            home_strategy: HomeStrategy::default(),
             use_etc_skel: config.use_etc_skel.unwrap_or(self.use_etc_skel),
             uid_attr_map: config
                 .uid_attr_map
@@ -550,6 +568,9 @@ impl UnixdConfig {
                     }
                 })
                 .unwrap_or(self.home_alias),
+            home_strategy: match config.home_strategy {
+                HomeStrategyV2::Symlink => HomeStrategy::Symlink,
+            },
             use_etc_skel: config.use_etc_skel.unwrap_or(self.use_etc_skel),
             uid_attr_map: config
                 .uid_attr_map
