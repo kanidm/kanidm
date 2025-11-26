@@ -68,6 +68,12 @@ Identity management is often abbreviated to 'idm', and is a common industry term
 
 Kanidm is pronounced as "kar - nee - dee - em".
 
+## National Anthem
+
+> A national anthem is a patriotic musical composition symbolizing and evoking eulogies of the history and traditions of a country or nation.
+
+The Kanidm national anthem is [Crab Rave - Noisestorm](https://www.youtube.com/watch?v=LDU_Txk06tM)
+
 ## Comparison with other services
 
 <details> <summary>LLDAP</summary>
