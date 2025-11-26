@@ -22,14 +22,17 @@ use kanidm_unix_common::unix_proto::{
 };
 use kanidm_utils_users::{get_effective_gid, get_effective_uid};
 use libc::{lchown, umask};
+use nix::mount::MsFlags;
 use notify_debouncer_full::notify::RecommendedWatcher;
 use notify_debouncer_full::Debouncer;
 use notify_debouncer_full::RecommendedCache;
 use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, DebouncedEvent};
+use procfs::process::Process;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
 use std::ffi::CString;
+use std::fs::{create_dir, remove_file};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
@@ -125,7 +128,7 @@ fn create_home_directory(
     // In the ZFS strategy, we will need to check if the filesystem
     // exists, rather than the location it's mounted to.
     let hd_mount_path_exists = match home_strategy {
-        HomeStrategy::Symlink => hd_mount_path.exists(),
+        HomeStrategy::Symlink | HomeStrategy::BindMount => hd_mount_path.exists(),
     };
 
     // Does the home directory exist? This is checking the *true* home mount storage.
@@ -138,7 +141,7 @@ fn create_home_directory(
         // because in a future ZFS home dir setup, we'll need to be able to make
         // the zfs volume for the user in this step.
         match home_strategy {
-            HomeStrategy::Symlink => {
+            HomeStrategy::Symlink | HomeStrategy::BindMount => {
                 // Set a umask
                 let before = unsafe { umask(0o0027) };
 
@@ -222,7 +225,53 @@ fn create_home_directory(
 
     match home_strategy {
         HomeStrategy::Symlink => home_alias_update_symlink(&alias_path, &hd_mount_path),
+        HomeStrategy::BindMount => home_alias_update_bind_mount(&alias_path, &hd_mount_path),
     }
+}
+
+fn home_alias_update_bind_mount(alias_path: &Path, hd_mount_path: &Path) -> Result<(), String> {
+    // If the alias_path is a symlink, remove it
+    // TODO: what if it exsits and is not a symlink?
+    if alias_path.exists() && alias_path.is_symlink() {
+        if let Err(e) = remove_file(alias_path) {
+            error!("Unable to remove existing symlink at {alias_path:?}");
+            return Err(format!("{e:?}"));
+        }
+    }
+
+    // Create mount point if it doesn't exist
+    if !alias_path.exists() {
+        if let Err(e) = create_dir(alias_path) {
+            error!("Unable to create bind mount target at {alias_path:?}");
+            return Err(format!("{e:?}"));
+        }
+    }
+
+    // If mount point exists and is already mounted, we are done
+    if mount_exists_at(alias_path)? {
+        return Ok(())
+    }
+
+    // Finally, try to create the bind mount
+    nix::mount::mount::<Path, Path, str, str>(
+        Some(hd_mount_path),
+        alias_path,
+        None,
+        MsFlags::MS_BIND,
+        None,
+    )
+    .map_err(|e| format!("Unable to bind mount home directory {hd_mount_path:?} to {alias_path:?}: {e}"))?;
+
+    Ok(())
+}
+
+fn mount_exists_at(alias_path: &Path) -> Result<bool, String> {
+    let current_mounts = Process::myself()
+        .map_err(|e| format!("Could not get reference to current process: {e}"))?
+        .mountinfo()
+        .map_err(|e| format!("Could not get mount info: {e}"))?;
+
+    Ok(current_mounts.iter().any(|m| m.mount_point == alias_path))
 }
 
 fn home_alias_update_symlink(alias_path: &Path, hd_mount_path: &Path) -> Result<(), String> {

@@ -102,6 +102,7 @@ enum ConfigVersion {
 enum HomeStrategyV2 {
     #[default]
     Symlink,
+    BindMount,
 }
 
 #[derive(Debug, Deserialize)]
@@ -200,6 +201,7 @@ pub struct KanidmConfig {
 pub enum HomeStrategy {
     #[default]
     Symlink,
+    BindMount,
 }
 
 #[derive(Debug)]
@@ -570,6 +572,7 @@ impl UnixdConfig {
                 .unwrap_or(self.home_alias),
             home_strategy: match config.home_strategy {
                 HomeStrategyV2::Symlink => HomeStrategy::Symlink,
+                HomeStrategyV2::BindMount => HomeStrategy::BindMount,
             },
             use_etc_skel: config.use_etc_skel.unwrap_or(self.use_etc_skel),
             uid_attr_map: config
