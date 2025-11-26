@@ -359,11 +359,7 @@ impl Account {
             SessionScope::ReadWrite => {
                 // These sessions are always rw, and so have limited life.
                 // Ensure that we take the lower of the two bounds.
-                let capped = if expiry < limited_expiry {
-                    expiry
-                } else {
-                    limited_expiry
-                };
+                let capped = std::cmp::min(expiry, limited_expiry);
 
                 (
                     UatPurpose::ReadWrite {
