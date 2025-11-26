@@ -91,8 +91,10 @@ uuid = { workspace = true }
 walkdir = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+nix = { workspace = true }
 sd-notify = { workspace = true }
 prctl = { workspace = true }
+procfs = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 kanidm_utils_users = { workspace = true }
