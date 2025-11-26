@@ -2155,15 +2155,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn domain_remigrate(&mut self, level: u32) -> Result<(), OperationError> {
         let mut_d_info = self.d_info.get_mut();
 
+        // NOTE: See reload_domain_info_version which asserts that we are not attempting
+        // an unsupported remigration. This check is just a smoke check to no-op if we
+        // are not requesting any meaningful action.
         if level > mut_d_info.d_vers {
             // Nothing to do.
             return Ok(());
-        } else if level < DOMAIN_MIN_REMIGRATION_LEVEL {
-            return Err(OperationError::MG0001InvalidReMigrationLevel);
         };
 
         info!(
-            "Prepare to re-migrate from {} -> {}",
+            "Preparing to re-migrate from {} -> {}",
             level, mut_d_info.d_vers
         );
         mut_d_info.d_vers = level;
@@ -2480,12 +2481,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // will now see it's been increased. This also prevents recursion during reloads
         // inside of a domain migration.
         let mut_d_info = self.d_info.get_mut();
+        debug!(?mut_d_info);
+        // This is the value that is set as part of re-migrate.
         let previous_version = mut_d_info.d_vers;
         let previous_patch_level = mut_d_info.d_patch_level;
         mut_d_info.d_vers = domain_info_version;
         mut_d_info.d_patch_level = domain_info_patch_level;
         mut_d_info.d_devel_taint = domain_info_devel_taint;
         mut_d_info.d_allow_easter_eggs = domain_allow_easter_eggs;
+
+        debug!(?mut_d_info);
 
         // We must both be at the correct domain version *and* the correct patch level. If we are
         // not, then we only proceed to migrate *if* our server boot phase is correct.
@@ -2509,12 +2514,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Ok(());
         }
 
+        debug_assert!(DOMAIN_MIN_REMIGRATION_LEVEL < DOMAIN_PREVIOUS_TGT_LEVEL);
+
         if previous_version < DOMAIN_MIN_REMIGRATION_LEVEL {
-            error!("UNABLE TO PROCEED. You are attempting a Skip update which is NOT SUPPORTED. You must upgrade one-version of Kanidm at a time.");
+            let valid_levels: Vec<_> =
+                (DOMAIN_MIN_REMIGRATION_LEVEL..DOMAIN_PREVIOUS_TGT_LEVEL).collect();
+            error!("UNABLE TO PROCEED. You have requested an initial migration level which is lower than supported.");
             error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
             error!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
             error!(domain_previous_patch_level = ?previous_patch_level, domain_target_patch_level = ?domain_info_patch_level);
-            return Err(OperationError::MG0008SkipUpgradeAttempted);
+            error!(?valid_levels);
+
+            return Err(OperationError::MG0001InvalidReMigrationLevel);
         }
 
         if previous_version <= DOMAIN_LEVEL_8 && domain_info_version >= DOMAIN_LEVEL_9 {
@@ -2528,6 +2539,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         {
             self.migrate_domain_patch_level_2()?;
         }
+
+        // This is to catch during development if we incorrectly move MIN_REMIGRATION but
+        // without actually updating these values correctly.
+        debug_assert!(DOMAIN_MIN_REMIGRATION_LEVEL == DOMAIN_LEVEL_9);
 
         if previous_version <= DOMAIN_LEVEL_9 && domain_info_version >= DOMAIN_LEVEL_10 {
             // 1.5 -> 1.6

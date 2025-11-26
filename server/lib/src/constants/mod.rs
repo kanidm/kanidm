@@ -81,12 +81,19 @@ pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_12;
 // The current patch level if any out of band fixes are required.
 pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_2;
 
-// The maximum supported domain functional level
+// The maximum supported domain functional level. This generally
+// represents a *future* version of the server which doesn't exist
+// yet.
 pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_13;
 
-// The minimum level that we can re-migrate from.
-// This should be DOMAIN_TGT_LEVEL minus 2
+// The minimum level that we can re-migrate from. Remember, this
+// means we should be able to move from min level to the next level
+// and generally represents the absolute oldest level we can create
+// in a test case.
 pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_9;
+
+// How many domain levels we can upgrade through in a single operation.
+pub const DOMAIN_MIGRATION_SKIPS: DomainVersion = 1;
 
 // The minimum supported domain functional level (for replication)
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
