@@ -139,4 +139,4 @@ schedule = "00 22 * * *"
 # versions = 7
 
 # Compression can either be "gzip" or "nocompression", will compress the backups on disk if specified.
-compression = "gzip"
+compression = "Gzip"
