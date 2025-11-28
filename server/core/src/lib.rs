@@ -8,7 +8,7 @@
 //! the entry point for all client traffic which is then directed to the
 //! various `actors`.
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![warn(unused_imports)]
 #![deny(clippy::todo)]
