@@ -274,12 +274,19 @@ impl QueryServerWriteTransaction<'_> {
         &mut self,
         e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
-        self.internal_migrate_or_create_ignore_attrs(e, &[])
+        // NOTE: Ignoring an attribute only affects the migration phase, not create.
+        self.internal_migrate_or_create_ignore_attrs(
+            e,
+            &[
+                // If the credential type is present, we don't want to touch it.
+                Attribute::CredentialTypeMinimum,
+            ],
+        )
     }
 
-    /// This is the same as [QueryServerWriteTransaction::internal_migrate_or_create] but it will ignore the specified
-    /// list of attributes, so that if an admin has modified those values then we don't
-    /// stomp them.
+    /// This is the same as [QueryServerWriteTransaction::internal_migrate_or_create]
+    /// but it will ignore the specified list of attributes, so that if an admin has
+    /// modified those values then we don't stomp them.
     #[instrument(level = "trace", skip_all)]
     fn internal_migrate_or_create_ignore_attrs(
         &mut self,
@@ -863,6 +870,8 @@ impl QueryServerReadTransaction<'_> {
 mod tests {
     // use super::{ProtoDomainUpgradeCheckItem, ProtoDomainUpgradeCheckStatus};
     use crate::prelude::*;
+    use crate::value::CredentialType;
+    use crate::valueset::ValueSetCredentialType;
 
     #[qs_test]
     async fn test_init_idempotent_schema_core(server: &QueryServer) {
@@ -888,6 +897,79 @@ mod tests {
             assert!(server_txn.initialise_schema_core().is_ok());
             assert!(server_txn.commit().is_ok());
         }
+    }
+
+    /// This test is for ongoing/longterm checks over the previous to current version.
+    /// This is in contrast to the specific version checks below that are often to
+    /// test a version to version migration.
+    #[qs_test(domain_level=DOMAIN_PREVIOUS_TGT_LEVEL)]
+    async fn test_migrations_dl_previous_to_dl_target(server: &QueryServer) {
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_PREVIOUS_TGT_LEVEL);
+
+        // == SETUP ==
+
+        // Add a member to a group - it should not be removed.
+        // Remove a default member from a group - it should be returned.
+        let modlist = ModifyList::new_set(
+            Attribute::Member,
+            // This achieves both because this removes IDM_ADMIN from the group
+            // while setting only anon as a member.
+            ValueSetRefer::new(UUID_ANONYMOUS),
+        );
+        write_txn
+            .internal_modify_uuid(UUID_IDM_ADMINS, &modlist)
+            .expect("Unable to modify CredentialTypeMinimum");
+
+        // Change default account policy - it should not be reverted.
+        let modlist = ModifyList::new_set(
+            Attribute::CredentialTypeMinimum,
+            ValueSetCredentialType::new(CredentialType::Any),
+        );
+        write_txn
+            .internal_modify_uuid(UUID_IDM_ALL_PERSONS, &modlist)
+            .expect("Unable to modify CredentialTypeMinimum");
+
+        write_txn.commit().expect("Unable to commit");
+
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        // == Increase the version ==
+        write_txn
+            .internal_apply_domain_migration(DOMAIN_TGT_LEVEL)
+            .expect("Unable to set domain level");
+
+        // post migration verification.
+        // Check that our group is as we left it
+        let idm_admins_entry = write_txn
+            .internal_search_uuid(UUID_IDM_ADMINS)
+            .expect("Unable to retrieve all persons");
+
+        let members = idm_admins_entry
+            .get_ava_refer(Attribute::Member)
+            .expect("No members present");
+
+        // Still present
+        assert!(members.contains(&UUID_ANONYMOUS));
+        // Was reverted
+        assert!(members.contains(&UUID_IDM_ADMIN));
+
+        // Check that the account policy did not revert.
+        let all_persons_entry = write_txn
+            .internal_search_uuid(UUID_IDM_ALL_PERSONS)
+            .expect("Unable to retrieve all persons");
+
+        assert_eq!(
+            all_persons_entry.get_ava_single_credential_type(Attribute::CredentialTypeMinimum),
+            Some(CredentialType::Any)
+        );
     }
 
     #[qs_test(domain_level=DOMAIN_LEVEL_9)]
