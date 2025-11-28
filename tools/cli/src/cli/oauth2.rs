@@ -478,6 +478,26 @@ impl Oauth2Opt {
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
+            Oauth2Opt::DisableConsentPrompt(nopt) => {
+                let client = opt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_rs_disable_consent_prompt(nopt.name.as_str())
+                    .await
+                {
+                    Ok(_) => opt.output_mode.print_message("Success"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
+            Oauth2Opt::EnableConsentPrompt(nopt) => {
+                let client = opt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_rs_enable_consent_prompt(nopt.name.as_str())
+                    .await
+                {
+                    Ok(_) => opt.output_mode.print_message("Success"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
         }
     }
 }
