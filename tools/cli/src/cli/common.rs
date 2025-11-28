@@ -2,7 +2,6 @@ use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifi
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_proto::cli::OpType;
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use kanidm_proto::internal::UserAuthToken;
 use time::format_description::well_known::Rfc3339;
@@ -17,6 +16,14 @@ pub enum ToClientError {
     NeedLogin(String),
     NeedReauth(String, KanidmClient),
     Other,
+}
+
+/// Show what kind of operation the CLI is about to attempt to perform. This is an internal
+/// detail of the CLI.
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum OpType {
+    Read,
+    Write,
 }
 
 impl KanidmClientParser {
@@ -282,7 +289,7 @@ impl KanidmClientParser {
         Ok(client)
     }
 
-    pub async fn to_client(&self, optype: OpType) -> KanidmClient {
+    pub(crate) async fn to_client(&self, optype: OpType) -> KanidmClient {
         loop {
             match self.try_to_client(optype).await {
                 Ok(c) => break c,
@@ -322,7 +329,7 @@ impl KanidmClientParser {
                         username: Some(username),
                         ..self.to_owned()
                     };
-                    Box::pin(copt.reauth(optype)).await;
+                    Box::pin(copt.reauth()).await;
 
                     // Okay, re-auth should have passed, lets loop
                     continue;
@@ -334,8 +341,9 @@ impl KanidmClientParser {
         }
     }
 
-    pub(crate) async fn reauth(&self, optype: OpType) {
-        let client = self.to_client(optype).await;
+    pub(crate) async fn reauth(&self) {
+        // IMPORTANT: Must be READ ONLY else we loop on reauth!!!
+        let client = self.to_client(OpType::Read).await;
 
         let allowed = client.reauth_begin().await.unwrap_or_else(|e| {
             error!("Error during reauthentication begin phase: {:?}", e);
