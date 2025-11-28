@@ -13,7 +13,7 @@
 #[macro_use]
 extern crate tracing;
 
-use kanidm_proto::cli::OpType;
+pub(crate) use crate::common::OpType;
 use std::path::PathBuf;
 
 use identify_user_no_tui::{run_identity_verification_no_tui, IdentifyUserState};
@@ -162,7 +162,7 @@ impl KanidmClientParser {
         match self.commands.clone() {
             KanidmClientOpt::Raw { commands } => commands.exec(self).await,
             KanidmClientOpt::Login(lopt) => lopt.exec(self).await,
-            KanidmClientOpt::Reauth { mode } => self.reauth(mode).await,
+            KanidmClientOpt::Reauth => self.reauth().await,
             KanidmClientOpt::Logout(lopt) => lopt.exec(self).await,
             KanidmClientOpt::Session { commands } => commands.exec(self).await,
             KanidmClientOpt::CSelf { commands } => commands.exec(self).await,

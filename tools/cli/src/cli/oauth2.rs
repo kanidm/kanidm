@@ -1,7 +1,7 @@
+use crate::OpType;
 use crate::{handle_client_error, Oauth2Opt, OutputMode};
 use crate::{KanidmClientParser, Oauth2ClaimMapJoin};
 use anyhow::{Context, Error};
-use kanidm_proto::cli::OpType;
 use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin};
 use std::fs::read;
 use std::process::exit;

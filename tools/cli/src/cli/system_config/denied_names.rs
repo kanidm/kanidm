@@ -1,4 +1,4 @@
-use kanidm_proto::cli::OpType;
+use crate::OpType;
 
 use crate::{handle_client_error, DeniedNamesOpt, KanidmClientParser, OutputMode};
 
