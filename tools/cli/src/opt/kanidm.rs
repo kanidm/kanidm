@@ -1397,10 +1397,7 @@ pub enum KanidmClientOpt {
     /// Login to an account to use with future cli operations
     Login(LoginOpt),
     /// Reauthenticate to access privileged functions of this account for a short period.
-    Reauth {
-        #[clap()]
-        mode: kanidm_proto::cli::OpType,
-    },
+    Reauth,
     /// Logout of an active cli session
     Logout(LogoutOpt),
     /// Manage active cli sessions
