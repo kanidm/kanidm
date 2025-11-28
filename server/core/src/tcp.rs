@@ -20,6 +20,7 @@ pub(crate) async fn process_client_addr(
                 .iter()
                 .any(|ip_cidr| ip_cidr.contains(&canonical_conn_addr)) =>
         {
+            debug!("processing proxy-v2 header");
             timeout(time_limit, ProxyHdrV2::parse_from_read(stream))
                 .await
                 .map(|ok_result| ok_result.map(|(stream, hdr)| (stream, hdr.to_remote_addr())))
@@ -29,12 +30,18 @@ pub(crate) async fn process_client_addr(
                 .iter()
                 .any(|ip_cidr| ip_cidr.contains(&canonical_conn_addr)) =>
         {
+            debug!("processing proxy-v1 header");
             timeout(time_limit, ProxyHdrV1::parse_from_read(stream))
                 .await
                 .map(|ok_result| ok_result.map(|(stream, hdr)| (stream, hdr.to_remote_addr())))
         }
-        TcpAddressInfo::ProxyV2(_) | TcpAddressInfo::ProxyV1(_) | TcpAddressInfo::None => {
-            return Ok((stream, connection_addr))
+        TcpAddressInfo::ProxyV2(_) | TcpAddressInfo::ProxyV1(_) => {
+            debug!("Ignoring proxy headers from untrusted connection");
+            return Ok((stream, connection_addr));
+        }
+        TcpAddressInfo::None => {
+            // Not configured, ignore
+            return Ok((stream, connection_addr));
         }
     };
 
