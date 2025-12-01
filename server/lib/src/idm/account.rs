@@ -1,5 +1,6 @@
 use super::accountpolicy::ResolvedAccountPolicy;
 use super::group::{load_account_policy, load_all_groups_from_account, Group, Unix};
+use crate::be::dbvalue::DbValueSetV2;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::{apppwd::ApplicationPassword, Credential};
@@ -23,7 +24,6 @@ use uuid::Uuid;
 use webauthn_rs::prelude::{
     AttestedPasskey as AttestedPasskeyV4, AuthenticationResult, CredentialID, Passkey as PasskeyV4,
 };
-use crate::be::dbvalue::DbValueSetV2;
 
 #[derive(Debug, Clone)]
 pub struct UnixExtensions {
@@ -105,12 +105,15 @@ macro_rules! try_from_entry {
             .map(|s| s.to_string())
             .ok_or(OperationError::MissingAttribute(Attribute::DisplayName))?;
 
-        let updated_at : Option<u64> = if let DbValueSetV2::Cid(cid) =
-            $value.get_ava_set(Attribute::LastModifiedCid).unwrap().to_db_valueset_v2() {
-                cid.get(0).map(|c| c.timestamp.as_secs())
-            } else {
-                None
-            };
+        let updated_at: Option<u64> = if let DbValueSetV2::Cid(cid) = $value
+            .get_ava_set(Attribute::LastModifiedCid)
+            .unwrap()
+            .to_db_valueset_v2()
+        {
+            cid.get(0).map(|c| c.timestamp.as_secs())
+        } else {
+            None
+        };
 
         let sync_parent_uuid = $value.get_ava_single_refer(Attribute::SyncParentUuid);
 
