@@ -206,6 +206,7 @@ fn search_oauth2_filter_entry(
                     attr: btreeset!(
                         Attribute::Class,
                         Attribute::DisplayName,
+                        Attribute::LastModifiedCid,
                         Attribute::Uuid,
                         Attribute::Name,
                         Attribute::OAuth2RsOriginLanding,

@@ -316,6 +316,7 @@ pub struct ScimPerson {
     pub mails: Vec<ScimMail>,
     pub managed_by: Option<ScimReference>,
     pub groups: Vec<ScimReference>,
+    pub updated_at: String,
 }
 
 impl TryFrom<ScimEntryKanidm> for ScimPerson {
@@ -359,6 +360,16 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
                 _ => None,
             });
 
+        //TODO It's working, but im not happy with it, maybe there is the possibility to extend
+        //ScimValueKanidm so we don't need to parse a String..
+        let updated_at: String = scim_entry
+            .get_string_attr(&Attribute::LastModifiedCid)
+            .and_then(|v| v.split('-').next())
+            .and_then(|s| s.parse::<i128>().ok())
+            .map(|nanos| OffsetDateTime::from_unix_timestamp_nanos(nanos))
+            .map(|odt| odt.expect("Error Unpacking").format(&Rfc3339).unwrap())
+            .ok_or(())?;
+
         Ok(ScimPerson {
             uuid,
             name,
@@ -368,6 +379,7 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
             mails,
             managed_by,
             groups,
+            updated_at,
         })
     }
 }
