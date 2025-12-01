@@ -1445,10 +1445,7 @@ impl Resolver {
             uid: tok.gidnumber,
             gid: tok.gidnumber,
             name: self.token_homedirectory_attr(tok),
-            aliases: self
-                .token_homedirectory_alias(tok)
-                .map(|s| vec![s])
-                .unwrap_or_default(),
+            alias: self.token_homedirectory_alias(tok),
         }))
     }
 
