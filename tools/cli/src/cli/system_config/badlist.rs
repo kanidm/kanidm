@@ -1,5 +1,5 @@
+use crate::OpType;
 use crate::{handle_client_error, KanidmClientParser, OutputMode, PwBadlistOpt};
-use kanidm_proto::cli::OpType;
 
 // use std::thread;
 use std::fs::File;

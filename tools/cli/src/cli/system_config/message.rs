@@ -1,4 +1,4 @@
-use kanidm_proto::cli::OpType;
+use crate::OpType;
 
 use crate::{KanidmClientParser, MessageOpt, OutputMode};
 // use kanidm_proto::scim_v1::{ScimEntryGetQuery};

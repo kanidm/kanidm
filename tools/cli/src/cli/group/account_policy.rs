@@ -1,8 +1,8 @@
+use crate::OpType;
 use crate::{
     handle_client_error, handle_group_account_policy_error, GroupAccountPolicyOpt,
     KanidmClientParser,
 };
-use kanidm_proto::cli::OpType;
 
 impl GroupAccountPolicyOpt {
     pub async fn exec(&self, opt: KanidmClientParser) {

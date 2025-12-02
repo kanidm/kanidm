@@ -21,6 +21,7 @@ impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
             uri = %request.uri(),
             version = ?request.version(),
             kopid = tracing::field::Empty, // filled in later
+            connection_address = tracing::field::Empty, // filled in later
             client_address = tracing::field::Empty, // filled in later
             status_code = tracing::field::Empty, // filled in later
             latency = tracing::field::Empty, // filled in later
@@ -35,8 +36,12 @@ impl<B> OnRequest<B> for DefaultOnRequestKanidmd {
     fn on_request(&mut self, request: &axum::http::Request<B>, span: &Span) {
         if let Some(client_conn_info) = request.extensions().get::<crate::https::ClientConnInfo>() {
             span.record(
-                "client_address",
+                "connection_address",
                 client_conn_info.connection_addr.to_string(),
+            );
+            span.record(
+                "client_address",
+                client_conn_info.client_ip_addr.to_string(),
             );
         };
     }
@@ -55,14 +60,15 @@ impl<B> tower_http::trace::OnResponse<B> for DefaultOnResponseKanidmd {
         if let Some(client_conn_info) = response.extensions().get::<crate::https::ClientConnInfo>()
         {
             span.record(
-                "connection_addr",
+                "connection_address",
                 client_conn_info.connection_addr.to_string(),
             );
             span.record(
-                "client_ip_addr",
+                "client_address",
                 client_conn_info.client_ip_addr.to_string(),
             );
         };
+
         let kopid = match response.headers().get(KOPID) {
             Some(val) => val.to_str().unwrap_or("<invalid kopid>"),
             None => "<unknown>",

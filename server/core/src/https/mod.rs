@@ -340,7 +340,10 @@ pub async fn create_https_server(
         .layer(from_fn(middleware::kopid_middleware))
         .merge(apidocs::router())
         // Apply Request Timeouts
-        .layer(TimeoutLayer::new(HTTPS_CLIENT_REQUEST_TIMEOUT))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            HTTPS_CLIENT_REQUEST_TIMEOUT,
+        ))
         // this MUST be the last functional layer before with_state else the span never starts and everything breaks.
         .layer(trace_layer)
         // OK except for the ip_address_middleware.

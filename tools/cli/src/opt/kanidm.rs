@@ -1047,6 +1047,14 @@ pub enum Oauth2Opt {
     /// the revoked key will not be considered valid.
     #[clap(name = "revoke-cryptographic-key")]
     RevokeCryptographicKey { name: String, key_id: String },
+    /// Disable the prompt that asks for user consent when first authorizing or when scopes change.
+    /// When disabled the user will be redirected to the app immediately. Defaults to being
+    /// enabled.
+    #[clap(name = "disable-consent-prompt")]
+    DisableConsentPrompt(Named),
+    /// Enable the regular user consent prompt.
+    #[clap(name = "enable-consent-prompt")]
+    EnableConsentPrompt(Named),
 }
 
 #[derive(Args, Debug, Clone)]
@@ -1389,10 +1397,7 @@ pub enum KanidmClientOpt {
     /// Login to an account to use with future cli operations
     Login(LoginOpt),
     /// Reauthenticate to access privileged functions of this account for a short period.
-    Reauth {
-        #[clap()]
-        mode: kanidm_proto::cli::OpType,
-    },
+    Reauth,
     /// Logout of an active cli session
     Logout(LogoutOpt),
     /// Manage active cli sessions

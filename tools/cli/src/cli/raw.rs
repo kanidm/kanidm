@@ -1,5 +1,5 @@
+use crate::OpType;
 use crate::{KanidmClientParser, OutputMode, RawOpt};
-use kanidm_proto::cli::OpType;
 use kanidm_proto::scim_v1::{
     client::{ScimEntryPostGeneric, ScimEntryPutGeneric},
     ScimEntryGetQuery,

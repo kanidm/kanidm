@@ -1,6 +1,7 @@
+use crate::OpType;
 use crate::{handle_client_error, DomainOpt, KanidmClientParser};
 use anyhow::{Context, Error};
-use kanidm_proto::{cli::OpType, internal::ImageValue};
+use kanidm_proto::internal::ImageValue;
 use std::fs::read;
 
 impl DomainOpt {
