@@ -105,16 +105,6 @@ macro_rules! try_from_entry {
             .map(|s| s.to_string())
             .ok_or(OperationError::MissingAttribute(Attribute::DisplayName))?;
 
-        let updated_at: Option<u64> = if let DbValueSetV2::Cid(cid) = $value
-            .get_ava_set(Attribute::LastModifiedCid)
-            .unwrap()
-            .to_db_valueset_v2()
-        {
-            cid.get(0).map(|c| c.timestamp.as_secs())
-        } else {
-            None
-        };
-
         let sync_parent_uuid = $value.get_ava_single_refer(Attribute::SyncParentUuid);
 
         let primary = $value
@@ -239,6 +229,16 @@ macro_rules! try_from_entry {
                 user_id: user_id.to_string(),
             }),
             _ => None,
+        };
+
+        let updated_at: Option<u64> = if let DbValueSetV2::Cid(cid) = $value
+            .get_ava_set(Attribute::LastModifiedCid)
+            .unwrap()
+            .to_db_valueset_v2()
+        {
+            cid.get(0).map(|c| c.timestamp.as_secs())
+        } else {
+            None
         };
 
         Ok(Account {
