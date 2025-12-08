@@ -1,7 +1,7 @@
+use crate::OpType;
 use crate::{
     handle_client_error, GraphCommonOpt, GraphType, KanidmClientParser, ObjectType, OutputMode,
 };
-use kanidm_proto::cli::OpType;
 use kanidm_proto::internal::Filter::{Eq, Or};
 
 impl GraphCommonOpt {

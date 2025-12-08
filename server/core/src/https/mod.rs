@@ -1,7 +1,7 @@
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use crate::config::{AddressSet, Configuration, ServerRole, TcpAddressInfo};
+use crate::config::{AddressSet, Configuration, TcpAddressInfo};
 use crate::tcp::process_client_addr;
 use crate::CoreAction;
 use axum::{
@@ -19,7 +19,7 @@ use futures::pin_mut;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
-use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
+use kanidm_proto::{config::ServerRole, constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::authentication::ClientCertInfo, status::StatusActor};
 use serde::de::DeserializeOwned;
 use sketching::*;
@@ -340,7 +340,10 @@ pub async fn create_https_server(
         .layer(from_fn(middleware::kopid_middleware))
         .merge(apidocs::router())
         // Apply Request Timeouts
-        .layer(TimeoutLayer::new(HTTPS_CLIENT_REQUEST_TIMEOUT))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            HTTPS_CLIENT_REQUEST_TIMEOUT,
+        ))
         // this MUST be the last functional layer before with_state else the span never starts and everything breaks.
         .layer(trace_layer)
         // OK except for the ip_address_middleware.

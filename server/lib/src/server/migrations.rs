@@ -68,39 +68,51 @@ impl QueryServer {
                     return Err(OperationError::MG0009InvalidTargetLevelForBootstrap);
                 }
             }
-        } else {
-            // Domain info was present, so we need to reflect that in our server
-            // domain structures. If we don't do this, the in memory domain level
-            // is stuck at 0 which can confuse init domain info below.
-            //
-            // This also is where the former domain taint flag will be loaded to
-            // d_info so that if the *previous* execution of the database was
-            // a devel version, we'll still trigger the forced remigration in
-            // in the case that we are moving from dev -> stable.
-            write_txn.force_domain_reload();
 
-            write_txn.reload()?;
-
-            // Indicate the schema is now ready, which allows dyngroups to work when they
-            // are created in the next phase of migrations.
-            write_txn.set_phase(ServerPhase::SchemaReady);
-
-            // #2756 - if we *aren't* creating the base IDM entries, then we
-            // need to force dyn groups to reload since we're now at schema
-            // ready. This is done indirectly by ... reloading the schema again.
-            //
-            // This is because dyngroups don't load until server phase >= schemaready
-            // and the reload path for these is either a change in the dyngroup entry
-            // itself or a change to schema reloading. Since we aren't changing the
-            // dyngroup here, we have to go via the schema reload path.
-            write_txn.force_schema_reload();
-
-            // Reload as init idm affects access controls.
-            write_txn.reload()?;
-
-            // Domain info is now ready and reloaded, we can proceed.
-            write_txn.set_phase(ServerPhase::DomainInfoReady);
+            write_txn
+                .internal_apply_domain_migration(domain_target_level)
+                .map(|()| {
+                    warn!(
+                        "Domain level has been bootstrapped to {}",
+                        domain_target_level
+                    );
+                })?;
         }
+
+        // These steps apply both to bootstrapping and normal startup, since we now have
+        // a DB with data populated in either path.
+
+        // Domain info is now present, so we need to reflect that in our server
+        // domain structures. If we don't do this, the in memory domain level
+        // is stuck at 0 which can confuse init domain info below.
+        //
+        // This also is where the former domain taint flag will be loaded to
+        // d_info so that if the *previous* execution of the database was
+        // a devel version, we'll still trigger the forced remigration in
+        // in the case that we are moving from dev -> stable.
+        write_txn.force_domain_reload();
+
+        write_txn.reload()?;
+
+        // Indicate the schema is now ready, which allows dyngroups to work when they
+        // are created in the next phase of migrations.
+        write_txn.set_phase(ServerPhase::SchemaReady);
+
+        // #2756 - if we *aren't* creating the base IDM entries, then we
+        // need to force dyn groups to reload since we're now at schema
+        // ready. This is done indirectly by ... reloading the schema again.
+        //
+        // This is because dyngroups don't load until server phase >= schemaready
+        // and the reload path for these is either a change in the dyngroup entry
+        // itself or a change to schema reloading. Since we aren't changing the
+        // dyngroup here, we have to go via the schema reload path.
+        write_txn.force_schema_reload();
+
+        // Reload as init idm affects access controls.
+        write_txn.reload()?;
+
+        // Domain info is now ready and reloaded, we can proceed.
+        write_txn.set_phase(ServerPhase::DomainInfoReady);
 
         // This is the start of domain info related migrations which we will need in future
         // to handle replication. Due to the access control rework, and the addition of "managed by"
@@ -122,6 +134,15 @@ impl QueryServer {
 
         // If the database domain info is a lower version than our target level, we reload.
         if domain_info_version < domain_target_level {
+            if (domain_target_level - domain_info_version) > DOMAIN_MIGRATION_SKIPS {
+                error!(
+                    "UNABLE TO PROCEED. You are attempting a skip update which is NOT SUPPORTED."
+                );
+                error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
+                error!(domain_previous_version = ?domain_info_version, domain_target_version = ?domain_target_level, domain_migration_steps_limit = ?DOMAIN_MIGRATION_SKIPS);
+                return Err(OperationError::MG0008SkipUpgradeAttempted);
+            }
+
             write_txn
                 .internal_apply_domain_migration(domain_target_level)
                 .map(|()| {
@@ -253,7 +274,14 @@ impl QueryServerWriteTransaction<'_> {
         &mut self,
         e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
-        self.internal_migrate_or_create_ignore_attrs(e, &[])
+        // NOTE: Ignoring an attribute only affects the migration phase, not create.
+        self.internal_migrate_or_create_ignore_attrs(
+            e,
+            &[
+                // If the credential type is present, we don't want to touch it.
+                Attribute::CredentialTypeMinimum,
+            ],
+        )
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -280,9 +308,9 @@ impl QueryServerWriteTransaction<'_> {
         }
     }
 
-    /// This is the same as [QueryServerWriteTransaction::internal_migrate_or_create] but it will ignore the specified
-    /// list of attributes, so that if an admin has modified those values then we don't
-    /// stomp them.
+    /// This is the same as [QueryServerWriteTransaction::internal_migrate_or_create]
+    /// but it will ignore the specified list of attributes, so that if an admin has
+    /// modified those values then we don't stomp them.
     #[instrument(level = "trace", skip_all)]
     fn internal_migrate_or_create_ignore_attrs(
         &mut self,
@@ -876,6 +904,8 @@ impl QueryServerReadTransaction<'_> {
 mod tests {
     // use super::{ProtoDomainUpgradeCheckItem, ProtoDomainUpgradeCheckStatus};
     use crate::prelude::*;
+    use crate::value::CredentialType;
+    use crate::valueset::ValueSetCredentialType;
 
     #[qs_test]
     async fn test_init_idempotent_schema_core(server: &QueryServer) {
@@ -901,6 +931,81 @@ mod tests {
             assert!(server_txn.initialise_schema_core().is_ok());
             assert!(server_txn.commit().is_ok());
         }
+    }
+
+    /// This test is for ongoing/longterm checks over the previous to current version.
+    /// This is in contrast to the specific version checks below that are often to
+    /// test a version to version migration.
+    #[qs_test(domain_level=DOMAIN_PREVIOUS_TGT_LEVEL)]
+    async fn test_migrations_dl_previous_to_dl_target(server: &QueryServer) {
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_PREVIOUS_TGT_LEVEL);
+
+        // == SETUP ==
+
+        // Add a member to a group - it should not be removed.
+        // Remove a default member from a group - it should be returned.
+        let modlist = ModifyList::new_set(
+            Attribute::Member,
+            // This achieves both because this removes IDM_ADMIN from the group
+            // while setting only anon as a member.
+            ValueSetRefer::new(UUID_ANONYMOUS),
+        );
+        write_txn
+            .internal_modify_uuid(UUID_IDM_ADMINS, &modlist)
+            .expect("Unable to modify CredentialTypeMinimum");
+
+        // Change default account policy - it should not be reverted.
+        let modlist = ModifyList::new_set(
+            Attribute::CredentialTypeMinimum,
+            ValueSetCredentialType::new(CredentialType::Any),
+        );
+        write_txn
+            .internal_modify_uuid(UUID_IDM_ALL_PERSONS, &modlist)
+            .expect("Unable to modify CredentialTypeMinimum");
+
+        write_txn.commit().expect("Unable to commit");
+
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        // == Increase the version ==
+        write_txn
+            .internal_apply_domain_migration(DOMAIN_TGT_LEVEL)
+            .expect("Unable to set domain level");
+
+        // post migration verification.
+        // Check that our group is as we left it
+        let idm_admins_entry = write_txn
+            .internal_search_uuid(UUID_IDM_ADMINS)
+            .expect("Unable to retrieve all persons");
+
+        let members = idm_admins_entry
+            .get_ava_refer(Attribute::Member)
+            .expect("No members present");
+
+        // Still present
+        assert!(members.contains(&UUID_ANONYMOUS));
+        // Was reverted
+        assert!(members.contains(&UUID_IDM_ADMIN));
+
+        // Check that the account policy did not revert.
+        let all_persons_entry = write_txn
+            .internal_search_uuid(UUID_IDM_ALL_PERSONS)
+            .expect("Unable to retrieve all persons");
+
+        assert_eq!(
+            all_persons_entry.get_ava_single_credential_type(Attribute::CredentialTypeMinimum),
+            Some(CredentialType::Any)
+        );
+
+        write_txn.commit().expect("Unable to commit");
     }
 
     #[qs_test(domain_level=DOMAIN_LEVEL_10)]

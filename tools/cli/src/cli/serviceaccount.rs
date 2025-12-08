@@ -1,5 +1,5 @@
 use crate::common::try_expire_at_from_string;
-use kanidm_proto::cli::OpType;
+use crate::OpType;
 use kanidm_proto::constants::{
     ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER, ATTR_SSH_PUBLICKEY,
 };

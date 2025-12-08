@@ -197,7 +197,7 @@ pub struct HomeDirectoryInfo {
     pub uid: u32,
     pub gid: u32,
     pub name: String,
-    pub aliases: Vec<String>,
+    pub alias: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -366,8 +366,9 @@ enum OauthRSType {
     Basic {
         authz_secret: String,
         enable_pkce: bool,
+        enable_consent_prompt: bool,
     },
-    // Public clients must have pkce.
+    // Public clients must have pkce and consent prompt
     Public {
         allow_localhost_redirect: bool,
     },
@@ -389,9 +390,14 @@ impl std::fmt::Debug for OauthRSType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut ds = f.debug_struct("OauthRSType");
         match self {
-            OauthRSType::Basic { enable_pkce, .. } => {
-                ds.field("type", &"basic").field("pkce", enable_pkce)
-            }
+            OauthRSType::Basic {
+                enable_pkce,
+                enable_consent_prompt,
+                ..
+            } => ds
+                .field("type", &"basic")
+                .field("pkce", enable_pkce)
+                .field("consent_prompt", enable_consent_prompt),
             OauthRSType::Public {
                 allow_localhost_redirect,
             } => ds
@@ -506,6 +512,18 @@ impl Oauth2RS {
     /// Does this RS have device flow enabled?
     pub fn device_flow_enabled(&self) -> bool {
         self.device_authorization_endpoint.is_some()
+    }
+
+    /// Does this client have the consent prompt enabled?
+    /// As per RFC-6819 5.2.3.2 it can't be disabled on Public clients
+    pub fn enable_consent_prompt(&self) -> bool {
+        match &self.type_ {
+            OauthRSType::Basic {
+                enable_consent_prompt,
+                ..
+            } => *enable_consent_prompt,
+            OauthRSType::Public { .. } => true,
+        }
     }
 }
 
@@ -637,9 +655,14 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                         .map(|e| !e)
                         .unwrap_or(true);
 
+                    let enable_consent_prompt = ent
+                        .get_ava_single_bool(Attribute::OAuth2ConsentPromptEnable)
+                        .unwrap_or(true);
+
                     OauthRSType::Basic {
                         authz_secret,
                         enable_pkce,
+                        enable_consent_prompt,
                     }
                 } else if ent.attribute_equality(
                     Attribute::Class,
@@ -874,6 +897,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                         }
                         false => None,
                     };
+
                 let client_id = name.clone();
                 let rscfg = Oauth2RS {
                     name,
@@ -2203,13 +2227,15 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let session_id = ident.get_session_id();
 
-        if consent_previously_granted {
+        if consent_previously_granted || !o2rs.enable_consent_prompt() {
             if event_enabled!(tracing::Level::DEBUG) {
                 let pretty_scopes: Vec<String> =
                     granted_scopes.iter().map(|s| s.to_owned()).collect();
                 debug!(
-                    "User has previously consented, permitting with scopes: {}",
-                    pretty_scopes.join(",")
+                    pretty_scopes = pretty_scopes.join(","),
+                    prompt_enabled = o2rs.enable_consent_prompt(),
+                    previously_granted = consent_previously_granted,
+                    "Consent flow passed"
                 );
             }
 
@@ -7626,6 +7652,7 @@ mod tests {
                 OauthRSType::Basic {
                     authz_secret: "supersecret".to_string(),
                     enable_pkce: false,
+                    enable_consent_prompt: true,
                 },
                 false,
             ),
@@ -7680,5 +7707,50 @@ mod tests {
         let AuthoriseResponse::ConsentRequested { .. } = consent_request else {
             unreachable!("Expected a ConsentRequested response, got: {consent_request:?}");
         };
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_consent_prompt_disabled(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, ident, o2rs_uuid) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(
+                o2rs_uuid,
+                &ModifyList::new_purge_and_set(
+                    Attribute::OAuth2ConsentPromptEnable,
+                    Value::new_bool(false),
+                ),
+            )
+            .expect("Unable to disable consent prompt");
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Assert there are no consent maps yet so consent should be required if not disabled
+        assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let pkce_secret = PkceS256Secret::default();
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            &ident,
+            ct,
+            pkce_secret.to_request(),
+            OAUTH2_SCOPE_OPENID.to_string()
+        );
+
+        // Should be permitted
+        let AuthoriseResponse::Permitted(_permitted) = consent_request else {
+            unreachable!();
+        };
+
+        // Assert that it still doesn't have any consent maps
+        assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
     }
 }

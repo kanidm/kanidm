@@ -187,6 +187,7 @@ pub const ATTR_OAUTH2_TOKEN_ENDPOINT: &str = "oauth2_token_endpoint";
 pub const ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID: &str = "oauth2_account_credential_uuid";
 pub const ATTR_OAUTH2_ACCOUNT_PROVIDER: &str = "oauth2_account_provider";
 pub const ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID: &str = "oauth2_account_unique_user_id";
+pub const ATTR_OAUTH2_CONSENT_PROMPT_ENABLE: &str = "oauth2_consent_prompt_enable";
 pub const ATTR_OBJECTCLASS: &str = "objectclass";
 pub const ATTR_OTHER_NO_INDEX: &str = "other-no-index";
 pub const ATTR_PASSKEYS: &str = "passkeys";

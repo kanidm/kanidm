@@ -1,7 +1,7 @@
+use crate::OpType;
 use crate::{handle_client_error, Oauth2Opt, OutputMode};
 use crate::{KanidmClientParser, Oauth2ClaimMapJoin};
 use anyhow::{Context, Error};
-use kanidm_proto::cli::OpType;
 use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin};
 use std::fs::read;
 use std::process::exit;
@@ -472,6 +472,26 @@ impl Oauth2Opt {
                 let client = opt.to_client(OpType::Write).await;
                 match client
                     .idm_oauth2_rs_revoke_key(name.as_str(), key_id.as_str())
+                    .await
+                {
+                    Ok(_) => opt.output_mode.print_message("Success"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
+            Oauth2Opt::DisableConsentPrompt(nopt) => {
+                let client = opt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_rs_disable_consent_prompt(nopt.name.as_str())
+                    .await
+                {
+                    Ok(_) => opt.output_mode.print_message("Success"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
+            Oauth2Opt::EnableConsentPrompt(nopt) => {
+                let client = opt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_rs_enable_consent_prompt(nopt.name.as_str())
                     .await
                 {
                     Ok(_) => opt.output_mode.print_message("Success"),

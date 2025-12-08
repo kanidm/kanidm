@@ -725,6 +725,29 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_OAUTH2_MANAGE_BASIC: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_oauth2_manage_basic",
+        uuid: UUID_IDM_ACP_OAUTH2_MANAGE_BASIC,
+        description: "Builtin IDM Control for managing Basic OAuth2 resource server integrations.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::OAuth2ResourceServerBasic),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![Attribute::OAuth2ConsentPromptEnable,],
+        modify_removed_attrs: vec![Attribute::OAuth2ConsentPromptEnable,],
+        modify_present_attrs: vec![Attribute::OAuth2ConsentPromptEnable,],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_DOMAIN_ADMIN_DL9: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
