@@ -188,7 +188,7 @@ http-body-util = "0.1"
 hyper = { version = "1.8.1", features = [
     "full",
 ] } # hyper full includes client/server/http2
-hyper-util = { version = "0.1.18", features = ["server", "tokio"] }
+hyper-util = { version = "0.1.19", features = ["server", "tokio"] }
 idlset = "^0.2.5"
 image = { version = "0.25.9", default-features = false, features = [
     "gif",
@@ -196,13 +196,13 @@ image = { version = "0.25.9", default-features = false, features = [
     "webp",
 ] }
 itertools = "0.14.0"
-jsonschema = "0.37.3"
+jsonschema = "0.37.4"
 # REMOVE this
 lazy_static = "^1.5.0"
 ldap3_client = "^0.6.2"
 ldap3_proto = { version = "^0.6.2", features = ["serde"] }
 lettre = { version = "0.11.19", default-features = false }
-libc = "0.2.177"
+libc = "0.2.178"
 libnss = "^0.9.0"
 lodepng = "3.11.0"
 lru = "0.16.2"
@@ -284,7 +284,7 @@ url = "^2.5.2"
 urlencoding = "2.1.3"
 utoipa = { version = "5.4.0", features = ["url", "uuid"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["reqwest", "vendored"] }
-uuid = "^1.18.1"
+uuid = "^1.19.0"
 webauthn-authenticator-rs = { version = "0.5.3", features = [
     "softpasskey",
     "softtoken",
