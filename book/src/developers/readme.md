@@ -346,7 +346,7 @@ administration locally.
 
 ### Raw actions
 
-> [!NOTICE]
+> [!NOTE]
 >
 > It's not recommended to use these tools outside of extremely complex or advanced development requirements. These are a
 > last resort!
