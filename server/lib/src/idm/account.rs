@@ -231,15 +231,13 @@ macro_rules! try_from_entry {
             _ => None,
         };
 
-        let updated_at: Option<u64> = if let DbValueSetV2::Cid(cid) = $value
-            .get_ava_set(Attribute::LastModifiedCid)
-            .unwrap()
-            .to_db_valueset_v2()
-        {
-            cid.get(0).map(|c| c.timestamp.as_secs())
-        } else {
-            None
-        };
+        let updated_at: Option<u64> =
+            $value
+                .get_ava_set(Attribute::LastModifiedCid)
+                .and_then(|u| match u.to_db_valueset_v2() {
+                    DbValueSetV2::Cid(cid) => cid.get(0).map(|c| c.timestamp.as_secs()),
+                    _ => None,
+                });
 
         Ok(Account {
             uuid,
