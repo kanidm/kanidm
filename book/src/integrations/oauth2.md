@@ -43,14 +43,8 @@ Kanidm will expose its OAuth2 APIs at the following URLs, substituting `:client_
 <!-- markdownlint-disable MD033 -->
 
 <dl>
-<dt>
-
-[OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html) URL **(recommended)**
-
-</dt>
-<dd>
-
-`https://idm.example.com/oauth2/openid/:client_id:/.well-known/openid-configuration`
+<dt>[OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html) URL **(recommended)**</dt>
+<dd>`https://idm.example.com/oauth2/openid/:client_id:/.well-known/openid-configuration`
 
 This document includes all the URLs and attributes an app needs to be able to authenticate using OIDC with Kanidm,
 _except_ for the `client_id` and `client_secret`.
@@ -60,130 +54,43 @@ without needing to code or configure anything special for Kanidm (or another pro
 
 **Note:** some apps automatically append `/.well-known/openid-configuration` to the end of an OIDC Discovery URL, so you
 may need to omit that.
-
-<dt>
-
-[RFC 8414 OAuth 2.0 Authorisation Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414) URL **(recommended)**
-
-</dt>
-
-<dd>
-
-`https://idm.example.com/oauth2/openid/:client_id:/.well-known/oauth-authorization-server`
-
 </dd>
 
-<dt>
+<dt>[RFC 8414 OAuth 2.0 Authorisation Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414) URL **(recommended)**</dt>
+<dd>`https://idm.example.com/oauth2/openid/:client_id:/.well-known/oauth-authorization-server`</dd>
 
-[WebFinger URL](#webfinger) **(discouraged)**
-
-</dt>
-
-<dd>
-
-`https://idm.example.com/oauth2/openid/:client_id:/.well-known/webfinger`
+<dt>[WebFinger URL](#webfinger) **(discouraged)**</dt>
+<dd>`https://idm.example.com/oauth2/openid/:client_id:/.well-known/webfinger`
 
 See [the WebFinger section](#webfinger) for more details, as there a number of caveats for WebFinger clients.
-
 </dd>
 
-<dt>
+<dt>User auth</dt>
+<dd>`https://idm.example.com/ui/oauth2`</dd>
 
-User auth
-
-</dt>
-
-<dd>
-
-`https://idm.example.com/ui/oauth2`
-
-</dd>
-
-<dt>
-
-API auth
-
-</dt>
-
-<dd>
-
-`https://idm.example.com/oauth2/authorise`
+<dt>API auth</dt>
+<dd>`https://idm.example.com/oauth2/authorise`
 
 **Note:** "authorise" is spelled the British English (non-OED) way.
-
 </dd>
 
-<dt>
+<dt>Token endpoint</dt>
+<dd>`https://idm.example.com/oauth2/token`</dd>
 
-Token endpoint
+<dt>[RFC 7662 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662) URL</dt>
+<dd>`https://idm.example.com/oauth2/token/introspect`</dd>
 
-</dt>
+<dt>[RFC 7662 token revocation](https://datatracker.ietf.org/doc/html/rfc7009) URL</dt>
+<dd>`https://idm.example.com/oauth2/token/revoke`</dd>
 
-<dd>
+<dt>OpenID Connect Issuer URL</dt>
+<dd>`https://idm.example.com/oauth2/openid/:client_id:`</dd>
 
-`https://idm.example.com/oauth2/token`
+<dt>OpenID Connect user info</dt>
+<dd>`https://idm.example.com/oauth2/openid/:client_id:/userinfo`</dd>
 
-</dd>
-
-<dt>
-
-[RFC 7662 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662) URL
-
-</dt>
-
-<dd>
-
-`https://idm.example.com/oauth2/token/introspect`
-
-</dd>
-
-<dt>
-
-[RFC 7662 token revocation](https://datatracker.ietf.org/doc/html/rfc7009) URL
-
-</dt>
-
-<dd>
-
-`https://idm.example.com/oauth2/token/revoke`
-
-</dd>
-
-<dt>
-
-OpenID Connect Issuer URL
-
-</dt>
-
-<dd>
-
-`https://idm.example.com/oauth2/openid/:client_id:`
-
-</dd>
-
-<dt>
-
-OpenID Connect user info
-
-</dt>
-
-<dd>
-
-`https://idm.example.com/oauth2/openid/:client_id:/userinfo`
-
-</dd>
-
-<dt>
-
-Token signing public key
-
-</dt>
-
-<dd>
-
-`https://idm.example.com/oauth2/openid/:client_id:/public_key.jwk`
-
-</dd>
+<dt>Token signing public key</dt>
+<dd>`https://idm.example.com/oauth2/openid/:client_id:/public_key.jwk`</dd>
 
 </dl>
 

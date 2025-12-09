@@ -8,11 +8,7 @@ title = "Kanidm Administration"
 [output.html]
 edit-url-template = "https://github.com/kanidm/kanidm/edit/master/book/{path}"
 git-repository-url = "https://github.com/kanidm/kanidm"
-git-repository-icon = "fa-github"
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
-
-# Github-flavoured markdown alerts, install mdbook-alerts
-[preprocessor.alerts]
 
 # mermaid graph rendering, you need mdbook-mermaid
 [preprocessor.mermaid]
