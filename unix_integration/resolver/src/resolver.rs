@@ -80,7 +80,7 @@ impl AuthSession {
     pub fn is_complete(&self) -> bool {
         match &self {
             Self::Success | Self::Denied => true,
-            _ => false,
+            Self::Online { .. } | Self::Offline { .. } | Self::System { .. } => false,
         }
     }
 }
