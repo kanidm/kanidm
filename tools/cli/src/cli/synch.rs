@@ -1,6 +1,6 @@
+use crate::OpType;
 use crate::{handle_client_error, KanidmClientParser, SynchOpt};
 use dialoguer::Confirm;
-use kanidm_proto::cli::OpType;
 
 impl SynchOpt {
     pub async fn exec(&self, opt: KanidmClientParser) {

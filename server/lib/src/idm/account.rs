@@ -340,7 +340,6 @@ impl Account {
         ct: Duration,
         account_policy: &ResolvedAccountPolicy,
     ) -> Option<UserAuthToken> {
-        // TODO: Apply policy to this expiry time.
         // We have to remove the nanoseconds because when we transmit this / serialise it we drop
         // the nanoseconds, but if we haven't done a serialise on the server our db cache has the
         // ns value which breaks some checks.
@@ -351,17 +350,13 @@ impl Account {
         let limit_search_max_filter_test = account_policy.limit_search_max_filter_test();
 
         // Note that currently the auth_session time comes from policy, but the already-privileged
-        // session bound is hardcoded.
-        let expiry = Some(
-            OffsetDateTime::UNIX_EPOCH
-                + ct
-                + Duration::from_secs(account_policy.authsession_expiry() as u64),
-        );
-        let limited_expiry = Some(
-            OffsetDateTime::UNIX_EPOCH
-                + ct
-                + Duration::from_secs(DEFAULT_AUTH_SESSION_LIMITED_EXPIRY as u64),
-        );
+        // session bound is hardcoded. This mostly affects admin/idm_admin breakglass accounts.
+        let expiry = OffsetDateTime::UNIX_EPOCH
+            + ct
+            + Duration::from_secs(account_policy.authsession_expiry() as u64);
+        let limited_expiry = OffsetDateTime::UNIX_EPOCH
+            + ct
+            + Duration::from_secs(DEFAULT_AUTH_SESSION_LIMITED_EXPIRY as u64);
 
         let (purpose, expiry) = match scope {
             // Issue an invalid/expired session.
@@ -374,14 +369,22 @@ impl Account {
             SessionScope::ReadOnly => (UatPurpose::ReadOnly, expiry),
             SessionScope::ReadWrite => {
                 // These sessions are always rw, and so have limited life.
-                (UatPurpose::ReadWrite { expiry }, limited_expiry)
+                // Ensure that we take the lower of the two bounds.
+                let capped = std::cmp::min(expiry, limited_expiry);
+
+                (
+                    UatPurpose::ReadWrite {
+                        expiry: Some(capped),
+                    },
+                    capped,
+                )
             }
             SessionScope::PrivilegeCapable => (UatPurpose::ReadWrite { expiry: None }, expiry),
         };
 
         Some(UserAuthToken {
             session_id,
-            expiry,
+            expiry: Some(expiry),
             issued_at,
             purpose,
             uuid: self.uuid,

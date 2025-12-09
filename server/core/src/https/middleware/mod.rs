@@ -129,8 +129,11 @@ async fn ip_address_middleware_inner(
         .map(|range| range.contains(&connection_ip_addr))
         .unwrap_or_default();
 
+    let maybe_x_forward_for = request.headers().get(X_FORWARDED_FOR_HEADER);
+
     let client_ip_addr = if trust_x_forward_for {
-        if let Some(x_forward_for) = request.headers().get(X_FORWARDED_FOR_HEADER) {
+        if let Some(x_forward_for) = maybe_x_forward_for {
+            debug!("processing {} header", X_FORWARDED_FOR);
             // X forward for may be comma separated.
             let first = x_forward_for
                 .to_str()
@@ -138,22 +141,31 @@ async fn ip_address_middleware_inner(
                     // Split on an optional comma, return the first result.
                     s.split(',').next().unwrap_or(s))
                 .map_err(|_| {
+                    error!("{} contains invalid data structure", X_FORWARDED_FOR);
                     (
                         StatusCode::BAD_REQUEST,
-                        "X-Forwarded-For contains invalid data",
+                        "x-forwarded-for contains invalid data structure",
                     )
                 })?;
 
             first.parse::<IpAddr>().map_err(|_| {
+                error!("{} contains invalid ip address", X_FORWARDED_FOR);
                 (
                     StatusCode::BAD_REQUEST,
-                    "X-Forwarded-For contains invalid ip addr",
+                    "X-Forwarded-For contains invalid ip address",
                 )
             })?
         } else {
+            debug!(
+                "{} header not present from a trusted connection",
+                X_FORWARDED_FOR
+            );
             client_ip_addr
         }
     } else {
+        if maybe_x_forward_for.is_some() {
+            debug!("Ignoring {} from untrusted connection", X_FORWARDED_FOR);
+        }
         // This can either be the client_addr == connection_addr if there are
         // no ip address trust sources, or this is the value as reported by
         // proxy protocol header. If the proxy protocol header is used, then

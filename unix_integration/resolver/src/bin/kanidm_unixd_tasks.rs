@@ -15,7 +15,7 @@ use kanidm_unix_common::constants::{
     DEFAULT_CONFIG_PATH, SYSTEM_GROUP_PATH, SYSTEM_PASSWD_PATH, SYSTEM_SHADOW_PATH,
 };
 use kanidm_unix_common::json_codec::JsonCodec;
-use kanidm_unix_common::unix_config::UnixdConfig;
+use kanidm_unix_common::unix_config::{HomeStrategy, UnixdConfig};
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow, EtcDb};
 use kanidm_unix_common::unix_proto::{
     HomeDirectoryInfo, TaskRequest, TaskRequestFrame, TaskResponse,
@@ -64,6 +64,7 @@ fn create_home_directory(
     info: &HomeDirectoryInfo,
     home_prefix_path: &Path,
     home_mount_prefix_path: Option<&PathBuf>,
+    home_strategy: &HomeStrategy,
     use_etc_skel: bool,
     use_selinux: bool,
 ) -> Result<(), String> {
@@ -121,24 +122,37 @@ fn create_home_directory(
         selinux_util::SelinuxLabeler::new_noop()
     };
 
+    // In the ZFS strategy, we will need to check if the filesystem
+    // exists, rather than the location it's mounted to.
+    let hd_mount_path_exists = match home_strategy {
+        HomeStrategy::Symlink => hd_mount_path.exists(),
+    };
+
     // Does the home directory exist? This is checking the *true* home mount storage.
-    if !hd_mount_path.exists() {
+    if !hd_mount_path_exists {
         // Set the SELinux security context for file creation
         #[cfg(all(target_family = "unix", feature = "selinux"))]
         labeler.do_setfscreatecon_for_path()?;
 
-        // Set a umask
-        let before = unsafe { umask(0o0027) };
+        // This is affected by the mount strategy
+        // because in a future ZFS home dir setup, we'll need to be able to make
+        // the zfs volume for the user in this step.
+        match home_strategy {
+            HomeStrategy::Symlink => {
+                // Set a umask
+                let before = unsafe { umask(0o0027) };
 
-        // Create the dir
-        if let Err(e) = fs::create_dir_all(&hd_mount_path) {
-            let _ = unsafe { umask(before) };
-            error!(err = ?e, ?hd_mount_path, "Unable to create directory");
-            return Err(format!("{e:?}"));
+                // Create the home directory.
+                if let Err(e) = fs::create_dir_all(&hd_mount_path) {
+                    let _ = unsafe { umask(before) };
+                    error!(err = ?e, ?hd_mount_path, "Unable to create directory");
+                    return Err(format!("{e:?}"));
+                }
+                let _ = unsafe { umask(before) };
+
+                chown(&hd_mount_path, info.gid)?;
+            }
         }
-        let _ = unsafe { umask(before) };
-
-        chown(&hd_mount_path, info.gid)?;
 
         // Copy in structure from /etc/skel/ if present
         let skel_dir = Path::new("/etc/skel/");
@@ -185,98 +199,132 @@ fn create_home_directory(
     #[cfg(all(target_family = "unix", feature = "selinux"))]
     labeler.set_default_context_for_fs_objects()?;
 
-    // Do the aliases exist?
-    for alias in info.aliases.iter() {
-        // Sanity check the alias.
-        // let alias = alias.replace(".", "").replace("/", "").replace("\\", "");
-        let alias = alias.trim_start_matches('.').replace(['/', '\\'], "");
+    let Some(alias) = info.alias.as_ref() else {
+        // No alias for the home dir, lets go.
+        debug!("No home directory alias present, sucess.");
+        return Ok(());
+    };
 
-        let alias_path = Path::join(&home_prefix_path, &alias);
+    // Sanity check the alias.
+    // let alias = alias.replace(".", "").replace("/", "").replace("\\", "");
+    let alias = alias.trim_start_matches('.').replace(['/', '\\'], "");
 
-        // Assert the resulting alias path is consistent and correct within the home_prefix.
-        if let Some(pp) = alias_path.parent() {
-            if pp != home_prefix_path {
-                return Err("Invalid home directory alias - not within home_prefix".to_string());
-            }
-        } else {
-            return Err("Invalid/Corrupt alias directory path - no prefix found".to_string());
+    let alias_path = Path::join(&home_prefix_path, &alias);
+
+    // Assert the resulting alias path is consistent and correct within the home_prefix.
+    if let Some(pp) = alias_path.parent() {
+        if pp != home_prefix_path {
+            return Err("Invalid home directory alias - not within home_prefix".to_string());
         }
+    } else {
+        return Err("Invalid/Corrupt alias directory path - no prefix found".to_string());
+    }
 
-        if alias_path.exists() {
-            debug!("checking symlink {:?} -> {:?}", alias_path, hd_mount_path);
-            let attr = match fs::symlink_metadata(&alias_path) {
-                Ok(a) => a,
-                Err(e) => {
-                    error!(err = ?e, ?alias_path, "Unable to read alias path metadata");
-                    return Err(format!("{e:?}"));
-                }
-            };
+    match home_strategy {
+        HomeStrategy::Symlink => home_alias_update_symlink(&alias_path, &hd_mount_path),
+    }
+}
 
-            if attr.file_type().is_symlink() {
-                // If already correct, skip churn.
-                match fs::read_link(&alias_path) {
-                    Ok(current_target) if current_target == hd_mount_path => {
-                        debug!(
-                            ?alias_path,
-                            ?current_target,
-                            "alias symlink already correct, skipping update"
-                        );
-                        continue;
-                    }
-                    Ok(current_target) => {
-                        debug!(
-                            ?alias_path,
-                            ?current_target,
-                            ?hd_mount_path,
-                            "alias symlink target differs, updating atomically"
-                        );
-                    }
-                    Err(e) => {
-                        warn!(
-                            err=?e, ?alias_path,
-                            "unable to read existing symlink target, will replace atomically"
-                        );
-                    }
-                }
+fn home_alias_update_symlink(alias_path: &Path, hd_mount_path: &Path) -> Result<(), String> {
+    if !alias_path.exists() {
+        // Does not exist. Create.
+        debug!("creating symlink {:?} -> {:?}", alias_path, hd_mount_path);
+        if let Err(e) = symlink(hd_mount_path, alias_path) {
+            error!(err = ?e, ?alias_path, "Unable to create alias path");
+            return Err(format!("{e:?}"));
+        }
+        return Ok(());
+    }
 
-                // Atomic replace: create temp symlink in same dir, then rename over existing.
-                let tmp = alias_path.with_extension("tmp");
-                // Best-effort cleanup of any stale tmp.
-                let _ = fs::remove_file(&tmp);
+    debug!("checking symlink {:?} -> {:?}", alias_path, hd_mount_path);
+    let attr = match fs::symlink_metadata(alias_path) {
+        Ok(a) => a,
+        Err(e) => {
+            error!(err = ?e, ?alias_path, "Unable to read alias path metadata");
+            return Err(format!("{e:?}"));
+        }
+    };
 
-                if let Err(e) = symlink(&hd_mount_path, &tmp) {
-                    error!(err=?e, ?tmp, "Unable to create temporary alias symlink");
-                    return Err(format!("{e:?}"));
-                }
+    if !attr.file_type().is_symlink() {
+        warn!(
+            ?alias_path,
+            ?hd_mount_path,
+            "home directory alias path is not a symlink, unable to update"
+        );
+        return Ok(());
+    }
 
-                // Rename is atomic within the same directory; no disappearance window.
-                if let Err(e) = fs::rename(&tmp, &alias_path) {
-                    error!(err=?e, from=?tmp, to=?alias_path, "Unable to atomically replace alias symlink");
-                    // Cleanup temp on failure.
-                    let _ = fs::remove_file(&tmp);
-                    return Err(format!("{e:?}"));
-                }
-
-                debug!(
-                    "alias symlink updated atomically {:?} -> {:?}",
-                    alias_path, hd_mount_path
-                );
-            } else {
-                warn!(
-                    ?alias_path,
-                    ?hd_mount_path,
-                    "home directory alias path is not a symlink, unable to update"
-                );
-            }
-        } else {
-            // Does not exist. Create.
-            debug!("creating symlink {:?} -> {:?}", alias_path, hd_mount_path);
-            if let Err(e) = symlink(&hd_mount_path, &alias_path) {
-                error!(err = ?e, ?alias_path, "Unable to create alias path");
-                return Err(format!("{e:?}"));
-            }
+    // If already correct, skip churn.
+    match fs::read_link(alias_path) {
+        Ok(current_target) if current_target == hd_mount_path => {
+            debug!(
+                ?alias_path,
+                ?current_target,
+                "alias symlink already correct, skipping update"
+            );
+            return Ok(());
+        }
+        Ok(current_target) => {
+            debug!(
+                ?alias_path,
+                ?current_target,
+                ?hd_mount_path,
+                "alias symlink target differs, updating atomically"
+            );
+        }
+        Err(e) => {
+            warn!(
+                err=?e, ?alias_path,
+                "unable to read existing symlink target, will replace atomically"
+            );
         }
     }
+
+    // Atomic replace: create temp symlink in same dir, then rename over existing.
+    let alias_path_tmp = alias_path.with_extension("tmp");
+
+    if alias_path_tmp.exists() {
+        debug!("checking symlink temp {:?}", alias_path_tmp);
+        let attr = match fs::symlink_metadata(&alias_path_tmp) {
+            Ok(a) => a,
+            Err(e) => {
+                error!(err = ?e, ?alias_path_tmp, "Unable to read alias path temp metadata");
+                return Err(format!("{e:?}"));
+            }
+        };
+
+        if !attr.file_type().is_symlink() {
+            warn!(
+                ?alias_path,
+                ?alias_path_tmp,
+                ?hd_mount_path,
+                "home directory alias path temporary update location already exists, and is not a symlink, unable to update"
+            );
+            return Ok(());
+        }
+    }
+
+    // Best-effort cleanup of any stale tmp.
+    let _ = fs::remove_file(&alias_path_tmp);
+
+    if let Err(e) = symlink(hd_mount_path, &alias_path_tmp) {
+        error!(err=?e, ?alias_path_tmp, "Unable to create temporary alias symlink");
+        return Err(format!("{e:?}"));
+    }
+
+    // Rename is atomic within the same directory; no disappearance window.
+    if let Err(e) = fs::rename(&alias_path_tmp, alias_path) {
+        error!(err=?e, from=?alias_path_tmp, to=?alias_path, "Unable to atomically replace alias symlink");
+        // Cleanup temp on failure.
+        let _ = fs::remove_file(&alias_path_tmp);
+        return Err(format!("{e:?}"));
+    }
+
+    debug!(
+        "alias symlink updated atomically {:?} -> {:?}",
+        alias_path, hd_mount_path
+    );
+
     Ok(())
 }
 
@@ -328,6 +376,7 @@ async fn handle_unixd_request(
                 &info,
                 cfg.home_prefix.as_ref(),
                 cfg.home_mount_prefix.as_ref(),
+                &cfg.home_strategy,
                 cfg.use_etc_skel,
                 cfg.selinux,
             ) {

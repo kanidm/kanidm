@@ -183,12 +183,12 @@ gix = { version = "0.75.0", default-features = false }
 haproxy-protocol = { version = "0.0.3" }
 hashbrown = { version = "0.16.1", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
-http = "1.2.0"
+http = "1.4.0"
 http-body-util = "0.1"
 hyper = { version = "1.8.1", features = [
     "full",
 ] } # hyper full includes client/server/http2
-hyper-util = { version = "0.1.18", features = ["server", "tokio"] }
+hyper-util = { version = "0.1.19", features = ["server", "tokio"] }
 idlset = "^0.2.5"
 image = { version = "0.25.9", default-features = false, features = [
     "gif",
@@ -196,13 +196,13 @@ image = { version = "0.25.9", default-features = false, features = [
     "webp",
 ] }
 itertools = "0.14.0"
-jsonschema = "0.37.1"
+jsonschema = "0.37.4"
 # REMOVE this
 lazy_static = "^1.5.0"
 ldap3_client = "^0.6.2"
 ldap3_proto = { version = "^0.6.2", features = ["serde"] }
 lettre = { version = "0.11.19", default-features = false }
-libc = "0.2.177"
+libc = "0.2.178"
 libnss = "^0.9.0"
 lodepng = "3.11.0"
 lru = "0.16.2"
@@ -227,7 +227,7 @@ opentelemetry-otlp = { version = "0.31.0", default-features = false, features = 
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
 opentelemetry-semantic-conventions = "0.31.0"
 tracing-opentelemetry = "0.32.0"
-tracing-core = "0.1.34"
+tracing-core = "0.1.35"
 peg = "0.8"
 pkg-config = "^0.3.31"
 prctl = "1.0.0"
@@ -256,7 +256,7 @@ serde = "^1.0.228"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.145"
 serde_urlencoded = "^0.7.1"
-serde_with = "3.16.0"
+serde_with = "3.16.1"
 sha-crypt = "0.5.0"
 sha2 = "0.10.8"
 shellexpand = "3.1.1"
@@ -274,17 +274,17 @@ tokio-openssl = "^0.6.5"
 tokio-rustls = { version = "0.26.4" }
 tokio-util = "^0.7.17"
 toml = "^0.9.8"
-tracing = { version = "^0.1.41", features = [
+tracing = { version = "^0.1.43", features = [
     "max_level_trace",
     "release_max_level_debug",
 ] }
-tracing-subscriber = { version = "^0.3.20", features = ["env-filter"] }
+tracing-subscriber = { version = "^0.3.22", features = ["env-filter"] }
 tracing-forest = { version = "^0.3.0", features = ["defer"] }
 url = "^2.5.2"
 urlencoding = "2.1.3"
 utoipa = { version = "5.4.0", features = ["url", "uuid"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["reqwest", "vendored"] }
-uuid = "^1.18.1"
+uuid = "^1.19.0"
 webauthn-authenticator-rs = { version = "0.5.3", features = [
     "softpasskey",
     "softtoken",

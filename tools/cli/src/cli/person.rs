@@ -2,12 +2,12 @@ use crate::common::try_expire_at_from_string;
 use std::fmt::{self, Debug};
 use std::str::FromStr;
 
+use crate::OpType;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password, Select};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::cli::OpType;
 use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER};
 use kanidm_proto::internal::OperationError::{
     DuplicateKey, DuplicateLabel, InvalidLabel, NoMatchingEntries, PasswordQuality,

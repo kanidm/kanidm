@@ -1,5 +1,6 @@
 #![deny(warnings)]
 use compact_jwt::{JwkKeySet, JwsEs256Verifier, JwsVerifier, OidcToken, OidcUnverified};
+use kanidm_client::ClientError;
 use kanidm_client::{http::header, KanidmClient, StatusCode};
 use kanidm_proto::constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT};
 use kanidm_proto::constants::*;
@@ -1259,4 +1260,56 @@ async fn test_oauth2_token_revoke_post_postauth(rsclient: &KanidmClient) {
         .expect("Failed to send token request.");
     println!("{response:?}");
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_basic_consent_can_be_disabled(rsclient: &KanidmClient) {
+    let res = rsclient
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    // Create an oauth2 application integration.
+    rsclient
+        .idm_oauth2_rs_basic_create(
+            TEST_INTEGRATION_RS_ID,
+            TEST_INTEGRATION_RS_DISPLAY,
+            TEST_INTEGRATION_RS_URL,
+        )
+        .await
+        .expect("Failed to create oauth2 config");
+
+    let response = rsclient
+        .idm_oauth2_rs_disable_consent_prompt(TEST_INTEGRATION_RS_ID)
+        .await
+        .expect("Couldn't disable consent prompt on a basic RS");
+
+    assert_eq!(response, ());
+}
+
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_public_consent_cant_be_disabled(rsclient: &KanidmClient) {
+    let res = rsclient
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    // Create an oauth2 application integration.
+    rsclient
+        .idm_oauth2_rs_public_create(
+            TEST_INTEGRATION_RS_ID,
+            TEST_INTEGRATION_RS_DISPLAY,
+            TEST_INTEGRATION_RS_URL,
+        )
+        .await
+        .expect("Failed to create oauth2 config");
+    let error = rsclient
+        .idm_oauth2_rs_disable_consent_prompt(TEST_INTEGRATION_RS_ID)
+        .await
+        .expect_err("Disabled consent prompt on a public RS!");
+
+    assert!(matches!(
+        error,
+        ClientError::Http(StatusCode::FORBIDDEN, _, _)
+    ));
 }

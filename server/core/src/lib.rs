@@ -39,11 +39,12 @@ mod utils;
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::admin::AdminActor;
-use crate::config::{Configuration, ServerRole};
+use crate::config::Configuration;
 use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::{JwsHs256Signer, JwsSigner};
 use kanidm_proto::backup::BackupCompression;
+use kanidm_proto::config::ServerRole;
 use kanidm_proto::internal::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
 use kanidmd_lib::idm::ldap::LdapServer;

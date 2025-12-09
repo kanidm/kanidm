@@ -6,13 +6,13 @@ use std::io::{self, BufReader, BufWriter, ErrorKind, IsTerminal, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use crate::OpType;
 use compact_jwt::{
     traits::JwsVerifiable, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError,
 };
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
 use kanidm_client::{ClientError, KanidmClient};
-use kanidm_proto::cli::OpType;
 use kanidm_proto::internal::UserAuthToken;
 use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState};
 #[cfg(target_family = "unix")]
