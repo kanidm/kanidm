@@ -366,8 +366,8 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
             .get_string_attr(&Attribute::LastModifiedCid)
             .and_then(|v| v.split('-').next())
             .and_then(|s| s.parse::<i128>().ok())
-            .map(|nanos| OffsetDateTime::from_unix_timestamp_nanos(nanos))
-            .map(|odt| odt.expect("Error Unpacking").format(&Rfc3339).unwrap())
+            .and_then(|nanos| OffsetDateTime::from_unix_timestamp_nanos(nanos).ok())
+            .and_then(|odt| odt.format(&Rfc3339).ok())
             .ok_or(())?;
 
         Ok(ScimPerson {
