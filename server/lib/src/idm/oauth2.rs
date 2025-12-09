@@ -2984,11 +2984,7 @@ fn s_claims_for_account(
     };
 
     let updated_at = if scopes.contains(OAUTH2_SCOPE_UPDATED_AT) {
-        if let Some(ua) = account.updated_at {
-            Some(ua.to_string())
-        } else {
-            None
-        }
+        account.updated_at.map(|ua| ua.to_string())
     } else {
         None
     };
