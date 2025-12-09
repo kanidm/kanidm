@@ -202,6 +202,9 @@ git branch <feature-branch-name>
 git checkout <feature-branch-name>
 cargo test
 ```
+> [!TIP]
+> When developing there might be temporary changes to files like `Cargo.toml` that shouldnt be tracked.
+> To keep the commit log clean, one can make use of `git update-index --skip-worktree path/to/file`.
 
 > [!IMPORTANT]
 >
