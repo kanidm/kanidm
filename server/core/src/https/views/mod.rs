@@ -51,6 +51,7 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
     let unguarded_csp_router = Router::new()
         .route("/oauth2/resume", get(oauth2::view_resume_get))
         .route("/oauth2/consent", post(oauth2::view_consent_post))
+        .route("/oauth2", get(oauth2::view_index_get))
         // The login routes are htmx-free to make them simpler, which means
         // they need manual guarding for direct get requests which can occur
         // if a user attempts to reload the page.
@@ -93,7 +94,7 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
         ));
 
     // These will have the standard CSP headers applied.
-    let mut unguarded_router = Router::new()
+    let unguarded_router = Router::new()
         .route(
             "/",
             get(|| async { Redirect::permanent(Urls::Login.as_ref()) }),
@@ -108,17 +109,11 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
         .route("/unlock", get(login::view_reauth_to_referer_get))
         .route("/logout", get(login::view_logout_get));
 
-    // This is me being temporarily cheeky to avoid a lint while cfg(dev oauth device) is still
-    // present.
-    unguarded_router = unguarded_router.route("/oauth2", get(oauth2::view_index_get));
-
     #[cfg(feature = "dev-oauth2-device-flow")]
-    {
-        unguarded_router = unguarded_router.route(
-            kanidmd_lib::prelude::uri::OAUTH2_DEVICE_LOGIN,
-            get(oauth2::view_device_get).post(oauth2::view_device_post),
-        );
-    }
+    let unguarded_router = unguarded_router.route(
+        kanidmd_lib::prelude::uri::OAUTH2_DEVICE_LOGIN,
+        get(oauth2::view_device_get).post(oauth2::view_device_post),
+    );
 
     // The webauthn post is unguarded because it's not a htmx event.
 
