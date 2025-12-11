@@ -94,7 +94,7 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
         ));
 
     // These will have the standard CSP headers applied.
-    let mut unguarded_router = Router::new()
+    let unguarded_router = Router::new()
         .route(
             "/",
             get(|| async { Redirect::permanent(Urls::Login.as_ref()) }),
@@ -110,12 +110,10 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
         .route("/logout", get(login::view_logout_get));
 
     #[cfg(feature = "dev-oauth2-device-flow")]
-    {
-        unguarded_router = unguarded_router.route(
-            kanidmd_lib::prelude::uri::OAUTH2_DEVICE_LOGIN,
-            get(oauth2::view_device_get).post(oauth2::view_device_post),
-        );
-    }
+    let unguarded_router = unguarded_router.route(
+        kanidmd_lib::prelude::uri::OAUTH2_DEVICE_LOGIN,
+        get(oauth2::view_device_get).post(oauth2::view_device_post),
+    );
 
     // The webauthn post is unguarded because it's not a htmx event.
 
