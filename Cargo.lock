@@ -298,9 +298,9 @@ dependencies = [
 
 [[package]]
 name = "async-compression"
-version = "0.4.35"
+version = "0.4.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07a926debf178f2d355197f9caddb08e54a9329d44748034bba349c5848cb519"
+checksum = "98ec5f6c2f8bc326c994cb9e241cc257ddaba9afa8555a43cffbb5dd86efaa37"
 dependencies = [
  "compression-codecs",
  "compression-core",
@@ -930,9 +930,9 @@ checksum = "cbd0f76e066e64fdc5631e3bb46381254deab9ef1158292f27c8c57e3bf3fe59"
 
 [[package]]
 name = "cmake"
-version = "0.1.54"
+version = "0.1.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7caa3f9de89ddbe2c607f4101924c5abec803763ae9534e4f4d7d8f84aa81f0"
+checksum = "d49d74c227b6cc9f3c51a2c7c667a05b6453f7f0f952a5f8e4493bb9e731d68e"
 dependencies = [
  "cc",
 ]
@@ -979,9 +979,9 @@ dependencies = [
 
 [[package]]
 name = "compression-codecs"
-version = "0.4.34"
+version = "0.4.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34a3cbbb8b6eca96f3a5c4bf6938d5b27ced3675d69f95bb51948722870bc323"
+checksum = "b0f7ac3e5b97fdce45e8922fb05cae2c37f7bbd63d30dd94821dacfd8f3f2bf2"
 dependencies = [
  "compression-core",
  "flate2",
@@ -1301,7 +1301,7 @@ dependencies = [
 
 [[package]]
 name = "daemon"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "clap",
  "clap_complete",
@@ -3554,7 +3554,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ipa-sync"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "chrono",
  "clap",
@@ -3578,7 +3578,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ldap-sync"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "chrono",
  "clap",
@@ -3603,7 +3603,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_build_profiles"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "base64 0.22.1",
  "gix",
@@ -3614,7 +3614,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_client"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "compact_jwt",
  "http 1.4.0",
@@ -3636,7 +3636,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_device_flow"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "anyhow",
  "kanidm_proto",
@@ -3649,7 +3649,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_lib_crypto"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "argon2",
  "base64 0.22.1",
@@ -3674,14 +3674,14 @@ dependencies = [
 
 [[package]]
 name = "kanidm_lib_file_permissions"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "kanidm_utils_users",
 ]
 
 [[package]]
 name = "kanidm_proto"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "base32",
  "base64 0.22.1",
@@ -3710,7 +3710,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_tools"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "anyhow",
  "clap",
@@ -3741,7 +3741,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_common"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "bytes",
  "csv",
@@ -3765,7 +3765,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_int"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "async-trait",
  "clap",
@@ -3804,14 +3804,14 @@ dependencies = [
 
 [[package]]
 name = "kanidm_utils_users"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "kanidmd_core"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "askama",
  "askama_web",
@@ -3871,7 +3871,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "base64 0.22.1",
  "base64urlsafedata",
@@ -3926,7 +3926,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib_macros"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3935,7 +3935,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_testkit"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "cidr",
  "compact_jwt",
@@ -4280,7 +4280,7 @@ checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
 name = "mail_sender"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "chrono",
  "clap",
@@ -4590,7 +4590,7 @@ checksum = "5e0826a989adedc2a244799e823aece04662b66609d96af8dff7ac6df9a8925d"
 
 [[package]]
 name = "nss_kanidm"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "cc",
  "kanidm_unix_common",
@@ -4999,7 +4999,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "orca"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5054,7 +5054,7 @@ dependencies = [
 
 [[package]]
 name = "pam_kanidm"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "kanidm_unix_common",
  "libc",
@@ -6082,7 +6082,7 @@ dependencies = [
 
 [[package]]
 name = "scim_proto"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "base64urlsafedata",
  "peg",
@@ -6466,7 +6466,7 @@ checksum = "e320a6c5ad31d271ad523dcf3ad13e2767ad8b1cb8f047f75a8aeaf8da139da2"
 
 [[package]]
 name = "sketching"
-version = "1.8.4"
+version = "1.8.5"
 dependencies = [
  "gethostname",
  "num_enum",
