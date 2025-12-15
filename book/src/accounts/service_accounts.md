@@ -71,6 +71,38 @@ with the format `Bearer <token>`.
 For more see the
 [MDN documentation for Authorisation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Authorization)
 
+### API Tokens with OIDC Token Exchange (RFC 8693)
+
+Service accounts can exchange their API bearer token for OAuth2/OIDC tokens (access/id/refresh) without user consent or
+interaction. Use the token endpoint with the RFC 8693 grant:
+
+- `grant_type`: `urn:ietf:params:oauth:grant-type:token-exchange`
+- `subject_token`: the service-account API token (as issued by `kanidm service-account api-token generate`)
+- `subject_token_type`: `urn:ietf:params:oauth:token-type:access_token`
+- `requested_token_type` (optional): only `urn:ietf:params:oauth:token-type:access_token` is supported; omitted defaults to an access token
+- `audience`: the OAuth2 client_id of the resource server
+- `resource` (optional): absolute URI for the same resource server; other targets are rejected with `invalid_target`
+- `scope`: requested scopes (must be allowed for the service account on that client)
+
+`actor_token` is currently not supported for this flow.
+
+The response includes `access_token`, optional `id_token` (when `openid` is requested), `refresh_token`, and `issued_token_type` indicating the representation of the issued token.
+
+Example `application/x-www-form-urlencoded` request:
+
+```bash
+curl -X POST https://idm.example.com/oauth2/token \
+  -u test_resource_server:CLIENT_SECRET \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "subject_token=$API_TOKEN" \
+  -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "audience=test_resource_server" \
+  -d "scope=openid groups"
+```
+
+The response includes `access_token`, optional `id_token` (when `openid` is requested), and `refresh_token`. Scopes are
+still enforced against the service account’s group membership and the client’s scope map.
+
 ### API Tokens with LDAP
 
 API tokens can also be used to gain extended search permissions with LDAP. To do this you can bind with a dn of
