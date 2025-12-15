@@ -106,19 +106,16 @@ impl CryptPw {
             CryptPw::Sha512(crypt) => sha_crypt::sha512_check(cred, crypt.as_str()).is_ok(),
             CryptPw::YesCrypt(crypt) => {
                 use yescrypt::{PasswordHash, PasswordVerifier, Yescrypt};
-                let password_hash = PasswordHash::new(crypt.as_str()).expect("Failed to hash it");
-                // let password_hash = match Yescrypt.hash_password(crypt.as_bytes()) {
-                //     Ok(h) => h,
-                //     Err(err) => {
-                //         #[cfg(test)]
-                //         eprintln!("Failed to hash password: {err:?}");
-                //         debug!("Failed to hash password: {err:?}");
-                //         return false;
-                //     }
-                // };
+                let password_hash = match PasswordHash::new(crypt.as_str()) {
+                    Ok(ph) => ph,
+                    Err(err) => {
+                        debug!("Failed to parse yescrypt password hash: {err:?}");
+                        return false;
+                    }
+                };
                 Yescrypt
                     .verify_password(cred.as_bytes(), &password_hash)
-                    .inspect_err(|err| eprintln!("Failed to verify password: {err:?}"))
+                    .inspect_err(|err| debug!("Failed to verify password: {err:?}"))
                     .is_ok()
             }
             CryptPw::Invalid => false,
