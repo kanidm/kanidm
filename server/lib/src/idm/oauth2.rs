@@ -6,7 +6,7 @@
 
 use crate::idm::account::Account;
 use crate::idm::server::{
-    IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
+    IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction, Token,
 };
 use crate::prelude::*;
 use crate::server::keys::{KeyObject, KeyProvidersTransaction, KeyProvidersWriteTransaction};
@@ -32,7 +32,7 @@ pub use kanidm_proto::oauth2::{
     GrantType, GrantTypeReq, IdTokenSignAlg, OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions,
     Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse,
     PkceAlg, PkceRequest, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
-    TokenRevokeRequest,
+    TokenRevokeRequest, OAUTH2_TOKEN_TYPE_ACCESS_TOKEN,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
@@ -48,6 +48,9 @@ use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 use url::{Host, Origin, Url};
 use utoipa::ToSchema;
 
+const TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS: &str =
+    OAUTH2_TOKEN_TYPE_ACCESS_TOKEN;
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Oauth2Error {
@@ -62,6 +65,7 @@ pub enum Oauth2Error {
     AccessDenied,
     UnsupportedResponseType,
     InvalidScope,
+    InvalidTarget,
     ServerError(OperationError),
     TemporarilyUnavailable,
     // from https://datatracker.ietf.org/doc/html/rfc6750
@@ -102,6 +106,7 @@ impl std::fmt::Display for Oauth2Error {
             Oauth2Error::AccessDenied => "access_denied",
             Oauth2Error::UnsupportedResponseType => "unsupported_response_type",
             Oauth2Error::InvalidScope => "invalid_scope",
+            Oauth2Error::InvalidTarget => "invalid_target",
             Oauth2Error::ServerError(_) => "server_error",
             Oauth2Error::TemporarilyUnavailable => "temporarily_unavailable",
             Oauth2Error::InvalidToken => "invalid_token",
@@ -1137,6 +1142,28 @@ impl IdmServerProxyWriteTransaction<'_> {
                 refresh_token,
                 scope,
             } => self.check_oauth2_token_refresh(&o2rs, refresh_token, scope.as_ref(), ct),
+            GrantTypeReq::TokenExchange {
+                subject_token,
+                subject_token_type,
+                requested_token_type,
+                audience,
+                resource,
+                actor_token,
+                actor_token_type,
+                scope,
+            } => self.check_oauth2_token_exchange_token_exchange(
+                &o2rs,
+                client_authentication_valid,
+                subject_token,
+                subject_token_type,
+                requested_token_type.as_deref(),
+                audience.as_deref(),
+                resource.as_deref(),
+                actor_token.as_deref(),
+                actor_token_type.as_deref(),
+                scope.as_ref(),
+                ct,
+            ),
             GrantTypeReq::DeviceCode { device_code, scope } => {
                 self.check_oauth2_device_code_status(device_code, scope)
             }
@@ -1594,6 +1621,160 @@ impl IdmServerProxyWriteTransaction<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
+    fn check_oauth2_token_exchange_token_exchange(
+        &mut self,
+        o2rs: &Oauth2RS,
+        client_authentication_valid: bool,
+        subject_token: &str,
+        subject_token_type: &str,
+        requested_token_type: Option<&str>,
+        audience: Option<&str>,
+        resource: Option<&str>,
+        actor_token: Option<&str>,
+        actor_token_type: Option<&str>,
+        req_scopes: Option<&BTreeSet<String>>,
+        ct: Duration,
+    ) -> Result<AccessTokenResponse, Oauth2Error> {
+        if matches!(o2rs.type_, OauthRSType::Basic { .. }) && !client_authentication_valid {
+            security_info!(
+                "Unable to proceed with token exchange grant unless client authentication is provided and valid"
+            );
+            return Err(Oauth2Error::AuthenticationRequired);
+        }
+
+        match (actor_token, actor_token_type) {
+            (Some(_), None) | (None, Some(_)) => {
+                admin_warn!("actor_token and actor_token_type must both be supplied when using an actor token");
+                return Err(Oauth2Error::InvalidRequest);
+            }
+            (Some(_), Some(_)) => {
+                admin_warn!("actor_token is not supported in this token exchange");
+                return Err(Oauth2Error::InvalidRequest);
+            }
+            (None, None) => {}
+        }
+
+        if let Some(rtt) = requested_token_type {
+            if rtt != OAUTH2_TOKEN_TYPE_ACCESS_TOKEN {
+                admin_warn!(requested_token_type = rtt, "Unsupported requested_token_type in token exchange");
+                return Err(Oauth2Error::InvalidRequest);
+            }
+        }
+
+        if let Some(aud) = audience {
+            if aud != o2rs.name {
+                admin_warn!(expected = %o2rs.name, requested = aud, "Token exchange audience mismatch");
+                return Err(Oauth2Error::InvalidTarget);
+            }
+        }
+
+        if let Some(res) = resource {
+            let parsed_resource = Url::parse(res).map_err(|_| {
+                admin_warn!(requested = res, "Invalid resource parameter in token exchange");
+                Oauth2Error::InvalidRequest
+            })?;
+
+            if parsed_resource.fragment().is_some() {
+                admin_warn!(requested = res, "Resource parameter must not contain a fragment");
+                return Err(Oauth2Error::InvalidRequest);
+            }
+
+            let origin = parsed_resource.origin();
+            let target_allowed =
+                o2rs.origins.contains(&origin) || o2rs.opaque_origins.contains(&parsed_resource);
+            if !target_allowed {
+                admin_warn!(requested = res, "Token exchange resource target mismatch");
+                return Err(Oauth2Error::InvalidTarget);
+            }
+        }
+
+        if subject_token_type != TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS {
+            security_info!(
+                ?subject_token_type,
+                "Unsupported subject_token_type in token exchange"
+            );
+            return Err(Oauth2Error::InvalidRequest);
+        }
+
+        let jwsc = JwsCompact::from_str(subject_token).map_err(|_| {
+            error!("Failed to deserialise subject token for token exchange");
+            Oauth2Error::InvalidRequest
+        })?;
+
+        let token = self
+            .validate_and_parse_token_to_identity_token(&jwsc, ct)
+            .map_err(|err| {
+                security_info!(?err, "Unable to validate subject token for token exchange");
+                Oauth2Error::InvalidRequest
+            })?;
+
+        let (apit, entry) = match token {
+            Token::ApiToken(apit, entry) => (apit, entry),
+            Token::UserAuthToken(_) => {
+                security_info!("Token exchange subject_token must be a service account api token");
+                return Err(Oauth2Error::InvalidRequest);
+            }
+        };
+
+        let ident = self
+            .process_apit_to_identity(&apit, Source::Internal, entry, ct)
+            .map_err(|err| match err {
+                OperationError::SessionExpired | OperationError::NotAuthenticated => {
+                    security_info!(
+                        ?err,
+                        "Service account api token rejected during token exchange"
+                    );
+                    Oauth2Error::InvalidRequest
+                }
+                err => Oauth2Error::ServerError(err),
+            })?;
+
+        let req_scopes = req_scopes.cloned().unwrap_or_default();
+
+        validate_scopes(&req_scopes)?;
+
+        let available_scopes: BTreeSet<String> = o2rs
+            .scope_maps
+            .iter()
+            .filter_map(|(u, m)| ident.is_memberof(*u).then_some(m.iter()))
+            .flatten()
+            .cloned()
+            .collect();
+
+        if !req_scopes.is_subset(&available_scopes) {
+            admin_warn!(
+                %ident,
+                requested_scopes = ?req_scopes,
+                available_scopes = ?available_scopes,
+                "Identity does not have access to the requested scopes"
+            );
+            return Err(Oauth2Error::AccessDenied);
+        }
+
+        let granted_scopes: BTreeSet<String> = o2rs
+            .sup_scope_maps
+            .iter()
+            .filter_map(|(u, m)| ident.is_memberof(*u).then_some(m.iter()))
+            .flatten()
+            .cloned()
+            .chain(req_scopes)
+            .collect();
+
+        let session_id = Uuid::new_v4();
+        let parent_session_id = apit.token_id;
+        let account_uuid = apit.account_id;
+
+        self.generate_access_token_response(
+            o2rs,
+            ct,
+            granted_scopes,
+            account_uuid,
+            parent_session_id,
+            session_id,
+            None,
+        )
+    }
+
     fn check_oauth2_token_client_credentials(
         &mut self,
         o2rs: &Oauth2RS,
@@ -1691,6 +1872,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok(AccessTokenResponse {
             access_token,
             token_type: AccessTokenType::Bearer,
+            issued_token_type: Some(OAUTH2_TOKEN_TYPE_ACCESS_TOKEN.to_string()),
             expires_in,
             refresh_token: None,
             scope,
@@ -1906,6 +2088,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok(AccessTokenResponse {
             access_token: access_token.to_string(),
             token_type: AccessTokenType::Bearer,
+            issued_token_type: Some(OAUTH2_TOKEN_TYPE_ACCESS_TOKEN.to_string()),
             expires_in,
             refresh_token: Some(refresh_token),
             scope,
@@ -2739,7 +2922,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let scopes_supported = Some(o2rs.scopes_supported.iter().cloned().collect());
         let response_types_supported = vec![ResponseType::Code];
         let response_modes_supported = vec![ResponseMode::Query, ResponseMode::Fragment];
-        let grant_types_supported = vec![GrantType::AuthorisationCode];
+        let grant_types_supported = vec![GrantType::AuthorisationCode, GrantType::TokenExchange];
 
         let token_endpoint_auth_methods_supported = vec![
             TokenEndpointAuthMethod::ClientSecretBasic,
@@ -2811,7 +2994,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         // TODO: add device code if the rs supports it per <https://www.rfc-editor.org/rfc/rfc8628#section-4>
         // `urn:ietf:params:oauth:grant-type:device_code`
-        let grant_types_supported = vec![GrantType::AuthorisationCode];
+        let grant_types_supported = vec![GrantType::AuthorisationCode, GrantType::TokenExchange];
 
         let subject_types_supported = vec![SubjectType::Public];
 
@@ -3197,11 +3380,12 @@ fn check_is_loopback(redirect_uri: &Url) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{Oauth2TokenType, PkceS256Secret};
+    use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS};
     use crate::credential::Credential;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::oauth2::{host_is_local, AuthoriseResponse, Oauth2Error, OauthRSType};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
+    use crate::idm::serviceaccount::GenerateApiTokenEvent;
     use crate::prelude::*;
     use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
     use crate::valueset::{ValueSetOauthScopeMap, ValueSetSshKey};
@@ -5006,7 +5190,7 @@ mod tests {
         );
         assert_eq!(
             discovery.grant_types_supported,
-            vec![GrantType::AuthorisationCode]
+            vec![GrantType::AuthorisationCode, GrantType::TokenExchange]
         );
         assert!(
             discovery.token_endpoint_auth_methods_supported
@@ -5165,7 +5349,7 @@ mod tests {
         );
         assert_eq!(
             discovery.grant_types_supported,
-            vec![GrantType::AuthorisationCode]
+            vec![GrantType::AuthorisationCode, GrantType::TokenExchange]
         );
         assert_eq!(discovery.subject_types_supported, vec![SubjectType::Public]);
         assert_eq!(
@@ -7361,6 +7545,113 @@ mod tests {
         assert_eq!(token_response.token_type, AccessTokenType::Bearer);
 
         assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_service_account_token_exchange(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (secret, _uat, _ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let service_account_uuid = Uuid::new_v4();
+        let sa_entry: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_sa_oauth2")),
+            (Attribute::Uuid, Value::Uuid(service_account_uuid)),
+            (Attribute::DisplayName, Value::new_utf8s("test_sa_oauth2")),
+            (Attribute::Description, Value::new_utf8s("test_sa_oauth2"))
+        );
+
+        idms_prox_write
+            .qs_write
+            .internal_create(vec![sa_entry])
+            .expect("Failed to create service account");
+
+        idms_prox_write
+            .qs_write
+            .internal_modify(
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTGROUP))),
+                &ModifyList::new_list(vec![Modify::Present(
+                    Attribute::Member,
+                    Value::Refer(service_account_uuid),
+                )]),
+            )
+            .expect("Failed to add service account to scope group");
+
+        let gte = GenerateApiTokenEvent::new_internal(service_account_uuid, "sa-token", None);
+
+        let api_token = idms_prox_write
+            .service_account_generate_api_token(&gte, ct)
+            .expect("failed to generate api token");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
+
+        let scope: BTreeSet<String> = btreeset![
+            OAUTH2_SCOPE_OPENID.to_string(),
+            OAUTH2_SCOPE_GROUPS.to_string()
+        ];
+
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::TokenExchange {
+                subject_token: api_token.to_string(),
+                subject_token_type: TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS.to_string(),
+                requested_token_type: None,
+                audience: Some("test_resource_server".to_string()),
+                resource: None,
+                actor_token: None,
+                actor_token_type: None,
+                scope: Some(scope.clone()),
+            },
+            client_post_auth: ClientPostAuth::from(("test_resource_server", Some(secret.as_str()))),
+        };
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange for service account");
+
+        assert_eq!(token_response.token_type, AccessTokenType::Bearer);
+        assert_eq!(
+            token_response.issued_token_type.as_deref(),
+            Some(OAUTH2_TOKEN_TYPE_ACCESS_TOKEN)
+        );
+        assert!(token_response.refresh_token.is_some());
+        assert!(token_response.id_token.is_some());
+        let response_scopes = token_response.scope.clone();
+        assert!(response_scopes.contains(OAUTH2_SCOPE_OPENID));
+        assert!(response_scopes.contains(OAUTH2_SCOPE_GROUPS));
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
+        let intr_request = AccessTokenIntrospectRequest {
+            token: token_response.access_token.clone(),
+            token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
+        };
+        let intr_response = idms_prox_read
+            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .expect("Failed to introspect service account token");
+
+        assert!(intr_response.active);
+        assert_eq!(
+            intr_response.client_id.as_deref(),
+            Some("test_resource_server")
+        );
+        assert_eq!(
+            intr_response.sub.as_deref(),
+            Some(service_account_uuid.to_string().as_str())
+        );
     }
 
     #[idm_test]
