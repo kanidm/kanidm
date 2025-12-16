@@ -983,6 +983,8 @@ async fn test_cache_authenticate_system_account() {
     let expire_time = OffsetDateTime::UNIX_EPOCH + time::Duration::days(380);
     let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
 
+    let yescrypted_username = "yescrypted_account".to_string();
+
     // Important! This is what sets up that testaccount1 won't be resolved
     // because it's in the "local" user set.
     cachelayer
@@ -1007,7 +1009,7 @@ async fn test_cache_authenticate_system_account() {
                 shell: Default::default(),
             },
             EtcUser {
-                name: "testaccount3".to_string(),
+                name: yescrypted_username.clone(),
                 uid: 30002,
                 gid: 30002,
                 password: Default::default(),
@@ -1042,7 +1044,7 @@ async fn test_cache_authenticate_system_account() {
                     flag_reserved: None
                 },
                 EtcShadow {
-                    name: "testaccount3".to_string(),
+                    name: yescrypted_username.clone(),
                     // The very secure password, "a".
                     password: CryptPw::YesCrypt("$y$j9T$LdJMENpBABJJ3hIHjB1Bi.$GFxnbKnR8WaEdBMGMctf6JGMs56hU5dYcy6UrKGWr62".to_string()),
                     epoch_change_seconds: Some(time::OffsetDateTime::UNIX_EPOCH + time::Duration::days(364)),
@@ -1068,7 +1070,7 @@ async fn test_cache_authenticate_system_account() {
         .await
         .expect("Failed to get from cache");
     let _ = cachelayer
-        .get_nssaccount_name("testaccount3")
+        .get_nssaccount_name(&yescrypted_username)
         .await
         .expect("Failed to get from cache");
 
@@ -1093,7 +1095,7 @@ async fn test_cache_authenticate_system_account() {
     assert_eq!(a1, Some(false));
 
     let a1 = cachelayer
-        .pam_account_authenticate("testaccount3", current_time, "wrong password")
+        .pam_account_authenticate(&yescrypted_username, current_time, "wrong password")
         .await
         .expect("failed to authenticate");
     assert_eq!(a1, Some(false));
@@ -1112,10 +1114,10 @@ async fn test_cache_authenticate_system_account() {
     assert_eq!(a1, Some(true));
 
     let a1 = cachelayer
-        .pam_account_authenticate("testaccount3", current_time, SECURE_PASSWORD)
+        .pam_account_authenticate(&yescrypted_username, current_time, SECURE_PASSWORD)
         .await
         .expect("failed to authenticate");
-    assert_eq!(a1, Some(true));
+    assert_eq!(a1, Some(true), "yescrypted password failed to authenticate");
 
     // Check expired time (both accounts)
     let a1 = cachelayer
@@ -1131,7 +1133,7 @@ async fn test_cache_authenticate_system_account() {
     assert_eq!(a1, Some(false));
 
     let a1 = cachelayer
-        .pam_account_authenticate("testaccount3", expire_time, SECURE_PASSWORD)
+        .pam_account_authenticate(&yescrypted_username, expire_time, SECURE_PASSWORD)
         .await
         .expect("failed to authenticate");
     assert_eq!(a1, Some(false));
@@ -1151,7 +1153,7 @@ async fn test_cache_authenticate_system_account() {
     assert_eq!(a1, Some(true));
 
     let a1 = cachelayer
-        .pam_account_allowed("testaccount3")
+        .pam_account_allowed(&yescrypted_username)
         .await
         .expect("failed to authorise");
     assert_eq!(a1, Some(true));
