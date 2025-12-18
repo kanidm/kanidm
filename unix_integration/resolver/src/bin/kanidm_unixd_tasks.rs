@@ -247,9 +247,31 @@ fn home_alias_update_bind_mount(alias_path: &Path, hd_mount_path: &Path) -> Resu
         }
     }
 
-    // If mount point exists and is already mounted, we are done
-    if mount_exists_at(alias_path)? {
-        return Ok(())
+    let current_mounts = Process::myself()
+        .map_err(|e| format!("Could not get reference to current process: {e}"))?
+        .mountinfo()
+        .map_err(|e| format!("Could not get mount info: {e}"))?;
+
+    // Remove conflicting mount if it exists:
+    let mismatching_mount = current_mounts.iter().find(|m| {
+        m.mount_point == alias_path
+            && m.mount_source != Some(hd_mount_path.to_string_lossy().to_string())
+    });
+    if let Some(m) = mismatching_mount {
+        nix::mount::umount(&m.mount_point).map_err(|e| {
+            format!(
+                "Unable to remove conflicting mount at {:?}: {e}",
+                &m.mount_point
+            )
+        })?;
+    }
+
+    // If mount point exists and is already correctly mounted, we are done
+    if current_mounts.iter().any(|m| {
+        m.mount_point == alias_path
+            && m.mount_source == Some(hd_mount_path.to_string_lossy().to_string())
+    }) {
+        return Ok(());
     }
 
     // Finally, try to create the bind mount
@@ -260,18 +282,11 @@ fn home_alias_update_bind_mount(alias_path: &Path, hd_mount_path: &Path) -> Resu
         MsFlags::MS_BIND,
         None,
     )
-    .map_err(|e| format!("Unable to bind mount home directory {hd_mount_path:?} to {alias_path:?}: {e}"))?;
+    .map_err(|e| {
+        format!("Unable to bind mount home directory {hd_mount_path:?} to {alias_path:?}: {e}")
+    })?;
 
     Ok(())
-}
-
-fn mount_exists_at(alias_path: &Path) -> Result<bool, String> {
-    let current_mounts = Process::myself()
-        .map_err(|e| format!("Could not get reference to current process: {e}"))?
-        .mountinfo()
-        .map_err(|e| format!("Could not get mount info: {e}"))?;
-
-    Ok(current_mounts.iter().any(|m| m.mount_point == alias_path))
 }
 
 fn home_alias_update_symlink(alias_path: &Path, hd_mount_path: &Path) -> Result<(), String> {
