@@ -784,6 +784,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_PROVIDER: SchemaAttribute = SchemaAttr
     uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_PROVIDER,
     name: Attribute::OAuth2AccountProvider,
     description: "The reference to the OAuth2 client that provides authentication for this entry.".to_string(),
+    sync_allowed: true,
     syntax: SyntaxType::ReferenceUuid,
     ..Default::default()
 };
@@ -800,6 +801,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID: SchemaAttribute = Sche
     uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID,
     name: Attribute::OAuth2AccountUniqueUserId,
     description: "The unique user id of this account as known by the remote OAuth2 provider.".to_string(),
+    sync_allowed: true,
     syntax: SyntaxType::Utf8String,
     ..Default::default()
 };
