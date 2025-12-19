@@ -25,6 +25,7 @@ use crypto_glue::{s256::Sha256, traits::Digest};
 use hashbrown::HashMap;
 use hashbrown::HashSet;
 use kanidm_proto::constants::*;
+use kanidm_proto::oauth2::IssuedTokenType;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AccessTokenType, AuthorisationRequest, ClaimType, ClientAuth,
@@ -48,8 +49,7 @@ use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 use url::{Host, Origin, Url};
 use utoipa::ToSchema;
 
-const TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS: &str =
-    OAUTH2_TOKEN_TYPE_ACCESS_TOKEN;
+const TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS: &str = OAUTH2_TOKEN_TYPE_ACCESS_TOKEN;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, ToSchema)]
 #[serde(rename_all = "snake_case")]
@@ -1656,26 +1656,35 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         if let Some(rtt) = requested_token_type {
             if rtt != OAUTH2_TOKEN_TYPE_ACCESS_TOKEN {
-                admin_warn!(requested_token_type = rtt, "Unsupported requested_token_type in token exchange");
+                warn!(
+                    requested_token_type = rtt,
+                    "Unsupported requested_token_type in token exchange"
+                );
                 return Err(Oauth2Error::InvalidRequest);
             }
         }
 
         if let Some(aud) = audience {
             if aud != o2rs.name {
-                admin_warn!(expected = %o2rs.name, requested = aud, "Token exchange audience mismatch");
+                warn!(expected = %o2rs.name, requested = aud, "Token exchange audience mismatch");
                 return Err(Oauth2Error::InvalidTarget);
             }
         }
 
         if let Some(res) = resource {
             let parsed_resource = Url::parse(res).map_err(|_| {
-                admin_warn!(requested = res, "Invalid resource parameter in token exchange");
+                warn!(
+                    requested = res,
+                    "Invalid resource parameter in token exchange"
+                );
                 Oauth2Error::InvalidRequest
             })?;
 
             if parsed_resource.fragment().is_some() {
-                admin_warn!(requested = res, "Resource parameter must not contain a fragment");
+                warn!(
+                    requested = res,
+                    "Resource parameter must not contain a fragment"
+                );
                 return Err(Oauth2Error::InvalidRequest);
             }
 
@@ -1872,7 +1881,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok(AccessTokenResponse {
             access_token,
             token_type: AccessTokenType::Bearer,
-            issued_token_type: Some(OAUTH2_TOKEN_TYPE_ACCESS_TOKEN.to_string()),
+            issued_token_type: Some(IssuedTokenType::AccessToken),
             expires_in,
             refresh_token: None,
             scope,
@@ -2088,7 +2097,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok(AccessTokenResponse {
             access_token: access_token.to_string(),
             token_type: AccessTokenType::Bearer,
-            issued_token_type: Some(OAUTH2_TOKEN_TYPE_ACCESS_TOKEN.to_string()),
+            issued_token_type: Some(IssuedTokenType::AccessToken),
             expires_in,
             refresh_token: Some(refresh_token),
             scope,
@@ -7622,8 +7631,8 @@ mod tests {
 
         assert_eq!(token_response.token_type, AccessTokenType::Bearer);
         assert_eq!(
-            token_response.issued_token_type.as_deref(),
-            Some(OAUTH2_TOKEN_TYPE_ACCESS_TOKEN)
+            token_response.issued_token_type,
+            Some(IssuedTokenType::AccessToken)
         );
         assert!(token_response.refresh_token.is_some());
         assert!(token_response.id_token.is_some());
