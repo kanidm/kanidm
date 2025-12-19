@@ -188,7 +188,7 @@ dependencies = [
  "base64ct",
  "blake2",
  "cpufeatures",
- "password-hash",
+ "password-hash 0.5.0",
 ]
 
 [[package]]
@@ -4360,9 +4360,9 @@ dependencies = [
 
 [[package]]
 name = "mcf"
-version = "0.2.0"
+version = "0.6.0-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a7b81dccc6352af3f2bf99887f60cad09b991829ec92f0271ce8c3c68c0dfb6"
+checksum = "97fe7b16e9a78dd25fb4a09d26f04fe0f8bd5a8a7574c27cbec331f9cf802e79"
 dependencies = [
  "base64ct",
 ]
@@ -5101,6 +5101,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "password-hash"
+version = "0.6.0-rc.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "383d290055c99f2dd7dece082088d89494dff6d79277fbac4a7da21c1bf2ab6b"
+dependencies = [
+ "getrandom 0.3.4",
+ "phc",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5114,9 +5124,9 @@ checksum = "35fb2e5f958ec131621fdd531e9fc186ed768cbe395337403ae56c17a74c68ec"
 
 [[package]]
 name = "pbkdf2"
-version = "0.13.0-rc.3"
+version = "0.13.0-rc.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c148c9a0a9a7d256a8ea004fae8356c02ccc44cf8c06e7d68fdbedb48de1beb"
+checksum = "c015873c38594dfb7724f90b2ed912a606697393bda2d39fd83c2394301f808a"
 dependencies = [
  "digest 0.11.0-rc.4",
  "hmac 0.13.0-rc.3",
@@ -5169,6 +5179,17 @@ name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
+
+[[package]]
+name = "phc"
+version = "0.6.0-rc.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c61f960577aaac5c259bc0866d685ba315c0ed30793c602d7287f54980913863"
+dependencies = [
+ "base64ct",
+ "getrandom 0.3.4",
+ "subtle",
+]
 
 [[package]]
 name = "picky-asn1"
@@ -8266,12 +8287,13 @@ dependencies = [
 
 [[package]]
 name = "yescrypt"
-version = "0.1.0-rc.0"
+version = "0.1.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebc85d6ca778492a19fe786fbc5721569ee0a4103e9c71fcb5bbcbe10eaa1aef"
+checksum = "d28f80aadde7fc57ce70cbc2665af4890839b790cfcbc9df59ab529ca03c0037"
 dependencies = [
  "hmac 0.13.0-rc.3",
  "mcf",
+ "password-hash 0.6.0-rc.6",
  "pbkdf2",
  "salsa20",
  "sha2 0.11.0-rc.3",
