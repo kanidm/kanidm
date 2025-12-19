@@ -243,6 +243,15 @@ pub struct OAuth2RFC9068TokenExtensions {
     pub parent_session_id: Option<Uuid>,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum IssuedTokenType {
+    AccessToken,
+    RefreshToken,
+    IdToken,
+    Saml1,
+    Saml2,
+}
+
 /// The response for an access token
 #[serde_as]
 #[skip_serializing_none]
@@ -251,7 +260,7 @@ pub struct AccessTokenResponse {
     pub access_token: String,
     pub token_type: AccessTokenType,
     /// RFC8693 issued_token_type for the representation of the issued token.
-    pub issued_token_type: Option<String>,
+    pub issued_token_type: Option<IssuedTokenType>,
     /// Expiration relative to `now` in seconds.
     pub expires_in: u32,
     pub refresh_token: Option<String>,

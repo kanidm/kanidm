@@ -1768,9 +1768,7 @@ mod tests {
     use hashbrown::HashSet;
     use kanidm_lib_crypto::CryptoPolicy;
     use kanidm_proto::internal::{UatPurpose, UserAuthToken};
-    use kanidm_proto::oauth2::{
-        AccessTokenResponse, AccessTokenType, OAUTH2_TOKEN_TYPE_ACCESS_TOKEN,
-    };
+    use kanidm_proto::oauth2::{AccessTokenResponse, AccessTokenType, IssuedTokenType};
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
     use std::time::Duration;
     use tokio::sync::mpsc::unbounded_channel as unbounded;
@@ -3526,7 +3524,7 @@ mod tests {
         let response = AccessTokenResponse {
             access_token: "super_secret_access_token".to_string(),
             token_type: AccessTokenType::Bearer,
-            issued_token_type: Some(OAUTH2_TOKEN_TYPE_ACCESS_TOKEN.to_string()),
+            issued_token_type: Some(IssuedTokenType::AccessToken),
             expires_in: 300,
             refresh_token: Some("super_secret_refresh_token".to_string()),
             scope: oauth2_client_provider.request_scopes.clone(),

@@ -639,16 +639,7 @@ pub trait IdmServerTransaction<'a> {
                     let api_session = entry
                         .get_ava_as_apitoken_map(Attribute::ApiTokenSession)
                         .and_then(|sessions| sessions.get(&parent_session_id));
-
-                    if let Some(api_session) = api_session {
-                        if let Some(expiry) = api_session.expiry {
-                            if time::OffsetDateTime::UNIX_EPOCH + ct >= expiry {
-                                security_info!(
-                                    "The api token session associated to this token is expired."
-                                );
-                                return Ok(None);
-                            }
-                        }
+                    if api_session.is_some() {
                         security_info!("A valid api token session value exists for this token");
                     } else if grace_valid {
                         security_info!(
