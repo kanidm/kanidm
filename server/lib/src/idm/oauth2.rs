@@ -1089,9 +1089,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         let client_auth = get_client_auth(client_auth_info, &token_req.client_post_auth)?;
 
         let o2rs = self.get_client(&client_auth.client_id)?;
-
-        let grant_is_token_exchange =
-            matches!(token_req.grant_type, GrantTypeReq::TokenExchange { .. });
+        let grant_is_token_exchange = matches!(token_req.grant_type, GrantTypeReq::TokenExchange { .. });
 
         // check the secret.
         let client_authentication_valid = match (&o2rs.type_, grant_is_token_exchange) {
@@ -1124,8 +1122,10 @@ impl IdmServerProxyWriteTransaction<'_> {
                 }
             }
             // Relies on the token to be valid - no further action needed.
-            OauthRSType::Public { .. } => false,
+            (OauthRSType::Public { .. }, _) => false,
         };
+
+
 
         // We are authenticated! Yay! Now we can actually check things ...
         match &token_req.grant_type {
@@ -1741,36 +1741,8 @@ impl IdmServerProxyWriteTransaction<'_> {
                 err => Oauth2Error::ServerError(err),
             })?;
 
-        let req_scopes = req_scopes.cloned().unwrap_or_default();
-
-        validate_scopes(&req_scopes)?;
-
-        let available_scopes: BTreeSet<String> = o2rs
-            .scope_maps
-            .iter()
-            .filter_map(|(u, m)| ident.is_memberof(*u).then_some(m.iter()))
-            .flatten()
-            .cloned()
-            .collect();
-
-        if !req_scopes.is_subset(&available_scopes) {
-            admin_warn!(
-                %ident,
-                requested_scopes = ?req_scopes,
-                available_scopes = ?available_scopes,
-                "Identity does not have access to the requested scopes"
-            );
-            return Err(Oauth2Error::AccessDenied);
-        }
-
-        let granted_scopes: BTreeSet<String> = o2rs
-            .sup_scope_maps
-            .iter()
-            .filter_map(|(u, m)| ident.is_memberof(*u).then_some(m.iter()))
-            .flatten()
-            .cloned()
-            .chain(req_scopes)
-            .collect();
+        let (_req_scopes, granted_scopes) =
+            process_requested_scopes_for_identity(o2rs, &ident, req_scopes)?;
 
         let session_id = Uuid::new_v4();
         let parent_session_id = apit.token_id;
@@ -2336,80 +2308,12 @@ impl IdmServerProxyReadTransaction<'_> {
         }
 
         // scopes - you need to have every requested scope or this auth_req is denied.
-        let req_scopes: BTreeSet<String> = auth_req.scope.clone();
-
-        if req_scopes.is_empty() {
-            admin_error!("Invalid OAuth2 request - must contain at least one requested scope");
-            return Err(Oauth2Error::InvalidRequest);
-        }
-
-        // Validate all request scopes have valid syntax.
-        validate_scopes(&req_scopes)?;
-
-        let uat_scopes: BTreeSet<String> = o2rs
-            .scope_maps
-            .iter()
-            .filter_map(|(u, m)| {
-                if ident.is_memberof(*u) {
-                    Some(m.iter())
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .cloned()
-            .collect();
-
-        // Needs to use s.to_string due to &&str which can't use the str::to_string
-        let avail_scopes: Vec<String> = req_scopes
-            .intersection(&uat_scopes)
-            .map(|s| s.to_string())
-            .collect();
-
-        debug!(?o2rs.scope_maps);
-
-        // Due to the intersection above, this is correct because the equal len can only
-        // occur if all terms were satisfied - effectively this check is that avail_scopes
-        // and req_scopes are identical after intersection with the scopes defined by uat_scopes
-        if avail_scopes.len() != req_scopes.len() {
-            admin_warn!(
-                %ident,
-                requested_scopes = ?req_scopes,
-                available_scopes = ?uat_scopes,
-                "Identity does not have access to the requested scopes"
-            );
-            return Err(Oauth2Error::AccessDenied);
-        }
-
-        drop(avail_scopes);
-
-        // ⚠️  At this point, per scopes we are *authorised*
-
-        // We now access the supplemental scopes that will be granted to this session. It is important
-        // we DO NOT do this prior to the requested scope check, just in case we accidentally
-        // confuse the two!
-
-        // The set of scopes that are being granted during this auth_request. This is a combination
-        // of the scopes that were requested, and the scopes we supplement.
+        let (req_scopes, granted_scopes) =
+            process_requested_scopes_for_identity(o2rs, ident, Some(&auth_req.scope))?;
 
         // MICRO OPTIMISATION = flag if we have openid first, so we can into_iter here rather than
         // cloning.
         let openid_requested = req_scopes.contains(OAUTH2_SCOPE_OPENID);
-
-        let granted_scopes: BTreeSet<String> = o2rs
-            .sup_scope_maps
-            .iter()
-            .filter_map(|(u, m)| {
-                if ident.is_memberof(*u) {
-                    Some(m.iter())
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .cloned()
-            .chain(req_scopes)
-            .collect();
 
         let consent_previously_granted =
             if let Some(consent_scopes) = ident.get_oauth2_consent_scopes(o2rs.uuid) {
@@ -3304,6 +3208,50 @@ fn extra_claims_for_account(
     trace!(?extra_claims);
 
     extra_claims
+}
+
+fn process_requested_scopes_for_identity(
+    o2rs: &Oauth2RS,
+    ident: &Identity,
+    req_scopes: Option<&BTreeSet<String>>,
+) -> Result<(BTreeSet<String>, BTreeSet<String>), Oauth2Error> {
+    let req_scopes = req_scopes.cloned().unwrap_or_default();
+
+    if req_scopes.is_empty() {
+        admin_error!("Invalid OAuth2 request - must contain at least one requested scope");
+        return Err(Oauth2Error::InvalidRequest);
+    }
+
+    validate_scopes(&req_scopes)?;
+
+    let available_scopes: BTreeSet<String> = o2rs
+        .scope_maps
+        .iter()
+        .filter_map(|(u, m)| ident.is_memberof(*u).then_some(m.iter()))
+        .flatten()
+        .cloned()
+        .collect();
+
+    if !req_scopes.is_subset(&available_scopes) {
+        admin_warn!(
+            %ident,
+            requested_scopes = ?req_scopes,
+            available_scopes = ?available_scopes,
+            "Identity does not have access to the requested scopes"
+        );
+        return Err(Oauth2Error::AccessDenied);
+    }
+
+    let granted_scopes: BTreeSet<String> = o2rs
+        .sup_scope_maps
+        .iter()
+        .filter_map(|(u, m)| ident.is_memberof(*u).then_some(m.iter()))
+        .flatten()
+        .cloned()
+        .chain(req_scopes.iter().cloned())
+        .collect();
+
+    Ok((req_scopes, granted_scopes))
 }
 
 fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
@@ -7643,11 +7591,35 @@ mod tests {
             client_post_auth: ClientPostAuth::from(("test_resource_server", Some(secret.as_str()))),
         };
 
+        let empty_scope_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::TokenExchange {
+                subject_token: api_token.to_string(),
+                subject_token_type: TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS.to_string(),
+                requested_token_type: None,
+                audience: Some("test_resource_server".to_string()),
+                resource: None,
+                actor_token: None,
+                actor_token_type: None,
+                scope: Some(BTreeSet::new()),
+            },
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: None,
+            },
+        };
+
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         assert_eq!(
             idms_prox_write
                 .check_oauth2_token_exchange(&client_authz, &forbidden_secret_req, ct)
+                .unwrap_err(),
+            Oauth2Error::InvalidRequest
+        );
+
+        assert_eq!(
+            idms_prox_write
+                .check_oauth2_token_exchange(&ClientAuthInfo::none(), &empty_scope_req, ct)
                 .unwrap_err(),
             Oauth2Error::InvalidRequest
         );
