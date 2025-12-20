@@ -1090,9 +1090,21 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         let o2rs = self.get_client(&client_auth.client_id)?;
 
+        let grant_is_token_exchange =
+            matches!(token_req.grant_type, GrantTypeReq::TokenExchange { .. });
+
         // check the secret.
-        let client_authentication_valid = match &o2rs.type_ {
-            OauthRSType::Basic { authz_secret, .. } => {
+        let client_authentication_valid = match (&o2rs.type_, grant_is_token_exchange) {
+            (OauthRSType::Basic { .. }, true) => {
+                if client_auth.client_secret.is_some() {
+                    security_info!(
+                        "Client secret must not be supplied for token exchange grant using a service account token"
+                    );
+                    return Err(Oauth2Error::InvalidRequest);
+                }
+                true
+            }
+            (OauthRSType::Basic { authz_secret, .. }, false) => {
                 match client_auth.client_secret {
                     Some(secret) => {
                         if authz_secret == &secret {
@@ -1153,7 +1165,6 @@ impl IdmServerProxyWriteTransaction<'_> {
                 scope,
             } => self.check_oauth2_token_exchange_token_exchange(
                 &o2rs,
-                client_authentication_valid,
                 subject_token,
                 subject_token_type,
                 requested_token_type.as_deref(),
@@ -1624,7 +1635,6 @@ impl IdmServerProxyWriteTransaction<'_> {
     fn check_oauth2_token_exchange_token_exchange(
         &mut self,
         o2rs: &Oauth2RS,
-        client_authentication_valid: bool,
         subject_token: &str,
         subject_token_type: &str,
         requested_token_type: Option<&str>,
@@ -1635,13 +1645,6 @@ impl IdmServerProxyWriteTransaction<'_> {
         req_scopes: Option<&BTreeSet<String>>,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
-        if matches!(o2rs.type_, OauthRSType::Basic { .. }) && !client_authentication_valid {
-            security_info!(
-                "Unable to proceed with token exchange grant unless client authentication is provided and valid"
-            );
-            return Err(Oauth2Error::AuthenticationRequired);
-        }
-
         match (actor_token, actor_token_type) {
             (Some(_), None) | (None, Some(_)) => {
                 admin_warn!("actor_token and actor_token_type must both be supplied when using an actor token");
@@ -7620,13 +7623,37 @@ mod tests {
                 actor_token_type: None,
                 scope: Some(scope.clone()),
             },
+            client_post_auth: ClientPostAuth {
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: None,
+            },
+        };
+
+        let forbidden_secret_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::TokenExchange {
+                subject_token: api_token.to_string(),
+                subject_token_type: TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS.to_string(),
+                requested_token_type: None,
+                audience: Some("test_resource_server".to_string()),
+                resource: None,
+                actor_token: None,
+                actor_token_type: None,
+                scope: Some(scope.clone()),
+            },
             client_post_auth: ClientPostAuth::from(("test_resource_server", Some(secret.as_str()))),
         };
 
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
+        assert_eq!(
+            idms_prox_write
+                .check_oauth2_token_exchange(&client_authz, &forbidden_secret_req, ct)
+                .unwrap_err(),
+            Oauth2Error::InvalidRequest
+        );
+
         let token_response = idms_prox_write
-            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .check_oauth2_token_exchange(&ClientAuthInfo::none(), &token_req, ct)
             .expect("Failed to perform OAuth2 token exchange for service account");
 
         assert_eq!(token_response.token_type, AccessTokenType::Bearer);

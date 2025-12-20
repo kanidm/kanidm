@@ -74,7 +74,8 @@ For more see the
 ### API Tokens with OIDC Token Exchange (RFC 8693)
 
 Service accounts can exchange their API bearer token for OAuth2/OIDC tokens (access/id/refresh) without user consent or
-interaction. Use the token endpoint with the RFC 8693 grant:
+interaction. For Basic OAuth2 clients, do not provide the client secret during this flow; the API token is the
+credential, and sending a secret is rejected. Use the token endpoint with the RFC 8693 grant:
 
 - `grant_type`: `urn:ietf:params:oauth:grant-type:token-exchange`
 - `subject_token`: the service-account API token (as issued by `kanidm service-account api-token generate`)
@@ -92,8 +93,8 @@ Example `application/x-www-form-urlencoded` request:
 
 ```bash
 curl -X POST https://idm.example.com/oauth2/token \
-  -u test_resource_server:CLIENT_SECRET \
   -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "client_id=test_resource_server" \
   -d "subject_token=$API_TOKEN" \
   -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token" \
   -d "audience=test_resource_server" \
