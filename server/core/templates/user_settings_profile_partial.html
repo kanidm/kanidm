@@ -32,8 +32,6 @@ Profile
 
     (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)
 
-    (% call string_attr("Last Update", "updated_at", person.updated_at, false, Attribute::LastModifiedCid) %)
-
     (% let can_edit_email = can_rw && scim_effective_access.modify_present.check(&Attribute::Mail) %)
 
 
