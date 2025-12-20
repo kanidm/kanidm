@@ -118,7 +118,6 @@ impl ValueSetT for ValueSetPrivateBinary {
         Box::new(
             self.set
                 .iter()
-                .cloned()
                 .map(|_| PartialValue::PrivateBinary),
         )
     }
