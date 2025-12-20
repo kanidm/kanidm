@@ -330,6 +330,8 @@ impl QueryServerWriteTransaction<'_> {
             SyntaxType::Certificate => ValueSetCertificate::from_scim_json_put(value),
             SyntaxType::SshKey => ValueSetSshKey::from_scim_json_put(value),
             SyntaxType::Uint32 => ValueSetUint32::from_scim_json_put(value),
+            SyntaxType::Int64 => ValueSetInt64::from_scim_json_put(value),
+            SyntaxType::Uint64 => ValueSetUint64::from_scim_json_put(value),
             SyntaxType::Sha256 => ValueSetSha256::from_scim_json_put(value),
 
             // Not Yet ... if ever

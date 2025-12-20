@@ -57,6 +57,8 @@ pub const SCIM_SCHEMA_SYNC_1: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1
 pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:account";
 pub const SCIM_SCHEMA_SYNC_GROUP: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:group";
 pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:person";
+pub const SCIM_SCHEMA_SYNC_OAUTH2_ACCOUNT: &str =
+    "urn:ietf:params:scim:schemas:kanidm:sync:1:oauth2_account";
 pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str =
     "urn:ietf:params:scim:schemas:kanidm:sync:1:posixaccount";
 pub const SCIM_SCHEMA_SYNC_POSIXGROUP: &str =
@@ -104,6 +106,8 @@ pub struct ScimSyncPerson {
     pub ssh_publickey: Vec<ScimSshPubKey>,
     pub account_valid_from: Option<String>,
     pub account_expire: Option<String>,
+    pub oauth2_account_provider: Option<Uuid>,
+    pub oauth2_account_unique_user_id: Option<String>,
 }
 
 impl TryInto<ScimEntry> for ScimSyncPerson {
@@ -147,6 +151,8 @@ impl ScimSyncPerson {
                 ssh_publickey: Vec::with_capacity(0),
                 account_valid_from: None,
                 account_expire: None,
+                oauth2_account_provider: None,
+                oauth2_account_unique_user_id: None,
             },
         }
     }
@@ -206,6 +212,25 @@ impl ScimSyncPersonBuilder {
                 SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
                 SCIM_SCHEMA_SYNC_PERSON.to_string(),
             ];
+        }
+        self
+    }
+
+    pub fn set_oauth2_account_provider(mut self, maybe_provider: Option<(Uuid, String)>) -> Self {
+        if let Some((provider, unique_user_id)) = maybe_provider {
+            self.inner
+                .entry
+                .schemas
+                .push(SCIM_SCHEMA_SYNC_OAUTH2_ACCOUNT.to_string());
+            self.inner.oauth2_account_provider = Some(provider);
+            self.inner.oauth2_account_unique_user_id = Some(unique_user_id);
+        } else {
+            self.inner
+                .entry
+                .schemas
+                .retain(|x| x != SCIM_SCHEMA_SYNC_OAUTH2_ACCOUNT);
+            self.inner.oauth2_account_provider = None;
+            self.inner.oauth2_account_unique_user_id = None;
         }
         self
     }

@@ -770,6 +770,10 @@ pub enum DbValueSetV2 {
     Spn(Vec<(String, String)>),
     #[serde(rename = "UI")]
     Uint32(Vec<u32>),
+    #[serde(rename = "I64")]
+    Int64(Vec<i64>),
+    #[serde(rename = "U64")]
+    Uint64(Vec<u64>),
     #[serde(rename = "CI")]
     Cid(Vec<DbCidV1>),
     #[serde(rename = "NU")]
@@ -862,6 +866,8 @@ impl DbValueSetV2 {
             DbValueSetV2::SshKey(set) => set.len(),
             DbValueSetV2::Spn(set) => set.len(),
             DbValueSetV2::Uint32(set) => set.len(),
+            DbValueSetV2::Int64(set) => set.len(),
+            DbValueSetV2::Uint64(set) => set.len(),
             DbValueSetV2::Cid(set) => set.len(),
             DbValueSetV2::NsUniqueId(set) => set.len(),
             DbValueSetV2::DateTime(set) => set.len(),

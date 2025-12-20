@@ -725,6 +725,10 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::SecurityPrincipalName => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set.".to_string())),
                     SyntaxType::Uint32 => Value::new_uint32_str(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
+                    SyntaxType::Int64 => Value::new_int64_str(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid int64 syntax".to_string())),
+                    SyntaxType::Uint64 => Value::new_uint64_str(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint64 syntax".to_string())),
                     SyntaxType::Cid => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
                     SyntaxType::NsUniqueId => Value::new_nsuniqueid_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid NsUniqueId syntax".to_string())),
@@ -844,6 +848,12 @@ pub trait QueryServerTransaction<'a> {
                     }
                     SyntaxType::Uint32 => PartialValue::new_uint32_str(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())
+                    }),
+                    SyntaxType::Uint64 => PartialValue::new_uint64_str(value).ok_or_else(|| {
+                        OperationError::InvalidAttribute("Invalid uint64 syntax".to_string())
+                    }),
+                    SyntaxType::Int64 => PartialValue::new_int64_str(value).ok_or_else(|| {
+                        OperationError::InvalidAttribute("Invalid int64 syntax".to_string())
                     }),
                     SyntaxType::Cid => PartialValue::new_cid_s(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid cid syntax".to_string())
