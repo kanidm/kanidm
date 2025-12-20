@@ -115,11 +115,7 @@ impl ValueSetT for ValueSetPrivateBinary {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(
-            self.set
-                .iter()
-                .map(|_| PartialValue::PrivateBinary),
-        )
+        Box::new(self.set.iter().map(|_| PartialValue::PrivateBinary))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
