@@ -1089,7 +1089,8 @@ impl IdmServerProxyWriteTransaction<'_> {
         let client_auth = get_client_auth(client_auth_info, &token_req.client_post_auth)?;
 
         let o2rs = self.get_client(&client_auth.client_id)?;
-        let grant_is_token_exchange = matches!(token_req.grant_type, GrantTypeReq::TokenExchange { .. });
+        let grant_is_token_exchange =
+            matches!(token_req.grant_type, GrantTypeReq::TokenExchange { .. });
 
         // check the secret.
         let client_authentication_valid = match (&o2rs.type_, grant_is_token_exchange) {
@@ -1124,8 +1125,6 @@ impl IdmServerProxyWriteTransaction<'_> {
             // Relies on the token to be valid - no further action needed.
             (OauthRSType::Public { .. }, _) => false,
         };
-
-
 
         // We are authenticated! Yay! Now we can actually check things ...
         match &token_req.grant_type {
@@ -1631,6 +1630,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[instrument(level = "debug", skip_all)]
     fn check_oauth2_token_exchange_token_exchange(
         &mut self,
