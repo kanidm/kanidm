@@ -3009,8 +3009,11 @@ fn s_claims_for_account(
         (None, None)
     };
 
-    let updated_at = if scopes.contains(OAUTH2_SCOPE_UPDATED_AT) {
-        account.updated_at.map(|ua| ua.to_string())
+    let updated_at = if scopes.contains(OAUTH2_SCOPE_PROFILE) {
+        account
+            .updated_at
+            .clone()
+            .map(|v| v.ts.as_secs().to_string())
     } else {
         None
     };
@@ -6044,7 +6047,7 @@ mod tests {
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![
                         OAUTH2_SCOPE_EMAIL.to_string(),
-                        OAUTH2_SCOPE_UPDATED_AT.to_string(),
+                        OAUTH2_SCOPE_PROFILE.to_string(),
                         OAUTH2_SCOPE_OPENID.to_string()
                     ],
                 )
@@ -6076,7 +6079,7 @@ mod tests {
             scope: btreeset![
                 "openid".to_string(),
                 "email".to_string(),
-                "updated_at".to_string()
+                "profile".to_string()
             ],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
@@ -6137,7 +6140,7 @@ mod tests {
             scope: btreeset![
                 "openid".to_string(),
                 "email".to_string(),
-                "updated_at".to_string()
+                "profile".to_string()
             ],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),

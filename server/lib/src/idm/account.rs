@@ -1,6 +1,5 @@
 use super::accountpolicy::ResolvedAccountPolicy;
 use super::group::{load_account_policy, load_all_groups_from_account, Group, Unix};
-use crate::be::dbvalue::DbValueSetV2;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::{apppwd::ApplicationPassword, Credential};
@@ -70,7 +69,7 @@ pub struct Account {
     pub(crate) sshkeys: BTreeMap<String, SshPublicKey>,
     pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
     pub(crate) oauth2_client_provider: Option<OAuth2AccountCredential>,
-    pub updated_at: Option<u64>,
+    pub updated_at: Option<Cid>,
 }
 
 #[cfg(test)]
@@ -231,13 +230,10 @@ macro_rules! try_from_entry {
             _ => None,
         };
 
-        let updated_at: Option<u64> =
-            $value
-                .get_ava_set(Attribute::LastModifiedCid)
-                .and_then(|u| match u.to_db_valueset_v2() {
-                    DbValueSetV2::Cid(cid) => cid.get(0).map(|c| c.timestamp.as_secs()),
-                    _ => None,
-                });
+        let updated_at: Option<Cid> = $value
+            .get_ava_set(Attribute::LastModifiedCid)
+            .cloned()
+            .and_then(|u| u.to_cid_single());
 
         Ok(Account {
             uuid,
