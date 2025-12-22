@@ -78,16 +78,14 @@ interaction. For Basic OAuth2 clients, do not provide the client secret during t
 credential, and sending a secret is rejected. Use the token endpoint with the RFC 8693 grant:
 
 - `grant_type`: `urn:ietf:params:oauth:grant-type:token-exchange`
-- `subject_token`: the service-account API token (as issued by `kanidm service-account api-token generate`)
+- `subject_token`: the service-account API token (see `kanidm service-account api-token generate`)
 - `subject_token_type`: `urn:ietf:params:oauth:token-type:access_token`
-- `requested_token_type` (optional): only `urn:ietf:params:oauth:token-type:access_token` is supported; omitted defaults to an access token
-- `audience`: the OAuth2 client_id of the resource server
-- `resource` (optional): absolute URI for the same resource server; other targets are rejected with `invalid_target`
-- `scope`: requested scopes (must be allowed for the service account on that client)
+- `audience`: OAuth2 `client_id` of the target resource server
+- `resource` (optional): absolute URI for that same resource server; other values return `invalid_target`
+- `requested_token_type` (optional): defaults to an access token; other values are rejected
+- `scope`: scopes permitted for the service account on that client
 
-`actor_token` is currently not supported for this flow.
-
-The response includes `access_token`, optional `id_token` (when `openid` is requested), `refresh_token`, and `issued_token_type` indicating the representation of the issued token.
+`actor_token` is not supported for this flow.
 
 Example `application/x-www-form-urlencoded` request:
 
@@ -101,7 +99,7 @@ curl -X POST https://idm.example.com/oauth2/token \
   -d "scope=openid groups"
 ```
 
-The response includes `access_token`, optional `id_token` (when `openid` is requested), and `refresh_token`. Scopes are
+Responses include an `access_token`, `id_token` when `openid` is requested, and a `refresh_token` when allowed. Scopes are
 still enforced against the service account’s group membership and the client’s scope map.
 
 ### API Tokens with LDAP
