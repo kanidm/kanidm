@@ -15,8 +15,8 @@ async def client() -> Optional[KanidmClient]:
         basicConfig(level=DEBUG)
 
         return KanidmClient(uri="https://idm.example.com")
-    except FileNotFoundError:
-        pytest.skip("Couldn't find config file...")  # type: ignore[call-non-callable]
+    except FileNotFoundError as err:
+        pytest.skip(f"Couldn't find config file... {err}")  # type: ignore[call-non-callable]
 
 
 @pytest.fixture(scope="function")
@@ -24,8 +24,8 @@ async def client_configfile() -> Optional[KanidmClient]:
     """sets up a client from a config file"""
     try:
         return KanidmClient(config_file=Path("~/.config/kanidm"))
-    except FileNotFoundError:
-        pytest.skip("Couldn't find config file...")  # type: ignore[call-non-callable]
+    except FileNotFoundError as err:
+        pytest.skip(f"Couldn't find config file... {err}")  # type: ignore[call-non-callable]
 
 
 class MockResponse:
