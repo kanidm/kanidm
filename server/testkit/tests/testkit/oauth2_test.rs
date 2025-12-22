@@ -1279,12 +1279,10 @@ async fn test_oauth2_openid_basic_consent_can_be_disabled(rsclient: &KanidmClien
         .await
         .expect("Failed to create oauth2 config");
 
-    let response = rsclient
+    assert!(rsclient
         .idm_oauth2_rs_disable_consent_prompt(TEST_INTEGRATION_RS_ID)
         .await
-        .expect("Couldn't disable consent prompt on a basic RS");
-
-    assert_eq!(response, ());
+        .is_ok());
 }
 
 #[kanidmd_testkit::test]
