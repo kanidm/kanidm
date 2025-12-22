@@ -48,7 +48,7 @@ radius_clients = [ { name = "hello world", ipaddr = "10.0.0.5", secret = "cr4bj0
     assert client.secret == "cr4bj0oz"
 
 
-def test_find_radius_config_path(monkeypatch) -> None:
+def test_find_radius_config_path(monkeypatch: pytest.MonkeyPatch) -> None:
     result = find_radius_config_path()
     print(f"{result=}")
     assert isinstance(result, Path)
