@@ -1089,15 +1089,14 @@ impl IdmServerProxyWriteTransaction<'_> {
         let client_auth = get_client_auth(client_auth_info, &token_req.client_post_auth)?;
 
         let o2rs = self.get_client(&client_auth.client_id)?;
-        let grant_is_token_exchange =
-            matches!(token_req.grant_type, GrantTypeReq::TokenExchange { .. });
+        let is_token_exchange = matches!(token_req.grant_type, GrantTypeReq::TokenExchange { .. });
 
         // check the secret.
-        let client_authentication_valid = match (&o2rs.type_, grant_is_token_exchange) {
+        let client_authentication_valid = match (&o2rs.type_, is_token_exchange) {
             (OauthRSType::Basic { .. }, true) => {
                 if client_auth.client_secret.is_some() {
                     security_info!(
-                        "Client secret must not be supplied for token exchange grant using a service account token"
+                        "Client secret is not accepted when exchanging a service account token"
                     );
                     return Err(Oauth2Error::InvalidRequest);
                 }
@@ -1162,18 +1161,23 @@ impl IdmServerProxyWriteTransaction<'_> {
                 actor_token,
                 actor_token_type,
                 scope,
-            } => self.check_oauth2_token_exchange_token_exchange(
-                &o2rs,
-                subject_token,
-                subject_token_type,
-                requested_token_type.as_deref(),
-                audience.as_deref(),
-                resource.as_deref(),
-                actor_token.as_deref(),
-                actor_token_type.as_deref(),
-                scope.as_ref(),
-                ct,
-            ),
+            } => {
+                if actor_token.is_some() || actor_token_type.is_some() {
+                    warn!("actor_token is not supported for token exchange");
+                    return Err(Oauth2Error::InvalidRequest);
+                }
+
+                self.check_oauth2_token_exchange_service_account(
+                    &o2rs,
+                    subject_token,
+                    subject_token_type,
+                    requested_token_type.as_deref(),
+                    audience.as_deref(),
+                    resource.as_deref(),
+                    scope.as_ref(),
+                    ct,
+                )
+            }
             GrantTypeReq::DeviceCode { device_code, scope } => {
                 self.check_oauth2_device_code_status(device_code, scope)
             }
@@ -1632,7 +1636,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 
     #[allow(clippy::too_many_arguments)]
     #[instrument(level = "debug", skip_all)]
-    fn check_oauth2_token_exchange_token_exchange(
+    fn check_oauth2_token_exchange_service_account(
         &mut self,
         o2rs: &Oauth2RS,
         subject_token: &str,
@@ -1640,23 +1644,9 @@ impl IdmServerProxyWriteTransaction<'_> {
         requested_token_type: Option<&str>,
         audience: Option<&str>,
         resource: Option<&str>,
-        actor_token: Option<&str>,
-        actor_token_type: Option<&str>,
         req_scopes: Option<&BTreeSet<String>>,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
-        match (actor_token, actor_token_type) {
-            (Some(_), None) | (None, Some(_)) => {
-                admin_warn!("actor_token and actor_token_type must both be supplied when using an actor token");
-                return Err(Oauth2Error::InvalidRequest);
-            }
-            (Some(_), Some(_)) => {
-                admin_warn!("actor_token is not supported in this token exchange");
-                return Err(Oauth2Error::InvalidRequest);
-            }
-            (None, None) => {}
-        }
-
         if let Some(rtt) = requested_token_type {
             if rtt != OAUTH2_TOKEN_TYPE_ACCESS_TOKEN {
                 warn!(
@@ -7555,58 +7545,32 @@ mod tests {
 
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let scope: BTreeSet<String> = btreeset![
-            OAUTH2_SCOPE_OPENID.to_string(),
-            OAUTH2_SCOPE_GROUPS.to_string()
-        ];
+        let scopes: BTreeSet<String> =
+            btreeset![OAUTH2_SCOPE_OPENID.into(), OAUTH2_SCOPE_GROUPS.into()];
 
-        let token_req = AccessTokenRequest {
-            grant_type: GrantTypeReq::TokenExchange {
-                subject_token: api_token.to_string(),
-                subject_token_type: TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS.to_string(),
-                requested_token_type: None,
-                audience: Some("test_resource_server".to_string()),
-                resource: None,
-                actor_token: None,
-                actor_token_type: None,
-                scope: Some(scope.clone()),
-            },
-            client_post_auth: ClientPostAuth {
-                client_id: Some("test_resource_server".to_string()),
-                client_secret: None,
-            },
-        };
+        let build_exchange_request =
+            |requested_scopes: BTreeSet<String>, client_secret: Option<String>| {
+                AccessTokenRequest {
+                    grant_type: GrantTypeReq::TokenExchange {
+                        subject_token: api_token.to_string(),
+                        subject_token_type: TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS.into(),
+                        requested_token_type: None,
+                        audience: Some("test_resource_server".into()),
+                        resource: None,
+                        actor_token: None,
+                        actor_token_type: None,
+                        scope: Some(requested_scopes),
+                    },
+                    client_post_auth: ClientPostAuth {
+                        client_id: Some("test_resource_server".into()),
+                        client_secret,
+                    },
+                }
+            };
 
-        let forbidden_secret_req = AccessTokenRequest {
-            grant_type: GrantTypeReq::TokenExchange {
-                subject_token: api_token.to_string(),
-                subject_token_type: TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS.to_string(),
-                requested_token_type: None,
-                audience: Some("test_resource_server".to_string()),
-                resource: None,
-                actor_token: None,
-                actor_token_type: None,
-                scope: Some(scope.clone()),
-            },
-            client_post_auth: ClientPostAuth::from(("test_resource_server", Some(secret.as_str()))),
-        };
-
-        let empty_scope_req = AccessTokenRequest {
-            grant_type: GrantTypeReq::TokenExchange {
-                subject_token: api_token.to_string(),
-                subject_token_type: TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS.to_string(),
-                requested_token_type: None,
-                audience: Some("test_resource_server".to_string()),
-                resource: None,
-                actor_token: None,
-                actor_token_type: None,
-                scope: Some(BTreeSet::new()),
-            },
-            client_post_auth: ClientPostAuth {
-                client_id: Some("test_resource_server".to_string()),
-                client_secret: None,
-            },
-        };
+        let token_req = build_exchange_request(scopes.clone(), None);
+        let forbidden_secret_req = build_exchange_request(scopes.clone(), Some(secret.clone()));
+        let empty_scope_req = build_exchange_request(BTreeSet::new(), None);
 
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 

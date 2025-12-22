@@ -259,7 +259,7 @@ pub enum IssuedTokenType {
 pub struct AccessTokenResponse {
     pub access_token: String,
     pub token_type: AccessTokenType,
-    /// RFC8693 issued_token_type for the representation of the issued token.
+    /// Optional RFC8693 issued_token_type.
     pub issued_token_type: Option<IssuedTokenType>,
     /// Expiration relative to `now` in seconds.
     pub expires_in: u32,
@@ -751,8 +751,9 @@ mod tests {
 
     #[test]
     fn test_token_exchange_grant_serialization() {
-        let scope: BTreeSet<String> = ["openid".to_string(), "groups".to_string()]
+        let scopes: BTreeSet<String> = ["groups", "openid"]
             .into_iter()
+            .map(str::to_string)
             .collect();
 
         let atr = AccessTokenRequest {
@@ -764,7 +765,7 @@ mod tests {
                 resource: None,
                 actor_token: None,
                 actor_token_type: None,
-                scope: Some(scope.clone()),
+                scope: Some(scopes.clone()),
             },
             client_post_auth: Default::default(),
         };
@@ -789,7 +790,7 @@ mod tests {
                 assert_eq!(audience.as_deref(), Some("test_resource_server"));
                 assert_eq!(actor_token, None);
                 assert_eq!(actor_token_type, None);
-                assert_eq!(descope, Some(scope));
+                assert_eq!(descope, Some(scopes));
             }
             _ => panic!("Wrong grant type"),
         }
