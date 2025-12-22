@@ -8,7 +8,7 @@ import pytest
 
 from kanidm.types import KanidmClientConfig
 from kanidm.utils import load_config
-
+from kanidm.radius import find_radius_config_path
 
 EXAMPLE_CONFIG_FILE = Path(__file__).parent.parent.parent / "examples/config"
 
@@ -46,3 +46,11 @@ radius_clients = [ { name = "hello world", ipaddr = "10.0.0.5", secret = "cr4bj0
     assert client.name == "hello world"
     assert client.ipaddr == "10.0.0.5"
     assert client.secret == "cr4bj0oz"
+
+
+def test_find_radius_config_path(monkeypatch) -> None:
+    result = find_radius_config_path()
+    print(f"{result=}")
+    assert isinstance(result, Path)
+    assert result.exists()
+    assert result.is_file()
