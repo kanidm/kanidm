@@ -73,9 +73,9 @@ async def _get_radius_token(
 
     if response.status_code != 200:
         logging.error("got response status code: %s", response.status_code)
-        logging.error("Response content: %s", response.json())
+        logging.error("Response content: %s", response.model_dump_json())
         raise Exception("Failed to get RadiusAuthToken")
-    logging.debug("Success getting RADIUS token: %s", response.json())
+    logging.debug("Success getting RADIUS token: %s", response.model_dump_json())
     logging.debug(response.data)
     return response.data
 
