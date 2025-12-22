@@ -1,6 +1,7 @@
 """tests the check_vlan function"""
 
 import asyncio
+import os
 from typing import Any
 
 import pytest
@@ -51,3 +52,22 @@ async def test_check_vlan() -> None:
         )
         == 12345678
     )
+
+
+@pytest.mark.asyncio
+async def test_check_vlan_exceptions(monkeypatch) -> None:
+    # test some other options
+
+    with pytest.raises(ValueError):
+        check_vlan(
+            acc=12345678,
+            group=RadiusTokenGroup(spn="foo@bar.com", uuid="lol"),
+        )
+
+    monkeypatch.setenv("KANIDM_CONFIG_FILE", "tests/testdata/kanidm_config.toml")
+
+    with pytest.raises(FileNotFoundError):
+        check_vlan(
+            acc=12345678,
+            group=RadiusTokenGroup(spn="foo@bar.com", uuid="lol"),
+        )

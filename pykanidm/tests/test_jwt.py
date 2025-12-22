@@ -70,16 +70,17 @@ def test_tokenstuff() -> None:
     print(f"Parsed token: {info}")
     if info is None:
         pytest.skip("No token!")  # type: ignore[call-non-callable]
-    print(info.expiry_datetime)
-    assert (
-        datetime(
-            year=2022,
-            month=9,
-            day=22,
-            hour=9,
-            minute=25,
-            second=23,
-            tzinfo=timezone.utc,
+    else:
+        print(info.expiry_datetime)
+        assert (
+            datetime(
+                year=2022,
+                month=9,
+                day=22,
+                hour=9,
+                minute=25,
+                second=23,
+                tzinfo=timezone.utc,
+            )
+            == info.expiry_datetime
         )
-        == info.expiry_datetime
-    )
