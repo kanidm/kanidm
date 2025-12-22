@@ -55,7 +55,7 @@ async def test_check_vlan() -> None:
 
 
 @pytest.mark.asyncio
-async def test_check_vlan_exceptions(monkeypatch) -> None:
+async def test_check_vlan_exceptions(monkeypatch: pytest.MonkeyPatch) -> None:
     # test some other options
 
     with pytest.raises(ValueError):
