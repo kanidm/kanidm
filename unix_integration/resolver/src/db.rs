@@ -12,7 +12,8 @@ use uuid::Uuid;
 const DBV_MAIN: &str = "main";
 // This is in *pages* for sqlite. The default page size is 4096 bytes. So to achieve
 // 32MB we need to divide by this.
-const CACHE_SIZE: usize = 32 * ((1024 * 1024) / 4096);
+const SQLITE_PAGE_SIZE: i64 = 4096;
+const CACHE_SIZE: i64 = 32_i64.saturating_mul((1024 * 1024) / SQLITE_PAGE_SIZE);
 
 #[async_trait]
 pub trait Cache {
