@@ -1869,8 +1869,11 @@ impl IdlSqlite {
             OperationError::BackendEngine
         })?;
 
-        conn.query_row("select count(id) from id2entry", [], |row| row.get(0))
-            .map_err(sqlite_error)
+        let res: i64 = conn
+            .query_row("select count(id) from id2entry", [], |row| row.get(0))
+            .map_err(sqlite_error)?;
+
+        Ok(res as u64)
     }
 
     pub fn read(&self) -> Result<IdlSqliteReadTransaction, OperationError> {

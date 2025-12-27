@@ -140,9 +140,9 @@ kanidm-hsm-crypto = { version = "^0.3.5" }
 anyhow = { version = "1.0.100" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.14.0" }
-askama_web = { version = "0.14.6", features = ["axum-0.8"] }
+askama_web = { version = "0.14.7", features = ["axum-0.8"] }
 async-trait = "^0.1.89"
-axum = { version = "0.8.7", features = [
+axum = { version = "0.8.8", features = [
     "form",
     "json",
     "macros",
@@ -152,7 +152,7 @@ axum = { version = "0.8.7", features = [
     "tokio",
     "tracing",
 ] }
-axum-extra = { version = "0.12.2", features = ["cookie"] }
+axum-extra = { version = "0.12.3", features = ["cookie"] }
 axum-macros = "0.5.0"
 axum-htmx = { version = "0.8.1", features = ["serde", "guards"] }
 base32 = "^0.5.1"
@@ -160,9 +160,9 @@ base64 = "^0.22.1"
 base64urlsafedata = "0.5.3"
 bitflags = "^2.9.4"
 bytes = "^1.11.0"
-cidr = "0.3.1"
+cidr = "0.3.2"
 clap = { version = "4.5.53", features = ["derive", "env"] }
-clap_complete = "^4.5.61"
+clap_complete = "^4.5.62"
 # Forced by saffron/cron
 chrono = "^0.4.42"
 compact_jwt = "^0.5.3-dev"
@@ -227,7 +227,7 @@ opentelemetry-otlp = { version = "0.31.0", default-features = false, features = 
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
 opentelemetry-semantic-conventions = "0.31.0"
 tracing-opentelemetry = "0.32.0"
-tracing-core = "0.1.35"
+tracing-core = "0.1.36"
 peg = "0.8"
 pkg-config = "^0.3.31"
 prctl = "1.0.0"
@@ -237,7 +237,7 @@ quote = "1"
 rand = "0.9.2"
 rand_chacha = "0.9.0"
 regex = "1.12.1"
-reqwest = { version = "0.12.23", default-features = false, features = [
+reqwest = { version = "0.12.26", default-features = false, features = [
     "cookies",
     "http2",
     "json",
@@ -245,7 +245,7 @@ reqwest = { version = "0.12.23", default-features = false, features = [
     "rustls-tls-native-roots",
     "rustls-tls-native-roots-no-provider",
 ] }
-rusqlite = { version = "0.37.0", features = ["array", "bundled"] }
+rusqlite = { version = "0.38.0", features = ["array", "bundled"] }
 rustls = { version = "0.23.33", default-features = false, features = [
     "std",
     "aws_lc_rs",
@@ -273,8 +273,8 @@ tokio = "^1.48.0"
 tokio-openssl = "^0.6.5"
 tokio-rustls = { version = "0.26.4" }
 tokio-util = "^0.7.17"
-toml = "^0.9.8"
-tracing = { version = "^0.1.43", features = [
+toml = "^0.9.10"
+tracing = { version = "^0.1.44", features = [
     "max_level_trace",
     "release_max_level_debug",
 ] }
