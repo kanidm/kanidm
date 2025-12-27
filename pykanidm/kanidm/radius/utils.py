@@ -1,4 +1,4 @@
-""" class utils """
+"""class utils"""
 
 from typing import Optional
 import logging
@@ -22,7 +22,7 @@ def check_vlan(
         if "KANIDM_CONFIG_FILE" in os.environ:
             kanidm_client = KanidmClient(config_file=os.environ["KANIDM_CONFIG_FILE"])
         else:
-            raise ValueError("Need to pass this a kanidm_client")
+            raise ValueError("check_vlan wasn't given a kanidm client object")
 
     for radius_group in kanidm_client.config.radius_groups:
         logging.debug(
