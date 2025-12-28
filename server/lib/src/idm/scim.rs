@@ -879,6 +879,24 @@ impl IdmServerProxyWriteTransaction<'_> {
                     ))
                 })
                 .map(|value| vec![Value::Uint32(value)]),
+            (SyntaxType::ReferenceUuid, false,
+                ScimValue::Simple(ScimAttr::String(value)),
+            ) => {
+                let maybe_uuid =
+                    self.qs_write.sync_external_id_to_uuid(value).map_err(|e| {
+                        error!(?e, "Unable to resolve external_id to uuid");
+                        e
+                    })?;
+
+                if let Some(uuid) = maybe_uuid {
+                    Ok(vec![Value::Refer(uuid)])
+                } else {
+                    debug!("Could not convert external_id to reference - {}", value);
+                    Err(OperationError::InvalidAttribute(format!(
+                        "Reference uuid must a uuid or external_id - {scim_attr_name}"
+                    )))
+                }
+            }
             (SyntaxType::ReferenceUuid, true, ScimValue::MultiComplex(values)) => {
                 // In this case, because it's a reference uuid only, despite the multicomplex structure, it's a list of
                 // "external_id" to external_ids. These *might* also be uuids. So we need to use sync_external_id_to_uuid
