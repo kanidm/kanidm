@@ -139,8 +139,8 @@ kanidm-hsm-crypto = { version = "^0.3.5" }
 
 anyhow = { version = "1.0.100" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
-askama = { version = "0.14.0" }
-askama_web = { version = "0.14.7", features = ["axum-0.8"] }
+askama = { version = "0.15.1" }
+askama_web = { version = "0.15.0", features = ["axum-0.8"] }
 async-trait = "^0.1.89"
 axum = { version = "0.8.8", features = [
     "form",

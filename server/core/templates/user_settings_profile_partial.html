@@ -28,9 +28,9 @@ Profile
       hx-validate="true"
       hx-ext="bs-validation"
       novalidate>
-    (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)
+    (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)(% endcall %)
 
-    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)
+    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)(% endcall %)
 
     (% let can_edit_email = can_rw && scim_effective_access.modify_present.check(&Attribute::Mail) %)
     <div class="mb-2">

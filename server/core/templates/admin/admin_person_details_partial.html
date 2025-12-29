@@ -10,20 +10,20 @@
 (% endmacro %)
 
 <form hx-validate="true" hx-ext="bs-validation">
-    (% call string_attr("UUID", "uuid", person.uuid, false, Attribute::Uuid) %)
-    (% call string_attr("SPN", "spn", person.spn, false, Attribute::Spn) %)
-    (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)
-    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)
+    (% call string_attr("UUID", "uuid", person.uuid, false, Attribute::Uuid) %)(% endcall %)
+    (% call string_attr("SPN", "spn", person.spn, false, Attribute::Spn) %)(% endcall %)
+    (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)(% endcall %)
+    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)(% endcall %)
 
     (% if let Some(description) = person.description %)
-        (% call string_attr("Description", "description", description, true, Attribute::Description) %)
+        (% call string_attr("Description", "description", description, true, Attribute::Description) %)(% endcall %)
     (% else %)
-        (% call string_attr("Description", "description", "none", true, Attribute::Description) %)
+        (% call string_attr("Description", "description", "none", true, Attribute::Description) %)(% endcall %)
     (% endif %)
 
     (% if let Some(entry_managed_by) = person.managed_by %)
-        (% call string_attr("Managed By", "managed_by", entry_managed_by.value, true, Attribute::EntryManagedBy) %)
+        (% call string_attr("Managed By", "managed_by", entry_managed_by.value, true, Attribute::EntryManagedBy) %)(% endcall %)
     (% else %)
-        (% call string_attr("Managed By", "managed_by", "none", true, Attribute::EntryManagedBy) %)
+        (% call string_attr("Managed By", "managed_by", "none", true, Attribute::EntryManagedBy) %)(% endcall %)
     (% endif %)
 </form>
