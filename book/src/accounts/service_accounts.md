@@ -71,6 +71,37 @@ with the format `Bearer <token>`.
 For more see the
 [MDN documentation for Authorisation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Authorization)
 
+### API Tokens with OIDC Token Exchange (RFC 8693)
+
+Service accounts can exchange their API bearer token for OAuth2/OIDC tokens (access/id/refresh) without user consent or
+interaction. For Basic OAuth2 clients, do not provide the client secret during this flow; the API token is the
+credential, and sending a secret is rejected. Use the token endpoint with the RFC 8693 grant:
+
+- `grant_type`: `urn:ietf:params:oauth:grant-type:token-exchange`
+- `subject_token`: the service-account API token (see `kanidm service-account api-token generate`)
+- `subject_token_type`: `urn:ietf:params:oauth:token-type:access_token`
+- `audience`: OAuth2 `client_id` of the target resource server
+- `resource` (optional): absolute URI for that same resource server; other values return `invalid_target`
+- `requested_token_type` (optional): defaults to an access token; other values are rejected
+- `scope`: scopes permitted for the service account on that client
+
+`actor_token` is not supported for this flow.
+
+Example `application/x-www-form-urlencoded` request:
+
+```bash
+curl -X POST https://idm.example.com/oauth2/token \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "client_id=test_resource_server" \
+  -d "subject_token=$API_TOKEN" \
+  -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "audience=test_resource_server" \
+  -d "scope=openid groups"
+```
+
+Responses include an `access_token`, `id_token` when `openid` is requested, and a `refresh_token` when allowed. Scopes are
+still enforced against the service account’s group membership and the client’s scope map.
+
 ### API Tokens with LDAP
 
 API tokens can also be used to gain extended search permissions with LDAP. To do this you can bind with a dn of
