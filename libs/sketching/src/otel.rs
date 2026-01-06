@@ -1,17 +1,14 @@
-use std::time::Duration;
-
-use opentelemetry_otlp::{Protocol, WithExportConfig};
-
 use opentelemetry::{global, trace::TracerProvider as _, KeyValue};
-
+use opentelemetry_otlp::{Protocol, WithExportConfig};
 use opentelemetry_sdk::{
     trace::{Sampler, SdkTracerProvider},
     Resource,
 };
+use std::str::FromStr;
+use std::time::Duration;
 use tracing::Subscriber;
 use tracing_core::Level;
-
-use tracing_subscriber::{prelude::*, EnvFilter, Registry};
+use tracing_subscriber::{filter::Directive, prelude::*, EnvFilter, Registry};
 
 pub const MAX_EVENTS_PER_SPAN: u32 = 64 * 1024;
 pub const MAX_ATTRIBUTES_PER_SPAN: u32 = 128;
@@ -46,7 +43,13 @@ pub fn start_logging_pipeline(
 ) -> Result<(Option<SdkTracerProvider>, Box<dyn Subscriber + Send + Sync>), String> {
     let forest_filter: EnvFilter = EnvFilter::builder()
         .with_default_directive(log_filter.into())
-        .from_env_lossy();
+        .from_env_lossy()
+        // Always force the event span to be generated at the correct level, regardless
+        // of what the user set.
+        .add_directive(
+            Directive::from_str("kanidmd_core::https::trace=info")
+                .expect("Invalid directive during log setup"),
+        );
 
     // TODO: work out how to do metrics things
     match otlp_endpoint {

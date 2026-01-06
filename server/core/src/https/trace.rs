@@ -14,6 +14,11 @@ impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
     fn make_span(&mut self, request: &Request<B>) -> Span {
         // Needs to be at info to ensure that there is always a span for each
         // tracing event to hook into.
+        //
+        // NOTE: There is a directive in the logging pipeline setup to force this
+        // span to always be at the info level. If this is not done, then there
+        // will not be an event uuid available which causes TONS of problems. Like
+        // crashing.
         tracing::span!(
             Level::INFO,
             "request",
