@@ -268,6 +268,8 @@ pub struct ScimReference {
 pub enum ScimValueKanidm {
     Bool(bool),
     Uint32(u32),
+    Int64(i64),
+    Uint64(u64),
     Integer(i64),
     Decimal(f64),
     String(String),
@@ -462,6 +464,18 @@ impl From<Vec<Uuid>> for ScimValueKanidm {
 impl From<u32> for ScimValueKanidm {
     fn from(u: u32) -> Self {
         Self::Uint32(u)
+    }
+}
+
+impl From<i64> for ScimValueKanidm {
+    fn from(u: i64) -> Self {
+        Self::Int64(u)
+    }
+}
+
+impl From<u64> for ScimValueKanidm {
+    fn from(u: u64) -> Self {
+        Self::Uint64(u)
     }
 }
 
