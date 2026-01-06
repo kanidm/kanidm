@@ -19,13 +19,13 @@
             class="side-menu list-unstyled flex-shrink-0 row-gap-1 d-flex flex-column"
         >
             (% call side_menu_item("Profile", (Urls::Profile),
-            ProfileMenuItems::UserProfile, "person") %) (% call
-            side_menu_item("Credentials", (Urls::UpdateCredentials),
-            ProfileMenuItems::Credentials, "shield-lock") %) (% call
-            side_menu_item("Enrol Device", (Urls::EnrolDevice),
-            ProfileMenuItems::EnrolDevice, "phone-flip") %) (% call
-            side_menu_item("RADIUS", (Urls::Radius), ProfileMenuItems::Radius,
-            "wifi") %)
+                ProfileMenuItems::UserProfile, "person") %)(% endcall %)
+            (% call side_menu_item("Credentials", (Urls::UpdateCredentials),
+                ProfileMenuItems::Credentials, "shield-lock") %)(% endcall %)
+            (% call side_menu_item("Enrol Device", (Urls::EnrolDevice),
+                ProfileMenuItems::EnrolDevice, "phone-flip") %)(% endcall %)
+            (% call side_menu_item("RADIUS", (Urls::Radius),
+                ProfileMenuItems::Radius, "wifi") %)(% endcall %)
         </ul>
         <div id="settings-window" class="flex-grow-1 ps-sm-4 ps-md-5 pt-sm-0 pt-4">
             <div>

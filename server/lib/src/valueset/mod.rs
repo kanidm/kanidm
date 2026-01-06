@@ -46,6 +46,7 @@ pub use self::hexstring::ValueSetHexString;
 use self::image::ValueSetImage;
 pub use self::iname::ValueSetIname;
 pub use self::index::ValueSetIndex;
+pub use self::int64::ValueSetInt64;
 pub use self::iutf8::ValueSetIutf8;
 pub use self::json::{ValueSetJson, ValueSetJsonFilter};
 pub use self::jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256};
@@ -65,6 +66,7 @@ pub use self::syntax::ValueSetSyntax;
 pub use self::totp::ValueSetTotpSecret;
 pub use self::uihint::ValueSetUiHint;
 pub use self::uint32::ValueSetUint32;
+pub use self::uint64::ValueSetUint64;
 pub use self::url::ValueSetUrl;
 pub use self::utf8::ValueSetUtf8;
 pub use self::uuid::{ValueSetRefer, ValueSetUuid};
@@ -83,6 +85,7 @@ mod hexstring;
 pub mod image;
 mod iname;
 mod index;
+mod int64;
 mod iutf8;
 mod json;
 mod jws;
@@ -100,6 +103,7 @@ mod syntax;
 mod totp;
 mod uihint;
 mod uint32;
+mod uint64;
 mod url;
 mod utf8;
 mod uuid;
@@ -292,6 +296,16 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn as_int64_set(&self) -> Option<&SmolSet<[i64; 1]>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_uint64_set(&self) -> Option<&SmolSet<[u64; 1]>> {
+        debug_assert!(false);
+        None
+    }
+
     fn as_syntax_set(&self) -> Option<&SmolSet<[SyntaxType; 1]>> {
         debug_assert!(false);
         None
@@ -473,6 +487,24 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     fn to_uint32_single(&self) -> Option<u32> {
         error!(
             "to_uint32_single should not be called on {:?}",
+            self.syntax()
+        );
+        debug_assert!(false);
+        None
+    }
+
+    fn to_int64_single(&self) -> Option<i64> {
+        error!(
+            "to_int64_single should not be called on {:?}",
+            self.syntax()
+        );
+        debug_assert!(false);
+        None
+    }
+
+    fn to_uint64_single(&self) -> Option<u64> {
+        error!(
+            "to_uint64_single should not be called on {:?}",
             self.syntax()
         );
         debug_assert!(false);
@@ -857,6 +889,8 @@ pub fn from_result_value_iter(
         Value::Refer(u) => ValueSetRefer::new(u),
         Value::Bool(u) => ValueSetBool::new(u),
         Value::Uint32(u) => ValueSetUint32::new(u),
+        Value::Int64(u) => ValueSetInt64::new(u),
+        Value::Uint64(u) => ValueSetUint64::new(u),
         Value::Syntax(u) => ValueSetSyntax::new(u),
         Value::Index(u) => ValueSetIndex::new(u),
         Value::SecretValue(u) => ValueSetSecret::new(u),
@@ -926,6 +960,8 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::Refer(u) => ValueSetRefer::new(u),
         Value::Bool(u) => ValueSetBool::new(u),
         Value::Uint32(u) => ValueSetUint32::new(u),
+        Value::Int64(u) => ValueSetInt64::new(u),
+        Value::Uint64(u) => ValueSetUint64::new(u),
         Value::Syntax(u) => ValueSetSyntax::new(u),
         Value::Index(u) => ValueSetIndex::new(u),
         Value::SecretValue(u) => ValueSetSecret::new(u),
@@ -1006,6 +1042,8 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Reference(set) => ValueSetRefer::from_dbvs2(set),
         DbValueSetV2::Bool(set) => ValueSetBool::from_dbvs2(set),
         DbValueSetV2::Uint32(set) => ValueSetUint32::from_dbvs2(set),
+        DbValueSetV2::Int64(set) => ValueSetInt64::from_dbvs2(set),
+        DbValueSetV2::Uint64(set) => ValueSetUint64::from_dbvs2(set),
         DbValueSetV2::SyntaxType(set) => ValueSetSyntax::from_dbvs2(set),
         DbValueSetV2::IndexType(set) => ValueSetIndex::from_dbvs2(set),
         DbValueSetV2::SecretValue(set) => ValueSetSecret::from_dbvs2(set),

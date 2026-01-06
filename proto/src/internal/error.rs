@@ -221,6 +221,8 @@ pub enum OperationError {
     SC0028CreatedUuidsInvalid,
     SC0029PaginationOutOfBounds,
     SC0030Sha256SyntaxInvalid,
+    SC0031Int64SyntaxInvalid,
+    SC0032Uint64SyntaxInvalid,
     // Migration
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
@@ -586,7 +588,8 @@ impl OperationError {
             Self::SC0028CreatedUuidsInvalid => Some("The internal create query did not return the set of created UUIDs. THIS IS A BUG".into()),
             Self::SC0029PaginationOutOfBounds => Some("The requested range for pagination was out of bounds of the result set".into()),
             Self::SC0030Sha256SyntaxInvalid => Some("A SCIM SHA256 hex string was invalid.".into()),
-
+            Self::SC0031Int64SyntaxInvalid => Some("A SCIM Int64 contained invalid syntax".into()),
+            Self::SC0032Uint64SyntaxInvalid => Some("A SCIM Uint64 contained invalid syntax".into()),
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
             Self::UI0003InvalidOauth2Resume => Some("The server attempted to resume OAuth2, but no OAuth2 session is in progress.".into()),

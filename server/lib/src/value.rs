@@ -291,6 +291,8 @@ pub enum SyntaxType {
     Json = 42,
     Message = 43,
     Sha256 = 44,
+    Int64 = 45,
+    Uint64 = 46,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -344,6 +346,8 @@ impl TryFrom<&str> for SyntaxType {
             "JSON" => Ok(SyntaxType::Json),
             "MESSAGE" => Ok(SyntaxType::Message),
             "SHA256" => Ok(SyntaxType::Sha256),
+            "INT64" => Ok(SyntaxType::Int64),
+            "UINT64" => Ok(SyntaxType::Uint64),
             _ => Err(()),
         }
     }
@@ -397,6 +401,8 @@ impl fmt::Display for SyntaxType {
             SyntaxType::Json => "JSON",
             SyntaxType::Message => "MESSAGE",
             SyntaxType::Sha256 => "SHA256",
+            SyntaxType::Int64 => "INT64",
+            SyntaxType::Uint64 => "UINT64",
         })
     }
 }
@@ -423,7 +429,11 @@ impl SyntaxType {
                 IndexType::Presence,
                 IndexType::SubString,
             ],
-            SyntaxType::Uint32 => &[IndexType::Equality, IndexType::Presence],
+            SyntaxType::Uint32 | SyntaxType::Int64 | SyntaxType::Uint64 => &[
+                IndexType::Equality,
+                IndexType::Presence,
+                IndexType::Ordering,
+            ],
             SyntaxType::Cid => &[
                 IndexType::Equality,
                 IndexType::Presence,
@@ -610,6 +620,8 @@ pub enum PartialValue {
     HexString(String),
     Json,
     Sha256(Sha256Output),
+    Int64(i64),
+    Uint64(u64),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -813,6 +825,14 @@ impl PartialValue {
         u.parse::<u32>().ok().map(PartialValue::Uint32)
     }
 
+    pub fn new_int64_str(u: &str) -> Option<Self> {
+        u.parse::<i64>().ok().map(PartialValue::Int64)
+    }
+
+    pub fn new_uint64_str(u: &str) -> Option<Self> {
+        u.parse::<u64>().ok().map(PartialValue::Uint64)
+    }
+
     pub fn is_uint32(&self) -> bool {
         matches!(self, PartialValue::Uint32(_))
     }
@@ -981,6 +1001,8 @@ impl PartialValue {
             PartialValue::SecretValue | PartialValue::PrivateBinary => "_".to_string(),
             PartialValue::Spn(name, realm) => format!("{name}@{realm}"),
             PartialValue::Uint32(u) => u.to_string(),
+            PartialValue::Int64(u) => u.to_string(),
+            PartialValue::Uint64(u) => u.to_string(),
             PartialValue::DateTime(odt) => {
                 debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                 #[allow(clippy::expect_used)]
@@ -1379,6 +1401,8 @@ pub enum Value {
     SecretValue(String),
     Spn(String, String),
     Uint32(u32),
+    Int64(i64),
+    Uint64(u64),
     Cid(Cid),
     Nsuniqueid(String),
     DateTime(OffsetDateTime),
@@ -1459,6 +1483,10 @@ impl PartialEq for Value {
             (Value::JsonFilt(a), Value::JsonFilt(b)) => a.eq(b),
             // Uint32
             (Value::Uint32(a), Value::Uint32(b)) => a.eq(b),
+            // Int64
+            (Value::Int64(a), Value::Int64(b)) => a.eq(b),
+            // Uint64
+            (Value::Uint64(a), Value::Uint64(b)) => a.eq(b),
             // Cid
             (Value::Cid(a), Value::Cid(b)) => a.eq(b),
             // DateTime
@@ -1796,6 +1824,14 @@ impl Value {
 
     pub fn is_uint32(&self) -> bool {
         matches!(&self, Value::Uint32(_))
+    }
+
+    pub fn new_int64_str(u: &str) -> Option<Self> {
+        u.parse::<i64>().ok().map(Value::Int64)
+    }
+
+    pub fn new_uint64_str(u: &str) -> Option<Self> {
+        u.parse::<u64>().ok().map(Value::Uint64)
     }
 
     pub fn new_cid(c: Cid) -> Self {
@@ -2273,6 +2309,8 @@ impl Value {
             | Value::JsonFilt(_)
             | Value::SecretValue(_)
             | Value::Uint32(_)
+            | Value::Int64(_)
+            | Value::Uint64(_)
             | Value::Url(_)
             | Value::Cid(_)
             | Value::PrivateBinary(_)
