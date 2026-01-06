@@ -54,10 +54,10 @@ let can_modify_any_attr = scim_effective_access.modify_present.check_any(
         (% endif -%)
     (% endif -%)
 
-    (% call string_attr("UUID", "uuid", group.uuid, can_modify_any_attr, Attribute::Uuid) -%)
-    (% call string_attr("Name", "name", group.name.clone(), can_modify_any_attr, Attribute::Name) -%)
+    (% call string_attr("UUID", "uuid", group.uuid, can_modify_any_attr, Attribute::Uuid) -%)(% endcall %)
+    (% call string_attr("Name", "name", group.name.clone(), can_modify_any_attr, Attribute::Name) -%)(% endcall %)
     (% let description = group.description.clone().unwrap_or(String::new()) %)
-    (% call string_attr("Description", "description", description, can_modify_any_attr, Attribute::Description) -%)
+    (% call string_attr("Description", "description", description, can_modify_any_attr, Attribute::Description) -%)(% endcall %)
 </form>
     (% if scim_effective_access.search.check(&Attribute::Member) %)
         (% let can_edit_member = can_rw && scim_effective_access.modify_present.check(&Attribute::Member) %)
