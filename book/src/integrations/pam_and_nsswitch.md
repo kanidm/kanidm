@@ -178,6 +178,7 @@ cp -a /etc/pam.d /root/pam.d.backup
 
 Documentation examples for the following Linux distributions are available:
 
+- [FreeBSD](pam_and_nsswitch/freebsd.md)
 - [SUSE / OpenSUSE](pam_and_nsswitch/suse.md)
 - [Fedora](pam_and_nsswitch/fedora.md)
 - Debian / Ubuntu - Installed with the packages from [kanidm/kanidm_ppa](https://kanidm.github.io/kanidm_ppa/).
