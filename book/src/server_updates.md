@@ -2,9 +2,9 @@
 
 ## Supported Version Upgrades
 
-When upgrading, Kanidm requires you to upgrade through each server version in sequence. For
-example, if you have a 1.5 instance, and you want to upgrade to 1.7, you must upgrade from
-1.5 to 1.6, and then 1.6 to 1.7. Skip upgrades such as 1.5 to 1.7 are not supported.
+When upgrading, Kanidm requires you to upgrade through each server version in sequence. For example, if you have a 1.5
+instance, and you want to upgrade to 1.7, you must upgrade from 1.5 to 1.6, and then 1.6 to 1.7. Skip upgrades such as
+1.5 to 1.7 are not supported.
 
 More details about supported versions of Kanidm can be found in our [support](support.md) page.
 

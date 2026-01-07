@@ -99,8 +99,8 @@ curl -X POST https://idm.example.com/oauth2/token \
   -d "scope=openid groups"
 ```
 
-Responses include an `access_token`, `id_token` when `openid` is requested, and a `refresh_token` when allowed. Scopes are
-still enforced against the service account’s group membership and the client’s scope map.
+Responses include an `access_token`, `id_token` when `openid` is requested, and a `refresh_token` when allowed. Scopes
+are still enforced against the service account’s group membership and the client’s scope map.
 
 ### API Tokens with LDAP
 

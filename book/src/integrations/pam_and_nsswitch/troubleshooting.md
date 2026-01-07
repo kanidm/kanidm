@@ -2,8 +2,8 @@
 
 ## Check POSIX-status of Group and Configuration
 
-If authentication is failing via PAM, make sure that you enabled the Kanidm provider and that
-a list of valid groups is configured in `/etc/kanidm/unixd`. The `[kanidm]` line is important!
+If authentication is failing via PAM, make sure that you enabled the Kanidm provider and that a list of valid groups is
+configured in `/etc/kanidm/unixd`. The `[kanidm]` line is important!
 
 You can check the provider status, the second line is only shown if enabled:
 
