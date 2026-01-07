@@ -42,7 +42,8 @@ systemctl status kanidm-unixd-tasks
 
 > [!NOTE]
 >
-> `kanidm-unixd-tasks` is required, which is a change where it was previously optional.
+> `kanidm-unixd-tasks` is a mandatory service which performs tasks requiring elevated 
+> privileges.
 
 You can configure unixd with the file /etc/kanidm/unixd:
 
