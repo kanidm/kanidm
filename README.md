@@ -70,7 +70,8 @@ Kanidm is pronounced as "kar - nee - dee - em".
 
 ## Kanidm Anthem
 
-> An anthem is a popular song, especially a rock song felt to sum up the attitudes or feelings associated with a period or social group.
+> An anthem is a popular song, especially a rock song felt to sum up the attitudes or feelings associated with a period
+> or social group.
 
 The Kanidm anthem is [Crab Rave - Noisestorm](https://www.youtube.com/watch?v=LDU_Txk06tM)
 

@@ -62,8 +62,8 @@ operations, and then re-elect a new node in the case of partitioning events. The
 met disallowing writes throughout the topology.
 
 This doesn't work for Authentication systems and global scale databases. As you introduce non-negligible network
-latency, the processing of write operations will decrease in these systems. This is why other authentication systems
-are PA like 389-ds or Microsoft Active Directory.
+latency, the processing of write operations will decrease in these systems. This is why other authentication systems are
+PA like 389-ds or Microsoft Active Directory.
 
 PA systems are also considered to be "eventually consistent". All nodes can provide reads and writes at all times, but
 during a network partitioning or after a write there is a delay for all nodes to arrive at a consistent database state.

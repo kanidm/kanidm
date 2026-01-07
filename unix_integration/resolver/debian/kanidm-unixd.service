@@ -32,6 +32,10 @@ ExecStart=/usr/sbin/kanidm_unixd
 # LoadCredential=hsmpin:/etc/kanidm/kanidm-unixd-hsm-pin
 # Environment=KANIDM_HSM_PIN_PATH=%d/hsmpin
 
+## If you use a service account token, you can provide it with:
+# LoadCredential=unixd_token:/etc/kanidm/unixd-token
+# Environment=KANIDM_SERVICE_ACCOUNT_TOKEN_PATH=%d/unixd_token
+
 # auth going down is bad, but infinite speedlooping is worse
 Restart=always
 RestartSec=30
