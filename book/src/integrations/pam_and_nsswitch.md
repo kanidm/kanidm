@@ -115,7 +115,8 @@ version = "2"
 service_account_token_path = "/etc/kanidm/unixd_token"
 ```
 
-Alternately, `systemctl edit kanidm-unixd.service` has comments on how to use systemd credentials to load the token.
+Alternately, the provided systemd service file (editable with `systemctl edit kanidm-unixd.service`) has comments on how to use systemd credentials 
+to load the token.
 
 ## nsswitch
 
