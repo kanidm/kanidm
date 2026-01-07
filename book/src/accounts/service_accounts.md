@@ -45,13 +45,13 @@ kanidm service-account api-token generate --name demo_user demo_service "Test To
 kanidm service-account api-token generate --name demo_user demo_service "Test Token" 2020-09-25T11:22:02+10:00
 ```
 
-If you wish to issue a token that is able to make changes on behalf of the service account, you must add the `--rw` flag
-during the generate command. It is recommended you only add `--rw` when the API token is performing writes to Kanidm.
+If you wish to issue a token that is able to make changes on behalf of the service account, you must add the `-w` flag
+during the generate command. It is recommended you only add `-w` when the API token is performing writes to Kanidm.
 
 ```bash
-kanidm service-account api-token generate --name ENTRY_MANAGER ACCOUNT_ID LABEL [EXPIRY] --rw
-kanidm service-account api-token generate --name demo_user demo_service "Test Token" --rw
-kanidm service-account api-token generate --name demo_user demo_service "Test Token" 2020-09-25T11:22:02+10:00 --rw
+kanidm service-account api-token generate --name ENTRY_MANAGER ACCOUNT_ID LABEL [EXPIRY] -w
+kanidm service-account api-token generate --name demo_user demo_service "Test Token" -w
+kanidm service-account api-token generate --name demo_user demo_service "Test Token" 2020-09-25T11:22:02+10:00 -w
 ```
 
 To destroy (revoke) an API token you will need its token id. This can be shown with the "status" command.
