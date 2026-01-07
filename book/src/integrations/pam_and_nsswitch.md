@@ -107,7 +107,7 @@ kanidm group add-members idm_unix_authentication_read <service account name>
 ```
 
 The service account token should be put into a file on a single line. The path to the service account token is
-configured in kanidm-unixd with:
+configured in `kanidm-unixd` with:
 
 ```
 version = "2"
