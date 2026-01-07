@@ -96,7 +96,7 @@ For more information, see the [Troubleshooting](pam_and_nsswitch/troubleshooting
 ## Using a service account
 
 By default kanidm-unixd relies on anonymous access to Kanidm for queries. In environments where the anonymous account is
-disabled you will need to use a service-account to allow kanidm-unixd to resolve user information.
+disabled you will need to configure a service account which is used when accessing the Kanidm API.
 
 See the [Service Accounts](/accounts/service_accounts.md) chapter to create a unixd user.
 
