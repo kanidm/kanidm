@@ -45,7 +45,7 @@ systemctl status kanidm-unixd-tasks
 > `kanidm-unixd-tasks` is a mandatory service which performs tasks requiring elevated 
 > privileges.
 
-You can configure unixd with the file /etc/kanidm/unixd:
+The configuration file for `kanidm-unixd` is located at `/etc/kanidm/unixd`:
 
 > [!NOTE]
 >
