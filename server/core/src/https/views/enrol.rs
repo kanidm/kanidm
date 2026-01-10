@@ -1,27 +1,25 @@
-use askama::Template;
-use askama_web::WebTemplate;
-
-use axum::extract::State;
-use axum::response::{IntoResponse, Response};
-use axum::Extension;
-
-use axum_extra::extract::CookieJar;
-use kanidm_proto::internal::UserAuthToken;
-
-use qrcode::render::svg;
-use qrcode::QrCode;
-use url::Url;
-
-use std::time::Duration;
-
 use super::constants::Urls;
 use super::navbar::NavbarCtx;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::constants::ProfileMenuItems;
 use crate::https::views::errors::HtmxError;
-use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
+use crate::https::views::login::ReauthPurpose;
+use crate::https::views::reauth::{
+    render_readonly, render_reauth, uat_privilege_decision, PrivilegeDecision,
+};
 use crate::https::ServerState;
+use askama::Template;
+use askama_web::WebTemplate;
+use axum::extract::State;
+use axum::response::{IntoResponse, Response};
+use axum::Extension;
+use axum_extra::extract::CookieJar;
+use kanidm_proto::internal::UserAuthToken;
+use qrcode::render::svg;
+use qrcode::QrCode;
+use std::time::Duration;
+use url::Url;
 
 #[derive(Template, WebTemplate)]
 #[template(path = "user_settings.html")]
@@ -50,31 +48,22 @@ pub(crate) async fn view_enrol_get(
         .pre_validated_uat()
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
-    let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
-    let can_rw = uat.purpose_readwrite_active(time);
-
-    // The user lacks an elevated session, request a re-auth.
-    if !can_rw {
-        let display_ctx = LoginDisplayCtx {
-            domain_info,
-            oauth2: None,
-            reauth: Some(Reauth {
-                username: uat.spn.clone(),
-                purpose: ReauthPurpose::ProfileSettings,
-            }),
-            error: None,
-        };
-
-        return Ok(super::login::view_reauth_get(
-            state,
-            client_auth_info,
-            kopid,
-            jar,
-            Urls::EnrolDevice.as_ref(),
-            display_ctx,
-        )
-        .await);
-    }
+    match uat_privilege_decision(uat) {
+        PrivilegeDecision::Proceed => {}
+        PrivilegeDecision::ReauthRequired => {
+            return render_reauth(
+                state,
+                jar,
+                domain_info,
+                client_auth_info,
+                kopid,
+                ReauthPurpose::ProfileSettings,
+                Urls::EnrolDevice,
+            )
+            .await
+        }
+        PrivilegeDecision::ReadOnly => return render_readonly(domain_info, uat, kopid).await,
+    };
 
     let spn = uat.spn.clone();
 

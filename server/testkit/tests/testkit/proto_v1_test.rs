@@ -1725,8 +1725,7 @@ async fn test_server_user_auth_reauthentication(rsclient: &KanidmClient) {
         .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
         .expect("Unable extract uat");
 
-    let now = time::OffsetDateTime::now_utc();
-    assert!(!uat.purpose_readwrite_active(now));
+    assert!(matches!(uat.purpose, UatPurpose::ReadWrite { .. }));
 
     // The auth is done, now we have to setup to re-auth for our session.
     // Should we bother looking at the internals of the token here to assert
@@ -1767,7 +1766,7 @@ async fn test_server_user_auth_reauthentication(rsclient: &KanidmClient) {
 
     let now = time::OffsetDateTime::now_utc();
     eprintln!("{:?} {:?}", now, uat.purpose);
-    assert!(uat.purpose_readwrite_active(now));
+    assert!(matches!(uat.purpose, UatPurpose::ReadWrite { .. }));
 }
 
 async fn start_password_session(

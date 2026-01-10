@@ -27,6 +27,7 @@ mod navbar;
 mod oauth2;
 mod profile;
 mod radius;
+mod reauth;
 mod reset;
 
 #[derive(Template, WebTemplate)]

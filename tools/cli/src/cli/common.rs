@@ -3,7 +3,7 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
-use kanidm_proto::internal::UserAuthToken;
+use kanidm_proto::internal::{PrivilegesActive, UserAuthToken};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
@@ -15,6 +15,7 @@ use crate::{KanidmClientParser, LoginOpt};
 pub enum ToClientError {
     NeedLogin(String),
     NeedReauth(String, KanidmClient),
+    ReadOnly,
     Other,
 }
 
@@ -269,12 +270,20 @@ impl KanidmClientParser {
                 match optype {
                     OpType::Read => {}
                     OpType::Write => {
-                        if !uat.purpose_readwrite_active(now_utc + time::Duration::new(20, 0)) {
-                            error!(
-                                "Privileges have expired for {} - you need to re-authenticate again.",
-                                uat.spn
-                            );
-                            return Err(ToClientError::NeedReauth(spn, client));
+                        match uat.purpose_privilege_state(now_utc + time::Duration::new(20, 0)) {
+                            // Good to go.
+                            PrivilegesActive::True => {}
+                            PrivilegesActive::ReauthRequired => {
+                                error!(
+                                    "Privileges have expired for {} - you need to re-authenticate again.",
+                                    uat.spn
+                                );
+                                return Err(ToClientError::NeedReauth(spn, client));
+                            }
+                            PrivilegesActive::False => {
+                                error!("The current session for {} is read-only.", uat.spn);
+                                return Err(ToClientError::ReadOnly);
+                            }
                         }
                     }
                 }
@@ -334,7 +343,7 @@ impl KanidmClientParser {
                     // Okay, re-auth should have passed, lets loop
                     continue;
                 }
-                Err(ToClientError::Other) => {
+                Err(ToClientError::ReadOnly) | Err(ToClientError::Other) => {
                     std::process::exit(1);
                 }
             }
