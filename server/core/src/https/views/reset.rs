@@ -1,3 +1,16 @@
+use super::constants::Urls;
+use super::navbar::NavbarCtx;
+use super::UnrecoverableErrorView;
+use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
+use crate::https::middleware::KOpId;
+use crate::https::views::constants::ProfileMenuItems;
+use crate::https::views::errors::HtmxError;
+use crate::https::views::login::ReauthPurpose;
+use crate::https::views::reauth::{
+    render_readonly, render_reauth, uat_privilege_decision, PrivilegeDecision,
+};
+use crate::https::views::{cookies, KanidmHxEventName};
+use crate::https::ServerState;
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::body::Bytes;
@@ -12,6 +25,12 @@ use axum_htmx::{
     SwapOption,
 };
 use futures_util::TryFutureExt;
+use kanidm_proto::internal::{
+    CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus,
+    CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo, UiHint,
+    UserAuthToken, COOKIE_CU_SESSION_TOKEN,
+};
+use kanidmd_lib::prelude::ClientAuthInfo;
 use qrcode::render::svg;
 use qrcode::QrCode;
 use serde::{Deserialize, Serialize};
@@ -24,25 +43,6 @@ use uuid::Uuid;
 
 pub use sshkey_attest::proto::PublicKey as SshPublicKey;
 pub use sshkeys::KeyType;
-
-use kanidm_proto::internal::{
-    CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus,
-    CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo, UiHint,
-    UserAuthToken, COOKIE_CU_SESSION_TOKEN,
-};
-use kanidmd_lib::prelude::ClientAuthInfo;
-
-use super::constants::Urls;
-use super::navbar::NavbarCtx;
-use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
-use crate::https::views::constants::ProfileMenuItems;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
-use crate::https::views::{cookies, KanidmHxEventName};
-use crate::https::ServerState;
-
-use super::UnrecoverableErrorView;
 
 #[derive(Template, WebTemplate)]
 #[template(path = "user_settings.html")]
@@ -759,45 +759,37 @@ pub(crate) async fn view_self_reset_get(
         .pre_validated_uat()
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
-    let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
-    let can_rw = uat.purpose_readwrite_active(time);
-
-    if can_rw {
-        let (cu_session_token, cu_status) = state
-            .qe_w_ref
-            .handle_idmcredentialupdate(
-                client_auth_info.clone(),
-                uat.uuid.to_string(),
-                kopid.eventid,
+    match uat_privilege_decision(uat) {
+        PrivilegeDecision::Proceed => {}
+        PrivilegeDecision::ReauthRequired => {
+            return render_reauth(
+                state,
+                jar,
+                domain_info,
+                client_auth_info,
+                kopid,
+                ReauthPurpose::ProfileSettings,
+                Urls::UpdateCredentials,
             )
-            .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-            .await?;
+            .await
+        }
+        PrivilegeDecision::ReadOnly => return render_readonly(domain_info, uat, kopid).await,
+    };
 
-        let cu_resp = get_cu_response(&uat.ui_hints, domain_info, cu_status, true);
-
-        jar = add_cu_cookie(jar, &state, cu_session_token);
-        Ok((jar, cu_resp).into_response())
-    } else {
-        let display_ctx = LoginDisplayCtx {
-            domain_info,
-            oauth2: None,
-            reauth: Some(Reauth {
-                username: uat.spn.clone(),
-                purpose: ReauthPurpose::ProfileSettings,
-            }),
-            error: None,
-        };
-
-        Ok(super::login::view_reauth_get(
-            state,
-            client_auth_info,
-            kopid,
-            jar,
-            Urls::UpdateCredentials.as_ref(),
-            display_ctx,
+    let (cu_session_token, cu_status) = state
+        .qe_w_ref
+        .handle_idmcredentialupdate(
+            client_auth_info.clone(),
+            uat.uuid.to_string(),
+            kopid.eventid,
         )
-        .await)
-    }
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
+        .await?;
+
+    let cu_resp = get_cu_response(&uat.ui_hints, domain_info, cu_status, true);
+
+    jar = add_cu_cookie(jar, &state, cu_session_token);
+    Ok((jar, cu_resp).into_response())
 }
 
 // Adds the COOKIE_CU_SESSION_TOKEN to the jar and returns the result
