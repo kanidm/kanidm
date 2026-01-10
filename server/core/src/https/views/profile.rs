@@ -4,7 +4,7 @@ use super::navbar::NavbarCtx;
 use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
-use crate::https::views::reauth::uat_privileges_active;
+use crate::https::views::reauth::{uat_privileges_active, uat_privileges_possible};
 use crate::https::views::KanidmHxEventName;
 use crate::https::ServerState;
 use askama::Template;
@@ -38,7 +38,8 @@ pub(crate) struct ProfileView {
 #[template(path = "user_settings_profile_partial.html")]
 struct ProfilePartialView {
     menu_active_item: ProfileMenuItems,
-    can_rw: bool,
+    rw_active: bool,
+    rw_possible: bool,
     person: ScimPerson,
     scim_effective_access: ScimEffectiveAccess,
 }
@@ -120,7 +121,8 @@ pub(crate) async fn view_profile_get(
         )
         .await?;
 
-    let can_rw = uat_privileges_active(uat);
+    let rw_active = uat_privileges_active(uat);
+    let rw_possible = uat_privileges_possible(uat);
 
     let rehook_email_removal_buttons =
         HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddEmailSwapped)]);
@@ -131,7 +133,8 @@ pub(crate) async fn view_profile_get(
             navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
             profile_partial: ProfilePartialView {
                 menu_active_item: ProfileMenuItems::UserProfile,
-                can_rw,
+                rw_active,
+                rw_possible,
                 person: scim_person,
                 scim_effective_access,
             },
