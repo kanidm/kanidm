@@ -81,6 +81,15 @@ impl PartialEq for UserAuthToken {
 
 impl Eq for UserAuthToken {}
 
+pub enum PrivilegesActive {
+    /// This session has active read write privs.
+    True,
+    /// This session can become read-write, but requires reauth to proceed.
+    ReauthRequired,
+    /// This session has no privileges and is read only
+    False,
+}
+
 impl UserAuthToken {
     pub fn name(&self) -> &str {
         self.spn.split_once('@').map(|x| x.0).unwrap_or(&self.spn)
@@ -88,12 +97,14 @@ impl UserAuthToken {
 
     /// Show if the uat at a current point in time has active read-write
     /// capabilities.
-    pub fn purpose_readwrite_active(&self, ct: time::OffsetDateTime) -> bool {
+    pub fn purpose_privilege_state(&self, ct: time::OffsetDateTime) -> PrivilegesActive {
         match self.purpose {
-            UatPurpose::ReadWrite { expiry: Some(exp) } => ct < exp,
-            // ReadWrite { None } shows the session is priv capable, but the
-            // privs aren't active *now*.
-            _ => false,
+            UatPurpose::ReadWrite { expiry: Some(exp) } if ct < exp => PrivilegesActive::True,
+            // The privileges have expired, or are not yet activated on this session.
+            UatPurpose::ReadWrite { expiry: Some(_) } | UatPurpose::ReadWrite { expiry: None } => {
+                PrivilegesActive::ReauthRequired
+            }
+            UatPurpose::ReadOnly => PrivilegesActive::False,
         }
     }
 }
