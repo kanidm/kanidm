@@ -4,11 +4,11 @@ use super::navbar::NavbarCtx;
 use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
+use crate::https::views::reauth::uat_privileges_active;
 use crate::https::views::KanidmHxEventName;
 use crate::https::ServerState;
 use askama::Template;
 use askama_web::WebTemplate;
-
 use axum::extract::{Query, State};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::Extension;
@@ -120,9 +120,7 @@ pub(crate) async fn view_profile_get(
         )
         .await?;
 
-    let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
-
-    let can_rw = uat.purpose_readwrite_active(time);
+    let can_rw = uat_privileges_active(uat);
 
     let rehook_email_removal_buttons =
         HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddEmailSwapped)]);
@@ -154,8 +152,7 @@ pub(crate) async fn view_profile_diff_start_save_post(
         .pre_validated_uat()
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
-    let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
-    let can_rw = uat.purpose_readwrite_active(time);
+    let can_rw = uat_privileges_active(uat);
 
     let (scim_person, _) = crate::https::views::admin::persons::get_person_info(
         uat.uuid,
