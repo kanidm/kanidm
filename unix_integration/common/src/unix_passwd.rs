@@ -113,7 +113,7 @@ impl CryptPw {
                         return false;
                     }
                 };
-                Yescrypt
+                Yescrypt::default()
                     .verify_password(cred.as_bytes(), &password_hash)
                     .inspect_err(|err| debug!("Failed to verify password: {err:?}"))
                     .is_ok()
