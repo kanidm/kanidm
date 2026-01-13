@@ -24,6 +24,8 @@ We recommend you install the client daemon from your system package manager:
 zypper in kanidm-unixd-clients
 # Fedora
 dnf install kanidm-unixd-clients
+# FreeBSD
+pkg install kanidm-client
 ```
 
 You can check the daemon is running on your Linux system with:
@@ -40,9 +42,9 @@ systemctl status kanidm-unixd-tasks
 
 > [!NOTE]
 >
-> `kanidm-unixd-tasks` is now required, which is a change where it was previously optional.
+> `kanidm-unixd-tasks` is required, which is a change where it was previously optional.
 
-You can also configure unixd with the file /etc/kanidm/unixd:
+You can configure unixd with the file /etc/kanidm/unixd:
 
 > [!NOTE]
 >
@@ -91,6 +93,28 @@ system: online
 For more information, see the [Troubleshooting](pam_and_nsswitch/troubleshooting.md) section.
 
 ## Using a service account
+
+By default kanidm-unixd relies on anonymous access to Kanidm for queries. In environments where the anonymous account is
+disabled you will need to use a service-account to allow kanidm-unixd to resolve user information.
+
+See the [Service Accounts](/accounts/service_accounts.md) chapter to create a unixd user.
+
+The service account must be a member of the group `idm_unix_authentication_read`
+
+```
+kanidm group add-members idm_unix_authentication_read <service account name>
+```
+
+The service account token should be put into a file on a single line. The path to the service account token is
+configured in kanidm-unixd with:
+
+```
+version = "2"
+[kanidm]
+service_account_token_path = "/etc/kanidm/unixd_token"
+```
+
+Alternately, `systemctl edit kanidm-unixd.service` has comments on how to use systemd credentials to load the token.
 
 ## nsswitch
 
@@ -154,6 +178,7 @@ cp -a /etc/pam.d /root/pam.d.backup
 
 Documentation examples for the following Linux distributions are available:
 
+- [FreeBSD](pam_and_nsswitch/freebsd.md)
 - [SUSE / OpenSUSE](pam_and_nsswitch/suse.md)
 - [Fedora](pam_and_nsswitch/fedora.md)
 - Debian / Ubuntu - Installed with the packages from [kanidm/kanidm_ppa](https://kanidm.github.io/kanidm_ppa/).
