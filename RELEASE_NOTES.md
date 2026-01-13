@@ -26,10 +26,9 @@ Before upgrading you should review [our upgrade documentation]
 
 #### 1.8.0 Important Changes
 
-For distribution package users, systemd-notify reload has been removed due to ongoing bugs with the
-feature from the systemd side which would cause kanidmd to be killed ungracefully. If you rely on
-this to perform "systemctl reload kanidmd" actions, you should instead use "systemctl restart" or
-send a SIGHUP directly to the kanidmd process.
+For distribution package users, systemd-notify reload has been removed due to ongoing bugs with the feature from the
+systemd side which would cause kanidmd to be killed ungracefully. If you rely on this to perform "systemctl reload
+kanidmd" actions, you should instead use "systemctl restart" or send a SIGHUP directly to the kanidmd process.
 
 #### 1.8.0 Release Highlights
 
