@@ -3590,6 +3590,7 @@ dependencies = [
  "kanidm_utils_users",
  "kanidmd_lib",
  "ldap3_client",
+ "rustls",
  "serde",
  "serde_json",
  "tokio",
