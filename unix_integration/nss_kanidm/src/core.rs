@@ -26,7 +26,7 @@ pub enum RequestOptions {
     },
 }
 
-const TLS_IS_TAINTED: AtomicBool = AtomicBool::new(false);
+static TLS_IS_TAINTED: AtomicBool = AtomicBool::new(false);
 
 thread_local! {
     pub static CLIENT: RefCell<Option<DaemonClientBlocking>> = const { RefCell::new(None) };
