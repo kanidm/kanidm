@@ -65,7 +65,7 @@ pub enum ConsistencyError {
 #[serde(rename_all = "lowercase")]
 pub enum OperationError {
     // Logic errors, or "soft" errors. These are to guide the user or user-interface
-    // in someway.
+    // in some way.
     SessionExpired,
     DuplicateKey,
     DuplicateLabel,

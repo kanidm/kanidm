@@ -78,7 +78,10 @@ Profile
             <button
               class="btn btn-primary"
               type="button"
-              (% if !rw_possible %)disabled(% endif %)
+              (% if !rw_possible %)
+              disabled
+              alt="Your session is read-only and may not make changes."
+              (% endif %)
               >Unlock Edit 🔒</button>
         </a>
         (% endif %)

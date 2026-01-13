@@ -270,7 +270,7 @@ impl KanidmClientParser {
                 match optype {
                     OpType::Read => {}
                     OpType::Write => {
-                        match uat.purpose_privilege_state(now_utc + time::Duration::new(20, 0)) {
+                        match uat.purpose_privilege_state(now_utc + time::Duration::seconds(20)) {
                             // Good to go.
                             PrivilegesActive::True => {}
                             PrivilegesActive::ReauthRequired => {
