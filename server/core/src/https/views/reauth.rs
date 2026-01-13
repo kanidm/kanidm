@@ -13,7 +13,7 @@ use kanidmd_lib::idm::server::DomainInfoRead;
 use kanidmd_lib::prelude::ClientAuthInfo;
 use uuid::Uuid;
 
-const READ_WRITE_BUFFER: i64 = 60;
+const READ_WRITE_REAUTH_WINDOW_SECONDS: i64 = 60;
 
 #[must_use]
 pub(crate) enum PrivilegeDecision {
@@ -26,7 +26,8 @@ pub(crate) enum PrivilegeDecision {
 /// the session is either read-write *now* or *could* become read-write after a re-authentication
 /// process.
 pub(crate) fn uat_privileges_possible(uat: &UserAuthToken) -> bool {
-    let time = time::OffsetDateTime::now_utc() + time::Duration::new(READ_WRITE_BUFFER, 0);
+    let time =
+        time::OffsetDateTime::now_utc() + time::Duration::seconds(READ_WRITE_REAUTH_WINDOW_SECONDS);
 
     match uat.purpose_privilege_state(time) {
         PrivilegesActive::True | PrivilegesActive::ReauthRequired => true,
@@ -37,7 +38,8 @@ pub(crate) fn uat_privileges_possible(uat: &UserAuthToken) -> bool {
 /// Test if the current session has read-write permissions *now*. This does not inform you
 /// if the session *could* become read-write.
 pub(crate) fn uat_privileges_active(uat: &UserAuthToken) -> bool {
-    let time = time::OffsetDateTime::now_utc() + time::Duration::new(READ_WRITE_BUFFER, 0);
+    let time =
+        time::OffsetDateTime::now_utc() + time::Duration::seconds(READ_WRITE_REAUTH_WINDOW_SECONDS);
 
     match uat.purpose_privilege_state(time) {
         PrivilegesActive::True => true,
@@ -47,7 +49,8 @@ pub(crate) fn uat_privileges_active(uat: &UserAuthToken) -> bool {
 
 pub(crate) fn uat_privilege_decision(uat: &UserAuthToken) -> PrivilegeDecision {
     // Ensure we have a buffer for the operation.
-    let time = time::OffsetDateTime::now_utc() + time::Duration::new(READ_WRITE_BUFFER, 0);
+    let time =
+        time::OffsetDateTime::now_utc() + time::Duration::seconds(READ_WRITE_REAUTH_WINDOW_SECONDS);
 
     match uat.purpose_privilege_state(time) {
         PrivilegesActive::True => PrivilegeDecision::Proceed,
