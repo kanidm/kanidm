@@ -5,7 +5,7 @@
 
 use kanidmd_lib::constants::entries::Attribute;
 use kanidmd_lib::migration_data::current::{
-    phase_5_builtin_admin_entries, phase_6_builtin_non_admin_entries
+    phase_5_builtin_admin_entries, phase_6_builtin_non_admin_entries,
 };
 use kanidmd_lib::prelude::{builtin_accounts, EntryInitNew};
 use petgraph::graphmap::{AllEdges, GraphMap, NodeTrait};
@@ -47,11 +47,11 @@ impl From<&EntryInitNew> for EntryType {
             .as_iutf8_set()
             .cloned()
             .unwrap_or(BTreeSet::<String>::new());
-        if classes.contains("group") {
+        if classes.contains(ENTRYCLASS_GROUP) {
             EntryType::Group(name.clone())
-        } else if classes.contains("service_account") {
+        } else if classes.contains(ENTRYCLASS_SERVICE_ACCOUNT) {
             EntryType::ServiceAccount(name.clone())
-        } else if classes.contains("person") {
+        } else if classes.contains(ENTRYCLASS_PERSON) {
             EntryType::Person(name.clone())
         } else {
             EntryType::UnknownType(name.clone())

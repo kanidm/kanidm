@@ -23,6 +23,7 @@ cron = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
+rustls = { workspace = true, features = ["aws-lc-rs"] }
 tokio = { workspace = true, features = ["rt", "macros", "net"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
