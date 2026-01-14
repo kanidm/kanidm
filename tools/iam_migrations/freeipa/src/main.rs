@@ -238,7 +238,7 @@ async fn driver_main(opt: Opt) {
             }
         }
 
-        if let Err(_) = broadcast_tx.send(true) {
+        if broadcast_tx.send(true).is_err() {
             error!("Failed to send a message triggering a clean shutdown!");
             return;
         };
