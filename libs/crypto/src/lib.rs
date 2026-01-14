@@ -587,6 +587,15 @@ fn parse_crypt(hash_value: &str) -> Result<Password, PasswordError> {
     }
 }
 
+// Constants for pbkdf2 formats
+// Because we reuse these multiple places
+const PBKDF2: &str = "pbkdf2";
+const PBKDF2_SHA1_DASH: &str = "pbkdf2-sha1";
+const PBKDF2_SHA256_DASH: &str = "pbkdf2-sha256";
+// FreeIPA has the underscore variant because it's special <https://github.com/kanidm/kanidm/issues/4063>
+const PBKDF2_SHA256_UNDERSCORE: &str = "pbkdf2_sha256";
+const PBKDF2_SHA512_DASH: &str = "pbkdf2-sha512";
+
 fn parse_pbkdf2(hash_format: &str, hash_value: &str) -> Result<Password, PasswordError> {
     let ol_pbkdf: Vec<&str> = hash_value.split('$').collect();
     if ol_pbkdf.len() != 3 {
@@ -615,7 +624,7 @@ fn parse_pbkdf2(hash_format: &str, hash_value: &str) -> Result<Password, Passwor
 
     match hash_format {
         // This is just sha1 in a trenchcoat.
-        "pbkdf2" | "pbkdf2-sha1" => {
+        PBKDF2 | PBKDF2_SHA1_DASH => {
             if h.len() < PBKDF2_SHA1_MIN_KEY_LEN {
                 Err(PasswordError::InvalidKeyLength)
             } else {
@@ -624,7 +633,7 @@ fn parse_pbkdf2(hash_format: &str, hash_value: &str) -> Result<Password, Passwor
                 })
             }
         }
-        "pbkdf2-sha256" => {
+        PBKDF2_SHA256_DASH | PBKDF2_SHA256_UNDERSCORE => {
             if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
                 Err(PasswordError::InvalidKeyLength)
             } else {
@@ -633,7 +642,7 @@ fn parse_pbkdf2(hash_format: &str, hash_value: &str) -> Result<Password, Passwor
                 })
             }
         }
-        "pbkdf2-sha512" => {
+        PBKDF2_SHA512_DASH => {
             if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
                 Err(PasswordError::InvalidKeyLength)
             } else {
@@ -745,9 +754,11 @@ impl TryFrom<&str> for Password {
 
             match hash_format.as_str() {
                 // Test for OpenLDAP formats
-                "pbkdf2" | "pbkdf2-sha1" | "pbkdf2-sha256" | "pbkdf2-sha512" => {
-                    parse_pbkdf2(&hash_format, hash_value)
-                }
+                PBKDF2
+                | PBKDF2_SHA1_DASH
+                | PBKDF2_SHA256_DASH
+                | PBKDF2_SHA256_UNDERSCORE
+                | PBKDF2_SHA512_DASH => parse_pbkdf2(&hash_format, hash_value),
 
                 "argon2" => parse_argon(hash_value),
                 "crypt" => parse_crypt(hash_value),
