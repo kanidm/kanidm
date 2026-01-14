@@ -1108,7 +1108,10 @@ fn main() {
     let opt = Opt::parse();
 
     // Make sure the TLS provider's configured before continuing.
-    if let Err(_) = rustls::crypto::aws_lc_rs::default_provider().install_default() {
+    if rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .is_err()
+    {
         eprintln!("Failed to set the AWS-LC-RS TLS provider as default, this is a bug!");
         std::process::exit(1);
     }
