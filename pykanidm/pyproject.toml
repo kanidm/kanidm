@@ -2,16 +2,16 @@
 [project]
 authors = [{ name = "James Hodgkinson", email = "james@terminaloutcomes.com" }]
 license = { text = "MPL-2.0" }
-requires-python = "<4.0,>=3.9"
+requires-python = "<4.0,>=3.10"
 dependencies = [
     "toml>=0.10.2",
     "pydantic>=2.0.0",
-    "aiohttp>=3.8.1",
+    "aiohttp>=3.13.3",
     "Authlib>=1.2.0",
 ]
 name = "kanidm"
 description = "Kanidm client library"
-version = "1.2.0"
+version = "1.2.1"
 readme = "README.md"
 
 keywords = ["kanidm", "idm", "api"]
@@ -30,23 +30,24 @@ repository = "https://github.com/kanidm/kanidm"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.5.1",
-    "pytest>=8.3.4",
-    "mypy>=1.14.1,<2.0.0",
+    "ruff>=0.14.10",
+    "pytest>=9.0.2",
+    "mypy>=1.19.1,<2.0.0",
     "types-requests>=2.32.0.20241016",
     "pytest-aiohttp>=1.1.0",
     "pytest-mock>=3.14.0",
     "types-toml>=0.10.8.20240310",
-    "pylint-pydantic>=0.3.5",
-    "coverage>=7.6.10",
+    "pylint-pydantic>=0.4.1",
+    "coverage>=7.13.0",
     "pook>=2.1.3",
     "ty>=0.0.0a8",
+    "pytest-mypy>=1.0.1",
 ]
 docs = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.6.13",
-    "mkdocstrings>=0.29.1",
-    "mkdocstrings-python>=1.16.10",
+    "mkdocstrings>=1.0.0",
+    "mkdocstrings-python>=2.0.1",
 ]
 
 [build-system]

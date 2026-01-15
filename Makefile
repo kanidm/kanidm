@@ -191,24 +191,31 @@ codespell:
 	--skip='./pykanidm/site'
 
 .PHONY: test/pykanidm/pytest
-test/pykanidm/pytest: ## python library testing
+test/pykanidm/pytest: ## Python library testing
 	cd pykanidm && \
 	uv run pytest -vv
 
 .PHONY: test/pykanidm/lint
-test/pykanidm/lint: ## python library linting
+test/pykanidm/lint: ## Python library linting
 	cd pykanidm && \
 	uv run ruff check tests kanidm
 
-.PHONY: test/pykanidm/mypy
-test/pykanidm/mypy: ## python library type checking
+.PHONY: test/pykanidm/typing
+test/pykanidm/typing: ## Python library type checking
 	cd pykanidm && \
-	uv run mypy --strict tests kanidm
+	uv run mypy --strict tests kanidm && \
+	uv run ty check --verbose
 
 .PHONY: test/pykanidm
-test/pykanidm: ## run the kanidm python module test suite (mypy/lint/pytest)
-test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/lint
+test/pykanidm: ## run the Kanidm Python module test suite (typing/linting/pytest)
+test/pykanidm: test/pykanidm/pytest test/pykanidm/typing test/pykanidm/lint
 
+.PHONY: test/pykanidm/coverage
+test/pykanidm/coverage: ## run the Kanidm Python module coverage tests
+	cd pykanidm && \
+		uv run coverage run -m pytest && \
+		uv run coverage report -m && \
+		uv run coverage html
 ########################################################################
 
 .PHONY: doc
