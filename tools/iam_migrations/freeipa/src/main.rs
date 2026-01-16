@@ -827,7 +827,7 @@ fn ipa_to_scim_entry(
             entry
                 .remove_ava_single(Attribute::Uid.as_ref())
                 .ok_or_else(|| {
-                    err > or!("Missing required attribute {}", Attribute::Uid);
+                    error!("Missing required attribute {}", Attribute::Uid);
                 })?
         };
 
@@ -870,7 +870,7 @@ fn ipa_to_scim_entry(
             .or_else(|| entry.remove_ava_single(Attribute::UserPassword.as_ref()));
 
         let password_import = if let Some(pw_import) = password_import.as_ref() {
-            match Password::try_from(pw_import) {
+            match Password::try_from(pw_import.as_str()) {
                 // Pretty good shot it'll work.
                 Ok(_) => password_import,
                 Err(reason) if skip_invalid_password_formats => {
