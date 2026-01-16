@@ -749,6 +749,11 @@ impl TryFrom<&str> for Password {
                     parse_pbkdf2(&hash_format, hash_value)
                 }
 
+                "pbkdf2_sha256" => {
+                    // This is the binary version of 389-ds pbkdf2 which we do not support.
+                    Err(PasswordError::InvalidFormat);
+                }
+
                 "argon2" => parse_argon(hash_value),
                 "crypt" => parse_crypt(hash_value),
                 "sha" => {
