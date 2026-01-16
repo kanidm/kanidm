@@ -105,6 +105,6 @@ HEALTHCHECK \
     --start-period=60s \
     --start-interval=5s \
     --retries=3 \
-    CMD [ "/sbin/kanidmd", "healthcheck"]
+    CMD [ "/sbin/kanidmd", "scripting", "healthcheck"]
 
 CMD [ "/sbin/kanidmd", "server"]

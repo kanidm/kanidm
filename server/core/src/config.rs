@@ -630,8 +630,6 @@ impl ConfigurationBuilder {
     #![allow(clippy::needless_pass_by_value)]
     pub fn add_cli_config(mut self, cli_config: &kanidm_proto::cli::KanidmdCli) -> Self {
         // logging
-        self.output_mode = cli_config.output_mode;
-
         if let Some(log_level) = &cli_config.log_level {
             self.log_level = Some(*log_level);
         }
