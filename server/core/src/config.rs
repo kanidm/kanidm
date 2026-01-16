@@ -9,7 +9,6 @@ use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::config::ServerRole;
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
-use kanidm_proto::messages::ConsoleOutputMode;
 use serde::Deserialize;
 use serde_with::{formats::PreferOne, serde_as, OneOrMany};
 use sketching::LogLevel;
@@ -445,7 +444,6 @@ pub struct Configuration {
     pub domain: String,
     pub origin: Url,
     pub role: ServerRole,
-    pub output_mode: ConsoleOutputMode,
     pub log_level: LogLevel,
     /// Replication settings.
     pub repl_config: Option<ReplicationConfiguration>,
@@ -479,7 +477,6 @@ impl Configuration {
             online_backup: None,
             domain: None,
             origin: None,
-            output_mode: ConsoleOutputMode::default(),
             log_level: None,
             role: None,
             repl_config: None,
@@ -506,7 +503,6 @@ impl Configuration {
             domain: "idm.example.com".to_string(),
             origin: Url::from_str("https://idm.example.com")
                 .expect("Failed to parse built-in string as URL"),
-            output_mode: ConsoleOutputMode::default(),
             log_level: LogLevel::default(),
             role: ServerRole::WriteReplica,
             repl_config: None,
@@ -577,7 +573,6 @@ impl fmt::Display for Configuration {
             "integration mode: {}, ",
             self.integration_test_config.is_some()
         )?;
-        write!(f, "console output format: {:?} ", self.output_mode)?;
         write!(f, "log_level: {}", self.log_level)?;
         write!(f, "role: {}, ", self.role)?;
         match &self.repl_config {
@@ -620,7 +615,6 @@ pub struct ConfigurationBuilder {
     domain: Option<String>,
     origin: Option<Url>,
     role: Option<ServerRole>,
-    output_mode: ConsoleOutputMode,
     log_level: Option<LogLevel>,
     repl_config: Option<ReplicationConfiguration>,
     otel_grpc_url: Option<String>,
@@ -980,7 +974,6 @@ impl ConfigurationBuilder {
             domain,
             origin,
             role,
-            output_mode,
             log_level,
             repl_config,
             otel_grpc_url,
@@ -1045,7 +1038,6 @@ impl ConfigurationBuilder {
             domain,
             origin,
             role,
-            output_mode,
             log_level,
             repl_config,
             otel_grpc_url,

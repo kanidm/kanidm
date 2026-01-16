@@ -29,12 +29,8 @@ use whoami;
 
 use std::fs::{metadata, File};
 // This works on both unix and windows.
-use fs4::fs_std::FileExt;
-use sketching::otel::TracingPipelineGuard;
-use std::io::Read;
-use std::path::PathBuf;
-use std::process::ExitCode;
 use clap::{Args, Parser, Subcommand};
+use fs4::fs_std::FileExt;
 use futures::{SinkExt, StreamExt};
 use kanidmd_core::admin::{
     AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
@@ -48,7 +44,11 @@ use kanidmd_core::{
     dbscan_restore_quarantined_core, domain_rename_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
+use sketching::otel::TracingPipelineGuard;
 use sketching::tracing_forest::util::*;
+use std::io::Read;
+use std::path::PathBuf;
+use std::process::ExitCode;
 use tokio::net::UnixStream;
 use tokio_util::codec::Framed;
 
@@ -63,9 +63,7 @@ fn get_user_details_windows() {
     );
 }
 
-
-async fn submit_admin_req_json(path: &str, req: AdminTaskRequest) -> ExitCode
-{
+async fn submit_admin_req_json(path: &str, req: AdminTaskRequest) -> ExitCode {
     // Connect to the socket.
     let stream = match UnixStream::connect(path).await {
         Ok(s) => s,
@@ -114,9 +112,7 @@ async fn submit_admin_req_json(path: &str, req: AdminTaskRequest) -> ExitCode
     ExitCode::SUCCESS
 }
 
-
-async fn submit_admin_req_human(path: &str, req: AdminTaskRequest) -> ExitCode
-{
+async fn submit_admin_req_human(path: &str, req: AdminTaskRequest) -> ExitCode {
     // Connect to the socket.
     let stream = match UnixStream::connect(path).await {
         Ok(s) => s,
@@ -144,7 +140,9 @@ async fn submit_admin_req_human(path: &str, req: AdminTaskRequest) -> ExitCode
 
     match reqs.next().await {
         Some(Ok(AdminTaskResponse::RecoverAccount { password })) => info!(new_password = ?password),
-        Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => info!(certificate = ?cert),
+        Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => {
+            info!(certificate = ?cert)
+        }
         Some(Ok(AdminTaskResponse::DomainUpgradeCheck { report })) => {
             let ProtoDomainUpgradeCheckReport {
                 name,
@@ -225,33 +223,34 @@ async fn submit_admin_req_human(path: &str, req: AdminTaskRequest) -> ExitCode
                 }
             } // end for report items
         }
-        Some(Ok(AdminTaskResponse::DomainRaise { level })) =>
-                info!("success - raised domain level to {}", level),
+        Some(Ok(AdminTaskResponse::DomainRaise { level })) => {
+            info!("success - raised domain level to {}", level)
+        }
         Some(Ok(AdminTaskResponse::DomainShow { domain_info })) => {
-                let ProtoDomainInfo {
-                    name,
-                    displayname,
-                    uuid,
-                    level,
-                } = domain_info;
+            let ProtoDomainInfo {
+                name,
+                displayname,
+                uuid,
+                level,
+            } = domain_info;
 
-                info!("domain_name   : {}", name);
-                info!("domain_display: {}", displayname);
-                info!("domain_uuid   : {}", uuid);
-                info!("domain_level  : {}", level);
-        },
+            info!("domain_name   : {}", name);
+            info!("domain_display: {}", displayname);
+            info!("domain_uuid   : {}", uuid);
+            info!("domain_level  : {}", level);
+        }
         Some(Ok(AdminTaskResponse::Success)) => info!("success"),
         Some(Ok(AdminTaskResponse::Error)) => {
             info!("Error - you should inspect the logs.");
-            return ExitCode::FAILURE
+            return ExitCode::FAILURE;
         }
         Some(Err(err)) => {
             error!(?err, "Error during admin task operation");
-            return ExitCode::FAILURE
+            return ExitCode::FAILURE;
         }
         None => {
             error!("Error making request to admin socket");
-            return ExitCode::FAILURE
+            return ExitCode::FAILURE;
         }
     };
 
@@ -326,11 +325,14 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::RecoverAccount {
                     name: name.to_owned(),
-                }
+                },
             )
             .await;
         }
-        ScriptingCommand::HealthCheck { verify_tls, check_origin } => {
+        ScriptingCommand::HealthCheck {
+            verify_tls,
+            check_origin,
+        } => {
             let healthcheck_url = match check_origin {
                 true => format!("{}/status", config.origin),
                 false => {
@@ -358,7 +360,6 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                             if let Err(err) = std::fs::File::open(&ca_cert_path)
                                 .and_then(|mut file| file.read_to_end(&mut cert_buf))
                             {
-
                                 error!(
                                     "Failed to read {:?} from filesystem: {:?}",
                                     ca_cert_path, err
@@ -371,13 +372,11 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                                 match reqwest::Certificate::from_pem_bundle(&cert_buf) {
                                     Ok(val) => val,
                                     Err(e) => {
-
                                         error!(
                                             "Failed to parse {:?} into CA chain!\nError: {:?}",
                                             ca_cert_path, e
                                         );
                                         return ExitCode::FAILURE;
-
                                     }
                                 };
 
@@ -1021,11 +1020,8 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running domain show ...");
 
-            submit_admin_req_human(
-                config.adminbindpath.as_str(),
-                AdminTaskRequest::DomainShow,
-            )
-            .await;
+            submit_admin_req_human(config.adminbindpath.as_str(), AdminTaskRequest::DomainShow)
+                .await;
         }
 
         KanidmdOpt::DomainSettings {
@@ -1045,11 +1041,8 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running domain raise ...");
 
-            submit_admin_req_human(
-                config.adminbindpath.as_str(),
-                AdminTaskRequest::DomainRaise,
-            )
-            .await;
+            submit_admin_req_human(config.adminbindpath.as_str(), AdminTaskRequest::DomainRaise)
+                .await;
         }
 
         KanidmdOpt::DomainSettings {
@@ -1070,8 +1063,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             info!("Running in vacuum mode ...");
             vacuum_server_core(&config);
         }
-        KanidmdOpt::Scripting { .. } |
-        KanidmdOpt::Version => {}
+        KanidmdOpt::Scripting { .. } | KanidmdOpt::Version => {}
     }
     ExitCode::SUCCESS
 }
