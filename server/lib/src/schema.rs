@@ -1937,6 +1937,21 @@ impl SchemaWriteTransaction<'_> {
                 syntax: SyntaxType::Utf8String,
             },
         );
+        self.attributes.insert(
+            Attribute::HomeDirectory,
+            SchemaAttribute {
+                name: Attribute::HomeDirectory,
+                uuid: UUID_SCHEMA_ATTR_HOME_DIRECTORY,
+                description: String::from("An LDAP Compatible homeDirectory."),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                sync_allowed: false,
+                replicated: Replicated::False,
+                indexed: false,
+                syntax: SyntaxType::Utf8String,
+            },
+        );
         // end LDAP masking phantoms
 
         // THIS IS FOR SYSTEM CRITICAL INTERNAL SCHEMA ONLY
