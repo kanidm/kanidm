@@ -3585,6 +3585,7 @@ dependencies = [
  "clap_complete",
  "cron",
  "kanidm_client",
+ "kanidm_lib_crypto",
  "kanidm_lib_file_permissions",
  "kanidm_proto",
  "kanidm_utils_users",

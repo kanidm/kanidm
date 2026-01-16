@@ -14,6 +14,7 @@ pub struct Config {
     pub ipa_sync_pw: String,
     pub ipa_sync_base_dn: String,
 
+    pub skip_invalid_password_formats: Option<bool>,
     pub sync_password_as_unix_password: Option<bool>,
 
     /// Maximum LDAP message size (in kilobytes)
