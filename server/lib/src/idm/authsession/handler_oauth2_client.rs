@@ -7,7 +7,8 @@ use crate::prelude::*;
 use crate::utils;
 use crate::value::{AuthType, SessionExtMetadata};
 use kanidm_proto::oauth2::{
-    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, GrantTypeReq, ResponseType,
+    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationRequestOidc,
+    GrantTypeReq, ResponseType,
 };
 use std::collections::BTreeSet;
 use std::fmt;
@@ -82,7 +83,10 @@ impl CredHandlerOAuth2Client {
                 pkce_request: Some(pkce_request),
                 scope: self.request_scopes.clone(),
                 nonce: None,
-                oidc_ext: Default::default(),
+                oidc_ext: AuthorisationRequestOidc {
+                    login_hint: Some(self.user_id.clone()),
+                    ..Default::default()
+                },
                 max_age: None,
                 unknown_keys: Default::default(),
             },

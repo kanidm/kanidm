@@ -59,7 +59,7 @@ impl IdmServerAuthTransaction<'_> {
             SessionScope::ReadOnly | SessionScope::ReadWrite | SessionScope::Synchronise => {
                 // These can not!
                 error!("Session scope is not PrivilegeCapable and can not be used in re-auth.");
-                return Err(OperationError::InvalidState);
+                return Err(OperationError::SessionMayNotReauth);
             }
         };
 
