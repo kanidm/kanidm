@@ -106,7 +106,42 @@ async fn submit_admin_req_json(path: &str, req: AdminTaskRequest) -> ExitCode {
             });
             println!("{json_output}");
         }
-        _ => todo!(),
+
+        Some(Ok(AdminTaskResponse::Success)) => {
+            let json_output = serde_json::json!({
+                "status": "ok",
+            });
+            println!("{json_output}");
+            return ExitCode::FAILURE;
+        }
+        Some(Ok(AdminTaskResponse::Error)) => {
+            let json_output = serde_json::json!({
+                "status": "error",
+                "error": "Error during task processing.",
+                "reason": "you should inspect the logs.",
+            });
+            println!("{json_output}");
+            return ExitCode::FAILURE;
+        }
+        Some(Err(err)) => {
+            let json_output = serde_json::json!({
+                "status": "error",
+                "error": "Error during admin task operation.",
+                "reason": format!("{err}"),
+            });
+            println!("{json_output}");
+            return ExitCode::FAILURE;
+        }
+        None => {
+            let json_output = serde_json::json!({
+                "status": "error",
+                "error": "Error making request to admin socket.",
+            });
+            println!("{json_output}");
+            return ExitCode::FAILURE;
+        }
+
+        _ => {}
     }
 
     ExitCode::SUCCESS
@@ -360,10 +395,12 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                             if let Err(err) = std::fs::File::open(&ca_cert_path)
                                 .and_then(|mut file| file.read_to_end(&mut cert_buf))
                             {
-                                error!(
-                                    "Failed to read {:?} from filesystem: {:?}",
-                                    ca_cert_path, err
-                                );
+                                let json_output = serde_json::json!({
+                                    "error": "Failed to read from filesystem.",
+                                    "ca_cert_path": ca_cert_path,
+                                    "reason": format!("{err}"),
+                                });
+                                println!("{json_output}");
 
                                 return ExitCode::FAILURE;
                             }
@@ -371,11 +408,14 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                             let ca_chain_parsed =
                                 match reqwest::Certificate::from_pem_bundle(&cert_buf) {
                                     Ok(val) => val,
-                                    Err(e) => {
-                                        error!(
-                                            "Failed to parse {:?} into CA chain!\nError: {:?}",
-                                            ca_cert_path, e
-                                        );
+                                    Err(err) => {
+                                        let json_output = serde_json::json!({
+                                            "error": "Failed to parse into ca_chain.",
+                                            "ca_cert_path": ca_cert_path,
+                                            "reason": format!("{err}"),
+                                        });
+                                        println!("{json_output}");
+
                                         return ExitCode::FAILURE;
                                     }
                                 };
@@ -387,11 +427,13 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                             client
                         }
                         false => {
-                            warn!(
-                                "Couldn't find ca cert {} but carrying on...",
-                                tls_config.chain.display()
-                            );
-                            client
+                            let json_output = serde_json::json!({
+                                "error": "Requested ca file does not exist.",
+                                "ca_cert_path": ca_cert_path,
+                            });
+                            println!("{json_output}");
+
+                            return ExitCode::FAILURE;
                         }
                     }
                 }
@@ -411,12 +453,18 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                             format!("Failed to complete healthcheck: {error:?}")
                         }
                     };
-                    error!("CRITICAL: {error_message}");
+                    let json_output = serde_json::json!({
+                        "status": "error",
+                        "error": "Healthcheck request failed.",
+                        "reason": error_message,
+                    });
+                    println!("{json_output}");
+
                     return ExitCode::FAILURE;
                 }
             };
             let json_output = serde_json::json!({
-                "result": "OK",
+                "status": "ok",
             });
             println!("{json_output}");
         }

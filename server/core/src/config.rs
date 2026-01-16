@@ -323,7 +323,6 @@ impl ServerConfigUntagged {
     /// loads the configuration file from the path specified, then overlays fields from environment variables starting with `KANIDM_``
     pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, std::io::Error> {
         // see if we can load it from the config file you asked for
-        eprintln!("📜 Using config file: {:?}", config_path.as_ref());
         let mut f: File = File::open(config_path.as_ref()).inspect_err(|e| {
             eprintln!("Unable to open config file [{e:?}] 🥺");
             let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
