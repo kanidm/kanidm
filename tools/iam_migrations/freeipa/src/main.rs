@@ -14,24 +14,30 @@
 mod config;
 mod error;
 
-// #[cfg(test)]
-// mod tests;
-
 use crate::config::{Config, EntryConfig};
 use crate::error::SyncError;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
+use kanidm_client::KanidmClientBuilder;
+use kanidm_lib_crypto::Password;
+use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 use kanidm_proto::constants::{
     ATTR_UID, LDAP_ATTR_CN, LDAP_ATTR_OBJECTCLASS, LDAP_CLASS_GROUPOFNAMES,
 };
+use kanidm_proto::scim_v1::{
+    MultiValueAttr, ScimEntry, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
+    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
+};
 use kanidmd_lib::prelude::{Attribute, EntryClass, ENTRYCLASS_PERSON};
+use ldap3_client::{
+    proto, proto::LdapFilter, LdapClient, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry,
+    LdapSyncStateValue,
+};
 use std::collections::BTreeMap;
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
@@ -44,27 +50,16 @@ use tokio::net::TcpListener;
 use tokio::runtime;
 use tokio::sync::broadcast;
 use tokio::time::sleep;
-
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 use uuid::Uuid;
 
-use kanidm_client::KanidmClientBuilder;
-use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntry, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
-    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
-};
-
-use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
-
 #[cfg(target_family = "unix")]
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
-use ldap3_client::{
-    proto, proto::LdapFilter, LdapClient, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry,
-    LdapSyncStateValue,
-};
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::MetadataExt;
 
 include!("./opt.rs");
 
@@ -457,6 +452,9 @@ async fn run_sync(
                 &sync_config.entry_map,
                 is_initialise,
                 sync_config
+                    .skip_invalid_password_formats
+                    .unwrap_or_default(),
+                sync_config
                     .sync_password_as_unix_password
                     .unwrap_or_default(),
             )
@@ -524,6 +522,7 @@ async fn process_ipa_sync_result(
     ldap_entries: Vec<LdapSyncReplEntry>,
     entry_config_map: &BTreeMap<Uuid, EntryConfig>,
     is_initialise: bool,
+    skip_invalid_password_formats: bool,
     sync_password_as_unix_password: bool,
 ) -> Result<Vec<ScimEntry>, ()> {
     // Because of how TOTP works with FreeIPA, it's a soft referral from
@@ -762,7 +761,13 @@ async fn process_ipa_sync_result(
 
             let totp = totp_entries.get(&dn).unwrap_or(&empty_slice);
 
-            match ipa_to_scim_entry(e, &e_config, totp, sync_password_as_unix_password) {
+            match ipa_to_scim_entry(
+                e,
+                &e_config,
+                totp,
+                skip_invalid_password_formats,
+                sync_password_as_unix_password,
+            ) {
                 Ok(Some(e)) => Some(Ok(e)),
                 Ok(None) => None,
                 Err(()) => Some(Err(())),
@@ -775,6 +780,7 @@ fn ipa_to_scim_entry(
     sync_entry: LdapSyncReplEntry,
     entry_config: &EntryConfig,
     totp: &[LdapSyncReplEntry],
+    skip_invalid_password_formats: bool,
     sync_password_as_unix_password: bool,
 ) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
@@ -821,7 +827,7 @@ fn ipa_to_scim_entry(
             entry
                 .remove_ava_single(Attribute::Uid.as_ref())
                 .ok_or_else(|| {
-                    error!("Missing required attribute {}", Attribute::Uid);
+                    err > or!("Missing required attribute {}", Attribute::Uid);
                 })?
         };
 
@@ -862,6 +868,28 @@ fn ipa_to_scim_entry(
             // The reason we don't do this by default is there are multiple
             // pw hash formats in 389-ds we don't support!
             .or_else(|| entry.remove_ava_single(Attribute::UserPassword.as_ref()));
+
+        let password_import = if let Some(pw_import) = password_import.as_ref() {
+            match Password::try_from(pw_import) {
+                // Pretty good shot it'll work.
+                Ok(_) => password_import,
+                Err(reason) if skip_invalid_password_formats => {
+                    warn!(
+                        ?reason,
+                        ?user_name,
+                        "Skipping password that can not be imported."
+                    );
+                    None
+                }
+                Err(reason) => {
+                    error!(?reason, ?user_name, "Unable to import password");
+                    return Err(());
+                }
+            }
+        } else {
+            // No password found, we proceed since there is nothing to import.
+            None
+        };
 
         let unix_password_import = if sync_password_as_unix_password {
             password_import.clone()
