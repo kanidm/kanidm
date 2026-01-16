@@ -873,7 +873,7 @@ fn ipa_to_scim_entry(
             match Password::try_from(pw_import.as_str()) {
                 // Pretty good shot it'll work.
                 Ok(_) => password_import,
-                Err(reason) if skip_invalid_password_formats => {
+                Err(PasswordError::InvalidFormat) if skip_invalid_password_formats => {
                     warn!(
                         ?reason,
                         ?user_name,
