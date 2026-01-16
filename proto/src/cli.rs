@@ -3,17 +3,6 @@ use clap::Parser;
 
 #[derive(Debug, Parser, Clone)]
 pub struct KanidmdCli {
-    /// Output formatting
-    #[clap(
-        short,
-        long = "output",
-        env = "KANIDM_OUTPUT",
-        default_value = "text",
-        global = true,
-        help = "Specify the console output format (text, json)"
-    )]
-    pub output_mode: crate::messages::ConsoleOutputMode,
-
     #[clap(
         env = "KANIDM_LOG_LEVEL",
         global = true,

@@ -9,7 +9,6 @@ use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::config::ServerRole;
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
-use kanidm_proto::messages::ConsoleOutputMode;
 use serde::Deserialize;
 use serde_with::{formats::PreferOne, serde_as, OneOrMany};
 use sketching::LogLevel;
@@ -324,7 +323,6 @@ impl ServerConfigUntagged {
     /// loads the configuration file from the path specified, then overlays fields from environment variables starting with `KANIDM_``
     pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, std::io::Error> {
         // see if we can load it from the config file you asked for
-        eprintln!("📜 Using config file: {:?}", config_path.as_ref());
         let mut f: File = File::open(config_path.as_ref()).inspect_err(|e| {
             eprintln!("Unable to open config file [{e:?}] 🥺");
             let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
@@ -445,7 +443,6 @@ pub struct Configuration {
     pub domain: String,
     pub origin: Url,
     pub role: ServerRole,
-    pub output_mode: ConsoleOutputMode,
     pub log_level: LogLevel,
     /// Replication settings.
     pub repl_config: Option<ReplicationConfiguration>,
@@ -479,7 +476,6 @@ impl Configuration {
             online_backup: None,
             domain: None,
             origin: None,
-            output_mode: ConsoleOutputMode::default(),
             log_level: None,
             role: None,
             repl_config: None,
@@ -506,7 +502,6 @@ impl Configuration {
             domain: "idm.example.com".to_string(),
             origin: Url::from_str("https://idm.example.com")
                 .expect("Failed to parse built-in string as URL"),
-            output_mode: ConsoleOutputMode::default(),
             log_level: LogLevel::default(),
             role: ServerRole::WriteReplica,
             repl_config: None,
@@ -577,7 +572,6 @@ impl fmt::Display for Configuration {
             "integration mode: {}, ",
             self.integration_test_config.is_some()
         )?;
-        write!(f, "console output format: {:?} ", self.output_mode)?;
         write!(f, "log_level: {}", self.log_level)?;
         write!(f, "role: {}, ", self.role)?;
         match &self.repl_config {
@@ -620,7 +614,6 @@ pub struct ConfigurationBuilder {
     domain: Option<String>,
     origin: Option<Url>,
     role: Option<ServerRole>,
-    output_mode: ConsoleOutputMode,
     log_level: Option<LogLevel>,
     repl_config: Option<ReplicationConfiguration>,
     otel_grpc_url: Option<String>,
@@ -630,8 +623,6 @@ impl ConfigurationBuilder {
     #![allow(clippy::needless_pass_by_value)]
     pub fn add_cli_config(mut self, cli_config: &kanidm_proto::cli::KanidmdCli) -> Self {
         // logging
-        self.output_mode = cli_config.output_mode;
-
         if let Some(log_level) = &cli_config.log_level {
             self.log_level = Some(*log_level);
         }
@@ -982,7 +973,6 @@ impl ConfigurationBuilder {
             domain,
             origin,
             role,
-            output_mode,
             log_level,
             repl_config,
             otel_grpc_url,
@@ -1047,7 +1037,6 @@ impl ConfigurationBuilder {
             domain,
             origin,
             role,
-            output_mode,
             log_level,
             repl_config,
             otel_grpc_url,
