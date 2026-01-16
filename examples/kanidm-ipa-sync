@@ -27,6 +27,16 @@ ipa_sync_pw = "directory manager password"
 # The basedn to examine.
 ipa_sync_base_dn = "dc=ipa,dc=dev,dc=kanidm,dc=com"
 
+# Kanidm rejects invalid data by default to ensure you are aware of and can
+# intervene when an error occurs. However, in some cases flaws in FreeIPA may
+# cause some passwords to be in formats that Kanidm can not import. In these
+# cases it *can* optionally be valid to proceed with the synchronisation, and
+# treat the account as having 'no password'.
+# Setting this value to "true" will cause the sync tool to warn on invalid
+# password data, but proceed to sync the entry with no password instead.
+#
+# skip_invalid_password_formats = false
+
 # By default Kanidm separates the primary account password and credentials from
 # the unix credential. This allows the unix password to be isolated from the
 # account password so that compromise of one doesn't compromise the other. However
