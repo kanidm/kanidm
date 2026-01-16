@@ -20,7 +20,7 @@ use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
 use kanidm_client::KanidmClientBuilder;
-use kanidm_lib_crypto::Password;
+use kanidm_lib_crypto::{Password, PasswordError};
 use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 use kanidm_proto::constants::{
     ATTR_UID, LDAP_ATTR_CN, LDAP_ATTR_OBJECTCLASS, LDAP_CLASS_GROUPOFNAMES,
@@ -874,11 +874,7 @@ fn ipa_to_scim_entry(
                 // Pretty good shot it'll work.
                 Ok(_) => password_import,
                 Err(PasswordError::InvalidFormat) if skip_invalid_password_formats => {
-                    warn!(
-                        ?reason,
-                        ?user_name,
-                        "Skipping password that can not be imported."
-                    );
+                    warn!(?user_name, "Skipping password that can not be imported.");
                     None
                 }
                 Err(reason) => {
