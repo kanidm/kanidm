@@ -1,10 +1,5 @@
 # Customising
 
-> [!NOTE]
->
-> Currently theming options such as updating the CSS requires modifying the style.css file. This may be changed in the
-> future to make it easier to modify.
-
 Kanidm supports customising various aspects such as the site display name, site image, and display names and images for
 each application.
 
@@ -53,4 +48,17 @@ restrictions as the site image above.
 kanidm system oauth2 set-image <NAME> <file-path> [image-type] -D idm_admin
 
 kanidm system oauth2 remove-image <NAME> -D idm_admin
+```
+
+## Custom CSS
+
+You can also mount a custom css file over `/hpkg/override.css` in the container to add your own
+styles. For example with docker:
+
+```bash
+docker run \
+    -p 443:8443 \
+    -v kanidmd:/data \
+    --mount type=bind,src=./your/override.css,dst=/hpkg/override.css \
+    kandim/server:latest
 ```
