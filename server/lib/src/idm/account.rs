@@ -69,6 +69,7 @@ pub struct Account {
     pub(crate) sshkeys: BTreeMap<String, SshPublicKey>,
     pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
     pub(crate) oauth2_client_provider: Option<OAuth2AccountCredential>,
+    pub updated_at: Option<Cid>,
 }
 
 #[cfg(test)]
@@ -229,6 +230,11 @@ macro_rules! try_from_entry {
             _ => None,
         };
 
+        let updated_at: Option<Cid> = $value
+            .get_ava_set(Attribute::LastModifiedCid)
+            .cloned()
+            .and_then(|u| u.to_cid_single());
+
         Ok(Account {
             uuid,
             name,
@@ -250,6 +256,7 @@ macro_rules! try_from_entry {
             sshkeys,
             apps_pwds,
             oauth2_client_provider,
+            updated_at,
         })
     }};
 }
