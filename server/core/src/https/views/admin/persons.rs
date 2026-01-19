@@ -22,12 +22,11 @@ use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::idm::authentication::ClientAuthInfo;
 use uuid::Uuid;
 
-pub const PERSON_ATTRIBUTES: [Attribute; 10] = [
+pub const PERSON_ATTRIBUTES: [Attribute; 9] = [
     Attribute::Uuid,
     Attribute::Description,
     Attribute::Name,
     Attribute::DisplayName,
-    Attribute::LastModifiedCid,
     Attribute::Spn,
     Attribute::Mail,
     Attribute::Class,

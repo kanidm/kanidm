@@ -268,6 +268,8 @@ pub struct ScimReference {
 pub enum ScimValueKanidm {
     Bool(bool),
     Uint32(u32),
+    Int64(i64),
+    Uint64(u64),
     Integer(i64),
     Decimal(f64),
     String(String),
@@ -316,7 +318,6 @@ pub struct ScimPerson {
     pub mails: Vec<ScimMail>,
     pub managed_by: Option<ScimReference>,
     pub groups: Vec<ScimReference>,
-    //pub updated_at: String,
 }
 
 impl TryFrom<ScimEntryKanidm> for ScimPerson {
@@ -360,16 +361,6 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
                 _ => None,
             });
 
-    /*    //TODO It's working, but im not happy with it, maybe there is the possibility to extend
-        //ScimValueKanidm so we don't need to parse a String..
-        let updated_at: String = scim_entry
-            .get_string_attr(&Attribute::LastModifiedCid)
-            .and_then(|v| v.split('-').next())
-            .and_then(|s| s.parse::<i128>().ok())
-            .and_then(|nanos| OffsetDateTime::from_unix_timestamp_nanos(nanos).ok())
-            .and_then(|odt| odt.format(&Rfc3339).ok())
-            .ok_or(())?;*/
-
         Ok(ScimPerson {
             uuid,
             name,
@@ -379,7 +370,6 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
             mails,
             managed_by,
             groups,
-         //   updated_at,
         })
     }
 }
@@ -474,6 +464,18 @@ impl From<Vec<Uuid>> for ScimValueKanidm {
 impl From<u32> for ScimValueKanidm {
     fn from(u: u32) -> Self {
         Self::Uint32(u)
+    }
+}
+
+impl From<i64> for ScimValueKanidm {
+    fn from(u: i64) -> Self {
+        Self::Int64(u)
+    }
+}
+
+impl From<u64> for ScimValueKanidm {
+    fn from(u: u64) -> Self {
+        Self::Uint64(u)
     }
 }
 

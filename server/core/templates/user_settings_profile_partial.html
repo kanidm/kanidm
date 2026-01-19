@@ -28,13 +28,11 @@ Profile
       hx-validate="true"
       hx-ext="bs-validation"
       novalidate>
-    (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)
+    (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)(% endcall %)
 
-    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)
+    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)(% endcall %)
 
     (% let can_edit_email = can_rw && scim_effective_access.modify_present.check(&Attribute::Mail) %)
-
-
     <div class="mb-2">
         <div class="mt-3 mb-2 col-12 col-md-11 col-lg-8">
             <label for="profileEmail" class="fw-bold">Email addresses (% if can_edit_email %)(select primary)(% endif %)</label>
@@ -68,9 +66,6 @@ Profile
             </div>
         </div>
     </div>
-
-
-
 
     <!-- Edit button -->
     <div class="pt-4">
