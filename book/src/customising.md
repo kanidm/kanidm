@@ -60,5 +60,5 @@ docker run \
     -p 443:8443 \
     -v kanidmd:/data \
     --mount type=bind,src=./your/override.css,dst=/hpkg/override.css \
-    kandim/server:latest
+    kanidm/server:latest
 ```
