@@ -1880,7 +1880,8 @@ mod tests {
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
         // manually load in a cred
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
+        let cred =
+            Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
         account.primary = Some(cred);
 
         let (async_tx, mut async_rx) = unbounded();
@@ -1981,7 +1982,9 @@ mod tests {
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
         // manually load in a cred
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "list@no3IBTyqHu$bad", OffsetDateTime::UNIX_EPOCH).unwrap();
+        let cred =
+            Credential::new_password_only(&p, "list@no3IBTyqHu$bad", OffsetDateTime::UNIX_EPOCH)
+                .unwrap();
         account.primary = Some(cred);
 
         let (async_tx, mut async_rx) = unbounded();

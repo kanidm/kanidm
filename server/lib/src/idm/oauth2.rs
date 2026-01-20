@@ -3522,7 +3522,8 @@ mod tests {
             .unwrap_or(SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
+        let cred =
+            Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
         let cred_id = cred.uuid;
 
         let session = Value::Session(
@@ -3659,7 +3660,8 @@ mod tests {
             .unwrap_or(SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
+        let cred =
+            Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
         let cred_id = cred.uuid;
 
         let session = Value::Session(
