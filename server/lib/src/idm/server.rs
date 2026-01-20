@@ -635,13 +635,20 @@ pub trait IdmServerTransaction<'a> {
                         );
                         return Ok(None);
                     }
-                } else if grace_valid {
-                    security_info!(
-                        "The token grace window is in effect. Assuming parent session valid."
-                    );
                 } else {
-                    security_info!("The token grace window has passed and no entry parent sessions exist. Assuming invalid.");
-                    return Ok(None);
+                    let api_session = entry
+                        .get_ava_as_apitoken_map(Attribute::ApiTokenSession)
+                        .and_then(|sessions| sessions.get(&parent_session_id));
+                    if api_session.is_some() {
+                        security_info!("A valid api token session value exists for this token");
+                    } else if grace_valid {
+                        security_info!(
+                            "The token grace window is in effect. Assuming parent session valid."
+                        );
+                    } else {
+                        security_info!("The token grace window has passed and no entry parent sessions exist. Assuming invalid.");
+                        return Ok(None);
+                    }
                 }
             }
             // If we don't have a parent session id, we are good to proceed.

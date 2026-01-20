@@ -148,7 +148,6 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         Box::new(
             self.set
                 .iter()
-                .cloned()
                 .map(|k| PartialValue::new_iutf8(k.get_kid())),
         )
     }
@@ -313,7 +312,6 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
         Box::new(
             self.set
                 .iter()
-                .cloned()
                 .map(|k| PartialValue::new_iutf8(k.get_kid())),
         )
     }

@@ -2556,6 +2556,10 @@ impl Entry<EntryReduced, EntryCommitted> {
                                 .unwrap_or_default(),
                         })
                     }
+                    ATTR_HOME_DIRECTORY => Some(LdapPartialAttribute {
+                        atype: ATTR_HOME_DIRECTORY.to_string(),
+                        vals: vec![format!("/home/{}", self.get_uuid()).into_bytes()],
+                    }),
                     _ => attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                         atype: ldap_a.to_string(),
                         vals: pvs.clone(),

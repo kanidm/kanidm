@@ -45,13 +45,13 @@ kanidm service-account api-token generate --name demo_user demo_service "Test To
 kanidm service-account api-token generate --name demo_user demo_service "Test Token" 2020-09-25T11:22:02+10:00
 ```
 
-If you wish to issue a token that is able to make changes on behalf of the service account, you must add the `--rw` flag
-during the generate command. It is recommended you only add `--rw` when the API token is performing writes to Kanidm.
+If you wish to issue a token that is able to make changes on behalf of the service account, you must add the `-w` flag
+during the generate command. It is recommended you only add `-w` when the API token is performing writes to Kanidm.
 
 ```bash
-kanidm service-account api-token generate --name ENTRY_MANAGER ACCOUNT_ID LABEL [EXPIRY] --rw
-kanidm service-account api-token generate --name demo_user demo_service "Test Token" --rw
-kanidm service-account api-token generate --name demo_user demo_service "Test Token" 2020-09-25T11:22:02+10:00 --rw
+kanidm service-account api-token generate --name ENTRY_MANAGER ACCOUNT_ID LABEL [EXPIRY] -w
+kanidm service-account api-token generate --name demo_user demo_service "Test Token" -w
+kanidm service-account api-token generate --name demo_user demo_service "Test Token" 2020-09-25T11:22:02+10:00 -w
 ```
 
 To destroy (revoke) an API token you will need its token id. This can be shown with the "status" command.
@@ -70,6 +70,37 @@ with the format `Bearer <token>`.
 
 For more see the
 [MDN documentation for Authorisation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Authorization)
+
+### API Tokens with OIDC Token Exchange (RFC 8693)
+
+Service accounts can exchange their API bearer token for OAuth2/OIDC tokens (access/id/refresh) without user consent or
+interaction. For Basic OAuth2 clients, do not provide the client secret during this flow; the API token is the
+credential, and sending a secret is rejected. Use the token endpoint with the RFC 8693 grant:
+
+- `grant_type`: `urn:ietf:params:oauth:grant-type:token-exchange`
+- `subject_token`: the service-account API token (see `kanidm service-account api-token generate`)
+- `subject_token_type`: `urn:ietf:params:oauth:token-type:access_token`
+- `audience`: OAuth2 `client_id` of the target resource server
+- `resource` (optional): absolute URI for that same resource server; other values return `invalid_target`
+- `requested_token_type` (optional): defaults to an access token; other values are rejected
+- `scope`: scopes permitted for the service account on that client
+
+`actor_token` is not supported for this flow.
+
+Example `application/x-www-form-urlencoded` request:
+
+```bash
+curl -X POST https://idm.example.com/oauth2/token \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "client_id=test_resource_server" \
+  -d "subject_token=$API_TOKEN" \
+  -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token" \
+  -d "audience=test_resource_server" \
+  -d "scope=openid groups"
+```
+
+Responses include an `access_token`, `id_token` when `openid` is requested, and a `refresh_token` when allowed. Scopes
+are still enforced against the service account’s group membership and the client’s scope map.
 
 ### API Tokens with LDAP
 

@@ -420,7 +420,6 @@ impl ValueSetT for ValueSetImage {
         Box::new(
             self.set
                 .iter()
-                .cloned()
                 .map(|image| PartialValue::Image(image.hash_imagevalue())),
         )
     }

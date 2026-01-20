@@ -667,7 +667,8 @@ Outline is a wiki / knowledge base which [can be self-hosted][outline-self].
 Self-hosted [Outline supports authentication with OpenID Connect][outline-oidc], with some limitations:
 
 - PKCE is only enabled via OIDC discovery.
-  - **WARNING**: With manual OAuth2 configuration [Outline does not support PKCE][outline-pkce], [which is a security issue][pkce-disable-security].
+  - **WARNING**: With manual OAuth2 configuration [Outline does not support PKCE][outline-pkce],
+    [which is a security issue][pkce-disable-security].
 
 - Outline does not support group or ACL delegation.
 
@@ -695,8 +696,8 @@ To set up a _new_ self-hosted Outline instance to authenticate with Kanidm:
    **Warning:** don't add any other users when first setting up Outline. The first user who logs in will gain
    administrative rights.
 
-3. Create a new OAuth2 application configuration in Kanidm (`outline`), configure the redirect
-   URL, and scope access to the `outline_users` group:
+3. Create a new OAuth2 application configuration in Kanidm (`outline`), configure the redirect URL, and scope access to
+   the `outline_users` group:
 
    ```sh
    kanidm system oauth2 create outline Outline https://outline.example.com

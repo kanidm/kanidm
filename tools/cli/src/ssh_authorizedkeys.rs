@@ -94,7 +94,7 @@ async fn main() -> Result<(), ()> {
     if r.is_err() {
         match r {
             Err(ClientError::Transport(value)) => {
-                error!("Failed to connect to kanidm server: {}", value.to_string());
+                error!("Failed to connect to Kanidm server: {}", value.to_string());
             }
             _ => error!("Error during authentication phase: {:?}", r),
         }

@@ -23,6 +23,23 @@ mod win10;
 #[cfg(target_os = "windows")]
 use win10::get_authenticator_backend;
 
+#[cfg(not(any(
+    target_os = "openbsd",
+    target_os = "freebsd",
+    target_os = "macos",
+    target_os = "linux",
+    target_os = "windows"
+)))]
+mod mozilla;
+#[cfg(not(any(
+    target_os = "openbsd",
+    target_os = "freebsd",
+    target_os = "macos",
+    target_os = "linux",
+    target_os = "windows"
+)))]
+use mozilla::get_authenticator_backend;
+
 use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
 
 /// Gets a [WebauthnAuthenticator] with an appropriate backend for the current platform:

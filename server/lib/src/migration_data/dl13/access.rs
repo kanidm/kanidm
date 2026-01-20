@@ -1771,11 +1771,15 @@ lazy_static! {
             Attribute::PrimaryCredential,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::AccountValidFrom,
+            Attribute::AccountExpire,
         ],
         modify_present_attrs: vec![
             Attribute::PrimaryCredential,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::AccountValidFrom,
+            Attribute::AccountExpire,
         ],
         ..Default::default()
     };
