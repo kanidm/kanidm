@@ -9,6 +9,7 @@ use libnss::group::Group;
 use libnss::interop::Response;
 use libnss::passwd::Passwd;
 use std::cell::RefCell;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(test)]
 use kanidm_unix_common::client_sync::UnixStream;
@@ -25,6 +26,8 @@ pub enum RequestOptions {
     },
 }
 
+static TLS_IS_TAINTED: AtomicBool = AtomicBool::new(false);
+
 thread_local! {
     pub static CLIENT: RefCell<Option<DaemonClientBlocking>> = const { RefCell::new(None) };
 }
@@ -39,11 +42,27 @@ enum Source {
 
 impl RequestOptions {
     fn connect_to_daemon(self) -> Source {
-        let maybe_blocking_client = CLIENT.with_borrow(|tls_value| tls_value.clone());
+        let is_tainted = TLS_IS_TAINTED.load(Ordering::Relaxed);
 
-        if let Some(client) = maybe_blocking_client {
-            // We already initialised the client in this thread, return it.
-            return Source::Daemon(client);
+        // DaemonClientBlocking has an internal Arc + Mutex.
+        if !is_tainted {
+            let maybe_blocking_client = CLIENT.try_with(|cell| cell.borrow().clone());
+
+            match maybe_blocking_client {
+                Ok(Some(client)) => {
+                    // We already initialised the client in this thread, return it.
+                    return Source::Daemon(client);
+                }
+                Ok(None) => {
+                    // Not yet setup, continue.
+                }
+                Err(_) => {
+                    // The TLS value is tainted - this often occurs with forking processes. Since this
+                    // has occured, we mark that the taint is present, and we just initialise the client
+                    // each time we do an operation.
+                    TLS_IS_TAINTED.store(true, Ordering::Relaxed);
+                }
+            }
         }
 
         match self {
@@ -57,8 +76,20 @@ impl RequestOptions {
                     });
 
                 if let Some(client) = maybe_client {
-                    // Store a copy of the client in thread local storage.
-                    let _ = CLIENT.replace(Some(client.clone()));
+                    if !is_tainted {
+                        // Store a copy of the client in thread local storage.
+                        let _ = CLIENT.replace(Some(client.clone()));
+
+                        let is_tainted = CLIENT
+                            .try_with(|cell| cell.replace(Some(client.clone())))
+                            .is_err();
+
+                        // The TLS has become tainted, update to avoid it.
+                        if is_tainted {
+                            TLS_IS_TAINTED.store(true, Ordering::Relaxed);
+                        }
+                    }
+
                     Source::Daemon(client)
                 } else {
                     let users = read_etc_passwd_file(SYSTEM_PASSWD_PATH).unwrap_or_default();
