@@ -96,11 +96,11 @@ impl IntoResponse for WebError {
                     OperationError::SystemProtectedObject | OperationError::AccessDenied => {
                         (StatusCode::FORBIDDEN, None)
                     }
+                    OperationError::AttributeUniqueness(_) => (StatusCode::CONFLICT, None),
                     OperationError::NoMatchingEntries => (StatusCode::NOT_FOUND, None),
                     OperationError::PasswordQuality(_)
                     | OperationError::EmptyRequest
                     | OperationError::InvalidAttribute(_)
-                    | OperationError::AttributeUniqueness(_)
                     | OperationError::InvalidAttributeName(_)
                     | OperationError::SchemaViolation(_)
                     | OperationError::CU0003WebauthnUserNotVerified
