@@ -3,6 +3,7 @@ use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::navbar::NavbarCtx;
+use crate::https::views::reauth::uat_privileges_active;
 use crate::https::views::{ErrorToastPartial, Urls};
 use crate::https::ServerState;
 use askama::Template;
@@ -90,12 +91,13 @@ pub(crate) async fn view_group_view_get(
 ) -> axum::response::Result<Response> {
     let (group, scim_effective_access) =
         get_group_info(uuid, state.clone(), &kopid, client_auth_info.clone()).await?;
+
     let uat: &UserAuthToken = client_auth_info
         .pre_validated_uat()
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
-    let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
-    let can_rw = uat.purpose_readwrite_active(time);
+    let can_rw = uat_privileges_active(uat);
+
     let group_partial = GroupViewPartial {
         group,
         can_rw,
