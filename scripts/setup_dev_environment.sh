@@ -85,7 +85,7 @@ export KANIDM_CONFIG="./insecure_server.toml"
 IDM_ADMIN_USER="idm_admin@localhost"
 
 echo "Resetting the idm_admin user..."
-IDM_ADMIN_PASS_RAW="$(${KANIDMD} scripting recover-account idm_admin2>&1)"
+IDM_ADMIN_PASS_RAW="$(${KANIDMD} scripting recover-account idm_admin 2>&1)"
 IDM_ADMIN_PASS="$(echo "${IDM_ADMIN_PASS_RAW}" | grep password | jq -r .password)"
 if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null" ]; then
     echo "Failed to reset idm_admin password!"
