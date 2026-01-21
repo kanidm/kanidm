@@ -44,8 +44,10 @@ use kanidmd_core::{
     dbscan_restore_quarantined_core, domain_rename_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
+use serde::Serialize;
 use sketching::otel::TracingPipelineGuard;
 use sketching::tracing_forest::util::*;
+use std::fmt;
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -63,16 +65,56 @@ fn get_user_details_windows() {
     );
 }
 
+fn display_json_success() {
+    let json_output = serde_json::json!({
+        "status": "ok",
+    });
+    println!("{json_output}");
+}
+
+fn display_json_success_output<T: Serialize>(data: T) {
+    let json_output = serde_json::json!({
+        "status": "ok",
+        "output": data,
+    });
+    println!("{json_output}");
+}
+
+fn display_json_error<E, M>(error: E, message: M)
+where
+    E: fmt::Display,
+    M: fmt::Display,
+{
+    let json_output = serde_json::json!({
+        "status": "error",
+        "reason": format!("{error}"),
+        "message": format!("{message}")
+    });
+    println!("{json_output}");
+}
+
+fn display_json_error_context<E, M, C>(error: E, message: M, context: C)
+where
+    E: fmt::Display,
+    M: fmt::Display,
+    C: fmt::Display,
+{
+    let json_output = serde_json::json!({
+        "status": "error",
+        "reason": format!("{error}"),
+        "message": format!("{message}"),
+        "context": format!("{context}"),
+    });
+    println!("{json_output}");
+}
+
 async fn submit_admin_req_json(path: &str, req: AdminTaskRequest) -> ExitCode {
     // Connect to the socket.
     let stream = match UnixStream::connect(path).await {
         Ok(s) => s,
         Err(err) => {
-            let json_output = serde_json::json!({
-                "error": "Unable to connect to socket path.",
-                "reason": format!("{err}"),
-            });
-            println!("{json_output}");
+            display_json_error(err, "Unable to connect to socket path.");
+
             return ExitCode::FAILURE;
         }
     };
@@ -80,64 +122,37 @@ async fn submit_admin_req_json(path: &str, req: AdminTaskRequest) -> ExitCode {
     let mut reqs = Framed::new(stream, ClientCodec);
 
     if let Err(err) = reqs.send(req).await {
-        let json_output = serde_json::json!({
-            "error": "Unable to send request.",
-            "reason": format!("{err}"),
-        });
-        println!("{json_output}");
+        display_json_error(err, "Unable to connect to send request.");
 
         return ExitCode::FAILURE;
     };
 
     if let Err(err) = reqs.flush().await {
-        let json_output = serde_json::json!({
-            "error": "Unable to flush request.",
-            "reason": format!("{err}"),
-        });
-        println!("{json_output}");
+        display_json_error(err, "Unable to connect to flush request.");
 
         return ExitCode::FAILURE;
     }
 
     match reqs.next().await {
         Some(Ok(AdminTaskResponse::RecoverAccount { password })) => {
-            let json_output = serde_json::json!({
-                "password": password
-            });
-            println!("{json_output}");
+            display_json_success_output(password)
         }
-
         Some(Ok(AdminTaskResponse::Success)) => {
-            let json_output = serde_json::json!({
-                "status": "ok",
-            });
-            println!("{json_output}");
-            return ExitCode::FAILURE;
+            display_json_success();
         }
         Some(Ok(AdminTaskResponse::Error)) => {
-            let json_output = serde_json::json!({
-                "status": "error",
-                "error": "Error during task processing.",
-                "reason": "you should inspect the logs.",
-            });
-            println!("{json_output}");
+            display_json_error(
+                "ResponseError",
+                "Error processing request - you should inspect the server logs.",
+            );
             return ExitCode::FAILURE;
         }
         Some(Err(err)) => {
-            let json_output = serde_json::json!({
-                "status": "error",
-                "error": "Error during admin task operation.",
-                "reason": format!("{err}"),
-            });
-            println!("{json_output}");
+            display_json_error(err, "Error during admin task operation.");
             return ExitCode::FAILURE;
         }
         None => {
-            let json_output = serde_json::json!({
-                "status": "error",
-                "error": "Error making request to admin socket.",
-            });
-            println!("{json_output}");
+            display_json_error("SocketClosed", "Error makeing request to admin socket.");
             return ExitCode::FAILURE;
         }
 
@@ -395,12 +410,11 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                             if let Err(err) = std::fs::File::open(&ca_cert_path)
                                 .and_then(|mut file| file.read_to_end(&mut cert_buf))
                             {
-                                let json_output = serde_json::json!({
-                                    "error": "Failed to read from filesystem.",
-                                    "ca_cert_path": ca_cert_path,
-                                    "reason": format!("{err}"),
-                                });
-                                println!("{json_output}");
+                                display_json_error_context(
+                                    err,
+                                    "Failed to read from filesystem.",
+                                    ca_cert_path.display(),
+                                );
 
                                 return ExitCode::FAILURE;
                             }
@@ -409,12 +423,11 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                                 match reqwest::Certificate::from_pem_bundle(&cert_buf) {
                                     Ok(val) => val,
                                     Err(err) => {
-                                        let json_output = serde_json::json!({
-                                            "error": "Failed to parse into ca_chain.",
-                                            "ca_cert_path": ca_cert_path,
-                                            "reason": format!("{err}"),
-                                        });
-                                        println!("{json_output}");
+                                        display_json_error_context(
+                                            err,
+                                            "Failed to parse into ca_chain.",
+                                            ca_cert_path.display(),
+                                        );
 
                                         return ExitCode::FAILURE;
                                     }
@@ -427,11 +440,11 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                             client
                         }
                         false => {
-                            let json_output = serde_json::json!({
-                                "error": "Requested ca file does not exist.",
-                                "ca_cert_path": ca_cert_path,
-                            });
-                            println!("{json_output}");
+                            display_json_error_context(
+                                "NoSuchFile",
+                                "Requested ca file does not exist.",
+                                ca_cert_path.display(),
+                            );
 
                             return ExitCode::FAILURE;
                         }
@@ -453,20 +466,13 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                             format!("Failed to complete healthcheck: {error:?}")
                         }
                     };
-                    let json_output = serde_json::json!({
-                        "status": "error",
-                        "error": "Healthcheck request failed.",
-                        "reason": error_message,
-                    });
-                    println!("{json_output}");
+
+                    display_json_error("HealthcheckFailed", error_message);
 
                     return ExitCode::FAILURE;
                 }
             };
-            let json_output = serde_json::json!({
-                "status": "ok",
-            });
-            println!("{json_output}");
+            display_json_success();
         }
     }
 
