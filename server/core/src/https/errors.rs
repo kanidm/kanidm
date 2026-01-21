@@ -132,6 +132,8 @@ impl IntoResponse for WebError {
 
 #[cfg(test)]
 mod tests {
+    use kanidm_proto::attribute::Attribute;
+
     #[test]
     fn test_attributeuniqueness_error_response() {
         use super::*;
