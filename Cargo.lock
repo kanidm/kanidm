@@ -1329,6 +1329,7 @@ dependencies = [
  "prctl",
  "reqwest 0.12.28",
  "sd-notify",
+ "serde",
  "serde_json",
  "sketching",
  "tokio",
