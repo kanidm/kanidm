@@ -129,3 +129,17 @@ impl IntoResponse for WebError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_attributeuniqueness_error_response() {
+        use super::*;
+        use axum::response::IntoResponse;
+
+        let err =
+            WebError::OperationError(OperationError::AttributeUniqueness(vec![Attribute::Uuid]));
+        let response = err.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+}
