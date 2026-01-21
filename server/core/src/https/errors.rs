@@ -4,6 +4,7 @@
 use axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN;
 use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
+use axum::Json;
 
 use hyper::header::WWW_AUTHENTICATE;
 use kanidm_proto::oauth2::ErrorResponse;
@@ -84,6 +85,14 @@ impl IntoResponse for WebError {
             WebError::InternalServerError(inner) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, inner).into_response()
             }
+            WebError::OperationError(OperationError::AttributeUniqueness(attrs)) => (
+                StatusCode::CONFLICT,
+                Json(serde_json::json!( {
+                    "error" : "Attribute uniqueness error",
+                    "conflicting_attributes": &attrs
+                })),
+            )
+                .into_response(),
             WebError::OperationError(inner) => {
                 let (code, headers) = match &inner {
                     OperationError::NotAuthenticated | OperationError::SessionExpired => {
@@ -96,11 +105,11 @@ impl IntoResponse for WebError {
                     OperationError::SystemProtectedObject | OperationError::AccessDenied => {
                         (StatusCode::FORBIDDEN, None)
                     }
+
                     OperationError::NoMatchingEntries => (StatusCode::NOT_FOUND, None),
                     OperationError::PasswordQuality(_)
                     | OperationError::EmptyRequest
                     | OperationError::InvalidAttribute(_)
-                    | OperationError::AttributeUniqueness(_)
                     | OperationError::InvalidAttributeName(_)
                     | OperationError::SchemaViolation(_)
                     | OperationError::CU0003WebauthnUserNotVerified
@@ -118,5 +127,21 @@ impl IntoResponse for WebError {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use kanidm_proto::attribute::Attribute;
+
+    #[test]
+    fn test_attributeuniqueness_error_response() {
+        use super::*;
+        use axum::response::IntoResponse;
+
+        let err =
+            WebError::OperationError(OperationError::AttributeUniqueness(vec![Attribute::Uuid]));
+        let response = err.into_response();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
     }
 }
