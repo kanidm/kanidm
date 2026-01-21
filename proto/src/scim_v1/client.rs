@@ -242,6 +242,19 @@ pub struct ScimEntryPostGeneric {
     pub attrs: BTreeMap<Attribute, JsonValue>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub enum ScimEntryAssertion {
+    Present {
+        id: Uuid,
+        #[schema(value_type = BTreeMap<String, Value>)]
+        #[serde(flatten)]
+        attrs: BTreeMap<Attribute, Option<JsonValue>>,
+    },
+    Absent {
+        id: Uuid,
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
 pub struct ScimEntryPutGeneric {
     // id is only used to target the entry in question
