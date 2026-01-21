@@ -3,9 +3,9 @@ use crate::schema::{SchemaAttribute, SchemaTransaction};
 use crate::server::batch_modify::{BatchModifyEvent, ModSetValid};
 use crate::server::ValueSetResolveStatus;
 use crate::valueset::*;
-use kanidm_proto::scim_v1::client::{ScimEntryPostGeneric, ScimEntryPutGeneric};
+use kanidm_proto::scim_v1::client::{ScimEntryPostGeneric, ScimEntryPutGeneric, ScimEntryAssertion};
 use kanidm_proto::scim_v1::JsonValue;
-use std::collections::BTreeMap;
+use std::collections::{BTreeSet, BTreeMap};
 
 #[derive(Debug)]
 pub struct ScimEntryPutEvent {
@@ -106,6 +106,18 @@ impl ScimDeleteEvent {
             class,
         }
     }
+}
+
+
+#[derive(Debug)]
+pub struct ScimAssertEvent {
+    /// The identity performing the change.
+    pub(crate) ident: Identity,
+
+    /// The set of assertions to be performed. These are applied in order.
+    pub(crate) asserts: Vec<ScimEntryAssertion>,
+
+    // /// Tracking information about the assertion.
 }
 
 impl QueryServerWriteTransaction<'_> {
@@ -264,6 +276,62 @@ impl QueryServerWriteTransaction<'_> {
         };
 
         self.delete(&de)
+    }
+
+    pub fn scim_assert(
+        &mut self,
+        scim_assert: ScimAssertEvent,
+    ) -> Result<(), OperationError> {
+        // Get all the UUID's from assert statements.
+        let present_uuids: BTreeSet<Uuid> =
+            scim_assert.asserts.iter()
+                .filter_map(|a| {
+                    match a {
+                        ScimEntryAssertion::Present { id, .. } => Some(*id),
+                        _ => None,
+                    }
+                })
+                .collect();
+
+        let absent_uuids: BTreeSet<Uuid> =
+            scim_assert.asserts.iter()
+                .filter_map(|a| {
+                    match a {
+                        ScimEntryAssertion::Absent { id } => Some(*id),
+                        _ => None,
+                    }
+                })
+                .collect();
+
+        // Assert that there is no overlap.
+        let duplicates: Vec<_> = present_uuids.intersection(&absent_uuids)
+            .collect();
+
+        if !duplicates.is_empty() {
+            // error
+            error!(?duplicates, "entry uuids in SCIM Assertion must be unique.");
+            return Err(OperationError::SC0033AssertionContainsDuplicateUuids);
+        }
+
+        // Determine which exist.
+
+        let filter = present_uuids
+            .iter()
+            .map(|uuid| {
+            })
+            .collect();
+
+        let existing_uuids = ;
+
+        // Break up the asserts then into sets of creates, mods and deletes.
+
+        // Loop and apply.
+
+        // Complete!
+
+        todo!();
+
+        Ok(())
     }
 
     pub(crate) fn resolve_scim_json_put(
