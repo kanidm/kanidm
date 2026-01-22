@@ -1384,9 +1384,18 @@ pub async fn credential_update_status(
 pub async fn credential_update_update(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    Json(cubody): Json<Vec<serde_json::Value>>,
+    Json(mut cubody): Json<Vec<serde_json::Value>>,
 ) -> Result<Json<CUStatus>, WebError> {
-    let scr: CURequest = match serde_json::from_value(cubody[0].clone()) {
+    if cubody.len() != 2 {
+        let errmsg = "Failed to deserialize CURequest: Array must contain 2 values.".to_string();
+        return Err(WebError::InternalServerError(errmsg));
+    }
+
+    // Remove in reverse order to prevent items being shifted.
+    let cuvalue_1 = cubody.remove(1);
+    let cuvalue_0 = cubody.remove(0);
+
+    let scr: CURequest = match serde_json::from_value(cuvalue_0) {
         Ok(val) => val,
         Err(err) => {
             let errmsg = format!("Failed to deserialize CURequest: {err:?}");
@@ -1395,7 +1404,7 @@ pub async fn credential_update_update(
         }
     };
 
-    let session_token = match serde_json::from_value(cubody[1].clone()) {
+    let session_token = match serde_json::from_value(cuvalue_1) {
         Ok(val) => val,
         Err(err) => {
             let errmsg = format!("Failed to deserialize session token: {err:?}");
