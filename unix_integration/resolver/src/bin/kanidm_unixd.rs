@@ -252,6 +252,10 @@ async fn handle_client(
                         ClientResponse::NssGroup(None)
                     }),
                 ClientRequest::PamAuthenticateInit { account_id, info } => {
+                   #[allow(clippy::disallowed_methods)]
+                    // Allowed as this is the time check for the remainder of the function and check.
+
+
                     let current_time = OffsetDateTime::now_utc();
 
                     match cachelayer

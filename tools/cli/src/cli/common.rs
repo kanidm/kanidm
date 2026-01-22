@@ -252,6 +252,8 @@ impl KanidmClientParser {
             })
         }) {
             Ok(uat) => {
+                #[allow(clippy::disallowed_methods)]
+                // Allowed as this is a local time check
                 let now_utc = time::OffsetDateTime::now_utc();
                 if let Some(exp) = uat.expiry {
                     if now_utc >= exp {
@@ -457,13 +459,17 @@ pub fn prompt_for_username_get_token() -> Result<String, String> {
 pub(crate) fn try_expire_at_from_string(input: &str) -> Result<Option<String>, ()> {
     match input {
         "any" | "never" | "clear" => Ok(None),
-        "now" => match OffsetDateTime::now_utc().format(&Rfc3339) {
-            Ok(s) => Ok(Some(s)),
-            Err(e) => {
-                error!(err = ?e, "Unable to format current time to rfc3339");
-                Err(())
+        "now" => {
+            #[allow(clippy::disallowed_methods)]
+            // Allowed as this is a local time from the callers machine.
+            match OffsetDateTime::now_utc().format(&Rfc3339) {
+                Ok(s) => Ok(Some(s)),
+                Err(e) => {
+                    error!(err = ?e, "Unable to format current time to rfc3339");
+                    Err(())
+                }
             }
-        },
+        }
         "epoch" => match OffsetDateTime::UNIX_EPOCH.format(&Rfc3339) {
             Ok(val) => Ok(Some(val)),
             Err(err) => {

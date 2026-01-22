@@ -276,6 +276,9 @@ pub fn sm_authenticate_connected<P: PamHandler>(
                 // if the resolver goes away, then this will error on the sock and
                 // will shutdown. This allows the resolver to dynamically extend the
                 // timeout if needed, and removes logic from the front end.
+
+                #[allow(clippy::disallowed_methods)]
+                // Allowed as this is a sleep to drive the polling loop from synchronous code.
                 std::thread::sleep(active_polling_interval);
                 timeout = None;
                 req = ClientRequest::PamAuthenticateStep {
