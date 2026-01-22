@@ -20,6 +20,7 @@
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
+#![deny(clippy::indexing_slicing)]
 
 #[macro_use]
 extern crate tracing;

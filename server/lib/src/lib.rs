@@ -19,6 +19,7 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 #![deny(clippy::disallowed_types)]
 #![deny(clippy::manual_let_else)]
+#![deny(clippy::indexing_slicing)]
 #![allow(clippy::unreachable)]
 
 #[cfg(all(test, not(any(feature = "dhat-heap", target_os = "illumos"))))]

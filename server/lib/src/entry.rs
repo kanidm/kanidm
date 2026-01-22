@@ -831,7 +831,9 @@ impl Entry<EntryIncremental, EntryNew> {
                     )
                 }
             }
-            // Can never get here due to is_add_conflict above.
+            // Can never get here due to is_add_conflict above. This is because
+            // a tombstone state on either branch will trigger is_add_conflict
+            // causing this to be impossible to reach.
             _ => unreachable!(),
         }
     }

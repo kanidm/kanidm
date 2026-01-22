@@ -179,6 +179,15 @@ impl Totp {
             .last()
             .map(|v| (v & 0xf) as usize)
             .ok_or(TotpError::HmacError)?;
+
+        // This is based on "dynamic truncation" where the offset into
+        // the hmac is dynamic based on the last byte of the hmac output.
+        // Since the array is u8, and we & with 0x0F, the value of offset
+        // must be in the range 0 to 15. All hmac outputs are 20 bytes
+        // or greater, so 15 + 4 == 19 as the upper bound will always
+        // be within the bounds of the hmac array.
+        // As a result, this is safe to slice.
+        #[allow(clippy::indexing_slicing)]
         let bytes: [u8; 4] = hmac[offset..offset + 4]
             .try_into()
             .map_err(|_| TotpError::HmacError)?;
