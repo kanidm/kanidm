@@ -8,6 +8,8 @@ use time::OffsetDateTime;
 
 fn parse_rfc3339(input: &str) -> Result<OffsetDateTime, time::error::Parse> {
     if input == "now" {
+        #[allow(clippy::disallowed_methods)]
+        // Allowed as this should represent the current time from the callers machine.
         Ok(OffsetDateTime::now_utc())
     } else {
         OffsetDateTime::parse(input, &Rfc3339)
