@@ -260,11 +260,34 @@ impl QueryServerWriteTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
+    use super::{AssertEvent, EntryAssertion};
     use crate::prelude::*;
     // use std::sync::Arc;
 
     #[qs_test]
     async fn test_entry_asserts(server: &QueryServer) {
-        let mut _server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        // Test duplicate uuids in both delete / assert
+
+        let uuid_a = Uuid::new_v4();
+
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![
+                EntryAssertion::Absent { target: uuid_a },
+                EntryAssertion::Absent { target: uuid_a },
+            ],
+        };
+
+        let _err = server_txn.assert(assert_event).expect_err("Should Fail!");
+
+        // Create
+
+        // Modify
+
+        // Remove
+
+        // Now mix and match things.
     }
 }
