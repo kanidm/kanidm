@@ -3,7 +3,9 @@ use crate::schema::{SchemaAttribute, SchemaTransaction};
 use crate::server::batch_modify::{BatchModifyEvent, ModSetValid};
 use crate::server::ValueSetResolveStatus;
 use crate::valueset::*;
-use kanidm_proto::scim_v1::client::{ScimEntryPostGeneric, ScimEntryPutGeneric,
+use kanidm_proto::scim_v1::client::{
+    ScimEntryPostGeneric,
+    ScimEntryPutGeneric,
     // ScimEntryAssertion,
 };
 use kanidm_proto::scim_v1::JsonValue;
