@@ -50,29 +50,38 @@ impl QueryServerWriteTransaction<'_> {
 
         // Optimise => If there is nothing to do, bail.
         if asserts.is_empty() {
-            todo!();
+            error!("assert: empty request");
+            return Err(OperationError::EmptyRequest);
         }
 
-        // Get all the UUID's from assert statements.
-        let present_uuids: BTreeSet<Uuid> = asserts
-            .iter()
-            .filter_map(|a| match a {
-                EntryAssertion::Present { target, .. } => Some(*target),
-                _ => None,
-            })
-            .collect();
+        // Yes, we could collect() here, but that makes the error/analysis messages
+        // worse because it's harder to detect which uuid is duplicate.
 
-        let absent_uuids: BTreeSet<Uuid> = asserts
-            .iter()
-            .filter_map(|a| match a {
-                EntryAssertion::Absent { target } => Some(*target),
-                _ => None,
-            })
-            .collect();
+        let mut duplicates: BTreeSet<_> = Default::default();
+        let mut present_uuids: BTreeSet<Uuid> = Default::default();
+        let mut absent_uuids: BTreeSet<Uuid> = Default::default();
 
-        // Assert that there is no overlap.
-        let duplicates: Vec<_> = present_uuids.intersection(&absent_uuids).collect();
+        for assert in &asserts {
+            match assert {
+                EntryAssertion::Present { target, .. } => {
+                    // BTreeSet returns true if the value is unique. False if already present
+                    if !present_uuids.insert(*target) {
+                        duplicates.insert(*target);
+                    }
+                }
+                EntryAssertion::Absent { target } => {
+                    if !absent_uuids.insert(*target) {
+                        duplicates.insert(*target);
+                    }
+                }
+            }
+        }
 
+        // Check the intersection of the sets, and extend duplicates if there are any.
+        duplicates.extend(present_uuids.intersection(&absent_uuids));
+
+        // If present_uuids + absent_uuids len is not the same as asserts len, it means a uuid
+        // was duplicated in the set.
         if !duplicates.is_empty() {
             // error
             error!(?duplicates, "entry uuids in SCIM Assertion must be unique.");
@@ -85,22 +94,35 @@ impl QueryServerWriteTransaction<'_> {
             present_uuids
                 .iter()
                 .copied()
+                .chain(absent_uuids.iter().copied())
                 .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
                 .collect()
         ));
 
         // While we do load then discard these, it doesn't really matter as it means
-        // all the entries we are about to modify are now "cache hot".
-        let existing_entries = self.internal_search(filter)?;
+        // all the entries we are about to modify/delete are now "cache hot".
+        let existing_entries = self.internal_search(filter).or_else(|err| {
+            if err == OperationError::NoMatchingEntries {
+                Ok(Vec::with_capacity(0))
+            } else {
+                Err(err)
+            }
+        })?;
 
-        // Which uuids need to be created vs modified?
-        let modify_uuids: BTreeSet<Uuid> = existing_entries
+        // Which uuids need to be created?
+        let existing_uuids: BTreeSet<Uuid> = existing_entries
             .iter()
             .map(|entry| entry.get_uuid())
             .collect();
 
         let create_uuids: BTreeSet<Uuid> =
-            present_uuids.difference(&modify_uuids).copied().collect();
+            present_uuids.difference(&existing_uuids).copied().collect();
+
+        // Only delete uuids that currently actually exist.
+        let delete_uuids: BTreeSet<Uuid> = absent_uuids
+            .intersection(&existing_uuids)
+            .copied()
+            .collect();
 
         // Break up the asserts then into sets of creates, mods and deletes. We can
         // do this because all three sets of uuids now exist.
@@ -118,6 +140,12 @@ impl QueryServerWriteTransaction<'_> {
         for entry_assert in asserts.into_iter() {
             match entry_assert {
                 EntryAssertion::Absent { target } => {
+                    if !delete_uuids.contains(&target) {
+                        // The requested uuid to removed already does not exist. We
+                        // can skip it as a result.
+                        continue;
+                    }
+
                     if let AssertionInner::Remove { targets } = &mut working_assert {
                         // Push the next remove.
                         targets.push(target)
@@ -262,11 +290,20 @@ impl QueryServerWriteTransaction<'_> {
 mod tests {
     use super::{AssertEvent, EntryAssertion};
     use crate::prelude::*;
+    use std::collections::BTreeMap;
     // use std::sync::Arc;
 
     #[qs_test]
     async fn test_entry_asserts(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![],
+        };
+
+        let err = server_txn.assert(assert_event).expect_err("Should Fail!");
+        assert_eq!(err, OperationError::EmptyRequest);
 
         // Test duplicate uuids in both delete / assert
 
@@ -280,7 +317,39 @@ mod tests {
             ],
         };
 
-        let _err = server_txn.assert(assert_event).expect_err("Should Fail!");
+        let err = server_txn.assert(assert_event).expect_err("Should Fail!");
+        assert_eq!(err, OperationError::SC0033AssertionContainsDuplicateUuids);
+
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![
+                EntryAssertion::Absent { target: uuid_a },
+                EntryAssertion::Present {
+                    target: uuid_a,
+                    attrs: BTreeMap::default(),
+                },
+            ],
+        };
+
+        let err = server_txn.assert(assert_event).expect_err("Should Fail!");
+        assert_eq!(err, OperationError::SC0033AssertionContainsDuplicateUuids);
+
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![
+                EntryAssertion::Present {
+                    target: uuid_a,
+                    attrs: BTreeMap::default(),
+                },
+                EntryAssertion::Present {
+                    target: uuid_a,
+                    attrs: BTreeMap::default(),
+                },
+            ],
+        };
+
+        let err = server_txn.assert(assert_event).expect_err("Should Fail!");
+        assert_eq!(err, OperationError::SC0033AssertionContainsDuplicateUuids);
 
         // Create
 
