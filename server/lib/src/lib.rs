@@ -126,8 +126,8 @@ pub mod prelude {
     pub use kanidmd_lib_macros::*;
 
     pub(crate) use crate::valueset::{
-        ValueSet, ValueSetBool, ValueSetCid, ValueSetIutf8, ValueSetRefer, ValueSetSyntax,
-        ValueSetT, ValueSetUtf8, ValueSetUuid,
+        ValueSet, ValueSetBool, ValueSetCid, ValueSetIname, ValueSetIutf8, ValueSetRefer,
+        ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
     };
 
     pub(crate) use kanidm_proto::scim_v1::{

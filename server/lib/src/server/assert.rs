@@ -12,6 +12,12 @@ pub enum AttributeAssertion {
     // TODO: We could in future add a "merge" style statement to this.
 }
 
+impl From<ValueSet> for AttributeAssertion {
+    fn from(vs: ValueSet) -> Self {
+        AttributeAssertion::Set(vs)
+    }
+}
+
 pub enum EntryAssertion {
     // Could do an assert variant to make an entry look *exactly* like this, but that
     // has a lot of potential risks with internal attributes.
@@ -305,6 +311,7 @@ mod tests {
         let err = server_txn.assert(assert_event).expect_err("Should Fail!");
         assert_eq!(err, OperationError::EmptyRequest);
 
+        // ======
         // Test duplicate uuids in both delete / assert
 
         let uuid_a = Uuid::new_v4();
@@ -320,6 +327,7 @@ mod tests {
         let err = server_txn.assert(assert_event).expect_err("Should Fail!");
         assert_eq!(err, OperationError::SC0033AssertionContainsDuplicateUuids);
 
+        // ======
         let assert_event = AssertEvent {
             ident: Identity::from_internal(),
             asserts: vec![
@@ -334,6 +342,7 @@ mod tests {
         let err = server_txn.assert(assert_event).expect_err("Should Fail!");
         assert_eq!(err, OperationError::SC0033AssertionContainsDuplicateUuids);
 
+        // ======
         let assert_event = AssertEvent {
             ident: Identity::from_internal(),
             asserts: vec![
@@ -351,11 +360,74 @@ mod tests {
         let err = server_txn.assert(assert_event).expect_err("Should Fail!");
         assert_eq!(err, OperationError::SC0033AssertionContainsDuplicateUuids);
 
+        // ======
         // Create
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![EntryAssertion::Present {
+                target: uuid_a,
+                attrs: BTreeMap::from([
+                    (
+                        Attribute::Class,
+                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                    ),
+                    (Attribute::Name, vs_iname!("test_entry_a").into()),
+                    (
+                        Attribute::DisplayName,
+                        vs_utf8!("Test Entry A".into()).into(),
+                    ),
+                ]),
+            }],
+        };
 
+        server_txn.assert(assert_event).expect("Must Succeed");
+
+        let entry_a = server_txn
+            .internal_search_uuid(uuid_a)
+            .expect("Must succeed");
+        assert_eq!(
+            entry_a.get_ava_single_utf8(Attribute::DisplayName),
+            Some("Test Entry A")
+        );
+
+        // ======
         // Modify
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![EntryAssertion::Present {
+                target: uuid_a,
+                attrs: BTreeMap::from([(
+                    Attribute::DisplayName,
+                    vs_utf8!("Test Entry A Updated".into()).into(),
+                )]),
+            }],
+        };
 
+        server_txn.assert(assert_event).expect("Must Succeed");
+
+        let entry_a = server_txn
+            .internal_search_uuid(uuid_a)
+            .expect("Must succeed");
+        assert_eq!(
+            entry_a.get_ava_single_utf8(Attribute::DisplayName),
+            Some("Test Entry A Updated")
+        );
+
+        // ======
         // Remove
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![EntryAssertion::Absent { target: uuid_a }],
+        };
+
+        server_txn.assert(assert_event).expect("Must Succeed");
+
+        let err = server_txn
+            .internal_search_uuid(uuid_a)
+            .expect_err("Must fail");
+
+        // Now absent.
+        assert_eq!(err, OperationError::NoMatchingEntries);
 
         // Now mix and match things.
     }
