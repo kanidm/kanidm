@@ -30,7 +30,7 @@ impl Plugin for Base {
     #[allow(clippy::cognitive_complexity)]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
+        cand: &mut Vec<EntryInvalidNew>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         // debug!("Entering base pre_create_transform");
@@ -159,9 +159,14 @@ impl Plugin for Base {
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
-        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
+        for entry in cand.iter_mut() {
+            // Ensure we have the 'object', class in the class set.
+            entry.add_ava(Attribute::Class, EntryClass::Object.to_value());
+        }
+
         me.modlist.iter().try_for_each(|modify| {
             let attr = match &modify {
                 Modify::Present(a, _)
@@ -184,9 +189,14 @@ impl Plugin for Base {
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
-        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
+        for entry in cand.iter_mut() {
+            // Ensure we have the 'object', class in the class set.
+            entry.add_ava(Attribute::Class, EntryClass::Object.to_value());
+        }
+
         me.modset
             .values()
             .flat_map(|ml| ml.iter())

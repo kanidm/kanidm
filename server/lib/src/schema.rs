@@ -2015,7 +2015,12 @@ impl SchemaWriteTransaction<'_> {
                 name: EntryClass::Object.into(),
                 uuid: UUID_SCHEMA_CLASS_OBJECT,
                 description: String::from("A system created class that all objects must contain"),
-                systemmay: vec![Attribute::Description, Attribute::EntryManagedBy],
+                systemmay: vec![
+                    Attribute::Description,
+                    Attribute::EntryManagedBy,
+                    Attribute::MemberOf,
+                    Attribute::DirectMemberOf,
+                ],
                 systemmust: vec![
                     Attribute::Class,
                     Attribute::Uuid,
@@ -2040,9 +2045,8 @@ impl SchemaWriteTransaction<'_> {
                 name: EntryClass::MemberOf.into(),
                 uuid: UUID_SCHEMA_CLASS_MEMBEROF,
                 description: String::from(
-                    "Class that is dynamically added to recipients of memberof or directmemberof",
+                    "Class that is dynamically added to recipients of memberof or directmemberof. TO BE REMOVED.",
                 ),
-                systemmay: vec![Attribute::MemberOf, Attribute::DirectMemberOf],
                 ..Default::default()
             },
         );
