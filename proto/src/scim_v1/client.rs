@@ -252,7 +252,7 @@ pub enum ScimEntryAssertion {
     },
     Absent {
         id: Uuid,
-    }
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]

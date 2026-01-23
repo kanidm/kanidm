@@ -1,10 +1,11 @@
 use crate::prelude::*;
-use std::collections::{BTreeSet, BTreeMap};
+// use std::collections::VecDeque;
+use std::collections::{BTreeMap, BTreeSet};
 // use crate::server::{ChangeFlag, Plugins};
 
 pub enum AttributeAssertion {
     // The ValueSet must look exactly like this.
-    Set ( ValueSet ),
+    Set(ValueSet),
     // The ValueSet must not be present.
     Absent,
     // TODO: We could in future add a "merge" style statement to this.
@@ -20,7 +21,7 @@ pub enum EntryAssertion {
     },
     Absent {
         target: Uuid,
-    }
+    },
 }
 
 pub struct AssertEvent {
@@ -28,39 +29,48 @@ pub struct AssertEvent {
     pub asserts: Vec<EntryAssertion>,
 }
 
-/*
-enum Action {
+struct Assertion {
+    target: Uuid,
+    attrs: BTreeMap<Attribute, AttributeAssertion>,
 }
-*/
+
+enum AssertionInner {
+    None,
+    Create { asserts: Vec<Assertion> },
+    Modify { asserts: Vec<Assertion> },
+    Remove { targets: Vec<Uuid> },
+}
 
 impl QueryServerWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     /// Document me please senpai.
-    pub fn assert(&mut self, ae: &AssertEvent) -> Result<(), OperationError> {
-        // Get all the UUID's from assert statements.
-        let present_uuids: BTreeSet<Uuid> =
-            ae.asserts.iter()
-                .filter_map(|a| {
-                    match a {
-                        EntryAssertion::Present { target, .. } => Some(*target),
-                        _ => None,
-                    }
-                })
-                .collect();
+    pub fn assert(&mut self, ae: AssertEvent) -> Result<(), OperationError> {
+        let AssertEvent { ident, asserts } = ae;
 
-        let absent_uuids: BTreeSet<Uuid> =
-            ae.asserts.iter()
-                .filter_map(|a| {
-                    match a {
-                        EntryAssertion::Absent { target } => Some(*target),
-                        _ => None,
-                    }
-                })
-                .collect();
+        // Optimise => If there is nothing to do, bail.
+        if asserts.is_empty() {
+            todo!();
+        }
+
+        // Get all the UUID's from assert statements.
+        let present_uuids: BTreeSet<Uuid> = asserts
+            .iter()
+            .filter_map(|a| match a {
+                EntryAssertion::Present { target, .. } => Some(*target),
+                _ => None,
+            })
+            .collect();
+
+        let absent_uuids: BTreeSet<Uuid> = asserts
+            .iter()
+            .filter_map(|a| match a {
+                EntryAssertion::Absent { target } => Some(*target),
+                _ => None,
+            })
+            .collect();
 
         // Assert that there is no overlap.
-        let duplicates: Vec<_> = present_uuids.intersection(&absent_uuids)
-            .collect();
+        let duplicates: Vec<_> = present_uuids.intersection(&absent_uuids).collect();
 
         if !duplicates.is_empty() {
             // error
@@ -70,26 +80,131 @@ impl QueryServerWriteTransaction<'_> {
 
         // Determine which exist.
         // TODO: Make an optimised uuid search in the BE to just get an IDL.
-        let filter = filter!(
-            f_or(present_uuids
+        let filter = filter!(f_or(
+            present_uuids
                 .iter()
                 .copied()
                 .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
                 .collect()
-            )
-        );
+        ));
 
-        let existing_uuids = self.internal_search(filter)?;
+        // While we do load then discard these, it doesn't really matter as it means
+        // all the entries we are about to modify are now "cache hot".
+        let existing_entries = self.internal_search(filter)?;
 
-        let existing_uuids: BTreeMap
+        // Which uuids need to be created vs modified?
+        let modify_uuids: BTreeSet<Uuid> = existing_entries
+            .iter()
+            .map(|entry| entry.get_uuid())
+            .collect();
 
-        // Break up the asserts then into sets of creates, mods and deletes.
+        let create_uuids: BTreeSet<Uuid> =
+            present_uuids.difference(&modify_uuids).copied().collect();
 
-        // Loop and apply.
+        // Break up the asserts then into sets of creates, mods and deletes. We can
+        // do this because all three sets of uuids now exist.
+        //
+        // We apply the assertions *in order* from this point.
+        //
+        // We also want to ensure as much *batching* as possible to optimise our write paths.
+        // To do this effectively we need to use a vecDeque to allow front poping, else we would
+        // need to reverse the list.
+
+        let mut working_assert = AssertionInner::None;
+
+        let mut assert_batches = Vec::with_capacity(asserts.len());
+
+        for entry_assert in asserts.into_iter() {
+            match entry_assert {
+                EntryAssertion::Absent { target } => {
+                    if let AssertionInner::Remove { targets } = &mut working_assert {
+                        // Push the next remove.
+                        targets.push(target)
+                    } else {
+                        let mut new_assert = AssertionInner::Remove {
+                            targets: vec![target],
+                        };
+
+                        std::mem::swap(&mut new_assert, &mut working_assert);
+
+                        assert_batches.push(new_assert);
+                    }
+                }
+
+                EntryAssertion::Present { target, attrs } if create_uuids.contains(&target) => {
+                    if let AssertionInner::Create { asserts } = &mut working_assert {
+                        // Push the next create
+                        asserts.push(Assertion { target, attrs })
+                    } else {
+                        let mut new_assert = AssertionInner::Create {
+                            asserts: vec![Assertion { target, attrs }],
+                        };
+
+                        std::mem::swap(&mut new_assert, &mut working_assert);
+
+                        assert_batches.push(new_assert);
+                    }
+                }
+
+                EntryAssertion::Present { target, attrs } => {
+                    if let AssertionInner::Modify { asserts } = &mut working_assert {
+                        // Push the next modify
+                        asserts.push(Assertion { target, attrs })
+                    } else {
+                        let mut new_assert = AssertionInner::Modify {
+                            asserts: vec![Assertion { target, attrs }],
+                        };
+
+                        std::mem::swap(&mut new_assert, &mut working_assert);
+
+                        assert_batches.push(new_assert);
+                    }
+                }
+            }
+        }
+
+        // Finally push the last working assert
+        assert_batches.push(working_assert);
+
+        // Now we can finally actually do the work.
+        // Loop and apply!
+        for assertion in assert_batches.into_iter() {
+            match assertion {
+                AssertionInner::Create { asserts } => {
+                    let entries = asserts
+                        .into_iter()
+                        .map(|Assertion { target, attrs }| {
+                            // Convert the attributes so that EntryInitNew understands them.
+                            let mut attrs: crate::entry::Eattrs = attrs
+                                .into_iter()
+                                .filter_map(|(attr, assert_valueset)| match assert_valueset {
+                                    AttributeAssertion::Set(vs) => Some((attr, vs)),
+                                    AttributeAssertion::Absent => None,
+                                })
+                                .collect();
+
+                            attrs.insert(Attribute::Uuid, ValueSetUuid::new(target));
+
+                            EntryInitNew::from_iter(attrs.into_iter())
+                        })
+                        .collect();
+
+                    let create_event =
+                        CreateEvent::new_impersonate_identity(ident.clone(), entries);
+
+                    self.create(&create_event)?;
+                }
+                AssertionInner::Modify { asserts } => {
+                    todo!();
+                }
+                AssertionInner::Remove { targets } => {
+                    todo!();
+                }
+                AssertionInner::None => {}
+            }
+        }
 
         // Complete!
-
-
         Ok(())
     }
 }
@@ -102,9 +217,5 @@ mod tests {
     #[qs_test]
     async fn test_entry_asserts(server: &QueryServer) {
         let mut _server_txn = server.write(duration_from_epoch_now()).await.unwrap();
-
-        
-
-
     }
 }
