@@ -1,5 +1,6 @@
 use crate::prelude::*;
 // use std::collections::VecDeque;
+use crate::server::batch_modify::ModSetValid;
 use std::collections::{BTreeMap, BTreeSet};
 // use crate::server::{ChangeFlag, Plugins};
 
@@ -189,16 +190,64 @@ impl QueryServerWriteTransaction<'_> {
                         })
                         .collect();
 
-                    let create_event =
-                        CreateEvent::new_impersonate_identity(ident.clone(), entries);
+                    let create_event = CreateEvent {
+                        ident: ident.clone(),
+                        entries,
+                        return_created_uuids: false,
+                    };
 
                     self.create(&create_event)?;
                 }
                 AssertionInner::Modify { asserts } => {
-                    todo!();
+                    let modset = asserts
+                        .into_iter()
+                        .map(|Assertion { target, attrs }| {
+                            let ml = attrs
+                                .into_iter()
+                                .map(|(attr, assert)| match assert {
+                                    AttributeAssertion::Set(vs) => Modify::Set(attr, vs),
+                                    AttributeAssertion::Absent => Modify::Purged(attr),
+                                })
+                                .collect();
+
+                            let ml = ModifyList::new_list(ml);
+
+                            (target, ml)
+                        })
+                        .map(|(target, ml)| {
+                            ml.validate(self.get_schema())
+                                .map(|modlist| (target, modlist))
+                                .map_err(OperationError::SchemaViolation)
+                        })
+                        .collect::<Result<ModSetValid, _>>()?;
+
+                    let batch_modify_event = BatchModifyEvent {
+                        ident: ident.clone(),
+                        modset,
+                    };
+
+                    self.batch_modify(&batch_modify_event)?;
                 }
                 AssertionInner::Remove { targets } => {
-                    todo!();
+                    let filter = Filter::new(f_or(
+                        targets
+                            .into_iter()
+                            .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
+                            .collect(),
+                    ));
+
+                    let filter_orig = filter
+                        .validate(self.get_schema())
+                        .map_err(OperationError::SchemaViolation)?;
+                    let filter = filter_orig.clone().into_ignore_hidden();
+
+                    let delete_event = DeleteEvent {
+                        ident: ident.clone(),
+                        filter,
+                        filter_orig,
+                    };
+
+                    self.delete(&delete_event)?;
                 }
                 AssertionInner::None => {}
             }

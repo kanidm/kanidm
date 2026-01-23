@@ -4,6 +4,7 @@ use crate::server::Plugins;
 use std::collections::BTreeMap;
 
 pub type ModSetValid = BTreeMap<Uuid, ModifyList<ModifyValid>>;
+pub type ModSetInvalid = BTreeMap<Uuid, ModifyList<ModifyInvalid>>;
 
 pub struct BatchModifyEvent {
     pub ident: Identity,
