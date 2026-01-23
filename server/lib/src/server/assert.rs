@@ -429,6 +429,151 @@ mod tests {
         // Now absent.
         assert_eq!(err, OperationError::NoMatchingEntries);
 
-        // Now mix and match things.
+        // Now mix and match things. We want to ensure there are at least two operations
+        // per assertion, so that they both occur.
+
+        let uuid_b = Uuid::new_v4();
+        let uuid_c = Uuid::new_v4();
+        let uuid_d = Uuid::new_v4();
+
+        // Create B and D
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![
+                EntryAssertion::Present {
+                    target: uuid_b,
+                    attrs: BTreeMap::from([
+                        (
+                            Attribute::Class,
+                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ),
+                        (Attribute::Name, vs_iname!("test_entry_b").into()),
+                        (
+                            Attribute::DisplayName,
+                            vs_utf8!("Test Entry B".into()).into(),
+                        ),
+                    ]),
+                },
+                EntryAssertion::Present {
+                    target: uuid_d,
+                    attrs: BTreeMap::from([
+                        (
+                            Attribute::Class,
+                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ),
+                        (Attribute::Name, vs_iname!("test_entry_d").into()),
+                        (
+                            Attribute::DisplayName,
+                            vs_utf8!("Test Entry D".into()).into(),
+                        ),
+                    ]),
+                },
+            ],
+        };
+
+        server_txn.assert(assert_event).expect("Must Succeed");
+        assert!(server_txn
+            .internal_exists_uuid(uuid_b)
+            .expect("Failed to check existance"));
+        assert!(server_txn
+            .internal_exists_uuid(uuid_d)
+            .expect("Failed to check existance"));
+
+        // ====
+        // Create C in between modifies to B and D
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![
+                EntryAssertion::Present {
+                    target: uuid_b,
+                    attrs: BTreeMap::from([
+                        (
+                            Attribute::Class,
+                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ),
+                        (Attribute::Name, vs_iname!("test_entry_b").into()),
+                        (
+                            Attribute::DisplayName,
+                            vs_utf8!("Test Entry B".into()).into(),
+                        ),
+                    ]),
+                },
+                EntryAssertion::Present {
+                    target: uuid_c,
+                    attrs: BTreeMap::from([
+                        (
+                            Attribute::Class,
+                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ),
+                        (Attribute::Name, vs_iname!("test_entry_c").into()),
+                        (
+                            Attribute::DisplayName,
+                            vs_utf8!("Test Entry C".into()).into(),
+                        ),
+                    ]),
+                },
+                EntryAssertion::Present {
+                    target: uuid_d,
+                    attrs: BTreeMap::from([
+                        (
+                            Attribute::Class,
+                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ),
+                        (Attribute::Name, vs_iname!("test_entry_d").into()),
+                        (
+                            Attribute::DisplayName,
+                            vs_utf8!("Test Entry D".into()).into(),
+                        ),
+                    ]),
+                },
+            ],
+        };
+
+        server_txn.assert(assert_event).expect("Must Succeed");
+        assert!(server_txn
+            .internal_exists_uuid(uuid_b)
+            .expect("Failed to check existance"));
+        assert!(server_txn
+            .internal_exists_uuid(uuid_c)
+            .expect("Failed to check existance"));
+        assert!(server_txn
+            .internal_exists_uuid(uuid_d)
+            .expect("Failed to check existance"));
+
+        // ====
+        // Modify C in between deletes of B and D
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![
+                EntryAssertion::Absent { target: uuid_b },
+                EntryAssertion::Present {
+                    target: uuid_c,
+                    attrs: BTreeMap::from([
+                        (
+                            Attribute::Class,
+                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ),
+                        (Attribute::Name, vs_iname!("test_entry_c").into()),
+                        (
+                            Attribute::DisplayName,
+                            vs_utf8!("Test Entry C".into()).into(),
+                        ),
+                    ]),
+                },
+                EntryAssertion::Absent { target: uuid_d },
+            ],
+        };
+
+        server_txn.assert(assert_event).expect("Must Succeed");
+
+        assert!(!server_txn
+            .internal_exists_uuid(uuid_b)
+            .expect("Failed to check existance"));
+        assert!(server_txn
+            .internal_exists_uuid(uuid_c)
+            .expect("Failed to check existance"));
+        assert!(!server_txn
+            .internal_exists_uuid(uuid_d)
+            .expect("Failed to check existance"));
     }
 }
