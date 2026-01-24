@@ -129,7 +129,7 @@ pub mod prelude {
 
     pub(crate) use crate::valueset::{
         ValueSet, ValueSetBool, ValueSetCid, ValueSetIname, ValueSetIutf8, ValueSetRefer,
-        ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
+        ValueSetSha256, ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
     };
 
     pub(crate) use kanidm_proto::scim_v1::{

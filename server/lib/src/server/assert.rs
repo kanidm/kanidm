@@ -1,8 +1,7 @@
 use crate::prelude::*;
-// use std::collections::VecDeque;
 use crate::server::batch_modify::ModSetValid;
+use crypto_glue::s256::Sha256Output;
 use std::collections::{BTreeMap, BTreeSet};
-// use crate::server::{ChangeFlag, Plugins};
 
 pub enum AttributeAssertion {
     // The ValueSet must look exactly like this.
@@ -31,9 +30,20 @@ pub enum EntryAssertion {
     },
 }
 
+#[derive(Default)]
+pub enum AssertOnce {
+    #[default]
+    No,
+    Yes {
+        id: Uuid,
+        nonce: Sha256Output,
+    },
+}
+
 pub struct AssertEvent {
     pub ident: Identity,
     pub asserts: Vec<EntryAssertion>,
+    pub once: AssertOnce,
 }
 
 struct Assertion {
@@ -52,7 +62,66 @@ impl QueryServerWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     /// Document me please senpai.
     pub fn assert(&mut self, ae: AssertEvent) -> Result<(), OperationError> {
-        let AssertEvent { ident, asserts } = ae;
+        let AssertEvent {
+            ident,
+            asserts,
+            once,
+        } = ae;
+
+        if let AssertOnce::Yes { id, nonce } = once {
+            // This should only be run once, provided that the valid tag is the same
+            // on the existing migration record.
+
+            let filter = filter!(f_and(vec![
+                f_eq(Attribute::Uuid, PartialValue::Uuid(id)),
+                f_eq(Attribute::Class, EntryClass::AssertionNonce.into())
+            ]));
+
+            let search_result = self.internal_search(filter).or_else(|err| {
+                if err == OperationError::NoMatchingEntries {
+                    Ok(Vec::with_capacity(0))
+                } else {
+                    Err(err)
+                }
+            })?;
+
+            if let Some(record) = search_result.first() {
+                if record
+                    .get_ava_as_s256_set(Attribute::S256)
+                    .map(|set| set.contains(&nonce))
+                    .unwrap_or_default()
+                {
+                    // Nonce present - return we are done.
+                    info!(?id, "Assertion already applied, skipping.");
+                    return Ok(());
+                } else {
+                    // Need to update the nonce and proceed.
+                    let ml = ModifyList::new_list(vec![Modify::Set(
+                        Attribute::S256,
+                        ValueSetSha256::new(nonce) as ValueSet,
+                    )]);
+
+                    self.internal_batch_modify([(id, ml)].into_iter())?;
+                }
+            } else {
+                // No record - create one.
+
+                let entry = EntryInitNew::from_iter([
+                    (
+                        Attribute::Class,
+                        vs_iutf8!(EntryClass::AssertionNonce.into()),
+                    ),
+                    (Attribute::Uuid, ValueSetUuid::new(id) as ValueSet),
+                    (Attribute::S256, ValueSetSha256::new(nonce) as ValueSet),
+                ]);
+
+                self.internal_create(vec![entry]).inspect_err(|err| {
+                    error!(?err, "Failed to creation assertion nonce.");
+                })?;
+            }
+
+            // Good to go.
+        };
 
         // Optimise => If there is nothing to do, bail.
         if asserts.is_empty() {
@@ -294,18 +363,21 @@ impl QueryServerWriteTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AssertEvent, EntryAssertion};
+    use super::{AssertEvent, AssertOnce, EntryAssertion};
     use crate::prelude::*;
+    use crypto_glue::s256::Sha256;
+    use crypto_glue::traits::*;
     use std::collections::BTreeMap;
     // use std::sync::Arc;
 
     #[qs_test]
-    async fn test_entry_asserts(server: &QueryServer) {
+    async fn test_entry_asserts_basic(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let assert_event = AssertEvent {
             ident: Identity::from_internal(),
             asserts: vec![],
+            once: AssertOnce::No,
         };
 
         let err = server_txn.assert(assert_event).expect_err("Should Fail!");
@@ -322,6 +394,7 @@ mod tests {
                 EntryAssertion::Absent { target: uuid_a },
                 EntryAssertion::Absent { target: uuid_a },
             ],
+            once: AssertOnce::No,
         };
 
         let err = server_txn.assert(assert_event).expect_err("Should Fail!");
@@ -337,6 +410,7 @@ mod tests {
                     attrs: BTreeMap::default(),
                 },
             ],
+            once: AssertOnce::No,
         };
 
         let err = server_txn.assert(assert_event).expect_err("Should Fail!");
@@ -355,6 +429,7 @@ mod tests {
                     attrs: BTreeMap::default(),
                 },
             ],
+            once: AssertOnce::No,
         };
 
         let err = server_txn.assert(assert_event).expect_err("Should Fail!");
@@ -378,6 +453,7 @@ mod tests {
                     ),
                 ]),
             }],
+            once: AssertOnce::No,
         };
 
         server_txn.assert(assert_event).expect("Must Succeed");
@@ -401,6 +477,7 @@ mod tests {
                     vs_utf8!("Test Entry A Updated".into()).into(),
                 )]),
             }],
+            once: AssertOnce::No,
         };
 
         server_txn.assert(assert_event).expect("Must Succeed");
@@ -418,6 +495,7 @@ mod tests {
         let assert_event = AssertEvent {
             ident: Identity::from_internal(),
             asserts: vec![EntryAssertion::Absent { target: uuid_a }],
+            once: AssertOnce::No,
         };
 
         server_txn.assert(assert_event).expect("Must Succeed");
@@ -469,6 +547,7 @@ mod tests {
                     ]),
                 },
             ],
+            once: AssertOnce::No,
         };
 
         server_txn.assert(assert_event).expect("Must Succeed");
@@ -527,6 +606,7 @@ mod tests {
                     ]),
                 },
             ],
+            once: AssertOnce::No,
         };
 
         server_txn.assert(assert_event).expect("Must Succeed");
@@ -562,6 +642,7 @@ mod tests {
                 },
                 EntryAssertion::Absent { target: uuid_d },
             ],
+            once: AssertOnce::No,
         };
 
         server_txn.assert(assert_event).expect("Must Succeed");
@@ -575,5 +656,133 @@ mod tests {
         assert!(!server_txn
             .internal_exists_uuid(uuid_d)
             .expect("Failed to check existance"));
+    }
+
+    #[qs_test]
+    async fn test_entry_asserts_nonce(server: &QueryServer) {
+        // This will test that assertions run only once. The full breadth of assertion
+        // feature testing is done above. The majority of this logic is applying to
+        // modifications due to how this is written.
+
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let uuid_a = Uuid::new_v4();
+        let assert_id = Uuid::new_v4();
+        let nonce_1 = {
+            let mut hasher = Sha256::new();
+            hasher.update(&[1]);
+            hasher.finalize()
+        };
+
+        let nonce_2 = {
+            let mut hasher = Sha256::new();
+            hasher.update(&[2]);
+            hasher.finalize()
+        };
+
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![EntryAssertion::Present {
+                target: uuid_a,
+                attrs: BTreeMap::from([
+                    (
+                        Attribute::Class,
+                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                    ),
+                    (Attribute::Name, vs_iname!("test_entry_a").into()),
+                    (
+                        Attribute::DisplayName,
+                        vs_utf8!("Test Entry A".into()).into(),
+                    ),
+                ]),
+            }],
+            once: AssertOnce::Yes {
+                id: assert_id,
+                nonce: nonce_1,
+            },
+        };
+
+        server_txn.assert(assert_event).expect("Must Succeed");
+
+        let entry_a = server_txn
+            .internal_search_uuid(uuid_a)
+            .expect("Must succeed");
+        assert_eq!(
+            entry_a.get_ava_single_utf8(Attribute::DisplayName),
+            Some("Test Entry A")
+        );
+
+        // =========================================
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![EntryAssertion::Present {
+                target: uuid_a,
+                attrs: BTreeMap::from([
+                    (
+                        Attribute::Class,
+                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                    ),
+                    (Attribute::Name, vs_iname!("test_entry_a").into()),
+                    (
+                        Attribute::DisplayName,
+                        // =============================
+                        // We update the display name
+                        vs_utf8!("Test Entry A Updated".into()).into(),
+                    ),
+                ]),
+            }],
+            once: AssertOnce::Yes {
+                id: assert_id,
+                // But we don't update the nonce. This will cause the change to be skipped.
+                nonce: nonce_1,
+            },
+        };
+
+        server_txn.assert(assert_event).expect("Must Succeed");
+
+        let entry_a = server_txn
+            .internal_search_uuid(uuid_a)
+            .expect("Must succeed");
+        assert_eq!(
+            entry_a.get_ava_single_utf8(Attribute::DisplayName),
+            Some("Test Entry A")
+        );
+
+        // ===========================================
+
+        let assert_event = AssertEvent {
+            ident: Identity::from_internal(),
+            asserts: vec![EntryAssertion::Present {
+                target: uuid_a,
+                attrs: BTreeMap::from([
+                    (
+                        Attribute::Class,
+                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                    ),
+                    (Attribute::Name, vs_iname!("test_entry_a").into()),
+                    (
+                        Attribute::DisplayName,
+                        // =============================
+                        // We update the display name
+                        vs_utf8!("Test Entry A Updated".into()).into(),
+                    ),
+                ]),
+            }],
+            once: AssertOnce::Yes {
+                id: assert_id,
+                // But because we update the nonce it now WILL apply.
+                nonce: nonce_2,
+            },
+        };
+
+        server_txn.assert(assert_event).expect("Must Succeed");
+
+        let entry_a = server_txn
+            .internal_search_uuid(uuid_a)
+            .expect("Must succeed");
+        assert_eq!(
+            entry_a.get_ava_single_utf8(Attribute::DisplayName),
+            Some("Test Entry A Updated")
+        );
     }
 }
