@@ -26,6 +26,9 @@ pub(crate) enum PrivilegeDecision {
 /// the session is either read-write *now* or *could* become read-write after a re-authentication
 /// process.
 pub(crate) fn uat_privileges_possible(uat: &UserAuthToken) -> bool {
+    #[allow(clippy::disallowed_methods)]
+    // Allowed as this timestamp is only used for "fuzzy" checking of remaining time in the users
+    // privilege state.
     let time =
         time::OffsetDateTime::now_utc() + time::Duration::seconds(READ_WRITE_REAUTH_WINDOW_SECONDS);
 
@@ -38,6 +41,9 @@ pub(crate) fn uat_privileges_possible(uat: &UserAuthToken) -> bool {
 /// Test if the current session has read-write permissions *now*. This does not inform you
 /// if the session *could* become read-write.
 pub(crate) fn uat_privileges_active(uat: &UserAuthToken) -> bool {
+    #[allow(clippy::disallowed_methods)]
+    // Allowed as this timestamp is only used for "fuzzy" checking of remaining time in the users
+    // privilege state.
     let time =
         time::OffsetDateTime::now_utc() + time::Duration::seconds(READ_WRITE_REAUTH_WINDOW_SECONDS);
 
@@ -47,8 +53,12 @@ pub(crate) fn uat_privileges_active(uat: &UserAuthToken) -> bool {
     }
 }
 
+/// Determine the current state of privileges in the session, and if re-authentication would be
+/// required or not.
 pub(crate) fn uat_privilege_decision(uat: &UserAuthToken) -> PrivilegeDecision {
-    // Ensure we have a buffer for the operation.
+    #[allow(clippy::disallowed_methods)]
+    // Allowed as this timestamp is only used for "fuzzy" checking of remaining time in the users
+    // privilege state.
     let time =
         time::OffsetDateTime::now_utc() + time::Duration::seconds(READ_WRITE_REAUTH_WINDOW_SECONDS);
 

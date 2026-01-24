@@ -718,6 +718,8 @@ impl SessionOpt {
                     std::process::exit(1);
                 };
 
+                #[allow(clippy::disallowed_methods)]
+                // Allowed as this should represent the current time from the callers machine.
                 let now = time::OffsetDateTime::now_utc();
                 let change = token_instance.cleanup(now);
 

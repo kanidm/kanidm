@@ -194,6 +194,8 @@ impl QueryServerReadV1 {
     ) -> Result<(), OperationError> {
         trace!(eventid = ?msg.eventid, "Begin online backup event");
 
+        #[allow(clippy::disallowed_methods)]
+        // Allowed as this timestamp is only used for the filename creation.
         let now = time::OffsetDateTime::now_utc();
 
         #[allow(clippy::unwrap_used)]
