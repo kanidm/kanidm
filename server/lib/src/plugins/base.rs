@@ -164,7 +164,7 @@ impl Plugin for Base {
     ) -> Result<(), OperationError> {
         for entry in cand.iter_mut() {
             // Ensure we have the 'object', class in the class set.
-            entry.add_ava(Attribute::Class, EntryClass::Object.to_value());
+            entry.add_ava_if_not_exist(Attribute::Class, EntryClass::Object.to_value());
         }
 
         me.modlist.iter().try_for_each(|modify| {
@@ -194,7 +194,7 @@ impl Plugin for Base {
     ) -> Result<(), OperationError> {
         for entry in cand.iter_mut() {
             // Ensure we have the 'object', class in the class set.
-            entry.add_ava(Attribute::Class, EntryClass::Object.to_value());
+            entry.add_ava_if_not_exist(Attribute::Class, EntryClass::Object.to_value());
         }
 
         me.modset

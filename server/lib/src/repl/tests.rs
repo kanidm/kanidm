@@ -1682,6 +1682,8 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access new entry.");
 
+    trace!(?e1);
+
     assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Conflict.into()));
 
     server_a_txn.commit().expect("Failed to commit");
