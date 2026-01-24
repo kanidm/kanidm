@@ -73,6 +73,8 @@ pub mod testkit;
 
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
+// Clippy is wrong, these are used. Hush little clippy.
+#[allow(unused_imports)]
 pub mod prelude {
     pub use kanidm_proto::attribute::{AttrString, Attribute};
     pub use kanidm_proto::constants::*;
