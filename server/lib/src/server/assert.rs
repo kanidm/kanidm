@@ -3,27 +3,13 @@ use crate::server::batch_modify::ModSetValid;
 use crypto_glue::s256::Sha256Output;
 use std::collections::{BTreeMap, BTreeSet};
 
-pub enum AttributeAssertion {
-    // The ValueSet must look exactly like this.
-    Set(ValueSet),
-    // The ValueSet must not be present.
-    Absent,
-    // TODO: We could in future add a "merge" style statement to this.
-}
-
-impl From<ValueSet> for AttributeAssertion {
-    fn from(vs: ValueSet) -> Self {
-        AttributeAssertion::Set(vs)
-    }
-}
-
 pub enum EntryAssertion {
     // Could do an assert variant to make an entry look *exactly* like this, but that
     // has a lot of potential risks with internal attributes.
     Present {
         target: Uuid,
         // Option ValueSet represents a removal.
-        attrs: BTreeMap<Attribute, AttributeAssertion>,
+        attrs: BTreeMap<Attribute, Option<ValueSet>>,
     },
     Absent {
         target: Uuid,
@@ -48,7 +34,7 @@ pub struct AssertEvent {
 
 struct Assertion {
     target: Uuid,
-    attrs: BTreeMap<Attribute, AttributeAssertion>,
+    attrs: BTreeMap<Attribute, Option<ValueSet>>,
 }
 
 enum AssertionInner {
@@ -281,9 +267,10 @@ impl QueryServerWriteTransaction<'_> {
                             // Convert the attributes so that EntryInitNew understands them.
                             let mut attrs: crate::entry::Eattrs = attrs
                                 .into_iter()
-                                .filter_map(|(attr, assert_valueset)| match assert_valueset {
-                                    AttributeAssertion::Set(vs) => Some((attr, vs)),
-                                    AttributeAssertion::Absent => None,
+                                .filter_map(|(attr, assert_valueset)| {
+                                    // This removes anything that is set to absent, we don't need it
+                                    // during a create since they are none values.
+                                    assert_valueset.map(|vs| (attr, vs))
                                 })
                                 .collect();
 
@@ -308,8 +295,8 @@ impl QueryServerWriteTransaction<'_> {
                             let ml = attrs
                                 .into_iter()
                                 .map(|(attr, assert)| match assert {
-                                    AttributeAssertion::Set(vs) => Modify::Set(attr, vs),
-                                    AttributeAssertion::Absent => Modify::Purged(attr),
+                                    Some(vs) => Modify::Set(attr, vs),
+                                    None => Modify::Purged(attr),
                                 })
                                 .collect();
 
