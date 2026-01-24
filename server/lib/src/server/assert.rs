@@ -3,6 +3,20 @@ use crate::server::batch_modify::ModSetValid;
 use crypto_glue::s256::Sha256Output;
 use std::collections::{BTreeMap, BTreeSet};
 
+pub enum AttributeAssertion {
+    // The ValueSet must look exactly like this.
+    Set(ValueSet),
+    // The ValueSet must not be present.
+    Absent,
+    // TODO: We could in future add a "merge" style statement to this.
+}
+
+impl From<ValueSet> for AttributeAssertion {
+    fn from(vs: ValueSet) -> Self {
+        AttributeAssertion::Set(vs)
+    }
+}
+
 pub enum EntryAssertion {
     // Could do an assert variant to make an entry look *exactly* like this, but that
     // has a lot of potential risks with internal attributes.
