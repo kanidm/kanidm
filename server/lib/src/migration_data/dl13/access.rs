@@ -370,6 +370,7 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::Uuid,
             Attribute::Description,
             Attribute::AcpEnable,
             Attribute::AcpReceiverGroup,
@@ -637,6 +638,7 @@ lazy_static! {
             Attribute::Description,
             Attribute::DisplayName,
             Attribute::Name,
+            Attribute::Uuid,
             Attribute::Spn,
             Attribute::OAuth2Session,
             Attribute::OAuth2RsOrigin,
@@ -831,8 +833,8 @@ lazy_static! {
         ])),
         search_attrs: vec![
             Attribute::Class,
-            Attribute::Uuid,
             Attribute::Name,
+            Attribute::Uuid,
             Attribute::Description,
             Attribute::JwsEs256PrivateKey,
             Attribute::SyncTokenSession,
@@ -921,10 +923,10 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::Uuid,
             Attribute::DisplayName,
             Attribute::MemberOf,
             Attribute::Spn,
-            Attribute::Uuid,
             Attribute::RadiusSecret,
         ],
         ..Default::default()
@@ -976,8 +978,8 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
-            Attribute::Spn,
             Attribute::Uuid,
+            Attribute::Spn,
             Attribute::DisplayName,
             Attribute::Mail,
             Attribute::Member,
@@ -1012,44 +1014,6 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_SELF_READ_V1: BuiltinAcp = BuiltinAcp {
-        name: "idm_acp_self_read",
-        uuid: UUID_IDM_ACP_SELF_READ,
-        description:
-            "Builtin IDM Control for self read - required for whoami and many other functions",
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlSearch,
-        ],
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ALL_ACCOUNTS]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Spn,
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::Class,
-            Attribute::MemberOf,
-            Attribute::Mail,
-            Attribute::RadiusSecret,
-            Attribute::GidNumber,
-            Attribute::LoginShell,
-            Attribute::Uuid,
-            Attribute::SyncParentUuid,
-            Attribute::AccountExpire,
-            Attribute::AccountValidFrom,
-            Attribute::PrimaryCredential,
-            Attribute::UserAuthTokenSession,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
-        ],
-        ..Default::default()
-    };
-}
-
-lazy_static! {
     pub static ref IDM_ACP_SELF_READ_DL8: BuiltinAcp = BuiltinAcp {
         name: "idm_acp_self_read",
         uuid: UUID_IDM_ACP_SELF_READ,
@@ -1065,6 +1029,7 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::Uuid,
             Attribute::Spn,
             Attribute::DisplayName,
             Attribute::LegalName,
@@ -1074,7 +1039,6 @@ lazy_static! {
             Attribute::RadiusSecret,
             Attribute::GidNumber,
             Attribute::LoginShell,
-            Attribute::Uuid,
             Attribute::SyncParentUuid,
             Attribute::AccountExpire,
             Attribute::AccountValidFrom,
@@ -1292,13 +1256,13 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::Uuid,
             Attribute::Spn,
             Attribute::DisplayName,
             Attribute::Class,
             Attribute::MemberOf,
             Attribute::Member,
             Attribute::DynMember,
-            Attribute::Uuid,
             Attribute::GidNumber,
             Attribute::LoginShell,
             Attribute::SshPublicKey,
@@ -1352,6 +1316,7 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::Spn,
             Attribute::Uuid,
             Attribute::Description,
             Attribute::BadlistPassword,
@@ -2005,8 +1970,8 @@ lazy_static! {
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
-            Attribute::Spn,
             Attribute::Uuid,
+            Attribute::Spn,
             Attribute::EntryManagedBy,
             Attribute::Mail,
         ],
@@ -2105,6 +2070,7 @@ lazy_static! {
             Attribute::Class,
             Attribute::Uuid,
             Attribute::Name,
+            Attribute::Spn,
             Attribute::Description,
             Attribute::DisplayName,
             Attribute::Mail,
@@ -2176,6 +2142,7 @@ lazy_static! {
             Attribute::Class,
             Attribute::Uuid,
             Attribute::Name,
+            Attribute::Spn,
             Attribute::DisplayName,
             Attribute::Mail,
             Attribute::UnixPassword,
@@ -2301,6 +2268,7 @@ lazy_static! {
             Attribute::Class,
             Attribute::Uuid,
             Attribute::Name,
+            Attribute::Spn,
             Attribute::OAuth2ClientId,
             Attribute::OAuth2ClientSecret,
             Attribute::OAuth2AuthorisationEndpoint,
@@ -2358,6 +2326,7 @@ lazy_static! {
             Attribute::Class,
             Attribute::Name,
             Attribute::Spn,
+            Attribute::Uuid,
             Attribute::OAuth2AccountProvider,
             Attribute::OAuth2AccountUniqueUserId,
             Attribute::OAuth2AccountCredentialUuid,
