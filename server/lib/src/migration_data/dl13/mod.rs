@@ -127,6 +127,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_IN_MEMORIAM.clone().into(),
         // DL13
         SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE.clone().into(),
+        SCHEMA_ATTR_S256.clone().into(),
     ]
 }
 
@@ -173,6 +174,7 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         SCHEMA_CLASS_MEMORIAL.clone().into(),
         // DL 13
         SCHEMA_CLASS_KEY_OBJECT_JWT_HS256_DL6.clone().into(),
+        SCHEMA_CLASS_ASSERTION_NONCE.clone().into(),
     ]
 }
 
