@@ -244,15 +244,31 @@ pub struct ScimEntryPostGeneric {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub enum ScimEntryAssertion {
+    /// The entry should be present, with this id/UUID, and
+    /// the content of these attributes must be as shown. If an
+    /// attribute is not present in the assertion, it will not be
+    /// altered. To remove an attribute, set the attribute to "null".
     Present {
         id: Uuid,
         #[schema(value_type = BTreeMap<String, Value>)]
         #[serde(flatten)]
         attrs: BTreeMap<Attribute, Option<JsonValue>>,
     },
+    /// The entry should be absent (removed) from the database. Once
+    /// removed, the entry can not be re-asserted. You will need to create
+    /// a new entry with a unique ID.
     Absent {
         id: Uuid,
     },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
+pub struct ScimAssertGeneric {
+    /// The ID of this assertion.
+    pub id: Uuid,
+
+    /// A set of assertions about expected entry state.
+    pub assertions: Vec<ScimEntryAssertion>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
