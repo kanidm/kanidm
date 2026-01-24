@@ -914,6 +914,7 @@ pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
         Attribute::Mail,
         Attribute::LegalName,
         Attribute::ApplicationPassword,
+        Attribute::PasswordChangedTime,
     ],
     systemmust: vec![
         Attribute::Name,
