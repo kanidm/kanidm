@@ -886,6 +886,14 @@ pub static ref SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE: SchemaAttribute = Schem
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_PASSWORD_CHANGED_TIME: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_PASSWORD_CHANGED_TIME,
+    name: Attribute::PasswordChangedTime,
+    description: "The time when the password was last changed.".to_string(),
+    syntax: SyntaxType::DateTime,
+    ..Default::default()
+};
+
 // === classes ===
 pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
