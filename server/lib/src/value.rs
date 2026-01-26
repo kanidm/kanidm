@@ -2662,4 +2662,20 @@ mod tests {
         );
         assert!(SessionState::ExpiresAt(OffsetDateTime::UNIX_EPOCH) > SessionState::NeverExpires);
     }
+
+    #[test]
+    fn test_extract_val_dn_regexn() {
+        fn do_extract(name: &str) -> &str {
+            EXTRACT_VAL_DN
+                .captures(name)
+                .and_then(|caps| caps.name("val"))
+                .map(|v| v.as_str())
+                .unwrap()
+        }
+
+        assert_eq!(do_extract("william"), "william");
+        assert_eq!(do_extract("cn=william"), "william");
+        assert_eq!(do_extract("cn=william,o=blackhats"), "william");
+        assert_eq!(do_extract("cn=william@example.com"), "william@example.com");
+    }
 }

@@ -38,7 +38,7 @@ server check-eap-tls {
 authorize {
 
 	#
-	# By default, we just accept the request:
+	# By default, we just reject the request:
 	#
 	update config {
 		&Auth-Type := Accept
