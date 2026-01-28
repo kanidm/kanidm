@@ -389,6 +389,15 @@ impl OauthRSType {
             } => *allow_localhost_redirect,
         }
     }
+
+    /// This type COULD have localhost redirection enabled, but does not reflect
+    /// the current configuration state.
+    fn allow_localhost_redirect_could_be_possible(&self) -> bool {
+        match self {
+            OauthRSType::Basic { .. } => false,
+            OauthRSType::Public { .. } => true,
+        }
+    }
 }
 
 impl std::fmt::Debug for OauthRSType {
@@ -2194,57 +2203,88 @@ impl IdmServerProxyReadTransaction<'_> {
 
         // redirect_uri must be part of the client_id origins, unless the client is public and then it MAY
         // be a loopback address exempting it from this check and enforcement and we can carry on safely.
+
+        // == start validate oauth2 redirect conditions.
+
         let auth_req_uri_is_loopback = check_is_loopback(&auth_req.redirect_uri);
         let type_allows_localhost_redirect = o2rs.type_.allow_localhost_redirect();
 
-        if type_allows_localhost_redirect && auth_req_uri_is_loopback {
-            debug!("Loopback redirect_uri detected, allowing for localhost");
+        // This allows loopback uri's that are *not* part of the origin/redirect_uri configurations.
+        let loopback_uri_matched = auth_req_uri_is_loopback && type_allows_localhost_redirect;
+
+        // The legacy origin match is in use.
+        let origin_uri_matched =
+            !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
+
+        // Strict uri validation is in use, must be an exact match.
+        let strict_redirect_uri_matched =
+            o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
+
+        // Allow opaque origins such as app uris.
+        let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
+
+        // Was the redirect origin secure?
+        let redirect_origin_is_secure = opaque_origin_matched
+            || auth_req_uri_is_loopback
+            || auth_req.redirect_uri.scheme() == "https";
+
+        // We must assert that *AT LEAST* one of the above match conditions holds true to proceed.
+        let valid_match_condition_asserted = loopback_uri_matched
+            || origin_uri_matched
+            || strict_redirect_uri_matched
+            || opaque_origin_matched;
+
+        if valid_match_condition_asserted {
+            debug!(
+                ?loopback_uri_matched,
+                ?origin_uri_matched,
+                ?strict_redirect_uri_matched,
+                ?opaque_origin_matched,
+                "valid redirect uri match condition met."
+            );
         } else {
-            // The legacy origin match is in use.
-            let origin_uri_matched =
-                !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
-            // Strict uri validation is in use, must be an exact match.
-            let strict_redirect_uri_matched =
-                o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
+            // Display why it failed.
 
-            // Allow opaque origins such as app uris.
-            let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
+            // This is to catch the specific case that a public client gets a localhost redirect, but
+            // the admin hasn't enabled the flag for it. This way we direct them to the correct cause
+            // of the issue, rather than telling them to configure localhost as a redirect location.
+            let could_allow_localhost_redirect =
+                o2rs.type_.allow_localhost_redirect_could_be_possible();
 
-            // At least one of these conditions must hold true to proceed.
-            if !(strict_redirect_uri_matched || origin_uri_matched || opaque_origin_matched) {
+            if auth_req_uri_is_loopback
+                && could_allow_localhost_redirect
+                && !type_allows_localhost_redirect
+            {
+                warn!(redirect_uri = %auth_req.redirect_uri, "OAuth2 redirect_uri returns to localhost, but localhost redirection is not allowed. See 'kanidm system oauth2 enable-localhost-redirects'");
+            } else {
+                // Not localhost - must be missing the redirect uri then, which is why strict/origin/opaque all failed to assert
                 if o2rs.strict_redirect_uri {
                     warn!(
-                                "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {} from client but configured uris do not match (check oauth2_rs_origin entries)",
-                                auth_req.redirect_uri.as_str()
-                            );
+                        "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {} from client but configured uris do not match (check oauth2_rs_origin entries)",
+                        auth_req.redirect_uri.as_str()
+                    );
                 } else {
                     warn!(
                         "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?} from client but configured uris differ (compare oauth2_rs_origin_landing with oauth2_rs_origin entries)",
                         auth_req.redirect_uri.origin()
                     );
                 }
-                return Err(Oauth2Error::InvalidOrigin);
             }
 
-            if opaque_origin_matched && !type_allows_localhost_redirect {
-                warn!(redirect_uri = %auth_req.redirect_uri, "OAuth2 redirect_uri is an opaque uri, but localhost redirection is not allowed. See 'kanidm system oauth2 enable-localhost-redirects'");
-            }
-
-            // We have to specifically match on https here because non-http origins may be exempt from this
-            // enforcement.
-            if (o2rs.origin_secure_required && auth_req.redirect_uri.scheme() != "https")
-                && !opaque_origin_matched
-            {
-                warn!(
-                    "Invalid OAuth2 redirect_uri scheme (must be https) - got {} from resource server instead",
-                    auth_req.redirect_uri
-                );
-                if auth_req_uri_is_loopback {
-                    warn!("Note that while localhost is a secure origin, it must be allowed explicitly. See 'kanidm system oauth2 enable-localhost-redirects'");
-                }
-                return Err(Oauth2Error::InvalidOrigin);
-            }
+            // All roads lead to error.
+            return Err(Oauth2Error::InvalidOrigin);
         }
+
+        // Assert that if secure origins were required, that we are enforcing that.
+        if o2rs.origin_secure_required && !redirect_origin_is_secure {
+            warn!(
+                "Invalid OAuth2 redirect_uri scheme (must be a secure origin) - got {} instead. Secure origins are required when *at least* one redirect_uri is https, then all uri's must also be secure origins.",
+                auth_req.redirect_uri
+            );
+            return Err(Oauth2Error::InvalidOrigin);
+        }
+
+        // == end validation of oauth2 redirect conditions.
 
         let code_challenge = if let Some(pkce_request) = &auth_req.pkce_request {
             if !o2rs.require_pkce() {
