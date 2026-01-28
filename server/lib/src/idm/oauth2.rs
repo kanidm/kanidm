@@ -3405,6 +3405,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::str::FromStr;
     use std::time::Duration;
+    use time::OffsetDateTime;
     use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 
     const TEST_CURRENT_TIME: u64 = 6000;
@@ -3573,7 +3574,8 @@ mod tests {
             .unwrap_or(SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred =
+            Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
         let cred_id = cred.uuid;
 
         let session = Value::Session(
@@ -3710,7 +3712,8 @@ mod tests {
             .unwrap_or(SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred =
+            Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
         let cred_id = cred.uuid;
 
         let session = Value::Session(

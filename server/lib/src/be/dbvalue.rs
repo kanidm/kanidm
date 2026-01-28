@@ -7,6 +7,7 @@ use serde_with::skip_serializing_none;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::time::Duration;
+use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -18,6 +19,10 @@ use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 use crate::repl::cid::Cid;
 use crypto_glue::{s256::Sha256Output, traits::Zeroizing};
 pub use kanidm_lib_crypto::DbPasswordV1;
+
+fn unix_epoch() -> OffsetDateTime {
+    OffsetDateTime::UNIX_EPOCH
+}
 
 #[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq, Clone)]
 pub struct DbCidV1 {
@@ -211,9 +216,19 @@ pub enum DbCred {
 
     // New Formats!
     #[serde(rename = "V2Pw")]
-    V2Password { password: DbPasswordV1, uuid: Uuid },
+    V2Password {
+        password: DbPasswordV1,
+        uuid: Uuid,
+        #[serde(default = "unix_epoch")]
+        timestamp: OffsetDateTime,
+    },
     #[serde(rename = "V2GPw")]
-    V2GenPassword { password: DbPasswordV1, uuid: Uuid },
+    V2GenPassword {
+        password: DbPasswordV1,
+        uuid: Uuid,
+        #[serde(default = "unix_epoch")]
+        timestamp: OffsetDateTime,
+    },
     #[serde(rename = "V3PwMfa")]
     V3PasswordMfa {
         password: DbPasswordV1,
@@ -221,6 +236,8 @@ pub enum DbCred {
         backup_code: Option<DbBackupCodeV1>,
         webauthn: Vec<(String, SecurityKeyV4)>,
         uuid: Uuid,
+        #[serde(default = "unix_epoch")]
+        timestamp: OffsetDateTime,
     },
 }
 
@@ -236,6 +253,17 @@ impl DbCred {
             | DbCred::V2Password { uuid, .. }
             | DbCred::V2GenPassword { uuid, .. }
             | DbCred::V3PasswordMfa { uuid, .. } => *uuid,
+        }
+    }
+
+    pub fn last_changed_timestamp(&self) -> OffsetDateTime {
+        match self {
+            DbCred::V2Password { timestamp, .. }
+            | DbCred::V2GenPassword { timestamp, .. }
+            | DbCred::V3PasswordMfa { timestamp, .. } => *timestamp,
+            // For v1 creds, we have no timestamp, so return *some* ;p fixed time in the past.
+            _ => OffsetDateTime::from_unix_timestamp(932964162_i64)
+                .unwrap_or(OffsetDateTime::UNIX_EPOCH),
         }
     }
 }
@@ -322,8 +350,16 @@ impl fmt::Display for DbCred {
             DbCred::TmpWn { webauthn, uuid } => {
                 write!(f, "TmpWn ( w {}, u {} )", webauthn.len(), uuid)
             }
-            DbCred::V2Password { password: _, uuid } => write!(f, "V2Pw ( u {uuid} )"),
-            DbCred::V2GenPassword { password: _, uuid } => write!(f, "V2GPw ( u {uuid} )"),
+            DbCred::V2Password {
+                password: _,
+                uuid,
+                timestamp,
+            } => write!(f, "V2Pw ( u {uuid}, t {timestamp} )"),
+            DbCred::V2GenPassword {
+                password: _,
+                uuid,
+                timestamp,
+            } => write!(f, "V2GPw ( u {uuid}, t {timestamp} )"),
             DbCred::V2PasswordMfa {
                 password: _,
                 totp,
@@ -344,13 +380,15 @@ impl fmt::Display for DbCred {
                 backup_code,
                 webauthn,
                 uuid,
+                timestamp,
             } => write!(
                 f,
-                "V3PwMfa (p true, w {}, t {}, b {}, u {})",
+                "V3PwMfa (p true, w {}, t {}, b {}, u {}, t {})",
                 webauthn.len(),
                 totp.len(),
                 backup_code.is_some(),
-                uuid
+                uuid,
+                timestamp
             ),
         }
     }

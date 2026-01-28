@@ -127,6 +127,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_IN_MEMORIAM.clone().into(),
         // DL13
         SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE.clone().into(),
+        SCHEMA_ATTR_PASSWORD_CHANGED_TIME.clone().into(),
     ]
 }
 

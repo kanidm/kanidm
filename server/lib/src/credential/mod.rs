@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 
 use hashbrown::{HashMap as Map, HashSet};
 use kanidm_proto::internal::{CredentialDetail, CredentialDetailType, OperationError};
+use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::{AuthenticationResult, Passkey, SecurityKey};
 use webauthn_rs_core::proto::{Credential as WebauthnCredential, CredentialV3};
@@ -87,6 +88,7 @@ pub struct Credential {
     pub(crate) uuid: Uuid,
     // TODO #59: Add auth policy IE validUntil, lock state ...
     // locked: bool
+    timestamp: OffsetDateTime,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -139,11 +141,16 @@ impl TryFrom<DbCred> for Credential {
     type Error = ();
 
     fn try_from(value: DbCred) -> Result<Self, Self::Error> {
+        // We need to retrieve the timestamp here since not all DbCreds have one.
+        // All V1 creds will fall back to a default
+        let timestamp = value.last_changed_timestamp();
+
         // Work out what the policy is?
         match value {
             DbCred::V2Password {
                 password: db_password,
                 uuid,
+                ..
             }
             | DbCred::Pw {
                 password: Some(db_password),
@@ -156,7 +163,11 @@ impl TryFrom<DbCred> for Credential {
                 let v_password = Password::try_from(db_password)?;
                 let type_ = CredentialType::Password(v_password);
                 if type_.is_valid() {
-                    Ok(Credential { type_, uuid })
+                    Ok(Credential {
+                        type_,
+                        uuid,
+                        timestamp,
+                    })
                 } else {
                     Err(())
                 }
@@ -164,6 +175,7 @@ impl TryFrom<DbCred> for Credential {
             DbCred::V2GenPassword {
                 password: db_password,
                 uuid,
+                ..
             }
             | DbCred::GPw {
                 password: Some(db_password),
@@ -176,7 +188,11 @@ impl TryFrom<DbCred> for Credential {
                 let v_password = Password::try_from(db_password)?;
                 let type_ = CredentialType::GeneratedPassword(v_password);
                 if type_.is_valid() {
-                    Ok(Credential { type_, uuid })
+                    Ok(Credential {
+                        type_,
+                        uuid,
+                        timestamp,
+                    })
                 } else {
                     Err(())
                 }
@@ -228,7 +244,11 @@ impl TryFrom<DbCred> for Credential {
                     CredentialType::PasswordMfa(v_password, v_totp, v_webauthn, v_backup_code);
 
                 if type_.is_valid() {
-                    Ok(Credential { type_, uuid })
+                    Ok(Credential {
+                        type_,
+                        uuid,
+                        timestamp,
+                    })
                 } else {
                     Err(())
                 }
@@ -260,7 +280,11 @@ impl TryFrom<DbCred> for Credential {
                 let type_ = CredentialType::Webauthn(v_webauthn);
 
                 if type_.is_valid() {
-                    Ok(Credential { type_, uuid })
+                    Ok(Credential {
+                        type_,
+                        uuid,
+                        timestamp,
+                    })
                 } else {
                     Err(())
                 }
@@ -273,7 +297,11 @@ impl TryFrom<DbCred> for Credential {
                 let type_ = CredentialType::Webauthn(v_webauthn);
 
                 if type_.is_valid() {
-                    Ok(Credential { type_, uuid })
+                    Ok(Credential {
+                        type_,
+                        uuid,
+                        timestamp,
+                    })
                 } else {
                     Err(())
                 }
@@ -307,7 +335,11 @@ impl TryFrom<DbCred> for Credential {
                     CredentialType::PasswordMfa(v_password, v_totp, v_webauthn, v_backup_code);
 
                 if type_.is_valid() {
-                    Ok(Credential { type_, uuid })
+                    Ok(Credential {
+                        type_,
+                        uuid,
+                        timestamp,
+                    })
                 } else {
                     Err(())
                 }
@@ -318,6 +350,7 @@ impl TryFrom<DbCred> for Credential {
                 backup_code,
                 webauthn: db_webauthn,
                 uuid,
+                ..
             } => {
                 let v_password = Password::try_from(db_password)?;
 
@@ -337,7 +370,11 @@ impl TryFrom<DbCred> for Credential {
                     CredentialType::PasswordMfa(v_password, v_totp, v_webauthn, v_backup_code);
 
                 if type_.is_valid() {
-                    Ok(Credential { type_, uuid })
+                    Ok(Credential {
+                        type_,
+                        uuid,
+                        timestamp,
+                    })
                 } else {
                     Err(())
                 }
@@ -353,30 +390,36 @@ impl TryFrom<DbCred> for Credential {
 }
 
 impl Credential {
+    pub fn timestamp(&self) -> OffsetDateTime {
+        self.timestamp
+    }
+
     /// Create a new credential that contains a CredentialType::Password
     pub fn new_password_only(
         policy: &CryptoPolicy,
         cleartext: &str,
+        timestamp: OffsetDateTime,
     ) -> Result<Self, OperationError> {
         Password::new(policy, cleartext)
             .map_err(|e| {
                 error!(crypto_err = ?e);
                 OperationError::CryptographyError
             })
-            .map(Self::new_from_password)
+            .map(|password| Self::new_from_password(password, timestamp))
     }
 
     /// Create a new credential that contains a CredentialType::GeneratedPassword
     pub fn new_generatedpassword_only(
         policy: &CryptoPolicy,
         cleartext: &str,
+        timestamp: OffsetDateTime,
     ) -> Result<Self, OperationError> {
         Password::new(policy, cleartext)
             .map_err(|e| {
                 error!(crypto_err = ?e);
                 OperationError::CryptographyError
             })
-            .map(Self::new_from_generatedpassword)
+            .map(|password| Self::new_from_generatedpassword(password, timestamp))
     }
 
     /// Update the state of the Password on this credential, if a password is present. If possible
@@ -385,13 +428,14 @@ impl Credential {
         &self,
         policy: &CryptoPolicy,
         cleartext: &str,
+        timestamp: OffsetDateTime,
     ) -> Result<Self, OperationError> {
         Password::new(policy, cleartext)
             .map_err(|e| {
                 error!(crypto_err = ?e);
                 OperationError::CryptographyError
             })
-            .map(|pw| self.update_password(pw))
+            .map(|pw| self.update_password(pw, timestamp))
     }
 
     pub fn upgrade_password(
@@ -415,7 +459,7 @@ impl Credential {
             // Note, during update_password we normally rotate the uuid, here we
             // set it back to our current value. This is because we are just
             // updating the hash value, not actually changing the password itself.
-            let mut cred = self.update_password(pw);
+            let mut cred = self.update_password(pw, self.timestamp);
             cred.uuid = self.uuid;
 
             Ok(Some(cred))
@@ -428,6 +472,7 @@ impl Credential {
     /// Extend this credential with another alternate webauthn credential. This is especially
     /// useful for `PasswordMfa` where you can have many webauthn credentials and a password
     /// generally so that one is a backup.
+    #[cfg(test)] // This method isn't used outside of tests, Should we keep the cfg?
     pub fn append_securitykey(
         &self,
         label: String,
@@ -457,11 +502,17 @@ impl Credential {
             type_,
             // Rotate the credential id on any change to invalidate sessions.
             uuid: Uuid::new_v4(),
+            // Update the timestamp to signify a changed credential
+            timestamp: self.timestamp,
         })
     }
 
     /// Remove a webauthn token identified by `label` from this Credential.
-    pub fn remove_securitykey(&self, label: &str) -> Result<Self, OperationError> {
+    pub fn remove_securitykey(
+        &self,
+        label: &str,
+        timestamp: OffsetDateTime,
+    ) -> Result<Self, OperationError> {
         let type_ = match &self.type_ {
             CredentialType::Password(_)
             | CredentialType::GeneratedPassword(_)
@@ -500,6 +551,8 @@ impl Credential {
             type_,
             // Rotate the credential id on any change to invalidate sessions.
             uuid: Uuid::new_v4(),
+            // Update the timestamp to signify a changed credential
+            timestamp,
         })
     }
 
@@ -538,6 +591,7 @@ impl Credential {
             type_,
             // Rotate the credential id on any change to invalidate sessions.
             uuid: Uuid::new_v4(),
+            timestamp: self.timestamp,
         }))
     }
 
@@ -607,10 +661,12 @@ impl Credential {
             CredentialType::Password(pw) => DbCred::V2Password {
                 password: pw.to_dbpasswordv1(),
                 uuid,
+                timestamp: self.timestamp,
             },
             CredentialType::GeneratedPassword(pw) => DbCred::V2GenPassword {
                 password: pw.to_dbpasswordv1(),
                 uuid,
+                timestamp: self.timestamp,
             },
             CredentialType::PasswordMfa(pw, totp, map, backup_code) => DbCred::V3PasswordMfa {
                 password: pw.to_dbpasswordv1(),
@@ -621,6 +677,7 @@ impl Credential {
                 backup_code: backup_code.as_ref().map(|b| b.to_dbbackupcodev1()),
                 webauthn: map.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
                 uuid,
+                timestamp: self.timestamp,
             },
             CredentialType::Webauthn(map) => DbCred::TmpWn {
                 webauthn: map.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
@@ -629,7 +686,7 @@ impl Credential {
         }
     }
 
-    pub(crate) fn update_password(&self, pw: Password) -> Self {
+    pub(crate) fn update_password(&self, pw: Password, timestamp: OffsetDateTime) -> Self {
         let type_ = match &self.type_ {
             CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => {
                 CredentialType::Password(pw)
@@ -644,11 +701,13 @@ impl Credential {
             type_,
             // Rotate the credential id on any change to invalidate sessions.
             uuid: Uuid::new_v4(),
+            // Update the timestamp to signify a changed credential
+            timestamp,
         }
     }
 
     // We don't make totp accessible from outside the crate for now.
-    pub(crate) fn append_totp(&self, label: String, totp: Totp) -> Self {
+    pub(crate) fn append_totp(&self, label: String, totp: Totp, timestamp: OffsetDateTime) -> Self {
         let type_ = match &self.type_ {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
                 CredentialType::PasswordMfa(
@@ -674,10 +733,12 @@ impl Credential {
             type_,
             // Rotate the credential id on any change to invalidate sessions.
             uuid: Uuid::new_v4(),
+            // Update the timestamp to signify a changed credential
+            timestamp,
         }
     }
 
-    pub(crate) fn remove_totp(&self, label: &str) -> Self {
+    pub(crate) fn remove_totp(&self, label: &str, timestamp: OffsetDateTime) -> Self {
         let type_ = match &self.type_ {
             CredentialType::PasswordMfa(pw, totp, wan, backup_code) => {
                 let mut totp = totp.clone();
@@ -697,6 +758,8 @@ impl Credential {
             type_,
             // Rotate the credential id on any change to invalidate sessions.
             uuid: Uuid::new_v4(),
+            // Update the timestamp to signify a changed credential
+            timestamp,
         }
     }
 
@@ -707,17 +770,19 @@ impl Credential {
         }
     }
 
-    pub(crate) fn new_from_generatedpassword(pw: Password) -> Self {
+    pub(crate) fn new_from_generatedpassword(pw: Password, timestamp: OffsetDateTime) -> Self {
         Credential {
             type_: CredentialType::GeneratedPassword(pw),
             uuid: Uuid::new_v4(),
+            timestamp,
         }
     }
 
-    pub(crate) fn new_from_password(pw: Password) -> Self {
+    pub(crate) fn new_from_password(pw: Password, timestamp: OffsetDateTime) -> Self {
         Credential {
             type_: CredentialType::Password(pw),
             uuid: Uuid::new_v4(),
+            timestamp,
         }
     }
 
@@ -749,6 +814,7 @@ impl Credential {
     pub(crate) fn update_backup_code(
         &self,
         backup_codes: BackupCodes,
+        timestamp: OffsetDateTime,
     ) -> Result<Self, OperationError> {
         match &self.type_ {
             CredentialType::PasswordMfa(pw, totp, wan, _) => Ok(Credential {
@@ -760,6 +826,8 @@ impl Credential {
                 ),
                 // Rotate the credential id on any change to invalidate sessions.
                 uuid: Uuid::new_v4(),
+                // Update the timestamp to signify a changed credential
+                timestamp,
             }),
             _ => Err(OperationError::InvalidAccountState(
                 "Non-MFA credential type".to_string(),
@@ -781,6 +849,7 @@ impl Credential {
                             // Don't rotate uuid here since this is a consumption of a backup
                             // code.
                             uuid: self.uuid,
+                            timestamp: self.timestamp,
                         })
                     }
                     _ => Err(OperationError::InvalidAccountState(
@@ -794,12 +863,17 @@ impl Credential {
         }
     }
 
-    pub(crate) fn remove_backup_code(&self) -> Result<Self, OperationError> {
+    pub(crate) fn remove_backup_code(
+        &self,
+        timestamp: OffsetDateTime,
+    ) -> Result<Self, OperationError> {
         match &self.type_ {
             CredentialType::PasswordMfa(pw, totp, wan, _) => Ok(Credential {
                 type_: CredentialType::PasswordMfa(pw.clone(), totp.clone(), wan.clone(), None),
                 // Rotate the credential id on any change to invalidate sessions.
                 uuid: Uuid::new_v4(),
+                // Update the timestamp to signify a changed credential
+                timestamp,
             }),
             _ => Err(OperationError::InvalidAccountState(
                 "Non-MFA credential type".to_string(),
@@ -817,5 +891,148 @@ impl CredentialType {
             }
             CredentialType::Webauthn(webauthn) => !webauthn.is_empty(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
+    use crate::credential::Credential;
+    use kanidm_lib_crypto::{CryptoPolicy, Password};
+    use time::OffsetDateTime;
+
+    #[test]
+    fn test_credential_timestamp_updated_on_totp_append() {
+        let pw = Password::new(&CryptoPolicy::minimum(), "test_password")
+            .expect("Failed to create password");
+        let original_cred = Credential::new_from_password(pw, OffsetDateTime::UNIX_EPOCH);
+        let original_timestamp = original_cred.timestamp;
+
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
+        let updated_cred = original_cred.append_totp(
+            "test_totp".to_string(),
+            totp,
+            OffsetDateTime::UNIX_EPOCH + Duration::from_millis(10),
+        );
+
+        // Verify timestamp was updated
+        assert!(updated_cred.timestamp > original_timestamp);
+        assert_ne!(original_cred.uuid, updated_cred.uuid);
+    }
+
+    #[test]
+    fn test_credential_timestamp_updated_on_totp_remove() {
+        let pw = Password::new(&CryptoPolicy::minimum(), "test_password")
+            .expect("Failed to create password");
+        let cred = Credential::new_from_password(pw, OffsetDateTime::UNIX_EPOCH);
+
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
+        let cred_with_totp = cred.append_totp(
+            "test_totp".to_string(),
+            totp,
+            OffsetDateTime::UNIX_EPOCH + Duration::from_millis(10),
+        );
+        let timestamp_after_append = cred_with_totp.timestamp;
+
+        let cred_removed = cred_with_totp.remove_totp(
+            "test_totp",
+            OffsetDateTime::UNIX_EPOCH + Duration::from_millis(20),
+        );
+
+        // Verify timestamp was updated
+        assert!(cred_removed.timestamp > timestamp_after_append);
+        assert_ne!(cred_with_totp.uuid, cred_removed.uuid);
+    }
+
+    #[test]
+    fn test_credential_timestamp_updated_on_password_change() {
+        let original_cred = Credential::new_password_only(
+            &CryptoPolicy::minimum(),
+            "original_password",
+            OffsetDateTime::UNIX_EPOCH,
+        )
+        .expect("Failed to create credential");
+        let original_timestamp = original_cred.timestamp;
+
+        let updated_cred = original_cred
+            .set_password(
+                &CryptoPolicy::minimum(),
+                "new_password",
+                OffsetDateTime::UNIX_EPOCH + Duration::from_millis(10),
+            )
+            .expect("Failed to update password");
+
+        // Verify timestamp was updated
+        assert!(updated_cred.timestamp > original_timestamp);
+        assert_ne!(original_cred.uuid, updated_cred.uuid);
+    }
+
+    #[test]
+    fn test_credential_timestamp_preserved_on_password_upgrade() {
+        let original_cred = Credential::new_password_only(
+            &CryptoPolicy::minimum(),
+            "test_password",
+            OffsetDateTime::UNIX_EPOCH,
+        )
+        .expect("Failed to create credential");
+        let original_timestamp = original_cred.timestamp;
+        let original_uuid = original_cred.uuid;
+
+        // Password upgrade should preserve UUID and timestamp since it's just
+        // updating the hash algorithm, not actually changing the password
+        let maybe_upgraded = original_cred
+            .upgrade_password(&CryptoPolicy::minimum(), "test_password")
+            .expect("Failed to upgrade password");
+
+        if let Some(upgraded_cred) = maybe_upgraded {
+            // UUID should be preserved during upgrade (unlike other operations)
+            assert_eq!(original_uuid, upgraded_cred.uuid);
+            // Timestamp should be updated to reflect the upgrade
+            assert!(upgraded_cred.timestamp >= original_timestamp);
+        }
+    }
+
+    #[test]
+    fn test_credential_timestamp_on_mfa_operations() {
+        use crate::credential::BackupCodes;
+        use hashbrown::HashSet;
+
+        let pw = Password::new(&CryptoPolicy::minimum(), "test_password")
+            .expect("Failed to create password");
+        let cred = Credential::new_from_password(pw, OffsetDateTime::UNIX_EPOCH);
+
+        // Add TOTP to make it MFA
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
+        let mfa_cred = cred.append_totp(
+            "test_totp".to_string(),
+            totp,
+            OffsetDateTime::UNIX_EPOCH + Duration::from_millis(10),
+        );
+        let mfa_timestamp = mfa_cred.timestamp;
+
+        // Add backup codes
+        let backup_codes =
+            BackupCodes::new(HashSet::from(["code1".to_string(), "code2".to_string()]));
+        let cred_with_backup = mfa_cred
+            .update_backup_code(
+                backup_codes,
+                OffsetDateTime::UNIX_EPOCH + Duration::from_millis(20),
+            )
+            .expect("Failed to add backup codes");
+
+        // Verify timestamp was updated
+        assert!(cred_with_backup.timestamp > mfa_timestamp);
+        assert_ne!(mfa_cred.uuid, cred_with_backup.uuid);
+
+        // Remove backup codes
+        let cred_removed_backup = cred_with_backup
+            .remove_backup_code(OffsetDateTime::UNIX_EPOCH + Duration::from_millis(30))
+            .expect("Failed to remove backup codes");
+
+        // Verify timestamp was updated again
+        assert!(cred_removed_backup.timestamp > cred_with_backup.timestamp);
+        assert_ne!(cred_with_backup.uuid, cred_removed_backup.uuid);
     }
 }
