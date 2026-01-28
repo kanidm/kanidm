@@ -461,7 +461,7 @@ pub struct Oauth2RS {
     origins: HashSet<Origin>,
     opaque_origins: HashSet<Url>,
     redirect_uris: HashSet<Url>,
-    origin_https_required: bool,
+    origin_secure_required: bool,
     strict_redirect_uri: bool,
 
     claim_map: BTreeMap<Uuid, Vec<(String, ClaimValue)>>,
@@ -733,7 +733,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                 let mut origins = HashSet::with_capacity(len_uris);
                 let mut redirect_uris = HashSet::with_capacity(len_uris);
                 let mut opaque_origins = HashSet::with_capacity(len_uris);
-                let mut origin_https_required = false;
+                let mut origin_secure_required = false;
 
                 for mut uri in redirect_uris_v.into_iter() {
                     // https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2
@@ -741,7 +741,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     uri.set_fragment(None);
                     // Given the presence of a single https url, then all other urls must be https.
                     if uri.scheme() == "https" {
-                        origin_https_required = true;
+                        origin_secure_required = true;
                         origins.insert(uri.origin());
                         redirect_uris.insert(uri);
                     } else if uri.scheme() == "http" {
@@ -911,7 +911,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     origins,
                     opaque_origins,
                     redirect_uris,
-                    origin_https_required,
+                    origin_secure_required,
                     strict_redirect_uri,
                     scope_maps,
                     sup_scope_maps,
@@ -2194,15 +2194,19 @@ impl IdmServerProxyReadTransaction<'_> {
 
         // redirect_uri must be part of the client_id origins, unless the client is public and then it MAY
         // be a loopback address exempting it from this check and enforcement and we can carry on safely.
-        if o2rs.type_.allow_localhost_redirect() && check_is_loopback(&auth_req.redirect_uri) {
+        let auth_req_uri_is_loopback = check_is_loopback(&auth_req.redirect_uri);
+        let type_allows_localhost_redirect = o2rs.type_.allow_localhost_redirect();
+
+        if type_allows_localhost_redirect && auth_req_uri_is_loopback {
             debug!("Loopback redirect_uri detected, allowing for localhost");
         } else {
             // The legacy origin match is in use.
             let origin_uri_matched =
                 !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
-            // Strict uri validation is in use.
+            // Strict uri validation is in use, must be an exact match.
             let strict_redirect_uri_matched =
                 o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
+
             // Allow opaque origins such as app uris.
             let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
 
@@ -2210,26 +2214,34 @@ impl IdmServerProxyReadTransaction<'_> {
             if !(strict_redirect_uri_matched || origin_uri_matched || opaque_origin_matched) {
                 if o2rs.strict_redirect_uri {
                     warn!(
-                                "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {} from resource server but configured uris do not match (check oauth2_rs_origin entries)",
+                                "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {} from client but configured uris do not match (check oauth2_rs_origin entries)",
                                 auth_req.redirect_uri.as_str()
                             );
                 } else {
                     warn!(
-                        "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?} from resource server but configured uris differ (compare oauth2_rs_origin_landing with oauth2_rs_origin entries)",
+                        "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?} from client but configured uris differ (compare oauth2_rs_origin_landing with oauth2_rs_origin entries)",
                         auth_req.redirect_uri.origin()
                     );
                 }
                 return Err(Oauth2Error::InvalidOrigin);
             }
-            // We have to specifically match on http here because non-http origins may be exempt from this
+
+            if opaque_origin_matched && !type_allows_localhost_redirect {
+                warn!(redirect_uri = %auth_req.redirect_uri, "OAuth2 redirect_uri is an opaque uri, but localhost redirection is not allowed. See 'kanidm system oauth2 enable-localhost-redirects'");
+            }
+
+            // We have to specifically match on https here because non-http origins may be exempt from this
             // enforcement.
-            if (o2rs.origin_https_required && auth_req.redirect_uri.scheme() != "https")
+            if (o2rs.origin_secure_required && auth_req.redirect_uri.scheme() != "https")
                 && !opaque_origin_matched
             {
-                admin_warn!(
-                    "Invalid OAuth2 redirect_uri scheme (must be https for secure origin) - got {} from resource server instead",
-                    auth_req.redirect_uri.to_string()
+                warn!(
+                    "Invalid OAuth2 redirect_uri scheme (must be https) - got {} from resource server instead",
+                    auth_req.redirect_uri
                 );
+                if auth_req_uri_is_loopback {
+                    warn!("Note that while localhost is a secure origin, it must be allowed explicitly. See 'kanidm system oauth2 enable-localhost-redirects'");
+                }
                 return Err(Oauth2Error::InvalidOrigin);
             }
         }
