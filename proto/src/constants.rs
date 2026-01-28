@@ -40,7 +40,7 @@ pub const DEFAULT_SERVER_LOCALHOST: &str = "localhost:8443";
 /// The default LDAP bind address for the Kanidm client
 pub const DEFAULT_LDAP_LOCALHOST: &str = "localhost:636";
 /// The default amount of attributes that can be queried in LDAP
-pub const DEFAULT_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES: usize = 16;
+pub const DEFAULT_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES: usize = 48;
 /// Default replication configuration
 pub const DEFAULT_REPLICATION_ADDRESS: &str = "127.0.0.1:8444";
 pub const DEFAULT_REPLICATION_ORIGIN: &str = "repl://localhost:8444";
