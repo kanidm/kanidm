@@ -43,7 +43,7 @@ use std::fs::metadata;
 use std::io::Error as IoError;
 use std::num::NonZeroUsize;
 use std::os::unix::fs::MetadataExt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::ExitCode;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -72,19 +72,21 @@ struct AsyncTaskRequest {
     task_chan: oneshot::Sender<()>,
 }
 
-/// Pass this a file path and it'll look for the file and remove it if it's there.
 fn rm_if_exist(p: &str) {
-    if Path::new(p).exists() {
-        debug!("Removing requested file {:?}", p);
-        let _ = std::fs::remove_file(p).map_err(|e| {
+    debug!("Attempting to remove file {}", p);
+    let _ = std::fs::remove_file(p).map_err(|e| match e.kind() {
+        std::io::ErrorKind::NotFound => {
+            debug!("{} not present, no need to remove.", p);
+            return;
+        }
+        _ => {
             error!(
-                "Failure while attempting to attempting to remove {:?} -> {:?}",
-                p, e
+                "Failure while attempting to attempting to remove {} -> {}",
+                p,
+                e.to_string()
             );
-        });
-    } else {
-        debug!("Path {:?} doesn't exist, not attempting to remove.", p);
-    }
+        }
+    });
 }
 
 async fn handle_task_client(
@@ -648,8 +650,8 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
     }
 
     debug!("🧹 Cleaning up sockets from previous invocations");
-    rm_if_exist(cfg.sock_path.as_str());
-    rm_if_exist(cfg.task_sock_path.as_str());
+    rm_if_exist(&cfg.sock_path);
+    rm_if_exist(&cfg.task_sock_path);
 
     // Check the db path will be okay.
     if !cfg.cache_db_path.is_empty() {
