@@ -25,10 +25,47 @@ pub struct ScimSshPublicKey {
     pub value: SshPublicKey,
 }
 
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum ScimReferenceAdapter {
+    Complete { uuid: Uuid, value: String },
+    Uuid { uuid: Uuid },
+    UuidX(Uuid),
+    Value { value: String },
+    ValueX(String),
+}
+
+impl From<ScimReferenceAdapter> for ScimReference {
+    fn from(scr: ScimReferenceAdapter) -> Self {
+        match scr {
+            ScimReferenceAdapter::Complete { uuid, value } => ScimReference {
+                uuid: Some(uuid),
+                value: Some(value),
+            },
+            ScimReferenceAdapter::Uuid { uuid } | ScimReferenceAdapter::UuidX(uuid) => {
+                ScimReference {
+                    uuid: Some(uuid),
+                    value: None,
+                }
+            }
+            ScimReferenceAdapter::Value { value } | ScimReferenceAdapter::ValueX(value) => {
+                ScimReference {
+                    uuid: None,
+                    value: Some(value),
+                }
+            }
+        }
+    }
+}
+
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[serde(
+    deny_unknown_fields,
+    rename_all = "camelCase",
+    from = "ScimReferenceAdapter"
+)]
 pub struct ScimReference {
     pub uuid: Option<Uuid>,
     pub value: Option<String>,
@@ -240,6 +277,34 @@ pub struct ScimEntryPostGeneric {
     #[serde(flatten)]
     #[schema(value_type = Object, additional_properties = true)]
     pub attrs: BTreeMap<Attribute, JsonValue>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase", tag = "state")]
+pub enum ScimEntryAssertion {
+    /// The entry should be present, with this id/UUID, and
+    /// the content of these attributes must be as shown. If an
+    /// attribute is not present in the assertion, it will not be
+    /// altered. To remove an attribute, set the attribute to "null".
+    Present {
+        id: Uuid,
+        #[schema(value_type = BTreeMap<String, Value>)]
+        #[serde(flatten)]
+        attrs: BTreeMap<Attribute, Option<JsonValue>>,
+    },
+    /// The entry should be absent (removed) from the database. Once
+    /// removed, the entry can not be re-asserted. You will need to create
+    /// a new entry with a unique ID.
+    Absent { id: Uuid },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
+pub struct ScimAssertGeneric {
+    /// The ID of this assertion.
+    pub id: Uuid,
+
+    /// A set of assertions about expected entry state.
+    pub assertions: Vec<ScimEntryAssertion>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]

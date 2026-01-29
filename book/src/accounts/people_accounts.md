@@ -46,8 +46,8 @@ Also
 ## Account Validity
 
 Kanidm supports accounts that are only able to authenticate between a pair of dates and times; the "valid from" and
-"expires" timestamps define these points in time. By default members of `idm_people_admins` and `idm_service_desk`
-may change these values.
+"expires" timestamps define these points in time. By default members of `idm_people_admins` and `idm_service_desk` may
+change these values.
 
 > NOTE: If the person is a member of `idm_high_privilege` then these changes are not allowed. This is to prevent
 > `idm_service_desk` and similar roles from denial-of-service attack by resetting the credentials of higher privileged
