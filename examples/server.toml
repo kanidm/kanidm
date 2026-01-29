@@ -46,13 +46,24 @@ db_path = "/var/lib/private/kanidm/kanidm.db"
 #   re-read and reloaded if their content is valid.
 tls_chain = "/var/lib/private/kanidm/chain.pem"
 tls_key = "/var/lib/private/kanidm/key.pem"
-#
+
+#   The path where entry migrations will be read from.
+#   This path should contain files that match the pattern
+#   xx-name.json where xx are two number. For example:
+#     00-base.json
+#     10-groups.json
+#   Migrations are applied in order. Migrations that fail
+#   to apply, or have invalid syntax are skipped without
+#   preventing server start up or reload.
+# migration_path = "/etc/kanidm/migrations.d"
+
 #   The log level of the server. May be one of info, debug, trace
 #
 #   NOTE: this can be overridden by the environment variable
 #   `KANIDM_LOG_LEVEL` at runtime
 #   Defaults to "info"
 # log_level = "info"
+
 #
 #   The DNS domain name of the server. This is used in a
 #   number of security-critical contexts
