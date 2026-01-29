@@ -256,8 +256,8 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        skip(self, eventid),
-        fields(uuid = ?eventid)
+        fields(uuid = ?eventid),
+        skip_all,
     )]
     pub(crate) async fn handle_scim_migration_apply(
         &self,
