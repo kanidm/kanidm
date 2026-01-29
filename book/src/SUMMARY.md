@@ -26,6 +26,7 @@
   - [Monitoring the platform](monitoring_the_platform.md)
   - [Recycle Bin](recycle_bin.md)
   - [Customising](customising.md)
+  - [Entry Management](entry_management.md)
 
 - [Accounts and Groups](accounts/intro.md)
   - [People Accounts](accounts/people_accounts.md)
