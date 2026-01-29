@@ -130,6 +130,21 @@ pub struct ScimAssertEvent {
     pub nonce: Option<Sha256Output>,
 }
 
+impl ScimAssertEvent {
+    pub fn new_internal(
+        asserts: Vec<ScimEntryAssertion>,
+        id: Uuid,
+        nonce: Option<Sha256Output>,
+    ) -> Self {
+        ScimAssertEvent {
+            ident: Identity::from_internal(),
+            asserts,
+            id,
+            nonce,
+        }
+    }
+}
+
 impl QueryServerWriteTransaction<'_> {
     /// SCIM PUT is the handler where a single entry is updated. In a SCIM PUT request
     /// the request defines the state of an attribute in entirety for the update. This

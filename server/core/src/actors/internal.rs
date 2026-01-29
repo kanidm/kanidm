@@ -3,13 +3,16 @@
 //! admin unixd socket.
 
 use crate::{QueryServerReadV1, QueryServerWriteV1};
+use crypto_glue::s256::Sha256Output;
 use kanidm_proto::internal::{
     DomainInfo as ProtoDomainInfo, DomainUpgradeCheckReport as ProtoDomainUpgradeCheckReport,
 };
+use kanidm_proto::scim_v1::client::ScimAssertGeneric;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::{
     event::{PurgeDeleteAfterEvent, PurgeRecycledEvent, PurgeTombstoneEvent},
     idm::delayed::DelayedAction,
+    server::scim::ScimAssertEvent,
 };
 use tracing::{Instrument, Level};
 
@@ -247,6 +250,27 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
 
         idms_prox_write.qs_write.domain_remigrate(level)?;
+
+        idms_prox_write.commit()
+    }
+
+    #[instrument(
+        level = "info",
+        skip(self, eventid),
+        fields(uuid = ?eventid)
+    )]
+    pub(crate) async fn handle_scim_migration_apply(
+        &self,
+        eventid: Uuid,
+        ScimAssertGeneric { id, assertions }: ScimAssertGeneric,
+        nonce: Sha256Output,
+    ) -> Result<(), OperationError> {
+        let assert_event = ScimAssertEvent::new_internal(assertions, id, Some(nonce));
+
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+
+        idms_prox_write.qs_write.scim_assert(assert_event)?;
 
         idms_prox_write.commit()
     }
