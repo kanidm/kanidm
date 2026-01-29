@@ -52,8 +52,8 @@ kanidm system oauth2 remove-image <NAME> -D idm_admin
 
 ## Custom CSS
 
-You can mount a custom CSS file over `/hpkg/override.css` in the container to add your own
-styles. For example with Docker:
+You can mount a custom CSS file over `/hpkg/override.css` in the container to add your own styles. For example with
+Docker:
 
 ```bash
 docker run \
