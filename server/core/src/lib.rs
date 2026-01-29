@@ -59,7 +59,6 @@ use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use tokio::sync::Notify;
 use tokio::task;
 
 // === internal setup helpers
@@ -717,6 +716,7 @@ pub fn cert_generate_core(config: &Configuration) {
 #[derive(Clone, Debug)]
 pub enum CoreAction {
     Shutdown,
+    Reload,
 }
 
 pub(crate) enum TaskName {
@@ -729,6 +729,7 @@ pub(crate) enum TaskName {
     LdapActor,
     Replication,
     TlsAcceptorReload,
+    MigrationReload,
 }
 
 impl Display for TaskName {
@@ -746,6 +747,7 @@ impl Display for TaskName {
                 TaskName::LdapActor => "LDAP Acceptor Actor",
                 TaskName::Replication => "Replication",
                 TaskName::TlsAcceptorReload => "TlsAcceptor Reload Monitor",
+                TaskName::MigrationReload => "Migration Reload Monitor",
             }
         )
     }
@@ -754,7 +756,6 @@ impl Display for TaskName {
 pub struct CoreHandle {
     clean_shutdown: bool,
     tx: broadcast::Sender<CoreAction>,
-    tls_acceptor_reload_notify: Arc<Notify>,
     /// This stores a name for the handle, and the handle itself so we can tell which failed/succeeded at the end.
     handles: Vec<(TaskName, task::JoinHandle<()>)>,
 }
@@ -780,8 +781,10 @@ impl CoreHandle {
         self.clean_shutdown = true;
     }
 
-    pub async fn tls_acceptor_reload(&mut self) {
-        self.tls_acceptor_reload_notify.notify_one()
+    pub async fn reload(&mut self) {
+        if self.tx.send(CoreAction::Reload).is_err() {
+            eprintln!("No receivers acked reload request.");
+        }
     }
 }
 
@@ -976,6 +979,7 @@ pub async fn create_server_core(
                 Ok(action) = broadcast_rx.recv() => {
                     match action {
                         CoreAction::Shutdown => break,
+                        CoreAction::Reload => {},
                     }
                 }
             }
@@ -991,6 +995,7 @@ pub async fn create_server_core(
                 Ok(action) = broadcast_rx.recv() => {
                     match action {
                         CoreAction::Shutdown => break,
+                        CoreAction::Reload => {},
                     }
                 }
                 audit_event = idms_audit.audit_rx().recv() => {
@@ -1011,13 +1016,28 @@ pub async fn create_server_core(
     });
 
     // Setup the Migration Reload Trigger.
-    // let migration_reload_handle = ();
+    let mut broadcast_rx = broadcast_tx.subscribe();
+    let migration_reload_handle = task::spawn(async move {
+        loop {
+            tokio::select! {
+                Ok(action) = broadcast_rx.recv() => {
+                    match action {
+                        CoreAction::Shutdown => break,
+                        CoreAction::Reload => {
+                            // Read the migrations.
+                            // Apply them.
+                            info!("migration reload complete");
+                        },
+                    }
+                }
+            }
+        }
+        info!("Stopped {}", TaskName::MigrationReload);
+    });
 
     // Setup a TLS Acceptor Reload trigger.
 
     let mut broadcast_rx = broadcast_tx.subscribe();
-    let tls_acceptor_reload_notify = Arc::new(Notify::new());
-    let tls_accepter_reload_task_notify = tls_acceptor_reload_notify.clone();
     let tls_config = config.tls_config.clone();
 
     let (tls_acceptor_reload_tx, _tls_acceptor_reload_rx) = broadcast::channel(1);
@@ -1029,27 +1049,27 @@ pub async fn create_server_core(
                 Ok(action) = broadcast_rx.recv() => {
                     match action {
                         CoreAction::Shutdown => break,
-                    }
-                }
-                _ = tls_accepter_reload_task_notify.notified() => {
-                    let tls_acceptor = match crypto::setup_tls(&tls_config) {
-                        Ok(Some(tls_acc)) => tls_acc,
-                        Ok(None) => {
-                            warn!("TLS not configured, ignoring reload request.");
-                            continue;
-                        }
-                        Err(err) => {
-                            error!(?err, "Failed to configure and reload TLS acceptor");
-                            continue;
-                        }
-                    };
+                        CoreAction::Reload => {
+                            let tls_acceptor = match crypto::setup_tls(&tls_config) {
+                                Ok(Some(tls_acc)) => tls_acc,
+                                Ok(None) => {
+                                    warn!("TLS not configured, ignoring reload request.");
+                                    continue;
+                                }
+                                Err(err) => {
+                                    error!(?err, "Failed to configure and reload TLS acceptor");
+                                    continue;
+                                }
+                            };
 
-                    // We don't log here as the receivers will notify when they have completed
-                    // the reload.
-                    if tls_acceptor_reload_tx_c.send(tls_acceptor).is_err() {
-                        error!("tls acceptor did not accept the reload, the server may have failed!");
-                    };
-                    info!("tls acceptor reload notification sent");
+                            // We don't log here as the receivers will notify when they have completed
+                            // the reload.
+                            if tls_acceptor_reload_tx_c.send(tls_acceptor).is_err() {
+                                error!("tls acceptor did not accept the reload, the server may have failed!");
+                            };
+                            info!("tls acceptor reload notification sent");
+                        },
+                    }
                 }
             }
         }
@@ -1150,13 +1170,13 @@ pub async fn create_server_core(
 
     // If we are NOT in integration test mode, start the admin socket now
     let maybe_admin_sock_handle = if config.integration_test_config.is_none() {
-        let broadcast_rx = broadcast_tx.subscribe();
+        let broadcast_tx_ = broadcast_tx.clone();
 
         let admin_handle = AdminActor::create_admin_sock(
             config.adminbindpath.as_str(),
             server_write_ref,
             server_read_ref,
-            broadcast_rx,
+            broadcast_tx_,
             maybe_repl_ctrl_tx,
         )
         .await?;
@@ -1171,6 +1191,7 @@ pub async fn create_server_core(
         (TaskName::DelayedActionActor, delayed_handle),
         (TaskName::AuditdActor, auditd_handle),
         (TaskName::TlsAcceptorReload, tls_acceptor_reload_handle),
+        (TaskName::MigrationReload, migration_reload_handle),
     ];
 
     if let Some(backup_handle) = maybe_backup_handle {
@@ -1199,7 +1220,6 @@ pub async fn create_server_core(
 
     Ok(CoreHandle {
         clean_shutdown: false,
-        tls_acceptor_reload_notify,
         tx: broadcast_tx,
         handles,
     })

@@ -257,9 +257,7 @@ pub enum ScimEntryAssertion {
     /// The entry should be absent (removed) from the database. Once
     /// removed, the entry can not be re-asserted. You will need to create
     /// a new entry with a unique ID.
-    Absent {
-        id: Uuid,
-    },
+    Absent { id: Uuid },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]

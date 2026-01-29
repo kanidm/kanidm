@@ -130,6 +130,9 @@ enum ScriptingCommand {
         name: String,
     },
 
+    /// Initiate a server reload.
+    Reload,
+
     /// Load the server config and check services are listening
     #[clap(name = "healthcheck")]
     HealthCheck {
