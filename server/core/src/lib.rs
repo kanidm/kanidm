@@ -44,22 +44,31 @@ use crate::config::Configuration;
 use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::{JwsHs256Signer, JwsSigner};
+use crypto_glue::{
+    s256::{Sha256, Sha256Output},
+    traits::Digest,
+};
 use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::config::ServerRole;
 use kanidm_proto::internal::OperationError;
+use kanidm_proto::scim_v1::client::ScimAssertGeneric;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
 use kanidmd_lib::idm::ldap::LdapServer;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
 use kanidmd_lib::value::CredentialType;
-#[cfg(not(target_family = "windows"))]
-use libc::umask;
+use regex::Regex;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use tokio::sync::broadcast;
 use tokio::task;
+
+#[cfg(not(target_family = "windows"))]
+use libc::umask;
 
 // === internal setup helpers
 
@@ -755,6 +764,131 @@ pub fn cert_generate_core(config: &Configuration) {
     info!("certificate generation complete");
 }
 
+static MIGRATION_PATH_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^\\d\\d-.*\\.json$").expect("Invalid SPN regex found")
+});
+
+struct ScimMigration {
+    path: PathBuf,
+    hash: Sha256Output,
+    assertions: ScimAssertGeneric,
+}
+
+#[instrument(
+    level = "info",
+    fields(uuid = ?eventid),
+    skip_all,
+)]
+async fn migration_apply(
+    eventid: Uuid,
+    server_write_ref: &'static QueryServerWriteV1,
+    migration_path: &Path,
+) {
+    let mut dir_ents = match tokio::fs::read_dir(migration_path).await {
+        Ok(dir_ents) => dir_ents,
+        Err(err) => {
+            error!(?err, "Unable to read migration directory.");
+            let diag = kanidm_lib_file_permissions::diagnose_path(migration_path);
+            info!(%diag);
+            return;
+        }
+    };
+
+    let mut migration_paths = Vec::with_capacity(8);
+
+    loop {
+        match dir_ents.next_entry().await {
+            Ok(Some(dir_ent)) => migration_paths.push(dir_ent.path()),
+            Ok(None) => {
+                // Complete,
+                break;
+            }
+            Err(err) => {
+                error!(?err, "Unable to read directory entries.");
+                return;
+            }
+        }
+    }
+
+    // Filter these.
+
+    let mut migration_paths: Vec<_> = migration_paths.into_iter()
+        .filter(|path| {
+            if !path.is_file() {
+                info!(path = %path.display(), "ignoring path that is not a file.");
+                return false;
+            }
+
+            let Some(file_name) = path.file_name().and_then(std::ffi::OsStr::to_str) else {
+                info!(path = %path.display(), "ignoring path that has no file name, or is not a valid utf-8 file name.");
+                return false;
+            };
+
+            if !MIGRATION_PATH_RE.is_match(file_name) {
+                info!(path = %path.display(), "ignoring file that does not match naming pattern.");
+                info!("expected pattern 'XX-NAME.json' where XX are two numbers, followed by a hypen, with the file extension .json");
+                return false;
+            }
+
+            true
+        })
+        .collect();
+
+    migration_paths.sort_unstable();
+    let mut migrations = Vec::with_capacity(migration_paths.len());
+
+    for migration_path in migration_paths {
+        info!(path = %migration_path.display(), "examining migration");
+
+        let migration_content = match tokio::fs::read(&migration_path).await {
+            Ok(bytes) => bytes,
+            Err(err) => {
+                error!(?err, "Unable to read migration - it will be ignored.");
+                let diag = kanidm_lib_file_permissions::diagnose_path(&migration_path);
+                info!(%diag);
+                continue;
+            }
+        };
+
+        // Is it valid json?
+        let assertions: ScimAssertGeneric = match serde_json::from_slice(&migration_content) {
+            Ok(assertions) => assertions,
+            Err(err) => {
+                error!(?err, path = %migration_path.display(), "Invalid JSON SCIM Assertion");
+                continue;
+            }
+        };
+
+        // Hash the content.
+        let mut hasher = Sha256::new();
+        hasher.update(&migration_content);
+        let migration_hash: Sha256Output = hasher.finalize();
+
+        migrations.push(ScimMigration {
+            path: migration_path,
+            hash: migration_hash,
+            assertions,
+        });
+    }
+
+    // Okay, we're setup to go - apply them all. Note that we do these
+    // separately, each migration occurs in it's own transaction.
+    for ScimMigration {
+        path,
+        hash,
+        assertions,
+    } in migrations
+    {
+        if let Err(err) = server_write_ref
+            .handle_scim_migration_apply(eventid, assertions, hash)
+            .await
+        {
+            error!(?err, path = %path.display(), "Failed to apply migration");
+        };
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum CoreAction {
     Shutdown,
@@ -1057,6 +1191,15 @@ pub async fn create_server_core(
         info!("Stopped {}", TaskName::AuditdActor);
     });
 
+    // Run the migrations *once*
+    let migration_path = config
+        .migration_path
+        .clone()
+        .unwrap_or(PathBuf::from(env!("KANIDM_SERVER_MIGRATION_PATH")));
+
+    let eventid = Uuid::new_v4();
+    migration_apply(eventid, server_write_ref, migration_path.as_path()).await;
+
     // Setup the Migration Reload Trigger.
     let mut broadcast_rx = broadcast_tx.subscribe();
     let migration_reload_handle = task::spawn(async move {
@@ -1068,6 +1211,13 @@ pub async fn create_server_core(
                         CoreAction::Reload => {
                             // Read the migrations.
                             // Apply them.
+                            let eventid = Uuid::new_v4();
+                            migration_apply(
+                                eventid,
+                                server_write_ref,
+                                migration_path.as_path(),
+                            ).await;
+
                             info!("migration reload complete");
                         },
                     }
