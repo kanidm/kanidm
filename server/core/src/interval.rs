@@ -43,10 +43,9 @@ impl IntervalActor {
                     .await;
 
                 tokio::select! {
-                    Ok(action) = rx.recv() => {
-                        match action {
-                            CoreAction::Shutdown => break,
-                        }
+                    Ok(CoreAction::Shutdown) = rx.recv() => {
+                        break
+                        // Ignore other action types.
                     }
                     _ = inter.tick() => {
                         // Next iter.
@@ -149,6 +148,7 @@ impl IntervalActor {
                     Ok(action) = rx.recv() => {
                         match action {
                             CoreAction::Shutdown => break,
+                            CoreAction::Reload => {}
                         }
                     }
                     _ = sleep(Duration::from_secs(wait_seconds)) => {

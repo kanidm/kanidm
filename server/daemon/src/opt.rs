@@ -129,13 +129,13 @@ enum ScriptingCommand {
         /// The account name to recover credentials for.
         name: String,
     },
-
     /// Backup
     Backup {
         /// The path to backup to. If not set, defaults to stdout.
         path: Option<PathBuf>
     },
-
+    /// Initiate a server reload.
+    Reload,
     /// Load the server config and check services are listening
     #[clap(name = "healthcheck")]
     HealthCheck {

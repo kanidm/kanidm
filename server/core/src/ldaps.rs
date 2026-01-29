@@ -213,6 +213,7 @@ async fn ldap_tls_acceptor(
             Ok(action) = rx.recv() => {
                 match action {
                     CoreAction::Shutdown => break,
+                    CoreAction::Reload => {}
                 }
             }
             accept_result = listener.accept() => {
@@ -246,6 +247,7 @@ async fn ldap_plaintext_acceptor(
             Ok(action) = rx.recv() => {
                 match action {
                     CoreAction::Shutdown => break,
+                    CoreAction::Reload => {}
                 }
             }
             accept_result = listener.accept() => {
