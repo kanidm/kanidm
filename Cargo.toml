@@ -139,7 +139,7 @@ kanidm-hsm-crypto = { version = "^0.3.5" }
 
 anyhow = { version = "1.0.100" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
-askama = { version = "0.15.1" }
+askama = { version = "0.15.4" }
 askama_web = { version = "0.15.1", features = ["axum-0.8"] }
 async-trait = "^0.1.89"
 axum = { version = "0.8.8", features = [
@@ -161,12 +161,12 @@ base64urlsafedata = "0.5.3"
 bitflags = "^2.9.4"
 bytes = "^1.11.0"
 cidr = "0.3.2"
-clap = { version = "4.5.54", features = ["derive", "env"] }
+clap = { version = "4.5.56", features = ["derive", "env"] }
 clap_complete = "^4.5.65"
 # Forced by saffron/cron
 chrono = "^0.4.43"
 compact_jwt = "^0.5.3-dev"
-concread = "^0.5.8"
+concread = "^0.5.9"
 cron = "0.15.0"
 crossbeam = "0.8.4"
 crypto-glue = "^0.1.11"
@@ -196,7 +196,7 @@ image = { version = "0.25.9", default-features = false, features = [
     "webp",
 ] }
 itertools = "0.14.0"
-jsonschema = "0.40.0"
+jsonschema = "0.40.2"
 # REMOVE this
 lazy_static = "^1.5.0"
 ldap3_client = "^0.6.2"
@@ -292,7 +292,7 @@ webauthn-authenticator-rs = { version = "0.5.3", features = [
 webauthn-rs = { version = "0.5.3", features = ["preview-features"] }
 webauthn-rs-core = "0.5.3"
 webauthn-rs-proto = "0.5.3"
-whoami = "^2.0.2"
+whoami = "^2.1.0"
 walkdir = "2"
 x509-cert = "0.2.5"
 yescrypt = "0.1.0-rc.4"
