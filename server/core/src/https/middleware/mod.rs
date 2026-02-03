@@ -11,7 +11,6 @@ use axum::{
 };
 use kanidm_proto::constants::{KOPID, KVERSION, X_FORWARDED_FOR};
 use std::net::IpAddr;
-use std::time::SystemTime;
 use uuid::Uuid;
 
 #[allow(clippy::declare_interior_mutable_const)]

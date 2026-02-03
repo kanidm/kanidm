@@ -16,8 +16,8 @@ use tracing::Subscriber;
 use tracing_core::Level;
 use tracing_subscriber::{filter::Directive, prelude::*, EnvFilter, Registry};
 
-pub const MAX_EVENTS_PER_SPAN: u32 = 64 * 1024;
-pub const MAX_ATTRIBUTES_PER_SPAN: u32 = 128;
+const MAX_EVENTS_PER_SPAN: u32 = 64 * 1024;
+const MAX_ATTRIBUTES_PER_SPAN: u32 = 128;
 
 /// This does all the startup things for the logging pipeline
 pub fn start_logging_pipeline(
@@ -78,15 +78,16 @@ pub fn start_logging_pipeline(
         if let Some(headers) = std::env::var_os("OTEL_EXPORTER_OTLP_HEADERS") {
             let headers = headers.to_string_lossy();
             for header in headers.split(',') {
-                let (key, value) = header.split_once('=').unwrap_or(("", ""));
-                if !key.is_empty() && key.eq_ignore_ascii_case("authorization") {
-                    if let Ok(header_value) = tonic::metadata::MetadataValue::from_str(value) {
-                        tonic_metadata.insert("authorization", header_value);
-                    } else {
-                        eprintln!(
+                if let Some((key, value)) = header.split_once('=') {
+                    if !key.is_empty() && key.eq_ignore_ascii_case("authorization") {
+                        if let Ok(header_value) = tonic::metadata::MetadataValue::from_str(value) {
+                            tonic_metadata.insert("authorization", header_value);
+                        } else {
+                            eprintln!(
                             "Warning: could not parse OTEL_EXPORTER_OTLP_HEADERS environment variable, skipping this: {}", header
                         );
-                    };
+                        };
+                    }
                 }
             }
         }
