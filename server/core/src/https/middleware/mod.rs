@@ -1,5 +1,5 @@
-use crate::https::extractors::ClientConnInfo;
 use crate::https::ServerState;
+use crate::https::{extractors::ClientConnInfo, LoggerType};
 use axum::{
     body::Body,
     extract::{connect_info::ConnectInfo, State},
@@ -11,6 +11,7 @@ use axum::{
 };
 use kanidm_proto::constants::{KOPID, KVERSION, X_FORWARDED_FOR};
 use std::net::IpAddr;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 #[allow(clippy::declare_interior_mutable_const)]
@@ -64,9 +65,22 @@ pub struct KOpId {
 
 /// This runs at the start of the request, adding an extension with `KOpId` which has useful things inside it.
 #[instrument(level = "trace", name = "kopid_middleware", skip_all)]
-pub async fn kopid_middleware(mut request: Request<Body>, next: Next) -> Response {
+pub async fn kopid_middleware(
+    state: State<ServerState>,
+    mut request: Request<Body>,
+    next: Next,
+) -> Response {
     // generate the event ID
-    let eventid = sketching::tracing_forest::id();
+    let eventid = match state.logging_pipeline {
+        LoggerType::TracingForest => sketching::tracing_forest::id(),
+        LoggerType::OpenTelemetry => {
+            // try to the current span ID and fail back to generating a Uuid
+            tracing::Span::current()
+                .id()
+                .map(|id| Uuid::from_u64_pair(0, id.into_u64()))
+                .unwrap_or(Uuid::new_v4())
+        }
+    };
 
     // insert the extension so we can pull it out later
     request.extensions_mut().insert(KOpId { eventid });

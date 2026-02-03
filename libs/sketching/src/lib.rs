@@ -14,7 +14,7 @@ use tracing_subscriber::filter::Directive;
 use tracing_subscriber::prelude::*;
 
 pub mod macros;
-pub mod otel;
+pub mod pipeline;
 
 pub use {tracing, tracing_forest, tracing_subscriber};
 
