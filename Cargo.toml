@@ -159,7 +159,7 @@ base32 = "^0.5.1"
 base64 = "^0.22.1"
 base64urlsafedata = "0.5.3"
 bitflags = "^2.9.4"
-bytes = "^1.11.0"
+bytes = "^1.11.1"
 cidr = "0.3.2"
 clap = { version = "4.5.54", features = ["derive", "env"] }
 clap_complete = "^4.5.65"
