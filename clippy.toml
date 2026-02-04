@@ -15,8 +15,8 @@ type-complexity-threshold = 300
 disallowed-types = ["std::collections::HashMap", "std::collections::HashSet"]
 
 disallowed-methods = [
-    { path = "time::OffsetDateTime::now_utc", reason = "Time is a function parameter so that we can control it during testing."},
-    { path = "std::thread::sleep", reason = "Sleeping should not be used in tests as time is a controlled parameter. Additionally, sleeping can block async threads from proceeding." }
+    { path = "time::OffsetDateTime::now_utc", reason = "Time is a function parameter so that we can control it during testing." },
+    { path = "std::thread::sleep", reason = "Sleeping should not be used in tests as time is a controlled parameter. Additionally, sleeping can block async threads from proceeding." },
 ]
 
 allow-expect-in-tests = true
@@ -24,4 +24,3 @@ allow-unwrap-in-tests = true
 allow-panic-in-tests = true
 allow-dbg-in-tests = true
 allow-indexing-slicing-in-tests = true
-

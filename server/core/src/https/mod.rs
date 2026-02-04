@@ -62,6 +62,22 @@ mod v1_oauth2;
 mod v1_scim;
 mod views;
 
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+pub(crate) enum LoggerType {
+    TracingForest,
+    OpenTelemetry,
+}
+
+impl LoggerType {
+    #[inline]
+    pub(crate) fn status_code_field(self) -> &'static str {
+        match self {
+            LoggerType::TracingForest => "status_code",
+            LoggerType::OpenTelemetry => "http.response.status_code",
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct ServerState {
     pub(crate) status_ref: &'static StatusActor,
@@ -76,6 +92,8 @@ pub struct ServerState {
     pub(crate) domain: String,
     // This is set to true by default, and is only false on integration tests.
     pub(crate) secure_cookies: bool,
+    /// So that we can work out which ID to use for spans
+    pub(crate) logging_pipeline: LoggerType,
 }
 
 impl ServerState {
@@ -249,6 +267,12 @@ pub async fn create_https_server(
 
     let trusted_tcp_info_ips = config.http_client_address_info.trusted_tcp_info();
 
+    let logging_pipeline = if config.otel_grpc_url.is_some() {
+        LoggerType::OpenTelemetry
+    } else {
+        LoggerType::TracingForest
+    };
+
     let state = ServerState {
         status_ref,
         qe_w_ref,
@@ -260,6 +284,7 @@ pub async fn create_https_server(
         origin: config.origin,
         domain: config.domain.clone(),
         secure_cookies: config.integration_test_config.is_none(),
+        logging_pipeline,
     };
 
     let static_routes = match config.role {
@@ -309,10 +334,14 @@ pub async fn create_https_server(
     };
 
     // this sets up the default span which logs the URL etc.
+    let span_creator = trace::SpanCreator {
+        log_engine: state.logging_pipeline,
+    };
+
     let trace_layer = TraceLayer::new_for_http()
-        .make_span_with(trace::DefaultMakeSpanKanidmd {})
-        .on_request(trace::DefaultOnRequestKanidmd::default())
-        .on_response(trace::DefaultOnResponseKanidmd::default());
+        .make_span_with(span_creator)
+        .on_request(span_creator)
+        .on_response(span_creator);
 
     let app = app
         .merge(static_routes)
@@ -337,7 +366,10 @@ pub async fn create_https_server(
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging
         // coherence to be maintained.
-        .layer(from_fn(middleware::kopid_middleware))
+        .route_layer(from_fn_with_state(
+            state.clone(),
+            middleware::kopid_middleware,
+        ))
         .merge(apidocs::router())
         // Apply Request Timeouts
         .layer(TimeoutLayer::with_status_code(

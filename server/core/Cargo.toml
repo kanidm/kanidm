@@ -74,6 +74,7 @@ tower-http = { version = "0.6.7", features = [
     "uuid",
 ] }
 tracing = { workspace = true, features = ["attributes"] }
+tracing-opentelemetry = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 utoipa = { workspace = true, features = [
