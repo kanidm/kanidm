@@ -70,7 +70,7 @@ pub(crate) enum LoggerType {
 
 impl LoggerType {
     #[inline]
-    pub(crate) fn status_code_field(&self) -> &'static str {
+    pub(crate) fn status_code_field(self) -> &'static str {
         match self {
             LoggerType::TracingForest => "status_code",
             LoggerType::OpenTelemetry => "http.response.status_code",
