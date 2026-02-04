@@ -90,10 +90,9 @@ impl<B> tower_http::trace::OnResponse<B> for SpanCreator {
                 ))),
             }
         } else {
-            // tracing forest cannot handle u16 directly
             span.record(
                 self.log_engine.status_code_field(),
-                response.status().as_u16().to_string(),
+                response.status().as_u16() as u64,
             );
             // don't need these in otel because they're alreayd in th
             span.record("latency", latency.as_millis());
