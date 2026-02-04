@@ -96,6 +96,12 @@ lazy_static! {
         Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
     };
 
+    /// Must not contain whitespace.
+    pub static ref OAUTH_CLAIMNAME_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("^[0-9a-zA-Z_\\-:]+$").expect("Invalid oauth claim regex found")
+    };
+
     pub static ref SINGLELINE_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("[\n\r\t]").expect("Invalid singleline regex found")
@@ -1944,7 +1950,7 @@ impl Value {
     }
 
     pub fn new_oauthclaimmap(n: String, u: Uuid, c: BTreeSet<String>) -> Option<Self> {
-        if OAUTHSCOPE_RE.is_match(&n) && c.iter().all(|s| OAUTHSCOPE_RE.is_match(s)) {
+        if OAUTH_CLAIMNAME_RE.is_match(&n) && c.iter().all(|s| OAUTH_CLAIMNAME_RE.is_match(s)) {
             Some(Value::OauthClaimValue(n, u, c))
         } else {
             None
@@ -2286,9 +2292,10 @@ impl Value {
             Value::OauthScope(s) => OAUTHSCOPE_RE.is_match(s),
             Value::OauthScopeMap(_, m) => m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
 
-            Value::OauthClaimMap(name, _) => OAUTHSCOPE_RE.is_match(name),
+            Value::OauthClaimMap(name, _) => OAUTH_CLAIMNAME_RE.is_match(name),
             Value::OauthClaimValue(name, _, value) => {
-                OAUTHSCOPE_RE.is_match(name) && value.iter().all(|s| OAUTHSCOPE_RE.is_match(s))
+                OAUTH_CLAIMNAME_RE.is_match(name)
+                    && value.iter().all(|s| OAUTH_CLAIMNAME_RE.is_match(s))
             }
 
             Value::KeyInternal { id, .. } => {
