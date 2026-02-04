@@ -263,6 +263,15 @@ pub static ref SCHEMA_ATTR_ACCOUNT_VALID_FROM: SchemaAttribute = SchemaAttribute
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_ACCOUNT_SOFTLOCK_EXPIRE: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_ACCOUNT_SOFTLOCK_EXPIRE,
+    name: Attribute::AccountSoftlockExpire,
+    description: "The datetime after which softlocks no longer are valid - allows them to be reset from 'now'".to_string(),
+    sync_allowed: true,
+    syntax: SyntaxType::DateTime,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST,
     name: Attribute::WebauthnAttestationCaList,
@@ -1016,6 +1025,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT_DL5: SchemaClass = SchemaClass {
         Attribute::AccountValidFrom,
         Attribute::NameHistory,
         Attribute::HmacNameHistory,
+        Attribute::AccountSoftlockExpire,
     ],
     systemmust: vec![
         Attribute::DisplayName,

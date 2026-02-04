@@ -1301,8 +1301,15 @@ impl IdmServerAuthTransaction<'_> {
                         let softlock_read = self.softlocks.read();
                         if let Some(slock_ref) = softlock_read.get(&cred_uuid) {
                             let mut slock = slock_ref.lock().await;
-                            // Apply the current time.
-                            slock.apply_time_step(ct);
+
+                            let softlock_expire_odt = auth_session.account().softlock_expire();
+
+                            let softlock_expire = softlock_expire_odt
+                                .map(|odt| odt.unix_timestamp() as u64)
+                                .map(Duration::from_secs);
+
+                            // Apply the current time, which resets the softlock if needed.
+                            slock.apply_time_step(ct, softlock_expire);
                             // Now check the results
                             slock.is_valid()
                         } else {
@@ -1360,7 +1367,7 @@ impl IdmServerAuthTransaction<'_> {
 
                 let is_valid = if let Some(ref mut slock) = maybe_slock {
                     // Apply the current time.
-                    slock.apply_time_step(ct);
+                    slock.apply_time_step(ct, None);
                     // Now check the results
                     slock.is_valid()
                 } else {
@@ -1426,6 +1433,12 @@ impl IdmServerAuthTransaction<'_> {
             return Ok(None);
         }
 
+        let softlock_expire_odt = account.softlock_expire();
+
+        let softlock_expire = softlock_expire_odt
+            .map(|odt| odt.unix_timestamp() as u64)
+            .map(Duration::from_secs);
+
         let cred = if acp.allow_primary_cred_fallback() == Some(true) {
             account
                 .unix_extn()
@@ -1469,7 +1482,7 @@ impl IdmServerAuthTransaction<'_> {
 
         let mut slock = slock_ref.lock().await;
 
-        slock.apply_time_step(ct);
+        slock.apply_time_step(ct, softlock_expire);
 
         if !slock.is_valid() {
             security_info!("Account is softlocked.");
