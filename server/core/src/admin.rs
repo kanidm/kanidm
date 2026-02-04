@@ -226,7 +226,6 @@ fn rm_if_exist(p: &str) {
     let _ = std::fs::remove_file(p).map_err(|e| match e.kind() {
         std::io::ErrorKind::NotFound => {
             debug!("{} not present, no need to remove.", p);
-            return;
         }
         _ => {
             error!(
