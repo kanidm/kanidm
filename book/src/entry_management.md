@@ -26,7 +26,7 @@ The following are invalid:
 Entries can be asserted to be present, and in a specific attribute state. Or they can be absent from the database.
 Attributes of an entry can be removed by setting them to `null`.
 
-```toml
+```json
 {{#rustdoc_include ../../examples/migrations/00-basic.json}}
 ```
 
