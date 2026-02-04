@@ -8,7 +8,6 @@ use kanidm_utils_users::get_current_uid;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::io;
-use std::path::Path;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
@@ -223,17 +222,19 @@ impl AdminActor {
 }
 
 fn rm_if_exist(p: &str) {
-    if Path::new(p).exists() {
-        debug!("Removing requested file {:?}", p);
-        let _ = std::fs::remove_file(p).map_err(|e| {
+    debug!("Attempting to remove requested file {}", p);
+    let _ = std::fs::remove_file(p).map_err(|e| match e.kind() {
+        std::io::ErrorKind::NotFound => {
+            debug!("{} not present, no need to remove.", p);
+        }
+        _ => {
             error!(
-                "Failure while attempting to attempting to remove {:?} -> {:?}",
-                p, e
+                "Failure while attempting to attempting to remove {} -> {}",
+                p,
+                e.to_string()
             );
-        });
-    } else {
-        debug!("Path {:?} doesn't exist, not attempting to remove.", p);
-    }
+        }
+    });
 }
 
 async fn show_replication_certificate(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> AdminTaskResponse {
