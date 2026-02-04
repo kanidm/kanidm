@@ -49,6 +49,7 @@ This is a list of supported features and standards within Kanidm.
 - [RFC7662 OAuth 2.0 Token Introspection](https://www.rfc-editor.org/rfc/rfc7662)
 - [RFC7636 Proof Key for Code Exchange (SHA256 Only)](https://www.rfc-editor.org/rfc/rfc7636)
 - [RFC8414 OAuth 2.0 Authorisation Server Metadata](https://www.rfc-editor.org/rfc/rfc8414)
+- [RFC8693 OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
 - [RFC9068 OAuth 2.0 JWT Access Tokens](https://www.rfc-editor.org/rfc/rfc9068)
 - [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
   - RBAC claim and scope mapping
