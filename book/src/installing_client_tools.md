@@ -153,5 +153,5 @@ re-run the install command. You will likely need to install additional developme
 [Developer Guide](developers/).
 
 ```bash
-cargo install kanidm_tools
+cargo install kanidm_tools --locked
 ```
