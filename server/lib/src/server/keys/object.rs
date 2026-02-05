@@ -48,6 +48,14 @@ pub trait KeyObjectT {
 
     fn jws_rs256_jwks(&self) -> Option<JwkKeySet>;
 
+    fn jws_hs256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError>;
+
+    fn jws_hs256_sign(
+        &self,
+        jws: &Jws,
+        current_time: Duration,
+    ) -> Result<JwsCompact, OperationError>;
+
     fn jws_verify(&self, jwsc: &JwsCompact) -> Result<Jws, OperationError>;
 
     fn jws_public_jwk(&self, kid: &str) -> Result<Option<Jwk>, OperationError>;

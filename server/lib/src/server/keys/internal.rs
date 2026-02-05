@@ -1395,6 +1395,27 @@ impl KeyObjectT for KeyObjectInternal {
         koi.assert_active(valid_from, cid)
     }
 
+    fn jws_hs256_sign(
+        &self,
+        jws: &Jws,
+        current_time: Duration,
+    ) -> Result<JwsCompact, OperationError> {
+        if let Some(jws_hs256_object) = &self.jws_hs256 {
+            jws_hs256_object.sign(jws, current_time)
+        } else {
+            error!(provider_uuid = ?self.uuid, "jwt hs256 not available on this provider");
+            Err(OperationError::KP0080KeyProviderNoSuchKey)
+        }
+    }
+
+    fn jws_hs256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let koi = self
+            .jws_hs256
+            .get_or_insert_with(KeyObjectInternalJwtHs256::default);
+
+        koi.assert_active(valid_from, cid)
+    }
+
     fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError> {
         let (alg, enc) = jwec.get_alg_enc();
 

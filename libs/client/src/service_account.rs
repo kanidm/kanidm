@@ -229,11 +229,13 @@ impl KanidmClient {
         label: &str,
         expiry: Option<OffsetDateTime>,
         read_write: bool,
+        compact: bool,
     ) -> Result<String, ClientError> {
         let new_token = ApiTokenGenerate {
             label: label.to_string(),
             expiry,
             read_write,
+            compact,
         };
         self.perform_post_request(
             format!("/v1/service_account/{id}/_api_token").as_str(),

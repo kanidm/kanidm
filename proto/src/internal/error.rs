@@ -321,6 +321,8 @@ pub enum OperationError {
     KP0078KeyObjectNotFound,
     KP0079KeyObjectNotFound,
 
+    KP0080KeyProviderNoSuchKey,
+
     // Plugins
     PL0001GidOverlapsSystemRange,
 
@@ -543,6 +545,7 @@ impl OperationError {
             Self::KP0077KeyProviderNoSuchKey => None,
             Self::KP0078KeyObjectNotFound => None,
             Self::KP0079KeyObjectNotFound => None,
+            Self::KP0080KeyProviderNoSuchKey => None,
 
             Self::KU001InitWhileSessionActive => Some("The session was active when the init function was called.".into()),
             Self::KU002ContinueWhileSessionInActive => Some("Attempted to continue auth session while current session is inactive".into()),

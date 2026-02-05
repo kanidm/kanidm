@@ -416,6 +416,7 @@ impl QueryServerWriteV1 {
         label: String,
         expiry: Option<OffsetDateTime>,
         read_write: bool,
+        compact: bool,
         eventid: Uuid,
     ) -> Result<String, OperationError> {
         let ct = duration_from_epoch_now();
@@ -441,6 +442,7 @@ impl QueryServerWriteV1 {
             label,
             expiry,
             read_write,
+            compact,
         };
 
         idms_prox_write
