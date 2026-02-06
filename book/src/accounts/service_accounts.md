@@ -49,9 +49,9 @@ If you wish to issue a token that is able to make changes on behalf of the servi
 during the generate command. It is recommended you only add `-w` when the API token is performing writes to Kanidm.
 
 ```bash
-kanidm service-account api-token generate --name ENTRY_MANAGER ACCOUNT_ID LABEL [EXPIRY] -w
-kanidm service-account api-token generate --name demo_user demo_service "Test Token" -w
-kanidm service-account api-token generate --name demo_user demo_service "Test Token" 2020-09-25T11:22:02+10:00 -w
+kanidm service-account api-token generate --name ENTRY_MANAGER ACCOUNT_ID LABEL [EXPIRY] --readwrite
+kanidm service-account api-token generate --name demo_user demo_service "Test Token" --readwrite
+kanidm service-account api-token generate --name demo_user demo_service "Test Token" 2020-09-25T11:22:02+10:00 --readwrite
 ```
 
 To destroy (revoke) an API token you will need its token id. This can be shown with the "status" command.
@@ -112,3 +112,27 @@ ldapwhoami -H ldaps://URL -x -D "dn=token" -w "TOKEN"
 ldapwhoami -H ldaps://idm.example.com -x -D "dn=token" -w "..."
 # u: demo_service@idm.example.com
 ```
+
+### Compact API Tokens
+
+API Tokens issued by Kanidm internally are a JWS object that contains metadata about the service account that is being
+granted access. This means that the token can become quite long to encode the necessary information.
+
+Some services however can't work with tokens that are excessively long and will truncate them inflight. This causes the
+token to fail validation and Kanidm will refuse it.
+
+In these cases a compact token format can be used that creates a token which is 120 ascii characters or less.
+
+> NOTE: Compact tokens do come with downsides, which is why they are not the default:
+>
+> 1. They are marginally more expensive for the server to process.
+> 2. Since they contain less metadata, they are more difficult to introspect to understand "who" the token belongs to.
+> 3. In a replicated environment, it may take some time for the token to be accepted as valid on all servers (~5
+>    minutes).
+
+```bash
+kanidm service-account api-token generate --name ENTRY_MANAGER ACCOUNT_ID LABEL [EXPIRY] --compact
+kanidm service-account api-token generate --name demo_user demo_service "Test Token" --compact
+```
+
+All other token management commands and workflows remain the same. Only the length of the emitted token is different.
