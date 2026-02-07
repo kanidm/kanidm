@@ -21,7 +21,7 @@ use sketching::admin_error;
     get,
     path = "/v1/oauth2",
     responses(
-        (status = 200,content_type="application/json", body=Vec<ProtoEntry>),
+        (status = 200,content_type=APPLICATION_JSON, body=Vec<ProtoEntry>),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -99,7 +99,7 @@ pub(crate) async fn oauth2_public_post(
     get,
     path = "/v1/oauth2/{rs_name}",
     responses(
-        (status = 200, body=Option<ProtoEntry>, content_type="application/json"),
+        (status = 200, body=Option<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -127,7 +127,7 @@ pub(crate) async fn oauth2_id_get(
     get,
     path = "/v1/oauth2/{rs_name}/_basic_secret",
     responses(
-        (status = 200,content_type="application/json", body=Option<String>),
+        (status = 200,content_type=APPLICATION_JSON, body=Option<String>),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),

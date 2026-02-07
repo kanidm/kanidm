@@ -27,7 +27,7 @@ const DEFAULT_SCIM_SYNC_BYTES: usize = 1024 * 1024 * 32;
     get,
     path = "/v1/sync_account",
     responses(
-        (status = 200,content_type="application/json", body=Vec<ProtoEntry>),
+        (status = 200,content_type=APPLICATION_JSON, body=Vec<ProtoEntry>),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -69,7 +69,7 @@ pub async fn sync_account_post(
     get,
     path = "/v1/sync_account/{id}",
     responses(
-        (status = 200,content_type="application/json", body=Option<ProtoEntry>),
+        (status = 200,content_type=APPLICATION_JSON, body=Option<ProtoEntry>),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -168,7 +168,7 @@ pub async fn sync_account_id_terminate_get(
     post,
     path = "/v1/sync_account/{id}/_sync_token",
     responses(
-        (status = 200, body=String, content_type="application/json"),
+        (status = 200, body=String, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -218,7 +218,7 @@ pub async fn sync_account_token_delete(
     get,
     path = "/v1/sync_account/{id}/_attr/{attr}",
     responses(
-        (status = 200, body=Option<Vec<String>>, content_type="application/json"),
+        (status = 200, body=Option<Vec<String>>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -302,7 +302,7 @@ async fn scim_sync_post(
     get,
     path = "/scim/v1/Sync",
     responses(
-        (status = 200, content_type="application/json", body=ScimSyncState), // TODO: response content
+        (status = 200, content_type=APPLICATION_JSON, body=ScimSyncState), // TODO: response content
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -327,7 +327,7 @@ async fn scim_sync_get(
     get,
     path = "/scim/v1/Entry",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -357,7 +357,7 @@ async fn scim_entry_get(
     post,
     path = "/scim/v1/Entry",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -382,7 +382,7 @@ async fn scim_entry_post(
     put,
     path = "/scim/v1/Entry",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -407,7 +407,7 @@ async fn scim_entry_put(
     delete,
     path = "/scim/v1/Entry/{id}",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -432,7 +432,7 @@ async fn scim_entry_id_delete(
     get,
     path = "/scim/v1/Entry/{id}",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -464,7 +464,7 @@ async fn scim_entry_id_get(
     get,
     path = "/scim/v1/Person/{id}",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -497,7 +497,7 @@ async fn scim_person_id_get(
     path = "/scim/v1/Person/{id}/Application/_create_password",
     request_body = ScimApplicationPasswordCreate,
     responses(
-        (status = 200, content_type="application/json", body=ScimApplicationPassword),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimApplicationPassword),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -547,7 +547,7 @@ async fn scim_person_id_application_delete_password(
     get,
     path = "/scim/v1/Application",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -578,7 +578,7 @@ async fn scim_application_get(
     path = "/scim/v1/Application",
     request_body = ScimEntryPostGeneric,
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -612,7 +612,7 @@ async fn scim_application_post(
     delete,
     path = "/scim/v1/Application/{id}",
     responses(
-        (status = 200, content_type="application/json"),
+        (status = 200, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -643,7 +643,7 @@ async fn scim_application_id_get(
     delete,
     path = "/scim/v1/Application/{id}",
     responses(
-        (status = 200, content_type="application/json"),
+        (status = 200, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -668,7 +668,7 @@ async fn scim_application_id_delete(
     get,
     path = "/scim/v1/Class",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -698,7 +698,7 @@ async fn scim_schema_class_get(
     get,
     path = "/scim/v1/Attribute",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -728,7 +728,7 @@ async fn scim_schema_attribute_get(
     get,
     path = "/scim/v1/Message",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -758,7 +758,7 @@ async fn scim_message_get(
     get,
     path = "/scim/v1/Message/{id}",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -790,7 +790,7 @@ async fn scim_message_id_get(
     get,
     path = "/scim/v1/Message/_ready",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -815,7 +815,7 @@ async fn scim_message_ready_get(
     delete,
     path = "/scim/v1/Message/{id}/_sent",
     responses(
-        (status = 200, content_type="application/json"),
+        (status = 200, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -840,7 +840,7 @@ async fn scim_message_id_sent_post(
     get,
     path = "/scim/v1/Person/{id}/_messages/_send_test",
     responses(
-        (status = 200, content_type="application/json", body=ScimEntry),
+        (status = 200, content_type=APPLICATION_JSON, body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),

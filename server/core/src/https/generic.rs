@@ -2,6 +2,7 @@ use axum::extract::State;
 use axum::http::header::CONTENT_TYPE;
 use axum::response::{IntoResponse, Redirect};
 use axum::{Extension, Json};
+use kanidmd_lib::prelude::APPLICATION_JSON;
 use kanidmd_lib::status::StatusRequestEvent;
 
 use super::middleware::KOpId;
@@ -12,9 +13,10 @@ use super::ServerState;
     get,
     path = "/status",
     responses(
-        (status = 200, description = "Ok", content_type = "application/json"),
+        (status = 200, description = "Ok", content_type = APPLICATION_JSON, body=String),
     ),
     tag = "system",
+    operation_id = "status"
 
 )]
 /// Status endpoint used for health checks, returns true when the server is up.

@@ -115,7 +115,7 @@ pub async fn raw_delete(
     post,
     path = "/v1/raw/search",
     responses(
-        (status = 200, body=SearchResponse, content_type="application/json"),
+        (status = 200, body=SearchResponse, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     request_body=SearchRequest,
@@ -142,7 +142,7 @@ pub async fn raw_search(
     get,
     path = "/v1/self",
     responses(
-        (status = 200, body=WhoamiResponse, content_type="application/json"),
+        (status = 200, body=WhoamiResponse, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -168,7 +168,7 @@ pub async fn whoami(
     get,
     path = "/v1/self/_uat",
     responses(
-        (status = 200, description = "Ok", body=UserAuthToken, content_type="application/json"),
+        (status = 200, description = "Ok", body=UserAuthToken, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -448,7 +448,7 @@ pub async fn json_rest_event_delete_attr(
     get,
     path = "/v1/schema",
     responses(
-        (status=200, content_type="application/json", body=Vec<ProtoEntry>),
+        (status=200, content_type=APPLICATION_JSON, body=Vec<ProtoEntry>),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -476,7 +476,7 @@ pub async fn schema_get(
     get,
     path = "/v1/schema/attributetype",
     responses(
-        (status=200, content_type="application/json", body=Vec<ProtoEntry>),
+        (status=200, content_type=APPLICATION_JSON, body=Vec<ProtoEntry>),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -496,7 +496,7 @@ pub async fn schema_attributetype_get(
     get,
     path = "/v1/schema/attributetype/{id}",
     responses(
-        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Option<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -531,7 +531,7 @@ pub async fn schema_attributetype_get_id(
     get,
     path = "/v1/schema/classtype",
     responses(
-        (status=200, body=Vec<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Vec<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -551,7 +551,7 @@ pub async fn schema_classtype_get(
     get,
     path = "/v1/schema/classtype/{id}",
     responses(
-        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Option<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -582,7 +582,7 @@ pub async fn schema_classtype_get_id(
     get,
     path = "/v1/person",
     responses(
-        (status=200, body=Vec<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Vec<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -628,7 +628,7 @@ pub async fn person_post(
     get,
     path = "/v1/person/_search/{id}",
     responses(
-        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Option<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -652,7 +652,7 @@ pub async fn person_search_id(
     get,
     path = "/v1/person/{id}",
     responses(
-        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Option<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -695,7 +695,7 @@ pub async fn person_id_delete(
     get,
     path = "/v1/person/{id}/_certificate",
     responses(
-        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Option<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -748,7 +748,7 @@ pub async fn person_post_id_certificate(
     get,
     path = "/v1/service_account",
     responses(
-        (status=200, body=Vec<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Vec<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -822,7 +822,7 @@ pub async fn service_account_id_patch(
     get,
     path = "/v1/service_account/{id}",
     responses(
-        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Option<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -915,7 +915,7 @@ pub async fn service_account_into_person(
     get,
     path = "/v1/service_account/{id}/_api_token",
     responses(
-        (status=200, body=Vec<ApiToken>, content_type="application/json"),
+        (status=200, body=Vec<ApiToken>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -941,7 +941,7 @@ pub async fn service_account_api_token_get(
     path = "/v1/service_account/{id}/_api_token",
     request_body = ApiTokenGenerate,
     responses(
-        (status=200, body=String, content_type="application/json"),
+        (status=200, body=String, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -998,7 +998,7 @@ pub async fn service_account_api_token_delete(
     get,
     path = "/v1/person/{id}/_attr/{attr}",
     responses(
-        (status=200, body=Option<Vec<String>>, content_type="application/json"),
+        (status=200, body=Option<Vec<String>>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1019,7 +1019,7 @@ pub async fn person_id_get_attr(
     get,
     path = "/v1/service_account/{id}/_attr/{attr}",
     responses(
-        (status=200, body=Option<Vec<String>>, content_type="application/json"),
+        (status=200, body=Option<Vec<String>>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1540,7 +1540,7 @@ pub async fn person_get_id_credential_status(
     get,
     path = "/v1/person/{id}/_ssh_pubkeys",
     responses(
-        (status=200, body=Vec<String>, content_type="application/json"),
+        (status=200, body=Vec<String>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1565,7 +1565,7 @@ pub async fn person_id_ssh_pubkeys_get(
     get,
     path = "/v1/account/{id}/_ssh_pubkeys",
     responses(
-        (status=200, body=Vec<String>, content_type="application/json"),
+        (status=200, body=Vec<String>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1591,7 +1591,7 @@ pub async fn account_id_ssh_pubkeys_get(
     get,
     path = "/v1/service_account/{id}/_ssh_pubkeys",
     responses(
-        (status=200, body=Vec<String>, content_type="application/json"),
+        (status=200, body=Vec<String>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1673,7 +1673,7 @@ pub async fn service_account_id_ssh_pubkeys_post(
     get,
     path = "/v1/person/{id}/_ssh_pubkeys/{tag}",
     responses(
-        (status=200, body=String, content_type="application/json"),
+        (status=200, body=String, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1697,7 +1697,7 @@ pub async fn person_id_ssh_pubkeys_tag_get(
     get,
     path = "/v1/account/{id}/_ssh_pubkeys/{tag}",
     responses(
-        (status=200, body=String, content_type="application/json"),
+        (status=200, body=String, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1722,7 +1722,7 @@ pub async fn account_id_ssh_pubkeys_tag_get(
     get,
     path = "/v1/service_account/{id}/_ssh_pubkeys/{tag}",
     responses(
-        (status=200, body=String, content_type="application/json"),
+        (status=200, body=String, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1893,7 +1893,7 @@ pub async fn person_id_radius_delete(
     get,
     path = "/v1/person/{id}/_radius/_token",
     responses(
-        (status=200, body=RadiusAuthToken, content_type="application/json"),
+        (status=200, body=RadiusAuthToken, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1913,7 +1913,7 @@ pub async fn person_id_radius_token_get(
     get,
     path = "/v1/account/{id}/_radius/_token",
     responses(
-        (status=200, body=RadiusAuthToken, content_type="application/json"),
+        (status=200, body=RadiusAuthToken, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1933,7 +1933,7 @@ pub async fn account_id_radius_token_get(
     post,
     path = "/v1/account/{id}/_radius/_token",
     responses(
-        (status=200, body=RadiusAuthToken, content_type="application/json"),
+        (status=200, body=RadiusAuthToken, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2019,7 +2019,7 @@ pub async fn service_account_id_unix_post(
     get,post,
     path = "/v1/account/{id}/_unix/_token",
     responses(
-        (status=200, body=UnixUserToken, content_type="application/json"),
+        (status=200, body=UnixUserToken, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2061,7 +2061,7 @@ pub async fn account_id_unix_token(
     post,
     path = "/v1/account/{id}/_unix/_auth",
     responses(
-        (status=200, body=Option<UnixUserToken>, content_type="application/json"),
+        (status=200, body=Option<UnixUserToken>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2144,7 +2144,7 @@ pub async fn person_id_unix_credential_delete(
     post,
     path = "/v1/person/{id}/_identify/_user",
     responses(
-        (status=200, body=IdentifyUserResponse, content_type="application/json"),
+        (status=200, body=IdentifyUserResponse, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2170,7 +2170,7 @@ pub async fn person_identify_user_post(
     get,
     path = "/v1/group",
     responses(
-        (status=200,body=Vec<ProtoEntry>, content_type="application/json"),
+        (status=200,body=Vec<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2191,7 +2191,7 @@ pub async fn group_get(
     get,
     path = "/v1/group/_search/{id}",
     responses(
-        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Option<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2235,7 +2235,7 @@ pub async fn group_post(
     get,
     path = "/v1/group/{id}",
     responses(
-        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Option<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2305,7 +2305,7 @@ pub async fn group_id_delete(
     get,
     path = "/v1/group/{id}/_attr/{attr}",
     responses(
-        (status=200, body=Vec<String>, content_type="application/json"),
+        (status=200, body=Vec<String>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2419,7 +2419,7 @@ pub async fn group_id_unix_post(
     get,
     path = "/v1/group/{id}/_unix/_token",
     responses(
-        (status=200, body=UnixGroupToken, content_type="application/json"),
+        (status=200, body=UnixGroupToken, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2444,7 +2444,7 @@ pub async fn group_id_unix_token_get(
     get,
     path = "/v1/domain",
     responses(
-        (status=200, body=Vec<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Vec<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2464,7 +2464,7 @@ pub async fn domain_get(
     get,
     path = "/v1/domain/_attr/{attr}",
     responses(
-        (status=200, body=Option<Vec<String>>, content_type="application/json"),
+        (status=200, body=Option<Vec<String>>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2556,7 +2556,7 @@ pub async fn domain_attr_delete(
     get,
     path = "/v1/system",
     responses(
-        (status=200,body=Vec<ProtoEntry>, content_type="application/json"),
+        (status=200,body=Vec<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2579,7 +2579,7 @@ pub async fn system_get(
     get,
     path = "/v1/system/_attr/{attr}",
     responses(
-        (status=200, body=Option<Vec<String>>, content_type="application/json"),
+        (status=200, body=Option<Vec<String>>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2701,7 +2701,7 @@ pub async fn system_attr_put(
     post,
     path = "/v1/recycle_bin",
     responses(
-        (status=200,body=Vec<ProtoEntry>, content_type="application/json"),
+        (status=200,body=Vec<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2727,7 +2727,7 @@ pub async fn recycle_bin_get(
     get,
     path = "/v1/recycle_bin/{id}",
     responses(
-        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        (status=200, body=Option<ProtoEntry>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2781,7 +2781,7 @@ pub async fn recycle_bin_revive_id_post(
     get,
     path = "/v1/self/_applinks",
     responses(
-        (status=200, body=Vec<AppLink>, content_type="application/json"),
+        (status=200, body=Vec<AppLink>, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2806,7 +2806,7 @@ pub async fn applinks_get(
     post,
     path = "/v1/reauth",
     responses(
-        (status=200, content_type="application/json"), // TODO: define response
+        (status=200, content_type=APPLICATION_JSON), // TODO: define response
         ApiResponseWithout200,
     ),
     request_body = AuthIssueSession,
@@ -2834,7 +2834,7 @@ pub async fn reauth(
     post,
     path = "/v1/auth",
     responses(
-        (status=200, content_type="application/json"), // TODO: define response
+        (status=200, body=AuthResponse, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     request_body = AuthRequest,
@@ -2960,7 +2960,7 @@ fn auth_session_state_management(
             }
             .map(|state| AuthResponse { sessionid, state })
         }
-        Err(e) => Err(e),
+        Err(e) => Err(e.into()),
     };
 
     // if the sessionid was injected into our cookie, set it in the header too.
@@ -3027,7 +3027,7 @@ pub async fn auth_valid(
     get,
     path = "/v1/debug/ipinfo",
     responses(
-        (status = 200, description = "Ok", body=String, content_type="application/json"),
+        (status = 200, description = "Ok", body=String, content_type=APPLICATION_JSON),
     ),
     security(("token_jwt" = [])),
     tag = "v1/debug",
@@ -3050,7 +3050,7 @@ struct SchemaJwk(Jwk);
     get,
     path = "/v1/jwk/{key_id}",
     responses(
-        (status=200, body=SchemaJwk, content_type="application/json"),
+        (status=200, body=SchemaJwk, content_type=APPLICATION_JSON),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
