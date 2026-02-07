@@ -2806,7 +2806,7 @@ pub async fn applinks_get(
     post,
     path = "/v1/reauth",
     responses(
-        (status=200, content_type=APPLICATION_JSON), // TODO: define response
+        (status=200, content_type=APPLICATION_JSON, body=AuthResponse),
         ApiResponseWithout200,
     ),
     request_body = AuthIssueSession,

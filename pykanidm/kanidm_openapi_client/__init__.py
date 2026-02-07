@@ -192,6 +192,7 @@ __all__ = [
     "ScimEntryGetQuery",
     "ScimEntryPostGeneric",
     "ScimEntryPutGeneric",
+    "ScimListResponse",
     "ScimMeta",
     "ScimSortOrder",
     "ScimSyncRequest",
@@ -405,6 +406,7 @@ from kanidm_openapi_client.models.scim_entry import ScimEntry as ScimEntry
 from kanidm_openapi_client.models.scim_entry_get_query import ScimEntryGetQuery as ScimEntryGetQuery
 from kanidm_openapi_client.models.scim_entry_post_generic import ScimEntryPostGeneric as ScimEntryPostGeneric
 from kanidm_openapi_client.models.scim_entry_put_generic import ScimEntryPutGeneric as ScimEntryPutGeneric
+from kanidm_openapi_client.models.scim_list_response import ScimListResponse as ScimListResponse
 from kanidm_openapi_client.models.scim_meta import ScimMeta as ScimMeta
 from kanidm_openapi_client.models.scim_sort_order import ScimSortOrder as ScimSortOrder
 from kanidm_openapi_client.models.scim_sync_request import ScimSyncRequest as ScimSyncRequest

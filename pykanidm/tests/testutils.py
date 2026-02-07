@@ -2,12 +2,14 @@
 
 from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
-from typing import Any, AsyncIterator, Optional, Tuple
+from typing import TYPE_CHECKING, Any, AsyncIterator, Optional, Tuple
 import os
 
 import pytest
 from kanidm import KanidmClient
-from kanidm_openapi_client import ApiClient
+
+if TYPE_CHECKING:
+    from kanidm_openapi_client import ApiClient
 
 KANIDM_IDM_ADMIN = "idm_admin"
 
@@ -90,7 +92,7 @@ async def openapi_authed_client(
 
 
 @pytest.fixture(scope="function")
-async def openapi_api_client(openapi_client: KanidmClient) -> AsyncIterator[ApiClient]:
+async def openapi_api_client(openapi_client: KanidmClient) -> AsyncIterator["ApiClient"]:
     api_client = openapi_client.openapi_client
     try:
         yield api_client
@@ -99,7 +101,7 @@ async def openapi_api_client(openapi_client: KanidmClient) -> AsyncIterator[ApiC
 
 
 @pytest.fixture(scope="function")
-async def openapi_api_client_authed(openapi_authed_client: KanidmClient) -> AsyncIterator[ApiClient]:
+async def openapi_api_client_authed(openapi_authed_client: KanidmClient) -> AsyncIterator["ApiClient"]:
     api_client = openapi_authed_client.openapi_client
     try:
         yield api_client

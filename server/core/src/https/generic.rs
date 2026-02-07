@@ -13,7 +13,7 @@ use super::ServerState;
     get,
     path = "/status",
     responses(
-        (status = 200, description = "Ok", content_type = APPLICATION_JSON, body=String),
+        (status = 200, description = "Ok", content_type = APPLICATION_JSON, body=bool),
     ),
     tag = "system",
     operation_id = "status"

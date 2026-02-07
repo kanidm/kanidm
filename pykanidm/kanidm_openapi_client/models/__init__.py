@@ -151,6 +151,7 @@ from kanidm_openapi_client.models.scim_entry import ScimEntry
 from kanidm_openapi_client.models.scim_entry_get_query import ScimEntryGetQuery
 from kanidm_openapi_client.models.scim_entry_post_generic import ScimEntryPostGeneric
 from kanidm_openapi_client.models.scim_entry_put_generic import ScimEntryPutGeneric
+from kanidm_openapi_client.models.scim_list_response import ScimListResponse
 from kanidm_openapi_client.models.scim_meta import ScimMeta
 from kanidm_openapi_client.models.scim_sort_order import ScimSortOrder
 from kanidm_openapi_client.models.scim_sync_request import ScimSyncRequest
