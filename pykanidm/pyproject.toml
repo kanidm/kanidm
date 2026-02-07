@@ -2,12 +2,15 @@
 [project]
 authors = [{ name = "James Hodgkinson", email = "james@terminaloutcomes.com" }]
 license = { text = "MPL-2.0" }
-requires-python = "<4.0,>=3.9"
+requires-python = "<4.0,>=3.12"
 dependencies = [
     "toml>=0.10.2",
-    "pydantic>=2.0.0",
+    "pydantic>=2.12.5",
     "aiohttp>=3.8.1",
     "Authlib>=1.2.0",
+    "python-dateutil>=2.9.0.post0",
+    "aiohttp-retry>=2.9.1",
+    "typing-extensions>=4.15.0",
 ]
 name = "kanidm"
 description = "Kanidm client library"
@@ -30,17 +33,18 @@ repository = "https://github.com/kanidm/kanidm"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.5.1",
-    "pytest>=8.3.4",
-    "mypy>=1.14.1,<2.0.0",
+    "ruff>=0.15.0",
+    "pytest>=9.0.2",
+    "mypy>=1.19.1",
     "types-requests>=2.32.0.20241016",
     "pytest-aiohttp>=1.1.0",
-    "pytest-mock>=3.14.0",
+    "pytest-mock>=3.15.1",
     "types-toml>=0.10.8.20240310",
-    "pylint-pydantic>=0.3.5",
-    "coverage>=7.6.10",
+    "pylint-pydantic>=0.4.1",
+    "coverage>=7.13.1",
     "pook>=2.1.3",
-    "ty>=0.0.0a8",
+    "ty>=0.0.15",
+    "openapi-spec-validator>=0.7.2",
 ]
 docs = [
     "mkdocs>=1.6.1",
@@ -55,7 +59,7 @@ build-backend = "pdm.backend"
 
 
 [tool.pdm.build]
-includes = ["kanidm"]
+includes = ["kanidm", "kanidm_openapi_client"]
 
 
 # [tool.pylint.MASTER]
@@ -80,6 +84,7 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "network: Tests that require network access and a working backend server",
     "interactive: Requires specific config and a working backend server",
+    "openapi: Tests that require network access and a live kanidm server",
 ]
 
 [tool.coverage.run]

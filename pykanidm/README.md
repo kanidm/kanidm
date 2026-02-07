@@ -24,6 +24,54 @@ Set up your dev environment using `uv` - `python -m pip install uv && uv sync`.
 Pytest it used for testing, if you don't have a live server to test against and config set up, use
 `uv run pytest -m 'not network'`.
 
+### OpenAPI client generation
+
+The OpenAPI spec is served by the running server. To generate/update the OpenAPI-based client package:
+
+```bash
+uv run python pykanidm/scripts/openapi_codegen.py
+```
+
+You can also point it at a local spec file or override the URL:
+
+```bash
+uv run python pykanidm/scripts/openapi_codegen.py --spec-file /path/to/openapi.json
+uv run python pykanidm/scripts/openapi_codegen.py --spec-url https://localhost:8443/docs/v1/openapi.json
+```
+
+The generated client is packaged as `kanidm_openapi_client`. If you already have a `KanidmClient`, you can build an OpenAPI `ApiClient` that reuses its config:
+
+```python
+from kanidm import KanidmClient
+from kanidm.openapi import openapi_client_from_kanidm_client
+
+client = KanidmClient(uri="https://localhost:8443")
+openapi_client = openapi_client_from_kanidm_client(client)
+```
+
+#### OpenAPI structure
+
+- `kanidm_openapi_client/` contains the generated OpenAPI client (API classes, models, and transport).
+- `kanidm/openapi.py` provides helpers to build an OpenAPI `ApiClient` from a `KanidmClient`/`KanidmClientConfig`.
+- The generated package is included in the build via `tool.pdm.build.includes`.
+
+### OpenAPI spec tests
+
+Networked OpenAPI tests are marked `openapi` and include both spec validation and generated-client GET calls. Run them with:
+
+```bash
+IDM_ADMIN_PASS=... uv run pytest -m openapi
+```
+
+Optional environment overrides:
+
+- `KANIDM_CA_PATH` (default: `/tmp/kanidm/ca.pem` if present)
+- `KANIDM_OPENAPI_URL` (default: `https://localhost:8443`)
+- `IDM_ADMIN_PASS` (required for auth'd OpenAPI tests; matches `scripts/setup_dev_environment.sh`)
+- `KANIDM_INSECURE` (`true`/`false`, default: `false`) disables TLS verification for tests
+
+Note: tests always verify TLS unless `KANIDM_INSECURE=true`. Provide a CA via `KANIDM_CA_PATH` (or use the default `/tmp/kanidm/ca.pem`) so the server cert validates.
+
 ## Changelog
 
 | Version | Date       | Notes                                                 |
