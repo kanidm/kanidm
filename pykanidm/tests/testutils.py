@@ -56,11 +56,10 @@ def openapi_verify_tls(openapi_ca_path: Optional[str]) -> bool:
 
 @pytest.fixture(scope="session")
 def openapi_admin_credentials() -> Tuple[str, str]:
-    username = KANIDM_IDM_ADMIN
     password = os.getenv("IDM_ADMIN_PASS")
     if not password:
-        pytest.skip("No IDM_ADMIN_PASS env var set for openapi tests")  # type: ignore[call-non-callable]
-    return username, password
+        raise pytest.skip("No IDM_ADMIN_PASS env var set for openapi tests")  # type: ignore[call-non-callable]
+    return (KANIDM_IDM_ADMIN, password)
 
 
 @pytest.fixture(scope="function")

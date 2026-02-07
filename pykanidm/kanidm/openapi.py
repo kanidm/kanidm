@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .types import KanidmClientConfig
-
 if TYPE_CHECKING:
     from . import KanidmClient
+from .types import KanidmClientConfig
 
 try:
     from kanidm_openapi_client import ApiClient, Configuration
