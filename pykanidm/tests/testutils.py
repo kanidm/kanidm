@@ -7,7 +7,6 @@ import os
 
 import pytest
 from kanidm import KanidmClient
-from kanidm.openapi import openapi_client_from_kanidm_client
 from kanidm_openapi_client import ApiClient
 
 KANIDM_IDM_ADMIN = "idm_admin"
@@ -93,7 +92,7 @@ async def openapi_authed_client(
 
 @pytest.fixture(scope="function")
 async def openapi_api_client(openapi_client: KanidmClient) -> AsyncIterator[ApiClient]:
-    api_client = openapi_client_from_kanidm_client(openapi_client)
+    api_client = openapi_client.openapi_client
     try:
         yield api_client
     finally:
@@ -102,7 +101,7 @@ async def openapi_api_client(openapi_client: KanidmClient) -> AsyncIterator[ApiC
 
 @pytest.fixture(scope="function")
 async def openapi_api_client_authed(openapi_authed_client: KanidmClient) -> AsyncIterator[ApiClient]:
-    api_client = openapi_client_from_kanidm_client(openapi_authed_client)
+    api_client = openapi_authed_client.openapi_client
     try:
         yield api_client
     finally:

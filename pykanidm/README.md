@@ -39,15 +39,18 @@ uv run python pykanidm/scripts/openapi_codegen.py --spec-file /path/to/openapi.j
 uv run python pykanidm/scripts/openapi_codegen.py --spec-url https://localhost:8443/docs/v1/openapi.json
 ```
 
-The generated client is packaged as `kanidm_openapi_client`. If you already have a `KanidmClient`, you can build an OpenAPI `ApiClient` that reuses its config:
+The generated client is packaged as `kanidm_openapi_client`.
+
+`KanidmClient` now initializes an OpenAPI client by default at startup as `client.openapi_client`:
 
 ```python
 from kanidm import KanidmClient
-from kanidm.openapi import openapi_client_from_kanidm_client
 
 client = KanidmClient(uri="https://localhost:8443")
-openapi_client = openapi_client_from_kanidm_client(client)
+openapi_client = client.openapi_client
 ```
+
+You can still build one explicitly from config helpers in `kanidm.openapi` if needed.
 
 #### OpenAPI structure
 

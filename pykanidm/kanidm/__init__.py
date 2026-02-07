@@ -39,6 +39,8 @@ from .exceptions import (
     AuthMechUnknown,
     NoMatchingEntries,
 )
+from .openapi import ApiClient as OpenApiClient
+from .openapi import openapi_client_from_client_config
 from .types import (
     AuthBeginResponse,
     AuthInitResponse,
@@ -81,6 +83,7 @@ class KanidmClient:
     verify_certificate: verify the validity of the certificate and its CA
     ca_path: set this to a trusted CA certificate (PEM format)
     token: a JWS from an authentication session
+    openapi_client: OpenAPI-generated client instance
     """
 
     # pylint: disable=too-many-instance-attributes,too-many-arguments
@@ -127,6 +130,15 @@ class KanidmClient:
 
         self._ssl_context: Optional[Union[bool, ssl.SSLContext]] = None
         self._configure_ssl()
+        self.openapi_client: OpenApiClient = openapi_client_from_client_config(self.config)
+
+    def _sync_openapi_access_token(self) -> None:
+        """Keep the generated OpenAPI client auth token in sync with this client."""
+        self.openapi_client.configuration.access_token = self.config.auth_token
+
+    def _set_auth_token(self, token: Optional[str]) -> None:
+        self.config.auth_token = token
+        self._sync_openapi_access_token()
 
     def _configure_ssl(self) -> None:
         """Sets up SSL configuration for the client"""
@@ -328,14 +340,14 @@ class KanidmClient:
             self.logger.debug("response.headers: %s", response.headers)
             raise ValueError(f"Missing {K_AUTH_SESSION_ID} header in init auth response: {response.headers}")
         else:
-            self.config.auth_token = response.headers[K_AUTH_SESSION_ID]
+            self._set_auth_token(response.headers[K_AUTH_SESSION_ID])
 
         data = getattr(response, "data", {})
         data["response"] = response.model_dump()
         retval = AuthInitResponse.model_validate(data)
 
         if update_internal_auth_token:
-            self.config.auth_token = response.headers.get(K_AUTH_SESSION_ID, "")
+            self._set_auth_token(response.headers.get(K_AUTH_SESSION_ID, ""))
         return retval
 
     async def auth_begin(
@@ -369,7 +381,7 @@ class KanidmClient:
             response.data["sessionid"] = response.headers.get(K_AUTH_SESSION_ID, "")
 
         if update_internal_auth_token:
-            self.config.auth_token = response.headers.get(K_AUTH_SESSION_ID, "")
+            self._set_auth_token(response.headers.get(K_AUTH_SESSION_ID, ""))
 
         self.logger.debug(json_lib.dumps(response.data, indent=4))
 
@@ -451,7 +463,7 @@ class KanidmClient:
         if result.state is None:
             raise AuthCredFailed
         if update_internal_auth_token:
-            self.config.auth_token = result.state.success
+            self._set_auth_token(result.state.success)
 
         # pull the token out and set it
         if result.state.success is None:
@@ -492,7 +504,7 @@ class KanidmClient:
         self.logger.debug("anonymous auth completed, setting token")
         if state.state is None:
             raise AuthCredFailed
-        self.config.auth_token = state.state.success
+        self._set_auth_token(state.state.success)
 
     def session_header(
         self,

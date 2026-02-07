@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-from . import KanidmClient
+from typing import TYPE_CHECKING
+
 from .types import KanidmClientConfig
+
+if TYPE_CHECKING:
+    from . import KanidmClient
 
 try:
     from kanidm_openapi_client import ApiClient, Configuration
