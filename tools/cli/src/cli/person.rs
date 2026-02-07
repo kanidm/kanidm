@@ -1,8 +1,10 @@
 use crate::common::try_expire_at_from_string;
-use std::fmt::{self, Debug};
-use std::str::FromStr;
-
 use crate::OpType;
+use crate::{
+    handle_client_error, password_prompt, AccountCertificate, AccountCredential, AccountRadius,
+    AccountSsh, AccountUserAuthToken, AccountValidity, KanidmClientParser, OutputMode, PersonOpt,
+    PersonPosix,
+};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password, Select};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
@@ -21,16 +23,14 @@ use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageSta
 use kanidm_proto::scim_v1::{client::ScimSshPublicKeys, ScimEntryGetQuery};
 use qrcode::render::unicode;
 use qrcode::QrCode;
+use std::fmt::{self, Debug};
+use std::str::FromStr;
 use time::format_description::well_known::Rfc3339;
 use time::{OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 use crate::webauthn::get_authenticator;
-use crate::{
-    handle_client_error, password_prompt, AccountCertificate, AccountCredential, AccountRadius,
-    AccountSsh, AccountUserAuthToken, AccountValidity, KanidmClientParser, OutputMode, PersonOpt,
-    PersonPosix,
-};
 
 impl PersonOpt {
     pub async fn exec(&self, opt: KanidmClientParser) {
@@ -751,7 +751,7 @@ impl FromStr for CUAction {
     }
 }
 
-async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
+async fn totp_enrol_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
     // First, submit the server side gen.
     let totp_secret: TotpSecret = match client
         .idm_account_credential_update_init_totp(session_token)
@@ -948,7 +948,17 @@ impl fmt::Display for PasskeyClass {
     }
 }
 
-async fn passkey_enroll_prompt(
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+async fn passkey_enrol_prompt(
+    _session_token: &CUSessionToken,
+    _client: &KanidmClient,
+    _pk_class: PasskeyClass,
+) {
+    eprintln!("Passkey enrolment is not supported on this platform");
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+async fn passkey_enrol_prompt(
     session_token: &CUSessionToken,
     client: &KanidmClient,
     pk_class: PasskeyClass,
@@ -997,6 +1007,7 @@ async fn passkey_enroll_prompt(
     };
 
     // Setup and connect to the webauthn handler ...
+
     let mut wa = get_authenticator();
 
     eprintln!("Your authenticator will now flash for you to interact with.");
@@ -1507,7 +1518,7 @@ async fn credential_update_exec(
                     println!("Successfully reset password.");
                 }
             }
-            CUAction::Totp => totp_enroll_prompt(&session_token, &client).await,
+            CUAction::Totp => totp_enrol_prompt(&session_token, &client).await,
             CUAction::TotpRemove => {
                 match client
                     .idm_account_credential_update_status(&session_token)
@@ -1600,13 +1611,13 @@ async fn credential_update_exec(
                 }
             }
             CUAction::Passkey => {
-                passkey_enroll_prompt(&session_token, &client, PasskeyClass::Any).await
+                passkey_enrol_prompt(&session_token, &client, PasskeyClass::Any).await
             }
             CUAction::PasskeyRemove => {
                 passkey_remove_prompt(&session_token, &client, PasskeyClass::Any).await
             }
             CUAction::AttestedPasskey => {
-                passkey_enroll_prompt(&session_token, &client, PasskeyClass::Attested).await
+                passkey_enrol_prompt(&session_token, &client, PasskeyClass::Attested).await
             }
             CUAction::AttestedPasskeyRemove => {
                 passkey_remove_prompt(&session_token, &client, PasskeyClass::Attested).await
