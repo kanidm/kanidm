@@ -1,0 +1,31 @@
+# flake8: noqa
+
+# import apis into api package
+from kanidm_openapi_client.api.scim_api import ScimApi
+from kanidm_openapi_client.api.system_api import SystemApi
+from kanidm_openapi_client.api.ui_api import UiApi
+from kanidm_openapi_client.api.v1_account_api import V1AccountApi
+from kanidm_openapi_client.api.v1_auth_api import V1AuthApi
+from kanidm_openapi_client.api.v1_credential_api import V1CredentialApi
+from kanidm_openapi_client.api.v1_debug_api import V1DebugApi
+from kanidm_openapi_client.api.v1_domain_api import V1DomainApi
+from kanidm_openapi_client.api.v1_group_api import V1GroupApi
+from kanidm_openapi_client.api.v1_group_attr_api import V1GroupAttrApi
+from kanidm_openapi_client.api.v1_group_unix_api import V1GroupUnixApi
+from kanidm_openapi_client.api.v1_jwk_api import V1JwkApi
+from kanidm_openapi_client.api.v1_oauth2_api import V1Oauth2Api
+from kanidm_openapi_client.api.v1_person_api import V1PersonApi
+from kanidm_openapi_client.api.v1_person_attr_api import V1PersonAttrApi
+from kanidm_openapi_client.api.v1_person_certificate_api import V1PersonCertificateApi
+from kanidm_openapi_client.api.v1_person_credential_api import V1PersonCredentialApi
+from kanidm_openapi_client.api.v1_person_radius_api import V1PersonRadiusApi
+from kanidm_openapi_client.api.v1_person_ssh_pubkeys_api import V1PersonSshPubkeysApi
+from kanidm_openapi_client.api.v1_person_unix_api import V1PersonUnixApi
+from kanidm_openapi_client.api.v1_raw_api import V1RawApi
+from kanidm_openapi_client.api.v1_recycle_bin_api import V1RecycleBinApi
+from kanidm_openapi_client.api.v1_schema_api import V1SchemaApi
+from kanidm_openapi_client.api.v1_self_api import V1SelfApi
+from kanidm_openapi_client.api.v1_service_account_api import V1ServiceAccountApi
+from kanidm_openapi_client.api.v1_sync_account_api import V1SyncAccountApi
+from kanidm_openapi_client.api.v1_system_api import V1SystemApi
+

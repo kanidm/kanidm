@@ -1,0 +1,6 @@
+This package is auto-generated. Do not edit by hand.
+Spec URL: https://localhost:8443/docs/v1/openapi.json
+Generator: python
+
+To regenerate:
+  python pykanidm/scripts/openapi_codegen.py
