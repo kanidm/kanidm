@@ -2960,7 +2960,7 @@ fn auth_session_state_management(
             }
             .map(|state| AuthResponse { sessionid, state })
         }
-        Err(e) => Err(e.into()),
+        Err(e) => Err(e),
     };
 
     // if the sessionid was injected into our cookie, set it in the header too.

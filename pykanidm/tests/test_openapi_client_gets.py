@@ -52,7 +52,7 @@ async def test_openapi_scim_application_id_get_roundtrip(openapi_api_client_auth
 
     app_id = getattr(resources[0], "id", None)
     if not isinstance(app_id, str) or not app_id:
-        pytest.skip("SCIM application resource is missing an id")
+        raise pytest.skip("SCIM application resource is missing an id")
 
     response = await api.scim_application_id_get_with_http_info(app_id)
     assert response.status_code == 200
