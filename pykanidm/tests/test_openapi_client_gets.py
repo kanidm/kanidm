@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 from kanidm import KanidmClient
-from kanidm_openapi_client import ApiClient, ApiResponse
+from kanidm_openapi_client import ApiClient
 from kanidm_openapi_client.api.system_api import SystemApi
 from kanidm_openapi_client.api.v1_group_api import V1GroupApi
 from kanidm_openapi_client.api.v1_oauth2_api import V1Oauth2Api
@@ -27,7 +27,7 @@ async def test_kanidm_client_starts_with_openapi_client(openapi_client: KanidmCl
 
 async def test_openapi_status_get(openapi_api_client: ApiClient) -> None:
     api = SystemApi(openapi_api_client)
-    response: ApiResponse[None] = await api.status_with_http_info()
+    response = await api.status_with_http_info()
     assert response.status_code == 200
 
 

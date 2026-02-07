@@ -204,7 +204,8 @@ test/pykanidm/lint: ## python library linting
 test/pykanidm/mypy: ## python library type checking
 	cd pykanidm && \
 	uv run mypy --strict tests kanidm && \
-	uv run ty check --ignore unused-type-ignore-comment --exclude kanidm_openapi_client/
+	uv run ty check tests kanidm \
+		--ignore unused-type-ignore-comment
 
 .PHONY: test/pykanidm
 test/pykanidm: ## run the kanidm python module test suite (mypy/lint/pytest)

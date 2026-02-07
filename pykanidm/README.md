@@ -29,14 +29,34 @@ Pytest it used for testing, if you don't have a live server to test against and 
 The OpenAPI spec is served by the running server. To generate/update the OpenAPI-based client package:
 
 ```bash
-uv run python pykanidm/scripts/openapi_codegen.py
+uv run kanidm_openapi_codegen
 ```
 
 You can also point it at a local spec file or override the URL:
 
 ```bash
-uv run python pykanidm/scripts/openapi_codegen.py --spec-file /path/to/openapi.json
-uv run python pykanidm/scripts/openapi_codegen.py --spec-url https://localhost:8443/docs/v1/openapi.json
+uv run kanidm_openapi_codegen --spec-file /path/to/openapi.json
+uv run kanidm_openapi_codegen --spec-url https://localhost:8443/docs/v1/openapi.json
+```
+
+Programmatic code generation lives in `kanidm.openapi_codegen`, which is behind the optional feature `openapi_codegen`:
+
+```bash
+python -m pip install "kanidm[openapi_codegen]"
+```
+
+Programmatic use is also supported:
+
+```python
+from pathlib import Path
+from kanidm.openapi_codegen import generate_openapi_client
+
+generate_openapi_client(
+    spec_url="https://localhost:8443/docs/v1/openapi.json",
+    verify_tls=True,
+    ca_file=Path("/tmp/kanidm/ca.pem"),
+    output=Path("pykanidm/kanidm_openapi_client"),
+)
 ```
 
 The generated client is packaged as `kanidm_openapi_client`.
@@ -65,6 +85,9 @@ Networked OpenAPI tests are marked `openapi` and include both spec validation an
 ```bash
 IDM_ADMIN_PASS=... uv run pytest -m openapi
 ```
+
+OpenAPI tests regenerate `kanidm_openapi_client` once per pytest session before running marked tests.
+This uses `kanidm.openapi_codegen` and requires Docker to be available.
 
 Optional environment overrides:
 

@@ -31,6 +31,12 @@ classifiers = [
 homepage = "https://kanidm.com/"
 repository = "https://github.com/kanidm/kanidm"
 
+[project.scripts]
+kanidm_openapi_codegen = "kanidm.openapi_codegen:main"
+
+[project.optional-dependencies]
+openapi_codegen = ["docker>=7.1.0"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.15.0",
@@ -61,14 +67,6 @@ build-backend = "pdm.backend"
 
 [tool.pdm.build]
 includes = ["kanidm", "kanidm_openapi_client"]
-
-
-# [tool.pylint.MASTER]
-# max-line-length = 150
-# disable = "W0511,raise-missing-from"
-# extension-pkg-allow-list = "pydantic"
-# # https://github.com/samuelcolvin/pydantic/issues/1961#issuecomment-759522422
-# load-plugins = "pylint_pydantic,pylint_pytest"
 
 [tool.ruff]
 line-length = 150
