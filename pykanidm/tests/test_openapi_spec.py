@@ -131,18 +131,15 @@ def test_openapi_scim_list_endpoints_reference_scim_list_response(openapi_spec: 
 
 async def test_openapi_status_endpoint(openapi_spec: Mapping[Hashable, Any], openapi_client: KanidmClient) -> None:
     assert "/status" in openapi_spec.get("paths", {})
-    response = await openapi_client.call_get("/status")
-    assert response.status_code == 200
-    assert isinstance(response.data, bool)
-    assert response.data is True
+    status = await openapi_client.status()
+    assert isinstance(status, bool)
+    assert status is True
 
 
 async def test_openapi_group_list_endpoint(openapi_spec: Mapping[Hashable, Any], openapi_authed_client: KanidmClient) -> None:
     assert "/v1/group" in openapi_spec.get("paths", {})
-    response = await openapi_authed_client.call_get("/v1/group")
-    assert response.status_code == 200
-    if response.data is not None:
-        assert isinstance(response.data, list)
+    response = await openapi_authed_client.group_list()
+    assert isinstance(response, list)
 
 
 async def test_openapi_scim_application_list_endpoint(
@@ -150,33 +147,23 @@ async def test_openapi_scim_application_list_endpoint(
     openapi_authed_client: KanidmClient,
 ) -> None:
     assert "/scim/v1/Application" in openapi_spec.get("paths", {})
-    response = await openapi_authed_client.call_get("/scim/v1/Application")
-    assert response.status_code == 200
-    assert isinstance(response.data, dict)
-    resources = response.data.get("resources")
+    response = await openapi_authed_client.scim_application_list()
+    resources = getattr(response, "resources", None)
     assert isinstance(resources, list)
-    total_results = response.data.get("totalResults", response.data.get("total_results"))
+    total_results = getattr(response, "total_results", None)
     assert isinstance(total_results, int)
 
 
 async def test_openapi_scim_application_id_get_endpoint_runtime(openapi_authed_client: KanidmClient) -> None:
-    listing_response = await openapi_authed_client.call_get("/scim/v1/Application")
-    assert listing_response.status_code == 200
-    assert isinstance(listing_response.data, dict)
-    resources = listing_response.data.get("resources")
+    listing_response = await openapi_authed_client.scim_application_list()
+    resources = getattr(listing_response, "resources", None)
     assert isinstance(resources, list)
     if not resources:
         pytest.skip("No SCIM applications available to test /scim/v1/Application/{id}")
 
-    first_resource = resources[0]
-    if not isinstance(first_resource, dict):
-        raise AssertionError("SCIM resource is not an object")
-
-    application_id = first_resource.get("id")
+    application_id = getattr(resources[0], "id", None)
     if not isinstance(application_id, str) or not application_id:
         pytest.skip("SCIM application resource is missing id")
 
-    response = await openapi_authed_client.call_get(f"/scim/v1/Application/{application_id}")
-    assert response.status_code == 200
-    assert isinstance(response.data, dict)
-    assert response.data.get("id") == application_id
+    response = await openapi_authed_client.scim_application_get(application_id)
+    assert getattr(response, "id", None) == application_id

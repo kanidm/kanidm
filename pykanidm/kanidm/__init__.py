@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 import platform
 import ssl
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 import aiohttp.client
@@ -49,6 +49,10 @@ from .types import (
     KanidmClientConfig,
 )
 from .utils import load_config
+
+if TYPE_CHECKING:
+    from kanidm_openapi_client.models.scim_entry import ScimEntry as OpenApiScimEntry
+    from kanidm_openapi_client.models.scim_list_response import ScimListResponse as OpenApiScimListResponse
 
 K_AUTH_SESSION_ID = "x-kanidm-auth-session-id"
 
@@ -524,6 +528,54 @@ class KanidmClient:
         if response.status_code == 404:
             raise NoMatchingEntries(f"No user found: '{username}' {response.headers['x-kanidm-opid']}")
         return response
+
+    async def status(self) -> bool:
+        """Return server health status."""
+        from kanidm_openapi_client.api.system_api import SystemApi
+
+        return await SystemApi(self.openapi_client).status()
+
+    async def scim_application_list(self) -> "OpenApiScimListResponse":
+        """List SCIM applications."""
+        from kanidm_openapi_client.api.scim_api import ScimApi
+
+        return await ScimApi(self.openapi_client).scim_application_get()
+
+    async def scim_application_get(self, entry_id: str) -> "OpenApiScimEntry":
+        """Get a single SCIM application by id."""
+        from kanidm_openapi_client.api.scim_api import ScimApi
+
+        return await ScimApi(self.openapi_client).scim_application_id_get(entry_id)
+
+    async def scim_entry_list(self) -> "OpenApiScimListResponse":
+        """List SCIM entries."""
+        from kanidm_openapi_client.api.scim_api import ScimApi
+
+        return await ScimApi(self.openapi_client).scim_entry_get()
+
+    async def scim_class_list(self) -> "OpenApiScimListResponse":
+        """List SCIM classes."""
+        from kanidm_openapi_client.api.scim_api import ScimApi
+
+        return await ScimApi(self.openapi_client).scim_schema_class_get()
+
+    async def scim_attribute_list(self) -> "OpenApiScimListResponse":
+        """List SCIM attributes."""
+        from kanidm_openapi_client.api.scim_api import ScimApi
+
+        return await ScimApi(self.openapi_client).scim_schema_attribute_get()
+
+    async def scim_message_list(self) -> "OpenApiScimListResponse":
+        """List SCIM messages."""
+        from kanidm_openapi_client.api.scim_api import ScimApi
+
+        return await ScimApi(self.openapi_client).scim_message_get()
+
+    async def scim_message_ready_list(self) -> "OpenApiScimListResponse":
+        """List ready SCIM messages."""
+        from kanidm_openapi_client.api.scim_api import ScimApi
+
+        return await ScimApi(self.openapi_client).scim_message_ready_get()
 
     async def oauth2_rs_list(self) -> List[OAuth2Rs]:
         """gets the list of oauth2 resource servers"""

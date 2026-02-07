@@ -1,5 +1,4 @@
 import uuid
-from typing import Any
 
 import pytest
 from kanidm import KanidmClient
@@ -19,32 +18,21 @@ async def test_kanidm_client_starts_with_openapi_client(openapi_client: KanidmCl
     assert openapi_client.openapi_client.configuration.host == openapi_client.config.uri.rstrip("/")
 
 
-async def test_openapi_status_get(openapi_api_client: Any) -> None:
-    from kanidm_openapi_client.api.system_api import SystemApi
-
-    api = SystemApi(openapi_api_client)
-    response = await api.status_with_http_info()
-    assert response.status_code == 200
-    assert isinstance(response.data, bool)
-    assert response.data is True
+async def test_openapi_status_get(openapi_client: KanidmClient) -> None:
+    status = await openapi_client.status()
+    assert isinstance(status, bool)
+    assert status is True
 
 
-async def test_openapi_scim_application_list_get(openapi_api_client_authed: Any) -> None:
-    from kanidm_openapi_client.api.scim_api import ScimApi
-
-    api = ScimApi(openapi_api_client_authed)
-    response = await api.scim_application_get_with_http_info()
-    assert response.status_code == 200
-    assert response.data is not None
-    assert isinstance(getattr(response.data, "resources", None), list)
-    assert isinstance(getattr(response.data, "total_results", None), int)
+async def test_openapi_scim_application_list_get(openapi_authed_client: KanidmClient) -> None:
+    response = await openapi_authed_client.scim_application_list()
+    resources = getattr(response, "resources", None)
+    assert isinstance(resources, list)
+    assert isinstance(getattr(response, "total_results", None), int)
 
 
-async def test_openapi_scim_application_id_get_roundtrip(openapi_api_client_authed: Any) -> None:
-    from kanidm_openapi_client.api.scim_api import ScimApi
-
-    api = ScimApi(openapi_api_client_authed)
-    listing = await api.scim_application_get()
+async def test_openapi_scim_application_id_get_roundtrip(openapi_authed_client: KanidmClient) -> None:
+    listing = await openapi_authed_client.scim_application_list()
     resources = getattr(listing, "resources", None)
     assert isinstance(resources, list)
     if not resources:
@@ -52,92 +40,74 @@ async def test_openapi_scim_application_id_get_roundtrip(openapi_api_client_auth
 
     app_id = getattr(resources[0], "id", None)
     if not isinstance(app_id, str) or not app_id:
-        raise pytest.skip("SCIM application resource is missing an id")
+        pytest.skip("SCIM application resource is missing an id")
 
-    response = await api.scim_application_id_get_with_http_info(app_id)
-    assert response.status_code == 200
-    assert response.data is not None
-    assert getattr(response.data, "id", None) == app_id
+    response = await openapi_authed_client.scim_application_get(app_id)
+    assert getattr(response, "id", None) == app_id
 
 
-async def test_openapi_group_list_get(openapi_api_client_authed: Any) -> None:
-    from kanidm_openapi_client.api.v1_group_api import V1GroupApi
-
-    api = V1GroupApi(openapi_api_client_authed)
-    groups = await api.group_get()
+async def test_openapi_group_list_get(openapi_authed_client: KanidmClient) -> None:
+    groups = await openapi_authed_client.group_list()
     assert isinstance(groups, list)
     if groups:
-        assert hasattr(groups[0], "attrs")
+        assert isinstance(groups[0].name, str)
 
 
-async def test_openapi_group_get_by_id_roundtrip(openapi_api_client_authed: Any) -> None:
-    from kanidm_openapi_client.api.v1_group_api import V1GroupApi
-    from kanidm_openapi_client.models.entry import Entry
-
-    api = V1GroupApi(openapi_api_client_authed)
+async def test_openapi_group_get_by_id_roundtrip(openapi_authed_client: KanidmClient) -> None:
     name = _unique_name("openapitestgroup")
-    await api.group_post(Entry(attrs={"name": [name]}))
+    create_response = await openapi_authed_client.group_create(name)
+    assert create_response.status_code == 200
     try:
-        group = await api.group_id_get(name)
-        assert group.attrs.get("name", [None])[0] == name
+        group = await openapi_authed_client.group_get(name)
+        assert group.name == name
     finally:
-        await api.group_id_delete(name)
+        await openapi_authed_client.group_delete(name)
 
 
-async def test_openapi_person_list_get(openapi_api_client_authed: Any) -> None:
-    from kanidm_openapi_client.api.v1_person_api import V1PersonApi
-
-    api = V1PersonApi(openapi_api_client_authed)
-    persons = await api.person_get()
+async def test_openapi_person_list_get(openapi_authed_client: KanidmClient) -> None:
+    persons = await openapi_authed_client.person_account_list()
     assert isinstance(persons, list)
     if persons:
-        assert hasattr(persons[0], "attrs")
+        assert isinstance(persons[0].name, str)
 
 
-async def test_openapi_person_get_by_id_roundtrip(openapi_api_client_authed: Any) -> None:
-    from kanidm_openapi_client.api.v1_person_api import V1PersonApi
-    from kanidm_openapi_client.models.entry import Entry
-
-    api = V1PersonApi(openapi_api_client_authed)
+async def test_openapi_person_get_by_id_roundtrip(openapi_authed_client: KanidmClient) -> None:
     name = _unique_name("openapitestperson")
     display = f"OpenAPI Test {name}"
-    await api.person_post(Entry(attrs={"name": [name], "displayname": [display]}))
+    create_response = await openapi_authed_client.person_account_create(name=name, displayname=display)
+    assert create_response.status_code == 200
     try:
-        person = await api.person_id_get(name)
-        assert person.attrs.get("name", [None])[0] == name
-        assert person.attrs.get("displayname", [None])[0] == display
+        person = await openapi_authed_client.person_account_get(name)
+        assert person.name == name
+        assert person.displayname == display
     finally:
-        await api.person_id_delete(name)
+        await openapi_authed_client.person_account_delete(name)
 
 
-async def test_openapi_oauth2_list_get(openapi_api_client_authed: Any) -> None:
-    from kanidm_openapi_client.api.v1_oauth2_api import V1Oauth2Api
-
-    api = V1Oauth2Api(openapi_api_client_authed)
-    items = await api.oauth2_get()
+async def test_openapi_oauth2_list_get(openapi_authed_client: KanidmClient) -> None:
+    items = await openapi_authed_client.oauth2_rs_list()
     assert isinstance(items, list)
+    if items:
+        assert isinstance(items[0].name, str)
 
 
-async def test_openapi_service_account_list_get(openapi_api_client_authed: Any) -> None:
-    from kanidm_openapi_client.api.v1_service_account_api import V1ServiceAccountApi
-
-    api = V1ServiceAccountApi(openapi_api_client_authed)
-    accounts = await api.service_account_get()
+async def test_openapi_service_account_list_get(openapi_authed_client: KanidmClient) -> None:
+    accounts = await openapi_authed_client.service_account_list()
     assert isinstance(accounts, list)
+    if accounts:
+        assert isinstance(accounts[0].name, str)
 
 
-async def test_openapi_service_account_get_by_id_roundtrip(openapi_api_client_authed: Any) -> None:
-    from kanidm_openapi_client.api.v1_service_account_api import V1ServiceAccountApi
-    from kanidm_openapi_client.models.entry import Entry
-
-    api = V1ServiceAccountApi(openapi_api_client_authed)
+async def test_openapi_service_account_get_by_id_roundtrip(openapi_authed_client: KanidmClient) -> None:
     name = _unique_name("openapitestsa")
     display = f"OpenAPI Service {name}"
-    await api.service_account_post(Entry(attrs={"name": [name], "displayname": [display]}))
+    create_response = await openapi_authed_client.service_account_create(name=name, displayname=display)
+    assert create_response.status_code == 200
     try:
-        account = await api.service_account_id_get(name)
-        assert account.attrs.get("name", [None])[0] == name
-        if "displayname" in account.attrs:
-            assert account.attrs.get("displayname", [None])[0] == display
+        account = await openapi_authed_client.service_account_get(name)
+        assert account.name == name
+        assert account.spn == f"{name}@localhost"
+        if account.displayname is not None:
+            assert account.displayname == display
     finally:
-        await api.service_account_id_delete(name)
+        await openapi_authed_client.service_account_delete(name)
