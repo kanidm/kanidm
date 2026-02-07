@@ -115,13 +115,13 @@ ldapwhoami -H ldaps://idm.example.com -x -D "dn=token" -w "..."
 
 ### Compact API Tokens
 
-API Tokens issued by Kanidm internally are a JWS object that contains metadata about the service account that is being
-granted access. This means that the token can become quite long to encode the necessary information.
+API Tokens issued by Kanidm are a JWS object that contains metadata about the service account that is being
+granted access. To encode the necessary information, the token can be quite long.
 
-Some services however can't work with tokens that are excessively long and will truncate them inflight. This causes the
+Some services cannot work with tokens over a certain size and will truncate them during use. This causes the
 token to fail validation and Kanidm will refuse it.
 
-In these cases a compact token format can be used that creates a token which is 120 ascii characters or less.
+In these cases a compact token format can be used that creates a token which is 120 ASCII characters or less.
 
 > NOTE: Compact tokens do come with downsides, which is why they are not the default:
 >
