@@ -211,6 +211,12 @@ test/pykanidm/mypy: ## python library type checking
 test/pykanidm: ## run the kanidm python module test suite (mypy/lint/pytest)
 test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/lint
 
+.PHONY: test/pykanidm/coverage
+test/pykanidm/coverage: ## run the Kanidm Python module test suite with coverage
+	cd pykanidm && \
+	uv run coverage run -m pytest && \
+	uv run coverage html
+
 ########################################################################
 
 .PHONY: doc
