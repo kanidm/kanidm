@@ -25,10 +25,11 @@ from kanidm_openapi_client.models.auth_step import AuthStep
 from kanidm_openapi_client.models.auth_step_one_of import AuthStepOneOf
 from kanidm_openapi_client.models.auth_step_one_of2 import AuthStepOneOf2
 from kanidm_openapi_client.models.auth_step_one_of3 import AuthStepOneOf3
+from kanidm_openapi_client.models.entry import Entry as OpenApiEntry
 from pydantic import ValidationError
 import yarl
 
-from kanidm.models.group import Group, GroupList, OpenApiEntry, RawGroup
+from kanidm.models.group import Group, GroupList, RawGroup
 from kanidm.models.oauth2_rs import IOauth2Rs, OAuth2Rs, Oauth2RsList, RawOAuth2Rs
 from kanidm.models.person import (
     IPerson,
