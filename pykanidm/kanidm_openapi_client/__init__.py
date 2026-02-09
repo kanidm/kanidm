@@ -18,33 +18,32 @@ __version__ = "1.2.0"
 
 # Define package exports
 __all__ = [
+    "AccountApi",
+    "AuthApi",
+    "CredentialApi",
+    "DebugApi",
+    "DomainApi",
+    "GroupApi",
+    "GroupAttrApi",
+    "GroupUnixApi",
+    "JwkApi",
+    "Oauth2Api",
+    "PersonApi",
+    "PersonAttrApi",
+    "PersonCertificateApi",
+    "PersonCredentialApi",
+    "PersonRadiusApi",
+    "PersonSshPubkeysApi",
+    "PersonUnixApi",
+    "RawApi",
+    "RecycleBinApi",
+    "SchemaApi",
     "ScimApi",
+    "SelfApi",
+    "ServiceAccountApi",
+    "SyncAccountApi",
     "SystemApi",
     "UiApi",
-    "V1AccountApi",
-    "V1AuthApi",
-    "V1CredentialApi",
-    "V1DebugApi",
-    "V1DomainApi",
-    "V1GroupApi",
-    "V1GroupAttrApi",
-    "V1GroupUnixApi",
-    "V1JwkApi",
-    "V1Oauth2Api",
-    "V1PersonApi",
-    "V1PersonAttrApi",
-    "V1PersonCertificateApi",
-    "V1PersonCredentialApi",
-    "V1PersonRadiusApi",
-    "V1PersonSshPubkeysApi",
-    "V1PersonUnixApi",
-    "V1RawApi",
-    "V1RecycleBinApi",
-    "V1SchemaApi",
-    "V1SelfApi",
-    "V1ServiceAccountApi",
-    "V1SyncAccountApi",
-    "V1SystemApi",
     "ApiResponse",
     "ApiClient",
     "Configuration",
@@ -228,33 +227,32 @@ __all__ = [
 ]
 
 # import apis into sdk package
+from kanidm_openapi_client.api.account_api import AccountApi as AccountApi
+from kanidm_openapi_client.api.auth_api import AuthApi as AuthApi
+from kanidm_openapi_client.api.credential_api import CredentialApi as CredentialApi
+from kanidm_openapi_client.api.debug_api import DebugApi as DebugApi
+from kanidm_openapi_client.api.domain_api import DomainApi as DomainApi
+from kanidm_openapi_client.api.group_api import GroupApi as GroupApi
+from kanidm_openapi_client.api.group_attr_api import GroupAttrApi as GroupAttrApi
+from kanidm_openapi_client.api.group_unix_api import GroupUnixApi as GroupUnixApi
+from kanidm_openapi_client.api.jwk_api import JwkApi as JwkApi
+from kanidm_openapi_client.api.oauth2_api import Oauth2Api as Oauth2Api
+from kanidm_openapi_client.api.person_api import PersonApi as PersonApi
+from kanidm_openapi_client.api.person_attr_api import PersonAttrApi as PersonAttrApi
+from kanidm_openapi_client.api.person_certificate_api import PersonCertificateApi as PersonCertificateApi
+from kanidm_openapi_client.api.person_credential_api import PersonCredentialApi as PersonCredentialApi
+from kanidm_openapi_client.api.person_radius_api import PersonRadiusApi as PersonRadiusApi
+from kanidm_openapi_client.api.person_ssh_pubkeys_api import PersonSshPubkeysApi as PersonSshPubkeysApi
+from kanidm_openapi_client.api.person_unix_api import PersonUnixApi as PersonUnixApi
+from kanidm_openapi_client.api.raw_api import RawApi as RawApi
+from kanidm_openapi_client.api.recycle_bin_api import RecycleBinApi as RecycleBinApi
+from kanidm_openapi_client.api.schema_api import SchemaApi as SchemaApi
 from kanidm_openapi_client.api.scim_api import ScimApi as ScimApi
+from kanidm_openapi_client.api.self_api import SelfApi as SelfApi
+from kanidm_openapi_client.api.service_account_api import ServiceAccountApi as ServiceAccountApi
+from kanidm_openapi_client.api.sync_account_api import SyncAccountApi as SyncAccountApi
 from kanidm_openapi_client.api.system_api import SystemApi as SystemApi
 from kanidm_openapi_client.api.ui_api import UiApi as UiApi
-from kanidm_openapi_client.api.v1_account_api import V1AccountApi as V1AccountApi
-from kanidm_openapi_client.api.v1_auth_api import V1AuthApi as V1AuthApi
-from kanidm_openapi_client.api.v1_credential_api import V1CredentialApi as V1CredentialApi
-from kanidm_openapi_client.api.v1_debug_api import V1DebugApi as V1DebugApi
-from kanidm_openapi_client.api.v1_domain_api import V1DomainApi as V1DomainApi
-from kanidm_openapi_client.api.v1_group_api import V1GroupApi as V1GroupApi
-from kanidm_openapi_client.api.v1_group_attr_api import V1GroupAttrApi as V1GroupAttrApi
-from kanidm_openapi_client.api.v1_group_unix_api import V1GroupUnixApi as V1GroupUnixApi
-from kanidm_openapi_client.api.v1_jwk_api import V1JwkApi as V1JwkApi
-from kanidm_openapi_client.api.v1_oauth2_api import V1Oauth2Api as V1Oauth2Api
-from kanidm_openapi_client.api.v1_person_api import V1PersonApi as V1PersonApi
-from kanidm_openapi_client.api.v1_person_attr_api import V1PersonAttrApi as V1PersonAttrApi
-from kanidm_openapi_client.api.v1_person_certificate_api import V1PersonCertificateApi as V1PersonCertificateApi
-from kanidm_openapi_client.api.v1_person_credential_api import V1PersonCredentialApi as V1PersonCredentialApi
-from kanidm_openapi_client.api.v1_person_radius_api import V1PersonRadiusApi as V1PersonRadiusApi
-from kanidm_openapi_client.api.v1_person_ssh_pubkeys_api import V1PersonSshPubkeysApi as V1PersonSshPubkeysApi
-from kanidm_openapi_client.api.v1_person_unix_api import V1PersonUnixApi as V1PersonUnixApi
-from kanidm_openapi_client.api.v1_raw_api import V1RawApi as V1RawApi
-from kanidm_openapi_client.api.v1_recycle_bin_api import V1RecycleBinApi as V1RecycleBinApi
-from kanidm_openapi_client.api.v1_schema_api import V1SchemaApi as V1SchemaApi
-from kanidm_openapi_client.api.v1_self_api import V1SelfApi as V1SelfApi
-from kanidm_openapi_client.api.v1_service_account_api import V1ServiceAccountApi as V1ServiceAccountApi
-from kanidm_openapi_client.api.v1_sync_account_api import V1SyncAccountApi as V1SyncAccountApi
-from kanidm_openapi_client.api.v1_system_api import V1SystemApi as V1SystemApi
 
 # import ApiClient
 from kanidm_openapi_client.api_response import ApiResponse as ApiResponse

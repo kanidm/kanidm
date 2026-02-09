@@ -68,10 +68,10 @@ async def test_scim_application_get_wrapper_delegates_to_scim_api(mocker: Any) -
 
 
 @pytest.mark.asyncio
-async def test_check_token_valid_wrapper_delegates_to_v1_auth_api(mocker: Any) -> None:
+async def test_check_token_valid_wrapper_delegates_to_auth_api(mocker: Any) -> None:
     client = KanidmClient(uri="https://localhost:8443")
     method_mock = mocker.patch(
-        "kanidm_openapi_client.api.v1_auth_api.V1AuthApi.auth_valid_with_http_info",
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_valid_with_http_info",
         new=AsyncMock(return_value=mocker.Mock(status_code=200)),
     )
 
@@ -85,7 +85,7 @@ async def test_check_token_valid_wrapper_delegates_to_v1_auth_api(mocker: Any) -
 async def test_check_token_valid_wrapper_uses_explicit_token(mocker: Any) -> None:
     client = KanidmClient(uri="https://localhost:8443")
     method_mock = mocker.patch(
-        "kanidm_openapi_client.api.v1_auth_api.V1AuthApi.auth_valid_with_http_info",
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_valid_with_http_info",
         new=AsyncMock(return_value=mocker.Mock(status_code=200)),
     )
 
@@ -102,7 +102,7 @@ async def test_check_token_valid_wrapper_uses_explicit_token(mocker: Any) -> Non
 async def test_check_token_valid_wrapper_returns_false_on_auth_error(mocker: Any) -> None:
     client = KanidmClient(uri="https://localhost:8443")
     method_mock = mocker.patch(
-        "kanidm_openapi_client.api.v1_auth_api.V1AuthApi.auth_valid_with_http_info",
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_valid_with_http_info",
         new=AsyncMock(side_effect=ApiException(status=401, reason="Unauthorized")),
     )
 
@@ -117,7 +117,7 @@ async def test_check_token_valid_wrapper_syncs_openapi_token_for_default_token(m
     client = KanidmClient(uri="https://localhost:8443", token="token-from-config")
     sync_mock = mocker.spy(client, "_sync_openapi_access_token")
     method_mock = mocker.patch(
-        "kanidm_openapi_client.api.v1_auth_api.V1AuthApi.auth_valid_with_http_info",
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_valid_with_http_info",
         new=AsyncMock(return_value=mocker.Mock(status_code=200)),
     )
 
@@ -129,7 +129,7 @@ async def test_check_token_valid_wrapper_syncs_openapi_token_for_default_token(m
 
 
 @pytest.mark.asyncio
-async def test_auth_init_wrapper_delegates_to_v1_auth_api(mocker: Any) -> None:
+async def test_auth_init_wrapper_delegates_to_auth_api(mocker: Any) -> None:
     client = KanidmClient(uri="https://localhost:8443")
     response = mocker.Mock(
         status_code=200,
@@ -141,7 +141,7 @@ async def test_auth_init_wrapper_delegates_to_v1_auth_api(mocker: Any) -> None:
         to_dict=mocker.Mock(return_value={"sessionid": "session-id", "state": {"choose": ["password"]}}),
     )
     method_mock = mocker.patch(
-        "kanidm_openapi_client.api.v1_auth_api.V1AuthApi.auth_post_with_http_info",
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_with_http_info",
         new=AsyncMock(return_value=response),
     )
 
@@ -160,7 +160,7 @@ async def test_auth_init_wrapper_delegates_to_v1_auth_api(mocker: Any) -> None:
 async def test_auth_init_wrapper_raises_auth_init_failed_on_openapi_error(mocker: Any) -> None:
     client = KanidmClient(uri="https://localhost:8443")
     method_mock = mocker.patch(
-        "kanidm_openapi_client.api.v1_auth_api.V1AuthApi.auth_post_with_http_info",
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_with_http_info",
         new=AsyncMock(side_effect=ApiException(status=401, reason="Unauthorized")),
     )
 

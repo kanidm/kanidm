@@ -37,7 +37,7 @@ pub(crate) async fn image_get(DomainInfo(domain_info): DomainInfo) -> Response {
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/domain",
+    tag = "domain",
     operation_id = "domain_image_delete"
 )]
 pub(crate) async fn image_delete(
@@ -61,7 +61,7 @@ pub(crate) async fn image_delete(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/domain",
+    tag = "domain",
     operation_id = "domain_image_post"
 )]
 /// API endpoint for creating/replacing the image associated with an OAuth2 Resource Server.

@@ -15,7 +15,7 @@ import aiohttp
 import aiohttp.client
 from kanidm_openapi_client.api.scim_api import ScimApi
 from kanidm_openapi_client.api.system_api import SystemApi
-from kanidm_openapi_client.api.v1_auth_api import V1AuthApi
+from kanidm_openapi_client.api.auth_api import AuthApi
 from kanidm_openapi_client.exceptions import ApiException as OpenApiException
 from kanidm_openapi_client.models.auth_request import AuthRequest
 from kanidm_openapi_client.models.auth_step import AuthStep
@@ -198,7 +198,7 @@ class KanidmClient:
         else:
             self._sync_openapi_access_token()
         try:
-            response = await V1AuthApi(self.openapi_client).auth_valid_with_http_info(_request_auth=request_auth)
+            response = await AuthApi(self.openapi_client).auth_valid_with_http_info(_request_auth=request_auth)
             return response.status_code == 200
         except OpenApiException as error:
             self.logger.debug("Token validation failed via OpenAPI client: %s", error)
@@ -338,7 +338,7 @@ class KanidmClient:
 
         init_auth = AuthRequest(step=AuthStep(AuthStepOneOf(init=username)))
         try:
-            response = await V1AuthApi(self.openapi_client).auth_post_with_http_info(init_auth)
+            response = await AuthApi(self.openapi_client).auth_post_with_http_info(init_auth)
         except OpenApiException as error:
             self.logger.debug("Failed to authenticate via OpenAPI client: %s", error)
             # TODO: mock test auth_init raises AuthInitFailed

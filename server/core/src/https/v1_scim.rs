@@ -31,7 +31,7 @@ const DEFAULT_SCIM_SYNC_BYTES: usize = 1024 * 1024 * 32;
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
+    tag = "sync_account",
     operation_id = "sync_account_get"
 )]
 /// Get all? the sync accounts.
@@ -52,7 +52,7 @@ pub async fn sync_account_get(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
+    tag = "sync_account",
     operation_id = "sync_account_post"
 )]
 pub async fn sync_account_post(
@@ -73,7 +73,7 @@ pub async fn sync_account_post(
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
+    tag = "sync_account",
 )]
 /// Get the details of a sync account
 pub async fn sync_account_id_get(
@@ -94,7 +94,7 @@ pub async fn sync_account_id_get(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
+    tag = "sync_account",
     operation_id = "sync_account_id_patch"
 )]
 /// Modify a sync account in-place
@@ -123,7 +123,7 @@ pub async fn sync_account_id_patch(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
+    tag = "sync_account",
     operation_id = "sync_account_id_finalise_get"
 )]
 pub async fn sync_account_id_finalise_get(
@@ -147,7 +147,7 @@ pub async fn sync_account_id_finalise_get(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
+    tag = "sync_account",
     operation_id = "sync_account_id_terminate_get"
 )]
 pub async fn sync_account_id_terminate_get(
@@ -172,7 +172,7 @@ pub async fn sync_account_id_terminate_get(
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
+    tag = "sync_account",
     operation_id = "sync_account_token_post"
 )]
 pub async fn sync_account_token_post(
@@ -197,7 +197,7 @@ pub async fn sync_account_token_post(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
+    tag = "sync_account",
     operation_id = "sync_account_token_delete"
 )]
 pub async fn sync_account_token_delete(
@@ -222,7 +222,7 @@ pub async fn sync_account_token_delete(
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
+    tag = "sync_account",
     operation_id = "sync_account_id_attr_get"
 )]
 pub async fn sync_account_id_attr_get(
@@ -243,7 +243,7 @@ pub async fn sync_account_id_attr_get(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
+    tag = "sync_account",
     operation_id = "sync_account_id_attr_put"
 )]
 pub async fn sync_account_id_attr_put(
