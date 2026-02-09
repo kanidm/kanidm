@@ -28,7 +28,7 @@ from kanidm_openapi_client.models.auth_step_one_of3 import AuthStepOneOf3
 from pydantic import ValidationError
 import yarl
 
-from kanidm.models.group import Group, GroupList, IGroup, RawGroup
+from kanidm.models.group import Group, GroupList, OpenApiEntry, RawGroup
 from kanidm.models.oauth2_rs import IOauth2Rs, OAuth2Rs, Oauth2RsList, RawOAuth2Rs
 from kanidm.models.person import (
     IPerson,
@@ -337,6 +337,30 @@ class KanidmClient:
 
         return await self._call(method="PUT", path=path, headers=headers, json=json, timeout=timeout)
 
+    async def _auth_post_compat(self, auth_request: AuthRequest, headers: Optional[Dict[str, str]] = None) -> ClientResponse[Any]:
+        """POST /v1/auth via OpenAPI without model deserialization."""
+        response = await AuthApi(self.openapi_client).auth_post_without_preload_content(
+            auth_request,
+            _headers=headers,
+        )
+
+        raw_data = await response.read()
+        raw_content = raw_data.decode("utf-8", errors="replace") if raw_data else None
+        response_data: Optional[Dict[str, Any]] = {}
+        if raw_data:
+            try:
+                decoded = json_lib.loads(raw_data)
+                response_data = decoded if isinstance(decoded, dict) else {}
+            except json_lib.JSONDecodeError:
+                response_data = None
+
+        return ClientResponse[Any](
+            content=raw_content,
+            data=response_data,
+            headers=dict(response.headers),
+            status_code=response.status,
+        )
+
     async def auth_init(self, username: str, update_internal_auth_token: bool = False) -> AuthInitResponse:
         """init step, starts the auth session, sets the class-local session ID"""
         self.logger.debug("auth_init called")
@@ -394,28 +418,27 @@ class KanidmClient:
 
         try:
             begin_auth = AuthRequest(step=AuthStep(AuthStepOneOf2(begin=AuthMech(method))))
-            response = await AuthApi(self.openapi_client).auth_post_with_http_info(begin_auth, _headers=headers)
+            response = await self._auth_post_compat(begin_auth, headers=headers)
         except (OpenApiException, ValueError) as error:
             raise AuthBeginFailed(str(error)) from error
 
         if response.status_code != 200:
-            raw_content = response.raw_data.decode("utf-8", errors="replace") if response.raw_data else None
-            raise AuthBeginFailed(raw_content)
+            raise AuthBeginFailed(response.content)
 
         response_headers: Dict[str, Any] = dict(response.headers or {})
         header_sessionid = next((value for key, value in response_headers.items() if key.lower() == K_AUTH_SESSION_ID), None)
-        payload_sessionid = str(response.data.sessionid)
-        resolved_sessionid = header_sessionid or payload_sessionid
-        response_headers.setdefault(K_AUTH_SESSION_ID, resolved_sessionid)
+        data = dict(response.data or {})
+        payload_sessionid = data.get("sessionid")
+        resolved_sessionid = header_sessionid or payload_sessionid or ""
+        if resolved_sessionid:
+            response_headers.setdefault(K_AUTH_SESSION_ID, resolved_sessionid)
 
-        if update_internal_auth_token:
+        if update_internal_auth_token and resolved_sessionid:
             self._set_auth_token(resolved_sessionid)
 
-        data = response.data.to_dict()
         data["sessionid"] = resolved_sessionid
-        raw_content = response.raw_data.decode("utf-8", errors="replace") if response.raw_data else None
         typed_response = ClientResponse[Any](
-            content=raw_content,
+            content=response.content,
             data=data,
             headers=response_headers,
             status_code=response.status_code,
@@ -496,23 +519,22 @@ class KanidmClient:
                     )
                 )
             )
-            response = await AuthApi(self.openapi_client).auth_post_with_http_info(cred_auth, _headers=headers)
+            response = await self._auth_post_compat(cred_auth, headers=headers)
         except (OpenApiException, ValueError) as error:
             raise AuthCredFailed(str(error)) from error
 
         if response.status_code != 200:
             # TODO: write test coverage auth_step_password raises AuthCredFailed
-            raw_content = response.raw_data.decode("utf-8", errors="replace") if response.raw_data else None
-            self.logger.debug("Failed to authenticate, response: %s", raw_content)
+            self.logger.debug("Failed to authenticate, response: %s", response.content)
             raise AuthCredFailed("Failed password authentication!")
 
         response_headers: Dict[str, Any] = dict(response.headers or {})
         header_sessionid = next((value for key, value in response_headers.items() if key.lower() == K_AUTH_SESSION_ID), None)
-        data = response.data.to_dict()
-        data["sessionid"] = header_sessionid or str(response.data.sessionid)
-        raw_content = response.raw_data.decode("utf-8", errors="replace") if response.raw_data else None
+        data = dict(response.data or {})
+        payload_sessionid = data.get("sessionid")
+        data["sessionid"] = header_sessionid or (str(payload_sessionid) if payload_sessionid is not None else None)
         typed_response = ClientResponse[Any](
-            content=raw_content,
+            content=response.content,
             data=data,
             headers=response_headers,
             status_code=response.status_code,
@@ -778,7 +800,7 @@ class KanidmClient:
     async def group_get(self, name: str) -> Group:
         """Get a group"""
         endpoint = f"{Endpoints.GROUP}/{name}"
-        response: ClientResponse[IGroup] = await self.call_get(endpoint)
+        response: ClientResponse[OpenApiEntry] = await self.call_get(endpoint)
         if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get group: {response.content}")
         return RawGroup.model_validate(response.data).as_group

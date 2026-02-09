@@ -174,16 +174,12 @@ async def test_auth_init_wrapper_raises_auth_init_failed_on_openapi_error(mocker
 async def test_auth_begin_wrapper_delegates_to_auth_api(mocker: Any) -> None:
     client = KanidmClient(uri="https://localhost:8443")
     response = mocker.Mock(
-        status_code=200,
+        status=200,
         headers={"x-kanidm-auth-session-id": "session-id"},
-        raw_data=b'{"sessionid":"session-id","state":{"continue":["password"]}}',
-    )
-    response.data = mocker.Mock(
-        sessionid="session-id",
-        to_dict=mocker.Mock(return_value={"sessionid": "session-id", "state": {"continue": ["password"]}}),
+        read=AsyncMock(return_value=b'{"sessionid":"session-id","state":{"continue":["password"]}}'),
     )
     method_mock = mocker.patch(
-        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_with_http_info",
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_without_preload_content",
         new=AsyncMock(return_value=response),
     )
 
@@ -204,7 +200,7 @@ async def test_auth_begin_wrapper_delegates_to_auth_api(mocker: Any) -> None:
 async def test_auth_begin_wrapper_raises_auth_begin_failed_on_openapi_error(mocker: Any) -> None:
     client = KanidmClient(uri="https://localhost:8443")
     method_mock = mocker.patch(
-        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_with_http_info",
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_without_preload_content",
         new=AsyncMock(side_effect=ApiException(status=400, reason="Bad Request")),
     )
 
@@ -218,16 +214,12 @@ async def test_auth_begin_wrapper_raises_auth_begin_failed_on_openapi_error(mock
 async def test_auth_step_password_wrapper_delegates_to_auth_api(mocker: Any) -> None:
     client = KanidmClient(uri="https://localhost:8443")
     response = mocker.Mock(
-        status_code=200,
+        status=200,
         headers={"x-kanidm-auth-session-id": "session-id"},
-        raw_data=b'{"sessionid":"session-id","state":{"success":"issued-token"}}',
-    )
-    response.data = mocker.Mock(
-        sessionid="session-id",
-        to_dict=mocker.Mock(return_value={"sessionid": "session-id", "state": {"success": "issued-token"}}),
+        read=AsyncMock(return_value=b'{"sessionid":"session-id","state":{"success":"issued-token"}}'),
     )
     method_mock = mocker.patch(
-        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_with_http_info",
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_without_preload_content",
         new=AsyncMock(return_value=response),
     )
 
@@ -253,7 +245,7 @@ async def test_auth_step_password_wrapper_delegates_to_auth_api(mocker: Any) -> 
 async def test_auth_step_password_wrapper_raises_auth_cred_failed_on_openapi_error(mocker: Any) -> None:
     client = KanidmClient(uri="https://localhost:8443")
     method_mock = mocker.patch(
-        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_with_http_info",
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_without_preload_content",
         new=AsyncMock(side_effect=ApiException(status=401, reason="Unauthorized")),
     )
 
@@ -261,3 +253,4 @@ async def test_auth_step_password_wrapper_raises_auth_cred_failed_on_openapi_err
         await client.auth_step_password(password="example-password")
 
     method_mock.assert_awaited_once()
+
