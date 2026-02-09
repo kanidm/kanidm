@@ -10,7 +10,6 @@ def main() -> None:
     docs_dir = pykanidm_dir / "docs"
     readme_src = pykanidm_dir / "README.md"
     target_index = Path("index.md")
-    # target_readme = Path("pykanidm") / "README.md"
     if not readme_src.exists():
         raise FileNotFoundError(readme_src)
 
@@ -19,12 +18,7 @@ def main() -> None:
         fp.write(readme_text)
         print(f"Generated README.md for documentation at {docs_dir / target_index}", file=sys.stderr)
 
-    # with mkdocs_gen_files.open(target_readme, "w", encoding="utf-8") as fp:
-    #     fp.write(readme_text)
-    #     print(f"Generated README.md for documentation at {docs_dir / target_readme}", file=sys.stderr)
-
     mkdocs_gen_files.set_edit_path(target_index, readme_src)
-    # mkdocs_gen_files.set_edit_path(target_readme, readme_src)
 
     workspace_dir = pykanidm_dir.parent
     logo_small = workspace_dir / "artwork/logo-small.png"
