@@ -23,6 +23,15 @@ DEFAULT_GENERATOR_IMAGE = "openapitools/openapi-generator-cli"
 DEFAULT_LIBRARY = "asyncio"
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / DEFAULT_PACKAGE
 DEFAULT_CA_PATH_ENV = os.getenv("KANIDM_CA_PATH")
+MODEL_TO_JSON_OLD_SNIPPET = """    def to_json(self) -> str:
+        \"\"\"Returns the JSON representation of the model using alias\"\"\"
+        # TODO: pydantic v2: use .model_dump_json(by_alias=True, exclude_unset=True) instead
+        return json.dumps(self.to_dict())
+"""
+MODEL_TO_JSON_NEW_SNIPPET = """    def to_json(self) -> str:
+        \"\"\"Returns the JSON representation of the model using alias\"\"\"
+        return self.model_dump_json(by_alias=True, exclude_unset=True)
+"""
 
 
 def _load_docker_module() -> Any:
@@ -131,6 +140,26 @@ def _write_notice(target: Path, spec_source: str) -> None:
     )
 
 
+def _patch_generated_to_json_model_dump_json(package_dir: Path) -> int:
+    """Patch generated model `to_json` methods to use pydantic v2 model_dump_json."""
+    models_dir = package_dir / "models"
+    if not models_dir.exists():
+        return 0
+
+    replacements = 0
+    for model_file in models_dir.glob("*.py"):
+        source = model_file.read_text(encoding="utf-8")
+        count = source.count(MODEL_TO_JSON_OLD_SNIPPET)
+        if count == 0:
+            continue
+
+        patched = source.replace(MODEL_TO_JSON_OLD_SNIPPET, MODEL_TO_JSON_NEW_SNIPPET)
+        model_file.write_text(patched, encoding="utf-8")
+        replacements += count
+
+    return replacements
+
+
 def generate_openapi_client(
     *,
     spec_url: str = DEFAULT_SPEC_URL,
@@ -174,6 +203,7 @@ def generate_openapi_client(
         if output_dir.exists():
             shutil.rmtree(output_dir)
         shutil.copytree(generated_pkg, output_dir)
+        _patch_generated_to_json_model_dump_json(output_dir)
         _write_notice(output_dir, spec_source=spec_source)
 
     return output_dir
