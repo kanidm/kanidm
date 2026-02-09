@@ -204,7 +204,7 @@ fn create_home_directory(
 
     let Some(alias) = info.alias.as_ref() else {
         // No alias for the home dir, lets go.
-        debug!("No home directory alias present, sucess.");
+        debug!("No home directory alias present, success.");
         return Ok(());
     };
 
