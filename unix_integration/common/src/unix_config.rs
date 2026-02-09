@@ -242,6 +242,7 @@ impl Display for UnixdConfig {
         writeln!(f, "unix_sock_timeout: {}", self.unix_sock_timeout)?;
         writeln!(f, "cache_timeout: {}", self.cache_timeout)?;
         writeln!(f, "default_shell: {}", self.default_shell)?;
+        writeln!(f, "home_strategy: {:?}", self.home_strategy)?;
         writeln!(f, "home_prefix: {:?}", self.home_prefix)?;
         match self.home_mount_prefix.as_deref() {
             Some(val) => writeln!(f, "home_mount_prefix: {val:?}")?,
