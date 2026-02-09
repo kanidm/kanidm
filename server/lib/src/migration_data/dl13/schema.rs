@@ -1240,6 +1240,16 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6: SchemaClass = SchemaClass 
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_HS256_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_HS256,
+    name: EntryClass::KeyObjectJwtHs256.into(),
+    description: "A marker class indicating that this keyobject must provide jwt hs256 capability.".to_string(),
+    systemsupplements: vec![
+        EntryClass::KeyObject.into(),
+    ],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_RS256: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_RS256,
     name: EntryClass::KeyObjectJwtRs256.into(),

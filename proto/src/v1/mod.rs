@@ -107,6 +107,8 @@ pub struct ApiTokenGenerate {
     #[serde(with = "time::serde::timestamp::option")]
     pub expiry: Option<time::OffsetDateTime>,
     pub read_write: bool,
+    #[serde(default)]
+    pub compact: bool,
 }
 
 /* ===== low level proto types ===== */
