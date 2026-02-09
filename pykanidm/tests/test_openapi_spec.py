@@ -161,9 +161,10 @@ async def test_openapi_scim_application_id_get_endpoint_runtime(openapi_authed_c
     if not resources:
         pytest.skip("No SCIM applications available to test /scim/v1/Application/{id}")
 
-    application_id = getattr(resources[0], "id", None)
-    if not isinstance(application_id, str) or not application_id:
+    raw_application_id = getattr(resources[0], "id", None)
+    if not isinstance(raw_application_id, str) or not raw_application_id:
         pytest.skip("SCIM application resource is missing id")
+    application_id = str(raw_application_id)
 
     response = await openapi_authed_client.scim_application_get(application_id)
     assert getattr(response, "id", None) == application_id

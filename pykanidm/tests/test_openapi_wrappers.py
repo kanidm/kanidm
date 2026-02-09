@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 from kanidm import KanidmClient
 from kanidm_openapi_client.exceptions import ApiException
-from kanidm.exceptions import AuthInitFailed
+from kanidm.exceptions import AuthBeginFailed, AuthCredFailed, AuthInitFailed
 
 
 @pytest.mark.asyncio
@@ -166,5 +166,98 @@ async def test_auth_init_wrapper_raises_auth_init_failed_on_openapi_error(mocker
 
     with pytest.raises(AuthInitFailed):
         await client.auth_init("idm_admin")
+
+    method_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_auth_begin_wrapper_delegates_to_auth_api(mocker: Any) -> None:
+    client = KanidmClient(uri="https://localhost:8443")
+    response = mocker.Mock(
+        status_code=200,
+        headers={"x-kanidm-auth-session-id": "session-id"},
+        raw_data=b'{"sessionid":"session-id","state":{"continue":["password"]}}',
+    )
+    response.data = mocker.Mock(
+        sessionid="session-id",
+        to_dict=mocker.Mock(return_value={"sessionid": "session-id", "state": {"continue": ["password"]}}),
+    )
+    method_mock = mocker.patch(
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_with_http_info",
+        new=AsyncMock(return_value=response),
+    )
+
+    result = await client.auth_begin(method="password", sessionid="session-id")
+
+    assert result.status_code == 200
+    assert result.data is not None
+    assert result.data["sessionid"] == "session-id"
+    method_mock.assert_awaited_once()
+    args = method_mock.await_args.args
+    kwargs = method_mock.await_args.kwargs
+    assert len(args) == 1
+    assert args[0].to_dict() == {"step": {"begin": "password"}}
+    assert kwargs == {"_headers": {"x-kanidm-auth-session-id": "session-id"}}
+
+
+@pytest.mark.asyncio
+async def test_auth_begin_wrapper_raises_auth_begin_failed_on_openapi_error(mocker: Any) -> None:
+    client = KanidmClient(uri="https://localhost:8443")
+    method_mock = mocker.patch(
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_with_http_info",
+        new=AsyncMock(side_effect=ApiException(status=400, reason="Bad Request")),
+    )
+
+    with pytest.raises(AuthBeginFailed):
+        await client.auth_begin("password")
+
+    method_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_auth_step_password_wrapper_delegates_to_auth_api(mocker: Any) -> None:
+    client = KanidmClient(uri="https://localhost:8443")
+    response = mocker.Mock(
+        status_code=200,
+        headers={"x-kanidm-auth-session-id": "session-id"},
+        raw_data=b'{"sessionid":"session-id","state":{"success":"issued-token"}}',
+    )
+    response.data = mocker.Mock(
+        sessionid="session-id",
+        to_dict=mocker.Mock(return_value={"sessionid": "session-id", "state": {"success": "issued-token"}}),
+    )
+    method_mock = mocker.patch(
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_with_http_info",
+        new=AsyncMock(return_value=response),
+    )
+
+    result = await client.auth_step_password(
+        password="example-password",
+        sessionid="session-id",
+        update_internal_auth_token=True,
+    )
+
+    assert result.state is not None
+    assert result.state.success == "issued-token"
+    assert result.sessionid == "issued-token"
+    assert client.config.auth_token == "issued-token"
+    method_mock.assert_awaited_once()
+    args = method_mock.await_args.args
+    kwargs = method_mock.await_args.kwargs
+    assert len(args) == 1
+    assert args[0].to_dict() == {"step": {"cred": {"password": "example-password"}}}
+    assert kwargs == {"_headers": {"x-kanidm-auth-session-id": "session-id"}}
+
+
+@pytest.mark.asyncio
+async def test_auth_step_password_wrapper_raises_auth_cred_failed_on_openapi_error(mocker: Any) -> None:
+    client = KanidmClient(uri="https://localhost:8443")
+    method_mock = mocker.patch(
+        "kanidm_openapi_client.api.auth_api.AuthApi.auth_post_with_http_info",
+        new=AsyncMock(side_effect=ApiException(status=401, reason="Unauthorized")),
+    )
+
+    with pytest.raises(AuthCredFailed):
+        await client.auth_step_password(password="example-password")
 
     method_mock.assert_awaited_once()

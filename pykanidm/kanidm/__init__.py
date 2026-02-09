@@ -17,9 +17,14 @@ from kanidm_openapi_client.api.scim_api import ScimApi
 from kanidm_openapi_client.api.system_api import SystemApi
 from kanidm_openapi_client.api.auth_api import AuthApi
 from kanidm_openapi_client.exceptions import ApiException as OpenApiException
+from kanidm_openapi_client.models.auth_credential import AuthCredential
+from kanidm_openapi_client.models.auth_credential_one_of import AuthCredentialOneOf
+from kanidm_openapi_client.models.auth_mech import AuthMech
 from kanidm_openapi_client.models.auth_request import AuthRequest
 from kanidm_openapi_client.models.auth_step import AuthStep
 from kanidm_openapi_client.models.auth_step_one_of import AuthStepOneOf
+from kanidm_openapi_client.models.auth_step_one_of2 import AuthStepOneOf2
+from kanidm_openapi_client.models.auth_step_one_of3 import AuthStepOneOf3
 from pydantic import ValidationError
 import yarl
 
@@ -381,42 +386,51 @@ class KanidmClient:
         update_internal_auth_token: bool = False,
     ) -> ClientResponse[Any]:
         """the 'begin' step"""
-
-        begin_auth = {
-            "step": {
-                "begin": method,
-            },
-        }
-
+        headers: Optional[Dict[str, str]] = None
         if sessionid is not None:
             headers = {K_AUTH_SESSION_ID: sessionid}
         elif self.config.auth_token is not None:
             headers = {K_AUTH_SESSION_ID: self.config.auth_token}
 
-        response = await self.call_post(
-            Endpoints.AUTH,
-            json=begin_auth,
-            headers=headers,
-        )
+        try:
+            begin_auth = AuthRequest(step=AuthStep(AuthStepOneOf2(begin=AuthMech(method))))
+            response = await AuthApi(self.openapi_client).auth_post_with_http_info(begin_auth, _headers=headers)
+        except (OpenApiException, ValueError) as error:
+            raise AuthBeginFailed(str(error)) from error
+
         if response.status_code != 200:
-            # TODO: mock test for auth_begin raises AuthBeginFailed
-            raise AuthBeginFailed(response.content)
-        if response.data is not None:
-            response.data["sessionid"] = response.headers.get(K_AUTH_SESSION_ID, "")
+            raw_content = response.raw_data.decode("utf-8", errors="replace") if response.raw_data else None
+            raise AuthBeginFailed(raw_content)
+
+        response_headers: Dict[str, Any] = dict(response.headers or {})
+        header_sessionid = next((value for key, value in response_headers.items() if key.lower() == K_AUTH_SESSION_ID), None)
+        payload_sessionid = str(response.data.sessionid)
+        resolved_sessionid = header_sessionid or payload_sessionid
+        response_headers.setdefault(K_AUTH_SESSION_ID, resolved_sessionid)
 
         if update_internal_auth_token:
-            self._set_auth_token(response.headers.get(K_AUTH_SESSION_ID, ""))
+            self._set_auth_token(resolved_sessionid)
 
-        self.logger.debug(json_lib.dumps(response.data, indent=4))
+        data = response.data.to_dict()
+        data["sessionid"] = resolved_sessionid
+        raw_content = response.raw_data.decode("utf-8", errors="replace") if response.raw_data else None
+        typed_response = ClientResponse[Any](
+            content=raw_content,
+            data=data,
+            headers=response_headers,
+            status_code=response.status_code,
+        )
+
+        self.logger.debug(json_lib.dumps(data, indent=4))
 
         try:
-            retobject = AuthBeginResponse.model_validate(response.data)
+            retobject = AuthBeginResponse.model_validate(data)
         except ValidationError as exc:
             self.logger.debug(repr(exc.errors()[0]))
             raise exc
 
-        retobject.response = response
-        return response
+        retobject.response = typed_response
+        return typed_response
 
     async def authenticate_password(
         self,
@@ -468,21 +482,44 @@ class KanidmClient:
         if password is None:
             raise ValueError("Password has to be passed to auth_step_password or in self.password!")
 
+        headers: Optional[Dict[str, str]] = None
         if sessionid is not None:
             headers = {K_AUTH_SESSION_ID: sessionid}
         elif self.config.auth_token is not None:
             headers = {K_AUTH_SESSION_ID: self.config.auth_token}
 
-        cred_auth = {"step": {"cred": {"password": password}}}
-        response = await self.call_post(path=Endpoints.AUTH, json=cred_auth, headers=headers)
+        try:
+            cred_auth = AuthRequest(
+                step=AuthStep(
+                    AuthStepOneOf3(
+                        cred=AuthCredential(AuthCredentialOneOf(password=password)),
+                    )
+                )
+            )
+            response = await AuthApi(self.openapi_client).auth_post_with_http_info(cred_auth, _headers=headers)
+        except (OpenApiException, ValueError) as error:
+            raise AuthCredFailed(str(error)) from error
 
         if response.status_code != 200:
             # TODO: write test coverage auth_step_password raises AuthCredFailed
-            self.logger.debug("Failed to authenticate, response: %s", response.content)
+            raw_content = response.raw_data.decode("utf-8", errors="replace") if response.raw_data else None
+            self.logger.debug("Failed to authenticate, response: %s", raw_content)
             raise AuthCredFailed("Failed password authentication!")
 
-        result = AuthState.model_validate(response.data)
-        result.response = response
+        response_headers: Dict[str, Any] = dict(response.headers or {})
+        header_sessionid = next((value for key, value in response_headers.items() if key.lower() == K_AUTH_SESSION_ID), None)
+        data = response.data.to_dict()
+        data["sessionid"] = header_sessionid or str(response.data.sessionid)
+        raw_content = response.raw_data.decode("utf-8", errors="replace") if response.raw_data else None
+        typed_response = ClientResponse[Any](
+            content=raw_content,
+            data=data,
+            headers=response_headers,
+            status_code=response.status_code,
+        )
+
+        result = AuthState.model_validate(data)
+        result.response = typed_response
 
         if result.state is None:
             raise AuthCredFailed
