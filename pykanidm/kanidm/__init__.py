@@ -13,6 +13,13 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 import aiohttp.client
+from kanidm_openapi_client.api.scim_api import ScimApi
+from kanidm_openapi_client.api.system_api import SystemApi
+from kanidm_openapi_client.api.v1_auth_api import V1AuthApi
+from kanidm_openapi_client.exceptions import ApiException as OpenApiException
+from kanidm_openapi_client.models.auth_request import AuthRequest
+from kanidm_openapi_client.models.auth_step import AuthStep
+from kanidm_openapi_client.models.auth_step_one_of import AuthStepOneOf
 from pydantic import ValidationError
 import yarl
 
@@ -179,19 +186,23 @@ class KanidmClient:
 
     async def check_token_valid(self, token: Optional[str] = None) -> bool:
         """checks if a given token is valid, or the local one if you don't pass it"""
-        endpoint = f"{Endpoints.AUTH}/valid"
+        request_auth = None
         if token is not None:
-            headers = {
-                "authorization": f"Bearer {token}",
-                "content-type": "application/json",
+            request_auth = {
+                "type": "bearer",
+                "in": "header",
+                "format": "JWT",
+                "key": "Authorization",
+                "value": f"Bearer {token}",
             }
         else:
-            headers = None
-        result = await self.call_get(endpoint, headers=headers)
-        self.logger.debug(result)
-        if result.status_code == 200:
-            return True
-        return False
+            self._sync_openapi_access_token()
+        try:
+            response = await V1AuthApi(self.openapi_client).auth_valid_with_http_info(_request_auth=request_auth)
+            return response.status_code == 200
+        except OpenApiException as error:
+            self.logger.debug("Token validation failed via OpenAPI client: %s", error)
+            return False
 
     @lru_cache()
     def get_path_uri(self, path: str) -> str:
@@ -323,35 +334,44 @@ class KanidmClient:
 
     async def auth_init(self, username: str, update_internal_auth_token: bool = False) -> AuthInitResponse:
         """init step, starts the auth session, sets the class-local session ID"""
-        init_auth = {"step": {"init": username}}
-
         self.logger.debug("auth_init called")
 
-        response = await self.call_post(
-            path=Endpoints.AUTH,
-            json=init_auth,
-        )
-        if response.status_code != 200:
-            self.logger.debug(
-                "Failed to authenticate, response from server: %s",
-                response.content,
-            )
+        init_auth = AuthRequest(step=AuthStep(AuthStepOneOf(init=username)))
+        try:
+            response = await V1AuthApi(self.openapi_client).auth_post_with_http_info(init_auth)
+        except OpenApiException as error:
+            self.logger.debug("Failed to authenticate via OpenAPI client: %s", error)
             # TODO: mock test auth_init raises AuthInitFailed
-            raise AuthInitFailed(response.content)
+            raise AuthInitFailed(str(error)) from error
 
-        if K_AUTH_SESSION_ID not in response.headers:
-            self.logger.debug("response.content: %s", response.content)
-            self.logger.debug("response.headers: %s", response.headers)
-            raise ValueError(f"Missing {K_AUTH_SESSION_ID} header in init auth response: {response.headers}")
-        else:
-            self._set_auth_token(response.headers[K_AUTH_SESSION_ID])
+        if response.status_code != 200:
+            raw_content = response.raw_data.decode("utf-8", errors="replace") if response.raw_data else None
+            self.logger.debug("Failed to authenticate, response from server: %s", raw_content)
+            # TODO: mock test auth_init raises AuthInitFailed
+            raise AuthInitFailed(raw_content)
 
-        data = getattr(response, "data", {})
-        data["response"] = response.model_dump()
+        response_headers: Dict[str, Any] = dict(response.headers or {})
+        header_sessionid = next((value for key, value in response_headers.items() if key.lower() == K_AUTH_SESSION_ID), None)
+        payload_sessionid = str(response.data.sessionid)
+        sessionid = header_sessionid or payload_sessionid
+        response_headers.setdefault(K_AUTH_SESSION_ID, sessionid)
+
+        self._set_auth_token(sessionid)
+
+        data = response.data.to_dict()
+        data["sessionid"] = sessionid
+        raw_content = response.raw_data.decode("utf-8", errors="replace") if response.raw_data else None
+        typed_response = ClientResponse[Any](
+            content=raw_content,
+            data=data,
+            headers=response_headers,
+            status_code=response.status_code,
+        )
+        data["response"] = typed_response.model_dump()
         retval = AuthInitResponse.model_validate(data)
 
         if update_internal_auth_token:
-            self._set_auth_token(response.headers.get(K_AUTH_SESSION_ID, ""))
+            self._set_auth_token(sessionid)
         return retval
 
     async def auth_begin(
@@ -531,50 +551,34 @@ class KanidmClient:
 
     async def status(self) -> bool:
         """Return server health status."""
-        from kanidm_openapi_client.api.system_api import SystemApi
-
         return await SystemApi(self.openapi_client).status()
 
     async def scim_application_list(self) -> "OpenApiScimListResponse":
         """List SCIM applications."""
-        from kanidm_openapi_client.api.scim_api import ScimApi
-
         return await ScimApi(self.openapi_client).scim_application_get()
 
     async def scim_application_get(self, entry_id: str) -> "OpenApiScimEntry":
         """Get a single SCIM application by id."""
-        from kanidm_openapi_client.api.scim_api import ScimApi
-
         return await ScimApi(self.openapi_client).scim_application_id_get(entry_id)
 
     async def scim_entry_list(self) -> "OpenApiScimListResponse":
         """List SCIM entries."""
-        from kanidm_openapi_client.api.scim_api import ScimApi
-
         return await ScimApi(self.openapi_client).scim_entry_get()
 
     async def scim_class_list(self) -> "OpenApiScimListResponse":
         """List SCIM classes."""
-        from kanidm_openapi_client.api.scim_api import ScimApi
-
         return await ScimApi(self.openapi_client).scim_schema_class_get()
 
     async def scim_attribute_list(self) -> "OpenApiScimListResponse":
         """List SCIM attributes."""
-        from kanidm_openapi_client.api.scim_api import ScimApi
-
         return await ScimApi(self.openapi_client).scim_schema_attribute_get()
 
     async def scim_message_list(self) -> "OpenApiScimListResponse":
         """List SCIM messages."""
-        from kanidm_openapi_client.api.scim_api import ScimApi
-
         return await ScimApi(self.openapi_client).scim_message_get()
 
     async def scim_message_ready_list(self) -> "OpenApiScimListResponse":
         """List ready SCIM messages."""
-        from kanidm_openapi_client.api.scim_api import ScimApi
-
         return await ScimApi(self.openapi_client).scim_message_ready_get()
 
     async def oauth2_rs_list(self) -> List[OAuth2Rs]:

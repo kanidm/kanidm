@@ -24,6 +24,14 @@ async def test_openapi_status_get(openapi_client: KanidmClient) -> None:
     assert status is True
 
 
+async def test_openapi_check_token_valid_for_authenticated_client(openapi_authed_client: KanidmClient) -> None:
+    assert await openapi_authed_client.check_token_valid() is True
+
+
+async def test_openapi_check_token_valid_for_invalid_explicit_token(openapi_authed_client: KanidmClient) -> None:
+    assert await openapi_authed_client.check_token_valid("this-is-not-a-valid-token") is False
+
+
 async def test_openapi_scim_application_list_get(openapi_authed_client: KanidmClient) -> None:
     response = await openapi_authed_client.scim_application_list()
     resources = getattr(response, "resources", None)
