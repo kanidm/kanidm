@@ -175,6 +175,7 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
         // DL 13
         SCHEMA_CLASS_KEY_OBJECT_JWT_HS256_DL6.clone().into(),
         SCHEMA_CLASS_ASSERTION_NONCE.clone().into(),
+        SCHEMA_CLASS_KEY_OBJECT_JWT_HS256_DL6.clone().into(),
     ]
 }
 
