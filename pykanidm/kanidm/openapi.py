@@ -24,6 +24,7 @@ def openapi_configuration_from_client_config(config: KanidmClientConfig) -> Conf
 
     verify_ssl = config.verify_certificate and config.verify_ca
     configuration.verify_ssl = verify_ssl
+    setattr(configuration, "assert_hostname", config.verify_hostnames)
     if config.ca_path is not None:
         configuration.ssl_ca_cert = config.ca_path
     if config.auth_token is not None:

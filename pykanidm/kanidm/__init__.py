@@ -12,8 +12,6 @@ import ssl
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
-import aiohttp
-import aiohttp.client
 from kanidm_openapi_client.api.account_api import AccountApi
 from kanidm_openapi_client.api.scim_api import ScimApi
 from kanidm_openapi_client.api.system_api import SystemApi
@@ -83,8 +81,6 @@ XDG_CACHE_HOME = (
 )
 
 TOKEN_PATH = XDG_CACHE_HOME / "kanidm_tokens"
-
-CallJsonType = Optional[Union[Dict[str, Any], List[Any], Tuple[str, str]]]
 
 
 class KanidmClient:
@@ -223,108 +219,6 @@ class KanidmClient:
         return {
             "authorization": f"Bearer {self.config.auth_token}",
         }
-
-    # pylint: disable=too-many-arguments
-    async def _call(
-        self,
-        method: str,
-        path: str,
-        headers: Optional[Dict[str, str]] = None,
-        timeout: Optional[int] = None,
-        json: CallJsonType = None,
-        params: Optional[Dict[str, str]] = None,
-    ) -> ClientResponse[Any]:
-        if timeout is None:
-            timeout = self.config.connect_timeout
-        # if we have a token set, we send it.
-        if self.config.auth_token is not None:
-            if headers is None:
-                headers = self._token_headers
-            elif headers.get("authorization") is None:
-                headers.update(self._token_headers)
-        self.logger.debug(
-            "_call method=%s to %s, headers=%s",
-            method,
-            self.get_path_uri(path),
-            json_lib.dumps(headers),
-        )
-        response_headers: Dict[str, Any] = {}
-        response_status: int = -1
-        async with aiohttp.client.ClientSession() as session:
-            ssl_context = self._ssl_context if self._ssl_context is not None else False
-            async with session.request(
-                method=method,
-                url=self.get_path_uri(path),
-                headers=headers,
-                timeout=aiohttp.client.ClientTimeout(timeout),
-                json=json,
-                params=params,
-                ssl=ssl_context,
-            ) as request:
-                content = await request.content.read()
-                if len(content) > 0:
-                    try:
-                        response_json = json_lib.loads(content)
-                        response_headers = dict(request.headers)
-                        response_status = request.status
-                    except json_lib.JSONDecodeError as json_error:
-                        self.logger.error("Failed to JSON Decode Response: %s", json_error)
-                        self.logger.error("Response data: %s", content)
-                        response_json = None
-                else:
-                    response_json = {}
-            response_input = {
-                "data": response_json,
-                "content": content.decode("utf-8"),
-                "headers": response_headers,
-                "status_code": response_status,
-            }
-            self.logger.debug(json_lib.dumps(response_input, default=str, indent=4))
-            response: ClientResponse[Any] = ClientResponse.model_validate(response_input)
-            return response
-
-    async def _call_get(
-        self,
-        path: str,
-        headers: Optional[Dict[str, str]] = None,
-        params: Optional[Dict[str, str]] = None,
-        timeout: Optional[int] = None,
-    ) -> ClientResponse[Any]:
-        """does a get call to the server"""
-        return await self._call("GET", path, headers, timeout, params=params)
-
-    async def _call_post(
-        self,
-        path: str,
-        headers: Optional[Dict[str, str]] = None,
-        json: CallJsonType = None,
-        timeout: Optional[int] = None,
-    ) -> ClientResponse[Any]:
-        """does a POST call to the server"""
-
-        return await self._call(method="POST", path=path, headers=headers, json=json, timeout=timeout)
-
-    async def call_patch(
-        self,
-        path: str,
-        headers: Optional[Dict[str, str]] = None,
-        json: CallJsonType = None,
-        timeout: Optional[int] = None,
-    ) -> ClientResponse[Any]:
-        """does a PATCH call to the server"""
-
-        return await self._call(method="PATCH", path=path, headers=headers, json=json, timeout=timeout)
-
-    async def call_put(
-        self,
-        path: str,
-        headers: Optional[Dict[str, str]] = None,
-        json: CallJsonType = None,
-        timeout: Optional[int] = None,
-    ) -> ClientResponse[Any]:
-        """does a PUT call to the server"""
-
-        return await self._call(method="PUT", path=path, headers=headers, json=json, timeout=timeout)
 
     async def _auth_post_compat(self, auth_request: AuthRequest, headers: Optional[Dict[str, str]] = None) -> ClientResponse[Any]:
         """POST /v1/auth via OpenAPI without model deserialization."""

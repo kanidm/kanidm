@@ -73,6 +73,9 @@ class RESTClientObject:
         if not configuration.verify_ssl:
             self.ssl_context.check_hostname = False
             self.ssl_context.verify_mode = ssl.CERT_NONE
+        elif configuration.assert_hostname is not None:
+            # Allow hostname verification to be toggled independently of chain validation.
+            self.ssl_context.check_hostname = bool(configuration.assert_hostname)
 
         self.proxy = configuration.proxy
         self.proxy_headers = configuration.proxy_headers
