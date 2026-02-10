@@ -53,6 +53,3 @@ class RawGroup(OpenApiEntry):
 
 
 GroupList = RootModel[List[RawGroup]]
-
-
-IGroup = OpenApiEntry
