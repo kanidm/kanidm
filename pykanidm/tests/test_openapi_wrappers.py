@@ -5,6 +5,7 @@ import pytest
 from kanidm import KanidmClient
 from kanidm_openapi_client.exceptions import ApiException
 from kanidm.exceptions import AuthBeginFailed, AuthCredFailed, AuthInitFailed
+from kanidm.types import ClientResponse
 
 
 @pytest.mark.asyncio
@@ -254,3 +255,41 @@ async def test_auth_step_password_wrapper_raises_auth_cred_failed_on_openapi_err
 
     method_mock.assert_awaited_once()
 
+
+@pytest.mark.asyncio
+async def test_auth_as_anonymous_uses_openapi_auth_post_compat(mocker: Any) -> None:
+    client = KanidmClient(uri="https://localhost:8443")
+    client.config.auth_token = "session-id"
+
+    auth_init_mock = mocker.patch.object(
+        client,
+        "auth_init",
+        new=AsyncMock(return_value=mocker.Mock(state=mocker.Mock(choose=["anonymous"]))),
+    )
+    auth_begin_mock = mocker.patch.object(
+        client,
+        "auth_begin",
+        new=AsyncMock(return_value=None),
+    )
+    auth_post_mock = mocker.patch.object(
+        client,
+        "_auth_post_compat",
+        new=AsyncMock(
+            return_value=ClientResponse[Any](
+                status_code=200,
+                headers={"x-kanidm-auth-session-id": "session-id"},
+                content='{"sessionid":"session-id","state":{"success":"anonymous-token"}}',
+                data={"sessionid": "session-id", "state": {"success": "anonymous-token"}},
+            )
+        ),
+    )
+
+    await client.auth_as_anonymous()
+
+    auth_init_mock.assert_awaited_once_with("anonymous", update_internal_auth_token=True)
+    auth_begin_mock.assert_awaited_once_with(method="anonymous", update_internal_auth_token=True)
+    auth_post_mock.assert_awaited_once()
+    auth_request = auth_post_mock.await_args.args[0]
+    assert auth_request.to_dict() == {"step": {"cred": "anonymous"}}
+    assert auth_post_mock.await_args.kwargs["headers"] == {"x-kanidm-auth-session-id": "session-id"}
+    assert client.config.auth_token == "anonymous-token"

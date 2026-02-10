@@ -76,17 +76,6 @@ if TYPE_CHECKING:
 
 K_AUTH_SESSION_ID = "x-kanidm-auth-session-id"
 
-
-# class Endpoints:
-#     AUTH = "/v1/auth"
-#     GROUP = "/v1/group"
-#     OAUTH2 = "/v1/oauth2"
-#     PERSON = "/v1/person"
-#     SYSTEM = "/v1/system"
-#     DOMAIN = "/v1/domain"
-#     SERVICE_ACCOUNT = "/v1/service_account"
-
-
 XDG_CACHE_HOME = (
     Path(os.getenv("LOCALAPPDATA", "~/AppData/Local")) / "cache" if platform.system() == "Windows" else Path(os.getenv("XDG_CACHE_HOME", "~/.cache"))
 )
@@ -604,27 +593,31 @@ class KanidmClient:
             update_internal_auth_token=True,
         )
 
-        cred_auth = {
-            "step": {"cred": "anonymous"},
-        }
-
         if self.config.auth_token is None:
             raise AuthBeginFailed
-        headers = {
-            K_AUTH_SESSION_ID: self.config.auth_token,
-        }
+        headers = {K_AUTH_SESSION_ID: self.config.auth_token}
 
-        if self.config.auth_token is None:
-            raise ValueError("Auth token is not set, auth failure!")
+        try:
+            cred_auth = AuthRequest(
+                step=AuthStep(
+                    AuthStepOneOf3(
+                        cred=AuthCredential("anonymous"),
+                    )
+                )
+            )
+            response = await self._auth_post_compat(cred_auth, headers=headers)
+        except (OpenApiException, ValueError) as error:
+            raise AuthCredFailed(str(error)) from error
 
-        response = await self._call_post(
-            path=Endpoints.AUTH,
-            json=cred_auth,
-            headers=headers,
-        )
+        if response.status_code != 200:
+            self.logger.debug("Failed to authenticate anonymous user, response: %s", response.content)
+            raise AuthCredFailed("Failed anonymous authentication!")
+
         state = AuthState.model_validate(response.data)
         self.logger.debug("anonymous auth completed, setting token")
         if state.state is None:
+            raise AuthCredFailed
+        if state.state.success is None:
             raise AuthCredFailed
         self._set_auth_token(state.state.success)
 
