@@ -1,45 +1,14 @@
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 mod u2fhid;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use u2fhid::get_authenticator_backend;
-
-#[cfg(target_os = "macos")]
-mod mozilla;
-#[cfg(target_os = "macos")]
-use mozilla::get_authenticator_backend;
-
-#[cfg(target_os = "freebsd")]
-mod mozilla;
-#[cfg(target_os = "freebsd")]
-use mozilla::get_authenticator_backend;
-
-#[cfg(target_os = "openbsd")]
-mod mozilla;
-#[cfg(target_os = "openbsd")]
-use mozilla::get_authenticator_backend;
 
 #[cfg(target_os = "windows")]
 mod win10;
 #[cfg(target_os = "windows")]
 use win10::get_authenticator_backend;
 
-#[cfg(not(any(
-    target_os = "openbsd",
-    target_os = "freebsd",
-    target_os = "macos",
-    target_os = "linux",
-    target_os = "windows"
-)))]
-mod mozilla;
-#[cfg(not(any(
-    target_os = "openbsd",
-    target_os = "freebsd",
-    target_os = "macos",
-    target_os = "linux",
-    target_os = "windows"
-)))]
-use mozilla::get_authenticator_backend;
-
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
 
 /// Gets a [WebauthnAuthenticator] with an appropriate backend for the current platform:
@@ -53,6 +22,7 @@ use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
 ///
 ///   This only supports USB tokens, and doesn't work on Windows systems which
 ///   have the platform WebAuthn API available.
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 pub(crate) fn get_authenticator() -> WebauthnAuthenticator<impl AuthenticatorBackend> {
     WebauthnAuthenticator::new(get_authenticator_backend())
 }

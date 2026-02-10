@@ -42,7 +42,7 @@ tokio = { workspace = true, features = [
     "rt",
 ] }
 tracing = { workspace = true, features = ["attributes"] }
-webauthn-authenticator-rs = { workspace = true }
+webauthn-authenticator-rs = { workspace = true, features = ["softpasskey", "softtoken" ]  }
 url = { workspace = true, features = ["serde"] }
 
 [build-dependencies]
