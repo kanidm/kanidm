@@ -59,18 +59,9 @@ class RawOAuth2Rs(OpenApiEntry):
             if len(self.attrs[field]) == 0:
                 raise ValueError(f"Empty field {field} in {self.attrs}")
 
-        oauth2_rs_scope_map = [
-            OAuth2RsScopeMap.from_entry(entry)
-            for entry in self.attrs.get("oauth2_rs_scope_map", [])
-        ]
-        oauth2_rs_sup_scope_map = [
-            OAuth2RsScopeMap.from_entry(entry)
-            for entry in self.attrs.get("oauth2_rs_sup_scope_map", [])
-        ]
-        oauth2_rs_claim_map = [
-            OAuth2RsClaimMap.from_entry(entry)
-            for entry in self.attrs.get("oauth2_rs_claim_map", [])
-        ]
+        oauth2_rs_scope_map = [OAuth2RsScopeMap.from_entry(entry) for entry in self.attrs.get("oauth2_rs_scope_map", [])]
+        oauth2_rs_sup_scope_map = [OAuth2RsScopeMap.from_entry(entry) for entry in self.attrs.get("oauth2_rs_sup_scope_map", [])]
+        oauth2_rs_claim_map = [OAuth2RsClaimMap.from_entry(entry) for entry in self.attrs.get("oauth2_rs_claim_map", [])]
 
         origin = self.attrs.get("oauth2_rs_origin", [None])[0]
         if origin is None:
@@ -91,6 +82,3 @@ class RawOAuth2Rs(OpenApiEntry):
 
 
 Oauth2RsList = RootModel[List[RawOAuth2Rs]]
-
-
-IOauth2Rs = OpenApiEntry

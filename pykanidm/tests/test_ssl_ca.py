@@ -24,7 +24,7 @@ async def test_ssl_valid() -> None:
         uri=url,
     )
 
-    result = await client.call_get("/")
+    result = await client._call_get("/")
     assert result.content
     print(f"{result.status_code=}")
 
@@ -41,7 +41,7 @@ async def test_ssl_self_signed() -> None:
         uri=url,
     )
     with pytest.raises(aiohttp.client_exceptions.ClientConnectorCertificateError):
-        await client.call_get("/")
+        await client._call_get("/")
 
 
 @pytest.mark.network
@@ -53,7 +53,7 @@ async def test_ssl_self_signed_with_verify() -> None:
         uri="https://self-signed.badssl.com",
         verify_certificate=False,
     )
-    result = await client.call_get("/")
+    result = await client._call_get("/")
     assert result.content
 
 
@@ -66,7 +66,7 @@ async def test_ssl_self_signed_no_verify_certificate() -> None:
         uri="https://self-signed.badssl.com",
         verify_certificate=False,
     )
-    result = await client.call_get("/")
+    result = await client._call_get("/")
     assert result.content
 
 
@@ -80,7 +80,7 @@ async def test_ssl_wrong_hostname_throws_error() -> None:
         aiohttp.client_exceptions.ClientConnectorCertificateError,
         match="Cannot connect to host wrong.host.badssl.com:443",
     ):
-        result = await client.call_get("/")
+        result = await client._call_get("/")
         assert result.content
 
 
@@ -93,7 +93,7 @@ async def test_ssl_wrong_hostname_dont_verify_hostnames() -> None:
         uri="https://wrong.host.badssl.com/",
         verify_hostnames=False,
     )
-    result = await client.call_get("/")
+    result = await client._call_get("/")
     assert result.content
 
 
@@ -107,7 +107,7 @@ async def test_ssl_wrong_hostname_verify_certificate() -> None:
         verify_hostnames=False,
         verify_certificate=False,
     )
-    result = await client.call_get("/")
+    result = await client._call_get("/")
     assert result.content
 
 
@@ -123,14 +123,14 @@ async def test_ssl_revoked() -> None:
         uri="https://revoked.badssl.com/",
         verify_certificate=True,
     )
-    result = await client.call_get("/")
+    result = await client._call_get("/")
     assert result.content
 
     client = KanidmClient(
         uri="https://revoked.badssl.com/",
         verify_certificate=False,
     )
-    result = await client.call_get("/")
+    result = await client._call_get("/")
     assert result.content
 
 
@@ -146,7 +146,7 @@ async def test_ssl_expired() -> None:
         aiohttp.client_exceptions.ClientConnectorCertificateError,
         match="certificate verify failed: certificate has expired",
     ):
-        result = await client.call_get("/")
+        result = await client._call_get("/")
         assert result.content
 
 
@@ -159,7 +159,7 @@ async def test_ssl_expired_ignore() -> None:
         uri="https://expired.badssl.com/",
         verify_certificate=False,
     )
-    result = await client.call_get("/")
+    result = await client._call_get("/")
     assert result.content
 
 
@@ -175,7 +175,7 @@ async def test_ssl_untrusted_root_throws() -> None:
         SSLCertVerificationError,
         match="certificate verify failed: self.?signed certificate in certificate chain",
     ):
-        result = await client.call_get("/")
+        result = await client._call_get("/")
         assert result.content
 
 
@@ -197,5 +197,5 @@ async def test_ssl_untrusted_root_configured() -> None:
         aiohttp.client_exceptions.ClientConnectorCertificateError,
         match="certificate verify failed: self.?signed certificate in certificate chain",
     ):
-        result = await client.call_get("/")
+        result = await client._call_get("/")
         assert result.content

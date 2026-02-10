@@ -10,12 +10,14 @@ from pydantic import BaseModel, RootModel
 
 class ServiceAccount(BaseModel):
     """nicer"""
+
     classes: List[str]
     displayname: str | None
     memberof: List[str]
     name: str
     spn: str
     uuid: UUID
+
 
 class RawServiceAccount(OpenApiEntry):
     """Compatibility wrapper over OpenAPI-generated Entry for service accounts."""
@@ -41,7 +43,5 @@ class RawServiceAccount(OpenApiEntry):
             uuid=UUID(self.attrs["uuid"][0]),
         )
 
+
 ServiceAccountList = RootModel[List[RawServiceAccount]]
-
-
-IServiceAccount = OpenApiEntry

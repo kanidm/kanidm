@@ -18,7 +18,6 @@ class Person(BaseModel):
 
 
 class RawPerson(OpenApiEntry):
-
     @property
     def as_person(self) -> Person:
         """return it as the Person object which has nicer fields"""
@@ -39,9 +38,6 @@ class RawPerson(OpenApiEntry):
 
 
 PersonList = RootModel[List[RawPerson]]
-
-
-IPerson = OpenApiEntry
 
 
 class PersonCredentialResetToken(BaseModel):
