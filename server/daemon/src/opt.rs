@@ -130,6 +130,12 @@ enum ScriptingCommand {
         name: String,
     },
 
+    /// Backup
+    Backup {
+        /// The path to backup to. If not set, defaults to stdout.
+        path: Option<PathBuf>
+    },
+
     /// Load the server config and check services are listening
     #[clap(name = "healthcheck")]
     HealthCheck {

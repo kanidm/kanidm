@@ -210,13 +210,18 @@ impl QueryServerReadV1 {
             return Err(OperationError::InvalidState);
         }
 
+        let output = std::fs::File::create(&dest_file).map_err(|err| {
+            error!(?err, "File::create error creating {}", dest_file.display());
+            OperationError::FsError
+        })?;
+
         // Scope to limit the read txn.
         {
             let mut idms_prox_read = self.idms.proxy_read().await?;
             idms_prox_read
                 .qs_read
                 .get_be_txn()
-                .backup(&dest_file, compression)
+                .backup(output, compression)
                 .map(|()| {
                     info!("Online backup created {} successfully", dest_file.display());
                 })

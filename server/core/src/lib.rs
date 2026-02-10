@@ -341,7 +341,7 @@ pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
     };
 }
 
-pub fn backup_server_core(config: &Configuration, dst_path: &Path) {
+pub fn backup_server_core(config: &Configuration, dst_path: Option<&Path>) {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
@@ -371,12 +371,41 @@ pub fn backup_server_core(config: &Configuration, dst_path: &Path) {
         None => BackupCompression::default(),
     };
 
-    match be_ro_txn.backup(dst_path, compression) {
-        Ok(_) => info!("Backup success!"),
-        Err(e) => {
-            error!("Backup failed: {:?}", e);
-            std::process::exit(1);
+    if let Some(dst_path) = dst_path {
+        if dst_path.exists() {
+            error!(
+                "backup file {} already exists, will not overwrite it.",
+                dst_path.display()
+            );
+            return;
         }
+
+        let output = match std::fs::File::create(dst_path) {
+            Ok(output) => output,
+            Err(err) => {
+                error!(?err, "File::create error creating {}", dst_path.display());
+                return;
+            }
+        };
+
+        match be_ro_txn.backup(output, compression) {
+            Ok(_) => info!("Backup success!"),
+            Err(e) => {
+                error!("Backup failed: {:?}", e);
+                std::process::exit(1);
+            }
+        };
+    } else {
+        // No path set, default to stdout
+        let stdout = std::io::stdout().lock();
+
+        match be_ro_txn.backup(stdout, compression) {
+            Ok(_) => info!("Backup success!"),
+            Err(e) => {
+                error!("Backup failed: {:?}", e);
+                std::process::exit(1);
+            }
+        };
     };
     // Let the txn abort, even on success.
 }
@@ -414,7 +443,20 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &Path) {
             return;
         }
     };
-    let r = be_wr_txn.restore(dst_path).and_then(|_| be_wr_txn.commit());
+
+    let compression = BackupCompression::identify_file(dst_path);
+
+    let input = match std::fs::File::open(dst_path) {
+        Ok(output) => output,
+        Err(err) => {
+            error!(?err, "File::open error reading {}", dst_path.display());
+            return;
+        }
+    };
+
+    let r = be_wr_txn
+        .restore(input, compression)
+        .and_then(|_| be_wr_txn.commit());
 
     if r.is_err() {
         error!("Failed to restore database: {:?}", r);
