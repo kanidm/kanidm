@@ -102,7 +102,7 @@ kanidmd_lib_macros = { workspace = true }
 # This is needed so that we can use a test feature across the crate boundary to proto
 # so we can enable certain hidden test only attributes.
 kanidm_proto = { workspace = true, features = ["test"] }
-webauthn-authenticator-rs = { workspace = true }
+webauthn-authenticator-rs = { workspace = true, features = ["softpasskey", "softtoken" ]  }
 
 
 [target.'cfg(not(target_os = "illumos"))'.dev-dependencies]

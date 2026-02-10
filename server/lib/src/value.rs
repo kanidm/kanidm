@@ -2291,7 +2291,13 @@ impl Value {
                 OAUTHSCOPE_RE.is_match(name) && value.iter().all(|s| OAUTHSCOPE_RE.is_match(s))
             }
 
-            Value::HexString(id) | Value::KeyInternal { id, .. } => {
+            Value::KeyInternal { id, .. } => {
+                let s = id.as_str();
+                Value::validate_str_escapes(s)
+                    && Value::validate_singleline(s)
+                    && Value::validate_hexstr(s)
+            }
+            Value::HexString(id) => {
                 Value::validate_str_escapes(id.as_str())
                     && Value::validate_singleline(id.as_str())
                     && Value::validate_hexstr(id.as_str())

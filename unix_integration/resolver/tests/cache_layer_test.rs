@@ -115,7 +115,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, mpsc::Receiver<Id>, KanidmCli
         .expect("Unable to add service account to unixd read group");
 
     let service_api_token = adminclient
-        .idm_service_account_generate_api_token("unixd_service", "accesstoken", None, false)
+        .idm_service_account_generate_api_token("unixd_service", "accesstoken", None, false, false)
         .await
         .expect("Unable to create service account api token");
 

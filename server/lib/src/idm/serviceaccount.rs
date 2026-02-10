@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use compact_jwt::{Jws, JwsCompact};
+use compact_jwt::{jws::JwsBuilder, Jws, JwsCompact};
 use kanidm_proto::internal::ApiToken as ProtoApiToken;
 use time::OffsetDateTime;
 
@@ -127,6 +127,9 @@ pub struct GenerateApiTokenEvent {
     // Is it read_write capable?
     pub read_write: bool,
     // Limits?
+
+    // Should it be compact?
+    pub compact: bool,
 }
 
 impl GenerateApiTokenEvent {
@@ -138,6 +141,7 @@ impl GenerateApiTokenEvent {
             label: label.to_string(),
             expiry: expiry.map(|ct| time::OffsetDateTime::UNIX_EPOCH + ct),
             read_write: false,
+            compact: false,
         }
     }
 }
@@ -188,7 +192,6 @@ impl IdmServerProxyWriteTransaction<'_> {
         } else {
             ApiTokenScope::ReadOnly
         };
-        let purpose = scope.try_into()?;
 
         // create a new session
         let session = Value::ApiToken(
@@ -207,20 +210,30 @@ impl IdmServerProxyWriteTransaction<'_> {
             },
         );
 
-        // create the session token (not yet signed)
-        let proto_api_token = ProtoApiToken {
-            account_id: service_account.uuid,
-            token_id: session_id,
-            label: gte.label.clone(),
-            expiry: gte.expiry,
-            issued_at,
-            purpose,
-        };
+        let token = if gte.compact {
+            // We only issue the session uuid now. This makes the token as compact as possible, fitting
+            // within 128 characters.
+            let payload = session_id.as_bytes().to_vec();
+            JwsBuilder::from(payload).build()
+        } else {
+            let purpose = scope.try_into()?;
+            // create the session token (not yet signed)
+            let proto_api_token = ProtoApiToken {
+                account_id: service_account.uuid,
+                token_id: session_id,
+                label: gte.label.clone(),
+                expiry: gte.expiry,
+                issued_at,
+                purpose,
+            };
 
-        let token = Jws::into_json(&proto_api_token).map_err(|err| {
-            error!(?err, "Unable to serialise JWS");
-            OperationError::SerdeJsonError
-        })?;
+            let token = Jws::into_json(&proto_api_token).map_err(|err| {
+                error!(?err, "Unable to serialise JWS");
+                OperationError::SerdeJsonError
+            })?;
+
+            token
+        };
 
         // modify the account to put the session onto it.
         let modlist =
@@ -243,7 +256,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         self.qs_write
             .get_domain_key_object_handle()?
-            .jws_es256_sign(&token, ct)
+            .jws_hs256_sign(&token, ct)
     }
 
     pub fn service_account_destroy_api_token(
@@ -480,6 +493,79 @@ mod tests {
                 .expect_err("Should not succeed")
                 == OperationError::SessionExpired
         );
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_service_account_compact_api_token(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let exp = Duration::from_secs(TEST_CURRENT_TIME + 6000);
+        let post_exp = Duration::from_secs(TEST_CURRENT_TIME + 6010);
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let testaccount_uuid = Uuid::new_v4();
+
+        let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_account_only")),
+            (Attribute::Uuid, Value::Uuid(testaccount_uuid)),
+            (Attribute::Description, Value::new_utf8s("testaccount")),
+            (Attribute::DisplayName, Value::new_utf8s("testaccount"))
+        );
+
+        idms_prox_write
+            .qs_write
+            .internal_create(vec![e1])
+            .expect("Failed to create service account");
+
+        let mut gte = GenerateApiTokenEvent::new_internal(testaccount_uuid, "TestToken", Some(exp));
+
+        // === request a compact token.
+        gte.compact = true;
+
+        let api_token = idms_prox_write
+            .service_account_generate_api_token(&gte, ct)
+            .expect("failed to generate new api token");
+
+        trace!(?api_token);
+
+        // Deserialise it.
+        let jws_verifier = JwsDangerReleaseWithoutVerify::default();
+
+        let apitoken_inner = jws_verifier.verify(&api_token).unwrap();
+
+        let session_id = Uuid::from_slice(apitoken_inner.payload())
+            .expect("Unable to decode compact token as session id");
+
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(api_token.clone().into(), ct)
+            .expect("Unable to verify api token.");
+
+        assert_eq!(ident.get_uuid(), Some(testaccount_uuid));
+
+        // Woohoo! Okay lets test the other edge cases.
+
+        // Check the expiry
+        assert!(
+            idms_prox_write
+                .validate_client_auth_info_to_ident(api_token.clone().into(), post_exp)
+                .expect_err("Should not succeed")
+                == OperationError::SessionExpired
+        );
+
+        // Delete session
+        let dte = DestroyApiTokenEvent::new_internal(testaccount_uuid, session_id);
+        assert!(idms_prox_write
+            .service_account_destroy_api_token(&dte)
+            .is_ok());
+
+        // These tokens have no grace windows, don't need to be tested.
 
         assert!(idms_prox_write.commit().is_ok());
     }

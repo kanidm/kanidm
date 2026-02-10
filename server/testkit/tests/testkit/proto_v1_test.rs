@@ -1,4 +1,5 @@
 #![deny(warnings)]
+use compact_jwt::dangernoverify::JwsDangerReleaseWithoutVerify;
 use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
 use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::constants::{ATTR_GIDNUMBER, KSESSIONID};
@@ -1412,6 +1413,7 @@ async fn test_server_api_token_lifecycle(rsclient: &KanidmClient) {
             "test token",
             None,
             false,
+            false,
         )
         .await
         .expect("Failed to create service account api token");
@@ -1419,17 +1421,7 @@ async fn test_server_api_token_lifecycle(rsclient: &KanidmClient) {
     // Decode it?
     let token_unverified = JwsCompact::from_str(&token).expect("Failed to parse apitoken");
 
-    let key_id = token_unverified
-        .kid()
-        .expect("token does not have a key id");
-    assert!(token_unverified.get_jwk_pubkey().is_none());
-
-    let jwk = rsclient
-        .get_public_jwk(key_id)
-        .await
-        .expect("Unable to get jwk");
-
-    let jws_verifier = JwsEs256Verifier::try_from(&jwk).expect("Unable to build verifier");
+    let jws_verifier = JwsDangerReleaseWithoutVerify::default();
 
     let token = jws_verifier
         .verify(&token_unverified)

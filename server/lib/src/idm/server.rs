@@ -545,6 +545,7 @@ pub trait IdmServerTransaction<'a> {
             }
         };
 
+        // Handle legacy formatted API tokens.
         // Is it an API Token?
         if let Ok(apit) = jws_inner.from_json::<ApiToken>() {
             if let Some(expiry) = apit.expiry {
@@ -564,6 +565,64 @@ pub trait IdmServerTransaction<'a> {
 
             return Ok(Token::ApiToken(apit, entry));
         };
+
+        // Is it just directly encoded session UUID?
+        if let Ok(session_id) = Uuid::from_slice(jws_inner.payload()) {
+            // Now we have to look up the session.
+
+            let filter = filter!(f_eq(
+                Attribute::ApiTokenSession,
+                PartialValue::Refer(session_id)
+            ));
+
+            let mut entry = self.get_qs_txn().internal_search(filter).map_err(|err| {
+                security_info!(
+                    ?err,
+                    "Account or session associated with session token no longer exists."
+                );
+                OperationError::NotAuthenticated
+            })?;
+
+            let entry = entry.pop().ok_or_else(|| {
+                security_info!("Search result failed to return a valid entry.");
+                OperationError::NotAuthenticated
+            })?;
+
+            let api_token_map = entry.get_ava_as_apitoken_map(Attribute::ApiTokenSession)
+            .ok_or_else(|| {
+                security_info!(entry_id = %entry.get_display_id(), "Account does not contain any valid api token sessions.");
+                OperationError::NotAuthenticated
+            })?;
+
+            let api_token_internal = api_token_map.get(&session_id)
+            .ok_or_else(|| {
+                security_info!(entry_id = %entry.get_display_id(), "Account does not contain a valid api token for the session.");
+                OperationError::NotAuthenticated
+            })?;
+
+            let purpose = api_token_internal.scope.try_into().map_err(|_| {
+                security_info!(entry_id = %entry.get_display_id(), "Account scope is not valid.");
+                OperationError::NotAuthenticated
+            })?;
+
+            let apit = kanidm_proto::internal::ApiToken {
+                account_id: entry.get_uuid(),
+                token_id: session_id,
+                label: api_token_internal.label.clone(),
+                expiry: api_token_internal.expiry,
+                issued_at: api_token_internal.issued_at,
+                purpose,
+            };
+
+            if let Some(expiry) = apit.expiry {
+                if time::OffsetDateTime::UNIX_EPOCH + ct >= expiry {
+                    security_info!(entry_id = %entry.get_display_id(), "Session expired");
+                    return Err(OperationError::SessionExpired);
+                }
+            }
+
+            return Ok(Token::ApiToken(apit, entry));
+        }
 
         security_info!("Unable to verify token, invalid inner JSON");
         Err(OperationError::NotAuthenticated)
