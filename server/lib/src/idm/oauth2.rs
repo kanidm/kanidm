@@ -7274,6 +7274,22 @@ mod tests {
                     btreeset!["value_c".to_string()],
                 ),
             ),
+            // Extended claim name syntax, allows characters beyond scope names.
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap,
+                Value::OauthClaimMap(
+                    "custom:claim-name".to_string(),
+                    OauthClaimMapJoin::CommaSeparatedValue,
+                ),
+            ),
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap,
+                Value::OauthClaimValue(
+                    "custom:claim-name".to_string(),
+                    UUID_TESTGROUP,
+                    btreeset!["value:a-a".to_string()],
+                ),
+            ),
         ]);
 
         assert!(idms_prox_write
@@ -7396,6 +7412,13 @@ mod tests {
         assert_eq!(
             oidc.claims.get("custom_b").and_then(|v| v.as_str()),
             Some("value_a value_b")
+        );
+
+        assert_eq!(
+            oidc.claims
+                .get("custom:claim-name")
+                .and_then(|v| v.as_str()),
+            Some("value:a-a")
         );
 
         // Does our access token work with the userinfo endpoint?
