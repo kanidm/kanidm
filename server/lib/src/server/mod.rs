@@ -2524,8 +2524,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Ok(());
         }
 
-        debug_assert!(DOMAIN_MIN_REMIGRATION_LEVEL < DOMAIN_PREVIOUS_TGT_LEVEL);
-
         if previous_version < DOMAIN_MIN_REMIGRATION_LEVEL {
             let valid_levels: Vec<_> =
                 (DOMAIN_MIN_REMIGRATION_LEVEL..DOMAIN_PREVIOUS_TGT_LEVEL).collect();
@@ -2534,6 +2532,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             error!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
             error!(domain_previous_patch_level = ?previous_patch_level, domain_target_patch_level = ?domain_info_patch_level);
             error!(?valid_levels);
+
+            debug_assert!(false);
 
             return Err(OperationError::MG0001InvalidReMigrationLevel);
         }
@@ -2550,13 +2550,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // This is to catch during development if we incorrectly move MIN_REMIGRATION but
         // without actually updating these values correctly.
-        debug_assert!(DOMAIN_MIN_REMIGRATION_LEVEL == DOMAIN_LEVEL_9);
+        const { assert!(DOMAIN_MIN_REMIGRATION_LEVEL <= DOMAIN_PREVIOUS_TGT_LEVEL) };
+        const { assert!(DOMAIN_MIN_REMIGRATION_LEVEL >= DOMAIN_MIN_CREATION_LEVEL) };
 
-        if previous_version <= DOMAIN_LEVEL_9 && domain_info_version >= DOMAIN_LEVEL_10 {
-            // 1.5 -> 1.6
-            self.migrate_domain_9_to_10()?;
-        }
+        const { assert!(DOMAIN_MIN_CREATION_LEVEL >= DOMAIN_LEVEL_10) };
 
+        //                     /--- This needs to be the minimum creation level.
+        //                     |                                          /-- This is the minlevel we can remigrate from
+        //                     v                                          v
         if previous_version <= DOMAIN_LEVEL_10 && domain_info_version >= DOMAIN_LEVEL_11 {
             // 1.6 -> 1.7
             self.migrate_domain_10_to_11()?;

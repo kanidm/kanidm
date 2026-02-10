@@ -363,10 +363,10 @@ prettier/fix: eslint/setup
 .PHONY: publish
 publish: ## Publish to crates.io
 publish:
+	cargo publish -p sketching
 	cargo publish -p scim_proto
 	cargo publish -p kanidm_build_profiles
 	cargo publish -p kanidm_proto
-	cargo publish -p sketching
 	cargo publish -p kanidm_utils_users
 	cargo publish -p kanidm_lib_file_permissions
 	cargo publish -p kanidm_lib_crypto
