@@ -10,6 +10,7 @@ from pathlib import Path
 import platform
 import ssl
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from uuid import UUID
 
 import aiohttp
 import aiohttp.client
@@ -34,6 +35,7 @@ from kanidm_openapi_client.models.auth_step import AuthStep
 from kanidm_openapi_client.models.auth_step_one_of import AuthStepOneOf
 from kanidm_openapi_client.models.auth_step_one_of2 import AuthStepOneOf2
 from kanidm_openapi_client.models.auth_step_one_of3 import AuthStepOneOf3
+from kanidm_openapi_client.models.api_token_generate import ApiTokenGenerate
 from kanidm_openapi_client.models.entry import Entry as OpenApiEntry
 from pydantic import ValidationError
 import yarl
@@ -775,14 +777,10 @@ class KanidmClient:
 
         # parse the expiry as rfc3339
         try:
-            datetime.strptime(expiry, "%Y-%m-%dT%H:%M:%SZ")
+            parsed_expiry = datetime.strptime(expiry, "%Y-%m-%dT%H:%M:%SZ")
         except Exception as error:
             raise ValueError(f"Failed to parse expiry from {expiry} (needs to be RFC3339 format): {error}")
-        payload = {
-            "label": label,
-            "expiry": expiry,
-            "read_write": read_write,
-        }
+        payload = ApiTokenGenerate(label=label, expiry=parsed_expiry, read_write=read_write)
         return await self._openapi_call_to_client_response(
             ServiceAccountApi(self.openapi_client).service_account_api_token_post_with_http_info(id=account_id, api_token_generate=payload)
         )
@@ -792,8 +790,9 @@ class KanidmClient:
         id: str,
         token_id: str,
     ) -> ClientResponse[None]:
+        token_uuid = UUID(token_id)
         return await self._openapi_call_to_client_response(
-            ServiceAccountApi(self.openapi_client).service_account_api_token_delete_with_http_info(id=id, token_id=token_id)
+            ServiceAccountApi(self.openapi_client).service_account_api_token_delete_with_http_info(id=id, token_id=token_uuid)
         )
 
     async def get_groups(self) -> List[Group]:
