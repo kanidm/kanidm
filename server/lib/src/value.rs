@@ -96,10 +96,11 @@ lazy_static! {
         Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
     };
 
-    /// Must not contain whitespace.
+    /// Must not contain whitespace. Allows "abcd", "abcd:efgh", but ":" and "-" need to be separating
+    /// groups of characters, and are not able to be leading or trailing.
     pub static ref OAUTH_CLAIMNAME_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new("^[0-9a-zA-Z_\\-:]+$").expect("Invalid oauth claim regex found")
+        Regex::new("^[0-9a-zA-Z_]+([:\\-][0-9a-zA-Z_]+)*$").expect("Invalid oauth claim regex found")
     };
 
     pub static ref SINGLELINE_RE: Regex = {
