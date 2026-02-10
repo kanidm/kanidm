@@ -379,6 +379,11 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
             )
             .await;
         }
+
+        ScriptingCommand::Backup { path } => {
+            backup_server_core(&config, path.as_deref());
+        }
+
         ScriptingCommand::HealthCheck {
             verify_tls,
             check_origin,
@@ -939,7 +944,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running in backup mode ...");
 
-            backup_server_core(&config, &bopt.path);
+            backup_server_core(&config, Some(&bopt.path));
         }
         KanidmdOpt::Database {
             commands: DbCommands::Restore(ropt),
