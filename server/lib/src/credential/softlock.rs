@@ -199,16 +199,16 @@ impl CredSoftLock {
                 // That way the remaining logic will kick in and then move the reset_at.
                 if let Some(expiry) = expire_at {
                     if self.last_expire_at != expiry {
-                        // This lets us track former expiration times. We should only apply the reset ONCE.
+                        // This lets us track former expiration times. We should only apply the reset/clear event ONCE.
                         self.last_expire_at = expiry;
 
-                        // Now, we have to choose *if* we actually do a reset.
+                        // Now, we have to choose *if* we actually do a clear.
                         if reset_at > expiry {
                             // Okay, so the reset_at is beyond the expiry, we cap it now. This can
-                            // either cause a reset, or the reset_at to be bound to expiry in the unlock state.
+                            // either cause a reset/clear, or the reset_at to be bound to expiry in the unlock state.
                             //
-                            // for example, consider someone set expiry into the future. Then we don't
-                            // actually want this to DO anything, because that wouldn't help anyone.
+                            // for example, consider someone set expiry into the future beyond the reset_at time.
+                            // Then we don't actually want this to DO anything, because that wouldn't help anyone.
                             reset_at = expiry
                         }
                     }

@@ -1308,7 +1308,7 @@ impl IdmServerAuthTransaction<'_> {
                                 .map(|odt| odt.unix_timestamp() as u64)
                                 .map(Duration::from_secs);
 
-                            // Apply the current time, which resets the softlock if needed.
+                            // Apply the current time, which clears the softlock if needed.
                             slock.apply_time_step(ct, softlock_expire);
                             // Now check the results
                             slock.is_valid()
