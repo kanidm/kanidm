@@ -766,7 +766,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
 static MIGRATION_PATH_RE: LazyLock<Regex> = LazyLock::new(|| {
     #[allow(clippy::expect_used)]
-    Regex::new("^\\d\\d-.*\\.json$").expect("Invalid SPN regex found")
+    Regex::new("^\\d\\d-.*\\.h?json$").expect("Invalid SPN regex found")
 });
 
 struct ScimMigration {
