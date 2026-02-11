@@ -1,19 +1,21 @@
 # Entry Management
 
 Kanidm supports a SCIM based entry management/migration process. This process allows configuration management tools such
-Ansible or Salt to deploy JSON formatted person and group records that can be imported to the server.
+Ansible or Salt to deploy HJSON formatted person and group records that can be imported to the server. HJSON is JSON
+that allows commenting.
 
 ## Migration Path
 
 Migrations are stored in the path defined by `server.toml`:`migration_path`. The default for containers is
 `/data/migrations.d`.
 
-Files within the folder must match the pattern `xx-name.json` where `xx` are numeric digits. For example the following
+Files within the folder must match the pattern `xx-name.json` / `xx-name.hjson` where `xx` are numeric digits. For example the following
 are valid names:
 
 - `00-base.json`
 - `99-user.json`
 - `80-group-defines.json`
+- `99-accounts.hjson`
 
 The following are invalid:
 
@@ -27,7 +29,7 @@ Entries can be asserted to be present, and in a specific attribute state. Or the
 Attributes of an entry can be removed by setting them to `null`.
 
 ```json
-{{#rustdoc_include ../../examples/migrations/00-basic.json}}
+{{#rustdoc_include ../../examples/migrations/00-basic.hjson}}
 ```
 
 This example is located in
