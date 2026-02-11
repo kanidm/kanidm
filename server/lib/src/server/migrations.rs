@@ -150,8 +150,12 @@ impl QueryServer {
 
             // Apply each step in order.
             for domain_target_level_step in domain_info_version..domain_target_level {
+                // Rust has no way to do a range with the minimum excluded and the maximum
+                // included, so we have to do min -> max which includes min and excludes max,
+                // and by adding 1 we gett the same result.
+                let domain_target_level_step = domain_target_level_step + 1;
                 write_txn
-                    .internal_apply_domain_migration(domain_target_level_step + 1)
+                    .internal_apply_domain_migration(domain_target_level_step)
                     .map(|()| {
                         warn!(
                             "Domain level has been raised to {}",
