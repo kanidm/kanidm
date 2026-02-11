@@ -1339,6 +1339,8 @@ impl IdmServerProxyWriteTransaction<'_> {
         let (mut modlist, session, session_token) =
             self.credential_update_commit_common(cust, ct)?;
 
+        let timestamp = self.qs_write.get_curtime_odt();
+
         // Can we actually proceed?
         let can_commit = session.can_commit();
         if !can_commit.0 {
@@ -1408,12 +1410,47 @@ impl IdmServerProxyWriteTransaction<'_> {
             ));
         };
 
+        match session.unixcred_state {
+            CredentialState::DeleteOnly | CredentialState::Modifiable => {
+                modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
+                modlist.push_mod(Modify::Purged(Attribute::PasswordChangedTime));
+
+                if let Some(ncred) = &session.unixcred {
+                    let vcred = Value::new_credential("unix", ncred.clone());
+                    modlist.push_mod(Modify::Present(Attribute::UnixPassword, vcred));
+                    modlist.push_mod(Modify::Present(
+                        Attribute::PasswordChangedTime,
+                        Value::DateTime(timestamp),
+                    ));
+                }
+            }
+            CredentialState::PolicyDeny => {
+                modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
+            }
+            CredentialState::AccessDeny => {}
+        };
+
         match session.primary_state {
             CredentialState::Modifiable => {
                 modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential));
                 if let Some(ncred) = &session.primary {
                     let vcred = Value::new_credential("primary", ncred.clone());
                     modlist.push_mod(Modify::Present(Attribute::PrimaryCredential, vcred));
+
+                    // We are relying on the unix cred update having cleared the PasswordChangdTime
+                    // If there is no unix password and this user can log in via primary fallback
+                    // we need to update the timesatmp whn the primary cred is updated
+                    if session.unixcred.is_none()
+                        && session
+                            .resolved_account_policy
+                            .allow_primary_cred_fallback()
+                            == Some(true)
+                    {
+                        modlist.push_mod(Modify::Present(
+                            Attribute::PasswordChangedTime,
+                            Value::DateTime(timestamp),
+                        ));
+                    }
                 };
             }
             CredentialState::DeleteOnly | CredentialState::PolicyDeny => {
@@ -1455,20 +1492,6 @@ impl IdmServerProxyWriteTransaction<'_> {
                 modlist.push_mod(Modify::Purged(Attribute::AttestedPasskeys));
             }
             // CredentialState::Disabled |
-            CredentialState::AccessDeny => {}
-        };
-
-        match session.unixcred_state {
-            CredentialState::DeleteOnly | CredentialState::Modifiable => {
-                modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
-                if let Some(ncred) = &session.unixcred {
-                    let vcred = Value::new_credential("unix", ncred.clone());
-                    modlist.push_mod(Modify::Present(Attribute::UnixPassword, vcred));
-                }
-            }
-            CredentialState::PolicyDeny => {
-                modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
-            }
             CredentialState::AccessDeny => {}
         };
 
@@ -1866,6 +1889,8 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        let timestamp = OffsetDateTime::UNIX_EPOCH + ct;
+
         self.check_password_quality(
             pw,
             &session.resolved_account_policy,
@@ -1888,9 +1913,9 @@ impl IdmServerCredUpdateTransaction<'_> {
         let ncred = match &session.primary {
             Some(primary) => {
                 // Is there a need to update the uuid of the cred re softlocks?
-                primary.set_password(self.crypto_policy, pw)?
+                primary.set_password(self.crypto_policy, pw, timestamp)?
             }
-            None => Credential::new_password_only(self.crypto_policy, pw)?,
+            None => Credential::new_password_only(self.crypto_policy, pw, timestamp)?,
         };
 
         session.primary = Some(ncred);
@@ -1946,6 +1971,8 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        let timestamp = OffsetDateTime::UNIX_EPOCH + ct;
+
         // Are we in a totp reg state?
         match &session.mfaregstate {
             MfaRegState::TotpInit(totp_token)
@@ -1971,7 +1998,9 @@ impl IdmServerCredUpdateTransaction<'_> {
                     let ncred = session
                         .primary
                         .as_ref()
-                        .map(|cred| cred.append_totp(label.to_string(), totp_token.clone()))
+                        .map(|cred| {
+                            cred.append_totp(label.to_string(), totp_token.clone(), timestamp)
+                        })
                         .ok_or_else(|| {
                             admin_error!("A TOTP was added, but no primary credential stub exists");
                             OperationError::InvalidState
@@ -2025,6 +2054,8 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        let timestamp = OffsetDateTime::UNIX_EPOCH + ct;
+
         // Are we in a totp reg state?
         match &session.mfaregstate {
             MfaRegState::TotpInvalidSha1(_, token_sha1, label) => {
@@ -2032,7 +2063,7 @@ impl IdmServerCredUpdateTransaction<'_> {
                 let ncred = session
                     .primary
                     .as_ref()
-                    .map(|cred| cred.append_totp(label.to_string(), token_sha1.clone()))
+                    .map(|cred| cred.append_totp(label.to_string(), token_sha1.clone(), timestamp))
                     .ok_or_else(|| {
                         admin_error!("A TOTP was added, but no primary credential stub exists");
                         OperationError::InvalidState
@@ -2073,10 +2104,12 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::InvalidState);
         }
 
+        let timestamp = OffsetDateTime::UNIX_EPOCH + ct;
+
         let ncred = session
             .primary
             .as_ref()
-            .map(|cred| cred.remove_totp(label))
+            .map(|cred| cred.remove_totp(label, timestamp))
             .ok_or_else(|| {
                 admin_error!("Try to remove TOTP, but no primary credential stub exists");
                 OperationError::InvalidState
@@ -2106,6 +2139,8 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        let timestamp = OffsetDateTime::UNIX_EPOCH + ct;
+
         // I think we override/map the status to inject the codes as a once-off state message.
 
         let codes = backup_code_from_random();
@@ -2118,7 +2153,7 @@ impl IdmServerCredUpdateTransaction<'_> {
                 OperationError::InvalidState
             })
             .and_then(|cred|
-                cred.update_backup_code(BackupCodes::new(codes.clone()))
+                cred.update_backup_code(BackupCodes::new(codes.clone()), timestamp)
                     .map_err(|_| {
                         error!("Tried to add backup codes, but MFA is not enabled on this credential yet");
                         OperationError::InvalidState
@@ -2151,6 +2186,8 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        let timestamp = OffsetDateTime::UNIX_EPOCH + ct;
+
         let ncred = session
             .primary
             .as_ref()
@@ -2159,7 +2196,7 @@ impl IdmServerCredUpdateTransaction<'_> {
                 OperationError::InvalidState
             })
             .and_then(|cred|
-                cred.remove_backup_code()
+                cred.remove_backup_code(timestamp)
                     .map_err(|_| {
                         admin_error!("Tried to remove backup codes, but MFA is not enabled on this credential yet");
                         OperationError::InvalidState
@@ -2467,6 +2504,8 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        let timestamp = OffsetDateTime::UNIX_EPOCH + ct;
+
         self.check_password_quality(
             pw,
             &session.resolved_account_policy,
@@ -2489,9 +2528,9 @@ impl IdmServerCredUpdateTransaction<'_> {
         let ncred = match &session.unixcred {
             Some(unixcred) => {
                 // Is there a need to update the uuid of the cred re softlocks?
-                unixcred.set_password(self.crypto_policy, pw)?
+                unixcred.set_password(self.crypto_policy, pw, timestamp)?
             }
-            None => Credential::new_password_only(self.crypto_policy, pw)?,
+            None => Credential::new_password_only(self.crypto_policy, pw, timestamp)?,
         };
 
         session.unixcred = Some(ncred);

@@ -161,6 +161,7 @@ pub const ATTR_NAME: &str = "name";
 pub const ATTR_NO_INDEX: &str = "no-index";
 pub const ATTR_NSACCOUNTLOCK: &str = "nsaccountlock";
 pub const ATTR_NSUNIQUEID: &str = "nsuniqueid";
+pub const ATTR_PWD_CHANGED_TIME: &str = "pwd_changed_time";
 
 pub const ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str =
     "oauth2_allow_insecure_client_disable_pkce";
@@ -277,6 +278,7 @@ pub const LDAP_ATTR_OBJECTCLASS: &str = "objectclass";
 pub const LDAP_ATTR_OU: &str = "ou";
 pub const LDAP_ATTR_UID: &str = "uid";
 pub const LDAP_CLASS_GROUPOFNAMES: &str = "groupofnames";
+pub const LDAP_ATTR_PWD_CHANGED_TIME: &str = "pwdChangedTime";
 
 // Rust can't deal with this being compiled out, don't try and #[cfg()] them
 pub const TEST_ATTR_NON_EXIST: &str = "non-exist";

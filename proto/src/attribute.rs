@@ -153,6 +153,7 @@ pub enum Attribute {
     OtherNoIndex,
     PassKeys,
     PasswordImport,
+    PasswordChangedTime,
     PatchLevel,
     Phantom,
     PrimaryCredential,
@@ -299,6 +300,7 @@ impl Attribute {
             Attribute::AcpReceiverGroup => ATTR_ACP_RECEIVER_GROUP,
             Attribute::AcpSearchAttr => ATTR_ACP_SEARCH_ATTR,
             Attribute::AcpTargetScope => ATTR_ACP_TARGET_SCOPE,
+            Attribute::AllowPrimaryCredFallback => ATTR_ALLOW_PRIMARY_CRED_FALLBACK,
             Attribute::ApiTokenSession => ATTR_API_TOKEN_SESSION,
             Attribute::ApplicationPassword => ATTR_APPLICATION_PASSWORD,
             Attribute::ApplicationUrl => ATTR_APPLICATION_URL,
@@ -422,6 +424,7 @@ impl Attribute {
             Attribute::ObjectClass => ATTR_OBJECTCLASS,
             Attribute::OtherNoIndex => ATTR_OTHER_NO_INDEX,
             Attribute::PassKeys => ATTR_PASSKEYS,
+            Attribute::PasswordChangedTime => ATTR_PWD_CHANGED_TIME,
             Attribute::PasswordImport => ATTR_PASSWORD_IMPORT,
             Attribute::PatchLevel => ATTR_PATCH_LEVEL,
             Attribute::Phantom => ATTR_PHANTOM,
@@ -468,7 +471,6 @@ impl Attribute {
             Attribute::Uuid => ATTR_UUID,
             Attribute::Version => ATTR_VERSION,
             Attribute::WebauthnAttestationCaList => ATTR_WEBAUTHN_ATTESTATION_CA_LIST,
-            Attribute::AllowPrimaryCredFallback => ATTR_ALLOW_PRIMARY_CRED_FALLBACK,
 
             #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::NonExist => TEST_ATTR_NON_EXIST,
@@ -517,6 +519,7 @@ impl Attribute {
             ATTR_ACP_RECEIVER_GROUP => Attribute::AcpReceiverGroup,
             ATTR_ACP_SEARCH_ATTR => Attribute::AcpSearchAttr,
             ATTR_ACP_TARGET_SCOPE => Attribute::AcpTargetScope,
+            ATTR_ALLOW_PRIMARY_CRED_FALLBACK => Attribute::AllowPrimaryCredFallback,
             ATTR_API_TOKEN_SESSION => Attribute::ApiTokenSession,
             ATTR_APPLICATION_PASSWORD => Attribute::ApplicationPassword,
             ATTR_APPLICATION_URL => Attribute::ApplicationUrl,
@@ -646,6 +649,7 @@ impl Attribute {
             ATTR_PRIMARY_CREDENTIAL => Attribute::PrimaryCredential,
             ATTR_PRIVATE_COOKIE_KEY => Attribute::PrivateCookieKey,
             ATTR_PRIVILEGE_EXPIRY => Attribute::PrivilegeExpiry,
+            ATTR_PWD_CHANGED_TIME => Attribute::PasswordChangedTime,
             ATTR_RADIUS_SECRET => Attribute::RadiusSecret,
             ATTR_RECYCLEDDIRECTMEMBEROF => Attribute::RecycledDirectMemberOf,
             ATTR_REFERS => Attribute::Refers,
@@ -686,7 +690,6 @@ impl Attribute {
             ATTR_UUID => Attribute::Uuid,
             ATTR_VERSION => Attribute::Version,
             ATTR_WEBAUTHN_ATTESTATION_CA_LIST => Attribute::WebauthnAttestationCaList,
-            ATTR_ALLOW_PRIMARY_CRED_FALLBACK => Attribute::AllowPrimaryCredFallback,
 
             #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_NON_EXIST => Attribute::NonExist,

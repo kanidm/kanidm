@@ -304,11 +304,13 @@ impl IdmServerProxyWriteTransaction<'_> {
         // Generate a new random, long pw.
         // Because this is generated, we can bypass policy checks!
         let cleartext = password_from_random();
-        let ncred = Credential::new_generatedpassword_only(self.crypto_policy(), &cleartext)
-            .map_err(|e| {
-                admin_error!("Unable to generate password mod {:?}", e);
-                e
-            })?;
+        let timestamp = self.qs_write.get_curtime_odt();
+        let ncred =
+            Credential::new_generatedpassword_only(self.crypto_policy(), &cleartext, timestamp)
+                .map_err(|e| {
+                    admin_error!("Unable to generate password mod {:?}", e);
+                    e
+                })?;
         let vcred = Value::new_credential("primary", ncred);
         // We need to remove other credentials too.
         let modlist = ModifyList::new_list(vec![

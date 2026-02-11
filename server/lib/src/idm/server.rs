@@ -45,6 +45,7 @@ use rand::prelude::*;
 use std::convert::TryFrom;
 use std::sync::Arc;
 use std::time::Duration;
+use time::OffsetDateTime;
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
 };
@@ -1624,8 +1625,9 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
 fn gen_password_mod(
     cleartext: &str,
     crypto_policy: &CryptoPolicy,
+    timestamp: OffsetDateTime,
 ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-    let new_cred = Credential::new_password_only(crypto_policy, cleartext)?;
+    let new_cred = Credential::new_password_only(crypto_policy, cleartext, timestamp)?;
     let cred_value = Value::new_credential("unix", new_cred);
     Ok(ModifyList::new_purge_and_set(
         Attribute::UnixPassword,
@@ -1914,8 +1916,10 @@ impl IdmServerProxyWriteTransaction<'_> {
             return Err(OperationError::SystemProtectedObject);
         }
 
-        let modlist =
-            gen_password_mod(pce.cleartext.as_str(), self.crypto_policy).map_err(|e| {
+        let timestamp = self.qs_write.get_curtime_odt();
+
+        let modlist = gen_password_mod(pce.cleartext.as_str(), self.crypto_policy, timestamp)
+            .map_err(|e| {
                 admin_error!(?e, "Unable to generate password change modlist");
                 e
             })?;
@@ -1980,10 +1984,12 @@ impl IdmServerProxyWriteTransaction<'_> {
             .map(|s| s.to_string())
             .unwrap_or_else(password_from_random);
 
-        let ncred = Credential::new_generatedpassword_only(self.crypto_policy, &cleartext)
-            .inspect_err(|err| {
-                error!(?err, "unable to generate password modification");
-            })?;
+        let timestamp = self.qs_write.get_curtime_odt();
+        let ncred =
+            Credential::new_generatedpassword_only(self.crypto_policy, &cleartext, timestamp)
+                .inspect_err(|err| {
+                    error!(?err, "unable to generate password modification");
+                })?;
         let vcred = Value::new_credential("primary", ncred);
         let v_valid_from = Value::new_datetime_epoch(self.qs_write.get_curtime());
 
@@ -2510,7 +2516,7 @@ mod tests {
         pw: &str,
     ) -> Result<Uuid, OperationError> {
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, pw)?;
+        let cred = Credential::new_password_only(&p, pw, OffsetDateTime::UNIX_EPOCH)?;
         let cred_id = cred.uuid;
         let v_cred = Value::new_credential("primary", cred);
         let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
@@ -3051,7 +3057,7 @@ mod tests {
 
         let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
         let pw = Password::try_from(im_pw).expect("failed to parse");
-        let cred = Credential::new_from_password(pw);
+        let cred = Credential::new_from_password(pw, OffsetDateTime::UNIX_EPOCH);
         let v_cred = Value::new_credential("unix", cred);
 
         let me_posix = ModifyEvent::new_internal_invalid(
@@ -4307,7 +4313,8 @@ mod tests {
                     Attribute::PrimaryCredential,
                     Value::Cred(
                         "primary".to_string(),
-                        Credential::new_password_only(&p, "banana").unwrap()
+                        Credential::new_password_only(&p, "banana", OffsetDateTime::UNIX_EPOCH)
+                            .unwrap()
                     )
                 )
             );
@@ -4317,7 +4324,8 @@ mod tests {
                     Attribute::UnixPassword,
                     Value::Cred(
                         "unix".to_string(),
-                        Credential::new_password_only(&p, "kampai").unwrap(),
+                        Credential::new_password_only(&p, "kampai", OffsetDateTime::UNIX_EPOCH)
+                            .unwrap(),
                     ),
                 );
             }
