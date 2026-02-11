@@ -1,0 +1,53 @@
+{
+  // This file is hjson, which is json that supports comments.
+  //
+  // This ID must always be unique for each migration json.
+  "id": "a2b58e97-0aaf-4b04-a4e4-7984616fe1df",
+  "assertions": [
+    // Assertions are applied in order.
+    {
+      // The entry with this UUID will be removed if it exists.
+      "state": "absent",
+      "id": "d211270b-4488-4f6a-9d39-82dcf6b3ff78"
+    },
+    {
+      // The entry with this UUID will be created if not present, or updated
+      // if it is present.
+      "state": "present",
+      // UUIDs must always be unique. To update an existing entry, you should
+      // place it's UUID here.
+      "id": "0ee875bd-408d-4ff9-85ca-c162f262493d",
+      "class": [
+        "person",
+        "account"
+      ],
+      "name": "tobias",
+      // Attributes contents are replaced by what you define.
+      "displayname": "Tobias"
+      // Attributes that are not specified, are not altered.
+    },
+    {
+      "state": "present",
+      "id": "91793d00-d9f0-4f9d-b352-8bb6142e7069",
+      "class": [
+        "group"
+      ],
+      "name": "lions",
+      "member": [
+        // References can use names rather than UUIDs, and may refer to
+        // entries that are created as part of this migration.
+        "tobias"
+      ]
+    },
+    {
+      "state": "present",
+      "id": "4f3e12aa-0723-499c-ac88-630ea543750b",
+      "class": [
+        "group"
+      ],
+      "name": "remove-all-members",
+      // Setting a value to null will cause it's content to be removed.
+      "member": null
+    }
+  ]
+}
