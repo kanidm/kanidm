@@ -179,7 +179,7 @@ filetime = "^0.2.26"
 fs4 = "^0.13.0"
 futures = "^0.3.31"
 futures-util = { version = "^0.3.30", features = ["sink"] }
-gix = { version = "0.78.0", default-features = false }
+gix = { version = "0.79.0", default-features = false }
 haproxy-protocol = { version = "0.0.4" }
 hashbrown = { version = "0.16.1", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
@@ -196,7 +196,7 @@ image = { version = "0.25.9", default-features = false, features = [
     "webp",
 ] }
 itertools = "0.14.0"
-jsonschema = "0.40.0"
+jsonschema = "0.41.0"
 # REMOVE this
 lazy_static = "^1.5.0"
 ldap3_client = "^0.6.2"
@@ -234,8 +234,8 @@ prctl = "1.0.0"
 proc-macro2 = "1.0.106"
 qrcode = "0.14.1"
 quote = "1"
-rand = "0.9.2"
-rand_chacha = "0.9.0"
+rand = "0.10.0"
+rand_chacha = "0.10.0"
 regex = "1.12.1"
 reqwest = { version = "0.12.28", default-features = false, features = [
     "cookies",
@@ -251,7 +251,7 @@ rustls = { version = "0.23.36", default-features = false, features = [
     "aws_lc_rs",
 ] }
 sd-notify = "^0.4.5"
-selinux = "^0.5.3"
+selinux = "^0.6.0"
 serde = "^1.0.228"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde-hjson = "1.1.0"
