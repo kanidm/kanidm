@@ -100,7 +100,7 @@ if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null" ]; then
     exit 1
 fi
 echo "Running pyKanidm live tests"
-cd pykanidm && python -m uv run --extra openapi_codegen python -m pytest -m 'openapi'
+cd pykanidm && uv run --extra openapi_codegen python -m pytest -m 'openapi'
 echo "Done running pytest..."
 
 echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
