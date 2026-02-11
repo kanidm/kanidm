@@ -5,7 +5,7 @@ use crate::attribute::Attribute;
 use crate::internal::UiHint;
 use crate::v1::OutboundMessage;
 use crypto_glue::s256::Sha256Output;
-use scim_proto::ScimEntryHeader;
+use scim_proto::{ScimEntry, ScimEntryHeader};
 use serde::Serialize;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
 use std::collections::{BTreeMap, BTreeSet};
@@ -51,13 +51,16 @@ impl ScimEntryKanidm {
 
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Serialize, Clone, Debug, Default)]
+#[derive(Serialize, Clone, Debug, Default, ToSchema)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ScimListResponse {
     pub schemas: Vec<String>,
     pub total_results: u64,
+    #[schema(value_type = u64)]
     pub items_per_page: Option<NonZeroU64>,
+    #[schema(value_type = u64)]
     pub start_index: Option<NonZeroU64>,
+    #[schema(value_type = Vec<ScimEntry>)]
     pub resources: Vec<ScimEntryKanidm>,
 }
 

@@ -16,24 +16,17 @@ jobs:
       UV_LINK_MODE: "copy"
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
-      - name: Set up Python 3.10
+      - name: Set up Python 3.12
         uses: actions/setup-python@v6
         with:
-          python-version: '3.10'
+          python-version: "3.12"
       - name: Install uv
         run: pip install --root-user-action=ignore  uv
       - name: Running mypy
-        run: |
-          cd pykanidm
-          uv run mypy --strict kanidm tests
-          uv run ty check
+        run: make test/pykanidm/mypy
       - name: Running Linting
-        run: |
-          cd pykanidm
-          uv run ruff check kanidm tests
+        run: make test/pykanidm/lint
       - name: Running pytest
         run: |
           cd pykanidm
-          uv run pytest -v -m 'not network'
+          uv run pytest -v -m 'not network and not openapi'

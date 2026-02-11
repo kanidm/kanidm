@@ -1,9 +1,10 @@
 # pylint: disable=too-few-public-methods
 # ^ disabling this because pydantic models don't have public methods
 
-from typing import Dict, List, Optional, TypedDict
+from typing import List, Optional
 
-from pydantic import ConfigDict, BaseModel, RootModel
+from kanidm_openapi_client.models.entry import Entry as OpenApiEntry
+from pydantic import BaseModel, RootModel
 
 
 class Group(BaseModel):
@@ -22,11 +23,8 @@ class Group(BaseModel):
         return member in self.member or member in self.dynmember
 
 
-class RawGroup(BaseModel):
+class RawGroup(OpenApiEntry):
     """group information as it comes back from the API"""
-
-    attrs: Dict[str, List[str]]
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
     def as_group(self) -> Group:
@@ -55,7 +53,3 @@ class RawGroup(BaseModel):
 
 
 GroupList = RootModel[List[RawGroup]]
-
-
-class IGroup(TypedDict):
-    attrs: Dict[str, List[str]]

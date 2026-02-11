@@ -1,9 +1,10 @@
 # pylint: disable=too-few-public-methods
 # ^ disabling this because pydantic models don't have public methods
 
-from typing import Dict, List, TypedDict
+from typing import List
 from uuid import UUID
 
+from kanidm_openapi_client.models.entry import Entry as OpenApiEntry
 from pydantic import BaseModel, ConfigDict, RootModel
 
 
@@ -16,10 +17,7 @@ class Person(BaseModel):
     uuid: UUID
 
 
-class RawPerson(BaseModel):
-    attrs: Dict[str, List[str]]
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
+class RawPerson(OpenApiEntry):
     @property
     def as_person(self) -> Person:
         """return it as the Person object which has nicer fields"""
@@ -40,10 +38,6 @@ class RawPerson(BaseModel):
 
 
 PersonList = RootModel[List[RawPerson]]
-
-
-class IPerson(TypedDict):
-    attrs: Dict[str, List[str]]
 
 
 class PersonCredentialResetToken(BaseModel):

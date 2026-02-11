@@ -1,6 +1,7 @@
 #![deny(warnings)]
 use compact_jwt::dangernoverify::JwsDangerReleaseWithoutVerify;
 use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
+use hyper::header::CONTENT_TYPE;
 use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::constants::{ATTR_GIDNUMBER, KSESSIONID};
 use kanidm_proto::internal::{
@@ -12,7 +13,7 @@ use kanidm_proto::v1::{
 };
 use kanidmd_lib::constants::{NAME_IDM_ADMINS, NAME_SYSTEM_ADMINS};
 use kanidmd_lib::credential::totp::Totp;
-use kanidmd_lib::prelude::Attribute;
+use kanidmd_lib::prelude::{Attribute, APPLICATION_JSON};
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 use std::path::Path;
 use std::str::FromStr;
@@ -1777,12 +1778,9 @@ async fn start_password_session(
             privileged,
         },
     };
-    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
-
     let res = match client
         .post(rsclient.make_url("/v1/auth"))
-        .header("Content-Type", "application/json")
-        .body(authreq)
+        .json(&authreq)
         .send()
         .await
     {
@@ -1796,13 +1794,12 @@ async fn start_password_session(
     let authreq = AuthRequest {
         step: AuthStep::Begin(AuthMech::Password),
     };
-    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
 
     let res = match client
         .post(rsclient.make_url("/v1/auth"))
-        .header("Content-Type", "application/json")
+        .header(CONTENT_TYPE, APPLICATION_JSON)
         .header(KSESSIONID, session_id)
-        .body(authreq)
+        .json(&authreq)
         .send()
         .await
     {
@@ -1814,13 +1811,11 @@ async fn start_password_session(
     let authreq = AuthRequest {
         step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
     };
-    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
 
     let res = match client
         .post(rsclient.make_url("/v1/auth"))
-        .header("Content-Type", "application/json")
         .header(KSESSIONID, session_id)
-        .body(authreq)
+        .json(&authreq)
         .send()
         .await
     {

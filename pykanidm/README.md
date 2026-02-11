@@ -24,6 +24,80 @@ Set up your dev environment using `uv` - `python -m pip install uv && uv sync`.
 Pytest it used for testing, if you don't have a live server to test against and config set up, use
 `uv run pytest -m 'not network'`.
 
+### OpenAPI client generation
+
+The OpenAPI spec is served by the running server. To generate/update the OpenAPI-based client package:
+
+```bash
+uv run kanidm_openapi_codegen
+```
+
+You can also point it at a local spec file or override the URL:
+
+```bash
+uv run kanidm_openapi_codegen --spec-file /path/to/openapi.json
+uv run kanidm_openapi_codegen --spec-url https://localhost:8443/docs/v1/openapi.json
+```
+
+Programmatic code generation lives in `kanidm.openapi_codegen`, which is behind the optional feature `openapi_codegen`:
+
+```bash
+python -m pip install "kanidm[openapi_codegen]"
+```
+
+Programmatic use is also supported:
+
+```python
+from pathlib import Path
+from kanidm.openapi_codegen import generate_openapi_client
+
+generate_openapi_client(
+    spec_url="https://localhost:8443/docs/v1/openapi.json",
+    verify_tls=True,
+    ca_file=Path("/tmp/kanidm/ca.pem"),
+    output=Path("pykanidm/kanidm_openapi_client"),
+)
+```
+
+The generated client is packaged as `kanidm_openapi_client`.
+
+`KanidmClient` now initializes an OpenAPI client by default at startup as `client.openapi_client`:
+
+```python
+from kanidm import KanidmClient
+
+client = KanidmClient(uri="https://localhost:8443")
+openapi_client = client.openapi_client
+```
+
+You can still build one explicitly from config helpers in `kanidm.openapi` if needed.
+
+#### OpenAPI structure
+
+- `kanidm_openapi_client/` contains the generated OpenAPI client (API classes, models, and transport).
+- `kanidm/openapi.py` provides helpers to build an OpenAPI `ApiClient` from a `KanidmClient`/`KanidmClientConfig`.
+- The generated package is included in the build via `tool.pdm.build.includes`.
+
+### OpenAPI spec tests
+
+Networked OpenAPI tests are marked `openapi` and include both spec validation and generated-client GET calls. Run them with:
+
+```bash
+IDM_ADMIN_PASS=... uv run pytest -m openapi
+```
+
+OpenAPI tests regenerate `kanidm_openapi_client` once per pytest session before running marked tests.
+This uses `kanidm.openapi_codegen` and requires Docker to be available.
+
+Optional environment overrides:
+
+- `KANIDM_CA_PATH` (default: `/tmp/kanidm/ca.pem` if present)
+- `KANIDM_OPENAPI_URL` (default: `https://localhost:8443`)
+- `IDM_ADMIN_PASS` (required for auth'd OpenAPI tests; matches `scripts/setup_dev_environment.sh`)
+- `KANIDM_INSECURE` (`true`/`false`, default: `false`) disables TLS verification for tests
+
+Note: tests always verify TLS unless `KANIDM_INSECURE=true`. Provide a CA via `KANIDM_CA_PATH` (or use the default `/tmp/kanidm/ca.pem`) so the server cert validates.
+
 ## Changelog
 
 | Version | Date       | Notes                                                 |
