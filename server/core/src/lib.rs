@@ -1257,15 +1257,9 @@ pub async fn create_server_core(
                             // We don't log here as the receivers will notify when they have completed
                             // the reload.
                             if tls_acceptor_reload_tx_c.send(tls_acceptor).is_err() {
-<<<<<<< HEAD
                                 error!("TLS acceptor did not accept the reload, the server may have failed!");
                             };
                             info!("TLS acceptor reload notification sent");
-=======
-                                error!("tls acceptor did not accept the reload, the server may have failed!");
-                            };
-                            info!("tls acceptor reload notification sent");
->>>>>>> 40485c665 (Handle reloads)
                         },
                     }
                 }
