@@ -766,7 +766,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
 static MIGRATION_PATH_RE: LazyLock<Regex> = LazyLock::new(|| {
     #[allow(clippy::expect_used)]
-    Regex::new("^\\d\\d-.*\\.json$").expect("Invalid SPN regex found")
+    Regex::new("^\\d\\d-.*\\.h?json$").expect("Invalid SPN regex found")
 });
 
 struct ScimMigration {
@@ -852,7 +852,7 @@ async fn migration_apply(
         };
 
         // Is it valid json?
-        let assertions: ScimAssertGeneric = match serde_json::from_slice(&migration_content) {
+        let assertions: ScimAssertGeneric = match serde_hjson::from_slice(&migration_content) {
             Ok(assertions) => assertions,
             Err(err) => {
                 error!(?err, path = %migration_path.display(), "Invalid JSON SCIM Assertion");
