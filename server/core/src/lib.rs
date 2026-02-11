@@ -852,7 +852,7 @@ async fn migration_apply(
         };
 
         // Is it valid json?
-        let assertions: ScimAssertGeneric = match serde_json::from_slice(&migration_content) {
+        let assertions: ScimAssertGeneric = match serde_hjson::from_slice(&migration_content) {
             Ok(assertions) => assertions,
             Err(err) => {
                 error!(?err, path = %migration_path.display(), "Invalid JSON SCIM Assertion");
