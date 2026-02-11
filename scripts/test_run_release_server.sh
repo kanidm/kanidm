@@ -88,6 +88,19 @@ echo "Running the OpenAPI schema checks"
 
 bash -c ./scripts/openapi_tests/check_openapi_spec.sh || exit 1
 
+echo "Running pyKanidm live tests"
+IDM_ADMIN_PASS_RAW="$(${KANIDMD} scripting recover-account idm_admin 2>&1)"
+IDM_ADMIN_PASS="$(echo "${IDM_ADMIN_PASS_RAW}" | grep output | jq -r .output)"
+export IDM_ADMIN_PASS
+if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null" ]; then
+    echo "Failed to reset idm_admin password!"
+    echo "Raw output:"
+    echo "${IDM_ADMIN_PASS_RAW}"
+    exit 1
+fi
+cd "$CURRENT_DIR/pykanidm" && uv run python -m pytest -m 'openapi'
+
+
 echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
 sleep "${WAIT_TIMER}"
 if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
