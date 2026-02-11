@@ -1,7 +1,7 @@
 # Entry Management
 
 Kanidm supports a SCIM based entry management/migration process. This process allows configuration management tools such
-an ansible or salt to deploy json formatted person and group records that can be imported to the server.
+Ansible or Salt to deploy JSON formatted person and group records that can be imported to the server.
 
 ## Migration Path
 
@@ -31,7 +31,7 @@ Attributes of an entry can be removed by setting them to `null`.
 ```
 
 This example is located in
-[examples/server_container.toml](https://github.com/kanidm/kanidm/blob/master/examples/migrations/00-basic.json).
+[examples/migrations](https://github.com/kanidm/kanidm/blob/master/examples/migrations/) in the repository.
 
 ## Recommendations
 
@@ -41,7 +41,7 @@ a consistent state. This prevents races or flip-flop conditions that could other
 ## Application Details
 
 There are some important details for how Kanidm applies these migrations. This is due to the fact that Kanidm is a
-distributed system, and we strive to ensure that all users data is consistent and as expected.
+distributed system, and we strive to ensure that all data is consistent and correct.
 
 ### Filesystem Access
 
@@ -51,7 +51,7 @@ you would expect of the `idm_admin` or `admin` account.
 
 ### Valid Attributes
 
-Not all attributes may be asserted via migrations. Examples include password hashes, oauth2 basic secrets, and other
+Not all attributes may be asserted via migrations. Examples include password hashes, OAuth2 basic secrets, and other
 credentials. Only a subset of values may be asserted on entries.
 
 ### Only Once

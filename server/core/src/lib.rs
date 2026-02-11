@@ -873,7 +873,7 @@ async fn migration_apply(
     }
 
     // Okay, we're setup to go - apply them all. Note that we do these
-    // separately, each migration occurs in it's own transaction.
+    // separately, each migration occurs in its own transaction.
     for ScimMigration {
         path,
         hash,
@@ -1218,7 +1218,7 @@ pub async fn create_server_core(
                                 migration_path.as_path(),
                             ).await;
 
-                            info!("migration reload complete");
+                            info!("Migration reload complete");
                         },
                     }
                 }
@@ -1257,9 +1257,9 @@ pub async fn create_server_core(
                             // We don't log here as the receivers will notify when they have completed
                             // the reload.
                             if tls_acceptor_reload_tx_c.send(tls_acceptor).is_err() {
-                                error!("tls acceptor did not accept the reload, the server may have failed!");
+                                error!("TLS acceptor did not accept the reload, the server may have failed!");
                             };
-                            info!("tls acceptor reload notification sent");
+                            info!("TLS acceptor reload notification sent");
                         },
                     }
                 }

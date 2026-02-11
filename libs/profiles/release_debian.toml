@@ -7,7 +7,7 @@
 server_admin_bind_path = "/var/run/kanidmd/sock"
 server_ui_pkg_path = "/usr/share/kanidmd/static"
 server_config_path = "/etc/kanidmd/server.toml"
-server_migration_path = "/etc/kanidm/migrations.d";
+server_migration_path = "/etc/kanidm/migrations.d"
 client_config_path = "/etc/kanidm/config"
 # TODO: unixd should migrate to it's own config dir as part of the sparkled migration.
 # No point in doing two back to back migrations.

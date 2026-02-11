@@ -3,7 +3,7 @@
 server_admin_bind_path = "/var/run/kanidmd/sock"
 server_ui_pkg_path = "/usr/local/share/kanidm/ui/hpkg"
 server_config_path = "/usr/local/etc/kanidm/server.toml"
-server_migration_path = "/usr/local/etc/kanidm/migrations.d";
+server_migration_path = "/usr/local/etc/kanidm/migrations.d"
 client_config_path = "/usr/local/etc/kanidm/config"
 resolver_config_path = "/usr/local/etc/kanidm/unixd"
 resolver_service_account_token_path = "/usr/local/etc/kanidm/token"
