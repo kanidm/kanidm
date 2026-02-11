@@ -35,3 +35,8 @@ compression = "gzip"
 [replication]
 origin = "repl://127.0.0.1:8444"
 bindaddress = "0.0.0.0:8444"
+
+
+# [ldap_client_address_info]
+# proxy-v2 = ["127.0.0.1", "127.0.0.0/8"]
+# proxy-v1 = ["127.0.0.1", "127.0.0.0/8"]
