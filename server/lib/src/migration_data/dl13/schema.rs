@@ -886,6 +886,17 @@ pub static ref SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE: SchemaAttribute = Schem
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_S256: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_S256,
+    name: Attribute::S256,
+    description: "A Sha256 output.".to_string(),
+    multivalue: false,
+    unique: false,
+    indexed: false,
+    syntax: SyntaxType::Sha256,
+    ..Default::default()
+};
+
 // === classes ===
 pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
@@ -1368,6 +1379,17 @@ pub static ref SCHEMA_CLASS_MEMORIAL: SchemaClass = SchemaClass {
     ],
     systemmay: vec![
         Attribute::HmacNameHistory
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_ASSERTION_NONCE: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_ASSERTION_NONCE,
+    name: EntryClass::AssertionNonce.into(),
+    description: "The class representing the nonce tied to an assertion event so that it is only applied once.".to_string(),
+    systemmust: vec![
+        Attribute::Uuid,
+        Attribute::S256,
     ],
     ..Default::default()
 };

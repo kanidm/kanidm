@@ -462,6 +462,7 @@ async fn server_tls_loop(
             Ok(action) = rx.recv() => {
                 match action {
                     CoreAction::Shutdown => break,
+                    CoreAction::Reload => {},
                 }
             }
             accept = listener.accept() => {
@@ -503,6 +504,7 @@ async fn server_plaintext_loop(
             Ok(action) = rx.recv() => {
                 match action {
                     CoreAction::Shutdown => break,
+                    CoreAction::Reload => {}
                 }
             }
             accept = listener.accept() => {

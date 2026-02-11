@@ -44,6 +44,17 @@ db_path = "/data/kanidm.db"
 #   re-read and reloaded if their content is valid.
 tls_chain = "/data/chain.pem"
 tls_key = "/data/key.pem"
+
+#   The path where entry migrations will be read from.
+#   This path should contain files that match the pattern
+#   xx-name.json where xx are two number. For example:
+#     00-base.json
+#     10-groups.json
+#   Migrations are applied in order. Migrations that fail
+#   to apply, or have invalid syntax are skipped without
+#   preventing server start up or reload.
+# migration_path = "/data/migrations.d"
+
 #
 #   The log level of the server. May be one of info, debug, trace
 #

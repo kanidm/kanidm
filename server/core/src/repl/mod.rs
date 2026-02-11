@@ -764,6 +764,7 @@ async fn repl_acceptor(
             Ok(action) = rx.recv() => {
                 match action {
                     CoreAction::Shutdown => break 'event,
+                    CoreAction::Reload => {}
                 }
             }
             _ = sleep(retry_timeout) => {}
@@ -966,6 +967,7 @@ async fn repl_acceptor(
                 Ok(action) = rx.recv() => {
                     match action {
                         CoreAction::Shutdown => break 'event,
+                        CoreAction::Reload => {}
                     }
                 }
                 Some(ctrl_msg) = ctrl_rx.recv() => {
