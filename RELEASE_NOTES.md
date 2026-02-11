@@ -14,6 +14,63 @@ We value your feedback! First, please see our [code of conduct]. If you have que
 
 ## Release Notes
 
+### 2025-02-11 - Kanidm 1.9.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
+
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
+
+Before upgrading you should review [our upgrade documentation]
+
+#### 1.9.0 Important Changes
+
+* An HJSON based entry migration framework has been introduced, allowing configuration management of database entries.
+* Upgrade/Downgrade constraints are now stricter to prevent mistakes during administrative tasks.
+* Service Accounts can issue OIDC/OAuth2 token using RFC8693 Token Exchange.
+* CSS can be set by overriding a default file (`override.css`).
+* Kanidmd now has a JSON scripting CLI, replacing the `--output json` CLI option.
+* Service Account tokens now support a short-format for applications that can not process credentials greater than 128 characters.
+
+#### 1.9.0 Release Highlights
+
+- Python API is now generated from OpenAPI definitions.
+- Allow clearing of softlocks that are enforced on accounts.
+- Add a scim-batch migration framework to allow entry management.
+- Improvements to upgrade/downgrade testing and constraints.
+- Add the ability to backup via stdout.
+- Remove the mozilla webauthn authenticator backend.
+- Add a truncated service account token format.
+- Raise the maximum number of default queryable attributes in LDAP to support SSSD.
+- Add support for RADIUS certificates to identify a user with the subjectAltName-DN type.
+- Add a kanidmd command line scripting interface.
+- Harden against errors when `libnss_kanidm.so` is used by a forking process.
+- Allow overrides of CSS via a default file that can be overridden.
+- Add an LDAP homeDirectory virtualAttribute for some RFC2307Bis Clients.
+- Invalid password formats can be skipped during migration imports.
+- Allow service desk to change account validity windows.
+- Resolve an issue with ipa/ldap sync not correctly installing TLS providers.
+- Prevent a server startup crash when the administrator forced a low log level.
+- Support OIDC for service-accounts with RFC8693 Token Exchange.
+- Resolve incorrect CSP headers in some OAuth2 situations.
+- Improve support for concurrent pam sessions.
+- Add a home directory strategy framework.
+- Resolve an infinite loop in the command line authentication process.
+- Ignore CredentialTypeMinimum during migrations to prevent potential AccountPolicy downgrades.
+- Allow disabling the OAuth2 Consent Prompt for some applications.
+- Improve debugging of IP address logging configuration.
+- Force synchronisation of token privilege limetime to be bound by token life.
+- Add the Kanidm Project Anthem. #3987
+- Resolve a bug where upgrade version constraints were not correctly enforced.
+- Improved environment variable parsing for server configuration.
+- Improve upgrade documentation.
+- Reduce proto crate dependencies.
+- Attribute Uniquness conflicts now yield `HTTP::BAD_REQUEST`
+- Improve diagnostics for invalid OAuth2 Client configurations.
+- Home user directory symlinks are now conditionally updated.
+- Improve UID/GID overlap messages to help administrators resolve issues during IAM migration.
+
 ### 2025-10-07 - Kanidm 1.8.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our

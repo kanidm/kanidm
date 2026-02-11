@@ -15,7 +15,7 @@ repository = { workspace = true }
 client_sync_tracing = []
 default = ["unix"]
 unix = []
-selinux = ["dep:selinux"]
+selinux = ["dep:selinux", "dep:kanidm_utils_users"]
 tpm = []
 
 [lib]
@@ -42,9 +42,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 selinux = { workspace = true, optional = true }
-
-[target.'cfg(not(target_family = "windows"))'.dependencies]
-kanidm_utils_users = { workspace = true }
+kanidm_utils_users = { workspace = true, optional = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

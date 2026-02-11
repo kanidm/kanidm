@@ -20,7 +20,7 @@ cargo install  --force \
 
 - [ ] Update MSRV if applicable
 - [ ] `cargo update`
-- [ ] `RUSTC_BOOTSTRAP=1 cargo udeps`
+- [ ] `cargo +nightly udeps`
 - [ ] `cargo machete --with-metadata`
 - [ ] `cargo outdated -R`
 - [ ] `cargo audit`
