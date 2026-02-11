@@ -199,11 +199,11 @@ class Attribute(BaseModel):
     # data type: str
     oneof_schema_85_validator: Optional[StrictStr] = None
     # data type: str
-    oneof_schema_86_validator: Optional[StrictStr] = Field(default=None, description="An LDAP Compatible emailAddress")
+    oneof_schema_86_validator: Optional[StrictStr] = None
     # data type: str
-    oneof_schema_87_validator: Optional[StrictStr] = Field(default=None, description="An LDAP Compatible sshkeys virtual attribute")
+    oneof_schema_87_validator: Optional[StrictStr] = Field(default=None, description="An LDAP Compatible emailAddress")
     # data type: str
-    oneof_schema_88_validator: Optional[StrictStr] = None
+    oneof_schema_88_validator: Optional[StrictStr] = Field(default=None, description="An LDAP Compatible sshkeys virtual attribute")
     # data type: str
     oneof_schema_89_validator: Optional[StrictStr] = None
     # data type: str
@@ -321,11 +321,11 @@ class Attribute(BaseModel):
     # data type: str
     oneof_schema_146_validator: Optional[StrictStr] = None
     # data type: str
-    oneof_schema_147_validator: Optional[StrictStr] = Field(default=None, description="A set of scim schemas. This is similar to a kanidm class.")
+    oneof_schema_147_validator: Optional[StrictStr] = None
     # data type: str
     oneof_schema_148_validator: Optional[StrictStr] = None
     # data type: str
-    oneof_schema_149_validator: Optional[StrictStr] = None
+    oneof_schema_149_validator: Optional[StrictStr] = Field(default=None, description="A set of scim schemas. This is similar to a kanidm class.")
     # data type: str
     oneof_schema_150_validator: Optional[StrictStr] = None
     # data type: str
@@ -333,13 +333,13 @@ class Attribute(BaseModel):
     # data type: str
     oneof_schema_152_validator: Optional[StrictStr] = None
     # data type: str
-    oneof_schema_153_validator: Optional[StrictStr] = Field(default=None, description="An LDAP-compatible sshpublickey")
+    oneof_schema_153_validator: Optional[StrictStr] = None
     # data type: str
-    oneof_schema_154_validator: Optional[StrictStr] = Field(default=None, description="The Kanidm-local ssh_publickey")
+    oneof_schema_154_validator: Optional[StrictStr] = None
     # data type: str
-    oneof_schema_155_validator: Optional[StrictStr] = None
+    oneof_schema_155_validator: Optional[StrictStr] = Field(default=None, description="An LDAP-compatible sshpublickey")
     # data type: str
-    oneof_schema_156_validator: Optional[StrictStr] = None
+    oneof_schema_156_validator: Optional[StrictStr] = Field(default=None, description="The Kanidm-local ssh_publickey")
     # data type: str
     oneof_schema_157_validator: Optional[StrictStr] = None
     # data type: str
@@ -404,8 +404,12 @@ class Attribute(BaseModel):
     oneof_schema_187_validator: Optional[StrictStr] = None
     # data type: str
     oneof_schema_188_validator: Optional[StrictStr] = None
+    # data type: str
+    oneof_schema_189_validator: Optional[StrictStr] = None
+    # data type: str
+    oneof_schema_190_validator: Optional[StrictStr] = None
     # data type: AttributeOneOf
-    oneof_schema_189_validator: Optional[AttributeOneOf] = None
+    oneof_schema_191_validator: Optional[AttributeOneOf] = None
     actual_instance: Optional[Union[AttributeOneOf, str]] = None
     one_of_schemas: Set[str] = { "AttributeOneOf", "str" }
 
@@ -1555,6 +1559,18 @@ class Attribute(BaseModel):
         # validate data type: str
         try:
             instance.oneof_schema_188_validator = v
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # validate data type: str
+        try:
+            instance.oneof_schema_189_validator = v
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # validate data type: str
+        try:
+            instance.oneof_schema_190_validator = v
             match += 1
         except (ValidationError, ValueError) as e:
             error_messages.append(str(e))
@@ -3272,6 +3288,24 @@ class Attribute(BaseModel):
             instance.oneof_schema_188_validator = json.loads(json_str)
             # assign value to actual_instance
             instance.actual_instance = instance.oneof_schema_188_validator
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into str
+        try:
+            # validation
+            instance.oneof_schema_189_validator = json.loads(json_str)
+            # assign value to actual_instance
+            instance.actual_instance = instance.oneof_schema_189_validator
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into str
+        try:
+            # validation
+            instance.oneof_schema_190_validator = json.loads(json_str)
+            # assign value to actual_instance
+            instance.actual_instance = instance.oneof_schema_190_validator
             match += 1
         except (ValidationError, ValueError) as e:
             error_messages.append(str(e))

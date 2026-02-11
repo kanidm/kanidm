@@ -30,7 +30,8 @@ class ApiTokenGenerate(BaseModel):
     label: StrictStr
     expiry: Optional[datetime] = None
     read_write: StrictBool
-    __properties: ClassVar[List[str]] = ["label", "expiry", "read_write"]
+    compact: Optional[StrictBool] = None
+    __properties: ClassVar[List[str]] = ["label", "expiry", "read_write", "compact"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -89,7 +90,8 @@ class ApiTokenGenerate(BaseModel):
         _obj = cls.model_validate({
             "label": obj.get("label"),
             "expiry": obj.get("expiry"),
-            "read_write": obj.get("read_write")
+            "read_write": obj.get("read_write"),
+            "compact": obj.get("compact")
         })
         return _obj
 

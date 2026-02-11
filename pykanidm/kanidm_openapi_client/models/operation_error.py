@@ -503,6 +503,12 @@ class OperationError(BaseModel):
     oneof_schema_229_validator: Optional[StrictStr] = None
     # data type: str
     oneof_schema_230_validator: Optional[StrictStr] = None
+    # data type: str
+    oneof_schema_231_validator: Optional[StrictStr] = None
+    # data type: str
+    oneof_schema_232_validator: Optional[StrictStr] = None
+    # data type: str
+    oneof_schema_233_validator: Optional[StrictStr] = None
     actual_instance: Optional[Union[OperationErrorOneOf, OperationErrorOneOf1, OperationErrorOneOf10, OperationErrorOneOf11, OperationErrorOneOf12, OperationErrorOneOf13, OperationErrorOneOf14, OperationErrorOneOf15, OperationErrorOneOf2, OperationErrorOneOf3, OperationErrorOneOf4, OperationErrorOneOf5, OperationErrorOneOf6, OperationErrorOneOf7, OperationErrorOneOf8, OperationErrorOneOf9, str]] = None
     one_of_schemas: Set[str] = { "OperationErrorOneOf", "OperationErrorOneOf1", "OperationErrorOneOf10", "OperationErrorOneOf11", "OperationErrorOneOf12", "OperationErrorOneOf13", "OperationErrorOneOf14", "OperationErrorOneOf15", "OperationErrorOneOf2", "OperationErrorOneOf3", "OperationErrorOneOf4", "OperationErrorOneOf5", "OperationErrorOneOf6", "OperationErrorOneOf7", "OperationErrorOneOf8", "OperationErrorOneOf9", "str" }
 
@@ -1888,6 +1894,24 @@ class OperationError(BaseModel):
         # validate data type: str
         try:
             instance.oneof_schema_230_validator = v
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # validate data type: str
+        try:
+            instance.oneof_schema_231_validator = v
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # validate data type: str
+        try:
+            instance.oneof_schema_232_validator = v
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # validate data type: str
+        try:
+            instance.oneof_schema_233_validator = v
             match += 1
         except (ValidationError, ValueError) as e:
             error_messages.append(str(e))
@@ -3930,6 +3954,33 @@ class OperationError(BaseModel):
             instance.oneof_schema_230_validator = json.loads(json_str)
             # assign value to actual_instance
             instance.actual_instance = instance.oneof_schema_230_validator
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into str
+        try:
+            # validation
+            instance.oneof_schema_231_validator = json.loads(json_str)
+            # assign value to actual_instance
+            instance.actual_instance = instance.oneof_schema_231_validator
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into str
+        try:
+            # validation
+            instance.oneof_schema_232_validator = json.loads(json_str)
+            # assign value to actual_instance
+            instance.actual_instance = instance.oneof_schema_232_validator
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
+        # deserialize data into str
+        try:
+            # validation
+            instance.oneof_schema_233_validator = json.loads(json_str)
+            # assign value to actual_instance
+            instance.actual_instance = instance.oneof_schema_233_validator
             match += 1
         except (ValidationError, ValueError) as e:
             error_messages.append(str(e))
