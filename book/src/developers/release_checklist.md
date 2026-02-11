@@ -49,6 +49,7 @@ cargo install  --force \
 - [ ] `git pull`
 - [ ] git checkout -b 1.x.0 (Note no v to prevent ref conflict)
 - [ ] update version to set pre tag in ./Cargo.toml
+- [ ] update Makefile to set docker image to rc
 - [ ] `git commit -m "Release $(cargo metadata --format-version 1 | jq '.packages[] | select(.name=="kanidm_proto") | .version')-pre"`
 - [ ] `git tag v$(cargo metadata --format-version 1 | jq '.packages[] | select(.name=="kanidm_proto") | .version')-pre`
 

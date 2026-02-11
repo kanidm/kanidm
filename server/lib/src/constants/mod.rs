@@ -77,27 +77,31 @@ pub const DOMAIN_LEVEL_13: DomainVersion = 13;
 /// Deprecated as of 1.12.0
 pub const DOMAIN_LEVEL_14: DomainVersion = 14;
 
+/// Domain Level introduced with 1.11.0.
+/// Deprecated as of 1.13.0
+pub const DOMAIN_LEVEL_15: DomainVersion = 15;
+
 // The target supported domain functional level. During development this is
 // the NEXT level that users will upgrade too. In other words if we are
 // developing 1.6.0-dev, then we need to set TGT_LEVEL to 10 which is
 // the corresponding level.
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_13;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_14;
 // The current patch level if any out of band fixes are required.
 pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_2;
+
+// The maximum supported domain functional level. This generally
+// represents a *future* version of the server which doesn't exist
+// yet.
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_15;
+
+// This is the LOWEST level of database we can recreate. This is important for testing,
+// but we don't actually expect it to be used.
+pub const DOMAIN_MIN_CREATION_LEVEL: DomainVersion = DOMAIN_LEVEL_10;
 
 // The previous releases domain functional level
 pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL - 1;
 // The target domain functional level for the SUBSEQUENT release/dev cycle.
 pub const DOMAIN_TGT_NEXT_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL + 1;
-
-// The maximum supported domain functional level. This generally
-// represents a *future* version of the server which doesn't exist
-// yet.
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_14;
-
-// This is the LOWEST level of database we can recreate. This is important for testing,
-// but we don't actually expect it to be used.
-pub const DOMAIN_MIN_CREATION_LEVEL: DomainVersion = DOMAIN_LEVEL_10;
 
 // What domain level is the "one before" we could do a valid upgrade. We need to be able
 // to create this database, then attempt (and fail) to upgrade from it during tests. So
