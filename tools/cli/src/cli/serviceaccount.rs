@@ -72,6 +72,7 @@ impl ServiceAccountOpt {
                     label,
                     expiry,
                     read_write,
+                    compact,
                 } => {
                     let expiry_odt = if let Some(t) = expiry {
                         // Convert the time to local timezone.
@@ -102,6 +103,7 @@ impl ServiceAccountOpt {
                             label,
                             expiry_odt,
                             *read_write,
+                            *compact,
                         )
                         .await
                     {

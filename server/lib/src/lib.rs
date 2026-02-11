@@ -73,6 +73,8 @@ pub mod testkit;
 
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
+// Clippy is wrong, these are used. Hush little clippy.
+#[allow(unused_imports)]
 pub mod prelude {
     pub use kanidm_proto::attribute::{AttrString, Attribute};
     pub use kanidm_proto::constants::*;
@@ -126,8 +128,8 @@ pub mod prelude {
     pub use kanidmd_lib_macros::*;
 
     pub(crate) use crate::valueset::{
-        ValueSet, ValueSetBool, ValueSetCid, ValueSetIutf8, ValueSetRefer, ValueSetSyntax,
-        ValueSetT, ValueSetUtf8, ValueSetUuid,
+        ValueSet, ValueSetBool, ValueSetCid, ValueSetIname, ValueSetIutf8, ValueSetRefer,
+        ValueSetSha256, ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
     };
 
     pub(crate) use kanidm_proto::scim_v1::{

@@ -111,7 +111,7 @@ impl IdmServerAuthTransaction<'_> {
 
         let is_valid = if let Some(slock_ref) = maybe_slock {
             let mut slock = slock_ref.lock().await;
-            slock.apply_time_step(ct);
+            slock.apply_time_step(ct, None);
             slock.is_valid()
         } else {
             true

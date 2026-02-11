@@ -54,8 +54,12 @@ impl QueryServer {
             // in the above.
             debug_assert!(domain_target_level <= DOMAIN_MAX_LEVEL);
 
+            // Assert that we have a minimum creation level that is valid.
+            const { assert!(DOMAIN_MIN_CREATION_LEVEL == DOMAIN_LEVEL_10) };
+
             // No domain info was present, so neither was the rest of the IDM. Bring up the
             // full IDM here.
+
             match domain_target_level {
                 DOMAIN_LEVEL_10 => write_txn.migrate_domain_9_to_10()?,
                 DOMAIN_LEVEL_11 => write_txn.migrate_domain_10_to_11()?,
@@ -134,20 +138,32 @@ impl QueryServer {
 
         // If the database domain info is a lower version than our target level, we reload.
         if domain_info_version < domain_target_level {
-            if (domain_target_level - domain_info_version) > DOMAIN_MIGRATION_SKIPS {
+            // if (domain_target_level - domain_info_version) > DOMAIN_MIGRATION_SKIPS {
+            if domain_info_version < DOMAIN_MIGRATION_FROM_MIN {
                 error!(
                     "UNABLE TO PROCEED. You are attempting a skip update which is NOT SUPPORTED."
                 );
                 error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
-                error!(domain_previous_version = ?domain_info_version, domain_target_version = ?domain_target_level, domain_migration_steps_limit = ?DOMAIN_MIGRATION_SKIPS);
+                error!(domain_previous_version = ?domain_info_version, domain_target_version = ?domain_target_level, domain_migration_minimum_limit = ?DOMAIN_MIGRATION_FROM_MIN);
                 return Err(OperationError::MG0008SkipUpgradeAttempted);
             }
 
-            write_txn
-                .internal_apply_domain_migration(domain_target_level)
-                .map(|()| {
-                    warn!("Domain level has been raised to {}", domain_target_level);
-                })?;
+            // Apply each step in order.
+            for domain_target_level_step in domain_info_version..domain_target_level {
+                // Rust has no way to do a range with the minimum excluded and the maximum
+                // included, so we have to do min -> max which includes min and excludes max,
+                // and by adding 1 we gett the same result.
+                let domain_target_level_step = domain_target_level_step + 1;
+                write_txn
+                    .internal_apply_domain_migration(domain_target_level_step)
+                    .map(|()| {
+                        warn!(
+                            "Domain level has been raised to {}",
+                            domain_target_level_step
+                        );
+                    })?;
+            }
+
             // Reload if anything in migrations requires it - this triggers the domain migrations
             // which in turn can trigger schema reloads etc. If the server was just brought up
             // then we don't need the extra reload since we are already at the correct
@@ -156,6 +172,12 @@ impl QueryServer {
             if domain_info_version != 0 {
                 reload_required = true;
             }
+        } else if domain_info_version > domain_target_level {
+            // This is a DOWNGRADE which may not proceed.
+            error!("UNABLE TO PROCEED. You are attempting a downgrade which is NOT SUPPORTED.");
+            error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
+            error!(domain_previous_version = ?domain_info_version, domain_target_version = ?domain_target_level);
+            return Err(OperationError::MG0010DowngradeNotAllowed);
         } else if domain_development_taint {
             // This forces pre-release versions to re-migrate each start up. This solves
             // the domain-version-sprawl issue so that during a development cycle we can
@@ -229,13 +251,12 @@ impl QueryServer {
 }
 
 impl QueryServerWriteTransaction<'_> {
-    /// Apply a domain migration `to_level`. Panics if `to_level` is not greater than the active
-    /// level.
+    /// Apply a domain migration `to_level`. Errors if `to_level` is not greater than or equal to
+    /// the active level.
     pub(crate) fn internal_apply_domain_migration(
         &mut self,
         to_level: u32,
     ) -> Result<(), OperationError> {
-        assert!(to_level > self.get_domain_version());
         self.internal_modify_uuid(
             UUID_DOMAIN_INFO,
             &ModifyList::new_purge_and_set(Attribute::Version, Value::new_uint32(to_level)),
@@ -1006,6 +1027,80 @@ mod tests {
         );
 
         write_txn.commit().expect("Unable to commit");
+    }
+
+    #[qs_test(domain_level=DOMAIN_TGT_LEVEL)]
+    async fn test_migrations_prevent_downgrades(server: &QueryServer) {
+        let curtime = duration_from_epoch_now();
+
+        let mut write_txn = server.write(curtime).await.unwrap();
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_TGT_LEVEL);
+
+        drop(write_txn);
+
+        // MUST NOT SUCCEED.
+        let err = server
+            .initialise_helper(curtime, DOMAIN_PREVIOUS_TGT_LEVEL)
+            .await
+            .expect_err("Domain level was lowered!!!!");
+
+        assert_eq!(err, OperationError::MG0010DowngradeNotAllowed);
+    }
+
+    #[qs_test(domain_level=DOMAIN_MIGRATION_FROM_INVALID)]
+    async fn test_migrations_prevent_skips(server: &QueryServer) {
+        let curtime = duration_from_epoch_now();
+
+        let mut write_txn = server.write(curtime).await.unwrap();
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_MIGRATION_FROM_INVALID);
+
+        drop(write_txn);
+
+        // MUST NOT SUCCEED.
+        let err = server
+            .initialise_helper(curtime, DOMAIN_TGT_LEVEL)
+            .await
+            .expect_err("Migration went ahead!!!!");
+
+        assert_eq!(err, OperationError::MG0008SkipUpgradeAttempted);
+    }
+
+    #[qs_test(domain_level=DOMAIN_MIGRATION_FROM_MIN)]
+    async fn test_migrations_skip_valid(server: &QueryServer) {
+        let curtime = duration_from_epoch_now();
+        // This is a smoke test that X -> Z migrations work for some range. This doesn't
+        // absolve us of the need to write more detailed migration tests.
+        let mut write_txn = server.write(curtime).await.unwrap();
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_MIGRATION_FROM_MIN);
+
+        drop(write_txn);
+
+        // MUST SUCCEED.
+        server
+            .initialise_helper(curtime, DOMAIN_TGT_LEVEL)
+            .await
+            .expect("Migration failed!!!!")
     }
 
     #[qs_test(domain_level=DOMAIN_LEVEL_10)]

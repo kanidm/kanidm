@@ -42,7 +42,7 @@ use kanidmd_core::{
     dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
     dbscan_list_indexes_core, dbscan_list_quarantined_core, dbscan_quarantine_id2entry_core,
     dbscan_restore_quarantined_core, domain_rename_core, reindex_server_core, restore_server_core,
-    vacuum_server_core, verify_server_core,
+    vacuum_server_core, verify_server_core, CoreAction,
 };
 use serde::Serialize;
 use sketching::pipeline::TracingPipelineGuard;
@@ -379,6 +379,15 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
             )
             .await;
         }
+
+        ScriptingCommand::Backup { path } => {
+            backup_server_core(&config, path.as_deref());
+        }
+
+        ScriptingCommand::Reload => {
+            submit_admin_req_json(config.adminbindpath.as_str(), AdminTaskRequest::Reload).await;
+        }
+
         ScriptingCommand::HealthCheck {
             verify_tls,
             check_origin,
@@ -880,8 +889,8 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                                         #[allow(clippy::unwrap_used)]
                                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                     } => {
-                                        // Reload TLS certificates
-                                        sctx.tls_acceptor_reload().await;
+                                        // Initiate a reload of server components.
+                                        sctx.reload().await;
                                         info!("Reload complete");
                                     }
                                     Some(()) = async move {
@@ -901,10 +910,11 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                                     // we got a message on thr broadcast from somewhere else
                                     Ok(msg) = async move {
                                         listener.recv().await
-                                    } => {
-                                        debug!("Main loop received message: {:?}", msg);
-                                        break
-                                    }
+                                    } =>
+                                        match msg {
+                                            CoreAction::Shutdown => break,
+                                            CoreAction::Reload => {}
+                                        },
                                 }
                             }
                             #[cfg(target_family = "windows")]
@@ -939,7 +949,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running in backup mode ...");
 
-            backup_server_core(&config, &bopt.path);
+            backup_server_core(&config, Some(&bopt.path));
         }
         KanidmdOpt::Database {
             commands: DbCommands::Restore(ropt),

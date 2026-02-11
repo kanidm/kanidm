@@ -233,6 +233,11 @@ impl KeyObjectManagement {
                     key_object.jws_es256_assert(Duration::ZERO, &txn_cid)?;
                 }
 
+                if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtHs256.into())
+                {
+                    key_object.jws_hs256_assert(Duration::ZERO, &txn_cid)?;
+                }
+
                 if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtRs256.into())
                 {
                     key_object.jws_rs256_assert(Duration::ZERO, &txn_cid)?;

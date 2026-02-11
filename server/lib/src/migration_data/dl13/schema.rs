@@ -263,6 +263,15 @@ pub static ref SCHEMA_ATTR_ACCOUNT_VALID_FROM: SchemaAttribute = SchemaAttribute
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_ACCOUNT_SOFTLOCK_EXPIRE: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_ACCOUNT_SOFTLOCK_EXPIRE,
+    name: Attribute::AccountSoftlockExpire,
+    description: "The datetime after which softlocks no longer are valid - allows them to be reset from 'now'".to_string(),
+    sync_allowed: true,
+    syntax: SyntaxType::DateTime,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST,
     name: Attribute::WebauthnAttestationCaList,
@@ -886,6 +895,17 @@ pub static ref SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE: SchemaAttribute = Schem
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_S256: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_S256,
+    name: Attribute::S256,
+    description: "A Sha256 output.".to_string(),
+    multivalue: false,
+    unique: false,
+    indexed: false,
+    syntax: SyntaxType::Sha256,
+    ..Default::default()
+};
+
 // === classes ===
 pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
@@ -1005,6 +1025,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT_DL5: SchemaClass = SchemaClass {
         Attribute::AccountValidFrom,
         Attribute::NameHistory,
         Attribute::HmacNameHistory,
+        Attribute::AccountSoftlockExpire,
     ],
     systemmust: vec![
         Attribute::DisplayName,
@@ -1240,6 +1261,16 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6: SchemaClass = SchemaClass 
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_HS256_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_HS256,
+    name: EntryClass::KeyObjectJwtHs256.into(),
+    description: "A marker class indicating that this keyobject must provide jwt hs256 capability.".to_string(),
+    systemsupplements: vec![
+        EntryClass::KeyObject.into(),
+    ],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_RS256: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_RS256,
     name: EntryClass::KeyObjectJwtRs256.into(),
@@ -1358,6 +1389,17 @@ pub static ref SCHEMA_CLASS_MEMORIAL: SchemaClass = SchemaClass {
     ],
     systemmay: vec![
         Attribute::HmacNameHistory
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_ASSERTION_NONCE: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_ASSERTION_NONCE,
+    name: EntryClass::AssertionNonce.into(),
+    description: "The class representing the nonce tied to an assertion event so that it is only applied once.".to_string(),
+    systemmust: vec![
+        Attribute::Uuid,
+        Attribute::S256,
     ],
     ..Default::default()
 };

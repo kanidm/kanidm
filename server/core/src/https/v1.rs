@@ -963,6 +963,7 @@ pub async fn service_account_api_token_post(
             obj.label,
             obj.expiry,
             obj.read_write,
+            obj.compact,
             kopid.eventid,
         )
         .await

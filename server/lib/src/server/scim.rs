@@ -1,11 +1,18 @@
 use crate::prelude::*;
 use crate::schema::{SchemaAttribute, SchemaTransaction};
+use crate::server::assert::{AssertEvent, AssertOnce, EntryAssertion};
 use crate::server::batch_modify::{BatchModifyEvent, ModSetValid};
 use crate::server::ValueSetResolveStatus;
 use crate::valueset::*;
-use kanidm_proto::scim_v1::client::{ScimEntryPostGeneric, ScimEntryPutGeneric};
+use crypto_glue::s256::Sha256Output;
+use kanidm_proto::scim_v1::client::{
+    ScimEntryAssertion, ScimEntryPostGeneric, ScimEntryPutGeneric,
+};
 use kanidm_proto::scim_v1::JsonValue;
-use std::collections::BTreeMap;
+use std::collections::{
+    // BTreeSet,
+    BTreeMap,
+};
 
 #[derive(Debug)]
 pub struct ScimEntryPutEvent {
@@ -104,6 +111,36 @@ impl ScimDeleteEvent {
             ident,
             target,
             class,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ScimAssertEvent {
+    /// The identity performing the change.
+    pub(crate) ident: Identity,
+
+    /// The set of assertions to be performed. These are applied in order.
+    pub(crate) asserts: Vec<ScimEntryAssertion>,
+
+    /// Tracking information about the assertion.
+    pub id: Uuid,
+
+    /// The nonce/checksum of the operation if we want to do this "at most once".
+    pub nonce: Option<Sha256Output>,
+}
+
+impl ScimAssertEvent {
+    pub fn new_internal(
+        asserts: Vec<ScimEntryAssertion>,
+        id: Uuid,
+        nonce: Option<Sha256Output>,
+    ) -> Self {
+        ScimAssertEvent {
+            ident: Identity::from_internal(),
+            asserts,
+            id,
+            nonce,
         }
     }
 }
@@ -264,6 +301,47 @@ impl QueryServerWriteTransaction<'_> {
         };
 
         self.delete(&de)
+    }
+
+    pub fn scim_assert(&mut self, scim_assert: ScimAssertEvent) -> Result<(), OperationError> {
+        let ScimAssertEvent {
+            ident,
+            asserts,
+            id,
+            nonce,
+        } = scim_assert;
+
+        let once = match nonce {
+            None => AssertOnce::No,
+            Some(nonce) => AssertOnce::Yes { id, nonce },
+        };
+
+        // Transform from SCIM to Kanidm Internal representations.
+        let asserts = asserts
+            .into_iter()
+            .map(|scim_assert| match scim_assert {
+                ScimEntryAssertion::Present { id, attrs } => {
+                    let attrs = attrs
+                        .into_iter()
+                        .map(|(attr, json_value)| {
+                            self.resolve_scim_json_put(&attr, json_value)
+                                .map(|kani_value| (attr, kani_value))
+                        })
+                        .collect::<Result<_, _>>()?;
+
+                    Ok(EntryAssertion::Present { target: id, attrs })
+                }
+                ScimEntryAssertion::Absent { id } => Ok(EntryAssertion::Absent { target: id }),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let assert_event = AssertEvent {
+            ident,
+            asserts,
+            once,
+        };
+
+        self.assert(assert_event)
     }
 
     pub(crate) fn resolve_scim_json_put(

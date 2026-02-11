@@ -400,6 +400,16 @@ pub enum AccountCredential {
         /// Default: 3600 seconds
         ttl: Option<u32>,
     },
+    /// Reset the softlocks on this account. This applies to all credentials of the account.
+    #[clap(name = "softlock-reset")]
+    SoftlockReset {
+        account_id: String,
+        #[clap(name = "datetime", default_value = "now", verbatim_doc_comment)]
+        /// This accepts multiple options:
+        /// - An RFC3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
+        /// - "now" to reset immediately
+        datetime: String,
+    }
 }
 
 /// RADIUS secret management
@@ -621,6 +631,14 @@ pub enum ServiceAccountApiToken {
         /// Generate this token with read-write permissions - default is read-only
         #[clap(short = 'w', long = "readwrite")]
         read_write: bool,
+
+        /// Generate the token in a compact form (less than 128 ascii chars) to account for
+        /// systems that may have length limits on tokens/credentials. This format of token
+        /// after creation *may* not be valid on all servers until replication converges. It
+        /// is recommended you use non-compact tokens unless you have a system that has
+        /// limits on credential lengths.
+        #[clap(short = 'c', long = "compact")]
+        compact: bool,
     },
     /// Destroy / revoke an api token from this service account. Access to the
     /// token is NOT required, only the tag/uuid of the token.
