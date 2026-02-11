@@ -1728,6 +1728,7 @@ lazy_static! {
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::AccountSoftlockExpire,
         ],
         modify_removed_attrs: vec![
             Attribute::PrimaryCredential,
@@ -1735,6 +1736,7 @@ lazy_static! {
             Attribute::AttestedPasskeys,
             Attribute::AccountValidFrom,
             Attribute::AccountExpire,
+            Attribute::AccountSoftlockExpire,
         ],
         modify_present_attrs: vec![
             Attribute::PrimaryCredential,
@@ -1742,6 +1744,7 @@ lazy_static! {
             Attribute::AttestedPasskeys,
             Attribute::AccountValidFrom,
             Attribute::AccountExpire,
+            Attribute::AccountSoftlockExpire,
         ],
         ..Default::default()
     };

@@ -1126,6 +1126,10 @@ pub(crate) struct AuthSession {
 }
 
 impl AuthSession {
+    pub fn account(&self) -> &Account {
+        &self.account
+    }
+
     /// Create a new auth session, based on the available credential handlers of the account.
     /// the session is a whole encapsulated unit of what we need to proceed, so that subsequent
     /// or interleved write operations do not cause inconsistency in this process.

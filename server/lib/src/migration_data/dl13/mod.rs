@@ -128,6 +128,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         // DL13
         SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE.clone().into(),
         SCHEMA_ATTR_S256.clone().into(),
+        SCHEMA_ATTR_ACCOUNT_SOFTLOCK_EXPIRE.clone().into(),
     ]
 }
 

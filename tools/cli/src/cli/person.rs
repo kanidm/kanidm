@@ -10,7 +10,9 @@ use dialoguer::{Confirm, Input, Password, Select};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER};
+use kanidm_proto::constants::{
+    ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_SOFTLOCK_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER,
+};
 use kanidm_proto::internal::OperationError::{
     DuplicateKey, DuplicateLabel, InvalidLabel, NoMatchingEntries, PasswordQuality,
 };
@@ -661,6 +663,41 @@ impl AccountCredential {
                         error!("Error starting credential reset -> {:?}", e);
                     }
                 }
+            }
+
+            AccountCredential::SoftlockReset {
+                account_id,
+                datetime,
+            } => {
+                let client = opt.to_client(OpType::Write).await;
+
+                let validity = match try_expire_at_from_string(datetime.as_str()) {
+                    Ok(val) => val,
+                    Err(()) => return,
+                };
+                let res = match validity {
+                    None => {
+                        client
+                            .idm_person_account_purge_attr(
+                                account_id.as_str(),
+                                ATTR_ACCOUNT_SOFTLOCK_EXPIRE,
+                            )
+                            .await
+                    }
+                    Some(new_expiry) => {
+                        client
+                            .idm_person_account_set_attr(
+                                account_id.as_str(),
+                                ATTR_ACCOUNT_SOFTLOCK_EXPIRE,
+                                &[&new_expiry],
+                            )
+                            .await
+                    }
+                };
+                match res {
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                    _ => println!("Success"),
+                };
             }
         }
     }

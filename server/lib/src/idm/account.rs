@@ -60,6 +60,7 @@ pub struct Account {
     pub attested_passkeys: BTreeMap<Uuid, (String, AttestedPasskeyV4)>,
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,
+    softlock_expire: Option<OffsetDateTime>,
     pub radius_secret: Option<String>,
     pub ui_hints: BTreeSet<UiHint>,
     pub mail_primary: Option<String>,
@@ -135,6 +136,8 @@ macro_rules! try_from_entry {
         let valid_from = $value.get_ava_single_datetime(Attribute::AccountValidFrom);
 
         let expire = $value.get_ava_single_datetime(Attribute::AccountExpire);
+
+        let softlock_expire = $value.get_ava_single_datetime(Attribute::AccountSoftlockExpire);
 
         let radius_secret = $value
             .get_ava_single_secret(Attribute::RadiusSecret)
@@ -240,6 +243,7 @@ macro_rules! try_from_entry {
             attested_passkeys,
             valid_from,
             expire,
+            softlock_expire,
             radius_secret,
             spn,
             ui_hints,
@@ -273,6 +277,10 @@ impl Account {
 
     pub(crate) fn name(&self) -> &str {
         self.name.as_deref().unwrap_or(self.spn.as_str())
+    }
+
+    pub(crate) fn softlock_expire(&self) -> Option<OffsetDateTime> {
+        self.softlock_expire
     }
 
     #[instrument(level = "trace", skip_all)]

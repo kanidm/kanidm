@@ -400,6 +400,16 @@ pub enum AccountCredential {
         /// Default: 3600 seconds
         ttl: Option<u32>,
     },
+    /// Reset the softlocks on this account. This applies to all credentials of the account.
+    #[clap(name = "softlock-reset")]
+    SoftlockReset {
+        account_id: String,
+        #[clap(name = "datetime", default_value = "now", verbatim_doc_comment)]
+        /// This accepts multiple options:
+        /// - An RFC3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
+        /// - "now" to reset immediately
+        datetime: String,
+    }
 }
 
 /// RADIUS secret management

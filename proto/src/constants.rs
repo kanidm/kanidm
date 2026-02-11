@@ -57,6 +57,7 @@ pub const AUTH_TOKEN_GRACE_WINDOW: Duration = Duration::from_secs(5 * 60);
 // IF YOU CHANGE THESE VALUES YOU BREAK EVERYTHING
 pub const ATTR_ACCOUNT_EXPIRE: &str = "account_expire";
 pub const ATTR_ACCOUNT_VALID_FROM: &str = "account_valid_from";
+pub const ATTR_ACCOUNT_SOFTLOCK_EXPIRE: &str = "account_softlock_expire";
 pub const ATTR_ACCOUNT: &str = "account";
 pub const ATTR_ACP_CREATE_ATTR: &str = "acp_create_attr";
 pub const ATTR_ACP_CREATE_CLASS: &str = "acp_create_class";
