@@ -98,8 +98,8 @@ if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null" ]; then
     echo "${IDM_ADMIN_PASS_RAW}"
     exit 1
 fi
-cd "$CURRENT_DIR/pykanidm" && uv run python -m pytest -m 'openapi'
-
+cd "$CURRENT_DIR/pykanidm" && uv run --extra openapi_codegen python -m pytest -m 'openapi'
+echo "Done running pytest..."
 
 echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
 sleep "${WAIT_TIMER}"
