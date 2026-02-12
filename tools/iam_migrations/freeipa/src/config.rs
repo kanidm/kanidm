@@ -9,7 +9,9 @@ pub struct Config {
     pub schedule: Option<String>,
     pub status_bind: Option<String>,
     pub ipa_uri: Url,
-    pub ipa_ca: String,
+    #[serde(default)]
+    pub ipa_verify_ca: bool,
+    pub ipa_ca: Option<String>,
     pub ipa_sync_dn: String,
     pub ipa_sync_pw: String,
     pub ipa_sync_base_dn: String,

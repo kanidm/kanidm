@@ -20,6 +20,11 @@ ipa_uri = "ldaps://specific-server.ipa.dev.kanidm.com"
 # Path to the IPA CA certificate in PEM format. This can be found on an IPA server
 # in the file `/etc/ipa/ca.crt`
 ipa_ca = "/path/to/ipa-ca.pem"
+
+# In some cases you may need to disable TLS certificate validation. This is not secure
+# and you should always opt to have certificate validation if possible.
+# ipa_verify_ca = true
+
 # The DN of an account with content sync rights. By default cn=Directory Manager has
 # this access.
 ipa_sync_dn = "cn=Directory Manager"
