@@ -22,17 +22,14 @@ use kanidm_unix_common::unix_proto::{
 };
 use kanidm_utils_users::{get_effective_gid, get_effective_uid};
 use libc::{lchown, umask};
-use nix::mount::MsFlags;
 use notify_debouncer_full::notify::RecommendedWatcher;
 use notify_debouncer_full::Debouncer;
 use notify_debouncer_full::RecommendedCache;
 use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, DebouncedEvent};
-use procfs::process::Process;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
 use std::ffi::CString;
-use std::fs::{create_dir, remove_file};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
@@ -48,6 +45,13 @@ use tokio::time;
 use tokio_util::codec::Framed;
 use tracing::instrument;
 use walkdir::WalkDir;
+
+#[cfg(target_os = "linux")]
+use nix::mount::MsFlags;
+#[cfg(target_os = "linux")]
+use procfs::process::Process;
+#[cfg(target_os = "linux")]
+use std::fs::{create_dir, remove_file};
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use kanidm_unix_common::selinux_util;
@@ -128,7 +132,9 @@ fn create_home_directory(
     // In the ZFS strategy, we will need to check if the filesystem
     // exists, rather than the location it's mounted to.
     let hd_mount_path_exists = match home_strategy {
-        HomeStrategy::Symlink | HomeStrategy::BindMount => hd_mount_path.exists(),
+        HomeStrategy::Symlink => hd_mount_path.exists(),
+        #[cfg(target_os = "linux")]
+        HomeStrategy::BindMount => hd_mount_path.exists(),
     };
 
     // Does the home directory exist? This is checking the *true* home mount storage.
@@ -141,20 +147,9 @@ fn create_home_directory(
         // because in a future ZFS home dir setup, we'll need to be able to make
         // the zfs volume for the user in this step.
         match home_strategy {
-            HomeStrategy::Symlink | HomeStrategy::BindMount => {
-                // Set a umask
-                let before = unsafe { umask(0o0027) };
-
-                // Create the home directory.
-                if let Err(e) = fs::create_dir_all(&hd_mount_path) {
-                    let _ = unsafe { umask(before) };
-                    error!(err = ?e, ?hd_mount_path, "Unable to create directory");
-                    return Err(format!("{e:?}"));
-                }
-                let _ = unsafe { umask(before) };
-
-                chown(&hd_mount_path, info.gid)?;
-            }
+            HomeStrategy::Symlink => create_dir_path(&hd_mount_path, info)?,
+            #[cfg(target_os = "linux")]
+            HomeStrategy::BindMount => create_dir_path(&hd_mount_path, info)?,
         }
 
         // Copy in structure from /etc/skel/ if present
@@ -225,10 +220,27 @@ fn create_home_directory(
 
     match home_strategy {
         HomeStrategy::Symlink => home_alias_update_symlink(&alias_path, &hd_mount_path),
+        #[cfg(target_os = "linux")]
         HomeStrategy::BindMount => home_alias_update_bind_mount(&alias_path, &hd_mount_path),
     }
 }
 
+fn create_dir_path(hd_mount_path: &Path, info: &HomeDirectoryInfo) -> Result<(), String> {
+    // Set a umask
+    let before = unsafe { umask(0o0027) };
+
+    // Create the home directory.
+    if let Err(e) = fs::create_dir_all(hd_mount_path) {
+        let _ = unsafe { umask(before) };
+        error!(err = ?e, ?hd_mount_path, "Unable to create directory");
+        return Err(format!("{e:?}"));
+    }
+    let _ = unsafe { umask(before) };
+
+    chown(&hd_mount_path, info.gid)
+}
+
+#[cfg(target_os = "linux")]
 fn home_alias_update_bind_mount(alias_path: &Path, hd_mount_path: &Path) -> Result<(), String> {
     // If the alias_path is a symlink, remove it
     // TODO: what if it exsits and is not a symlink?

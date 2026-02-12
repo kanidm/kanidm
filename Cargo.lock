@@ -5477,7 +5477,7 @@ dependencies = [
  "chrono",
  "flate2",
  "procfs-core",
- "rustix 1.1.2",
+ "rustix 1.1.3",
 ]
 
 [[package]]
