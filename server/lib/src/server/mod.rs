@@ -2587,7 +2587,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // This is here to catch when we increase domain levels but didn't create the migration
         // hooks. If this fails it probably means you need to add another migration hook
         // in the above.
-        const { assert_eq!(DOMAIN_MAX_LEVEL, DOMAIN_LEVEL_15) };
+        const { assert!(DOMAIN_MAX_LEVEL == DOMAIN_LEVEL_15) };
         debug_assert!(domain_info_version <= DOMAIN_MAX_LEVEL);
 
         Ok(())
