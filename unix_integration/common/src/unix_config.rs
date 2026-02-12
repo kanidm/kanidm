@@ -201,6 +201,7 @@ pub struct KanidmConfig {
 pub enum HomeStrategy {
     #[default]
     Symlink,
+    #[cfg(target_os = "linux")]
     BindMount,
 }
 
@@ -573,7 +574,13 @@ impl UnixdConfig {
                 .unwrap_or(self.home_alias),
             home_strategy: match config.home_strategy {
                 HomeStrategyV2::Symlink => HomeStrategy::Symlink,
+                #[cfg(target_os = "linux")]
                 HomeStrategyV2::BindMount => HomeStrategy::BindMount,
+                #[cfg(not(target_os = "linux"))]
+                HomeStrategyV2::BindMount => {
+                    warn!("home_strateg: bind_mount not supported on this platform - falling back to symlink!");
+                    HomeStrategy::Symlink
+                }
             },
             use_etc_skel: config.use_etc_skel.unwrap_or(self.use_etc_skel),
             uid_attr_map: config
