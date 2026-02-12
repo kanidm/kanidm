@@ -237,7 +237,7 @@ fn create_dir_path(hd_mount_path: &Path, info: &HomeDirectoryInfo) -> Result<(),
     }
     let _ = unsafe { umask(before) };
 
-    chown(&hd_mount_path, info.gid)
+    chown(hd_mount_path, info.gid)
 }
 
 #[cfg(target_os = "linux")]
