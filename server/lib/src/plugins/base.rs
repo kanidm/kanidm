@@ -357,10 +357,10 @@ mod tests {
         ])
     });
 
-    pub static PRELOAD: Vec<EntryInitNew> =
-        vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
-    pub static E_TEST_ACCOUNT: Arc<EntrySealedCommitted> =
-        Arc::new(TEST_ACCOUNT.clone().into_sealed_committed());
+    pub static PRELOAD: LazyLock<Vec<EntryInitNew>> =
+        LazyLock::new(|| vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()]);
+    pub static E_TEST_ACCOUNT: LazyLock<Arc<EntrySealedCommitted>> =
+        LazyLock::new(|| Arc::new(TEST_ACCOUNT.clone().into_sealed_committed()));
 
     // check create where no uuid
     #[test]

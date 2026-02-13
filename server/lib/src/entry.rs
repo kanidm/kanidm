@@ -3422,6 +3422,7 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
     }
 }
 
+#[inline]
 pub fn entry_init_fn(args: impl IntoIterator<Item = (Attribute, Value)>) -> EntryInitNew {
     let mut entry: Entry<EntryInit, EntryNew> = Entry::new();
     for (k, v) in args {

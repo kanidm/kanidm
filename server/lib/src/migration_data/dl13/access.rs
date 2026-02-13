@@ -35,8 +35,8 @@ pub static FILTER_HP_OR_RECYCLED_OR_TOMBSTONE: LazyLock<ProtoFilter> = LazyLock:
 pub static FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE: LazyLock<ProtoFilter> =
     LazyLock::new(|| ProtoFilter::AndNot(Box::new(FILTER_HP_OR_RECYCLED_OR_TOMBSTONE.clone())));
 
-pub static DEFAULT_TARGET_SCOPE: LazyLock<ProtoFilter> =
-    LazyLock::new(|| ProtoFilter::And(Vec::with_capacity(0)));
+// pub static DEFAULT_TARGET_SCOPE: LazyLock<ProtoFilter> =
+//     LazyLock::new(|| ProtoFilter::And(Vec::with_capacity(0)));
 
 #[derive(Clone, Debug, Default)]
 /// Who will receive the privileges of this ACP.
@@ -492,57 +492,57 @@ pub static IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY_V1: LazyLock<BuiltinAcp> =
         ..Default::default()
     });
 
-pub static IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6: LazyLock<BuiltinAcp> =
-    LazyLock::new(|| BuiltinAcp {
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            EntryClass::AccessControlSearch,
-        ],
-        name: "idm_acp_group_account_policy_manage",
-        uuid: UUID_IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE,
-        description: "Builtin IDM Control for management of account policy on groups",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_POLICY_ADMINS]),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
-            match_class_filter!(EntryClass::Group),
-            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
-        ])),
-        search_attrs: vec![
-            Attribute::Class,
-            Attribute::Name,
-            Attribute::Uuid,
-            Attribute::AuthSessionExpiry,
-            Attribute::AuthPasswordMinimumLength,
-            Attribute::CredentialTypeMinimum,
-            Attribute::PrivilegeExpiry,
-            Attribute::WebauthnAttestationCaList,
-            Attribute::LimitSearchMaxResults,
-            Attribute::LimitSearchMaxFilterTest,
-        ],
-        modify_removed_attrs: vec![
-            Attribute::Class,
-            Attribute::AuthSessionExpiry,
-            Attribute::AuthPasswordMinimumLength,
-            Attribute::CredentialTypeMinimum,
-            Attribute::PrivilegeExpiry,
-            Attribute::WebauthnAttestationCaList,
-            Attribute::LimitSearchMaxResults,
-            Attribute::LimitSearchMaxFilterTest,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Class,
-            Attribute::AuthSessionExpiry,
-            Attribute::AuthPasswordMinimumLength,
-            Attribute::CredentialTypeMinimum,
-            Attribute::PrivilegeExpiry,
-            Attribute::WebauthnAttestationCaList,
-            Attribute::LimitSearchMaxResults,
-            Attribute::LimitSearchMaxFilterTest,
-        ],
-        modify_classes: vec![EntryClass::AccountPolicy],
-        ..Default::default()
-    });
+// pub static IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6: LazyLock<BuiltinAcp> =
+//     LazyLock::new(|| BuiltinAcp {
+//         classes: vec![
+//             EntryClass::Object,
+//             EntryClass::AccessControlProfile,
+//             EntryClass::AccessControlModify,
+//             EntryClass::AccessControlSearch,
+//         ],
+//         name: "idm_acp_group_account_policy_manage",
+//         uuid: UUID_IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE,
+//         description: "Builtin IDM Control for management of account policy on groups",
+//         receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_POLICY_ADMINS]),
+//         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+//             match_class_filter!(EntryClass::Group),
+//             FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+//         ])),
+//         search_attrs: vec![
+//             Attribute::Class,
+//             Attribute::Name,
+//             Attribute::Uuid,
+//             Attribute::AuthSessionExpiry,
+//             Attribute::AuthPasswordMinimumLength,
+//             Attribute::CredentialTypeMinimum,
+//             Attribute::PrivilegeExpiry,
+//             Attribute::WebauthnAttestationCaList,
+//             Attribute::LimitSearchMaxResults,
+//             Attribute::LimitSearchMaxFilterTest,
+//         ],
+//         modify_removed_attrs: vec![
+//             Attribute::Class,
+//             Attribute::AuthSessionExpiry,
+//             Attribute::AuthPasswordMinimumLength,
+//             Attribute::CredentialTypeMinimum,
+//             Attribute::PrivilegeExpiry,
+//             Attribute::WebauthnAttestationCaList,
+//             Attribute::LimitSearchMaxResults,
+//             Attribute::LimitSearchMaxFilterTest,
+//         ],
+//         modify_present_attrs: vec![
+//             Attribute::Class,
+//             Attribute::AuthSessionExpiry,
+//             Attribute::AuthPasswordMinimumLength,
+//             Attribute::CredentialTypeMinimum,
+//             Attribute::PrivilegeExpiry,
+//             Attribute::WebauthnAttestationCaList,
+//             Attribute::LimitSearchMaxResults,
+//             Attribute::LimitSearchMaxFilterTest,
+//         ],
+//         modify_classes: vec![EntryClass::AccountPolicy],
+//         ..Default::default()
+//     });
 
 pub static IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8: LazyLock<BuiltinAcp> =
     LazyLock::new(|| BuiltinAcp {
@@ -1011,77 +1011,77 @@ pub static IDM_ACP_SELF_READ_DL8: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
     ..Default::default()
 });
 
-pub static IDM_ACP_SELF_WRITE_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| {
-    BuiltinAcp{
-        name: "idm_acp_self_write",
-        uuid: UUID_IDM_ACP_SELF_WRITE_V1,
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            ],
-        description: "Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
-        modify_removed_attrs: vec![
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::RadiusSecret,
-            Attribute::PrimaryCredential,
-            Attribute::SshPublicKey,
-            Attribute::UnixPassword,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
-            Attribute::UserAuthTokenSession,
-            Attribute::ApplicationPassword,
-        ],
-        modify_present_attrs: vec![
-            Attribute::DisplayName,
-            Attribute::LegalName,
-            Attribute::RadiusSecret,
-            Attribute::PrimaryCredential,
-            Attribute::SshPublicKey,
-            Attribute::UnixPassword,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
-            Attribute::ApplicationPassword,
-        ],
-        ..Default::default()
-}
-});
+// pub static IDM_ACP_SELF_WRITE_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| {
+//     BuiltinAcp{
+//         name: "idm_acp_self_write",
+//         uuid: UUID_IDM_ACP_SELF_WRITE_V1,
+//         classes: vec![
+//             EntryClass::Object,
+//             EntryClass::AccessControlProfile,
+//             EntryClass::AccessControlModify,
+//             ],
+//         description: "Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices.",
+//         receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
+//         target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+//         modify_removed_attrs: vec![
+//             Attribute::DisplayName,
+//             Attribute::LegalName,
+//             Attribute::RadiusSecret,
+//             Attribute::PrimaryCredential,
+//             Attribute::SshPublicKey,
+//             Attribute::UnixPassword,
+//             Attribute::PassKeys,
+//             Attribute::AttestedPasskeys,
+//             Attribute::UserAuthTokenSession,
+//             Attribute::ApplicationPassword,
+//         ],
+//         modify_present_attrs: vec![
+//             Attribute::DisplayName,
+//             Attribute::LegalName,
+//             Attribute::RadiusSecret,
+//             Attribute::PrimaryCredential,
+//             Attribute::SshPublicKey,
+//             Attribute::UnixPassword,
+//             Attribute::PassKeys,
+//             Attribute::AttestedPasskeys,
+//             Attribute::ApplicationPassword,
+//         ],
+//         ..Default::default()
+// }
+// });
 
-pub static IDM_ACP_SELF_WRITE_DL7: LazyLock<BuiltinAcp> = LazyLock::new(|| {
-    BuiltinAcp{
-        name: "idm_acp_self_write",
-        uuid: UUID_IDM_ACP_SELF_WRITE_V1,
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            ],
-        description: "Builtin IDM Control for self write - required for people to update their own credentials in line with best practices.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
-        modify_removed_attrs: vec![
-            Attribute::RadiusSecret,
-            Attribute::PrimaryCredential,
-            Attribute::SshPublicKey,
-            Attribute::UnixPassword,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
-            Attribute::UserAuthTokenSession,
-        ],
-        modify_present_attrs: vec![
-            Attribute::RadiusSecret,
-            Attribute::PrimaryCredential,
-            Attribute::SshPublicKey,
-            Attribute::UnixPassword,
-            Attribute::PassKeys,
-            Attribute::AttestedPasskeys,
-        ],
-        ..Default::default()
-}
-});
+// pub static IDM_ACP_SELF_WRITE_DL7: LazyLock<BuiltinAcp> = LazyLock::new(|| {
+//     BuiltinAcp{
+//         name: "idm_acp_self_write",
+//         uuid: UUID_IDM_ACP_SELF_WRITE_V1,
+//         classes: vec![
+//             EntryClass::Object,
+//             EntryClass::AccessControlProfile,
+//             EntryClass::AccessControlModify,
+//             ],
+//         description: "Builtin IDM Control for self write - required for people to update their own credentials in line with best practices.",
+//         receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
+//         target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+//         modify_removed_attrs: vec![
+//             Attribute::RadiusSecret,
+//             Attribute::PrimaryCredential,
+//             Attribute::SshPublicKey,
+//             Attribute::UnixPassword,
+//             Attribute::PassKeys,
+//             Attribute::AttestedPasskeys,
+//             Attribute::UserAuthTokenSession,
+//         ],
+//         modify_present_attrs: vec![
+//             Attribute::RadiusSecret,
+//             Attribute::PrimaryCredential,
+//             Attribute::SshPublicKey,
+//             Attribute::UnixPassword,
+//             Attribute::PassKeys,
+//             Attribute::AttestedPasskeys,
+//         ],
+//         ..Default::default()
+// }
+// });
 
 pub static IDM_ACP_SELF_WRITE_DL8: LazyLock<BuiltinAcp> = LazyLock::new(|| {
     BuiltinAcp{
@@ -1118,27 +1118,27 @@ pub static IDM_ACP_SELF_WRITE_DL8: LazyLock<BuiltinAcp> = LazyLock::new(|| {
 }
 });
 
-pub static IDM_ACP_SELF_NAME_WRITE_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| {
-    BuiltinAcp{
-        name: "idm_acp_self_name_write",
-        uuid: UUID_IDM_ACP_SELF_NAME_WRITE_V1,
-        classes: vec![
-            EntryClass::Object,
-            EntryClass::AccessControlProfile,
-            EntryClass::AccessControlModify,
-            ],
-        description: "Builtin IDM Control for self write of name - required for people to update their own identities in line with best practices.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
-        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
-        modify_removed_attrs: vec![
-            Attribute::Name,
-        ],
-        modify_present_attrs: vec![
-            Attribute::Name,
-        ],
-        ..Default::default()
-}
-});
+// pub static IDM_ACP_SELF_NAME_WRITE_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| {
+//     BuiltinAcp{
+//         name: "idm_acp_self_name_write",
+//         uuid: UUID_IDM_ACP_SELF_NAME_WRITE_V1,
+//         classes: vec![
+//             EntryClass::Object,
+//             EntryClass::AccessControlProfile,
+//             EntryClass::AccessControlModify,
+//             ],
+//         description: "Builtin IDM Control for self write of name - required for people to update their own identities in line with best practices.",
+//         receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
+//         target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+//         modify_removed_attrs: vec![
+//             Attribute::Name,
+//         ],
+//         modify_present_attrs: vec![
+//             Attribute::Name,
+//         ],
+//         ..Default::default()
+// }
+// });
 
 pub static IDM_ACP_SELF_NAME_WRITE_DL7: LazyLock<BuiltinAcp> = LazyLock::new(|| {
     BuiltinAcp{
