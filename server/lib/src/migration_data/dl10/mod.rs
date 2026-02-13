@@ -15,8 +15,8 @@ use self::system_config::*;
 use crate::prelude::EntryInitNew;
 use kanidm_proto::internal::OperationError;
 
-pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
-    vec![
+pub fn phase_1_schema_attrs() -> Box<Vec<EntryInitNew>> {
+    Box::new(vec![
         SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone().into(),
         SCHEMA_ATTR_SYNC_YIELD_AUTHORITY.clone().into(),
         SCHEMA_ATTR_ACCOUNT_EXPIRE.clone().into(),
@@ -108,7 +108,7 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256_DL6.clone().into(),
         SCHEMA_ATTR_IMAGE.clone().into(),
         // DL11
-    ]
+    ])
 }
 
 pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
@@ -155,7 +155,7 @@ pub fn phase_4_system_entries() -> Vec<EntryInitNew> {
     vec![
         E_SYSTEM_INFO_V1.clone(),
         E_DOMAIN_INFO_DL6.clone(),
-        E_SYSTEM_CONFIG_V1.clone(),
+        e_system_config_v1(),
     ]
 }
 

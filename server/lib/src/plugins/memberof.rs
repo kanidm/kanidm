@@ -763,36 +763,48 @@ mod tests {
     const UUID_D: &str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
 
     static EA: LazyLock<EntryInitNew> = LazyLock::new(|| {
-        entry_init_fn([
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Class, EntryClass::MemberOf.to_value()),
-            (Attribute::Name, Value::new_iname("testgroup_a")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_A))),
-        ])
+        entry_init_fn(
+            [
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Class, EntryClass::MemberOf.to_value()),
+                (Attribute::Name, Value::new_iname("testgroup_a")),
+                (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_A))),
+            ]
+            .into_iter(),
+        )
     });
     static EB: LazyLock<EntryInitNew> = LazyLock::new(|| {
-        entry_init_fn([
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Class, EntryClass::MemberOf.to_value()),
-            (Attribute::Name, Value::new_iname("testgroup_b")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_B))),
-        ])
+        entry_init_fn(
+            [
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Class, EntryClass::MemberOf.to_value()),
+                (Attribute::Name, Value::new_iname("testgroup_b")),
+                (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_B))),
+            ]
+            .into_iter(),
+        )
     });
     static EC: LazyLock<EntryInitNew> = LazyLock::new(|| {
-        entry_init_fn([
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Class, EntryClass::MemberOf.to_value()),
-            (Attribute::Name, Value::new_iname("testgroup_c")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_C))),
-        ])
+        entry_init_fn(
+            [
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Class, EntryClass::MemberOf.to_value()),
+                (Attribute::Name, Value::new_iname("testgroup_c")),
+                (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_C))),
+            ]
+            .into_iter(),
+        )
     });
     static ED: LazyLock<EntryInitNew> = LazyLock::new(|| {
-        entry_init_fn([
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Class, EntryClass::MemberOf.to_value()),
-            (Attribute::Name, Value::new_iname("testgroup_d")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_D))),
-        ])
+        entry_init_fn(
+            [
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Class, EntryClass::MemberOf.to_value()),
+                (Attribute::Name, Value::new_iname("testgroup_d")),
+                (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_D))),
+            ]
+            .into_iter(),
+        )
     });
 
     macro_rules! assert_memberof_int {

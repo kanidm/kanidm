@@ -60,7 +60,7 @@ impl QueryServer {
             // No domain info was present, so neither was the rest of the IDM. Bring up the
             // full IDM here.
 
-            match domain_target_level {
+            match dbg!(domain_target_level) {
                 DOMAIN_LEVEL_10 => write_txn.migrate_domain_9_to_10()?,
                 DOMAIN_LEVEL_11 => write_txn.migrate_domain_10_to_11()?,
                 DOMAIN_LEVEL_12 => write_txn.migrate_domain_11_to_12()?,
@@ -73,6 +73,7 @@ impl QueryServer {
                     return Err(OperationError::MG0009InvalidTargetLevelForBootstrap);
                 }
             }
+            eprintln!("Passed migrate_domain_14_to_15");
 
             write_txn
                 .internal_apply_domain_migration(domain_target_level)
@@ -254,6 +255,7 @@ impl QueryServer {
 impl QueryServerWriteTransaction<'_> {
     /// Apply a domain migration `to_level`. Errors if `to_level` is not greater than or equal to
     /// the active level.
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn internal_apply_domain_migration(
         &mut self,
         to_level: u32,
@@ -270,6 +272,8 @@ impl QueryServerWriteTransaction<'_> {
         msg: &str,
         entries: Vec<EntryInitNew>,
     ) -> Result<(), OperationError> {
+        #[cfg(test)]
+        eprintln!("MIGRATION BATCH: {}", msg);
         let r: Result<(), _> = entries
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry));
@@ -415,7 +419,7 @@ impl QueryServerWriteTransaction<'_> {
         // =========== Apply changes ==============
         self.internal_migrate_or_create_batch(
             "phase 1 - schema attrs",
-            migration_data::dl10::phase_1_schema_attrs(),
+            *migration_data::dl10::phase_1_schema_attrs(),
         )?;
 
         self.internal_migrate_or_create_batch(
@@ -781,7 +785,7 @@ impl QueryServerWriteTransaction<'_> {
 
         // =========== Apply changes ==============
         self.internal_migrate_or_create_batch(
-            "phase 1 - schema attrs",
+            &format!("phase 1 - schema attrs target {}", DOMAIN_TGT_LEVEL),
             migration_data::dl14::phase_1_schema_attrs(),
         )?;
 
@@ -811,7 +815,7 @@ impl QueryServerWriteTransaction<'_> {
         self.reload()?;
 
         self.internal_migrate_or_create_batch(
-            "phase 4 - system entries",
+            "phase 4 - dl14 system entries",
             migration_data::dl14::phase_4_system_entries(),
         )?;
 

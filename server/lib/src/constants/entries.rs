@@ -221,37 +221,41 @@ impl EntryClass {
 
 // ============ TEST DATA ============
 #[cfg(test)]
-use crate::entry::entry_init_fn;
-#[cfg(test)]
-use crate::entry::EntryInitNew;
+use crate::entry::{entry_init_fn, EntryInitNew};
 #[cfg(test)]
 use std::sync::LazyLock;
 
 #[cfg(test)]
 pub static E_TESTPERSON_1: LazyLock<EntryInitNew> = LazyLock::new(|| {
-    entry_init_fn([
-        (Attribute::Class, EntryClass::Object.to_value()),
-        (Attribute::Class, EntryClass::Account.to_value()),
-        (Attribute::Class, EntryClass::Person.to_value()),
-        (Attribute::Name, Value::new_iname("testperson1")),
-        (Attribute::DisplayName, Value::new_utf8s("Test Person 1")),
-        (
-            Attribute::Uuid,
-            Value::Uuid(super::uuids::UUID_TESTPERSON_1),
-        ),
-    ])
+    entry_init_fn(
+        [
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("Test Person 1")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(super::uuids::UUID_TESTPERSON_1),
+            ),
+        ]
+        .into_iter(),
+    )
 });
 #[cfg(test)]
 pub static E_TESTPERSON_2: LazyLock<EntryInitNew> = LazyLock::new(|| {
-    entry_init_fn([
-        (Attribute::Class, EntryClass::Object.to_value()),
-        (Attribute::Class, EntryClass::Account.to_value()),
-        (Attribute::Class, EntryClass::Person.to_value()),
-        (Attribute::Name, Value::new_iname("testperson2")),
-        (Attribute::DisplayName, Value::new_utf8s("Test Person 2")),
-        (
-            Attribute::Uuid,
-            Value::Uuid(super::uuids::UUID_TESTPERSON_2),
-        ),
-    ])
+    entry_init_fn(
+        [
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson2")),
+            (Attribute::DisplayName, Value::new_utf8s("Test Person 2")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(super::uuids::UUID_TESTPERSON_2),
+            ),
+        ]
+        .into_iter(),
+    )
 });
