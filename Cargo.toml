@@ -197,8 +197,6 @@ image = { version = "0.25.9", default-features = false, features = [
 ] }
 itertools = "0.14.0"
 jsonschema = "0.40.0"
-# REMOVE this
-lazy_static = "^1.5.0"
 ldap3_client = "^0.6.2"
 ldap3_proto = { version = "^0.6.2", features = ["serde"] }
 lettre = { version = "0.11.19", default-features = false }

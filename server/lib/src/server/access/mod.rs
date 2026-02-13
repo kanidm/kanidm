@@ -1283,26 +1283,28 @@ mod tests {
     const UUID_TEST_GROUP_1: Uuid = uuid::uuid!("81ec1640-3637-4a2f-8a52-874fa3c3c92f");
     const UUID_TEST_GROUP_2: Uuid = uuid::uuid!("acae81d6-5ea7-4bd8-8f7f-fcec4c0dd647");
 
-    lazy_static! {
-        pub static ref E_TEST_ACCOUNT_1: Arc<EntrySealedCommitted> = Arc::new(
+    pub static E_TEST_ACCOUNT_1: LazyLock<Arc<EntrySealedCommitted>> = LazyLock::new(|| {
+        Arc::new(
             entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
                 (Attribute::Name, Value::new_iname("test_account_1")),
                 (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
                 (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1))
             )
-            .into_sealed_committed()
-        );
-        pub static ref E_TEST_ACCOUNT_2: Arc<EntrySealedCommitted> = Arc::new(
+            .into_sealed_committed(),
+        )
+    });
+    pub static E_TEST_ACCOUNT_2: LazyLock<Arc<EntrySealedCommitted>> = LazyLock::new(|| {
+        Arc::new(
             entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
                 (Attribute::Name, Value::new_iname("test_account_1")),
                 (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_2)),
                 (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_2))
             )
-            .into_sealed_committed()
-        );
-    }
+            .into_sealed_committed(),
+        )
+    });
 
     macro_rules! acp_from_entry_err {
         (
@@ -2041,10 +2043,8 @@ mod tests {
         test_acp_search_reduce!(&se_anon_ro, vec![acp], r_set, ex_anon_some);
     }
 
-    lazy_static! {
-        pub static ref E_TESTPERSON_1_REDUCED: EntryInitNew =
-            entry_init!((Attribute::Name, Value::new_iname("testperson1")));
-    }
+    pub static E_TESTPERSON_1_REDUCED: EntryInitNew =
+        entry_init_fn([(Attribute::Name, Value::new_iname("testperson1"))]);
 
     #[test]
     fn test_access_enforce_search_attrs() {

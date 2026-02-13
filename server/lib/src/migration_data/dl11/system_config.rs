@@ -1,25 +1,27 @@
 use crate::constants::uuids::*;
 
-use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
-use crate::prelude::{Attribute, EntryClass};
+use crate::prelude::*;
 use crate::value::Value;
 
 // Default entries for system_config
 // This is separated because the password badlist section may become very long
 
-lazy_static! {
-    pub static ref E_SYSTEM_INFO_V1: EntryInitNew = entry_init!(
+pub static E_SYSTEM_INFO_V1: LazyLock<EntryInitNew> = LazyLock::new(|| {
+    entry_init_fn([
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::SystemInfo.to_value()),
         (Attribute::Class, EntryClass::System.to_value()),
         (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_INFO)),
         (
             Attribute::Description,
-            Value::new_utf8s("System (local) info and metadata object.")
+            Value::new_utf8s("System (local) info and metadata object."),
         ),
-        (Attribute::Version, Value::Uint32(20))
-    );
-    pub static ref E_DOMAIN_INFO_DL6: EntryInitNew = entry_init!(
+        (Attribute::Version, Value::Uint32(20)),
+    ])
+});
+
+pub static E_DOMAIN_INFO_DL6: LazyLock<EntryInitNew> = LazyLock::new(|| {
+    entry_init_fn([
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::DomainInfo.to_value()),
         (Attribute::Class, EntryClass::System.to_value()),
@@ -30,31 +32,34 @@ lazy_static! {
         (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
         (
             Attribute::Description,
-            Value::new_utf8s("This local domain's info and metadata object.")
-        )
-    );
-    pub static ref E_SYSTEM_CONFIG_V1: EntryInitNew = entry_init!(
+            Value::new_utf8s("This local domain's info and metadata object."),
+        ),
+    ])
+});
+
+pub static E_SYSTEM_CONFIG_V1: LazyLock<EntryInitNew> = LazyLock::new(|| {
+    entry_init_fn([
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::SystemConfig.to_value()),
         (Attribute::Class, EntryClass::System.to_value()),
         (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_CONFIG)),
         (
             Attribute::Description,
-            Value::new_utf8s("System (replicated) configuration options.")
+            Value::new_utf8s("System (replicated) configuration options."),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("bad@no3IBTyqHu$list")
+            Value::new_iutf8("bad@no3IBTyqHu$list"),
         ),
         (
             Attribute::BadlistPassword,
             Value::new_iutf8(
-                "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1"
-            )
+                "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
+            ),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("100preteamare")
+            Value::new_iutf8("100preteamare"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("14defebrero")),
         (Attribute::BadlistPassword, Value::new_iutf8("1life1love")),
@@ -65,47 +70,47 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("2813308004")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("2fast2furious")
+            Value::new_iutf8("2fast2furious"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("2gether4ever")),
         (Attribute::BadlistPassword, Value::new_iutf8("2pacshakur")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("30secondstomars")
+            Value::new_iutf8("30secondstomars"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("3doorsdown")),
         (Attribute::BadlistPassword, Value::new_iutf8("6cyclemind")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("<div><embed src=\\")
+            Value::new_iutf8("<div><embed src=\\"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("@hotmail.com")),
         (Attribute::BadlistPassword, Value::new_iutf8("@yahoo.com")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("Lets you update your FunNotes and more!")
+            Value::new_iutf8("Lets you update your FunNotes and more!"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("TEQUIEROMUCHO")
+            Value::new_iutf8("TEQUIEROMUCHO"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("TEXT ONLY AD")),
         (Attribute::BadlistPassword, Value::new_iutf8("abretesesamo")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("administrador")
+            Value::new_iutf8("administrador"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("aeropostale")),
         (Attribute::BadlistPassword, Value::new_iutf8("akinkalang")),
         (Attribute::BadlistPassword, Value::new_iutf8("akucintakamu")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("akusayangkamu")
+            Value::new_iutf8("akusayangkamu"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("alfayomega")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("alhamdulillah")
+            Value::new_iutf8("alhamdulillah"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("allaboutme")),
         (Attribute::BadlistPassword, Value::new_iutf8("allahuakbar")),
@@ -113,25 +118,25 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("alquimista")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("alwaysandforever")
+            Value::new_iutf8("alwaysandforever"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("amarteduele")),
         (Attribute::BadlistPassword, Value::new_iutf8("amigas4ever")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("amigasporsiempre")
+            Value::new_iutf8("amigasporsiempre"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("amigasx100pre")
+            Value::new_iutf8("amigasx100pre"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("amigasxsiempre")
+            Value::new_iutf8("amigasxsiempre"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("amoamifamilia")
+            Value::new_iutf8("amoamifamilia"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("amordelbueno")),
         (Attribute::BadlistPassword, Value::new_iutf8("amordemivida")),
@@ -139,19 +144,19 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("amoreterno")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("amorimposible")
+            Value::new_iutf8("amorimposible"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("amorporsiempre")
+            Value::new_iutf8("amorporsiempre"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("amorprohibido")
+            Value::new_iutf8("amorprohibido"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("amorverdadero")
+            Value::new_iutf8("amorverdadero"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("amotemuito")),
         (Attribute::BadlistPassword, Value::new_iutf8("anaranjado")),
@@ -170,12 +175,12 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("asieslavida")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("assalamualaikum")
+            Value::new_iutf8("assalamualaikum"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("auxiliadora")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("avengedsevenfold")
+            Value::new_iutf8("avengedsevenfold"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("ayamgoreng")),
         (Attribute::BadlistPassword, Value::new_iutf8("babasonicos")),
@@ -188,36 +193,36 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("benfiquista")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("bestfriends4ever")
+            Value::new_iutf8("bestfriends4ever"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("bestfriendsforever")
+            Value::new_iutf8("bestfriendsforever"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("bienvenido")),
         (Attribute::BadlistPassword, Value::new_iutf8("billandben")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("blackandwhite")
+            Value::new_iutf8("blackandwhite"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("blackeyedpeas")
+            Value::new_iutf8("blackeyedpeas"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("bobesponja")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("bobthebuilder")
+            Value::new_iutf8("bobthebuilder"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("bomboncito")),
         (Attribute::BadlistPassword, Value::new_iutf8("borreguito")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("boysoverflowers")
+            Value::new_iutf8("boysoverflowers"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("bringmetolife")
+            Value::new_iutf8("bringmetolife"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("bustitbaby")),
         (Attribute::BadlistPassword, Value::new_iutf8("cachorrita")),
@@ -226,14 +231,14 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("calculadora")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("californication")
+            Value::new_iutf8("californication"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("camiloteamo")),
         (Attribute::BadlistPassword, Value::new_iutf8("candyland1")),
         (Attribute::BadlistPassword, Value::new_iutf8("candyshop1")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("canttouchthis")
+            Value::new_iutf8("canttouchthis"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("caperucita")),
         (Attribute::BadlistPassword, Value::new_iutf8("caprichosa")),
@@ -242,11 +247,11 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("caricatura")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("caritadeangel")
+            Value::new_iutf8("caritadeangel"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("carteldesanta")
+            Value::new_iutf8("carteldesanta"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("castravete")),
         (Attribute::BadlistPassword, Value::new_iutf8("catinthehat")),
@@ -261,7 +266,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("chilindrina")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("chingatumadre")
+            Value::new_iutf8("chingatumadre"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("chiquititas")),
         (Attribute::BadlistPassword, Value::new_iutf8("chocoholic")),
@@ -283,20 +288,20 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("contabilidad")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("cookiesncream")
+            Value::new_iutf8("cookiesncream"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("corazondemelon")
+            Value::new_iutf8("corazondemelon"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("cositarica")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("cradleoffilth")
+            Value::new_iutf8("cradleoffilth"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("crazysexycool")
+            Value::new_iutf8("crazysexycool"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("crepusculo")),
         (Attribute::BadlistPassword, Value::new_iutf8("crisostomo")),
@@ -307,24 +312,24 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("cualquiera")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("cualquiercosa")
+            Value::new_iutf8("cualquiercosa"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("cuchurrumin")),
         (Attribute::BadlistPassword, Value::new_iutf8("cymruambyth")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("daddyslilgirl")
+            Value::new_iutf8("daddyslilgirl"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("daddyslittlegirl")
+            Value::new_iutf8("daddyslittlegirl"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("danitykane")),
         (Attribute::BadlistPassword, Value::new_iutf8("daveyhavok")),
         (Attribute::BadlistPassword, Value::new_iutf8("dcshoecousa")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("deportivocali")
+            Value::new_iutf8("deportivocali"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("depredador")),
         (Attribute::BadlistPassword, Value::new_iutf8("desiderata")),
@@ -333,7 +338,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("diosesbueno")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("diostebendiga")
+            Value::new_iutf8("diostebendiga"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("divalicious")),
         (Attribute::BadlistPassword, Value::new_iutf8("dolcegabbana")),
@@ -344,12 +349,12 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("elamorapesta")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("elamordemivida")
+            Value::new_iutf8("elamordemivida"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("elamorduele")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("elamornoexiste")
+            Value::new_iutf8("elamornoexiste"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("emperatriz")),
         (Attribute::BadlistPassword, Value::new_iutf8("encantadia")),
@@ -357,7 +362,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("enfermeria")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("ereselamordemivida")
+            Value::new_iutf8("ereselamordemivida"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("ereslomaximo")),
         (Attribute::BadlistPassword, Value::new_iutf8("ereslomejor")),
@@ -366,18 +371,18 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("escritorio")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("espiritusanto")
+            Value::new_iutf8("espiritusanto"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("estadosunidos")
+            Value::new_iutf8("estadosunidos"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("estrelinha")),
         (Attribute::BadlistPassword, Value::new_iutf8("estudiante")),
         (Attribute::BadlistPassword, Value::new_iutf8("ewankosayo")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("extraterrestre")
+            Value::new_iutf8("extraterrestre"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("eyeshield21")),
         (Attribute::BadlistPassword, Value::new_iutf8("fadetoblack")),
@@ -393,13 +398,13 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("floripondia")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("foreverandever")
+            Value::new_iutf8("foreverandever"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("frangipani")),
         (Attribute::BadlistPassword, Value::new_iutf8("free2rhyme")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("fresasconcrema")
+            Value::new_iutf8("fresasconcrema"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("frootloops")),
         (Attribute::BadlistPassword, Value::new_iutf8("fuckevery1")),
@@ -417,12 +422,12 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("godschild1")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("gofuckyourself")
+            Value::new_iutf8("gofuckyourself"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("goody2shoes")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("grandtheftauto")
+            Value::new_iutf8("grandtheftauto"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("grenouille")),
         (Attribute::BadlistPassword, Value::new_iutf8("gryffindor")),
@@ -433,13 +438,13 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("hakunamatata")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("hannah montana")
+            Value::new_iutf8("hannah montana"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("happygolucky")),
         (Attribute::BadlistPassword, Value::new_iutf8("harry potter")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("hateitorloveit")
+            Value::new_iutf8("hateitorloveit"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("haveaniceday")),
         (Attribute::BadlistPassword, Value::new_iutf8("hello kitty")),
@@ -449,14 +454,14 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("holaatodos")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("holacomoestas")
+            Value::new_iutf8("holacomoestas"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("holaquetal")),
         (Attribute::BadlistPassword, Value::new_iutf8("hollaback1")),
         (Attribute::BadlistPassword, Value::new_iutf8("homeandaway")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("homesweethome")
+            Value::new_iutf8("homesweethome"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("hoobastank")),
         (Attribute::BadlistPassword, Value::new_iutf8("hotandsexy")),
@@ -464,13 +469,13 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("hotmail123")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("hugsandkisses")
+            Value::new_iutf8("hugsandkisses"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("hugsnkisses")),
         (Attribute::BadlistPassword, Value::new_iutf8("hunnibunni")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("hunterxhunter")
+            Value::new_iutf8("hunterxhunter"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("i love you")),
         (Attribute::BadlistPassword, Value::new_iutf8("i.love.you")),
@@ -493,7 +498,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("iloveboys2")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("ilovechrisbrown")
+            Value::new_iutf8("ilovechrisbrown"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("ilovecody1")),
         (Attribute::BadlistPassword, Value::new_iutf8("ilovedogs1")),
@@ -510,7 +515,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("ilovemydog")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("ilovemyfriends")
+            Value::new_iutf8("ilovemyfriends"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("ilovemymom")),
         (Attribute::BadlistPassword, Value::new_iutf8("ilovemymommy")),
@@ -518,12 +523,12 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("ilovemymummy")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("ilovemysister")
+            Value::new_iutf8("ilovemysister"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("ilovemyson")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("ilovenickjonas")
+            Value::new_iutf8("ilovenickjonas"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("ilovenoone")),
         (Attribute::BadlistPassword, Value::new_iutf8("ilovepink1")),
@@ -533,17 +538,17 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("ilovethelord")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("ilovethisgame")
+            Value::new_iutf8("ilovethisgame"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("ilovetodance")),
         (Attribute::BadlistPassword, Value::new_iutf8("iloveusomuch")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("iloveyousomuch")
+            Value::new_iutf8("iloveyousomuch"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("ilovezacefron")
+            Value::new_iutf8("ilovezacefron"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("iluv2dance")),
         (Attribute::BadlistPassword, Value::new_iutf8("iluvu4ever")),
@@ -558,7 +563,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("inolvidable")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("insaneclownposse")
+            Value::new_iutf8("insaneclownposse"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("inspiracion")),
         (Attribute::BadlistPassword, Value::new_iutf8("inteligencia")),
@@ -567,7 +572,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("ioriyagami")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("itsallaboutme")
+            Value::new_iutf8("itsallaboutme"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("iubireamea")),
         (Attribute::BadlistPassword, Value::new_iutf8("iwillsurvive")),
@@ -581,7 +586,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("jogabonito")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("jonas brothers")
+            Value::new_iutf8("jonas brothers"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("joshgroban")),
         (Attribute::BadlistPassword, Value::new_iutf8("juggalette")),
@@ -605,7 +610,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("lasdivinas")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("lavidaesbella")
+            Value::new_iutf8("lavidaesbella"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("lavidaloca")),
         (Attribute::BadlistPassword, Value::new_iutf8("leedongwook")),
@@ -618,16 +623,16 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("literatura")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("livelaughlove")
+            Value::new_iutf8("livelaughlove"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("livelovelaugh")
+            Value::new_iutf8("livelovelaugh"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("liveyourlife")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("lordoftherings")
+            Value::new_iutf8("lordoftherings"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("loserface1")),
         (Attribute::BadlistPassword, Value::new_iutf8("losmejores")),
@@ -636,11 +641,11 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("loveandpeace")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("loveisintheair")
+            Value::new_iutf8("loveisintheair"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("lovemeorhateme")
+            Value::new_iutf8("lovemeorhateme"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("lovenkrands")),
         (Attribute::BadlistPassword, Value::new_iutf8("loveofmylife")),
@@ -650,7 +655,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("loveydovey")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("loveyousomuch")
+            Value::new_iutf8("loveyousomuch"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("luciernaga")),
         (Attribute::BadlistPassword, Value::new_iutf8("luvme4ever")),
@@ -661,7 +666,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("mahalkokayo")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("mahalnamahalkita")
+            Value::new_iutf8("mahalnamahalkita"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("makedonija")),
         (Attribute::BadlistPassword, Value::new_iutf8("mamichula1")),
@@ -671,23 +676,23 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("mardecopas")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("mariadelcarmen")
+            Value::new_iutf8("mariadelcarmen"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("matrimonio")),
         (Attribute::BadlistPassword, Value::new_iutf8("meamomucho")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("mejoresamigas")
+            Value::new_iutf8("mejoresamigas"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("memyselfandi")),
         (Attribute::BadlistPassword, Value::new_iutf8("meneketehe")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("mequieromucho")
+            Value::new_iutf8("mequieromucho"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("mercadotecnia")
+            Value::new_iutf8("mercadotecnia"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("metamorfosis")),
         (Attribute::BadlistPassword, Value::new_iutf8("miamorerestu")),
@@ -708,12 +713,12 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("mommasgirl")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("mommyanddaddy")
+            Value::new_iutf8("mommyanddaddy"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("monserrath")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("morethanwords")
+            Value::new_iutf8("morethanwords"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("moscraciun")),
         (Attribute::BadlistPassword, Value::new_iutf8("moulinrouge")),
@@ -721,19 +726,19 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("muiesteaua")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("mummyanddaddy")
+            Value::new_iutf8("mummyanddaddy"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("mummysgirl")),
         (Attribute::BadlistPassword, Value::new_iutf8("musicislife")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("musicismylife")
+            Value::new_iutf8("musicismylife"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("muthafucka")),
         (Attribute::BadlistPassword, Value::new_iutf8("muñequita")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("mychemicalromance")
+            Value::new_iutf8("mychemicalromance"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("mylittlepony")),
         (Attribute::BadlistPassword, Value::new_iutf8("myonlylove")),
@@ -741,7 +746,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("myspace.com")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("nabucodonosor")
+            Value::new_iutf8("nabucodonosor"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("nascimento")),
         (Attribute::BadlistPassword, Value::new_iutf8("nasigoreng")),
@@ -749,7 +754,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("nepomuceno")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("neversaynever")
+            Value::new_iutf8("neversaynever"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("nick jonas")),
         (Attribute::BadlistPassword, Value::new_iutf8("nickjonas1")),
@@ -759,7 +764,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("nosequeponer")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("nuncateolvidare")
+            Value::new_iutf8("nuncateolvidare"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("nymphetamine")),
         (Attribute::BadlistPassword, Value::new_iutf8("odontologia")),
@@ -772,7 +777,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("ositopanda")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("padrinosmagicos")
+            Value::new_iutf8("padrinosmagicos"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("painislove")),
         (Attribute::BadlistPassword, Value::new_iutf8("pandalandia")),
@@ -780,16 +785,16 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("pangilinan")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("panicatthedisco")
+            Value::new_iutf8("panicatthedisco"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("pantelimon")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("paralelepipedo")
+            Value::new_iutf8("paralelepipedo"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("paralelipiped")
+            Value::new_iutf8("paralelipiped"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("parasiempre")),
         (Attribute::BadlistPassword, Value::new_iutf8("pasawayako")),
@@ -806,7 +811,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("politecnico")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("praisethelord")
+            Value::new_iutf8("praisethelord"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("prettyinpink")),
         (Attribute::BadlistPassword, Value::new_iutf8("prostituta")),
@@ -819,31 +824,31 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("quetzalcoatl")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("qwertyuiopasdfghjklzxcvbnm")
+            Value::new_iutf8("qwertyuiopasdfghjklzxcvbnm"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("recuerdame")),
         (Attribute::BadlistPassword, Value::new_iutf8("resistencia")),
         (Attribute::BadlistPassword, Value::new_iutf8("restinpeace")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("reymisterio619")
+            Value::new_iutf8("reymisterio619"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("reymysterio619")
+            Value::new_iutf8("reymysterio619"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("ricardoarjona")
+            Value::new_iutf8("ricardoarjona"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("romeoyjulieta")
+            Value::new_iutf8("romeoyjulieta"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("rosesarered")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("rositafresita")
+            Value::new_iutf8("rositafresita"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("rupertgrint")),
         (Attribute::BadlistPassword, Value::new_iutf8("ryansheckler")),
@@ -859,18 +864,18 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("semeolvido")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("seniseviyorum")
+            Value::new_iutf8("seniseviyorum"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("sentimiento")),
         (Attribute::BadlistPassword, Value::new_iutf8("sesshomaru")),
         (Attribute::BadlistPassword, Value::new_iutf8("sesshoumaru")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("sexandthecity")
+            Value::new_iutf8("sexandthecity"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("sexonthebeach")
+            Value::new_iutf8("sexonthebeach"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("sexymomma1")),
         (Attribute::BadlistPassword, Value::new_iutf8("sexythang1")),
@@ -880,20 +885,20 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("shopaholic")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("showmethemoney")
+            Value::new_iutf8("showmethemoney"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("siemprejuntos")
+            Value::new_iutf8("siemprejuntos"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("siempreteamare")
+            Value::new_iutf8("siempreteamare"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("simanjuntak")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("simplementeyo")
+            Value::new_iutf8("simplementeyo"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("sinterklaas")),
         (Attribute::BadlistPassword, Value::new_iutf8("sk8er4life")),
@@ -910,48 +915,48 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("soylomejor")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("spongebobsquarepants")
+            Value::new_iutf8("spongebobsquarepants"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("steauabucuresti")
+            Value::new_iutf8("steauabucuresti"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("suankularb")),
         (Attribute::BadlistPassword, Value::new_iutf8("subhanallah")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("sugarandspice")
+            Value::new_iutf8("sugarandspice"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("sugarnspice")),
         (Attribute::BadlistPassword, Value::new_iutf8("superchica")),
         (Attribute::BadlistPassword, Value::new_iutf8("superinggo")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("superpoderosa")
+            Value::new_iutf8("superpoderosa"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("supladitah")),
         (Attribute::BadlistPassword, Value::new_iutf8("tamagotchi")),
         (Attribute::BadlistPassword, Value::new_iutf8("taugammaphi")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("teamareporsiempre")
+            Value::new_iutf8("teamareporsiempre"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("teamaresiempre")
+            Value::new_iutf8("teamaresiempre"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("teamarex100pre")
+            Value::new_iutf8("teamarex100pre"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("teamarexsiempre")
+            Value::new_iutf8("teamarexsiempre"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("teamobebito")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("teamodemasiado")
+            Value::new_iutf8("teamodemasiado"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("teamogordo")),
         (Attribute::BadlistPassword, Value::new_iutf8("teamomiamor")),
@@ -974,33 +979,33 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("teolvidare")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("tequieromucho")
+            Value::new_iutf8("tequieromucho"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("tequieromuxo")),
         (Attribute::BadlistPassword, Value::new_iutf8("tesigoamando")),
         (Attribute::BadlistPassword, Value::new_iutf8("thaitanium")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("theblackparade")
+            Value::new_iutf8("theblackparade"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("theoneandonly")
+            Value::new_iutf8("theoneandonly"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("theveronicas")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("thisismypassword")
+            Value::new_iutf8("thisismypassword"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("threedaysgrace")
+            Value::new_iutf8("threedaysgrace"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("timbiriche")),
         (Attribute::BadlistPassword, Value::new_iutf8("tinkywinky")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("titoelbambino")
+            Value::new_iutf8("titoelbambino"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("tivogliobene")),
         (Attribute::BadlistPassword, Value::new_iutf8("todalavida")),
@@ -1013,7 +1018,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("trandafiri")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("trincheranorte")
+            Value::new_iutf8("trincheranorte"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("triskelion")),
         (Attribute::BadlistPassword, Value::new_iutf8("tueresmiamor")),
@@ -1031,7 +1036,7 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("verjaardag")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("vetealamierda")
+            Value::new_iutf8("vetealamierda"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("veterinaria")),
         (Attribute::BadlistPassword, Value::new_iutf8("villacorta")),
@@ -1041,33 +1046,33 @@ lazy_static! {
         (Attribute::BadlistPassword, Value::new_iutf8("vivelavida")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("webelongtogether")
+            Value::new_iutf8("webelongtogether"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("weezyfbaby")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("welcometomylife")
+            Value::new_iutf8("welcometomylife"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("whereisthelove")
+            Value::new_iutf8("whereisthelove"),
         ),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("winniethepooh")
+            Value::new_iutf8("winniethepooh"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("wipemedown")),
         (Attribute::BadlistPassword, Value::new_iutf8("wisinyandel")),
         (Attribute::BadlistPassword, Value::new_iutf8("wisinyyandel")),
         (
             Attribute::BadlistPassword,
-            Value::new_iutf8("worldofwarcraft")
+            Value::new_iutf8("worldofwarcraft"),
         ),
         (Attribute::BadlistPassword, Value::new_iutf8("yosoyelmejor")),
         (Attribute::BadlistPassword, Value::new_iutf8("yosoylamejor")),
         (Attribute::BadlistPassword, Value::new_iutf8("youcantseeme")),
         (Attribute::BadlistPassword, Value::new_iutf8("yougotserved")),
         (Attribute::BadlistPassword, Value::new_iutf8("yuyuhakusho")),
-        (Attribute::BadlistPassword, Value::new_iutf8("zonnebloem"))
-    );
-}
+        (Attribute::BadlistPassword, Value::new_iutf8("zonnebloem")),
+    ])
+});

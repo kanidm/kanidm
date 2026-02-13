@@ -3422,6 +3422,14 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
     }
 }
 
+pub fn entry_init_fn(args: impl IntoIterator<Item = (Attribute, Value)>) -> EntryInitNew {
+    let mut entry: Entry<EntryInit, EntryNew> = Entry::new();
+    for (k, v) in args {
+        entry.add_ava(k, v);
+    }
+    entry
+}
+
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;

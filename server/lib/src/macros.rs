@@ -477,6 +477,26 @@ macro_rules! entry_init {
 
 #[allow(unused_macros)]
 #[macro_export]
+macro_rules! lazy_entry_init {
+    () => ({
+        let e1: LazyLock<Entry<EntryInit, EntryNew>> = LazyLock::new(|| Entry::new());
+        e1
+    });
+    ($ava:expr) => ({
+        let mut e1: LazyLock<Entry<EntryInit, EntryNew>> = LazyLock::new(|| Entry::new());
+        e1.add_ava($ava.0, $ava.1);
+        e1
+    });
+    ($ava:expr, $($item:expr),*) => ({
+        let mut e1: LazyLock<Entry<EntryInit, EntryNew>> = LazyLock::new(|| Entry::new());
+        e1.add_ava($ava.0, $ava.1);
+        $(e1.add_ava($item.0, $item.1);)*
+        e1
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
 macro_rules! mergesets {
     (
         $a:expr,

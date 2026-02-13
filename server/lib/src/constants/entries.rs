@@ -221,11 +221,15 @@ impl EntryClass {
 
 // ============ TEST DATA ============
 #[cfg(test)]
-use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::entry::entry_init_fn;
+#[cfg(test)]
+use crate::entry::EntryInitNew;
+#[cfg(test)]
+use std::sync::LazyLock;
 
 #[cfg(test)]
-lazy_static! {
-    pub static ref E_TESTPERSON_1: EntryInitNew = entry_init!(
+pub static E_TESTPERSON_1: LazyLock<EntryInitNew> = LazyLock::new(|| {
+    entry_init_fn([
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::Account.to_value()),
         (Attribute::Class, EntryClass::Person.to_value()),
@@ -233,10 +237,13 @@ lazy_static! {
         (Attribute::DisplayName, Value::new_utf8s("Test Person 1")),
         (
             Attribute::Uuid,
-            Value::Uuid(super::uuids::UUID_TESTPERSON_1)
-        )
-    );
-    pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
+            Value::Uuid(super::uuids::UUID_TESTPERSON_1),
+        ),
+    ])
+});
+#[cfg(test)]
+pub static E_TESTPERSON_2: LazyLock<EntryInitNew> = LazyLock::new(|| {
+    entry_init_fn([
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::Account.to_value()),
         (Attribute::Class, EntryClass::Person.to_value()),
@@ -244,7 +251,7 @@ lazy_static! {
         (Attribute::DisplayName, Value::new_utf8s("Test Person 2")),
         (
             Attribute::Uuid,
-            Value::Uuid(super::uuids::UUID_TESTPERSON_2)
-        )
-    );
-}
+            Value::Uuid(super::uuids::UUID_TESTPERSON_2),
+        ),
+    ])
+});

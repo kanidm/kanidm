@@ -2288,16 +2288,14 @@ mod tests {
     use idlset::v2::IDLBitRange;
     use kanidm_proto::backup::BackupCompression;
     use std::iter::FromIterator;
-    use std::sync::Arc;
+    use std::sync::{Arc, LazyLock};
     use std::time::Duration;
 
-    lazy_static! {
-        static ref CID_ZERO: Cid = Cid::new_zero();
-        static ref CID_ONE: Cid = Cid::new_count(1);
-        static ref CID_TWO: Cid = Cid::new_count(2);
-        static ref CID_THREE: Cid = Cid::new_count(3);
-        static ref CID_ADV: Cid = Cid::new_count(10);
-    }
+    static CID_ZERO: LazyLock<Cid> = LazyLock::new(|| Cid::new_zero());
+    static CID_ONE: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(1));
+    static CID_TWO: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(2));
+    static CID_THREE: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(3));
+    static CID_ADV: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(10));
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
