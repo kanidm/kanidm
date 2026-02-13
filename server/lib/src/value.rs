@@ -712,7 +712,7 @@ impl PartialValue {
         matches!(self, PartialValue::Iname(_))
     }
 
-    pub fn new_bool(b: bool) -> Self {
+    pub const fn new_bool(b: bool) -> Self {
         PartialValue::Bool(b)
     }
 
