@@ -7,56 +7,48 @@ use crate::value::Value;
 // This is separated because the password badlist section may become very long
 
 pub static E_SYSTEM_INFO_V1: LazyLock<EntryInitNew> = LazyLock::new(|| {
-    entry_init_fn(
-        [
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::SystemInfo.to_value()),
-            (Attribute::Class, EntryClass::System.to_value()),
-            (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_INFO)),
-            (
-                Attribute::Description,
-                Value::new_utf8s("System (local) info and metadata object."),
-            ),
-            (Attribute::Version, Value::Uint32(20)),
-        ]
-        .into_iter(),
-    )
+    entry_init_fn([
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::SystemInfo.to_value()),
+        (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_INFO)),
+        (
+            Attribute::Description,
+            Value::new_utf8s("System (local) info and metadata object."),
+        ),
+        (Attribute::Version, Value::Uint32(20)),
+    ])
 });
 
 pub static E_DOMAIN_INFO_DL6: LazyLock<EntryInitNew> = LazyLock::new(|| {
-    entry_init_fn(
-        [
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::DomainInfo.to_value()),
-            (Attribute::Class, EntryClass::System.to_value()),
-            (Attribute::Class, EntryClass::KeyObject.to_value()),
-            (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
-            (Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value()),
-            (Attribute::Name, Value::new_iname("domain_local")),
-            (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
-            (
-                Attribute::Description,
-                Value::new_utf8s("This local domain's info and metadata object."),
-            ),
-        ]
-        .into_iter(),
-    )
+    entry_init_fn([
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::DomainInfo.to_value()),
+        (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Class, EntryClass::KeyObject.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value()),
+        (Attribute::Name, Value::new_iname("domain_local")),
+        (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
+        (
+            Attribute::Description,
+            Value::new_utf8s("This local domain's info and metadata object."),
+        ),
+    ])
 });
 
+// This is a function instead of a static/lazylock because otherwise it entirely blows up the stack, and we only use it at migration time.
 pub fn e_system_config_v1() -> EntryInitNew {
-    let mut entry = entry_init_fn(
-        [
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::SystemConfig.to_value()),
-            (Attribute::Class, EntryClass::System.to_value()),
-            (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_CONFIG)),
-            (
-                Attribute::Description,
-                Value::new_utf8s("System (replicated) configuration options."),
-            ),
-        ]
-        .into_iter(),
-    );
+    let mut entry = entry_init_fn([
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::SystemConfig.to_value()),
+        (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_CONFIG)),
+        (
+            Attribute::Description,
+            Value::new_utf8s("System (replicated) configuration options."),
+        ),
+    ]);
     for pw in [
         "bad@no3IBTyqHu$list",
         "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",

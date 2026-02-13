@@ -1,8 +1,4 @@
-use crate::constants::entries::{Attribute, EntryClass};
-use crate::constants::uuids::UUID_KEY_PROVIDER_INTERNAL;
-use crate::entry::{entry_init_fn, EntryInitNew};
-use crate::value::Value;
-use std::sync::LazyLock;
+use crate::prelude::*;
 
 pub static E_KEY_PROVIDER_INTERNAL_DL6: LazyLock<EntryInitNew> = LazyLock::new(|| {
     entry_init_fn(

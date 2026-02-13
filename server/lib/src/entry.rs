@@ -3424,10 +3424,10 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
 /// This is a helper function to create an entry from an iterator of attribute-value pairs. This is a replacement for the old `entry_init!`` macro
 pub fn entry_init_fn<T>(args: T) -> EntryInitNew
 where
-    T: Iterator<Item = (Attribute, Value)>,
+    T: IntoIterator<Item = (Attribute, Value)>,
 {
     let mut entry: EntryInitNew = Entry::new();
-    args.for_each(|(k, v)| entry.add_ava(k, v));
+    args.into_iter().for_each(|(k, v)| entry.add_ava(k, v));
     entry
 }
 

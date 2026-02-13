@@ -227,35 +227,29 @@ use std::sync::LazyLock;
 
 #[cfg(test)]
 pub static E_TESTPERSON_1: LazyLock<EntryInitNew> = LazyLock::new(|| {
-    entry_init_fn(
-        [
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Name, Value::new_iname("testperson1")),
-            (Attribute::DisplayName, Value::new_utf8s("Test Person 1")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(super::uuids::UUID_TESTPERSON_1),
-            ),
-        ]
-        .into_iter(),
-    )
+    entry_init_fn([
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Account.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
+        (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::DisplayName, Value::new_utf8s("Test Person 1")),
+        (
+            Attribute::Uuid,
+            Value::Uuid(super::uuids::UUID_TESTPERSON_1),
+        ),
+    ])
 });
 #[cfg(test)]
 pub static E_TESTPERSON_2: LazyLock<EntryInitNew> = LazyLock::new(|| {
-    entry_init_fn(
-        [
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Name, Value::new_iname("testperson2")),
-            (Attribute::DisplayName, Value::new_utf8s("Test Person 2")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(super::uuids::UUID_TESTPERSON_2),
-            ),
-        ]
-        .into_iter(),
-    )
+    entry_init_fn([
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Account.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
+        (Attribute::Name, Value::new_iname("testperson2")),
+        (Attribute::DisplayName, Value::new_utf8s("Test Person 2")),
+        (
+            Attribute::Uuid,
+            Value::Uuid(super::uuids::UUID_TESTPERSON_2),
+        ),
+    ])
 });
