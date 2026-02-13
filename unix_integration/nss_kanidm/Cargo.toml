@@ -41,4 +41,4 @@ assets = [
 ]
 
 [package.metadata.cargo-machete]
-ignored = ["cc", ""]
+ignored = ["cc"]
