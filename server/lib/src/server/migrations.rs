@@ -419,7 +419,7 @@ impl QueryServerWriteTransaction<'_> {
         // =========== Apply changes ==============
         self.internal_migrate_or_create_batch(
             "phase 1 - schema attrs",
-            *migration_data::dl10::phase_1_schema_attrs(),
+            migration_data::dl10::phase_1_schema_attrs(),
         )?;
 
         self.internal_migrate_or_create_batch(
