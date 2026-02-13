@@ -109,7 +109,7 @@ pub static BUILTIN_GROUP_SERVICE_DESK: LazyLock<BuiltinGroup> = LazyLock::new(||
 
 // These are the "finer" roles. They encapsulate different concepts in the system.
 // The next section is the "system style" roles. These adjust the operation of
-// kanidm and relate to it's internals and how it functions.
+// Kanidm and relate to its internals and how it functions.
 pub static BUILTIN_GROUP_RECYCLE_BIN_ADMINS: LazyLock<BuiltinGroup> =
     LazyLock::new(|| BuiltinGroup {
         name: "idm_recycle_bin_admins",

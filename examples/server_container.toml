@@ -96,7 +96,7 @@ origin = "https://idm.example.com"
 #   will often add a header such as "Forwarded" or
 #   "X-Forwarded-For". Some other proxies can use the PROXY
 #   protocol v2 header. While we support the PROXY protocol
-#   v1 header, we STRONGLY discourage it's use as it has
+#   v1 header, we STRONGLY discourage its use as it has
 #   significantly greater overheads compared to v2 during
 #   processing.
 #   This setting allows configuration of the list of trusted
@@ -118,7 +118,7 @@ origin = "https://idm.example.com"
 #   To preserve the original IP of the caller, these systems
 #   can add a header such as the PROXY protocol v2 header.
 #   While we support the PROXY protocol v1 header, we STRONGLY
-#   discourage it's use as it has significantly greater
+#   discourage its use as it has significantly greater
 #   overheads compared to v2 during processing.
 #   This setting allows configuration of the list of trusted
 #   IPs or IP ranges which can supply this header information,
