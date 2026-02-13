@@ -2043,9 +2043,8 @@ mod tests {
         test_acp_search_reduce!(&se_anon_ro, vec![acp], r_set, ex_anon_some);
     }
 
-    pub static E_TESTPERSON_1_REDUCED: LazyLock<EntryInitNew> = LazyLock::new(|| {
-        entry_init_fn([(Attribute::Name, Value::new_iname("testperson1"))].into_iter())
-    });
+    pub static E_TESTPERSON_1_REDUCED: LazyLock<EntryInitNew> =
+        LazyLock::new(|| entry_init_fn([(Attribute::Name, Value::new_iname("testperson1"))]));
 
     #[test]
     fn test_access_enforce_search_attrs() {

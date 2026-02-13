@@ -263,107 +263,98 @@ mod tests {
     const UUID_TEST_ACP: Uuid = uuid::uuid!("acae81d6-5ea7-4bd8-8f7f-fcec4c0dd647");
 
     pub static TEST_ACCOUNT: LazyLock<EntryInitNew> = LazyLock::new(|| {
-        entry_init_fn(
-            [
-                (Attribute::Class, EntryClass::Account.to_value()),
-                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
-                (Attribute::Class, EntryClass::MemberOf.to_value()),
-                (Attribute::Name, Value::new_iname("test_account_1")),
-                (Attribute::DisplayName, Value::new_utf8s("test_account_1")),
-                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT)),
-                (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP)),
-            ]
-            .into_iter(),
-        )
+        entry_init_fn([
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+            (Attribute::Class, EntryClass::MemberOf.to_value()),
+            (Attribute::Name, Value::new_iname("test_account_1")),
+            (Attribute::DisplayName, Value::new_utf8s("test_account_1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT)),
+            (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP)),
+        ])
     });
     pub static TEST_GROUP: LazyLock<EntryInitNew> = LazyLock::new(|| {
-        entry_init_fn(
-            [
-                (Attribute::Class, EntryClass::Group.to_value()),
-                (Attribute::Name, Value::new_iname("test_group_a")),
-                (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP)),
-                (Attribute::Member, Value::Refer(UUID_TEST_ACCOUNT)),
-            ]
-            .into_iter(),
-        )
+        entry_init_fn([
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("test_group_a")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP)),
+            (Attribute::Member, Value::Refer(UUID_TEST_ACCOUNT)),
+        ])
     });
     pub static ALLOW_ALL: LazyLock<EntryInitNew> = LazyLock::new(|| {
-        entry_init_fn(
-            [
-                (Attribute::Class, EntryClass::Object.to_value()),
-                (
-                    Attribute::Class,
-                    EntryClass::AccessControlProfile.to_value(),
-                ),
-                (
-                    Attribute::Class,
-                    EntryClass::AccessControlTargetScope.to_value(),
-                ),
-                (
-                    Attribute::Class,
-                    EntryClass::AccessControlReceiverGroup.to_value(),
-                ),
-                (Attribute::Class, EntryClass::AccessControlModify.to_value()),
-                (Attribute::Class, EntryClass::AccessControlCreate.to_value()),
-                (Attribute::Class, EntryClass::AccessControlDelete.to_value()),
-                (Attribute::Class, EntryClass::AccessControlSearch.to_value()),
-                (
-                    Attribute::Name,
-                    Value::new_iname("idm_admins_acp_allow_all_test"),
-                ),
-                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACP)),
-                (Attribute::AcpReceiverGroup, Value::Refer(UUID_TEST_GROUP)),
-                (
-                    Attribute::AcpTargetScope,
-                    Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter"),
-                ),
-                (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
-                (Attribute::AcpSearchAttr, Value::from(Attribute::Class)),
-                (Attribute::AcpSearchAttr, Value::from(Attribute::Uuid)),
-                (Attribute::AcpModifyClass, EntryClass::System.to_value()),
-                (
-                    Attribute::AcpModifyRemovedAttr,
-                    Value::from(Attribute::Class),
-                ),
-                (
-                    Attribute::AcpModifyRemovedAttr,
-                    Value::from(Attribute::DisplayName),
-                ),
-                (Attribute::AcpModifyRemovedAttr, Value::from(Attribute::May)),
-                (
-                    Attribute::AcpModifyRemovedAttr,
-                    Value::from(Attribute::Must),
-                ),
-                (
-                    Attribute::AcpModifyPresentAttr,
-                    Value::from(Attribute::Class),
-                ),
-                (
-                    Attribute::AcpModifyPresentAttr,
-                    Value::from(Attribute::DisplayName),
-                ),
-                (Attribute::AcpModifyPresentAttr, Value::from(Attribute::May)),
-                (
-                    Attribute::AcpModifyPresentAttr,
-                    Value::from(Attribute::Must),
-                ),
-                (Attribute::AcpCreateClass, EntryClass::Object.to_value()),
-                (Attribute::AcpCreateClass, EntryClass::Person.to_value()),
-                (Attribute::AcpCreateClass, EntryClass::System.to_value()),
-                (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
-                (Attribute::AcpCreateAttr, Value::from(Attribute::Class)),
-                (
-                    Attribute::AcpCreateAttr,
-                    Value::from(Attribute::Description),
-                ),
-                (
-                    Attribute::AcpCreateAttr,
-                    Value::from(Attribute::DisplayName),
-                ),
-                (Attribute::AcpCreateAttr, Value::from(Attribute::Uuid)),
-            ]
-            .into_iter(),
-        )
+        entry_init_fn([
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (
+                Attribute::Class,
+                EntryClass::AccessControlProfile.to_value(),
+            ),
+            (
+                Attribute::Class,
+                EntryClass::AccessControlTargetScope.to_value(),
+            ),
+            (
+                Attribute::Class,
+                EntryClass::AccessControlReceiverGroup.to_value(),
+            ),
+            (Attribute::Class, EntryClass::AccessControlModify.to_value()),
+            (Attribute::Class, EntryClass::AccessControlCreate.to_value()),
+            (Attribute::Class, EntryClass::AccessControlDelete.to_value()),
+            (Attribute::Class, EntryClass::AccessControlSearch.to_value()),
+            (
+                Attribute::Name,
+                Value::new_iname("idm_admins_acp_allow_all_test"),
+            ),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACP)),
+            (Attribute::AcpReceiverGroup, Value::Refer(UUID_TEST_GROUP)),
+            (
+                Attribute::AcpTargetScope,
+                Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter"),
+            ),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Class)),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Uuid)),
+            (Attribute::AcpModifyClass, EntryClass::System.to_value()),
+            (
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::Class),
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::DisplayName),
+            ),
+            (Attribute::AcpModifyRemovedAttr, Value::from(Attribute::May)),
+            (
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::Must),
+            ),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::Class),
+            ),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::DisplayName),
+            ),
+            (Attribute::AcpModifyPresentAttr, Value::from(Attribute::May)),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::Must),
+            ),
+            (Attribute::AcpCreateClass, EntryClass::Object.to_value()),
+            (Attribute::AcpCreateClass, EntryClass::Person.to_value()),
+            (Attribute::AcpCreateClass, EntryClass::System.to_value()),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Class)),
+            (
+                Attribute::AcpCreateAttr,
+                Value::from(Attribute::Description),
+            ),
+            (
+                Attribute::AcpCreateAttr,
+                Value::from(Attribute::DisplayName),
+            ),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Uuid)),
+        ])
     });
 
     pub static PRELOAD: LazyLock<Vec<EntryInitNew>> =
