@@ -60,7 +60,7 @@ impl QueryServer {
             // No domain info was present, so neither was the rest of the IDM. Bring up the
             // full IDM here.
 
-            match dbg!(domain_target_level) {
+            match domain_target_level {
                 DOMAIN_LEVEL_10 => write_txn.migrate_domain_9_to_10()?,
                 DOMAIN_LEVEL_11 => write_txn.migrate_domain_10_to_11()?,
                 DOMAIN_LEVEL_12 => write_txn.migrate_domain_11_to_12()?,
@@ -73,7 +73,6 @@ impl QueryServer {
                     return Err(OperationError::MG0009InvalidTargetLevelForBootstrap);
                 }
             }
-            eprintln!("Passed migrate_domain_14_to_15");
 
             write_txn
                 .internal_apply_domain_migration(domain_target_level)
@@ -145,7 +144,9 @@ impl QueryServer {
                 error!(
                     "UNABLE TO PROCEED. You are attempting a skip update which is NOT SUPPORTED."
                 );
-                error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
+                error!(
+                    "For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html"
+                );
                 error!(domain_previous_version = ?domain_info_version, domain_target_version = ?domain_target_level, domain_migration_minimum_limit = ?DOMAIN_MIGRATION_FROM_MIN);
                 return Err(OperationError::MG0008SkipUpgradeAttempted);
             }
@@ -177,7 +178,9 @@ impl QueryServer {
         } else if domain_info_version > domain_target_level {
             // This is a DOWNGRADE which may not proceed.
             error!("UNABLE TO PROCEED. You are attempting a downgrade which is NOT SUPPORTED.");
-            error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
+            error!(
+                "For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html"
+            );
             error!(domain_previous_version = ?domain_info_version, domain_target_version = ?domain_target_level);
             return Err(OperationError::MG0010DowngradeNotAllowed);
         } else if domain_development_taint {

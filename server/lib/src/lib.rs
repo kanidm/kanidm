@@ -77,7 +77,7 @@ pub mod prelude {
     pub(crate) use crate::be::Limits;
     pub(crate) use crate::constants::uuids::*;
     pub use crate::constants::*;
-    pub use crate::entry::{
+    pub(crate) use crate::entry::{
         entry_init_fn, Entry, EntryCommitted, EntryIncrementalCommitted, EntryIncrementalNew,
         EntryInit, EntryInitNew, EntryInvalid, EntryInvalidCommitted, EntryInvalidNew, EntryNew,
         EntryReduced, EntryReducedCommitted, EntryRefresh, EntryRefreshNew, EntrySealed,

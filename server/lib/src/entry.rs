@@ -3422,7 +3422,7 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
 }
 
 /// This is a helper function to create an entry from an iterator of attribute-value pairs. This is a replacement for the old `entry_init!`` macro
-pub fn entry_init_fn<T>(args: T) -> EntryInitNew
+pub(crate) fn entry_init_fn<T>(args: T) -> EntryInitNew
 where
     T: IntoIterator<Item = (Attribute, Value)>,
 {
