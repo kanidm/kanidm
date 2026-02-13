@@ -3,8 +3,6 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
-#![allow(non_upper_case_globals)]
-
 use crate::be::dbentry::DbIdentSpn;
 use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
@@ -81,7 +79,6 @@ pub static HEXSTR_RE: LazyLock<Regex> = LazyLock::new(|| {
 pub static EXTRACT_VAL_DN: LazyLock<Regex> = LazyLock::new(|| {
     #[allow(clippy::expect_used)]
     Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)").expect("extract val from dn regex")
-    // Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)(,.*)?$").expect("Invalid Iname regex found")
 });
 
 pub static NSUNIQUEID_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -115,15 +112,6 @@ pub static VALIDATE_EMAIL_RE: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r"^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
             .expect("Invalid singleline regex found")
 });
-
-// Formerly checked with
-/*
-pub static ESCAPES_RE: Regex = {
-    #[allow(clippy::expect_used)]
-    Regex::new(r"\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])")
-        .expect("Invalid escapes regex found")
-};
-*/
 
 pub static UNICODE_CONTROL_RE: LazyLock<Regex> = LazyLock::new(|| {
     #[allow(clippy::expect_used)]
