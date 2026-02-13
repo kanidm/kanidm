@@ -45,7 +45,7 @@ kanidm recycle-bin revive --name admin <uuid>
 ## Edge Cases
 
 The recycle bin is a best effort to restore your data - there are some cases where the revived entries may not be the
-same as their were when they were deleted. This generally revolves around reference types such as group membership, or
+same as they were when they were deleted. This generally revolves around reference types such as group membership, or
 when the reference type includes supplemental map data such as the OAuth2 scope map type.
 
 An example of this data loss is the following steps:
