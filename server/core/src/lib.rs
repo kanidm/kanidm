@@ -1191,14 +1191,16 @@ pub async fn create_server_core(
         info!("Stopped {}", TaskName::AuditdActor);
     });
 
-    // Run the migrations *once*
+    // Run the migrations *once*, only in production though.
     let migration_path = config
         .migration_path
         .clone()
         .unwrap_or(PathBuf::from(env!("KANIDM_SERVER_MIGRATION_PATH")));
 
-    let eventid = Uuid::new_v4();
-    migration_apply(eventid, server_write_ref, migration_path.as_path()).await;
+    if config.integration_test_config.is_none() {
+        let eventid = Uuid::new_v4();
+        migration_apply(eventid, server_write_ref, migration_path.as_path()).await;
+    }
 
     // Setup the Migration Reload Trigger.
     let mut broadcast_rx = broadcast_tx.subscribe();
