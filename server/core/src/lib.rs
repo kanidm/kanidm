@@ -59,6 +59,7 @@ use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
 use kanidmd_lib::value::CredentialType;
 use regex::Regex;
+use std::collections::BTreeSet;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::path::PathBuf;
@@ -870,6 +871,15 @@ async fn migration_apply(
             hash: migration_hash,
             assertions,
         });
+    }
+
+    let mut migration_ids = BTreeSet::new();
+    for migration in &migrations {
+        // BTreeSet returns false on duplicate value insertion.
+        if !migration_ids.insert(migration.assertions.id) {
+            error!(path = %migration.path.display(), uuid = ?migration.assertions.id, "Duplicate migration UUID found, refusing to proceed!!! All migrations must have a unique ID!!!");
+            return;
+        }
     }
 
     // Okay, we're setup to go - apply them all. Note that we do these
