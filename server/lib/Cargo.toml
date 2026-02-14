@@ -39,7 +39,6 @@ idlset = { workspace = true }
 itertools = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
-lazy_static = { workspace = true }
 ldap3_proto = { workspace = true }
 # libsqlite3-sys = { workspace = true }
 num_enum = { workspace = true }
@@ -94,15 +93,16 @@ flate2 = "1.1.8"
 whoami = { workspace = true }
 
 [dev-dependencies]
-compact_jwt = { workspace = true, features = [
-    "unsafe_release_without_verify",
-] }
+compact_jwt = { workspace = true, features = ["unsafe_release_without_verify"] }
 futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }
 # This is needed so that we can use a test feature across the crate boundary to proto
 # so we can enable certain hidden test only attributes.
 kanidm_proto = { workspace = true, features = ["test"] }
-webauthn-authenticator-rs = { workspace = true, features = ["softpasskey", "softtoken" ]  }
+webauthn-authenticator-rs = { workspace = true, features = [
+    "softpasskey",
+    "softtoken",
+] }
 
 
 [target.'cfg(not(target_os = "illumos"))'.dev-dependencies]

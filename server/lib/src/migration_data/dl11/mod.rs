@@ -158,7 +158,7 @@ pub fn phase_4_system_entries() -> Vec<EntryInitNew> {
     vec![
         E_SYSTEM_INFO_V1.clone(),
         E_DOMAIN_INFO_DL6.clone(),
-        E_SYSTEM_CONFIG_V1.clone(),
+        e_system_config_v1(),
     ]
 }
 

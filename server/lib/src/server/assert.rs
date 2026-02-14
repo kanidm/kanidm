@@ -671,13 +671,13 @@ mod tests {
         let assert_id = Uuid::new_v4();
         let nonce_1 = {
             let mut hasher = Sha256::new();
-            hasher.update(&[1]);
+            hasher.update([1]);
             hasher.finalize()
         };
 
         let nonce_2 = {
             let mut hasher = Sha256::new();
-            hasher.update(&[2]);
+            hasher.update([2]);
             hasher.finalize()
         };
 

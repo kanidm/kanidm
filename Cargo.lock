@@ -3777,7 +3777,6 @@ dependencies = [
  "kanidm_client",
  "kanidm_lib_file_permissions",
  "kanidm_proto",
- "lazy_static",
  "libc",
  "qrcode",
  "regex",
@@ -3950,7 +3949,6 @@ dependencies = [
  "kanidm_lib_crypto",
  "kanidm_proto",
  "kanidmd_lib_macros",
- "lazy_static",
  "ldap3_proto",
  "lodepng",
  "mimalloc",
@@ -4652,7 +4650,6 @@ version = "1.10.0-dev"
 dependencies = [
  "cc",
  "kanidm_unix_common",
- "lazy_static",
  "libc",
  "libnss",
 ]

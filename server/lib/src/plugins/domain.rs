@@ -14,13 +14,11 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 
-lazy_static! {
-    pub static ref DOMAIN_LDAP_BASEDN_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new(r"^(dc|o|ou)=[a-z][a-z0-9]*(,(dc|o|ou)=[a-z][a-z0-9]*)*$")
-            .expect("Invalid domain ldap basedn regex")
-    };
-}
+pub static DOMAIN_LDAP_BASEDN_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new(r"^(dc|o|ou)=[a-z][a-z0-9]*(,(dc|o|ou)=[a-z][a-z0-9]*)*$")
+        .expect("Invalid domain ldap basedn regex")
+});
 
 pub struct Domain {}
 

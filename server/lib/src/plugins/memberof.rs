@@ -762,32 +762,38 @@ mod tests {
     const UUID_C: &str = "cccccccc-9b01-423f-9ba6-51aa4bbd5dd2";
     const UUID_D: &str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
 
-    lazy_static! {
-        static ref EA: EntryInitNew = entry_init!(
+    static EA: LazyLock<EntryInitNew> = LazyLock::new(|| {
+        entry_init_fn([
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Class, EntryClass::MemberOf.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_A)))
-        );
-        static ref EB: EntryInitNew = entry_init!(
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_A))),
+        ])
+    });
+    static EB: LazyLock<EntryInitNew> = LazyLock::new(|| {
+        entry_init_fn([
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Class, EntryClass::MemberOf.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_B)))
-        );
-        static ref EC: EntryInitNew = entry_init!(
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_B))),
+        ])
+    });
+    static EC: LazyLock<EntryInitNew> = LazyLock::new(|| {
+        entry_init_fn([
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Class, EntryClass::MemberOf.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_c")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_C)))
-        );
-        static ref ED: EntryInitNew = entry_init!(
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_C))),
+        ])
+    });
+    static ED: LazyLock<EntryInitNew> = LazyLock::new(|| {
+        entry_init_fn([
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Class, EntryClass::MemberOf.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_d")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_D)))
-        );
-    }
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_D))),
+        ])
+    });
 
     macro_rules! assert_memberof_int {
         (

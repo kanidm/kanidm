@@ -144,7 +144,9 @@ impl QueryServer {
                 error!(
                     "UNABLE TO PROCEED. You are attempting a skip update which is NOT SUPPORTED."
                 );
-                error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
+                error!(
+                    "For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html"
+                );
                 error!(domain_previous_version = ?domain_info_version, domain_target_version = ?domain_target_level, domain_migration_minimum_limit = ?DOMAIN_MIGRATION_FROM_MIN);
                 return Err(OperationError::MG0008SkipUpgradeAttempted);
             }
@@ -176,7 +178,9 @@ impl QueryServer {
         } else if domain_info_version > domain_target_level {
             // This is a DOWNGRADE which may not proceed.
             error!("UNABLE TO PROCEED. You are attempting a downgrade which is NOT SUPPORTED.");
-            error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
+            error!(
+                "For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html"
+            );
             error!(domain_previous_version = ?domain_info_version, domain_target_version = ?domain_target_level);
             return Err(OperationError::MG0010DowngradeNotAllowed);
         } else if domain_development_taint {
@@ -254,6 +258,7 @@ impl QueryServer {
 impl QueryServerWriteTransaction<'_> {
     /// Apply a domain migration `to_level`. Errors if `to_level` is not greater than or equal to
     /// the active level.
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn internal_apply_domain_migration(
         &mut self,
         to_level: u32,
@@ -270,6 +275,8 @@ impl QueryServerWriteTransaction<'_> {
         msg: &str,
         entries: Vec<EntryInitNew>,
     ) -> Result<(), OperationError> {
+        #[cfg(test)]
+        eprintln!("MIGRATION BATCH: {}", msg);
         let r: Result<(), _> = entries
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry));
@@ -781,7 +788,7 @@ impl QueryServerWriteTransaction<'_> {
 
         // =========== Apply changes ==============
         self.internal_migrate_or_create_batch(
-            "phase 1 - schema attrs",
+            &format!("phase 1 - schema attrs target {}", DOMAIN_TGT_LEVEL),
             migration_data::dl14::phase_1_schema_attrs(),
         )?;
 
@@ -811,7 +818,7 @@ impl QueryServerWriteTransaction<'_> {
         self.reload()?;
 
         self.internal_migrate_or_create_batch(
-            "phase 4 - system entries",
+            "phase 4 - dl14 system entries",
             migration_data::dl14::phase_4_system_entries(),
         )?;
 
