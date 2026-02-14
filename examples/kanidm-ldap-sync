@@ -22,6 +22,11 @@ sync_token = "eyJhb..."
 ldap_uri = "ldaps://specific-server.ldap.kanidm.com"
 # Path to the LDAP CA certificate in PEM format.
 ldap_ca = "/path/to/kanidm-ldap-ca.pem"
+
+# In some cases you may need to disable TLS certificate validation. This is not secure
+# and you should always opt to have certificate validation if possible.
+# ldap_verify_ca = true
+
 # The DN of an account with content sync rights. On 389-ds, by default cn=Directory Manager has
 # this access. On OpenLDAP you must grant this access.
 ldap_sync_dn = "cn=Directory Manager"

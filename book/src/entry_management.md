@@ -33,7 +33,7 @@ Attributes of an entry can be removed by setting them to `null`.
 ```
 
 This example is located in
-[examples/migrations](https://github.com/kanidm/kanidm/blob/master/examples/migrations/) in the repository.
+[examples/migrations](https://github.com/kanidm/kanidm/blob/master/examples/migrations/) in the repository. There are other migrations there you may find useful.
 
 ## Recommendations
 

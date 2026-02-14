@@ -2292,7 +2292,6 @@ impl Schema {
             unique_cache: CowCell::new(Vec::with_capacity(0)),
             ref_cache: CowCell::new(HashMap::with_capacity(64)),
         };
-        // let mut sw = task::block_on(s.write());
         let mut sw = s.write();
         let r1 = sw.generate_in_memory();
         debug_assert!(r1.is_ok());

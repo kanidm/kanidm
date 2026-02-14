@@ -46,7 +46,7 @@
         "group"
       ],
       "name": "remove-all-members",
-      // Setting a value to null will cause it's content to be removed.
+      // Setting a value to null will cause its content to be removed.
       "member": null
     }
   ]

@@ -8,11 +8,11 @@ mod system_config;
 use self::access::*;
 use self::accounts::*;
 use self::groups::*;
-use self::key_providers::*;
 use self::schema::*;
 use self::system_config::*;
 use crate::constants::UUID_SCHEMA_ATTR_EC_KEY_PRIVATE;
-use crate::prelude::EntryInitNew;
+use crate::migration_data::dl14::key_providers::e_key_provider_internal_dl6;
+use crate::prelude::*;
 use kanidm_proto::internal::OperationError;
 use uuid::Uuid;
 
@@ -182,16 +182,16 @@ pub fn phase_2_schema_classes() -> Vec<EntryInitNew> {
 }
 
 pub fn phase_3_key_provider() -> Vec<EntryInitNew> {
-    vec![E_KEY_PROVIDER_INTERNAL_DL6.clone()]
+    vec![e_key_provider_internal_dl6()]
 }
 
 pub fn phase_4_system_entries() -> Vec<EntryInitNew> {
     vec![
-        E_SYSTEM_INFO_V1.clone(),
-        E_DOMAIN_INFO_DL6.clone(),
-        E_SYSTEM_CONFIG_V1.clone(),
-        E_UUID_DOMAIN_ID_VERIFICATION_KEY_V1.clone(),
-        E_HMAC_NAME_HISTORY_FEATURE.clone(),
+        e_system_info_v1(),
+        e_domain_info_dl6(),
+        e_system_config_v1(),
+        e_uuid_domain_id_verification_key_v1(),
+        e_hmac_name_history_feature(),
     ]
 }
 

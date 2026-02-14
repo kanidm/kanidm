@@ -6,15 +6,13 @@ use std::sync::Arc;
 
 use super::Plugin;
 
-lazy_static! {
-    // it contains all the partialvalues used to match against an Entry's class,
-    // we need ALL partialvalues to match in order to target the entry
-    static ref DEFAULT_KEY_GROUP: EcGroup = {
-        let nid = Nid::X9_62_PRIME256V1; // NIST P-256 curve
-        #[allow(clippy::unwrap_used)]
-        EcGroup::from_curve_name(nid).unwrap()
-    };
-}
+// it contains all the partialvalues used to match against an Entry's class,
+// we need ALL partialvalues to match in order to target the entry
+static DEFAULT_KEY_GROUP: LazyLock<EcGroup> = LazyLock::new(|| {
+    let nid = Nid::X9_62_PRIME256V1; // NIST P-256 curve
+    #[allow(clippy::unwrap_used)]
+    EcGroup::from_curve_name(nid).unwrap()
+});
 
 pub struct EcdhKeyGen {}
 

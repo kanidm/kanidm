@@ -224,15 +224,14 @@ mod identify_user_no_tui {
     use regex::Regex;
     use std::{
         io::{stdout, Write},
+        sync::LazyLock,
         time::SystemTime,
     };
 
-    lazy_static::lazy_static! {
-        pub static ref VALIDATE_TOTP_RE: Regex = {
-            #[allow(clippy::expect_used)]
-            Regex::new(r"^\d{5,6}$").expect("Failed to parse VALIDATE_TOTP_RE") // TODO: add an error ID (internal error, restart)
-        };
-    }
+    pub static VALIDATE_TOTP_RE: LazyLock<Regex> = LazyLock::new(|| {
+        #[allow(clippy::expect_used)]
+        Regex::new(r"^\d{5,6}$").expect("Failed to parse VALIDATE_TOTP_RE") // TODO: add an error ID (internal error, restart)
+    });
 
     pub(super) enum IdentifyUserState {
         Start,

@@ -316,6 +316,24 @@ impl QueryServerWriteTransaction<'_> {
             Some(nonce) => AssertOnce::Yes { id, nonce },
         };
 
+        // Before we can transform this, we have to resolve links that *may* exist
+        // within this assertion.
+        self.txn_name_to_uuid().extend(asserts.iter().filter_map(
+            |scim_assert| match scim_assert {
+                ScimEntryAssertion::Present { id, attrs } => {
+                    attrs
+                        .get(&Attribute::Name)
+                        .and_then(|value| match value {
+                            // If the name is present, and a valid string.
+                            Some(JsonValue::String(name)) => Some(name.clone()),
+                            _ => None,
+                        })
+                        .map(|name| (name, *id))
+                }
+                ScimEntryAssertion::Absent { .. } => None,
+            },
+        ));
+
         // Transform from SCIM to Kanidm Internal representations.
         let asserts = asserts
             .into_iter()
@@ -512,11 +530,14 @@ impl QueryServerWriteTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::ScimEntryPutEvent;
+    use super::{ScimAssertEvent, ScimEntryPutEvent};
     use crate::prelude::*;
-    use kanidm_proto::scim_v1::client::ScimEntryPutKanidm;
+    use kanidm_proto::scim_v1::client::{
+        ScimEntryAssertion, ScimEntryPutKanidm, ScimReference as ScimClientReference,
+    };
     use kanidm_proto::scim_v1::server::ScimReference;
     use kanidm_proto::scim_v1::ScimMail;
+    use std::collections::BTreeMap;
 
     #[qs_test]
     async fn scim_put_basic(server: &QueryServer) {
@@ -768,5 +789,55 @@ mod tests {
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");
         assert!(!updated_entry.attrs.contains_key(&Attribute::Member));
+    }
+
+    #[qs_test]
+    async fn scim_assert_basic(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let ident = Identity::from_internal();
+
+        let uuid_group_1 = Uuid::new_v4();
+        let uuid_group_2 = Uuid::new_v4();
+
+        let asserts = vec![
+            ScimEntryAssertion::Present {
+                id: uuid_group_1,
+                attrs: BTreeMap::from([
+                    (Attribute::Name, Some(JsonValue::String("group_1".into()))),
+                    (
+                        Attribute::Class,
+                        Some(serde_json::to_value(vec!["group"]).unwrap()),
+                    ),
+                    (
+                        Attribute::Member,
+                        Some(serde_json::to_value(ScimClientReference::from("group_2")).unwrap()),
+                    ),
+                ]),
+            },
+            ScimEntryAssertion::Present {
+                id: uuid_group_2,
+                attrs: BTreeMap::from([
+                    (Attribute::Name, Some(JsonValue::String("group_2".into()))),
+                    (
+                        Attribute::Class,
+                        Some(serde_json::to_value(vec!["group"]).unwrap()),
+                    ),
+                    (
+                        Attribute::Member,
+                        Some(serde_json::to_value(ScimClientReference::from("group_1")).unwrap()),
+                    ),
+                ]),
+            },
+        ];
+
+        let scim_assert = ScimAssertEvent {
+            ident,
+            asserts,
+            id: Uuid::new_v4(),
+            nonce: None,
+        };
+
+        server_txn.scim_assert(scim_assert).expect("Must not fail!");
     }
 }
