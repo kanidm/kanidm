@@ -306,7 +306,7 @@ async fn run_sync(
     let ldap_client_builder = if let Some(ipa_ca) = sync_config.ipa_ca.as_ref() {
         ldap_client_builder.add_tls_ca(ipa_ca)
     } else {
-        let verify_ca = sync_config.ldap_verify_ca.unwrap_or(true);
+        let verify_ca = sync_config.ipa_verify_ca.unwrap_or(true);
         ldap_client_builder.danger_accept_invalid_certs(!verify_ca)
     };
 
