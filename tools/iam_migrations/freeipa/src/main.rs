@@ -300,12 +300,17 @@ async fn run_sync(
 
     // Preflight check.
     //  * can we connect to ipa?
-    let mut ipa_client = match LdapClientBuilder::new(&sync_config.ipa_uri)
-        .max_ber_size(sync_config.max_ber_size)
-        .add_tls_ca(&sync_config.ipa_ca)
-        .build()
-        .await
-    {
+    let ldap_client_builder =
+        LdapClientBuilder::new(&sync_config.ipa_uri).max_ber_size(sync_config.max_ber_size);
+
+    let ldap_client_builder = if let Some(ipa_ca) = sync_config.ipa_ca.as_ref() {
+        ldap_client_builder.add_tls_ca(ipa_ca)
+    } else {
+        let verify_ca = sync_config.ipa_verify_ca.unwrap_or(true);
+        ldap_client_builder.danger_accept_invalid_certs(!verify_ca)
+    };
+
+    let mut ipa_client = match ldap_client_builder.build().await {
         Ok(lc) => lc,
         Err(e) => {
             error!(error=?e, ipa_uri=&sync_config.ipa_uri.to_string(),"Failed to connect to FreeIPA");
