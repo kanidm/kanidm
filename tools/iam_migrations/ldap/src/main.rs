@@ -274,7 +274,8 @@ async fn run_sync(
     let ldap_client_builder = if let Some(ldap_ca) = sync_config.ldap_ca.as_ref() {
         ldap_client_builder.add_tls_ca(ldap_ca)
     } else {
-        ldap_client_builder.danger_accept_invalid_certs(!sync_config.ldap_verify_ca)
+        let verify_ca = sync_config.ldap_verify_ca.unwrap_or(true);
+        ldap_client_builder.danger_accept_invalid_certs(!verify_ca)
     };
 
     let mut ldap_client = match ldap_client_builder.build().await {

@@ -10,7 +10,7 @@ pub struct Config {
     pub status_bind: Option<String>,
     pub ipa_uri: Url,
     #[serde(default)]
-    pub ipa_verify_ca: bool,
+    pub ipa_verify_ca: Option<bool>,
     pub ipa_ca: Option<String>,
     pub ipa_sync_dn: String,
     pub ipa_sync_pw: String,

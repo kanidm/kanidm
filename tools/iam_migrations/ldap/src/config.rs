@@ -74,7 +74,7 @@ pub struct Config {
     pub status_bind: Option<String>,
     pub ldap_uri: Url,
     #[serde(default)]
-    pub ldap_verify_ca: bool,
+    pub ldap_verify_ca: Option<bool>,
     pub ldap_ca: Option<String>,
     pub ldap_sync_dn: String,
     pub ldap_sync_pw: String,
