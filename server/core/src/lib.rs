@@ -59,6 +59,7 @@ use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
 use kanidmd_lib::value::CredentialType;
 use regex::Regex;
+use std::collections::BTreeSet;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::path::PathBuf;
@@ -872,6 +873,15 @@ async fn migration_apply(
         });
     }
 
+    let mut migration_ids = BTreeSet::new();
+    for migration in &migrations {
+        // BTreeSet returns false on duplicate value insertion.
+        if !migration_ids.insert(migration.assertions.id) {
+            error!(path = %migration.path.display(), uuid = ?migration.assertions.id, "Duplicate migration UUID found, refusing to proceed!!! All migrations must have a unique ID!!!");
+            return;
+        }
+    }
+
     // Okay, we're setup to go - apply them all. Note that we do these
     // separately, each migration occurs in its own transaction.
     for ScimMigration {
@@ -1191,14 +1201,16 @@ pub async fn create_server_core(
         info!("Stopped {}", TaskName::AuditdActor);
     });
 
-    // Run the migrations *once*
+    // Run the migrations *once*, only in production though.
     let migration_path = config
         .migration_path
         .clone()
         .unwrap_or(PathBuf::from(env!("KANIDM_SERVER_MIGRATION_PATH")));
 
-    let eventid = Uuid::new_v4();
-    migration_apply(eventid, server_write_ref, migration_path.as_path()).await;
+    if config.integration_test_config.is_none() {
+        let eventid = Uuid::new_v4();
+        migration_apply(eventid, server_write_ref, migration_path.as_path()).await;
+    }
 
     // Setup the Migration Reload Trigger.
     let mut broadcast_rx = broadcast_tx.subscribe();
