@@ -1,0 +1,47 @@
+{
+  // This ID must always be unique for each migration json.
+  "id": "2236608c-256c-470a-96a5-a25d310aa501",
+  "assertions": [
+    {
+      "state": "present",
+      "id": "aac3a738-aa63-4224-aef3-61d988830310",
+      "class": [
+        "account",
+        "oauth2_resource_server",
+        "oauth2_resource_server_basic"
+      ],
+      "displayname": "OAuth2 Client Example",
+      "name": "oauth2_client_id",
+      "oauth2_rs_origin_landing": "https://oauth2.example.com/",
+      "oauth2_rs_scope_map": [
+        {
+          "group": "lions",
+          "scopes": [
+            "openid"
+          ]
+        }
+      ],
+      "oauth2_rs_scope_map": [
+        {
+          "group": "lion_admins",
+          "scopes": [
+            "admin"
+          ]
+        }
+      ],
+      "oauth2_rs_claim_map": [
+        {
+          "claim": "testclaim",
+          "group": "lions",
+          // ';' = 'json array'
+          // ',' = 'comma separated value'
+          // ' ' = 'space separated value'
+          "joinChar": ";",
+          "values": [
+            "claim_value"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -41,7 +41,7 @@ use kanidm_proto::scim_v1::{
     server::{ScimListResponse, ScimOAuth2ClaimMap, ScimOAuth2ScopeMap, ScimReference},
     JsonValue, ScimEntryGetQuery, ScimFilter,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZeroU64;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -180,6 +180,7 @@ pub struct QueryServerReadTransaction<'a> {
     // Future we may need this.
     // cid_max: CowCellReadTxn<Cid>,
     trim_cid: Cid,
+    txn_name_to_uuid: BTreeMap<String, Uuid>,
 }
 
 unsafe impl Sync for QueryServerReadTransaction<'_> {}
@@ -238,6 +239,7 @@ pub struct QueryServerWriteTransaction<'a> {
         (),
     >,
     dyngroup_cache: CowCellWriteTxn<'a, DynGroupCache>,
+    txn_name_to_uuid: BTreeMap<String, Uuid>,
 }
 
 impl QueryServerWriteTransaction<'_> {
@@ -289,6 +291,8 @@ pub trait QueryServerTransaction<'a> {
     fn get_resolve_filter_cache(&mut self) -> Option<&mut ResolveFilterCacheReadTxn<'a>>;
 
     fn get_feature_hmac_name_history_config(&self) -> &HmacNameHistoryConfig;
+
+    fn txn_name_to_uuid(&mut self) -> &mut BTreeMap<String, Uuid>;
 
     // Because of how borrowck in rust works, if we need to get two inner types we have to get them
     // in a single fn.
@@ -447,7 +451,6 @@ pub trait QueryServerTransaction<'a> {
         // is only a single correct answer that *can* match these values. This also
         // hugely simplifies the process of matching when we have app based searches
         // in future too.
-
         let work = EXTRACT_VAL_DN
             .captures(name)
             .and_then(|caps| caps.name("val"))
@@ -455,11 +458,19 @@ pub trait QueryServerTransaction<'a> {
             .ok_or(OperationError::InvalidValueState)?;
 
         // Is it just a uuid?
-        Uuid::parse_str(&work).or_else(|_| {
-            self.get_be_txn()
-                .name2uuid(&work)?
-                .ok_or(OperationError::NoMatchingEntries)
-        })
+        if let Ok(uuid) = Uuid::parse_str(&work) {
+            return Ok(uuid);
+        }
+
+        if let Some(uuid) = self.get_be_txn().name2uuid(&work)? {
+            return Ok(uuid);
+        }
+
+        if let Some(uuid) = self.txn_name_to_uuid().get(name) {
+            Ok(*uuid)
+        } else {
+            Err(OperationError::NoMatchingEntries)
+        }
     }
 
     // Similar to name, but where we lookup from external_id instead.
@@ -1401,6 +1412,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.feature_config.hmac_name_history
     }
 
+    fn txn_name_to_uuid(&mut self) -> &mut BTreeMap<String, Uuid> {
+        &mut self.txn_name_to_uuid
+    }
+
     fn get_resolve_filter_cache_and_be_txn(
         &mut self,
     ) -> (
@@ -1742,6 +1757,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         &self.feature_config.hmac_name_history
     }
 
+    fn txn_name_to_uuid(&mut self) -> &mut BTreeMap<String, Uuid> {
+        &mut self.txn_name_to_uuid
+    }
+
     fn get_resolve_filter_cache_and_be_txn(
         &mut self,
     ) -> (
@@ -1968,6 +1987,7 @@ impl QueryServer {
             _read_ticket: read_ticket,
             resolve_filter_cache: self.resolve_filter_cache.read(),
             trim_cid,
+            txn_name_to_uuid: Default::default(),
         })
     }
 
@@ -2077,6 +2097,7 @@ impl QueryServer {
             resolve_filter_cache_write: self.resolve_filter_cache.write(),
             dyngroup_cache: self.dyngroup_cache.write(),
             key_providers: self.key_providers.write(),
+            txn_name_to_uuid: Default::default(),
         })
     }
 
@@ -2915,6 +2936,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             resolve_filter_cache: _,
             resolve_filter_cache_clear,
             mut resolve_filter_cache_write,
+            txn_name_to_uuid: _,
         } = self;
         debug_assert!(!committed);
 
