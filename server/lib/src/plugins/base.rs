@@ -30,7 +30,7 @@ impl Plugin for Base {
     #[allow(clippy::cognitive_complexity)]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
+        cand: &mut Vec<EntryInvalidNew>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         // debug!("Entering base pre_create_transform");
@@ -159,9 +159,14 @@ impl Plugin for Base {
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
-        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
+        for entry in cand.iter_mut() {
+            // Ensure we have the 'object', class in the class set.
+            entry.add_ava_if_not_exist(Attribute::Class, EntryClass::Object.to_value());
+        }
+
         me.modlist.iter().try_for_each(|modify| {
             let attr = match &modify {
                 Modify::Present(a, _)
@@ -184,9 +189,14 @@ impl Plugin for Base {
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
-        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
+        for entry in cand.iter_mut() {
+            // Ensure we have the 'object', class in the class set.
+            entry.add_ava_if_not_exist(Attribute::Class, EntryClass::Object.to_value());
+        }
+
         me.modset
             .values()
             .flat_map(|ml| ml.iter())
@@ -252,35 +262,39 @@ mod tests {
     const UUID_TEST_GROUP: Uuid = uuid::uuid!("81ec1640-3637-4a2f-8a52-874fa3c3c92f");
     const UUID_TEST_ACP: Uuid = uuid::uuid!("acae81d6-5ea7-4bd8-8f7f-fcec4c0dd647");
 
-    lazy_static! {
-        pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
+    pub static TEST_ACCOUNT: LazyLock<EntryInitNew> = LazyLock::new(|| {
+        entry_init_fn([
             (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::ServiceAccount.to_value()),
             (Attribute::Class, EntryClass::MemberOf.to_value()),
             (Attribute::Name, Value::new_iname("test_account_1")),
             (Attribute::DisplayName, Value::new_utf8s("test_account_1")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT)),
-            (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP))
-        );
-        pub static ref TEST_GROUP: EntryInitNew = entry_init!(
+            (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP)),
+        ])
+    });
+    pub static TEST_GROUP: LazyLock<EntryInitNew> = LazyLock::new(|| {
+        entry_init_fn([
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("test_group_a")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP)),
-            (Attribute::Member, Value::Refer(UUID_TEST_ACCOUNT))
-        );
-        pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
+            (Attribute::Member, Value::Refer(UUID_TEST_ACCOUNT)),
+        ])
+    });
+    pub static ALLOW_ALL: LazyLock<EntryInitNew> = LazyLock::new(|| {
+        entry_init_fn([
             (Attribute::Class, EntryClass::Object.to_value()),
             (
                 Attribute::Class,
-                EntryClass::AccessControlProfile.to_value()
+                EntryClass::AccessControlProfile.to_value(),
             ),
             (
                 Attribute::Class,
-                EntryClass::AccessControlTargetScope.to_value()
+                EntryClass::AccessControlTargetScope.to_value(),
             ),
             (
                 Attribute::Class,
-                EntryClass::AccessControlReceiverGroup.to_value()
+                EntryClass::AccessControlReceiverGroup.to_value(),
             ),
             (Attribute::Class, EntryClass::AccessControlModify.to_value()),
             (Attribute::Class, EntryClass::AccessControlCreate.to_value()),
@@ -288,13 +302,13 @@ mod tests {
             (Attribute::Class, EntryClass::AccessControlSearch.to_value()),
             (
                 Attribute::Name,
-                Value::new_iname("idm_admins_acp_allow_all_test")
+                Value::new_iname("idm_admins_acp_allow_all_test"),
             ),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACP)),
             (Attribute::AcpReceiverGroup, Value::Refer(UUID_TEST_GROUP)),
             (
                 Attribute::AcpTargetScope,
-                Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
+                Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter"),
             ),
             (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
             (Attribute::AcpSearchAttr, Value::from(Attribute::Class)),
@@ -302,29 +316,29 @@ mod tests {
             (Attribute::AcpModifyClass, EntryClass::System.to_value()),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::from(Attribute::Class)
+                Value::from(Attribute::Class),
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::from(Attribute::DisplayName)
+                Value::from(Attribute::DisplayName),
             ),
             (Attribute::AcpModifyRemovedAttr, Value::from(Attribute::May)),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::from(Attribute::Must)
+                Value::from(Attribute::Must),
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::from(Attribute::Class)
+                Value::from(Attribute::Class),
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::from(Attribute::DisplayName)
+                Value::from(Attribute::DisplayName),
             ),
             (Attribute::AcpModifyPresentAttr, Value::from(Attribute::May)),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::from(Attribute::Must)
+                Value::from(Attribute::Must),
             ),
             (Attribute::AcpCreateClass, EntryClass::Object.to_value()),
             (Attribute::AcpCreateClass, EntryClass::Person.to_value()),
@@ -333,19 +347,20 @@ mod tests {
             (Attribute::AcpCreateAttr, Value::from(Attribute::Class)),
             (
                 Attribute::AcpCreateAttr,
-                Value::from(Attribute::Description)
+                Value::from(Attribute::Description),
             ),
             (
                 Attribute::AcpCreateAttr,
-                Value::from(Attribute::DisplayName)
+                Value::from(Attribute::DisplayName),
             ),
-            (Attribute::AcpCreateAttr, Value::from(Attribute::Uuid))
-        );
-        pub static ref PRELOAD: Vec<EntryInitNew> =
-            vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
-        pub static ref E_TEST_ACCOUNT: Arc<EntrySealedCommitted> =
-            Arc::new(TEST_ACCOUNT.clone().into_sealed_committed());
-    }
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Uuid)),
+        ])
+    });
+
+    pub static PRELOAD: LazyLock<Vec<EntryInitNew>> =
+        LazyLock::new(|| vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()]);
+    pub static E_TEST_ACCOUNT: LazyLock<Arc<EntrySealedCommitted>> =
+        LazyLock::new(|| Arc::new(TEST_ACCOUNT.clone().into_sealed_committed()));
 
     // check create where no uuid
     #[test]

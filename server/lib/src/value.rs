@@ -3,8 +3,6 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
-#![allow(non_upper_case_globals)]
-
 use crate::be::dbentry::DbIdentSpn;
 use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
@@ -46,84 +44,79 @@ use webauthn_rs::prelude::{
 #[cfg(test)]
 use base64::{engine::general_purpose, Engine as _};
 
-lazy_static! {
-    pub static ref SPN_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
-    };
+pub static SPN_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
+});
 
-    pub static ref DISALLOWED_NAMES: HashSet<&'static str> = {
-        // Most of these were removed in favour of the unixd daemon filtering out
-        // local users instead.
-        let mut m = HashSet::with_capacity(2);
-        m.insert("root");
-        m.insert("dn=token");
-        m
-    };
+pub static DISALLOWED_NAMES: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+    // Most of these were removed in favour of the unixd daemon filtering out
+    // local users instead.
+    let mut m = HashSet::with_capacity(2);
+    m.insert("root");
+    m.insert("dn=token");
+    m
+});
 
-    /// Only lowercase+numbers, with limited chars.
-    pub static ref INAME_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^[a-z][a-z0-9-_\\.]{0,63}$").expect("Invalid Iname regex found")
-    };
+/// Only lowercase+numbers, with limited chars.
+pub static INAME_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[a-z][a-z0-9-_\\.]{0,63}$").expect("Invalid Iname regex found")
+});
 
-    /// Only alpha-numeric with limited special chars and space
-    pub static ref LABEL_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^[a-zA-Z0-9][ a-zA-Z0-9-_\\.@]{0,63}$").expect("Invalid Iname regex found")
-    };
+/// Only alpha-numeric with limited special chars and space
+pub static LABEL_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[a-zA-Z0-9][ a-zA-Z0-9-_\\.@]{0,63}$").expect("Invalid Iname regex found")
+});
 
-    /// Only lowercase+numbers, with limited chars.
-    pub static ref HEXSTR_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^[a-f0-9]+$").expect("Invalid hexstring regex found")
-    };
+/// Only lowercase+numbers, with limited chars.
+pub static HEXSTR_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[a-f0-9]+$").expect("Invalid hexstring regex found")
+});
 
-    pub static ref EXTRACT_VAL_DN: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)").expect("extract val from dn regex")
-        // Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)(,.*)?$").expect("Invalid Iname regex found")
-    };
+pub static EXTRACT_VAL_DN: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)").expect("extract val from dn regex")
+});
 
-    pub static ref NSUNIQUEID_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")
-    };
+pub static NSUNIQUEID_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$")
+        .expect("Invalid Nsunique regex found")
+});
 
-    /// Must not contain whitespace.
-    pub static ref OAUTHSCOPE_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
-    };
+/// Must not contain whitespace.
+pub static OAUTHSCOPE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
+});
 
-    pub static ref SINGLELINE_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("[\n\r\t]").expect("Invalid singleline regex found")
-    };
+/// Must not contain whitespace. Allows "abcd", "abcd:efgh", but ":" and "-" need to be separating
+/// groups of characters, and are not able to be leading or trailing.
+pub static OAUTH_CLAIMNAME_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[0-9a-zA-Z_]+([:\\-][0-9a-zA-Z_]+)*$").expect("Invalid oauth claim regex found")
+});
 
-    /// Per https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address
-    /// this regex validates for valid emails.
-    pub static ref VALIDATE_EMAIL_RE: Regex = {
-        #[allow(clippy::expect_used)]
+pub static SINGLELINE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("[\n\r\t]").expect("Invalid singleline regex found")
+});
+
+/// Per https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address
+/// this regex validates for valid emails.
+pub static VALIDATE_EMAIL_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
         Regex::new(r"^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
             .expect("Invalid singleline regex found")
-    };
+});
 
-    // Formerly checked with
-    /*
-    pub static ref ESCAPES_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new(r"\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])")
-            .expect("Invalid escapes regex found")
-    };
-    */
-
-    pub static ref UNICODE_CONTROL_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new(r"[[:cntrl:]]")
-            .expect("Invalid unicode control regex found")
-    };
-}
+pub static UNICODE_CONTROL_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new(r"[[:cntrl:]]").expect("Invalid unicode control regex found")
+});
 
 #[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq, Hash)]
 // https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
@@ -707,7 +700,7 @@ impl PartialValue {
         matches!(self, PartialValue::Iname(_))
     }
 
-    pub fn new_bool(b: bool) -> Self {
+    pub const fn new_bool(b: bool) -> Self {
         PartialValue::Bool(b)
     }
 
@@ -1944,7 +1937,7 @@ impl Value {
     }
 
     pub fn new_oauthclaimmap(n: String, u: Uuid, c: BTreeSet<String>) -> Option<Self> {
-        if OAUTHSCOPE_RE.is_match(&n) && c.iter().all(|s| OAUTHSCOPE_RE.is_match(s)) {
+        if OAUTH_CLAIMNAME_RE.is_match(&n) && c.iter().all(|s| OAUTH_CLAIMNAME_RE.is_match(s)) {
             Some(Value::OauthClaimValue(n, u, c))
         } else {
             None
@@ -2286,12 +2279,19 @@ impl Value {
             Value::OauthScope(s) => OAUTHSCOPE_RE.is_match(s),
             Value::OauthScopeMap(_, m) => m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
 
-            Value::OauthClaimMap(name, _) => OAUTHSCOPE_RE.is_match(name),
+            Value::OauthClaimMap(name, _) => OAUTH_CLAIMNAME_RE.is_match(name),
             Value::OauthClaimValue(name, _, value) => {
-                OAUTHSCOPE_RE.is_match(name) && value.iter().all(|s| OAUTHSCOPE_RE.is_match(s))
+                OAUTH_CLAIMNAME_RE.is_match(name)
+                    && value.iter().all(|s| OAUTH_CLAIMNAME_RE.is_match(s))
             }
 
-            Value::HexString(id) | Value::KeyInternal { id, .. } => {
+            Value::KeyInternal { id, .. } => {
+                let s = id.as_str();
+                Value::validate_str_escapes(s)
+                    && Value::validate_singleline(s)
+                    && Value::validate_hexstr(s)
+            }
+            Value::HexString(id) => {
                 Value::validate_str_escapes(id.as_str())
                     && Value::validate_singleline(id.as_str())
                     && Value::validate_hexstr(id.as_str())
@@ -2661,5 +2661,21 @@ mod tests {
                 > SessionState::ExpiresAt(OffsetDateTime::UNIX_EPOCH)
         );
         assert!(SessionState::ExpiresAt(OffsetDateTime::UNIX_EPOCH) > SessionState::NeverExpires);
+    }
+
+    #[test]
+    fn test_extract_val_dn_regexn() {
+        fn do_extract(name: &str) -> &str {
+            EXTRACT_VAL_DN
+                .captures(name)
+                .and_then(|caps| caps.name("val"))
+                .map(|v| v.as_str())
+                .unwrap()
+        }
+
+        assert_eq!(do_extract("william"), "william");
+        assert_eq!(do_extract("cn=william"), "william");
+        assert_eq!(do_extract("cn=william,o=blackhats"), "william");
+        assert_eq!(do_extract("cn=william@example.com"), "william@example.com");
     }
 }

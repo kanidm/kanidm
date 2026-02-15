@@ -114,6 +114,8 @@ impl PamHooks for PamKanidm {
 
         debug!(?args, ?opts, "acct_mgmt");
 
+        #[allow(clippy::disallowed_methods)]
+        // Allowed as this is the source of time for the operation.
         let current_time = OffsetDateTime::now_utc();
 
         let req_opt = RequestOptions::Main {
@@ -133,6 +135,8 @@ impl PamHooks for PamKanidm {
 
         debug!(?args, ?opts, "acct_mgmt");
 
+        #[allow(clippy::disallowed_methods)]
+        // Allowed as this is the source of time for the operation.
         let current_time = OffsetDateTime::now_utc();
 
         let req_opt = RequestOptions::Main {

@@ -18,21 +18,20 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
 
-use std::fs::{metadata, File};
-// This works on both unix and windows.
-use fs4::fs_std::FileExt;
-use kanidm_proto::messages::ConsoleOutputMode;
-use sketching::otel::TracingPipelineGuard;
-use std::io::Read;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
-use std::path::PathBuf;
-use std::process::ExitCode;
 
-use clap::{Args, Parser, Subcommand};
-use futures::{SinkExt, StreamExt};
-#[cfg(not(target_family = "windows"))] // not needed for windows builds
+#[cfg(target_family = "unix")]
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+
+#[cfg(target_family = "windows")] // for windows builds
+use whoami;
+
+use std::fs::{metadata, File};
+// This works on both unix and windows.
+use clap::{Args, Parser, Subcommand};
+use fs4::fs_std::FileExt;
+use futures::{SinkExt, StreamExt};
 use kanidmd_core::admin::{
     AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
     ProtoDomainUpgradeCheckReport, ProtoDomainUpgradeCheckStatus,
@@ -43,13 +42,17 @@ use kanidmd_core::{
     dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
     dbscan_list_indexes_core, dbscan_list_quarantined_core, dbscan_quarantine_id2entry_core,
     dbscan_restore_quarantined_core, domain_rename_core, reindex_server_core, restore_server_core,
-    vacuum_server_core, verify_server_core,
+    vacuum_server_core, verify_server_core, CoreAction,
 };
+use serde::Serialize;
+use sketching::pipeline::TracingPipelineGuard;
 use sketching::tracing_forest::util::*;
+use std::fmt;
+use std::io::Read;
+use std::path::PathBuf;
+use std::process::ExitCode;
 use tokio::net::UnixStream;
 use tokio_util::codec::Framed;
-#[cfg(target_family = "windows")] // for windows builds
-use whoami;
 
 include!("./opt.rs");
 
@@ -62,7 +65,104 @@ fn get_user_details_windows() {
     );
 }
 
-async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: ConsoleOutputMode) {
+fn display_json_success() {
+    let json_output = serde_json::json!({
+        "status": "ok",
+    });
+    println!("{json_output}");
+}
+
+fn display_json_success_output<T: Serialize>(data: T) {
+    let json_output = serde_json::json!({
+        "status": "ok",
+        "output": data,
+    });
+    println!("{json_output}");
+}
+
+fn display_json_error<E, M>(error: E, message: M)
+where
+    E: fmt::Display,
+    M: fmt::Display,
+{
+    let json_output = serde_json::json!({
+        "status": "error",
+        "reason": format!("{error}"),
+        "message": format!("{message}")
+    });
+    println!("{json_output}");
+}
+
+fn display_json_error_context<E, M, C>(error: E, message: M, context: C)
+where
+    E: fmt::Display,
+    M: fmt::Display,
+    C: fmt::Display,
+{
+    let json_output = serde_json::json!({
+        "status": "error",
+        "reason": format!("{error}"),
+        "message": format!("{message}"),
+        "context": format!("{context}"),
+    });
+    println!("{json_output}");
+}
+
+async fn submit_admin_req_json(path: &str, req: AdminTaskRequest) -> ExitCode {
+    // Connect to the socket.
+    let stream = match UnixStream::connect(path).await {
+        Ok(s) => s,
+        Err(err) => {
+            display_json_error(err, "Unable to connect to socket path.");
+
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let mut reqs = Framed::new(stream, ClientCodec);
+
+    if let Err(err) = reqs.send(req).await {
+        display_json_error(err, "Unable to connect to send request.");
+
+        return ExitCode::FAILURE;
+    };
+
+    if let Err(err) = reqs.flush().await {
+        display_json_error(err, "Unable to connect to flush request.");
+
+        return ExitCode::FAILURE;
+    }
+
+    match reqs.next().await {
+        Some(Ok(AdminTaskResponse::RecoverAccount { password })) => {
+            display_json_success_output(password)
+        }
+        Some(Ok(AdminTaskResponse::Success)) => {
+            display_json_success();
+        }
+        Some(Ok(AdminTaskResponse::Error)) => {
+            display_json_error(
+                "ResponseError",
+                "Error processing request - you should inspect the server logs.",
+            );
+            return ExitCode::FAILURE;
+        }
+        Some(Err(err)) => {
+            display_json_error(err, "Error during admin task operation.");
+            return ExitCode::FAILURE;
+        }
+        None => {
+            display_json_error("SocketClosed", "Error makeing request to admin socket.");
+            return ExitCode::FAILURE;
+        }
+
+        _ => {}
+    }
+
+    ExitCode::SUCCESS
+}
+
+async fn submit_admin_req_human(path: &str, req: AdminTaskRequest) -> ExitCode {
     // Connect to the socket.
     let stream = match UnixStream::connect(path).await {
         Ok(s) => s,
@@ -70,7 +170,7 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
             error!(err = ?e, %path, "Unable to connect to socket path");
             let diag = kanidm_lib_file_permissions::diagnose_path(path.as_ref());
             info!(%diag);
-            return;
+            return ExitCode::FAILURE;
         }
     };
 
@@ -78,180 +178,133 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
 
     if let Err(e) = reqs.send(req).await {
         error!(err = ?e, "Unable to send request");
-        return;
+        return ExitCode::FAILURE;
     };
 
     if let Err(e) = reqs.flush().await {
         error!(err = ?e, "Unable to flush request");
-        return;
+        return ExitCode::FAILURE;
     }
 
     trace!("flushed, waiting ...");
 
     match reqs.next().await {
-        Some(Ok(AdminTaskResponse::RecoverAccount { password })) => match output_mode {
-            ConsoleOutputMode::JSON => {
-                let json_output = serde_json::json!({
-                    "password": password
-                });
-                println!("{json_output}");
-            }
-            ConsoleOutputMode::Text => {
-                info!(new_password = ?password)
-            }
-        },
-        Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => match output_mode {
-            ConsoleOutputMode::JSON => {
-                println!("{{\"certificate\":\"{cert}\"}}")
-            }
-            ConsoleOutputMode::Text => {
-                info!(certificate = ?cert)
-            }
-        },
-
-        Some(Ok(AdminTaskResponse::DomainUpgradeCheck { report })) => {
-            match output_mode {
-                ConsoleOutputMode::JSON => {
-                    let json_output = serde_json::json!({
-                        "domain_upgrade_check": report
-                    });
-                    println!("{json_output}");
-                }
-                ConsoleOutputMode::Text => {
-                    let ProtoDomainUpgradeCheckReport {
-                        name,
-                        uuid,
-                        current_level,
-                        upgrade_level,
-                        report_items,
-                    } = report;
-
-                    info!("domain_name            : {}", name);
-                    info!("domain_uuid            : {}", uuid);
-                    info!("domain_current_level   : {}", current_level);
-                    info!("domain_upgrade_level   : {}", upgrade_level);
-
-                    if report_items.is_empty() {
-                        // Nothing to report, so this implies a pass.
-                        info!("------------------------");
-                        info!("status                 : PASS");
-                        return;
-                    }
-
-                    for item in report_items {
-                        info!("------------------------");
-                        match item.status {
-                            ProtoDomainUpgradeCheckStatus::Pass6To7Gidnumber => {
-                                info!("upgrade_item           : gidnumber range validity");
-                                debug!("from_level             : {}", item.from_level);
-                                debug!("to_level               : {}", item.to_level);
-                                info!("status                 : PASS");
-                            }
-                            ProtoDomainUpgradeCheckStatus::Fail6To7Gidnumber => {
-                                info!("upgrade_item           : gidnumber range validity");
-                                debug!("from_level             : {}", item.from_level);
-                                debug!("to_level               : {}", item.to_level);
-                                info!("status                 : FAIL");
-                                info!("description            : The automatically allocated gidnumbers for posix accounts was found to allocate numbers into systemd-reserved ranges. These can no longer be used.");
-                                info!("action                 : Modify the gidnumber of affected entries so that they are in the range 65536 to 524287 OR reset the gidnumber to cause it to automatically regenerate.");
-                                for entry_id in item.affected_entries {
-                                    info!("affected_entry         : {}", entry_id);
-                                }
-                            }
-                            // ===========
-                            ProtoDomainUpgradeCheckStatus::Pass7To8SecurityKeys => {
-                                info!("upgrade_item           : security key usage");
-                                debug!("from_level             : {}", item.from_level);
-                                debug!("to_level               : {}", item.to_level);
-                                info!("status                 : PASS");
-                            }
-                            ProtoDomainUpgradeCheckStatus::Fail7To8SecurityKeys => {
-                                info!("upgrade_item           : security key usage");
-                                debug!("from_level             : {}", item.from_level);
-                                debug!("to_level               : {}", item.to_level);
-                                info!("status                 : FAIL");
-                                info!("description            : Security keys no longer function as a second factor due to the introduction of CTAP2 and greater forcing PIN interactions.");
-                                info!("action                 : Modify the accounts in question to remove their security key and add it as a passkey or enable TOTP");
-                                for entry_id in item.affected_entries {
-                                    info!("affected_entry         : {}", entry_id);
-                                }
-                            }
-                            // ===========
-                            ProtoDomainUpgradeCheckStatus::Pass7To8Oauth2StrictRedirectUri => {
-                                info!("upgrade_item           : oauth2 strict redirect uri enforcement");
-                                debug!("from_level             : {}", item.from_level);
-                                debug!("to_level               : {}", item.to_level);
-                                info!("status                 : PASS");
-                            }
-                            ProtoDomainUpgradeCheckStatus::Fail7To8Oauth2StrictRedirectUri => {
-                                info!("upgrade_item           : oauth2 strict redirect uri enforcement");
-                                debug!("from_level             : {}", item.from_level);
-                                debug!("to_level               : {}", item.to_level);
-                                info!("status                 : FAIL");
-                                info!("description            : To harden against possible public client open redirection vulnerabilities, redirect uris must now be registered ahead of time and are validated rather than the former origin verification process.");
-                                info!("action                 : Verify the redirect uri's for OAuth2 clients and then enable strict-redirect-uri on each client.");
-                                for entry_id in item.affected_entries {
-                                    info!("affected_entry         : {}", entry_id);
-                                }
-                            }
-                        }
-                    } // end for report items
-                }
-            }
+        Some(Ok(AdminTaskResponse::RecoverAccount { password })) => info!(new_password = ?password),
+        Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => {
+            info!(certificate = ?cert)
         }
+        Some(Ok(AdminTaskResponse::DomainUpgradeCheck { report })) => {
+            let ProtoDomainUpgradeCheckReport {
+                name,
+                uuid,
+                current_level,
+                upgrade_level,
+                report_items,
+            } = report;
 
-        Some(Ok(AdminTaskResponse::DomainRaise { level })) => match output_mode {
-            ConsoleOutputMode::JSON => {
-                eprintln!("{{\"success\":\"{level}\"}}")
-            }
-            ConsoleOutputMode::Text => {
-                info!("success - raised domain level to {}", level)
-            }
-        },
-        Some(Ok(AdminTaskResponse::DomainShow { domain_info })) => match output_mode {
-            ConsoleOutputMode::JSON => {
-                let json_output = serde_json::json!({
-                    "domain_info": domain_info
-                });
-                println!("{json_output}");
-            }
-            ConsoleOutputMode::Text => {
-                let ProtoDomainInfo {
-                    name,
-                    displayname,
-                    uuid,
-                    level,
-                } = domain_info;
+            info!("domain_name            : {}", name);
+            info!("domain_uuid            : {}", uuid);
+            info!("domain_current_level   : {}", current_level);
+            info!("domain_upgrade_level   : {}", upgrade_level);
 
-                info!("domain_name   : {}", name);
-                info!("domain_display: {}", displayname);
-                info!("domain_uuid   : {}", uuid);
-                info!("domain_level  : {}", level);
+            if report_items.is_empty() {
+                // Nothing to report, so this implies a pass.
+                info!("------------------------");
+                info!("status                 : PASS");
+                return ExitCode::SUCCESS;
             }
-        },
-        Some(Ok(AdminTaskResponse::Success)) => match output_mode {
-            ConsoleOutputMode::JSON => {
-                eprintln!("\"success\"")
-            }
-            ConsoleOutputMode::Text => {
-                info!("success")
-            }
-        },
-        Some(Ok(AdminTaskResponse::Error)) => match output_mode {
-            ConsoleOutputMode::JSON => {
-                eprintln!("\"error\"")
-            }
-            ConsoleOutputMode::Text => {
-                info!("Error - you should inspect the logs.")
-            }
-        },
+
+            for item in report_items {
+                info!("------------------------");
+                match item.status {
+                    ProtoDomainUpgradeCheckStatus::Pass6To7Gidnumber => {
+                        info!("upgrade_item           : gidnumber range validity");
+                        debug!("from_level             : {}", item.from_level);
+                        debug!("to_level               : {}", item.to_level);
+                        info!("status                 : PASS");
+                    }
+                    ProtoDomainUpgradeCheckStatus::Fail6To7Gidnumber => {
+                        info!("upgrade_item           : gidnumber range validity");
+                        debug!("from_level             : {}", item.from_level);
+                        debug!("to_level               : {}", item.to_level);
+                        info!("status                 : FAIL");
+                        info!("description            : The automatically allocated gidnumbers for posix accounts was found to allocate numbers into systemd-reserved ranges. These can no longer be used.");
+                        info!("action                 : Modify the gidnumber of affected entries so that they are in the range 65536 to 524287 OR reset the gidnumber to cause it to automatically regenerate.");
+                        for entry_id in item.affected_entries {
+                            info!("affected_entry         : {}", entry_id);
+                        }
+                    }
+                    // ===========
+                    ProtoDomainUpgradeCheckStatus::Pass7To8SecurityKeys => {
+                        info!("upgrade_item           : security key usage");
+                        debug!("from_level             : {}", item.from_level);
+                        debug!("to_level               : {}", item.to_level);
+                        info!("status                 : PASS");
+                    }
+                    ProtoDomainUpgradeCheckStatus::Fail7To8SecurityKeys => {
+                        info!("upgrade_item           : security key usage");
+                        debug!("from_level             : {}", item.from_level);
+                        debug!("to_level               : {}", item.to_level);
+                        info!("status                 : FAIL");
+                        info!("description            : Security keys no longer function as a second factor due to the introduction of CTAP2 and greater forcing PIN interactions.");
+                        info!("action                 : Modify the accounts in question to remove their security key and add it as a passkey or enable TOTP");
+                        for entry_id in item.affected_entries {
+                            info!("affected_entry         : {}", entry_id);
+                        }
+                    }
+                    // ===========
+                    ProtoDomainUpgradeCheckStatus::Pass7To8Oauth2StrictRedirectUri => {
+                        info!("upgrade_item           : oauth2 strict redirect uri enforcement");
+                        debug!("from_level             : {}", item.from_level);
+                        debug!("to_level               : {}", item.to_level);
+                        info!("status                 : PASS");
+                    }
+                    ProtoDomainUpgradeCheckStatus::Fail7To8Oauth2StrictRedirectUri => {
+                        info!("upgrade_item           : oauth2 strict redirect uri enforcement");
+                        debug!("from_level             : {}", item.from_level);
+                        debug!("to_level               : {}", item.to_level);
+                        info!("status                 : FAIL");
+                        info!("description            : To harden against possible public client open redirection vulnerabilities, redirect uris must now be registered ahead of time and are validated rather than the former origin verification process.");
+                        info!("action                 : Verify the redirect uri's for OAuth2 clients and then enable strict-redirect-uri on each client.");
+                        for entry_id in item.affected_entries {
+                            info!("affected_entry         : {}", entry_id);
+                        }
+                    }
+                }
+            } // end for report items
+        }
+        Some(Ok(AdminTaskResponse::DomainRaise { level })) => {
+            info!("success - raised domain level to {}", level)
+        }
+        Some(Ok(AdminTaskResponse::DomainShow { domain_info })) => {
+            let ProtoDomainInfo {
+                name,
+                displayname,
+                uuid,
+                level,
+            } = domain_info;
+
+            info!("domain_name   : {}", name);
+            info!("domain_display: {}", displayname);
+            info!("domain_uuid   : {}", uuid);
+            info!("domain_level  : {}", level);
+        }
+        Some(Ok(AdminTaskResponse::Success)) => info!("success"),
+        Some(Ok(AdminTaskResponse::Error)) => {
+            info!("Error - you should inspect the logs.");
+            return ExitCode::FAILURE;
+        }
         Some(Err(err)) => {
             error!(?err, "Error during admin task operation");
+            return ExitCode::FAILURE;
         }
         None => {
             error!("Error making request to admin socket");
+            return ExitCode::FAILURE;
         }
-    }
+    };
+
+    ExitCode::SUCCESS
 }
 
 /// Check what we're running as and various filesystem permissions.
@@ -315,15 +368,134 @@ fn check_file_ownership(opt: &KanidmdParser) -> Result<(), ExitCode> {
     Ok(())
 }
 
+async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> ExitCode {
+    match cmd {
+        ScriptingCommand::RecoverAccount { name } => {
+            submit_admin_req_json(
+                config.adminbindpath.as_str(),
+                AdminTaskRequest::RecoverAccount {
+                    name: name.to_owned(),
+                },
+            )
+            .await;
+        }
+
+        ScriptingCommand::Backup { path } => {
+            backup_server_core(&config, path.as_deref());
+        }
+
+        ScriptingCommand::Reload => {
+            submit_admin_req_json(config.adminbindpath.as_str(), AdminTaskRequest::Reload).await;
+        }
+
+        ScriptingCommand::HealthCheck {
+            verify_tls,
+            check_origin,
+        } => {
+            let healthcheck_url = match check_origin {
+                true => format!("{}/status", config.origin),
+                false => {
+                    // the replace covers when you specify an ipv6-capable "all" address
+                    format!(
+                        "https://{}/status",
+                        config.address[0].replace("[::]", "localhost")
+                    )
+                }
+            };
+
+            let mut client = reqwest::ClientBuilder::new()
+                .danger_accept_invalid_certs(!verify_tls)
+                .danger_accept_invalid_hostnames(!verify_tls)
+                .https_only(true);
+
+            client = match &config.tls_config {
+                None => client,
+                Some(tls_config) => {
+                    // if the ca_cert file exists, then we'll use it
+                    let ca_cert_path = tls_config.chain.clone();
+                    match ca_cert_path.exists() {
+                        true => {
+                            let mut cert_buf = Vec::new();
+                            if let Err(err) = std::fs::File::open(&ca_cert_path)
+                                .and_then(|mut file| file.read_to_end(&mut cert_buf))
+                            {
+                                display_json_error_context(
+                                    err,
+                                    "Failed to read from filesystem.",
+                                    ca_cert_path.display(),
+                                );
+
+                                return ExitCode::FAILURE;
+                            }
+
+                            let ca_chain_parsed =
+                                match reqwest::Certificate::from_pem_bundle(&cert_buf) {
+                                    Ok(val) => val,
+                                    Err(err) => {
+                                        display_json_error_context(
+                                            err,
+                                            "Failed to parse into ca_chain.",
+                                            ca_cert_path.display(),
+                                        );
+
+                                        return ExitCode::FAILURE;
+                                    }
+                                };
+
+                            // Need at least 2 certs for the leaf + chain. We skip the leaf.
+                            for cert in ca_chain_parsed.into_iter().skip(1) {
+                                client = client.add_root_certificate(cert)
+                            }
+                            client
+                        }
+                        false => {
+                            display_json_error_context(
+                                "NoSuchFile",
+                                "Requested ca file does not exist.",
+                                ca_cert_path.display(),
+                            );
+
+                            return ExitCode::FAILURE;
+                        }
+                    }
+                }
+            };
+            #[allow(clippy::unwrap_used)]
+            let client = client.build().unwrap();
+
+            let _ = match client.get(&healthcheck_url).send().await {
+                Ok(val) => val,
+                Err(error) => {
+                    let error_message = {
+                        if error.is_timeout() {
+                            format!("Timeout connecting to url={healthcheck_url}")
+                        } else if error.is_connect() {
+                            format!("Connection failed: {error}")
+                        } else {
+                            format!("Failed to complete healthcheck: {error:?}")
+                        }
+                    };
+
+                    display_json_error("HealthcheckFailed", error_message);
+
+                    return ExitCode::FAILURE;
+                }
+            };
+            display_json_success();
+        }
+    }
+
+    ExitCode::SUCCESS
+}
+
 // We have to do this because we can't use tracing until we've started the logging pipeline, and we can't start the logging pipeline until the tokio runtime's doing its thing.
 async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
     // if we have a server config and it has an OTEL URL, then we'll start the logging pipeline now.
 
     // TODO: only send to stderr when we're not in a TTY
-    let (provider, sub) = match sketching::otel::start_logging_pipeline(
+    let (provider, logging_subscriber) = match sketching::pipeline::start_logging_pipeline(
         &config.otel_grpc_url,
         config.log_level,
-        "kanidmd",
     ) {
         Err(err) => {
             eprintln!("Error starting logger - {err:} - Bailing on startup!");
@@ -331,7 +503,8 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
         }
         Ok(val) => val,
     };
-    if let Err(err) = tracing::subscriber::set_global_default(sub).map_err(|err| {
+
+    if let Err(err) = tracing::subscriber::set_global_default(logging_subscriber).map_err(|err| {
         eprintln!("Error starting logger - {err:} - Bailing on startup!");
         ExitCode::FAILURE
     }) {
@@ -344,7 +517,7 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
     info!(version = %env!("KANIDM_PKG_VERSION"), "Starting Kanidmd");
 
     // guard which shuts down the logging/tracing providers when we close out
-    let _otelguard = TracingPipelineGuard(provider); // TODO: fix this up
+    let _otelguard = TracingPipelineGuard(provider);
 
     // ===========================================================================
     // Start pre-run checks
@@ -406,8 +579,7 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
         | KanidmdOpt::RenewReplicationCertificate
         | KanidmdOpt::RefreshReplicationConsumer { .. }
         | KanidmdOpt::RecoverAccount { .. }
-        | KanidmdOpt::DisableAccount { .. }
-        | KanidmdOpt::HealthCheck(_) => None,
+        | KanidmdOpt::DisableAccount { .. } => None,
         _ => {
             // Okay - Lets now create our lock and go.
             #[allow(clippy::expect_used)]
@@ -492,7 +664,7 @@ fn main() -> ExitCode {
     };
 
     if env!("KANIDM_SERVER_CONFIG_PATH").is_empty() {
-        println!("CRITICAL: Kanidmd was not built correctly and is missing a valid KANIDM_SERVER_CONFIG_PATH value");
+        eprintln!("CRITICAL: Kanidmd was not built correctly and is missing a valid KANIDM_SERVER_CONFIG_PATH value");
         return ExitCode::FAILURE;
     }
 
@@ -568,7 +740,13 @@ fn main() -> ExitCode {
         }
     };
 
-    rt.block_on(start_daemon(opt, config))
+    // Choose where we go.
+
+    if let KanidmdOpt::Scripting { command } = opt.commands {
+        rt.block_on(scripting_command(command, config))
+    } else {
+        rt.block_on(start_daemon(opt, config))
+    }
 }
 
 /// Build and execute the main server. The ServerConfig are the configuration options
@@ -711,8 +889,8 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                                         #[allow(clippy::unwrap_used)]
                                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                     } => {
-                                        // Reload TLS certificates
-                                        sctx.tls_acceptor_reload().await;
+                                        // Initiate a reload of server components.
+                                        sctx.reload().await;
                                         info!("Reload complete");
                                     }
                                     Some(()) = async move {
@@ -732,10 +910,11 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                                     // we got a message on thr broadcast from somewhere else
                                     Ok(msg) = async move {
                                         listener.recv().await
-                                    } => {
-                                        debug!("Main loop received message: {:?}", msg);
-                                        break
-                                    }
+                                    } =>
+                                        match msg {
+                                            CoreAction::Shutdown => break,
+                                            CoreAction::Reload => {}
+                                        },
                                 }
                             }
                             #[cfg(target_family = "windows")]
@@ -770,7 +949,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running in backup mode ...");
 
-            backup_server_core(&config, &bopt.path);
+            backup_server_core(&config, Some(&bopt.path));
         }
         KanidmdOpt::Database {
             commands: DbCommands::Restore(ropt),
@@ -786,19 +965,17 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         }
         KanidmdOpt::ShowReplicationCertificate => {
             info!("Running show replication certificate ...");
-            submit_admin_req(
+            submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::ShowReplicationCertificate,
-                opt.kanidmd_options.output_mode,
             )
             .await;
         }
         KanidmdOpt::RenewReplicationCertificate => {
             info!("Running renew replication certificate ...");
-            submit_admin_req(
+            submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::RenewReplicationCertificate,
-                opt.kanidmd_options.output_mode,
             )
             .await;
         }
@@ -807,10 +984,9 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             if !proceed {
                 error!("Unwilling to proceed. Check --help.");
             } else {
-                submit_admin_req(
+                submit_admin_req_human(
                     config.adminbindpath.as_str(),
                     AdminTaskRequest::RefreshReplicationConsumer,
-                    opt.kanidmd_options.output_mode,
                 )
                 .await;
             }
@@ -818,24 +994,22 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         KanidmdOpt::RecoverAccount { name } => {
             info!("Running account recovery ...");
 
-            submit_admin_req(
+            submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::RecoverAccount {
                     name: name.to_owned(),
                 },
-                opt.kanidmd_options.output_mode,
             )
             .await;
         }
         KanidmdOpt::DisableAccount { name } => {
             info!("Running account disable ...");
 
-            submit_admin_req(
+            submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DisableAccount {
                     name: name.to_owned(),
                 },
-                opt.kanidmd_options.output_mode,
             )
             .await;
         }
@@ -909,12 +1083,8 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running domain show ...");
 
-            submit_admin_req(
-                config.adminbindpath.as_str(),
-                AdminTaskRequest::DomainShow,
-                opt.kanidmd_options.output_mode,
-            )
-            .await;
+            submit_admin_req_human(config.adminbindpath.as_str(), AdminTaskRequest::DomainShow)
+                .await;
         }
 
         KanidmdOpt::DomainSettings {
@@ -922,10 +1092,9 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running domain upgrade check ...");
 
-            submit_admin_req(
+            submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainUpgradeCheck,
-                opt.kanidmd_options.output_mode,
             )
             .await;
         }
@@ -935,12 +1104,8 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running domain raise ...");
 
-            submit_admin_req(
-                config.adminbindpath.as_str(),
-                AdminTaskRequest::DomainRaise,
-                opt.kanidmd_options.output_mode,
-            )
-            .await;
+            submit_admin_req_human(config.adminbindpath.as_str(), AdminTaskRequest::DomainRaise)
+                .await;
         }
 
         KanidmdOpt::DomainSettings {
@@ -948,10 +1113,9 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("⚠️  Running domain remigrate ...");
 
-            submit_admin_req(
+            submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainRemigrate { level: *level },
-                opt.kanidmd_options.output_mode,
             )
             .await;
         }
@@ -962,107 +1126,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             info!("Running in vacuum mode ...");
             vacuum_server_core(&config);
         }
-        KanidmdOpt::HealthCheck(sopt) => {
-            debug!("{sopt:?}");
-
-            let healthcheck_url = match &sopt.check_origin {
-                true => format!("{}/status", config.origin),
-                false => {
-                    // the replace covers when you specify an ipv6-capable "all" address
-                    format!(
-                        "https://{}/status",
-                        config.address[0].replace("[::]", "localhost")
-                    )
-                }
-            };
-
-            info!("Checking {healthcheck_url}");
-
-            let mut client = reqwest::ClientBuilder::new()
-                .danger_accept_invalid_certs(!sopt.verify_tls)
-                .danger_accept_invalid_hostnames(!sopt.verify_tls)
-                .https_only(true);
-
-            client = match &config.tls_config {
-                None => client,
-                Some(tls_config) => {
-                    debug!(
-                        "Trying to load {} to build a CA cert path",
-                        tls_config.chain.display()
-                    );
-                    // if the ca_cert file exists, then we'll use it
-                    let ca_cert_path = tls_config.chain.clone();
-                    match ca_cert_path.exists() {
-                        true => {
-                            let mut cert_buf = Vec::new();
-                            if let Err(err) = std::fs::File::open(&ca_cert_path)
-                                .and_then(|mut file| file.read_to_end(&mut cert_buf))
-                            {
-                                error!(
-                                    "Failed to read {:?} from filesystem: {:?}",
-                                    ca_cert_path, err
-                                );
-                                return ExitCode::FAILURE;
-                            }
-
-                            let ca_chain_parsed =
-                                match reqwest::Certificate::from_pem_bundle(&cert_buf) {
-                                    Ok(val) => val,
-                                    Err(e) => {
-                                        error!(
-                                            "Failed to parse {:?} into CA chain!\nError: {:?}",
-                                            ca_cert_path, e
-                                        );
-                                        return ExitCode::FAILURE;
-                                    }
-                                };
-
-                            // Need at least 2 certs for the leaf + chain. We skip the leaf.
-                            for cert in ca_chain_parsed.into_iter().skip(1) {
-                                client = client.add_root_certificate(cert)
-                            }
-                            client
-                        }
-                        false => {
-                            warn!(
-                                "Couldn't find ca cert {} but carrying on...",
-                                tls_config.chain.display()
-                            );
-                            client
-                        }
-                    }
-                }
-            };
-            #[allow(clippy::unwrap_used)]
-            let client = client.build().unwrap();
-
-            let req = match client.get(&healthcheck_url).send().await {
-                Ok(val) => val,
-                Err(error) => {
-                    let error_message = {
-                        if error.is_timeout() {
-                            format!("Timeout connecting to url={healthcheck_url}")
-                        } else if error.is_connect() {
-                            format!("Connection failed: {error}")
-                        } else {
-                            format!("Failed to complete healthcheck: {error:?}")
-                        }
-                    };
-                    error!("CRITICAL: {error_message}");
-                    return ExitCode::FAILURE;
-                }
-            };
-            debug!("Request: {req:?}");
-            match opt.kanidmd_options.output_mode {
-                ConsoleOutputMode::JSON => {
-                    println!("{{\"result\":\"OK\"}}")
-                }
-                ConsoleOutputMode::Text => {
-                    info!("OK")
-                }
-            }
-        }
-        KanidmdOpt::Version => {}
+        KanidmdOpt::Scripting { .. } | KanidmdOpt::Version => {}
     }
     ExitCode::SUCCESS
 }

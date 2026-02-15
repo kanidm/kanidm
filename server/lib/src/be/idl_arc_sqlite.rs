@@ -1054,6 +1054,8 @@ impl IdlArcSqliteWriteTransaction<'_> {
             let sd_1 = mean + sd;
             (c, sd_1)
         } else if data.len() == 1 {
+            #[allow(clippy::indexing_slicing)]
+            // Bounds checked
             (1.0, data[0])
         } else {
             // Can't resolve.

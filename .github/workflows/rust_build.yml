@@ -51,8 +51,7 @@ jobs:
       - name: "Run cargo test"
         run: cargo test
       - name: "Check disk space at the end"
-        run:
-          du -shc *
+        run: du -shc *
   rust_build_next:
     # build future versions to find possible next-version bugs
     runs-on: ubuntu-latest
@@ -64,7 +63,7 @@ jobs:
       CARGO_TERM_COLOR: always
     strategy:
       matrix:
-        rust_version: ['beta', 'nightly']
+        rust_version: ["beta", "nightly"]
     steps:
       - uses: actions/checkout@v6
       - name: Install Rust
@@ -96,8 +95,7 @@ jobs:
       - name: "Run cargo test"
         run: cargo test
       - name: "Check disk space at the end"
-        run:
-          du -shc *
+        run: du -shc *
 
   run_release:
     runs-on: ubuntu-latest
@@ -125,4 +123,6 @@ jobs:
       - name: "Run the release build test script"
         env:
           BUILD_MODE: --release
-        run: ./scripts/test_run_release_server.sh
+        run: |
+          python -m pip install uv
+          ./scripts/test_run_release_server.sh

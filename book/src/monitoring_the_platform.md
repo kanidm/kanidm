@@ -27,6 +27,17 @@ Example:
 otel_grpc_url = "http://my-otel-host:4317"
 ```
 
+### Relevant environment variables
+
+We're trying to align with the
+[OpenTelemetry standards](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/).
+
+| Variable                     | What it Does                                                                                                   | Example Value                                                           |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `KANIDM_OTEL_GRPC_URL`       | Sets the endpoint that logs will be sent via GRPC>                                                             | `http://localhost:4317` if you're testing locally.                      |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Sets headers when the tonic exporter sends events                                                              | `authorization=<mysupersecrettoken>` will send an authorization header. |
+| `OTEL_SERVICE_NAME`          | Sets the `service.name` field, if unset we force it to `kanidmd` because the SDK defaults to `unknown_service` | `test_kanidmd`                                                          |
+
 ### Troubleshooting
 
 #### Max Span Size Exceeded

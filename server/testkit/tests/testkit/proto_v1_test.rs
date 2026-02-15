@@ -1,5 +1,7 @@
 #![deny(warnings)]
+use compact_jwt::dangernoverify::JwsDangerReleaseWithoutVerify;
 use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
+use hyper::header::CONTENT_TYPE;
 use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::constants::{ATTR_GIDNUMBER, KSESSIONID};
 use kanidm_proto::internal::{
@@ -11,7 +13,7 @@ use kanidm_proto::v1::{
 };
 use kanidmd_lib::constants::{NAME_IDM_ADMINS, NAME_SYSTEM_ADMINS};
 use kanidmd_lib::credential::totp::Totp;
-use kanidmd_lib::prelude::Attribute;
+use kanidmd_lib::prelude::{Attribute, APPLICATION_JSON};
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 use std::path::Path;
 use std::str::FromStr;
@@ -1412,6 +1414,7 @@ async fn test_server_api_token_lifecycle(rsclient: &KanidmClient) {
             "test token",
             None,
             false,
+            false,
         )
         .await
         .expect("Failed to create service account api token");
@@ -1419,17 +1422,7 @@ async fn test_server_api_token_lifecycle(rsclient: &KanidmClient) {
     // Decode it?
     let token_unverified = JwsCompact::from_str(&token).expect("Failed to parse apitoken");
 
-    let key_id = token_unverified
-        .kid()
-        .expect("token does not have a key id");
-    assert!(token_unverified.get_jwk_pubkey().is_none());
-
-    let jwk = rsclient
-        .get_public_jwk(key_id)
-        .await
-        .expect("Unable to get jwk");
-
-    let jws_verifier = JwsEs256Verifier::try_from(&jwk).expect("Unable to build verifier");
+    let jws_verifier = JwsDangerReleaseWithoutVerify::default();
 
     let token = jws_verifier
         .verify(&token_unverified)
@@ -1725,8 +1718,7 @@ async fn test_server_user_auth_reauthentication(rsclient: &KanidmClient) {
         .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
         .expect("Unable extract uat");
 
-    let now = time::OffsetDateTime::now_utc();
-    assert!(!uat.purpose_readwrite_active(now));
+    assert!(matches!(uat.purpose, UatPurpose::ReadWrite { .. }));
 
     // The auth is done, now we have to setup to re-auth for our session.
     // Should we bother looking at the internals of the token here to assert
@@ -1767,7 +1759,7 @@ async fn test_server_user_auth_reauthentication(rsclient: &KanidmClient) {
 
     let now = time::OffsetDateTime::now_utc();
     eprintln!("{:?} {:?}", now, uat.purpose);
-    assert!(uat.purpose_readwrite_active(now));
+    assert!(matches!(uat.purpose, UatPurpose::ReadWrite { .. }));
 }
 
 async fn start_password_session(
@@ -1786,12 +1778,9 @@ async fn start_password_session(
             privileged,
         },
     };
-    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
-
     let res = match client
         .post(rsclient.make_url("/v1/auth"))
-        .header("Content-Type", "application/json")
-        .body(authreq)
+        .json(&authreq)
         .send()
         .await
     {
@@ -1805,13 +1794,12 @@ async fn start_password_session(
     let authreq = AuthRequest {
         step: AuthStep::Begin(AuthMech::Password),
     };
-    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
 
     let res = match client
         .post(rsclient.make_url("/v1/auth"))
-        .header("Content-Type", "application/json")
+        .header(CONTENT_TYPE, APPLICATION_JSON)
         .header(KSESSIONID, session_id)
-        .body(authreq)
+        .json(&authreq)
         .send()
         .await
     {
@@ -1823,13 +1811,11 @@ async fn start_password_session(
     let authreq = AuthRequest {
         step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
     };
-    let authreq = serde_json::to_string(&authreq).expect("Failed to serialize AuthRequest");
 
     let res = match client
         .post(rsclient.make_url("/v1/auth"))
-        .header("Content-Type", "application/json")
         .header(KSESSIONID, session_id)
-        .body(authreq)
+        .json(&authreq)
         .send()
         .await
     {

@@ -1,11 +1,18 @@
 use crate::prelude::*;
 use crate::schema::{SchemaAttribute, SchemaTransaction};
+use crate::server::assert::{AssertEvent, AssertOnce, EntryAssertion};
 use crate::server::batch_modify::{BatchModifyEvent, ModSetValid};
 use crate::server::ValueSetResolveStatus;
 use crate::valueset::*;
-use kanidm_proto::scim_v1::client::{ScimEntryPostGeneric, ScimEntryPutGeneric};
+use crypto_glue::s256::Sha256Output;
+use kanidm_proto::scim_v1::client::{
+    ScimEntryAssertion, ScimEntryPostGeneric, ScimEntryPutGeneric,
+};
 use kanidm_proto::scim_v1::JsonValue;
-use std::collections::BTreeMap;
+use std::collections::{
+    // BTreeSet,
+    BTreeMap,
+};
 
 #[derive(Debug)]
 pub struct ScimEntryPutEvent {
@@ -104,6 +111,36 @@ impl ScimDeleteEvent {
             ident,
             target,
             class,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ScimAssertEvent {
+    /// The identity performing the change.
+    pub(crate) ident: Identity,
+
+    /// The set of assertions to be performed. These are applied in order.
+    pub(crate) asserts: Vec<ScimEntryAssertion>,
+
+    /// Tracking information about the assertion.
+    pub id: Uuid,
+
+    /// The nonce/checksum of the operation if we want to do this "at most once".
+    pub nonce: Option<Sha256Output>,
+}
+
+impl ScimAssertEvent {
+    pub fn new_internal(
+        asserts: Vec<ScimEntryAssertion>,
+        id: Uuid,
+        nonce: Option<Sha256Output>,
+    ) -> Self {
+        ScimAssertEvent {
+            ident: Identity::from_internal(),
+            asserts,
+            id,
+            nonce,
         }
     }
 }
@@ -264,6 +301,65 @@ impl QueryServerWriteTransaction<'_> {
         };
 
         self.delete(&de)
+    }
+
+    pub fn scim_assert(&mut self, scim_assert: ScimAssertEvent) -> Result<(), OperationError> {
+        let ScimAssertEvent {
+            ident,
+            asserts,
+            id,
+            nonce,
+        } = scim_assert;
+
+        let once = match nonce {
+            None => AssertOnce::No,
+            Some(nonce) => AssertOnce::Yes { id, nonce },
+        };
+
+        // Before we can transform this, we have to resolve links that *may* exist
+        // within this assertion.
+        self.txn_name_to_uuid().extend(asserts.iter().filter_map(
+            |scim_assert| match scim_assert {
+                ScimEntryAssertion::Present { id, attrs } => {
+                    attrs
+                        .get(&Attribute::Name)
+                        .and_then(|value| match value {
+                            // If the name is present, and a valid string.
+                            Some(JsonValue::String(name)) => Some(name.clone()),
+                            _ => None,
+                        })
+                        .map(|name| (name, *id))
+                }
+                ScimEntryAssertion::Absent { .. } => None,
+            },
+        ));
+
+        // Transform from SCIM to Kanidm Internal representations.
+        let asserts = asserts
+            .into_iter()
+            .map(|scim_assert| match scim_assert {
+                ScimEntryAssertion::Present { id, attrs } => {
+                    let attrs = attrs
+                        .into_iter()
+                        .map(|(attr, json_value)| {
+                            self.resolve_scim_json_put(&attr, json_value)
+                                .map(|kani_value| (attr, kani_value))
+                        })
+                        .collect::<Result<_, _>>()?;
+
+                    Ok(EntryAssertion::Present { target: id, attrs })
+                }
+                ScimEntryAssertion::Absent { id } => Ok(EntryAssertion::Absent { target: id }),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let assert_event = AssertEvent {
+            ident,
+            asserts,
+            once,
+        };
+
+        self.assert(assert_event)
     }
 
     pub(crate) fn resolve_scim_json_put(
@@ -434,11 +530,14 @@ impl QueryServerWriteTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::ScimEntryPutEvent;
+    use super::{ScimAssertEvent, ScimEntryPutEvent};
     use crate::prelude::*;
-    use kanidm_proto::scim_v1::client::ScimEntryPutKanidm;
+    use kanidm_proto::scim_v1::client::{
+        ScimEntryAssertion, ScimEntryPutKanidm, ScimReference as ScimClientReference,
+    };
     use kanidm_proto::scim_v1::server::ScimReference;
     use kanidm_proto::scim_v1::ScimMail;
+    use std::collections::BTreeMap;
 
     #[qs_test]
     async fn scim_put_basic(server: &QueryServer) {
@@ -690,5 +789,55 @@ mod tests {
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");
         assert!(!updated_entry.attrs.contains_key(&Attribute::Member));
+    }
+
+    #[qs_test]
+    async fn scim_assert_basic(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let ident = Identity::from_internal();
+
+        let uuid_group_1 = Uuid::new_v4();
+        let uuid_group_2 = Uuid::new_v4();
+
+        let asserts = vec![
+            ScimEntryAssertion::Present {
+                id: uuid_group_1,
+                attrs: BTreeMap::from([
+                    (Attribute::Name, Some(JsonValue::String("group_1".into()))),
+                    (
+                        Attribute::Class,
+                        Some(serde_json::to_value(vec!["group"]).unwrap()),
+                    ),
+                    (
+                        Attribute::Member,
+                        Some(serde_json::to_value(ScimClientReference::from("group_2")).unwrap()),
+                    ),
+                ]),
+            },
+            ScimEntryAssertion::Present {
+                id: uuid_group_2,
+                attrs: BTreeMap::from([
+                    (Attribute::Name, Some(JsonValue::String("group_2".into()))),
+                    (
+                        Attribute::Class,
+                        Some(serde_json::to_value(vec!["group"]).unwrap()),
+                    ),
+                    (
+                        Attribute::Member,
+                        Some(serde_json::to_value(ScimClientReference::from("group_1")).unwrap()),
+                    ),
+                ]),
+            },
+        ];
+
+        let scim_assert = ScimAssertEvent {
+            ident,
+            asserts,
+            id: Uuid::new_v4(),
+            nonce: None,
+        };
+
+        server_txn.scim_assert(scim_assert).expect("Must not fail!");
     }
 }

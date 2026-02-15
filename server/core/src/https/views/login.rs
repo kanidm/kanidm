@@ -862,6 +862,8 @@ async fn view_login_step(
                         .into_response()
                     }
                     1 => {
+                        #[allow(clippy::indexing_slicing)]
+                        // Length checked correctly.
                         let mech = allowed[0].clone();
                         // submit the choice and then loop updating our auth_state.
                         let inter = state // This may change in the future ...
@@ -921,6 +923,8 @@ async fn view_login_step(
                         .into_response()
                     }
                     1 => {
+                        #[allow(clippy::indexing_slicing)]
+                        // Length checked correctly.
                         let auth_allowed = allowed[0].clone();
 
                         match auth_allowed {

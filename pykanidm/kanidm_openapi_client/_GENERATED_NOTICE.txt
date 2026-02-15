@@ -1,0 +1,6 @@
+This package is auto-generated. Do not edit by hand.
+Spec source: https://localhost:8443/docs/v1/openapi.json
+Generator: kanidm_openapi_codegen
+
+To regenerate:
+  uv run kanidm_openapi_codegen

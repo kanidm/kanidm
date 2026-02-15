@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::be::dbvalue::{DbValueOauthClaimMap, DbValueOauthScopeMapV1};
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
+use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE, OAUTH_CLAIMNAME_RE};
 use crate::valueset::{
     uuid_to_proto_string, DbValueSetV2, ResolvedValueSetOauth2ClaimMap,
     ResolvedValueSetOauth2ScopeMap, ScimValueIntermediate, UnresolvedScimValueOauth2ClaimMap,
@@ -751,7 +751,7 @@ impl ValueSetT for ValueSetOauthClaimMap {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        self.map.keys().all(|s| OAUTHSCOPE_RE.is_match(s))
+        self.map.keys().all(|s| OAUTH_CLAIMNAME_RE.is_match(s))
             && self
                 .map
                 .values()
@@ -771,7 +771,7 @@ impl ValueSetT for ValueSetOauthClaimMap {
                         .values()
                         .flat_map(|claim_values| claim_values.iter())
                 })
-                .all(|s| OAUTHSCOPE_RE.is_match(s))
+                .all(|s| OAUTH_CLAIMNAME_RE.is_match(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {

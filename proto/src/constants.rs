@@ -40,7 +40,7 @@ pub const DEFAULT_SERVER_LOCALHOST: &str = "localhost:8443";
 /// The default LDAP bind address for the Kanidm client
 pub const DEFAULT_LDAP_LOCALHOST: &str = "localhost:636";
 /// The default amount of attributes that can be queried in LDAP
-pub const DEFAULT_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES: usize = 16;
+pub const DEFAULT_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES: usize = 48;
 /// Default replication configuration
 pub const DEFAULT_REPLICATION_ADDRESS: &str = "127.0.0.1:8444";
 pub const DEFAULT_REPLICATION_ORIGIN: &str = "repl://localhost:8444";
@@ -57,6 +57,7 @@ pub const AUTH_TOKEN_GRACE_WINDOW: Duration = Duration::from_secs(5 * 60);
 // IF YOU CHANGE THESE VALUES YOU BREAK EVERYTHING
 pub const ATTR_ACCOUNT_EXPIRE: &str = "account_expire";
 pub const ATTR_ACCOUNT_VALID_FROM: &str = "account_valid_from";
+pub const ATTR_ACCOUNT_SOFTLOCK_EXPIRE: &str = "account_softlock_expire";
 pub const ATTR_ACCOUNT: &str = "account";
 pub const ATTR_ACP_CREATE_ATTR: &str = "acp_create_attr";
 pub const ATTR_ACP_CREATE_CLASS: &str = "acp_create_class";
@@ -215,6 +216,7 @@ pub const ATTR_SPN: &str = "spn";
 pub const ATTR_SUDOHOST: &str = "sudohost";
 pub const ATTR_SUPPLEMENTS: &str = "supplements";
 pub const ATTR_LDAP_SSHPUBLICKEY: &str = "sshpublickey";
+pub const ATTR_S256: &str = "s256";
 pub const ATTR_SSH_PUBLICKEY: &str = "ssh_publickey";
 pub const ATTR_SYNC_ALLOWED: &str = "sync_allowed";
 pub const ATTR_SYNC_CLASS: &str = "sync_class";
@@ -322,6 +324,7 @@ pub const ENTRYCLASS_BUILTIN: &str = "builtin";
 pub const ENTRYCLASS_ACCOUNT: &str = "account";
 pub const ENTRYCLASS_ACCOUNT_POLICY: &str = "account_policy";
 pub const ENTRYCLASS_APPLICATION: &str = "application";
+pub const ENTRYCLASS_ASSERTION_NONCE: &str = "assertion_nonce";
 pub const ENTRYCLASS_ATTRIBUTE_TYPE: &str = "attributetype";
 pub const ENTRYCLASS_CASCADE_DELETED: &str = "cascade_deleted";
 pub const ENTRYCLASS_CLASS: &str = "class";
@@ -358,6 +361,7 @@ pub const ENTRYCLASS_KEY_PROVIDER_INTERNAL: &str = "key_provider_internal";
 pub const ENTRYCLASS_KEY_OBJECT: &str = "key_object";
 pub const ENTRYCLASS_KEY_OBJECT_HKDF_S256: &str = "key_object_hkdf_s256";
 pub const ENTRYCLASS_KEY_OBJECT_JWT_ES256: &str = "key_object_jwt_es256";
+pub const ENTRYCLASS_KEY_OBJECT_JWT_HS256: &str = "key_object_jwt_hs256";
 pub const ENTRYCLASS_KEY_OBJECT_JWT_RS256: &str = "key_object_jwt_rs256";
 pub const ENTRYCLASS_KEY_OBJECT_JWE_A128GCM: &str = "key_object_jwe_a128gcm";
 pub const ENTRYCLASS_KEY_OBJECT_INTERNAL: &str = "key_object_internal";

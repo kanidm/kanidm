@@ -21,10 +21,8 @@ kanidm_unix_common = { workspace = true }
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 libnss = { workspace = true }
 libc = { workspace = true }
-lazy_static = { workspace = true }
-
 [target."cfg(target_os = \"freebsd\")".build-dependencies]
-cc = "^1.2.53"
+cc = "^1.2.54"
 
 ## Debian packaging
 [package.metadata.deb]
@@ -43,4 +41,4 @@ assets = [
 ]
 
 [package.metadata.cargo-machete]
-ignored = ["cc", "lazy_static"]
+ignored = ["cc"]

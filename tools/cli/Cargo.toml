@@ -58,7 +58,6 @@ tokio = { workspace = true, features = ["rt", "macros", "fs", "signal"] }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true }
 zxcvbn = { workspace = true }
-lazy_static = { workspace = true }
 regex = { workspace = true }
 
 [dev-dependencies]
@@ -81,25 +80,7 @@ time = { workspace = true }
 workspace = true
 features = ["win10"]
 
-[target."cfg(target_os = \"linux\")".dependencies.webauthn-authenticator-rs]
-workspace = true
-features = ["u2fhid"]
-
-[target."cfg(target_os = \"macos\")".dependencies.webauthn-authenticator-rs]
-workspace = true
-features = ["mozilla"]
-# features = ["u2fhid"]
-
-[target."cfg(target_os = \"freebsd\")".dependencies.webauthn-authenticator-rs]
-workspace = true
-features = ["mozilla"]
-
-[target."cfg(target_os = \"openbsd\")".dependencies.webauthn-authenticator-rs]
-workspace = true
-features = ["mozilla"]
-
-# fallback for other OSes like illumos, etc.
-[target."cfg(not(any(target_os = \"openbsd\", target_os = \"freebsd\", target_os = \"macos\", target_os = \"linux\", target_os = \"windows\")))".dependencies.webauthn-authenticator-rs]
+[target."cfg(any(target_os = \"linux\",target_os = \"macos\"))".dependencies.webauthn-authenticator-rs]
 workspace = true
 features = ["u2fhid"]
 

@@ -52,6 +52,7 @@ regex = { workspace = true }
 reqwest = { workspace = true }
 rustls = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+serde-hjson = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 serde_urlencoded = { workspace = true }
@@ -74,6 +75,7 @@ tower-http = { version = "0.6.7", features = [
     "uuid",
 ] }
 tracing = { workspace = true, features = ["attributes"] }
+tracing-opentelemetry = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 utoipa = { workspace = true, features = [

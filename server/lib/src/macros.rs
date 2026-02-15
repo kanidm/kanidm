@@ -514,12 +514,12 @@ macro_rules! vs_utf8 {
         compile_error!("ValueSetUtf8 needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetUtf8::new($e)
+        ValueSetUtf8::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
         let mut x = ValueSetUtf8::new($e);
         $(assert!(x.push($item));)*
-        x
+        x as ValueSet
     });
 }
 
@@ -531,12 +531,12 @@ macro_rules! vs_iutf8 {
         compile_error!("ValueSetIutf8 needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetIutf8::new($e)
+        ValueSetIutf8::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
         let mut x = ValueSetIutf8::new($e);
         $(assert!(x.push($item));)*
-        x
+        x as ValueSet
     });
 }
 
@@ -547,12 +547,12 @@ macro_rules! vs_iname {
         compile_error!("ValueSetIname needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetIname::new($e)
+        ValueSetIname::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
         let mut x = ValueSetIname::new($e);
         $(assert!(x.push($item));)*
-        x
+        x as ValueSet
     });
 }
 

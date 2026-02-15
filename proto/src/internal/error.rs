@@ -64,7 +64,8 @@ pub enum ConsistencyError {
 #[derive(Serialize, Deserialize, Debug, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum OperationError {
-    // Logic errors, or "soft" errors.
+    // Logic errors, or "soft" errors. These are to guide the user or user-interface
+    // in some way.
     SessionExpired,
     DuplicateKey,
     DuplicateLabel,
@@ -140,6 +141,8 @@ pub enum OperationError {
     DatabaseLockAcquisitionTimeout,
     /// Your change would introduce a reference loop
     ReferenceLoop,
+    /// This session is not able to re-authenticate and has static privileges
+    SessionMayNotReauth,
 
     // Specific internal errors.
     AU0001InvalidState,
@@ -223,6 +226,7 @@ pub enum OperationError {
     SC0030Sha256SyntaxInvalid,
     SC0031Int64SyntaxInvalid,
     SC0032Uint64SyntaxInvalid,
+    SC0033AssertionContainsDuplicateUuids,
     // Migration
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
@@ -233,6 +237,7 @@ pub enum OperationError {
     MG0007Oauth2StrictConstraintsNotMet,
     MG0008SkipUpgradeAttempted,
     MG0009InvalidTargetLevelForBootstrap,
+    MG0010DowngradeNotAllowed,
     //
     KP0001KeyProviderNotLoaded,
     KP0002KeyProviderInvalidClass,
@@ -317,6 +322,8 @@ pub enum OperationError {
     KP0077KeyProviderNoSuchKey,
     KP0078KeyObjectNotFound,
     KP0079KeyObjectNotFound,
+
+    KP0080KeyProviderNoSuchKey,
 
     // Plugins
     PL0001GidOverlapsSystemRange,
@@ -430,6 +437,7 @@ impl OperationError {
             Self::ValueDenyName => None,
             Self::DatabaseLockAcquisitionTimeout => Some("Unable to acquire a database lock - the current server may be too busy. Try again later.".into()),
             Self::ReferenceLoop => Some("The change you have made would introduce an invalid reference loop. Unable to proceed.".into()),
+            Self::SessionMayNotReauth => Some("The current session is not able to re-authenticate to elevate privileges to read-write.".into()),
 
     Self::AU0001InvalidState => Some("Invalid authentication session state for request".into()),
     Self::AU0002JwsSerialisation => Some("JWS serialisation failed".into()),
@@ -539,6 +547,7 @@ impl OperationError {
             Self::KP0077KeyProviderNoSuchKey => None,
             Self::KP0078KeyObjectNotFound => None,
             Self::KP0079KeyObjectNotFound => None,
+            Self::KP0080KeyProviderNoSuchKey => None,
 
             Self::KU001InitWhileSessionActive => Some("The session was active when the init function was called.".into()),
             Self::KU002ContinueWhileSessionInActive => Some("Attempted to continue auth session while current session is inactive".into()),
@@ -556,6 +565,7 @@ impl OperationError {
             Self::MG0007Oauth2StrictConstraintsNotMet => Some("Migration Constraints Not Met - All OAuth2 clients must have strict-redirect-uri mode enabled.".into()),
             Self::MG0008SkipUpgradeAttempted => Some("Skip Upgrade Attempted.".into()),
             Self::MG0009InvalidTargetLevelForBootstrap => Some("The request target domain level was not valid for bootstrapping a new server instance".into()),
+            Self::MG0010DowngradeNotAllowed => Some("Downgrade Attempted".into()),
             Self::PL0001GidOverlapsSystemRange => None,
             Self::SC0001IncomingSshPublicKey => None,
             Self::SC0002ReferenceSyntaxInvalid => Some("A SCIM Reference Set contained invalid syntax and can not be processed.".into()),
@@ -590,6 +600,7 @@ impl OperationError {
             Self::SC0030Sha256SyntaxInvalid => Some("A SCIM SHA256 hex string was invalid.".into()),
             Self::SC0031Int64SyntaxInvalid => Some("A SCIM Int64 contained invalid syntax".into()),
             Self::SC0032Uint64SyntaxInvalid => Some("A SCIM Uint64 contained invalid syntax".into()),
+            Self::SC0033AssertionContainsDuplicateUuids => Some("SCIM assertion contains duplicate entry ids, unable to proceed.".into()),
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
             Self::UI0003InvalidOauth2Resume => Some("The server attempted to resume OAuth2, but no OAuth2 session is in progress.".into()),

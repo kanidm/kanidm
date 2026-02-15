@@ -268,12 +268,17 @@ async fn run_sync(
 
     // Preflight check.
     //  * can we connect to ldap?
-    let mut ldap_client = match LdapClientBuilder::new(&sync_config.ldap_uri)
-        .max_ber_size(sync_config.max_ber_size)
-        .add_tls_ca(&sync_config.ldap_ca)
-        .build()
-        .await
-    {
+    let ldap_client_builder =
+        LdapClientBuilder::new(&sync_config.ldap_uri).max_ber_size(sync_config.max_ber_size);
+
+    let ldap_client_builder = if let Some(ldap_ca) = sync_config.ldap_ca.as_ref() {
+        ldap_client_builder.add_tls_ca(ldap_ca)
+    } else {
+        let verify_ca = sync_config.ldap_verify_ca.unwrap_or(true);
+        ldap_client_builder.danger_accept_invalid_certs(!verify_ca)
+    };
+
+    let mut ldap_client = match ldap_client_builder.build().await {
         Ok(lc) => lc,
         Err(e) => {
             error!(?e, "Failed to connect to ldap");
