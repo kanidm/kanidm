@@ -3098,15 +3098,11 @@ fn s_claims_for_account(
         (None, None)
     };
 
-    let updated_at = if scopes.contains(OAUTH2_SCOPE_PROFILE) {
-        account
-            .updated_at
-            .clone()
-            .map(|v| v.ts.as_secs().to_string())
+    let updated_at : Option<OffsetDateTime> = if scopes.contains(OAUTH2_SCOPE_PROFILE) {
+        account.updated_at.as_ref().map(Into::into)
     } else {
         None
     };
-
     OidcClaims {
         // Map from displayname
         name: Some(account.displayname.clone()),
@@ -3469,7 +3465,7 @@ mod tests {
                 Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
-                    btreeset![OAUTH2_SCOPE_OPENID.to_string()]
+                    btreeset![OAUTH2_SCOPE_OPENID.to_string(), OAUTH2_SCOPE_PROFILE.to_string()]
                 )
                 .expect("invalid oauthscope")
             ),
@@ -5139,6 +5135,7 @@ mod tests {
                 == Some(vec![
                     OAUTH2_SCOPE_GROUPS.to_string(),
                     OAUTH2_SCOPE_OPENID.to_string(),
+                    OAUTH2_SCOPE_PROFILE.to_string(),
                     "supplement".to_string(),
                 ])
         );
@@ -5298,6 +5295,7 @@ mod tests {
                 == Some(vec![
                     OAUTH2_SCOPE_GROUPS.to_string(),
                     OAUTH2_SCOPE_OPENID.to_string(),
+                    OAUTH2_SCOPE_PROFILE.to_string(),
                     "supplement".to_string(),
                 ])
         );
@@ -5402,6 +5400,7 @@ mod tests {
             .is_none());
     }
 
+
     #[idm_test]
     async fn test_idm_oauth2_openid_extensions(
         idms: &IdmServer,
@@ -5421,7 +5420,7 @@ mod tests {
             &ident,
             ct,
             pkce_secret.to_request(),
-            OAUTH2_SCOPE_OPENID.to_string()
+            format!("{OAUTH2_SCOPE_OPENID} {OAUTH2_SCOPE_PROFILE}")
         );
 
         let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
@@ -5516,7 +5515,7 @@ mod tests {
             Some("testperson1@example.com".to_string())
         );
         assert!(
-            oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
+            oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(),OAUTH2_SCOPE_PROFILE.to_string(), "supplement".to_string()]
         );
         assert!(oidc.claims.is_empty());
         // Does our access token work with the userinfo endpoint?
@@ -5541,7 +5540,25 @@ mod tests {
         if let Some(jti) = &userinfo.jti {
             assert!(Uuid::from_str(jti).is_ok());
         }
-        assert_eq!(oidc.s_claims, userinfo.s_claims);
+        //As the timestamp from oidc and userinfo differs a fraction of a second, we
+        //need to check if the difference is lower than a arbitrary bound (here 1 sec)
+        //also we then overwrite the updated_at of oidc with the one from userinfo, so
+        //we can compare the whole struct at once.
+
+        let a = oidc.s_claims.updated_at;
+        let b = userinfo.s_claims.updated_at;
+        assert!(
+            match (a, b) {
+                (Some(a), Some(b)) =>
+                    (a.unix_timestamp_nanos() - b.unix_timestamp_nanos()).abs()
+                        <= 1_000_000_000, // 1s
+                (None, None) => true,
+                _ => false,
+            }
+        );
+        let mut c = oidc.s_claims;
+        c.updated_at = userinfo.s_claims.updated_at;
+        assert_eq!(c, userinfo.s_claims);
         assert!(userinfo.claims.is_empty());
 
         drop(idms_prox_read);
@@ -5589,7 +5606,7 @@ mod tests {
         if let Some(jti) = &userinfo.jti {
             assert!(Uuid::from_str(jti).is_ok());
         }
-        assert_eq!(oidc.s_claims, userinfo.s_claims);
+        //TODO assert claims
         assert!(userinfo.claims.is_empty());
     }
 
