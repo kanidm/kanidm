@@ -3336,7 +3336,8 @@ fn check_is_loopback(redirect_uri: &Url) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS};
+    use compact_jwt::OidcClaims;
+use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS};
     use crate::credential::Credential;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::oauth2::{host_is_local, AuthoriseResponse, Oauth2Error, OauthRSType};
@@ -5400,6 +5401,25 @@ mod tests {
             .is_none());
     }
 
+    //As the timestamp from oidc and userinfo differs a fraction of a second, we
+    //need to check if the difference is lower than a arbitrary bound (here 1 sec)
+    //also we then overwrite the updated_at of oidc with the one from userinfo, so
+    //we can compare the whole struct at once.
+    fn assert_claims_with_tolerance(mut claims_a : OidcClaims, claims_b : OidcClaims, tolerance : i128){
+        let a = claims_a.updated_at;
+        let b = claims_b.updated_at;
+        assert!(
+            match (a, b) {
+                (Some(a), Some(b)) =>
+                    (a.unix_timestamp_nanos() - b.unix_timestamp_nanos()).abs()
+                        <= tolerance, // 1s
+                (None, None) => true,
+                _ => false,
+            }
+        );
+        claims_a.updated_at = claims_b.updated_at;
+        assert_eq!(claims_a, claims_a);
+    }
 
     #[idm_test]
     async fn test_idm_oauth2_openid_extensions(
@@ -5540,25 +5560,7 @@ mod tests {
         if let Some(jti) = &userinfo.jti {
             assert!(Uuid::from_str(jti).is_ok());
         }
-        //As the timestamp from oidc and userinfo differs a fraction of a second, we
-        //need to check if the difference is lower than a arbitrary bound (here 1 sec)
-        //also we then overwrite the updated_at of oidc with the one from userinfo, so
-        //we can compare the whole struct at once.
-
-        let a = oidc.s_claims.updated_at;
-        let b = userinfo.s_claims.updated_at;
-        assert!(
-            match (a, b) {
-                (Some(a), Some(b)) =>
-                    (a.unix_timestamp_nanos() - b.unix_timestamp_nanos()).abs()
-                        <= 1_000_000_000, // 1s
-                (None, None) => true,
-                _ => false,
-            }
-        );
-        let mut c = oidc.s_claims;
-        c.updated_at = userinfo.s_claims.updated_at;
-        assert_eq!(c, userinfo.s_claims);
+        assert_claims_with_tolerance(oidc.s_claims, userinfo.s_claims, 1_000_000_000);
         assert!(userinfo.claims.is_empty());
 
         drop(idms_prox_read);
@@ -5606,7 +5608,7 @@ mod tests {
         if let Some(jti) = &userinfo.jti {
             assert!(Uuid::from_str(jti).is_ok());
         }
-        //TODO assert claims
+        assert_claims_with_tolerance(oidc.s_claims, userinfo.s_claims, 1_000_000_000);
         assert!(userinfo.claims.is_empty());
     }
 
