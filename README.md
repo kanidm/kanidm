@@ -23,8 +23,9 @@ Kanidm supports:
 
 - Passkeys (WebAuthn) for secure cryptographic authentication
   - Attested passkeys for high security environments
-- OAuth2/OIDC authentication provider for SSO
 - Application Portal allowing easy access to linked applications
+- OAuth2/OIDC authentication provider for SSO
+- OAuth2/OIDC service access with token exchange services
 - Linux/Unix integration with TPM protected offline authentication
 - SSH key distribution to Linux/Unix systems
 - RADIUS for network and VPN authentication
@@ -32,6 +33,7 @@ Kanidm supports:
 - Complete CLI tooling for Administration
 - Two node high availability using database replication
 - A WebUI for user self-service
+- And more!
 
 </details>
 
@@ -70,7 +72,8 @@ Kanidm is pronounced as "kar - nee - dee - em".
 
 ## Kanidm Anthem
 
-> An anthem is a popular song, especially a rock song felt to sum up the attitudes or feelings associated with a period or social group.
+> An anthem is a popular song, especially a rock song felt to sum up the attitudes or feelings associated with a period
+> or social group.
 
 The Kanidm anthem is [Crab Rave - Noisestorm](https://www.youtube.com/watch?v=LDU_Txk06tM)
 

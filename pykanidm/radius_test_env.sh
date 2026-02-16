@@ -23,7 +23,7 @@ echo ""
 
 echo "Resetting IDM_ADMIN"
 # set up idm admin account
-IDM_ADMIN=$(./run_insecure_dev_server.sh recover-account idm_admin -o json 2>&1 | grep '\"password' | jq -r .password)
+IDM_ADMIN=$(./run_insecure_dev_server.sh scripting recover-account idm_admin 2>&1 | grep '\"password' | jq -r .password)
 if [ -z "${IDM_ADMIN}" ]; then
     echo "Failed to reset idm_admin password"
     exit 1
@@ -34,7 +34,7 @@ echo "IDM_ADMIN_PASSWORD: ${IDM_ADMIN}"
 read -r  -n 1 -p "Copy the idm_admin password somewhere and hit enter to continue"
 
 # set up idm admin account
-ADMIN=$(./run_insecure_dev_server.sh recover-account admin -o json 2>&1 | grep '\"password' | jq -r .password )
+ADMIN=$(./run_insecure_dev_server.sh scripting recover-account admin 2>&1 | grep '\"password' | jq -r .password )
 
 if [ -z "${ADMIN}" ]; then
     echo "Failed to reset admin password"

@@ -3,7 +3,7 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
-use kanidm_proto::internal::UserAuthToken;
+use kanidm_proto::internal::{PrivilegesActive, UserAuthToken};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
@@ -15,6 +15,7 @@ use crate::{KanidmClientParser, LoginOpt};
 pub enum ToClientError {
     NeedLogin(String),
     NeedReauth(String, KanidmClient),
+    ReadOnly,
     Other,
 }
 
@@ -251,6 +252,8 @@ impl KanidmClientParser {
             })
         }) {
             Ok(uat) => {
+                #[allow(clippy::disallowed_methods)]
+                // Allowed as this is a local time check
                 let now_utc = time::OffsetDateTime::now_utc();
                 if let Some(exp) = uat.expiry {
                     if now_utc >= exp {
@@ -269,12 +272,20 @@ impl KanidmClientParser {
                 match optype {
                     OpType::Read => {}
                     OpType::Write => {
-                        if !uat.purpose_readwrite_active(now_utc + time::Duration::new(20, 0)) {
-                            error!(
-                                "Privileges have expired for {} - you need to re-authenticate again.",
-                                uat.spn
-                            );
-                            return Err(ToClientError::NeedReauth(spn, client));
+                        match uat.purpose_privilege_state(now_utc + time::Duration::seconds(20)) {
+                            // Good to go.
+                            PrivilegesActive::True => {}
+                            PrivilegesActive::ReauthRequired => {
+                                error!(
+                                    "Privileges have expired for {} - you need to re-authenticate again.",
+                                    uat.spn
+                                );
+                                return Err(ToClientError::NeedReauth(spn, client));
+                            }
+                            PrivilegesActive::False => {
+                                error!("The current session for {} is read-only.", uat.spn);
+                                return Err(ToClientError::ReadOnly);
+                            }
                         }
                     }
                 }
@@ -334,7 +345,7 @@ impl KanidmClientParser {
                     // Okay, re-auth should have passed, lets loop
                     continue;
                 }
-                Err(ToClientError::Other) => {
+                Err(ToClientError::ReadOnly) | Err(ToClientError::Other) => {
                     std::process::exit(1);
                 }
             }
@@ -448,13 +459,17 @@ pub fn prompt_for_username_get_token() -> Result<String, String> {
 pub(crate) fn try_expire_at_from_string(input: &str) -> Result<Option<String>, ()> {
     match input {
         "any" | "never" | "clear" => Ok(None),
-        "now" => match OffsetDateTime::now_utc().format(&Rfc3339) {
-            Ok(s) => Ok(Some(s)),
-            Err(e) => {
-                error!(err = ?e, "Unable to format current time to rfc3339");
-                Err(())
+        "now" => {
+            #[allow(clippy::disallowed_methods)]
+            // Allowed as this is a local time from the callers machine.
+            match OffsetDateTime::now_utc().format(&Rfc3339) {
+                Ok(s) => Ok(Some(s)),
+                Err(e) => {
+                    error!(err = ?e, "Unable to format current time to rfc3339");
+                    Err(())
+                }
             }
-        },
+        }
         "epoch" => match OffsetDateTime::UNIX_EPOCH.format(&Rfc3339) {
             Ok(val) => Ok(Some(val)),
             Err(err) => {

@@ -9,11 +9,14 @@ pub struct Config {
     pub schedule: Option<String>,
     pub status_bind: Option<String>,
     pub ipa_uri: Url,
-    pub ipa_ca: String,
+    #[serde(default)]
+    pub ipa_verify_ca: Option<bool>,
+    pub ipa_ca: Option<String>,
     pub ipa_sync_dn: String,
     pub ipa_sync_pw: String,
     pub ipa_sync_base_dn: String,
 
+    pub skip_invalid_password_formats: Option<bool>,
     pub sync_password_as_unix_password: Option<bool>,
 
     /// Maximum LDAP message size (in kilobytes)

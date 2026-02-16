@@ -24,9 +24,7 @@ use idlset::AndNot;
 use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::internal::{ConsistencyError, OperationError};
 use std::collections::BTreeMap;
-use std::fs;
 use std::io::prelude::*;
-use std::io::Read;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -960,11 +958,14 @@ pub trait BackendTransaction {
         self.get_ruv().verify(&entries, results);
     }
 
-    fn backup(
+    fn backup<OUT>(
         &mut self,
-        dst_path: &Path,
+        mut output: OUT,
         compression: BackupCompression,
-    ) -> Result<(), OperationError> {
+    ) -> Result<(), OperationError>
+    where
+        OUT: std::io::Write,
+    {
         let repl_meta = self.get_ruv().to_db_backup_ruv();
 
         // load all entries into RAM, may need to change this later
@@ -1012,28 +1013,31 @@ pub trait BackendTransaction {
         })?;
 
         match compression {
-            BackupCompression::NoCompression => fs::write(dst_path, serialized_entries_str)
-                .map(|_| ())
-                .map_err(|e| {
-                    admin_error!(?e, "fs::write error");
-                    OperationError::FsError
-                }),
+            BackupCompression::NoCompression => {
+                output
+                    .write(serialized_entries_str.as_bytes())
+                    .map_err(|e| {
+                        error!(?e, "fs::write error");
+                        OperationError::FsError
+                    })?;
+            }
             BackupCompression::Gzip => {
-                let writer = std::fs::File::create(dst_path).map_err(|e| {
-                    admin_error!(?e, "File::create error creating {}", dst_path.display());
-                    OperationError::FsError
-                })?;
-
-                let mut encoder = GzEncoder::new(writer, Compression::best());
+                let mut encoder = GzEncoder::new(&mut output, Compression::best());
                 encoder
                     .write_all(serialized_entries_str.as_bytes())
                     .map_err(|e| {
-                        admin_error!(?e, "Gzip compression error writing backup");
+                        error!(?e, "Gzip compression error writing backup");
                         OperationError::FsError
                     })?;
-                Ok(())
             }
         }
+
+        output.flush().map_err(|err| {
+            error!(?err, "Unable to flush backup output stream");
+            OperationError::FsError
+        })?;
+
+        Ok(())
     }
 
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
@@ -1860,31 +1864,29 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(slope)
     }
 
-    pub fn restore(&mut self, src_path: &Path) -> Result<(), OperationError> {
-        let compression = BackupCompression::identify_file(src_path);
+    pub fn restore<IN>(
+        &mut self,
+        input: IN,
+        compression: BackupCompression,
+    ) -> Result<(), OperationError>
+    where
+        IN: std::io::Read,
+    {
+        // load all entries into RAM, may need to change this later
+        // if the size of the database compared to RAM is an issue
 
-        debug!("Backup compression identified: {}", compression);
-        let serialized_string = match compression {
-            BackupCompression::NoCompression => fs::read_to_string(src_path).map_err(|e| {
-                error!("Failed to read backup file {} {e:?}", src_path.display());
-                OperationError::FsError
-            })?,
+        let dbbak_option: Result<DbBackup, serde_json::Error> = match compression {
+            BackupCompression::NoCompression => serde_json::from_reader(input),
             BackupCompression::Gzip => {
-                let reader = std::fs::File::open(src_path).map_err(|e| {
-                    error!("Failed to open backup file {} {e:?}", src_path.display());
-                    OperationError::FsError
-                })?;
-                let mut decoder = flate2::read::GzDecoder::new(reader);
-                let mut decompressed_data = String::new();
-                decoder
-                    .read_to_string(&mut decompressed_data)
-                    .map_err(|e| {
-                        error!("GZip decompression error {:?}", e);
-                        OperationError::FsError
-                    })?;
-                decompressed_data
+                let decoder = flate2::read::GzDecoder::new(input);
+                serde_json::from_reader(decoder)
             }
         };
+
+        let dbbak = dbbak_option.map_err(|e| {
+            admin_error!("serde_json error {:?}", e);
+            OperationError::SerdeJsonError
+        })?;
 
         self.danger_delete_all_db_content().map_err(|e| {
             error!("delete_all_db_content failed {:?}", e);
@@ -1892,16 +1894,6 @@ impl<'a> BackendWriteTransaction<'a> {
         })?;
 
         let idlayer = self.get_idlayer();
-        // load all entries into RAM, may need to change this later
-        // if the size of the database compared to RAM is an issue
-
-        let dbbak_option: Result<DbBackup, serde_json::Error> =
-            serde_json::from_str(&serialized_string);
-
-        let dbbak = dbbak_option.map_err(|e| {
-            admin_error!("serde_json error {:?}", e);
-            OperationError::SerdeJsonError
-        })?;
 
         let (dbentries, repl_meta, maybe_version) = match dbbak {
             DbBackup::V1(dbentries) => (dbentries, None, None),
@@ -2295,19 +2287,15 @@ mod tests {
     use crate::value::{IndexType, PartialValue, Value};
     use idlset::v2::IDLBitRange;
     use kanidm_proto::backup::BackupCompression;
-    use std::fs;
     use std::iter::FromIterator;
-    use std::path::Path;
-    use std::sync::Arc;
+    use std::sync::{Arc, LazyLock};
     use std::time::Duration;
 
-    lazy_static! {
-        static ref CID_ZERO: Cid = Cid::new_zero();
-        static ref CID_ONE: Cid = Cid::new_count(1);
-        static ref CID_TWO: Cid = Cid::new_count(2);
-        static ref CID_THREE: Cid = Cid::new_count(3);
-        static ref CID_ADV: Cid = Cid::new_count(10);
-    }
+    static CID_ZERO: LazyLock<Cid> = LazyLock::new(|| Cid::new_zero());
+    static CID_ONE: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(1));
+    static CID_TWO: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(2));
+    static CID_THREE: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(3));
+    static CID_ADV: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(10));
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -2678,9 +2666,6 @@ mod tests {
 
     #[test]
     fn test_be_backup_restore() {
-        let db_backup_file_name =
-            Path::new(option_env!("OUT_DIR").unwrap_or("/tmp")).join(".backup_test.json.gz");
-        eprintln!(" ⚠️   {}", db_backup_file_name.display());
         run_test!(|be: &mut BackendWriteTransaction| {
             // Important! Need db metadata setup!
             be.reset_db_s_uuid().unwrap();
@@ -2718,16 +2703,15 @@ mod tests {
             assert!(entry_exists!(be, e2));
             assert!(entry_exists!(be, e3));
 
-            let result = fs::remove_file(&db_backup_file_name);
+            let mut buf = std::io::Cursor::new(Vec::new());
 
-            if let Err(e) = result {
-                // if the error is the file is not found, that's what we want so continue,
-                // otherwise return the error
-                if e.kind() == std::io::ErrorKind::NotFound {}
-            }
-            be.backup(&db_backup_file_name, BackupCompression::Gzip)
+            be.backup(&mut buf, BackupCompression::Gzip)
                 .expect("Backup failed!");
-            be.restore(&db_backup_file_name).expect("Restore failed!");
+
+            buf.set_position(0);
+
+            be.restore(&mut buf, BackupCompression::Gzip)
+                .expect("Restore failed!");
 
             assert!(be.verify().is_empty());
         });
@@ -2735,9 +2719,6 @@ mod tests {
 
     #[test]
     fn test_be_backup_restore_tampered() {
-        let db_backup_file_name =
-            Path::new(option_env!("OUT_DIR").unwrap_or("/tmp")).join(".backup2_test.json");
-        eprintln!(" ⚠️   {}", db_backup_file_name.display());
         run_test!(|be: &mut BackendWriteTransaction| {
             // Important! Need db metadata setup!
             be.reset_db_s_uuid().unwrap();
@@ -2774,21 +2755,16 @@ mod tests {
             assert!(entry_exists!(be, e2));
             assert!(entry_exists!(be, e3));
 
-            let result = fs::remove_file(&db_backup_file_name);
+            let mut buf = std::io::Cursor::new(Vec::new());
 
-            if let Err(e) = result {
-                // if the error is the file is not found, that's what we want so continue,
-                // otherwise return the error
-                if e.kind() == std::io::ErrorKind::NotFound {}
-            }
-
-            be.backup(&db_backup_file_name, BackupCompression::NoCompression)
+            be.backup(&mut buf, BackupCompression::NoCompression)
                 .expect("Backup failed!");
 
-            // Now here, we need to tamper with the file.
-            let serialized_string = fs::read_to_string(&db_backup_file_name).unwrap();
-            trace!(?serialized_string);
-            let mut dbbak: DbBackup = serde_json::from_str(&serialized_string).unwrap();
+            // Rewind
+            buf.set_position(0);
+
+            // Now here, we need to tamper with the data.
+            let mut dbbak: DbBackup = serde_json::from_reader(&mut buf).unwrap();
 
             match &mut dbbak {
                 DbBackup::V5 {
@@ -2808,10 +2784,16 @@ mod tests {
                 }
             };
 
-            let serialized_entries_str = serde_json::to_string_pretty(&dbbak).unwrap();
-            fs::write(&db_backup_file_name, serialized_entries_str).unwrap();
+            buf.get_mut().clear();
+            buf.set_position(0);
 
-            be.restore(&db_backup_file_name).expect("Restore failed!");
+            serde_json::to_writer(&mut buf, &dbbak).unwrap();
+
+            // Rewind
+            buf.set_position(0);
+
+            be.restore(&mut buf, BackupCompression::NoCompression)
+                .expect("Restore failed!");
 
             assert!(be.verify().is_empty());
         });

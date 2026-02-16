@@ -11,7 +11,7 @@
 Kanidm currently is packaged for the following systems:
 
 - OpenSUSE Tumbleweed
-- OpenSUSE Leap 15.4/15.5/15.6
+- OpenSUSE Leap 15.6 / SUSE Linux Enterprise 15.7
 - macOS
 - Arch Linux
 - CentOS Stream 9
@@ -20,31 +20,27 @@ Kanidm currently is packaged for the following systems:
 - NixOS
 - Ubuntu
 - Alpine Linux
+- FreeBSD
 
 The `kanidm` client has been built and tested from Windows, but is not (yet) packaged routinely.
 
-### OpenSUSE Tumbleweed / Leap 15.6
+### OpenSUSE Tumbleweed / Leap 15.6 / SLE 15.7
 
-Kanidm is available in Tumbleweed and Leap 15.6. You can install the clients with:
+Kanidm is available in Tumbleweed, Leap 15.6, and SLE 15.7. You can install the clients with:
 
 ```bash
 zypper ref
 zypper in kanidm-clients
 ```
 
-### OpenSUSE Leap 15.4/15.5
+> NOTE Leap 16.0 / SLE 16.0 are not yet supported.
 
-Using zypper you can add the Kanidm leap repository with:
+### FreeBSD
 
-```bash
-zypper ar -f obs://network:idm network_idm
+The kanidm client is available through ports or packages. The port is named `security/kanidm`.
+
 ```
-
-Then you need to refresh your metadata and install the clients.
-
-```bash
-zypper ref
-zypper in kanidm-clients
+pkg install kanidm-client
 ```
 
 ### macOS - Homebrew
@@ -157,5 +153,5 @@ re-run the install command. You will likely need to install additional developme
 [Developer Guide](developers/).
 
 ```bash
-cargo install kanidm_tools
+cargo install kanidm_tools --locked
 ```

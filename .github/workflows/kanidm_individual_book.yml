@@ -46,7 +46,7 @@ jobs:
       - name: Build the docs
         run: |
           cargo install --quiet mdbook mdbook-mermaid
-          cargo doc --no-deps
+          cargo doc --quiet --no-deps
           mdbook build *book
           rm -rf ./docs/
           mkdir -p ./docs/

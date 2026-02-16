@@ -14,24 +14,30 @@
 mod config;
 mod error;
 
-// #[cfg(test)]
-// mod tests;
-
 use crate::config::{Config, EntryConfig};
 use crate::error::SyncError;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
+use kanidm_client::KanidmClientBuilder;
+use kanidm_lib_crypto::{Password, PasswordError};
+use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 use kanidm_proto::constants::{
     ATTR_UID, LDAP_ATTR_CN, LDAP_ATTR_OBJECTCLASS, LDAP_CLASS_GROUPOFNAMES,
 };
-use kanidmd_lib::prelude::{Attribute, EntryClass};
+use kanidm_proto::scim_v1::{
+    MultiValueAttr, ScimEntry, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
+    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
+};
+use kanidmd_lib::prelude::{Attribute, EntryClass, ENTRYCLASS_PERSON};
+use ldap3_client::{
+    proto, proto::LdapFilter, LdapClient, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry,
+    LdapSyncStateValue,
+};
 use std::collections::BTreeMap;
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
@@ -44,32 +50,21 @@ use tokio::net::TcpListener;
 use tokio::runtime;
 use tokio::sync::broadcast;
 use tokio::time::sleep;
-
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 use uuid::Uuid;
 
-use kanidm_client::KanidmClientBuilder;
-use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntry, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
-    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
-};
-
-use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
-
 #[cfg(target_family = "unix")]
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
-use ldap3_client::{
-    proto, proto::LdapFilter, LdapClient, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry,
-    LdapSyncStateValue,
-};
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::MetadataExt;
 
 include!("./opt.rs");
 
 async fn driver_main(opt: Opt) {
-    debug!("Starting kanidm freeipa sync driver.");
+    debug!("Starting Kanidm FreeIPA sync driver.");
     // Parse the configs.
 
     let mut f = match File::open(&opt.ipa_sync_config) {
@@ -91,7 +86,7 @@ async fn driver_main(opt: Opt) {
     let sync_config: Config = match toml::from_str(contents.as_str()) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("unable to parse config {e:?}");
+            error!("unable to parse config {e:?}");
             return;
         }
     };
@@ -124,13 +119,12 @@ async fn driver_main(opt: Opt) {
         let last_op_status_c = last_op_status.clone();
 
         // Can we setup the socket for status?
-
         let status_handle = if let Some(sb) = sync_config.status_bind.as_deref() {
             // Can we bind?
             let listener = match TcpListener::bind(sb).await {
                 Ok(l) => l,
                 Err(e) => {
-                    error!(?e, "Failed to bind status socket");
+                    error!(error=?e, "Failed to bind status socket");
                     return;
                 }
             };
@@ -173,7 +167,7 @@ async fn driver_main(opt: Opt) {
                         match run_sync(cb.clone(), &sync_config, &opt).await {
                             Ok(_) => last_op_status.store(true, Ordering::Relaxed),
                             Err(e) => {
-                                error!(?e, "sync completed with error");
+                                error!(error=?e, "Sync failed");
                                 last_op_status.store(false, Ordering::Relaxed)
                             }
                         };
@@ -239,16 +233,17 @@ async fn driver_main(opt: Opt) {
             }
         }
 
-        broadcast_tx
-            .send(true)
-            .expect("Failed to trigger a clean shutdown!");
+        if broadcast_tx.send(true).is_err() {
+            error!("Failed to send a message triggering a clean shutdown!");
+            return;
+        };
 
         let _ = driver_handle.await;
         if let Some(sh) = status_handle {
             let _ = sh.await;
         }
     } else if let Err(e) = run_sync(cb, &sync_config, &opt).await {
-        error!(?e, "Sync completed with error");
+        error!(error=?e, "Sync failed");
     }
 }
 
@@ -269,7 +264,7 @@ async fn status_task(
                         sock
                     }
                     Err(e) => {
-                        error!(?e, "Failed to accept status connection");
+                        error!(error=?e, "Failed to accept status connection");
                         continue;
                     }
                 };
@@ -280,7 +275,7 @@ async fn status_task(
                      stream.write_all(b"Err\n").await
                 };
                 if let Err(e) = sr {
-                    error!(?e, "Failed to send status");
+                    error!(error=?e, "Failed to send status");
                 }
             }
         }
@@ -296,7 +291,7 @@ async fn run_sync(
     let rsclient = match cb.build() {
         Ok(rsc) => rsc,
         Err(_e) => {
-            error!("Failed to build async client");
+            error!("Failed to build Kanidm client");
             return Err(SyncError::ClientConfig);
         }
     };
@@ -305,15 +300,20 @@ async fn run_sync(
 
     // Preflight check.
     //  * can we connect to ipa?
-    let mut ipa_client = match LdapClientBuilder::new(&sync_config.ipa_uri)
-        .max_ber_size(sync_config.max_ber_size)
-        .add_tls_ca(&sync_config.ipa_ca)
-        .build()
-        .await
-    {
+    let ldap_client_builder =
+        LdapClientBuilder::new(&sync_config.ipa_uri).max_ber_size(sync_config.max_ber_size);
+
+    let ldap_client_builder = if let Some(ipa_ca) = sync_config.ipa_ca.as_ref() {
+        ldap_client_builder.add_tls_ca(ipa_ca)
+    } else {
+        let verify_ca = sync_config.ipa_verify_ca.unwrap_or(true);
+        ldap_client_builder.danger_accept_invalid_certs(!verify_ca)
+    };
+
+    let mut ipa_client = match ldap_client_builder.build().await {
         Ok(lc) => lc,
         Err(e) => {
-            error!(?e, "Failed to connect to freeipa");
+            error!(error=?e, ipa_uri=&sync_config.ipa_uri.to_string(),"Failed to connect to FreeIPA");
             return Err(SyncError::LdapConn);
         }
     };
@@ -329,17 +329,17 @@ async fn run_sync(
             debug!(ipa_sync_dn = ?sync_config.ipa_sync_dn, ipa_uri = %sync_config.ipa_uri);
         }
         Err(e) => {
-            error!(?e, "Failed to bind (authenticate) to freeipa");
+            error!(error=?e, "Failed to bind (authenticate) to FreeIPA");
             return Err(SyncError::LdapAuth);
         }
     };
 
-    //  * can we connect to kanidm?
-    // - get the current sync cookie from kanidm.
+    // 1. can we connect to Kanidm?
+    // 2. get the current sync cookie from Kanidm.
     let scim_sync_status = match rsclient.scim_v1_sync_status().await {
         Ok(s) => s,
         Err(e) => {
-            error!(?e, "Failed to access scim sync status");
+            error!(error=?e, "Failed to access SCIM sync status");
             return Err(SyncError::SyncStatus);
         }
     };
@@ -407,7 +407,7 @@ async fn run_sync(
     {
         Ok(results) => results,
         Err(e) => {
-            error!(?e, "Failed to perform syncrepl from ipa");
+            error!(error=?e, "Failed to perform syncrepl from ipa");
             return Err(SyncError::LdapSyncrepl);
         }
     };
@@ -415,7 +415,7 @@ async fn run_sync(
     if opt.proto_dump {
         let stdout = std::io::stdout();
         if let Err(e) = serde_json::to_writer_pretty(stdout, &sync_result) {
-            error!(?e, "Failed to serialise ldap sync response");
+            error!(error=?e, "Failed to serialise ldap sync response");
         }
     }
 
@@ -456,6 +456,9 @@ async fn run_sync(
                 entries,
                 &sync_config.entry_map,
                 is_initialise,
+                sync_config
+                    .skip_invalid_password_formats
+                    .unwrap_or_default(),
                 sync_config
                     .sync_password_as_unix_password
                     .unwrap_or_default(),
@@ -498,7 +501,7 @@ async fn run_sync(
         let stdout = std::io::stdout();
         // write it out.
         if let Err(e) = serde_json::to_writer_pretty(stdout, &scim_sync_request) {
-            error!(?e, "Failed to serialise scim sync request");
+            error!(error=?e, "Failed to serialise SCIM sync request");
         };
         Ok(())
     } else if opt.dry_run {
@@ -507,8 +510,8 @@ async fn run_sync(
         Ok(())
     } else if let Err(e) = rsclient.scim_v1_sync_update(&scim_sync_request).await {
         error!(
-            ?e,
-            "Failed to submit scim sync update - see the kanidmd server log for more details."
+            error=?e,
+            "Failed to submit SCIM sync update - see the kanidmd server log for more details."
         );
         Err(SyncError::SyncUpdate)
     } else {
@@ -524,10 +527,11 @@ async fn process_ipa_sync_result(
     ldap_entries: Vec<LdapSyncReplEntry>,
     entry_config_map: &BTreeMap<Uuid, EntryConfig>,
     is_initialise: bool,
+    skip_invalid_password_formats: bool,
     sync_password_as_unix_password: bool,
 ) -> Result<Vec<ScimEntry>, ()> {
-    // Because of how TOTP works with freeipa it's a soft referral from
-    // the totp toward the user. This means if a TOTP is added or removed
+    // Because of how TOTP works with FreeIPA, it's a soft referral from
+    // the TOTP toward the user. This means if a TOTP is added or removed
     // we see those as unique entries in the syncrepl but we are missing
     // the user entry that actually needs the update since Kanidm makes TOTP
     // part of the entry itself.
@@ -539,7 +543,7 @@ async fn process_ipa_sync_result(
     // Because of this, we have to do some client-side processing here to
     // work out what "entries we are missing" and do a second search to
     // fetch them. Sadly, this means that we need to do a second search
-    // and since ldap is NOT transactional there is a possibility of a
+    // and since LDAP is NOT transactional there is a possibility of a
     // desync between the sync-repl and the results of the second search.
     //
     // There are 5 possibilities - note one of TOTP or USER must be in syncrepl
@@ -571,7 +575,7 @@ async fn process_ipa_sync_result(
             .map(|oc| oc.contains("ipatokentotp"))
             .unwrap_or_default()
         {
-            // It's an otp. Lets see ...
+            // It's an OTP. Lets see ...
             let token_owner_dn = if let Some(todn) = lentry
                 .entry
                 .attrs
@@ -651,7 +655,7 @@ async fn process_ipa_sync_result(
         let user_conditions: Vec<_> = fetch_user
             .iter()
             .filter_map(|dn| {
-                // We have to split the DN to it's RDN because lol.
+                // We have to split the DN to its RDN because lol.
                 dn.split_once(',')
                     .and_then(|(rdn, _)| rdn.split_once('='))
                     .map(|(_, uid)| LdapFilter::Equality(ATTR_UID.to_string(), uid.to_string()))
@@ -709,10 +713,10 @@ async fn process_ipa_sync_result(
                             .get("ipatokenowner")
                             .and_then(|attr| if attr.len() != 1 { None } else { attr.first() })
                         {
-                            debug!("totp with owner {}", todn);
+                            debug!("TOTP with owner {}", todn);
                             todn.clone()
                         } else {
-                            warn!("totp with invalid ownership will be ignored");
+                            warn!("TOTP with invalid ownership will be ignored");
                             continue;
                         };
 
@@ -730,21 +734,21 @@ async fn process_ipa_sync_result(
                 }
             }
             Ok(LdapSyncRepl::RefreshRequired) => {
-                error!("Failed due to invalid search state from ipa");
+                error!("Failed due to invalid search state from FreeIPA");
                 return Err(());
             }
             Err(e) => {
-                error!(?e, "Failed to perform search from ipa");
+                error!(error=?e, "Failed to perform search from FreeIPA");
                 return Err(());
             }
         }
     }
 
-    // For each updated TOTP -> If it's related DN is not in Hash -> remove from map
+    // For each updated TOTP -> If its related DN is not in Hash -> remove from map
     totp_entries.retain(|k, _| {
         let x = entries.contains_key(k);
         if !x {
-            warn!("Removing totp with no valid owner {}", k);
+            warn!("Removing TOTP with no valid owner {}", k);
         }
         x
     });
@@ -762,7 +766,13 @@ async fn process_ipa_sync_result(
 
             let totp = totp_entries.get(&dn).unwrap_or(&empty_slice);
 
-            match ipa_to_scim_entry(e, &e_config, totp, sync_password_as_unix_password) {
+            match ipa_to_scim_entry(
+                e,
+                &e_config,
+                totp,
+                skip_invalid_password_formats,
+                sync_password_as_unix_password,
+            ) {
                 Ok(Some(e)) => Some(Ok(e)),
                 Ok(None) => None,
                 Err(()) => Some(Err(())),
@@ -775,6 +785,7 @@ fn ipa_to_scim_entry(
     sync_entry: LdapSyncReplEntry,
     entry_config: &EntryConfig,
     totp: &[LdapSyncReplEntry],
+    skip_invalid_password_formats: bool,
     sync_password_as_unix_password: bool,
 ) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
@@ -789,7 +800,7 @@ fn ipa_to_scim_entry(
 
     // Is this an entry we need to observe/look at?
     if entry_config.exclude {
-        info!("entry_config excludes {}", dn);
+        info!(dn = dn, "entry_config excludes this dn, skipping");
         return Ok(None);
     }
 
@@ -802,7 +813,7 @@ fn ipa_to_scim_entry(
             error!("Invalid entry - no object class {}", dn);
         })?;
 
-    if oc.contains("person") {
+    if oc.contains(ENTRYCLASS_PERSON) {
         let LdapSyncReplEntry {
             entry_uuid,
             state: _,
@@ -826,8 +837,11 @@ fn ipa_to_scim_entry(
         };
 
         // ⚠️  hardcoded skip on admin here!!!
-        if user_name == "admin" {
-            info!("kanidm excludes {}", dn);
+        if ["admin", "idm_admin"].contains(&user_name.as_str()) {
+            info!(
+                dn = dn,
+                "Kanidm sync excludes built-in admin account accounts, skipping"
+            );
             return Ok(None);
         }
 
@@ -860,6 +874,24 @@ fn ipa_to_scim_entry(
             // pw hash formats in 389-ds we don't support!
             .or_else(|| entry.remove_ava_single(Attribute::UserPassword.as_ref()));
 
+        let password_import = if let Some(pw_import) = password_import.as_ref() {
+            match Password::try_from(pw_import.as_str()) {
+                // Pretty good shot it'll work.
+                Ok(_) => password_import,
+                Err(PasswordError::InvalidFormat) if skip_invalid_password_formats => {
+                    warn!(?user_name, "Skipping password that can not be imported.");
+                    None
+                }
+                Err(reason) => {
+                    error!(?reason, ?user_name, "Unable to import password");
+                    return Err(());
+                }
+            }
+        } else {
+            // No password found, we proceed since there is nothing to import.
+            None
+        };
+
         let unix_password_import = if sync_password_as_unix_password {
             password_import.clone()
         } else {
@@ -887,8 +919,8 @@ fn ipa_to_scim_entry(
                 totp.iter().filter_map(ipa_to_totp).collect()
             } else {
                 warn!(
-                    "Skipping totp for {} as password is not available to import.",
-                    dn
+                    dn = dn,
+                    "Skipping TOTP as password is not available to import.",
                 );
                 Vec::default()
             }
@@ -911,10 +943,7 @@ fn ipa_to_scim_entry(
 
         let account_disabled: bool = entry
             .remove_ava(Attribute::NsAccountLock.as_ref())
-            .map(|set| {
-                set.into_iter()
-                    .any(|value| value != "FALSE" && value != "false")
-            })
+            .map(|set| set.into_iter().any(|value| value.to_lowercase() != "false"))
             .unwrap_or_default();
 
         // Account is not valid
@@ -962,7 +991,7 @@ fn ipa_to_scim_entry(
 
         // ⚠️  hardcoded skip on trust admins / editors / ipausers here!!!
         if name == "trust admins" || name == "editors" || name == "ipausers" || name == "admins" {
-            info!("kanidm excludes {}", dn);
+            info!(dn, "Kanidm sync excludes this dn, skipping");
             return Ok(None);
         }
 
@@ -997,7 +1026,7 @@ fn ipa_to_scim_entry(
         // Skip for now, we don't support multiple totp yet.
         Ok(None)
     } else {
-        debug!("Skipping entry {} with oc {:?}", dn, oc);
+        debug!(dn, objectclass=?oc, "Skipping unsupported entry");
         Ok(None)
     }
 }
@@ -1086,8 +1115,9 @@ fn config_security_checks(cfg_path: &Path) -> bool {
                 return false;
             }
         };
+
         if !file_permissions_readonly(&cfg_meta) {
-            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+            warn!("Permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                 cfg_path_str
                 );
         }
@@ -1105,6 +1135,15 @@ fn config_security_checks(cfg_path: &Path) -> bool {
 
 fn main() {
     let opt = Opt::parse();
+
+    // Make sure the TLS provider's configured before continuing.
+    if rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .is_err()
+    {
+        eprintln!("Failed to set the AWS-LC-RS TLS provider as default, this is a bug!");
+        std::process::exit(1);
+    }
 
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
 

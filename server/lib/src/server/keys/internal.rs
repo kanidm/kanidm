@@ -25,8 +25,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Bound::{Included, Unbounded};
 use std::sync::Arc;
 
-const KID_LEN: usize = 32;
-
 pub struct KeyProviderInternal {
     uuid: Uuid,
     name: String,
@@ -267,6 +265,7 @@ impl KeyObjectInternalJweA128GCM {
         let mut cipher = JweA128KWEncipher::from(key);
         cipher.set_sign_option_embed_kid(true);
         let kid = cipher.get_kid().to_string();
+        let kid = KeyId::from(kid);
 
         self.active.insert(valid_from, cipher.clone());
 
@@ -315,7 +314,7 @@ impl KeyObjectInternalJweA128GCM {
         })
     }
 
-    fn revoke(&mut self, revoke_key_id: &KeyId, cid: &Cid) -> Result<bool, OperationError> {
+    fn revoke(&mut self, revoke_key_id: &str, cid: &Cid) -> Result<bool, OperationError> {
         if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
             key_to_revoke.status = InternalJweA128GCMStatus::Revoked;
             key_to_revoke.status_cid = cid.clone();
@@ -334,14 +333,12 @@ impl KeyObjectInternalJweA128GCM {
 
     fn load(
         &mut self,
-        id: &str,
+        id: &KeyId,
         status: KeyStatus,
         status_cid: Cid,
         der: &[u8],
         valid_from: u64,
     ) -> Result<(), OperationError> {
-        let id: KeyId = id.to_string();
-
         let status = match status {
             KeyStatus::Valid => {
                 let key = aes128::key_from_slice(der).ok_or_else(|| {
@@ -351,6 +348,7 @@ impl KeyObjectInternalJweA128GCM {
 
                 let mut cipher = JweA128KWEncipher::from(key);
                 cipher.set_sign_option_embed_kid(true);
+                // Ensure we have a coherent kid
                 cipher.set_kid(id.as_str());
 
                 self.active.insert(valid_from, cipher.clone());
@@ -365,6 +363,7 @@ impl KeyObjectInternalJweA128GCM {
 
                 let mut cipher = JweA128KWEncipher::from(key);
                 cipher.set_sign_option_embed_kid(true);
+                // Ensure we have a coherent kid
                 cipher.set_kid(id.as_str());
 
                 InternalJweA128GCMStatus::Retained { cipher }
@@ -378,7 +377,7 @@ impl KeyObjectInternalJweA128GCM {
             status_cid,
         };
 
-        self.all.insert(id, internal_jwe);
+        self.all.insert(id.clone(), internal_jwe);
 
         Ok(())
     }
@@ -386,9 +385,10 @@ impl KeyObjectInternalJweA128GCM {
     fn decipher(&self, jwec: &JweCompact) -> Result<Jwe, OperationError> {
         let internal_jwe = jwec
             .kid()
+            .map(KeyId::from)
             .and_then(|kid| {
                 debug!(?kid);
-                self.all.get(kid)
+                self.all.get(&kid)
             })
             .ok_or_else(|| {
                 error!("JWE is encrypted by a key that is not present in this KeyObject");
@@ -508,6 +508,7 @@ impl KeyObjectInternalJwtEs256 {
 
             // We need to use the legacy KID for imported objects
             let kid = signer.get_legacy_kid().to_string();
+            let kid = KeyId::from(kid);
             debug!(?kid, "imported key");
 
             // Indicate to the signer we wish to use the legacy kid for this signer.
@@ -556,6 +557,7 @@ impl KeyObjectInternalJwtEs256 {
         self.active.insert(valid_from, signer.clone());
 
         let kid = signer.get_kid().to_string();
+        let kid = KeyId::from(kid);
 
         self.all.insert(
             kid,
@@ -573,7 +575,7 @@ impl KeyObjectInternalJwtEs256 {
         Ok(())
     }
 
-    fn revoke(&mut self, revoke_key_id: &KeyId, cid: &Cid) -> Result<bool, OperationError> {
+    fn revoke(&mut self, revoke_key_id: &str, cid: &Cid) -> Result<bool, OperationError> {
         if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
             let untrusted_verifier = match &key_to_revoke.status {
                 InternalJwtEs256Status::Valid { verifier, .. }
@@ -611,14 +613,12 @@ impl KeyObjectInternalJwtEs256 {
 
     fn load(
         &mut self,
-        id: &str,
+        id: &KeyId,
         status: KeyStatus,
         status_cid: Cid,
         der: &[u8],
         valid_from: u64,
     ) -> Result<(), OperationError> {
-        let id: KeyId = id.to_string();
-
         let status = match status {
             KeyStatus::Valid => {
                 let mut signer = JwsEs256Signer::from_es256_der(der).map_err(|err| {
@@ -672,7 +672,7 @@ impl KeyObjectInternalJwtEs256 {
             status_cid,
         };
 
-        self.all.insert(id, internal_jwt);
+        self.all.insert(id.clone(), internal_jwt);
 
         Ok(())
     }
@@ -728,9 +728,10 @@ impl KeyObjectInternalJwtEs256 {
     fn verify<V: JwsVerifiable>(&self, jwsc: &V) -> Result<V::Verified, OperationError> {
         let internal_jws = jwsc
             .kid()
+            .map(KeyId::from)
             .and_then(|kid| {
                 debug!(?kid);
-                self.all.get(kid)
+                self.all.get(&kid)
             })
             .ok_or_else(|| {
                 error!("JWS is signed by a key that is not present in this KeyObject");
@@ -893,6 +894,7 @@ impl KeyObjectInternalJwtRs256 {
 
             // We need to use the legacy KID for imported objects
             let kid = signer.get_legacy_kid().to_string();
+            let kid = KeyId::from(kid);
             debug!(?kid, "imported key");
 
             // Indicate to the signer we wish to use the legacy kid for this signer.
@@ -941,6 +943,7 @@ impl KeyObjectInternalJwtRs256 {
         self.active.insert(valid_from, signer.clone());
 
         let kid = signer.get_kid().to_string();
+        let kid = KeyId::from(kid);
 
         self.all.insert(
             kid,
@@ -958,7 +961,7 @@ impl KeyObjectInternalJwtRs256 {
         Ok(())
     }
 
-    fn revoke(&mut self, revoke_key_id: &KeyId, cid: &Cid) -> Result<bool, OperationError> {
+    fn revoke(&mut self, revoke_key_id: &str, cid: &Cid) -> Result<bool, OperationError> {
         if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
             let untrusted_verifier = match &key_to_revoke.status {
                 InternalJwtRs256Status::Valid { verifier, .. }
@@ -996,14 +999,12 @@ impl KeyObjectInternalJwtRs256 {
 
     fn load(
         &mut self,
-        id: &str,
+        id: &KeyId,
         status: KeyStatus,
         status_cid: Cid,
         der: &[u8],
         valid_from: u64,
     ) -> Result<(), OperationError> {
-        let id: KeyId = id.to_string();
-
         let status = match status {
             KeyStatus::Valid => {
                 let mut signer = JwsRs256Signer::from_rs256_der(der).map_err(|err| {
@@ -1057,7 +1058,7 @@ impl KeyObjectInternalJwtRs256 {
             status_cid,
         };
 
-        self.all.insert(id, internal_jwt);
+        self.all.insert(id.clone(), internal_jwt);
 
         Ok(())
     }
@@ -1113,9 +1114,10 @@ impl KeyObjectInternalJwtRs256 {
     fn verify<V: JwsVerifiable>(&self, jwsc: &V) -> Result<V::Verified, OperationError> {
         let internal_jws = jwsc
             .kid()
+            .map(KeyId::from)
             .and_then(|kid| {
                 debug!(?kid);
-                self.all.get(kid)
+                self.all.get(&kid)
             })
             .ok_or_else(|| {
                 error!("JWS is signed by a key that is not present in this KeyObject");
@@ -1393,6 +1395,27 @@ impl KeyObjectT for KeyObjectInternal {
         koi.assert_active(valid_from, cid)
     }
 
+    fn jws_hs256_sign(
+        &self,
+        jws: &Jws,
+        current_time: Duration,
+    ) -> Result<JwsCompact, OperationError> {
+        if let Some(jws_hs256_object) = &self.jws_hs256 {
+            jws_hs256_object.sign(jws, current_time)
+        } else {
+            error!(provider_uuid = ?self.uuid, "jwt hs256 not available on this provider");
+            Err(OperationError::KP0080KeyProviderNoSuchKey)
+        }
+    }
+
+    fn jws_hs256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let koi = self
+            .jws_hs256
+            .get_or_insert_with(KeyObjectInternalJwtHs256::default);
+
+        koi.assert_active(valid_from, cid)
+    }
+
     fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError> {
         let (alg, enc) = jwec.get_alg_enc();
 
@@ -1628,7 +1651,7 @@ impl KeyObjectInternalJwtHs256 {
             let verifier = signer.clone();
 
             // We need to use the legacy KID for imported objects
-            let kid = signer.get_legacy_kid().to_string();
+            let kid = KeyId::from(signer.get_legacy_kid().to_string());
             debug!(?kid, "imported key");
 
             // Indicate to the signer we wish to use the legacy kid for this signer.
@@ -1664,6 +1687,7 @@ impl KeyObjectInternalJwtHs256 {
 
         // Needed to disambiguate the various traits.
         let kid = JwsVerifier::get_kid(&signer).to_string();
+        let kid = KeyId::from(kid);
 
         self.all.insert(
             kid,
@@ -1677,7 +1701,7 @@ impl KeyObjectInternalJwtHs256 {
         Ok(())
     }
 
-    fn revoke(&mut self, revoke_key_id: &KeyId, cid: &Cid) -> Result<bool, OperationError> {
+    fn revoke(&mut self, revoke_key_id: &str, cid: &Cid) -> Result<bool, OperationError> {
         if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
             if matches!(&key_to_revoke.status, InternalJwtHs256Status::Revoked) {
                 return Ok(false);
@@ -1700,14 +1724,12 @@ impl KeyObjectInternalJwtHs256 {
 
     fn load(
         &mut self,
-        id: &str,
+        id: &KeyId,
         status: KeyStatus,
         status_cid: Cid,
         der: &[u8],
         valid_from: u64,
     ) -> Result<(), OperationError> {
-        let id: KeyId = id.to_string();
-
         let status = match status {
             KeyStatus::Valid => {
                 let mut signer = JwsHs256Signer::try_from(der).map_err(|err| {
@@ -1741,7 +1763,7 @@ impl KeyObjectInternalJwtHs256 {
             status_cid,
         };
 
-        self.all.insert(id, internal_jwt);
+        self.all.insert(id.clone(), internal_jwt);
 
         Ok(())
     }
@@ -1799,9 +1821,10 @@ impl KeyObjectInternalJwtHs256 {
     fn verify<V: JwsVerifiable>(&self, jwsc: &V) -> Result<V::Verified, OperationError> {
         let internal_jws = jwsc
             .kid()
+            .map(KeyId::from)
             .and_then(|kid| {
                 debug!(?kid);
-                self.all.get(kid)
+                self.all.get(&kid)
             })
             .ok_or_else(|| {
                 error!("JWS is signed by a key that is not present in this KeyObject");
@@ -1917,8 +1940,8 @@ impl KeyObjectInternalHkdfS256 {
         let mut hmac = HmacSha256::new(&signer);
         hmac.update(b"key identifier");
         let hashout = hmac.finalize();
-        let mut kid = hex::encode(hashout.into_bytes());
-        kid.truncate(KID_LEN);
+        let kid = hex::encode(hashout.into_bytes());
+        let kid = KeyId::from(kid);
 
         self.all.insert(
             kid,
@@ -1932,7 +1955,7 @@ impl KeyObjectInternalHkdfS256 {
         Ok(())
     }
 
-    fn revoke(&mut self, revoke_key_id: &KeyId, cid: &Cid) -> Result<bool, OperationError> {
+    fn revoke(&mut self, revoke_key_id: &str, cid: &Cid) -> Result<bool, OperationError> {
         if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
             if matches!(&key_to_revoke.status, InternalHkdfS256Status::Revoked) {
                 return Ok(false);
@@ -1955,14 +1978,12 @@ impl KeyObjectInternalHkdfS256 {
 
     fn load(
         &mut self,
-        id: &str,
+        id: &KeyId,
         status: KeyStatus,
         status_cid: Cid,
         der: &[u8],
         valid_from: u64,
     ) -> Result<(), OperationError> {
-        let id: KeyId = id.to_string();
-
         let status = match status {
             KeyStatus::Valid => {
                 let signer = hmac_s256::key_from_slice(der).ok_or_else(|| {
@@ -1993,7 +2014,7 @@ impl KeyObjectInternalHkdfS256 {
             status_cid,
         };
 
-        self.all.insert(id, internal);
+        self.all.insert(id.clone(), internal);
 
         Ok(())
     }
@@ -2121,13 +2142,13 @@ mod tests {
         let key_object_uuid = Uuid::new_v4();
 
         write_txn
-            .internal_create(vec![entry_init!(
+            .internal_create(vec![entry_init_fn([
                 (Attribute::Class, EntryClass::Object.to_value()),
                 (Attribute::Class, EntryClass::KeyObject.to_value()),
                 // Signal we want a jwt es256
                 (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
-                (Attribute::Uuid, Value::Uuid(key_object_uuid))
-            )])
+                (Attribute::Uuid, Value::Uuid(key_object_uuid)),
+            ])])
             .expect("Unable to create new key object");
 
         // Reload to trigger the key object to reload.
@@ -2210,9 +2231,9 @@ mod tests {
 
         // Test Key revocation. Revocation takes effect immediately, and is by key id.
         // The new key
-        let remain_key = jwsc_sig_3.kid().unwrap().to_string();
+        let remain_key = KeyId::from(jwsc_sig_3.kid().unwrap().to_string());
         // The older key (since sig 1 == sig 2 kid)
-        let revoke_kid = jwsc_sig_2.kid().unwrap().to_string();
+        let revoke_kid = KeyId::from(jwsc_sig_2.kid().unwrap().to_string());
 
         // First check that both keys are live.
         {
@@ -2247,7 +2268,7 @@ mod tests {
                 key_object_uuid,
                 &ModifyList::new_append(
                     Attribute::KeyActionRevoke,
-                    Value::HexString(revoke_kid.clone()),
+                    Value::HexString(revoke_kid.to_string()),
                 ),
             )
             .expect("Unable to revoke key.");

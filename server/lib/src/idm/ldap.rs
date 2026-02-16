@@ -813,6 +813,7 @@ pub(crate) fn ldap_all_vattrs() -> Vec<String> {
         ATTR_UIDNUMBER.to_string(),
         ATTR_UID.to_string(),
         ATTR_GECOS.to_string(),
+        ATTR_HOME_DIRECTORY.to_string(),
     ]
 }
 
@@ -843,6 +844,7 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
         ATTR_OBJECTCLASS => Some(ATTR_CLASS),
         ATTR_LDAP_SSHPUBLICKEY => Some(ATTR_SSH_PUBLICKEY), // no-underscore -> underscore
         ATTR_UIDNUMBER => Some(ATTR_GIDNUMBER),             // yes this is intentional
+        ATTR_HOME_DIRECTORY => Some(ATTR_UUID),
         _ => None,
     }
 }
@@ -1892,6 +1894,10 @@ mod tests {
                     (Attribute::LoginShell, "/bin/zsh"),
                     (Attribute::SshPublicKey, ssh_ed25519),
                     (Attribute::EntryUuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    (
+                        Attribute::HomeDirectory,
+                        "/home/cc8e95b4-c24f-4d68-ba54-8bed76f63930"
+                    ),
                     (
                         Attribute::EntryDn,
                         "spn=testperson1@example.com,dc=example,dc=com"

@@ -65,16 +65,6 @@ struct DbScanListIndex {
     index_name: String,
 }
 
-#[derive(Debug, Parser)]
-struct HealthCheckArgs {
-    /// Disable TLS verification
-    #[clap(short, long, action)]
-    verify_tls: bool,
-    /// Check the 'origin' URL from the server configuration file, instead of the 'address'
-    #[clap(short = 'O', long, action)]
-    check_origin: bool,
-}
-
 #[derive(Debug, Args)]
 struct DbScanGetId2Entry {
     /// The id of the entry to display
@@ -129,6 +119,33 @@ struct KanidmdParser {
 
     #[clap(flatten)]
     kanidmd_options: kanidm_proto::cli::KanidmdCli,
+}
+
+#[derive(Debug, Subcommand)]
+enum ScriptingCommand {
+    /// Recover an account's password
+    RecoverAccount {
+        #[clap(value_parser)]
+        /// The account name to recover credentials for.
+        name: String,
+    },
+    /// Backup
+    Backup {
+        /// The path to backup to. If not set, defaults to stdout.
+        path: Option<PathBuf>
+    },
+    /// Initiate a server reload.
+    Reload,
+    /// Load the server config and check services are listening
+    #[clap(name = "healthcheck")]
+    HealthCheck {
+        /// Disable TLS verification
+        #[clap(short, long, action)]
+        verify_tls: bool,
+        /// Check the 'origin' URL from the server configuration file, instead of the 'address'
+        #[clap(short = 'O', long, action)]
+        check_origin: bool,
+    }
 }
 
 // The main command parser for kanidmd
@@ -191,11 +208,14 @@ enum KanidmdOpt {
         commands: DomainSettingsCmds,
     },
 
-    /// Load the server config and check services are listening
-    #[clap(name = "healthcheck")]
-    HealthCheck(HealthCheckArgs),
-
     /// Print the program version and exit
     #[clap(name = "version")]
     Version,
+
+    /// A dedicated scripting interface that has machine parsable input/outputs.
+    #[clap(name = "scripting")]
+    Scripting {
+        #[clap(subcommand)]
+        command: ScriptingCommand
+    }
 }

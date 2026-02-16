@@ -1,0 +1,30 @@
+# flake8: noqa
+
+# import apis into api package
+from kanidm_openapi_client.api.account_api import AccountApi
+from kanidm_openapi_client.api.auth_api import AuthApi
+from kanidm_openapi_client.api.credential_api import CredentialApi
+from kanidm_openapi_client.api.debug_api import DebugApi
+from kanidm_openapi_client.api.domain_api import DomainApi
+from kanidm_openapi_client.api.group_api import GroupApi
+from kanidm_openapi_client.api.group_attr_api import GroupAttrApi
+from kanidm_openapi_client.api.group_unix_api import GroupUnixApi
+from kanidm_openapi_client.api.jwk_api import JwkApi
+from kanidm_openapi_client.api.oauth2_api import Oauth2Api
+from kanidm_openapi_client.api.person_api import PersonApi
+from kanidm_openapi_client.api.person_attr_api import PersonAttrApi
+from kanidm_openapi_client.api.person_certificate_api import PersonCertificateApi
+from kanidm_openapi_client.api.person_credential_api import PersonCredentialApi
+from kanidm_openapi_client.api.person_radius_api import PersonRadiusApi
+from kanidm_openapi_client.api.person_ssh_pubkeys_api import PersonSshPubkeysApi
+from kanidm_openapi_client.api.person_unix_api import PersonUnixApi
+from kanidm_openapi_client.api.raw_api import RawApi
+from kanidm_openapi_client.api.recycle_bin_api import RecycleBinApi
+from kanidm_openapi_client.api.schema_api import SchemaApi
+from kanidm_openapi_client.api.scim_api import ScimApi
+from kanidm_openapi_client.api.self_api import SelfApi
+from kanidm_openapi_client.api.service_account_api import ServiceAccountApi
+from kanidm_openapi_client.api.sync_account_api import SyncAccountApi
+from kanidm_openapi_client.api.system_api import SystemApi
+from kanidm_openapi_client.api.ui_api import UiApi
+

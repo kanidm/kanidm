@@ -21,6 +21,7 @@ struct DaemonClientBlockingInner {
     stream: UnixStream,
     codec: ClientCodec,
     default_timeout: u64,
+    reconnect: bool,
 }
 
 impl From<UnixStream> for DaemonClientBlocking {
@@ -30,6 +31,7 @@ impl From<UnixStream> for DaemonClientBlocking {
                 stream,
                 codec: ClientCodec::default(),
                 default_timeout: DEFAULT_CONN_TIMEOUT,
+                reconnect: false,
             })),
         }
     }
@@ -66,6 +68,7 @@ impl DaemonClientBlocking {
                 stream,
                 codec: ClientCodec::default(),
                 default_timeout,
+                reconnect: false,
             })),
         })
     }
@@ -80,7 +83,30 @@ impl DaemonClientBlocking {
             Box::new(err)
         })?;
 
-        guard.call_and_wait(req, timeout)
+        if guard.reconnect {
+            let peer_addr = guard.stream.peer_addr().map_err(|err| {
+                error!(
+                    ?err,
+                    "critical, stream has no peer address, unable to reconnect!!!"
+                );
+                Box::new(err)
+            })?;
+
+            let mut new_stream = UnixStream::connect_addr(&peer_addr).map_err(|err| {
+                error!(?err, ?peer_addr, "Unix socket stream setup error",);
+                Box::new(err)
+            })?;
+
+            debug!("Reconnection complete.");
+
+            std::mem::swap(&mut guard.stream, &mut new_stream);
+            guard.reconnect = false;
+        }
+
+        guard.call_and_wait(req, timeout).inspect_err(|_| {
+            debug!("error occured during communication, will reconnect ...");
+            guard.reconnect = true;
+        })
     }
 }
 
@@ -190,6 +216,7 @@ impl DaemonClientBlockingInner {
                 Err(err) if err.kind() == ErrorKind::WouldBlock => {
                     warn!("read from UDS would block, try again.");
                     // std::thread::sleep(Duration::from_millis(1));
+                    std::thread::yield_now();
                     continue;
                 }
                 Err(err) => {

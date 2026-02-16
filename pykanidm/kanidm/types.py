@@ -1,4 +1,4 @@
-""" type objects """
+"""type objects"""
 
 # pylint: disable=too-few-public-methods
 # ^ disabling this because pydantic models don't have public methods
@@ -161,8 +161,8 @@ class KanidmClientConfig(BaseModel):
 
     auth_token: Optional[str] = None
 
-    verify_hostnames: bool = True
-    verify_certificate: bool = True
+    verify_hostnames: bool = Field(True)
+    verify_certificate: bool = Field(True)
     ca_path: Optional[str] = Field(default=None)
     verify_ca: bool = True
 

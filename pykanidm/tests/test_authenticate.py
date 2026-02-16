@@ -28,7 +28,7 @@ async def test_auth_init(client_configfile: KanidmClient) -> None:
     username = client_configfile.config.username
 
     if username is None:
-        raise pytest.skip("Can't run auth test without a username/password")  # type: ignore[call-non-callable]
+        raise pytest.skip("Can't run auth test without a username/password")
     result = await client_configfile.auth_init(username)
     print(f"{result=}")
     print(result.model_dump_json())
@@ -176,22 +176,3 @@ async def test_authenticate_with_token(client_configfile: KanidmClient) -> None:
 
     tokens = TokenStore.model_validate({})
     tokens.load()
-
-    # TODO: make this actually work now instances are a thing
-
-    # if test_username not in tokens:
-    #     print(f"Can't find {test_username} user in token store")
-    #     raise pytest.skip(f"Can't find {test_username} user in token store")
-    # test_token: str = tokens[test_username]
-    # if not await client_configfile.check_token_valid(test_token):
-    #     print(f"Token for {test_username} isn't valid")
-    #     pytest.skip(f"Token for {test_username} isn't valid")
-    # else:
-    #     print("Token was noted as valid, so auth works!")
-
-    # # tests the "we set a token and well it works."
-    # client_configfile.config.auth_token = tokens[test_username]
-    # result = await client_configfile.call_get("/v1/self")
-    # print(result)
-
-    # assert result.status_code == 200

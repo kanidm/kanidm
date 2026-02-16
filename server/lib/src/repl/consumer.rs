@@ -372,11 +372,11 @@ impl QueryServerWriteTransaction<'_> {
         ctx_meta_entries: Vec<ReplIncrementalEntryV1>,
         ctx_entries: Vec<ReplIncrementalEntryV1>,
     ) -> Result<ConsumerState, OperationError> {
-        if ctx_domain_version < DOMAIN_MIN_LEVEL {
-            error!("Unable to proceed with consumer incremental - incoming domain level is lower than our minimum supported level. {} < {}", ctx_domain_version, DOMAIN_MIN_LEVEL);
+        if ctx_domain_version < DOMAIN_MINIMUM_REPLICATION_LEVEL {
+            error!("Unable to proceed with consumer incremental - incoming domain level is lower than our minimum supported level. {} < {}", ctx_domain_version, DOMAIN_MINIMUM_REPLICATION_LEVEL);
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
-        } else if ctx_domain_version > DOMAIN_MAX_LEVEL {
-            error!("Unable to proceed with consumer incremental - incoming domain level is greater than our maximum supported level. {} > {}", ctx_domain_version, DOMAIN_MAX_LEVEL);
+        } else if ctx_domain_version > DOMAIN_MAXIMUM_REPLICATION_LEVEL {
+            error!("Unable to proceed with consumer incremental - incoming domain level is greater than our maximum supported level. {} > {}", ctx_domain_version, DOMAIN_MAXIMUM_REPLICATION_LEVEL);
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
         };
 
@@ -582,11 +582,11 @@ impl QueryServerWriteTransaction<'_> {
         // if domain_version >= min_support ...
         let current_devel_flag = option_env!("KANIDM_PRE_RELEASE").is_some();
 
-        if ctx_domain_version < DOMAIN_MIN_LEVEL {
-            error!("Unable to proceed with consumer refresh - incoming domain level is lower than our minimum supported level. {} < {}", ctx_domain_version, DOMAIN_MIN_LEVEL);
+        if ctx_domain_version < DOMAIN_MINIMUM_REPLICATION_LEVEL {
+            error!("Unable to proceed with consumer refresh - incoming domain level is lower than our minimum supported level. {} < {}", ctx_domain_version, DOMAIN_MINIMUM_REPLICATION_LEVEL);
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
-        } else if ctx_domain_version > DOMAIN_MAX_LEVEL {
-            error!("Unable to proceed with consumer refresh - incoming domain level is greater than our maximum supported level. {} > {}", ctx_domain_version, DOMAIN_MAX_LEVEL);
+        } else if ctx_domain_version > DOMAIN_MAXIMUM_REPLICATION_LEVEL {
+            error!("Unable to proceed with consumer refresh - incoming domain level is greater than our maximum supported level. {} > {}", ctx_domain_version, DOMAIN_MAXIMUM_REPLICATION_LEVEL);
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
         } else if ctx_domain_devel && !current_devel_flag {
             error!("Unable to proceed with consumer refresh - incoming domain is from a development version while this server is a stable release.");

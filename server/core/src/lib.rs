@@ -20,6 +20,7 @@
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
+#![deny(clippy::indexing_slicing)]
 
 #[macro_use]
 extern crate tracing;
@@ -43,23 +44,32 @@ use crate::config::Configuration;
 use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::{JwsHs256Signer, JwsSigner};
+use crypto_glue::{
+    s256::{Sha256, Sha256Output},
+    traits::Digest,
+};
 use kanidm_proto::backup::BackupCompression;
 use kanidm_proto::config::ServerRole;
 use kanidm_proto::internal::OperationError;
+use kanidm_proto::scim_v1::client::ScimAssertGeneric;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
 use kanidmd_lib::idm::ldap::LdapServer;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
 use kanidmd_lib::value::CredentialType;
-#[cfg(not(target_family = "windows"))]
-use libc::umask;
+use regex::Regex;
+use std::collections::BTreeSet;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use tokio::sync::broadcast;
-use tokio::sync::Notify;
 use tokio::task;
+
+#[cfg(not(target_family = "windows"))]
+use libc::umask;
 
 // === internal setup helpers
 
@@ -340,7 +350,7 @@ pub fn dbscan_restore_quarantined_core(config: &Configuration, id: u64) {
     };
 }
 
-pub fn backup_server_core(config: &Configuration, dst_path: &Path) {
+pub fn backup_server_core(config: &Configuration, dst_path: Option<&Path>) {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
@@ -370,12 +380,41 @@ pub fn backup_server_core(config: &Configuration, dst_path: &Path) {
         None => BackupCompression::default(),
     };
 
-    match be_ro_txn.backup(dst_path, compression) {
-        Ok(_) => info!("Backup success!"),
-        Err(e) => {
-            error!("Backup failed: {:?}", e);
-            std::process::exit(1);
+    if let Some(dst_path) = dst_path {
+        if dst_path.exists() {
+            error!(
+                "backup file {} already exists, will not overwrite it.",
+                dst_path.display()
+            );
+            return;
         }
+
+        let output = match std::fs::File::create(dst_path) {
+            Ok(output) => output,
+            Err(err) => {
+                error!(?err, "File::create error creating {}", dst_path.display());
+                return;
+            }
+        };
+
+        match be_ro_txn.backup(output, compression) {
+            Ok(_) => info!("Backup success!"),
+            Err(e) => {
+                error!("Backup failed: {:?}", e);
+                std::process::exit(1);
+            }
+        };
+    } else {
+        // No path set, default to stdout
+        let stdout = std::io::stdout().lock();
+
+        match be_ro_txn.backup(stdout, compression) {
+            Ok(_) => info!("Backup success!"),
+            Err(e) => {
+                error!("Backup failed: {:?}", e);
+                std::process::exit(1);
+            }
+        };
     };
     // Let the txn abort, even on success.
 }
@@ -413,7 +452,20 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &Path) {
             return;
         }
     };
-    let r = be_wr_txn.restore(dst_path).and_then(|_| be_wr_txn.commit());
+
+    let compression = BackupCompression::identify_file(dst_path);
+
+    let input = match std::fs::File::open(dst_path) {
+        Ok(output) => output,
+        Err(err) => {
+            error!(?err, "File::open error reading {}", dst_path.display());
+            return;
+        }
+    };
+
+    let r = be_wr_txn
+        .restore(input, compression)
+        .and_then(|_| be_wr_txn.commit());
 
     if r.is_err() {
         error!("Failed to restore database: {:?}", r);
@@ -713,9 +765,144 @@ pub fn cert_generate_core(config: &Configuration) {
     info!("certificate generation complete");
 }
 
+static MIGRATION_PATH_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^\\d\\d-.*\\.h?json$").expect("Invalid SPN regex found")
+});
+
+struct ScimMigration {
+    path: PathBuf,
+    hash: Sha256Output,
+    assertions: ScimAssertGeneric,
+}
+
+#[instrument(
+    level = "info",
+    fields(uuid = ?eventid),
+    skip_all,
+)]
+async fn migration_apply(
+    eventid: Uuid,
+    server_write_ref: &'static QueryServerWriteV1,
+    migration_path: &Path,
+) {
+    let mut dir_ents = match tokio::fs::read_dir(migration_path).await {
+        Ok(dir_ents) => dir_ents,
+        Err(err) => {
+            error!(?err, "Unable to read migration directory.");
+            let diag = kanidm_lib_file_permissions::diagnose_path(migration_path);
+            info!(%diag);
+            return;
+        }
+    };
+
+    let mut migration_paths = Vec::with_capacity(8);
+
+    loop {
+        match dir_ents.next_entry().await {
+            Ok(Some(dir_ent)) => migration_paths.push(dir_ent.path()),
+            Ok(None) => {
+                // Complete,
+                break;
+            }
+            Err(err) => {
+                error!(?err, "Unable to read directory entries.");
+                return;
+            }
+        }
+    }
+
+    // Filter these.
+
+    let mut migration_paths: Vec<_> = migration_paths.into_iter()
+        .filter(|path| {
+            if !path.is_file() {
+                info!(path = %path.display(), "ignoring path that is not a file.");
+                return false;
+            }
+
+            let Some(file_name) = path.file_name().and_then(std::ffi::OsStr::to_str) else {
+                info!(path = %path.display(), "ignoring path that has no file name, or is not a valid utf-8 file name.");
+                return false;
+            };
+
+            if !MIGRATION_PATH_RE.is_match(file_name) {
+                info!(path = %path.display(), "ignoring file that does not match naming pattern.");
+                info!("expected pattern 'XX-NAME.json' where XX are two numbers, followed by a hypen, with the file extension .json");
+                return false;
+            }
+
+            true
+        })
+        .collect();
+
+    migration_paths.sort_unstable();
+    let mut migrations = Vec::with_capacity(migration_paths.len());
+
+    for migration_path in migration_paths {
+        info!(path = %migration_path.display(), "examining migration");
+
+        let migration_content = match tokio::fs::read(&migration_path).await {
+            Ok(bytes) => bytes,
+            Err(err) => {
+                error!(?err, "Unable to read migration - it will be ignored.");
+                let diag = kanidm_lib_file_permissions::diagnose_path(&migration_path);
+                info!(%diag);
+                continue;
+            }
+        };
+
+        // Is it valid json?
+        let assertions: ScimAssertGeneric = match serde_hjson::from_slice(&migration_content) {
+            Ok(assertions) => assertions,
+            Err(err) => {
+                error!(?err, path = %migration_path.display(), "Invalid JSON SCIM Assertion");
+                continue;
+            }
+        };
+
+        // Hash the content.
+        let mut hasher = Sha256::new();
+        hasher.update(&migration_content);
+        let migration_hash: Sha256Output = hasher.finalize();
+
+        migrations.push(ScimMigration {
+            path: migration_path,
+            hash: migration_hash,
+            assertions,
+        });
+    }
+
+    let mut migration_ids = BTreeSet::new();
+    for migration in &migrations {
+        // BTreeSet returns false on duplicate value insertion.
+        if !migration_ids.insert(migration.assertions.id) {
+            error!(path = %migration.path.display(), uuid = ?migration.assertions.id, "Duplicate migration UUID found, refusing to proceed!!! All migrations must have a unique ID!!!");
+            return;
+        }
+    }
+
+    // Okay, we're setup to go - apply them all. Note that we do these
+    // separately, each migration occurs in its own transaction.
+    for ScimMigration {
+        path,
+        hash,
+        assertions,
+    } in migrations
+    {
+        if let Err(err) = server_write_ref
+            .handle_scim_migration_apply(eventid, assertions, hash)
+            .await
+        {
+            error!(?err, path = %path.display(), "Failed to apply migration");
+        };
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum CoreAction {
     Shutdown,
+    Reload,
 }
 
 pub(crate) enum TaskName {
@@ -728,6 +915,7 @@ pub(crate) enum TaskName {
     LdapActor,
     Replication,
     TlsAcceptorReload,
+    MigrationReload,
 }
 
 impl Display for TaskName {
@@ -745,6 +933,7 @@ impl Display for TaskName {
                 TaskName::LdapActor => "LDAP Acceptor Actor",
                 TaskName::Replication => "Replication",
                 TaskName::TlsAcceptorReload => "TlsAcceptor Reload Monitor",
+                TaskName::MigrationReload => "Migration Reload Monitor",
             }
         )
     }
@@ -753,7 +942,6 @@ impl Display for TaskName {
 pub struct CoreHandle {
     clean_shutdown: bool,
     tx: broadcast::Sender<CoreAction>,
-    tls_acceptor_reload_notify: Arc<Notify>,
     /// This stores a name for the handle, and the handle itself so we can tell which failed/succeeded at the end.
     handles: Vec<(TaskName, task::JoinHandle<()>)>,
 }
@@ -779,8 +967,10 @@ impl CoreHandle {
         self.clean_shutdown = true;
     }
 
-    pub async fn tls_acceptor_reload(&mut self) {
-        self.tls_acceptor_reload_notify.notify_one()
+    pub async fn reload(&mut self) {
+        if self.tx.send(CoreAction::Reload).is_err() {
+            eprintln!("No receivers acked reload request.");
+        }
     }
 }
 
@@ -975,6 +1165,7 @@ pub async fn create_server_core(
                 Ok(action) = broadcast_rx.recv() => {
                     match action {
                         CoreAction::Shutdown => break,
+                        CoreAction::Reload => {},
                     }
                 }
             }
@@ -990,6 +1181,7 @@ pub async fn create_server_core(
                 Ok(action) = broadcast_rx.recv() => {
                     match action {
                         CoreAction::Shutdown => break,
+                        CoreAction::Reload => {},
                     }
                 }
                 audit_event = idms_audit.audit_rx().recv() => {
@@ -1009,11 +1201,47 @@ pub async fn create_server_core(
         info!("Stopped {}", TaskName::AuditdActor);
     });
 
+    // Run the migrations *once*, only in production though.
+    let migration_path = config
+        .migration_path
+        .clone()
+        .unwrap_or(PathBuf::from(env!("KANIDM_SERVER_MIGRATION_PATH")));
+
+    if config.integration_test_config.is_none() {
+        let eventid = Uuid::new_v4();
+        migration_apply(eventid, server_write_ref, migration_path.as_path()).await;
+    }
+
+    // Setup the Migration Reload Trigger.
+    let mut broadcast_rx = broadcast_tx.subscribe();
+    let migration_reload_handle = task::spawn(async move {
+        loop {
+            tokio::select! {
+                Ok(action) = broadcast_rx.recv() => {
+                    match action {
+                        CoreAction::Shutdown => break,
+                        CoreAction::Reload => {
+                            // Read the migrations.
+                            // Apply them.
+                            let eventid = Uuid::new_v4();
+                            migration_apply(
+                                eventid,
+                                server_write_ref,
+                                migration_path.as_path(),
+                            ).await;
+
+                            info!("Migration reload complete");
+                        },
+                    }
+                }
+            }
+        }
+        info!("Stopped {}", TaskName::MigrationReload);
+    });
+
     // Setup a TLS Acceptor Reload trigger.
 
     let mut broadcast_rx = broadcast_tx.subscribe();
-    let tls_acceptor_reload_notify = Arc::new(Notify::new());
-    let tls_accepter_reload_task_notify = tls_acceptor_reload_notify.clone();
     let tls_config = config.tls_config.clone();
 
     let (tls_acceptor_reload_tx, _tls_acceptor_reload_rx) = broadcast::channel(1);
@@ -1025,27 +1253,27 @@ pub async fn create_server_core(
                 Ok(action) = broadcast_rx.recv() => {
                     match action {
                         CoreAction::Shutdown => break,
-                    }
-                }
-                _ = tls_accepter_reload_task_notify.notified() => {
-                    let tls_acceptor = match crypto::setup_tls(&tls_config) {
-                        Ok(Some(tls_acc)) => tls_acc,
-                        Ok(None) => {
-                            warn!("TLS not configured, ignoring reload request.");
-                            continue;
-                        }
-                        Err(err) => {
-                            error!(?err, "Failed to configure and reload TLS acceptor");
-                            continue;
-                        }
-                    };
+                        CoreAction::Reload => {
+                            let tls_acceptor = match crypto::setup_tls(&tls_config) {
+                                Ok(Some(tls_acc)) => tls_acc,
+                                Ok(None) => {
+                                    warn!("TLS not configured, ignoring reload request.");
+                                    continue;
+                                }
+                                Err(err) => {
+                                    error!(?err, "Failed to configure and reload TLS acceptor");
+                                    continue;
+                                }
+                            };
 
-                    // We don't log here as the receivers will notify when they have completed
-                    // the reload.
-                    if tls_acceptor_reload_tx_c.send(tls_acceptor).is_err() {
-                        error!("tls acceptor did not accept the reload, the server may have failed!");
-                    };
-                    info!("tls acceptor reload notification sent");
+                            // We don't log here as the receivers will notify when they have completed
+                            // the reload.
+                            if tls_acceptor_reload_tx_c.send(tls_acceptor).is_err() {
+                                error!("TLS acceptor did not accept the reload, the server may have failed!");
+                            };
+                            info!("TLS acceptor reload notification sent");
+                        },
+                    }
                 }
             }
         }
@@ -1146,13 +1374,13 @@ pub async fn create_server_core(
 
     // If we are NOT in integration test mode, start the admin socket now
     let maybe_admin_sock_handle = if config.integration_test_config.is_none() {
-        let broadcast_rx = broadcast_tx.subscribe();
+        let broadcast_tx_ = broadcast_tx.clone();
 
         let admin_handle = AdminActor::create_admin_sock(
             config.adminbindpath.as_str(),
             server_write_ref,
             server_read_ref,
-            broadcast_rx,
+            broadcast_tx_,
             maybe_repl_ctrl_tx,
         )
         .await?;
@@ -1167,6 +1395,7 @@ pub async fn create_server_core(
         (TaskName::DelayedActionActor, delayed_handle),
         (TaskName::AuditdActor, auditd_handle),
         (TaskName::TlsAcceptorReload, tls_acceptor_reload_handle),
+        (TaskName::MigrationReload, migration_reload_handle),
     ];
 
     if let Some(backup_handle) = maybe_backup_handle {
@@ -1195,7 +1424,6 @@ pub async fn create_server_core(
 
     Ok(CoreHandle {
         clean_shutdown: false,
-        tls_acceptor_reload_notify,
         tx: broadcast_tx,
         handles,
     })

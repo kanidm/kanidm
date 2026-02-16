@@ -1,12 +1,7 @@
+use crate::common::prompt_for_username_get_username;
 use crate::common::ToClientError;
-use std::cmp::Reverse;
-use std::collections::BTreeMap;
-use std::fs::{create_dir, File};
-use std::io::{self, BufReader, BufWriter, ErrorKind, IsTerminal, Write};
-use std::path::PathBuf;
-use std::str::FromStr;
-
 use crate::OpType;
+use crate::{KanidmClientParser, LoginOpt, LogoutOpt, SessionOpt};
 use compact_jwt::{
     traits::JwsVerifiable, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError,
 };
@@ -15,15 +10,20 @@ use dialoguer::Select;
 use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::internal::UserAuthToken;
 use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState};
-#[cfg(target_family = "unix")]
-use libc::umask;
+use serde::{Deserialize, Serialize};
+use std::cmp::Reverse;
+use std::collections::BTreeMap;
+use std::fs::{create_dir, File};
+use std::io::{self, BufReader, BufWriter, ErrorKind, IsTerminal, Write};
+use std::path::PathBuf;
+use std::str::FromStr;
 use webauthn_authenticator_rs::prelude::RequestChallengeResponse;
 
-use crate::common::prompt_for_username_get_username;
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 use crate::webauthn::get_authenticator;
-use crate::{KanidmClientParser, LoginOpt, LogoutOpt, SessionOpt};
 
-use serde::{Deserialize, Serialize};
+#[cfg(target_family = "unix")]
+use libc::umask;
 
 static TOKEN_DIR: &str = "~/.cache";
 
@@ -295,6 +295,16 @@ async fn do_totp(client: &mut KanidmClient) -> Result<AuthResponse, ClientError>
     client.auth_step_totp(totp).await
 }
 
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+async fn do_passkey(
+    _client: &mut KanidmClient,
+    _pkr: RequestChallengeResponse,
+) -> Result<AuthResponse, ClientError> {
+    eprintln!("Passkey authentication is not supported on this platform");
+    return Err(ClientError::SystemError);
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 async fn do_passkey(
     client: &mut KanidmClient,
     pkr: RequestChallengeResponse,
@@ -315,6 +325,16 @@ async fn do_passkey(
     client.auth_step_passkey_complete(auth).await
 }
 
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+async fn do_securitykey(
+    _client: &mut KanidmClient,
+    _pkr: RequestChallengeResponse,
+) -> Result<AuthResponse, ClientError> {
+    eprintln!("Security Key authentication is not supported on this platform");
+    return Err(ClientError::SystemError);
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 async fn do_securitykey(
     client: &mut KanidmClient,
     pkr: RequestChallengeResponse,
@@ -596,7 +616,9 @@ impl LogoutOpt {
                     // There are no session tokens, so return a success.
                     std::process::exit(0);
                 }
-                Err(ToClientError::NeedReauth(_, _)) | Err(ToClientError::Other) => {
+                Err(ToClientError::NeedReauth(_, _))
+                | Err(ToClientError::ReadOnly)
+                | Err(ToClientError::Other) => {
                     // This can only occur in bad cases, so fail.
                     std::process::exit(1);
                 }
@@ -716,6 +738,8 @@ impl SessionOpt {
                     std::process::exit(1);
                 };
 
+                #[allow(clippy::disallowed_methods)]
+                // Allowed as this should represent the current time from the callers machine.
                 let now = time::OffsetDateTime::now_utc();
                 let change = token_instance.cleanup(now);
 

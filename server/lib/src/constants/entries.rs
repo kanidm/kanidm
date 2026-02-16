@@ -27,6 +27,7 @@ pub enum EntryClass {
     Account,
     AccountPolicy,
     Application,
+    AssertionNonce,
     AttributeType,
     Builtin,
     Class,
@@ -43,6 +44,7 @@ pub enum EntryClass {
     KeyObject,
     KeyObjectHkdfS256,
     KeyObjectJwtEs256,
+    KeyObjectJwtHs256,
     KeyObjectJwtRs256,
     KeyObjectJweA128GCM,
     KeyObjectInternal,
@@ -94,6 +96,7 @@ impl From<EntryClass> for &'static str {
             EntryClass::Account => ENTRYCLASS_ACCOUNT,
             EntryClass::AccountPolicy => ENTRYCLASS_ACCOUNT_POLICY,
             EntryClass::Application => ENTRYCLASS_APPLICATION,
+            EntryClass::AssertionNonce => ENTRYCLASS_ASSERTION_NONCE,
             EntryClass::AttributeType => ENTRYCLASS_ATTRIBUTE_TYPE,
             EntryClass::Builtin => ENTRYCLASS_BUILTIN,
             EntryClass::Class => ENTRYCLASS_CLASS,
@@ -110,6 +113,7 @@ impl From<EntryClass> for &'static str {
             EntryClass::KeyObject => ENTRYCLASS_KEY_OBJECT,
             EntryClass::KeyObjectHkdfS256 => ENTRYCLASS_KEY_OBJECT_HKDF_S256,
             EntryClass::KeyObjectJwtEs256 => ENTRYCLASS_KEY_OBJECT_JWT_ES256,
+            EntryClass::KeyObjectJwtHs256 => ENTRYCLASS_KEY_OBJECT_JWT_HS256,
             EntryClass::KeyObjectJwtRs256 => ENTRYCLASS_KEY_OBJECT_JWT_RS256,
             EntryClass::KeyObjectJweA128GCM => ENTRYCLASS_KEY_OBJECT_JWE_A128GCM,
             EntryClass::KeyObjectInternal => ENTRYCLASS_KEY_OBJECT_INTERNAL,
@@ -217,11 +221,13 @@ impl EntryClass {
 
 // ============ TEST DATA ============
 #[cfg(test)]
-use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::entry::{entry_init_fn, EntryInitNew};
+#[cfg(test)]
+use std::sync::LazyLock;
 
 #[cfg(test)]
-lazy_static! {
-    pub static ref E_TESTPERSON_1: EntryInitNew = entry_init!(
+pub static E_TESTPERSON_1: LazyLock<EntryInitNew> = LazyLock::new(|| {
+    entry_init_fn([
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::Account.to_value()),
         (Attribute::Class, EntryClass::Person.to_value()),
@@ -229,10 +235,13 @@ lazy_static! {
         (Attribute::DisplayName, Value::new_utf8s("Test Person 1")),
         (
             Attribute::Uuid,
-            Value::Uuid(super::uuids::UUID_TESTPERSON_1)
-        )
-    );
-    pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
+            Value::Uuid(super::uuids::UUID_TESTPERSON_1),
+        ),
+    ])
+});
+#[cfg(test)]
+pub static E_TESTPERSON_2: LazyLock<EntryInitNew> = LazyLock::new(|| {
+    entry_init_fn([
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::Account.to_value()),
         (Attribute::Class, EntryClass::Person.to_value()),
@@ -240,7 +249,7 @@ lazy_static! {
         (Attribute::DisplayName, Value::new_utf8s("Test Person 2")),
         (
             Attribute::Uuid,
-            Value::Uuid(super::uuids::UUID_TESTPERSON_2)
-        )
-    );
-}
+            Value::Uuid(super::uuids::UUID_TESTPERSON_2),
+        ),
+    ])
+});

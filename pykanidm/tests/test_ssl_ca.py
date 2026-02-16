@@ -13,6 +13,11 @@ import pytest
 from kanidm import KanidmClient
 
 
+async def _check_token_valid_with_cleanup(client: KanidmClient) -> bool:
+    async with client.openapi_client:
+        return await client.check_token_valid()
+
+
 @pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_valid() -> None:
@@ -24,9 +29,8 @@ async def test_ssl_valid() -> None:
         uri=url,
     )
 
-    result = await client.call_get("/")
-    assert result.content
-    print(f"{result.status_code=}")
+    result = await _check_token_valid_with_cleanup(client)
+    assert result is False
 
 
 @pytest.mark.network
@@ -41,7 +45,7 @@ async def test_ssl_self_signed() -> None:
         uri=url,
     )
     with pytest.raises(aiohttp.client_exceptions.ClientConnectorCertificateError):
-        await client.call_get("/")
+        await _check_token_valid_with_cleanup(client)
 
 
 @pytest.mark.network
@@ -53,8 +57,8 @@ async def test_ssl_self_signed_with_verify() -> None:
         uri="https://self-signed.badssl.com",
         verify_certificate=False,
     )
-    result = await client.call_get("/")
-    assert result.content
+    result = await _check_token_valid_with_cleanup(client)
+    assert result is False
 
 
 @pytest.mark.network
@@ -66,8 +70,8 @@ async def test_ssl_self_signed_no_verify_certificate() -> None:
         uri="https://self-signed.badssl.com",
         verify_certificate=False,
     )
-    result = await client.call_get("/")
-    assert result.content
+    result = await _check_token_valid_with_cleanup(client)
+    assert result is False
 
 
 @pytest.mark.network
@@ -80,8 +84,7 @@ async def test_ssl_wrong_hostname_throws_error() -> None:
         aiohttp.client_exceptions.ClientConnectorCertificateError,
         match="Cannot connect to host wrong.host.badssl.com:443",
     ):
-        result = await client.call_get("/")
-        assert result.content
+        await _check_token_valid_with_cleanup(client)
 
 
 @pytest.mark.network
@@ -93,8 +96,8 @@ async def test_ssl_wrong_hostname_dont_verify_hostnames() -> None:
         uri="https://wrong.host.badssl.com/",
         verify_hostnames=False,
     )
-    result = await client.call_get("/")
-    assert result.content
+    result = await _check_token_valid_with_cleanup(client)
+    assert result is False
 
 
 @pytest.mark.network
@@ -107,31 +110,28 @@ async def test_ssl_wrong_hostname_verify_certificate() -> None:
         verify_hostnames=False,
         verify_certificate=False,
     )
-    result = await client.call_get("/")
-    assert result.content
+    result = await _check_token_valid_with_cleanup(client)
+    assert result is False
 
 
 @pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_revoked() -> None:
     """tests with a revoked certificate"""
-    logging.basicConfig(level=logging.DEBUG, force=True)
 
-    # TODO: I can't work out why this won't work but.. it's an issue with upstream
-    # with pytest.raises(aiohttp.ClientConnectorCertificateError):
     client = KanidmClient(
         uri="https://revoked.badssl.com/",
         verify_certificate=True,
     )
-    result = await client.call_get("/")
-    assert result.content
+    result = await _check_token_valid_with_cleanup(client)
+    assert result is False
 
     client = KanidmClient(
         uri="https://revoked.badssl.com/",
         verify_certificate=False,
     )
-    result = await client.call_get("/")
-    assert result.content
+    result = await _check_token_valid_with_cleanup(client)
+    assert result is False
 
 
 @pytest.mark.network
@@ -146,8 +146,7 @@ async def test_ssl_expired() -> None:
         aiohttp.client_exceptions.ClientConnectorCertificateError,
         match="certificate verify failed: certificate has expired",
     ):
-        result = await client.call_get("/")
-        assert result.content
+        await _check_token_valid_with_cleanup(client)
 
 
 @pytest.mark.network
@@ -159,8 +158,8 @@ async def test_ssl_expired_ignore() -> None:
         uri="https://expired.badssl.com/",
         verify_certificate=False,
     )
-    result = await client.call_get("/")
-    assert result.content
+    result = await _check_token_valid_with_cleanup(client)
+    assert result is False
 
 
 @pytest.mark.network
@@ -171,12 +170,8 @@ async def test_ssl_untrusted_root_throws() -> None:
     client = KanidmClient(
         uri="https://untrusted-root.badssl.com/",
     )
-    with pytest.raises(
-        SSLCertVerificationError,
-        match="certificate verify failed: self.?signed certificate in certificate chain",
-    ):
-        result = await client.call_get("/")
-        assert result.content
+    with pytest.raises((SSLCertVerificationError, aiohttp.client_exceptions.ClientConnectorCertificateError)):
+        await _check_token_valid_with_cleanup(client)
 
 
 @pytest.mark.network
@@ -197,5 +192,4 @@ async def test_ssl_untrusted_root_configured() -> None:
         aiohttp.client_exceptions.ClientConnectorCertificateError,
         match="certificate verify failed: self.?signed certificate in certificate chain",
     ):
-        result = await client.call_get("/")
-        assert result.content
+        await _check_token_valid_with_cleanup(client)

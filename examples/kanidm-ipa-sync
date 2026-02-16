@@ -20,12 +20,27 @@ ipa_uri = "ldaps://specific-server.ipa.dev.kanidm.com"
 # Path to the IPA CA certificate in PEM format. This can be found on an IPA server
 # in the file `/etc/ipa/ca.crt`
 ipa_ca = "/path/to/ipa-ca.pem"
+
+# In some cases you may need to disable TLS certificate validation. This is not secure
+# and you should always opt to have certificate validation if possible.
+# ipa_verify_ca = true
+
 # The DN of an account with content sync rights. By default cn=Directory Manager has
 # this access.
 ipa_sync_dn = "cn=Directory Manager"
 ipa_sync_pw = "directory manager password"
 # The basedn to examine.
 ipa_sync_base_dn = "dc=ipa,dc=dev,dc=kanidm,dc=com"
+
+# Kanidm rejects invalid data by default to ensure you are aware of and can
+# intervene when an error occurs. However, in some cases flaws in FreeIPA may
+# cause some passwords to be in formats that Kanidm can not import. In these
+# cases it *can* optionally be valid to proceed with the synchronisation, and
+# treat the account as having 'no password'.
+# Setting this value to "true" will cause the sync tool to warn on invalid
+# password data, but proceed to sync the entry with no password instead.
+#
+# skip_invalid_password_formats = false
 
 # By default Kanidm separates the primary account password and credentials from
 # the unix credential. This allows the unix password to be isolated from the

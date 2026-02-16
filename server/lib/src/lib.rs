@@ -19,6 +19,7 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 #![deny(clippy::disallowed_types)]
 #![deny(clippy::manual_let_else)]
+#![deny(clippy::indexing_slicing)]
 #![allow(clippy::unreachable)]
 
 #[cfg(all(test, not(any(feature = "dhat-heap", target_os = "illumos"))))]
@@ -34,8 +35,6 @@ extern crate rusqlite;
 
 #[macro_use]
 extern crate tracing;
-#[macro_use]
-extern crate lazy_static;
 
 // #[macro_use]
 // extern crate sketching;
@@ -72,27 +71,17 @@ pub mod testkit;
 
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
+// Clippy is wrong, these are used. Hush little clippy.
+#[allow(unused_imports)]
 pub mod prelude {
-    pub use kanidm_proto::attribute::{AttrString, Attribute};
-    pub use kanidm_proto::constants::*;
-    pub use kanidm_proto::internal::{ConsistencyError, OperationError, PluginError, SchemaError};
-    pub use kanidm_proto::scim_v1::JsonValue;
-    pub use sketching::{
-        admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
-        filter_warn, perf_trace, request_error, request_info, request_trace, request_warn,
-        security_access, security_critical, security_debug, security_error, security_info,
-        tagged_event, EventTag,
-    };
-    pub use std::time::Duration;
-    pub use url::Url;
-    pub use uuid::{uuid, Uuid};
-
+    pub(crate) use crate::be::Limits;
+    pub(crate) use crate::constants::uuids::*;
     pub use crate::constants::*;
-    pub use crate::entry::{
-        Entry, EntryCommitted, EntryIncrementalCommitted, EntryIncrementalNew, EntryInit,
-        EntryInitNew, EntryInvalid, EntryInvalidCommitted, EntryInvalidNew, EntryNew, EntryReduced,
-        EntryReducedCommitted, EntryRefresh, EntryRefreshNew, EntrySealed, EntrySealedCommitted,
-        EntrySealedNew, EntryTuple, EntryValid,
+    pub(crate) use crate::entry::{
+        entry_init_fn, Entry, EntryCommitted, EntryIncrementalCommitted, EntryIncrementalNew,
+        EntryInit, EntryInitNew, EntryInvalid, EntryInvalidCommitted, EntryInvalidNew, EntryNew,
+        EntryReduced, EntryReducedCommitted, EntryRefresh, EntryRefreshNew, EntrySealed,
+        EntrySealedCommitted, EntrySealedNew, EntryTuple, EntryValid,
     };
     pub use crate::event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, SearchEvent};
     pub use crate::filter::{
@@ -105,6 +94,7 @@ pub mod prelude {
         m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
     };
     pub use crate::repl::cid::Cid;
+    pub use crate::schema::{SchemaAttribute, SchemaClass};
     pub use crate::server::access::AccessControlsTransaction;
     pub use crate::server::batch_modify::BatchModifyEvent;
     pub use crate::server::identity::{
@@ -118,21 +108,31 @@ pub mod prelude {
     pub use crate::value::{
         ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value,
     };
-
-    pub use time::format_description::well_known::Rfc3339;
-
-    #[cfg(test)]
-    pub use kanidmd_lib_macros::*;
-
     pub(crate) use crate::valueset::{
-        ValueSet, ValueSetBool, ValueSetCid, ValueSetIutf8, ValueSetRefer, ValueSetSyntax,
-        ValueSetT, ValueSetUtf8, ValueSetUuid,
+        ValueSet, ValueSetBool, ValueSetCid, ValueSetIname, ValueSetIutf8, ValueSetRefer,
+        ValueSetSha256, ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
     };
-
+    pub use kanidm_proto::attribute::{AttrString, Attribute};
+    pub use kanidm_proto::constants::*;
+    pub use kanidm_proto::internal::{
+        ConsistencyError, Filter as ProtoFilter, OperationError, PluginError, SchemaError,
+    };
+    pub use kanidm_proto::scim_v1::JsonValue;
     pub(crate) use kanidm_proto::scim_v1::{
         server::{ScimEntryKanidm, ScimValueKanidm},
         ScimEntryHeader,
     };
-
-    pub(crate) use crate::be::Limits;
+    #[cfg(test)]
+    pub use kanidmd_lib_macros::*;
+    pub use sketching::{
+        admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
+        filter_warn, perf_trace, request_error, request_info, request_trace, request_warn,
+        security_access, security_critical, security_debug, security_error, security_info,
+        tagged_event, EventTag,
+    };
+    pub(crate) use std::sync::LazyLock;
+    pub use std::time::Duration;
+    pub use time::format_description::well_known::Rfc3339;
+    pub use url::Url;
+    pub use uuid::{uuid, Uuid};
 }

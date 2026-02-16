@@ -1937,6 +1937,21 @@ impl SchemaWriteTransaction<'_> {
                 syntax: SyntaxType::Utf8String,
             },
         );
+        self.attributes.insert(
+            Attribute::HomeDirectory,
+            SchemaAttribute {
+                name: Attribute::HomeDirectory,
+                uuid: UUID_SCHEMA_ATTR_HOME_DIRECTORY,
+                description: String::from("An LDAP Compatible homeDirectory."),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                sync_allowed: false,
+                replicated: Replicated::False,
+                indexed: false,
+                syntax: SyntaxType::Utf8String,
+            },
+        );
         // end LDAP masking phantoms
 
         // THIS IS FOR SYSTEM CRITICAL INTERNAL SCHEMA ONLY
@@ -2000,7 +2015,12 @@ impl SchemaWriteTransaction<'_> {
                 name: EntryClass::Object.into(),
                 uuid: UUID_SCHEMA_CLASS_OBJECT,
                 description: String::from("A system created class that all objects must contain"),
-                systemmay: vec![Attribute::Description, Attribute::EntryManagedBy],
+                systemmay: vec![
+                    Attribute::Description,
+                    Attribute::EntryManagedBy,
+                    Attribute::MemberOf,
+                    Attribute::DirectMemberOf,
+                ],
                 systemmust: vec![
                     Attribute::Class,
                     Attribute::Uuid,
@@ -2025,9 +2045,8 @@ impl SchemaWriteTransaction<'_> {
                 name: EntryClass::MemberOf.into(),
                 uuid: UUID_SCHEMA_CLASS_MEMBEROF,
                 description: String::from(
-                    "Class that is dynamically added to recipients of memberof or directmemberof",
+                    "Class that is dynamically added to recipients of memberof or directmemberof. TO BE REMOVED.",
                 ),
-                systemmay: vec![Attribute::MemberOf, Attribute::DirectMemberOf],
                 ..Default::default()
             },
         );
@@ -2273,7 +2292,6 @@ impl Schema {
             unique_cache: CowCell::new(Vec::with_capacity(0)),
             ref_cache: CowCell::new(HashMap::with_capacity(64)),
         };
-        // let mut sw = task::block_on(s.write());
         let mut sw = s.write();
         let r1 = sw.generate_in_memory();
         debug_assert!(r1.is_ok());

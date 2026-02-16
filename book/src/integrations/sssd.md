@@ -72,6 +72,7 @@ id_provider = ldap
 auth_provider = ldap
 access_provider = ldap
 chpass_provider = ldap
+sudo_provider = none
 ldap_schema = rfc2307bis
 ldap_search_base = o=idm
 

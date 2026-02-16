@@ -77,34 +77,57 @@ pub const DOMAIN_LEVEL_13: DomainVersion = 13;
 /// Deprecated as of 1.12.0
 pub const DOMAIN_LEVEL_14: DomainVersion = 14;
 
+/// Domain Level introduced with 1.11.0.
+/// Deprecated as of 1.13.0
+pub const DOMAIN_LEVEL_15: DomainVersion = 15;
+
 // The target supported domain functional level. During development this is
 // the NEXT level that users will upgrade too. In other words if we are
 // developing 1.6.0-dev, then we need to set TGT_LEVEL to 10 which is
 // the corresponding level.
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_13;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_14;
 // The current patch level if any out of band fixes are required.
 pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_2;
 
 // The maximum supported domain functional level. This generally
 // represents a *future* version of the server which doesn't exist
 // yet.
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_14;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_15;
 
-// The minimum level that we can re-migrate from. Remember, this
-// means we should be able to move from min level to the next level
-// and generally represents the absolute oldest level we can create
-// in a test case.
-pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_9;
+// This is the LOWEST level of database we can recreate. This is important for testing,
+// but we don't actually expect it to be used.
+pub const DOMAIN_MIN_CREATION_LEVEL: DomainVersion = DOMAIN_LEVEL_10;
 
-// How many domain levels we can upgrade through in a single operation.
-pub const DOMAIN_MIGRATION_SKIPS: DomainVersion = 1;
-
-// The minimum supported domain functional level (for replication)
-pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
 // The previous releases domain functional level
 pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL - 1;
 // The target domain functional level for the SUBSEQUENT release/dev cycle.
 pub const DOMAIN_TGT_NEXT_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL + 1;
+
+// What domain level is the "one before" we could do a valid upgrade. We need to be able
+// to create this database, then attempt (and fail) to upgrade from it during tests. So
+// that technically means we have to keep one-extra migration level.
+pub const DOMAIN_MIGRATION_FROM_INVALID: DomainVersion = DOMAIN_MIN_CREATION_LEVEL;
+
+// What is the MINIMUM domain level we *could* allow migration from? This has to be
+// one greater than our minimum so we can test this, and in releases it's one version prior.
+#[cfg(test)]
+pub const DOMAIN_MIGRATION_FROM_MIN: DomainVersion = DOMAIN_MIN_CREATION_LEVEL + 1;
+#[cfg(not(test))]
+pub const DOMAIN_MIGRATION_FROM_MIN: DomainVersion = DOMAIN_PREVIOUS_TGT_LEVEL;
+
+// The minimum level that we can re-migrate from. Remember, this
+// means we should be able to move from min level to the next level. It doesn't mean
+// we have to be able to *create* this level. Generally this means it's "off by one"
+// to migration-from-min.
+#[cfg(test)]
+pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_MIN_CREATION_LEVEL;
+#[cfg(not(test))]
+pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_PREVIOUS_TGT_LEVEL - 1;
+
+// The minimum supported domain functional level (for replication)
+pub const DOMAIN_MINIMUM_REPLICATION_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
+// The minimum supported domain functional level (for replication)
+pub const DOMAIN_MAXIMUM_REPLICATION_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
 
 // On test builds define to 60 seconds
 #[cfg(test)]

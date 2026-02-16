@@ -49,7 +49,6 @@ Kanidm will expose its OAuth2 APIs at the following URLs, substituting `:client_
 
 </dt>
 
-
 `https://idm.example.com/oauth2/openid/:client_id:/.well-known/openid-configuration`
 
 This document includes all the URLs and attributes an app needs to be able to authenticate using OIDC with Kanidm,
@@ -235,7 +234,7 @@ kanidm system oauth2 update-scope-map nextcloud nextcloud_users email profile op
 >
 > In addition Kanidm supports some vendor specific scopes that can include additional claims.
 >
-> - **ssh_publickeys** - array of ssh_publickey of the user
+> - **ssh_publickeys** - ssh_publickeys (an array of the user's keys)
 
 <!-- this is just to split the templates up -->
 
@@ -382,8 +381,8 @@ Supplemental URLs are shown in the OAuth2 client configuration in the `oauth2_rs
 
 ## Short names
 
-By default Kanidm will use SPN as a display username for users. In some cases you may want to use the
-user's `name` instead. To change this setting:
+By default Kanidm will use SPN as a display username for users. In some cases you may want to use the user's `name`
+instead. To change this setting:
 
 ```
 kanidm system oauth2 prefer-short-username <client name>
@@ -499,11 +498,11 @@ WebFinger document for that client instead.
 
 ## Disabling the consent prompt in enterprise environments
 
-By default Kanidm will present the user with a consent prompt when they first authorize an app or
-when the requested scopes change - this is a requried part of the OIDC spec ([Section 3.1.2.4][oidc-consent]).
+By default Kanidm will present the user with a consent prompt when they first authorize an app or when the requested
+scopes change - this is a requried part of the OIDC spec ([Section 3.1.2.4][oidc-consent]).
 
-In some cases, such as an enterprise deployment, this consent can be gathered by other means (eg.
-employee contract) and the interactive prompt is not necessary. To disable it:
+In some cases, such as an enterprise deployment, this consent can be gathered by other means (eg. employee contract) and
+the interactive prompt is not necessary. To disable it:
 
 ```bash
 kanidm system oauth2 disable-consent-prompt <name>
@@ -511,8 +510,8 @@ kanidm system oauth2 disable-consent-prompt <name>
 
 It should **not** be disabled if consent isn't granted non-interactively.
 
-The prompt cannot be disabled for public clients to secure against impersonating the application (as
-per [RFC-6819 5.2.3.2]).
+The prompt cannot be disabled for public clients to secure against impersonating the application (as per [RFC-6819
+5.2.3.2]).
 
 [oidc-consent]: https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.3.1.2.4
 [rfc6819s5232]: https://www.rfc-editor.org/rfc/rfc6819#section-5.2.3.2
