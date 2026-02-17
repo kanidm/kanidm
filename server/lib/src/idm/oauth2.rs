@@ -3150,6 +3150,15 @@ fn s_claims_for_account(
         (None, None)
     };
 
+    let updated_at: Option<OffsetDateTime> = if scopes.contains(OAUTH2_SCOPE_PROFILE) {
+        account
+            .updated_at
+            .as_ref()
+            .map(OffsetDateTime::from)
+            .and_then(|odt| odt.replace_nanosecond(0).ok())
+    } else {
+        None
+    };
     OidcClaims {
         // Map from displayname
         name: Some(account.displayname.clone()),
@@ -3157,6 +3166,7 @@ fn s_claims_for_account(
         preferred_username,
         email,
         email_verified,
+        updated_at,
         ..Default::default()
     }
 }
@@ -3511,7 +3521,10 @@ mod tests {
                 Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
-                    btreeset![OAUTH2_SCOPE_OPENID.to_string()]
+                    btreeset![
+                        OAUTH2_SCOPE_OPENID.to_string(),
+                        OAUTH2_SCOPE_PROFILE.to_string()
+                    ]
                 )
                 .expect("invalid oauthscope")
             ),
@@ -5181,6 +5194,7 @@ mod tests {
                 == Some(vec![
                     OAUTH2_SCOPE_GROUPS.to_string(),
                     OAUTH2_SCOPE_OPENID.to_string(),
+                    OAUTH2_SCOPE_PROFILE.to_string(),
                     "supplement".to_string(),
                 ])
         );
@@ -5340,6 +5354,7 @@ mod tests {
                 == Some(vec![
                     OAUTH2_SCOPE_GROUPS.to_string(),
                     OAUTH2_SCOPE_OPENID.to_string(),
+                    OAUTH2_SCOPE_PROFILE.to_string(),
                     "supplement".to_string(),
                 ])
         );
@@ -5463,7 +5478,7 @@ mod tests {
             &ident,
             ct,
             pkce_secret.to_request(),
-            OAUTH2_SCOPE_OPENID.to_string()
+            format!("{OAUTH2_SCOPE_OPENID} {OAUTH2_SCOPE_PROFILE}")
         );
 
         let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
@@ -5558,7 +5573,12 @@ mod tests {
             Some("testperson1@example.com".to_string())
         );
         assert!(
-            oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
+            oidc.s_claims.scopes
+                == vec![
+                    OAUTH2_SCOPE_OPENID.to_string(),
+                    OAUTH2_SCOPE_PROFILE.to_string(),
+                    "supplement".to_string()
+                ]
         );
         assert!(oidc.claims.is_empty());
         // Does our access token work with the userinfo endpoint?
@@ -6223,6 +6243,7 @@ mod tests {
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![
                         OAUTH2_SCOPE_EMAIL.to_string(),
+                        OAUTH2_SCOPE_PROFILE.to_string(),
                         OAUTH2_SCOPE_OPENID.to_string()
                     ],
                 )
@@ -6251,7 +6272,11 @@ mod tests {
             state: Some("123".to_string()),
             pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset!["openid".to_string(), "email".to_string()],
+            scope: btreeset![
+                "openid".to_string(),
+                "email".to_string(),
+                "profile".to_string()
+            ],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -6308,7 +6333,11 @@ mod tests {
             pkce_request: Some(pkce_secret.to_request()),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             // Note the scope isn't requested here!
-            scope: btreeset!["openid".to_string(), "email".to_string()],
+            scope: btreeset![
+                "openid".to_string(),
+                "email".to_string(),
+                "profile".to_string()
+            ],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,

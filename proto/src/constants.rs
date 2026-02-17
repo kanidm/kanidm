@@ -251,6 +251,7 @@ pub const SUB_ATTR_TYPE: &str = "type";
 pub const SUB_ATTR_VALUE: &str = "value";
 
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
+pub const OAUTH2_SCOPE_PROFILE: &str = "profile";
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";
 pub const OAUTH2_SCOPE_GROUPS_UUID: &str = "groups_uuid";
 pub const OAUTH2_SCOPE_GROUPS_NAME: &str = "groups_name";
