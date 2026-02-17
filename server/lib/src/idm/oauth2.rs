@@ -3150,8 +3150,12 @@ fn s_claims_for_account(
         (None, None)
     };
 
-    let updated_at : Option<OffsetDateTime> = if scopes.contains(OAUTH2_SCOPE_PROFILE) {
-        account.updated_at.as_ref().map(Into::into)
+    let updated_at: Option<OffsetDateTime> = if scopes.contains(OAUTH2_SCOPE_PROFILE) {
+        account
+            .updated_at
+            .as_ref()
+            .map(OffsetDateTime::from)
+            .and_then(|odt| odt.replace_nanosecond(0).ok())
     } else {
         None
     };
@@ -3388,8 +3392,7 @@ fn check_is_loopback(redirect_uri: &Url) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use compact_jwt::OidcClaims;
-use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS};
+    use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS};
     use crate::credential::Credential;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::oauth2::{host_is_local, AuthoriseResponse, Oauth2Error, OauthRSType};
@@ -3518,7 +3521,10 @@ use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_A
                 Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
-                    btreeset![OAUTH2_SCOPE_OPENID.to_string(), OAUTH2_SCOPE_PROFILE.to_string()]
+                    btreeset![
+                        OAUTH2_SCOPE_OPENID.to_string(),
+                        OAUTH2_SCOPE_PROFILE.to_string()
+                    ]
                 )
                 .expect("invalid oauthscope")
             ),
@@ -5453,30 +5459,6 @@ use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_A
             .is_none());
     }
 
-    //As the timestamp from oidc and userinfo differs a fraction of a second, we
-    //need to check if the difference is lower than a arbitrary bound.
-    //We then overwrite the updated_at of oidc with the one from userinfo, so
-    //we can compare the whole struct thereafter.
-    fn assert_claims_with_tolerance(
-        mut claims_a : OidcClaims,
-        claims_b : &OidcClaims,
-        tolerance : i128
-    ){
-        let a = claims_a.updated_at;
-        let b = claims_b.updated_at;
-        assert!(
-            match (a, b) {
-                (Some(a), Some(b)) =>
-                    (a.unix_timestamp_nanos() - b.unix_timestamp_nanos()).abs()
-                        <= tolerance, // 1s
-                (None, None) => true,
-                _ => false,
-            }
-        );
-        claims_a.updated_at = claims_b.updated_at;
-        assert_eq!(claims_a, *claims_b);
-    }
-
     #[idm_test]
     async fn test_idm_oauth2_openid_extensions(
         idms: &IdmServer,
@@ -5591,7 +5573,12 @@ use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_A
             Some("testperson1@example.com".to_string())
         );
         assert!(
-            oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(),OAUTH2_SCOPE_PROFILE.to_string(), "supplement".to_string()]
+            oidc.s_claims.scopes
+                == vec![
+                    OAUTH2_SCOPE_OPENID.to_string(),
+                    OAUTH2_SCOPE_PROFILE.to_string(),
+                    "supplement".to_string()
+                ]
         );
         assert!(oidc.claims.is_empty());
         // Does our access token work with the userinfo endpoint?
@@ -5616,7 +5603,7 @@ use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_A
         if let Some(jti) = &userinfo.jti {
             assert!(Uuid::from_str(jti).is_ok());
         }
-        assert_claims_with_tolerance(oidc.s_claims.clone(), &userinfo.s_claims, 1_000_000_000);
+        assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert!(userinfo.claims.is_empty());
 
         drop(idms_prox_read);
@@ -5664,7 +5651,7 @@ use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_A
         if let Some(jti) = &userinfo.jti {
             assert!(Uuid::from_str(jti).is_ok());
         }
-        assert_claims_with_tolerance(oidc.s_claims, &userinfo.s_claims, 1_000_000_000);
+        assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert!(userinfo.claims.is_empty());
     }
 

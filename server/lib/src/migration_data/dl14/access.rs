@@ -952,6 +952,7 @@ pub static IDM_ACP_SELF_READ_DL8: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         Attribute::ApplicationPassword,
         Attribute::SshPublicKey,
         Attribute::UnixPassword,
+        Attribute::LastModifiedCid,
     ],
     ..Default::default()
 });
