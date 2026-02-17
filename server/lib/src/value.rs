@@ -105,7 +105,7 @@ pub static SINGLELINE_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new("[\n\r\t]").expect("Invalid singleline regex found")
 });
 
-/// Per https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address
+/// Per <https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address>
 /// this regex validates for valid emails.
 pub static VALIDATE_EMAIL_RE: LazyLock<Regex> = LazyLock::new(|| {
     #[allow(clippy::expect_used)]
@@ -119,7 +119,7 @@ pub static UNICODE_CONTROL_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 #[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq, Hash)]
-// https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
+/// Per <https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim>
 pub struct Address {
     pub formatted: String,
     pub street_address: String,

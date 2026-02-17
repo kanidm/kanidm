@@ -93,7 +93,7 @@ class KanidmClient:
     verify_hostnames: verify the hostname is correct
     verify_certificate: verify the validity of the certificate and its CA
     ca_path: set this to a trusted CA certificate (PEM format)
-    token: a JWS from an authentication session
+    token: a JWS from an authentication session or the API token for a service-account (note: in case of an API token, no auth* functions need to be used)
     openapi_client: OpenAPI-generated client instance
     """
 

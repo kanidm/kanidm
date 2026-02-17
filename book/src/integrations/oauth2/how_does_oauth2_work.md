@@ -3,7 +3,7 @@
 OAuth2 uses a number of terms in ways that can make it unclear and difficult to understand.
 
 A user wishes to access a service (resource, resource server) through an OAuth2 client. The client does not have an
-active session for the userm so it redirects to the authorisation server (Kanidm) to determine if the user has the
+active session for the user so it redirects to the authorisation server (Kanidm) to determine if the user has the
 appropriate permissions (scopes) for the requested resources, and should be allowed to proceed.
 
 The authorisation server checks the current session of the user and may present a login flow if required. Based on the
