@@ -3126,7 +3126,22 @@ fn parse_basic_authz(client_authz: &str) -> Result<ClientAuth, Oauth2Error> {
         Oauth2Error::AuthenticationRequired
     })?;
 
-    Ok((client_id, Some(secret)).into())
+    // OAuth2 is bad and should feel bad:
+    // https://datatracker.ietf.org/doc/html/rfc6749#section-2.3.1
+    // The client_id MIGHT be url encoded. The secret won't be, because we
+    // always generate it in a "safe" manner.
+    //
+    // If we *fail* to decode, then we just drop the raw client_id back out,
+    // as this could be a client that didn't urlencoded their client_id.
+    //
+    // Both serde_urlencode and form_urlencoded can't handle this, as they assume
+    // you have a map, so you can't deseralise to a string.
+    //
+    // Thankfully in our case we only allow - and _ so we can just replace these
+    // directly.
+    let client_id = client_id.replace("%2D", "-").replace("%5F", "_");
+
+    Ok((client_id.as_str(), Some(secret)).into())
 }
 
 fn s_claims_for_account(
@@ -3395,7 +3410,9 @@ mod tests {
     use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS};
     use crate::credential::Credential;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
-    use crate::idm::oauth2::{host_is_local, AuthoriseResponse, Oauth2Error, OauthRSType};
+    use crate::idm::oauth2::{
+        host_is_local, parse_basic_authz, AuthoriseResponse, Oauth2Error, OauthRSType,
+    };
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
     use crate::prelude::*;
@@ -3858,6 +3875,18 @@ mod tests {
         idms_prox_write.commit().expect("failed to commit");
 
         (uat, ident)
+    }
+
+    #[test]
+    fn oauth2_parse_basic_authz() {
+        let r1 = parse_basic_authz("czZCaGRSa3F0Mzo3RmpmcDBaQnIxS3REUmJuZlZkbUl3").unwrap();
+        assert_eq!(r1.client_id, "s6BhdRkqt3");
+        assert_eq!(r1.client_secret.as_deref(), Some("7Fjfp0ZBr1KtDRbnfVdmIw"));
+
+        // This contains: "my%2Did:Dei7thai1ahne4a" which has a url-encoded client-id
+        let r2 = parse_basic_authz("bXklMkRpZDpEZWk3dGhhaTFhaG5lNGE=").unwrap();
+        assert_eq!(r2.client_id, "my-id");
+        assert_eq!(r2.client_secret.as_deref(), Some("Dei7thai1ahne4a"));
     }
 
     #[idm_test]
