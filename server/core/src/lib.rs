@@ -786,6 +786,11 @@ async fn migration_apply(
     server_write_ref: &'static QueryServerWriteV1,
     migration_path: &Path,
 ) {
+    if !migration_path.exists() {
+        info!(migration_path = %migration_path.display(), "Migration path does not exist - migrations will be skipped.");
+        return;
+    }
+
     let mut dir_ents = match tokio::fs::read_dir(migration_path).await {
         Ok(dir_ents) => dir_ents,
         Err(err) => {
