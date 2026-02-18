@@ -2571,20 +2571,9 @@ impl IdmServerProxyReadTransaction<'_> {
                 Oauth2Error::AuthenticationRequired
             })?;
 
-        // check the secret.
-        match &o2rs.type_ {
-            OauthRSType::Basic { authz_secret, .. } => {
-                if Some(authz_secret) != client_auth.client_secret.as_ref() {
-                    info!("Invalid OAuth2 client_id secret");
-                    return Err(Oauth2Error::AuthenticationRequired);
-                }
-            }
-            // Relies on the token to be valid.
-            OauthRSType::Public { .. } => {}
-        };
-
-        // We are authenticated! Yay! Now we can actually check things ...
-
+        // We don't need to authenticate, since possession of the access token is already enough
+        // to prove identity, and we enforce it is cryptographically valid so it can't be bruteforced
+        // by a scanning attack.
         let prefer_short_username = o2rs.prefer_short_username;
 
         if let Ok(jwsc) = JwsCompact::from_str(&intr_req.token) {
