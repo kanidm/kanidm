@@ -762,6 +762,27 @@ impl QueryServerWriteV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
+    pub async fn handle_idm_credential_revoke_intent(
+        &self,
+        intent_id: String,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let intent_token = CredentialUpdateIntentTokenExchange { intent_id };
+        idms_prox_write
+            .revoke_credential_update_intent(intent_token, ct)
+            .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+            .inspect_err(|err| {
+                error!(?err, "Failed to perfect exchange_intent_credential_update",);
+            })
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_idmcredentialupdatecommit(
         &self,
         session_token: CUSessionToken,
