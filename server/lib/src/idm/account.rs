@@ -286,6 +286,18 @@ impl Account {
         self.name.as_deref().unwrap_or(self.spn.as_str())
     }
 
+    pub(crate) fn display_name(&self) -> &str {
+        &self.displayname
+    }
+
+    pub(crate) fn mail_primary(&self) -> Option<&str> {
+        self.mail_primary.as_deref()
+    }
+
+    pub(crate) fn mail(&self) -> &[String] {
+        self.mail.as_slice()
+    }
+
     pub(crate) fn softlock_expire(&self) -> Option<OffsetDateTime> {
         self.softlock_expire
     }

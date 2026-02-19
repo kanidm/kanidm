@@ -60,6 +60,7 @@ pub(crate) mod migrations;
 pub mod modify;
 pub(crate) mod recycle;
 pub mod scim;
+pub(crate) mod utils;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 256;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 8;

@@ -1,24 +1,4 @@
-use core::ops::Deref;
-use std::collections::BTreeMap;
-use std::fmt::{self, Display};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
-
-use sshkey_attest::proto::PublicKey as SshPublicKey;
-
-use hashbrown::HashSet;
-use kanidm_proto::internal::{
-    CUCredState, CUExtPortal, CURegState, CURegWarning, CUStatus, CredentialDetail, PasskeyDetail,
-    PasswordFeedback, TotpSecret,
-};
-use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
-use webauthn_rs::prelude::{
-    AttestedPasskey as AttestedPasskeyV4, AttestedPasskeyRegistration, CreationChallengeResponse,
-    Passkey as PasskeyV4, PasskeyRegistration, RegisterPublicKeyCredential, WebauthnError,
-};
-use zxcvbn::{zxcvbn, Score};
-
+use super::accountpolicy::ResolvedAccountPolicy;
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
 use crate::credential::{BackupCodes, Credential};
 use crate::idm::account::Account;
@@ -29,8 +9,25 @@ use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState, LABEL_RE};
 use compact_jwt::compact::JweCompact;
 use compact_jwt::jwe::JweBuilder;
-
-use super::accountpolicy::ResolvedAccountPolicy;
+use core::ops::Deref;
+use hashbrown::HashSet;
+use kanidm_proto::internal::{
+    CUCredState, CUExtPortal, CURegState, CURegWarning, CUStatus, CredentialDetail, PasskeyDetail,
+    PasswordFeedback, TotpSecret,
+};
+use kanidm_proto::v1::OutboundMessage;
+use serde::{Deserialize, Serialize};
+use sshkey_attest::proto::PublicKey as SshPublicKey;
+use std::collections::BTreeMap;
+use std::fmt::{self, Display};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use time::OffsetDateTime;
+use webauthn_rs::prelude::{
+    AttestedPasskey as AttestedPasskeyV4, AttestedPasskeyRegistration, CreationChallengeResponse,
+    Passkey as PasskeyV4, PasskeyRegistration, RegisterPublicKeyCredential, WebauthnError,
+};
+use zxcvbn::{zxcvbn, Score};
 
 // A user can take up to 15 minutes to update their credentials before we automatically
 // cancel on them.
@@ -539,6 +536,17 @@ impl InitCredentialUpdateIntentEvent {
     }
 }
 
+pub struct InitCredentialUpdateIntentSendEvent {
+    // Who initiated this?
+    pub ident: Identity,
+    // Who is it targeting?
+    pub target: Uuid,
+    // How long is it valid for?
+    pub max_ttl: Option<Duration>,
+    // Optionally, which email to use?
+    pub email: Option<String>,
+}
+
 pub struct InitCredentialUpdateEvent {
     pub ident: Identity,
     pub target: Uuid,
@@ -970,6 +978,55 @@ impl IdmServerProxyWriteTransaction<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
+    pub fn init_credential_update_intent_send(
+        &mut self,
+        event: InitCredentialUpdateIntentSendEvent,
+        ct: Duration,
+    ) -> Result<(), OperationError> {
+        let (account, _resolved_account_policy, perms) =
+            self.validate_init_credential_update(event.target, &event.ident)?;
+
+        // If the email is set, validate it.
+
+        let to_email = if let Some(to_email) = event.email {
+            account.mail().contains(&to_email)
+                .then_some(to_email)
+                .ok_or_else(|| {
+                    error!(spn = %account.spn(), "Requested email address is not present on account, unable to send credential reset.");
+                    OperationError::CU0007AccountEmailNotFound
+                })
+        } else {
+            let maybe_to_email = account.mail_primary().map(String::from);
+
+            maybe_to_email.ok_or_else(|| {
+                error!(spn = %account.spn(), "account does not have a primary email address, unable to send credential reset.");
+                OperationError::CU0008AccountMissingEmail
+            })
+        }?;
+
+        // ==== AUTHORISATION CHECKED ===
+        let (intent_id, expiry_time) =
+            self.build_credential_update_intent(event.max_ttl, &account, perms, ct)?;
+
+        // Queue the message to be sent.
+        let display_name = account.display_name().to_owned();
+
+        let message = OutboundMessage::CredentialResetV1 {
+            display_name,
+            intent_id,
+            expiry_time,
+        };
+
+        self.qs_write.queue_message(
+            // Should we actually impersonate here? We probably need an account for internal sending
+            // that is disconnected from the act of creating the reset.
+            &event.ident,
+            message,
+            to_email,
+        )
+    }
+
+    #[instrument(level = "debug", skip_all)]
     pub fn init_credential_update_intent(
         &mut self,
         event: &InitCredentialUpdateIntentEvent,
@@ -982,11 +1039,26 @@ impl IdmServerProxyWriteTransaction<'_> {
         // Is there a reason account policy might deny us from proceeding?
 
         // ==== AUTHORISATION CHECKED ===
+        let (intent_id, expiry_time) =
+            self.build_credential_update_intent(event.max_ttl, &account, perms, ct)?;
 
+        Ok(CredentialUpdateIntentToken {
+            intent_id,
+            expiry_time,
+        })
+    }
+
+    fn build_credential_update_intent(
+        &mut self,
+        max_ttl: Option<Duration>,
+        account: &Account,
+        perms: CredUpdateSessionPerms,
+        ct: Duration,
+    ) -> Result<(String, OffsetDateTime), OperationError> {
         // Build the intent token. Previously this was using 0 and then
         // relying on clamp to raise this to 5 minutes, but that led to
         // rapid timeouts that affected some users.
-        let mttl = event.max_ttl.unwrap_or(DEFAULT_INTENT_TTL);
+        let mttl = max_ttl.unwrap_or(DEFAULT_INTENT_TTL);
         let clamped_mttl = mttl.clamp(MINIMUM_INTENT_TTL, MAXIMUM_INTENT_TTL);
         debug!(?clamped_mttl, "clamped update intent validity");
         // Absolute expiry of the intent token in epoch seconds
@@ -1040,15 +1112,10 @@ impl IdmServerProxyWriteTransaction<'_> {
                 &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(account.uuid))),
                 &modlist,
             )
-            .map_err(|e| {
-                request_error!(error = ?e);
-                e
-            })?;
-
-        Ok(CredentialUpdateIntentToken {
-            intent_id,
-            expiry_time,
-        })
+            .inspect_err(|err| {
+                error!(?err);
+            })
+            .map(|_| (intent_id, expiry_time))
     }
 
     pub fn exchange_intent_credential_update(
@@ -2612,17 +2679,6 @@ impl IdmServerCredUpdateTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use compact_jwt::JwsCompact;
-    use std::time::Duration;
-
-    use kanidm_proto::internal::{CUExtPortal, CredentialDetailType, PasswordFeedback};
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, UnixUserToken};
-    use uuid::uuid;
-    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
-    use webauthn_authenticator_rs::softtoken::{self, SoftToken};
-    use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
-    use webauthn_rs::prelude::AttestationCaListBuilder;
-
     use super::{
         CredentialState, CredentialUpdateSessionStatus, CredentialUpdateSessionStatusWarnings,
         CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
@@ -2640,10 +2696,21 @@ mod tests {
     use crate::prelude::*;
     use crate::utils::password_from_random_len;
     use crate::value::CredentialType;
+    use crate::valueset::ValueSetEmailAddress;
+    use compact_jwt::JwsCompact;
+    use kanidm_proto::internal::{CUExtPortal, CredentialDetailType, PasswordFeedback};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, UnixUserToken};
     use sshkey_attest::proto::PublicKey as SshPublicKey;
+    use std::time::Duration;
+    use uuid::uuid;
+    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
+    use webauthn_authenticator_rs::softtoken::{self, SoftToken};
+    use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
+    use webauthn_rs::prelude::AttestationCaListBuilder;
 
     const TEST_CURRENT_TIME: u64 = 6000;
     const TESTPERSON_UUID: Uuid = uuid!("cf231fea-1a8f-4410-a520-fd9b1a379c86");
+    const TESTPERSON_NAME: &str = "testperson";
 
     const SSHKEY_VALID_1: &str = "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey";
     const SSHKEY_VALID_2: &str = "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBIbkSsdGCRoW6v0nO/3vNYPhG20YhWU0wQPY7x52EOb4dmYhC4IJfzVDpEPg313BxWRKQglb5RQ1PPkou7JFyCUAAAAEc3NoOg== testuser@fidokey";
@@ -2674,10 +2741,10 @@ mod tests {
             (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::PosixAccount.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Name, Value::new_iname(TESTPERSON_NAME)),
             (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
+            (Attribute::Description, Value::new_utf8s(TESTPERSON_NAME)),
+            (Attribute::DisplayName, Value::new_utf8s(TESTPERSON_NAME))
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2]);
@@ -2787,10 +2854,10 @@ mod tests {
             (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::PosixAccount.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Name, Value::new_iname(TESTPERSON_NAME)),
             (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
+            (Attribute::Description, Value::new_utf8s(TESTPERSON_NAME)),
+            (Attribute::DisplayName, Value::new_utf8s(TESTPERSON_NAME))
         );
 
         let ce = CreateEvent::new_internal(vec![e2]);
@@ -2860,7 +2927,7 @@ mod tests {
     ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await.unwrap();
 
-        let auth_init = AuthEvent::named_init("testperson");
+        let auth_init = AuthEvent::named_init(TESTPERSON_NAME);
 
         let r1 = idms_auth
             .auth(&auth_init, ct, Source::Internal.into())
@@ -2930,7 +2997,7 @@ mod tests {
     ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await.unwrap();
 
-        let auth_init = AuthEvent::named_init("testperson");
+        let auth_init = AuthEvent::named_init(TESTPERSON_NAME);
 
         let r1 = idms_auth
             .auth(&auth_init, ct, Source::Internal.into())
@@ -2996,7 +3063,7 @@ mod tests {
     ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await.unwrap();
 
-        let auth_init = AuthEvent::named_init("testperson");
+        let auth_init = AuthEvent::named_init(TESTPERSON_NAME);
 
         let r1 = idms_auth
             .auth(&auth_init, ct, Source::Internal.into())
@@ -3064,7 +3131,7 @@ mod tests {
     ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await.unwrap();
 
-        let auth_init = AuthEvent::named_init("testperson");
+        let auth_init = AuthEvent::named_init(TESTPERSON_NAME);
 
         let r1 = idms_auth
             .auth(&auth_init, ct, Source::Internal.into())
@@ -3158,6 +3225,65 @@ mod tests {
             .credential_update_status(&cust, ct)
             .expect_err("Session is still valid!");
         assert!(matches!(c_status, OperationError::InvalidState));
+    }
+
+    #[idm_test]
+    async fn credential_update_intent_send(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let email_address = format!("{}@example.com", TESTPERSON_NAME);
+
+        let test_entry = EntryInitNew::from_iter([
+            (
+                Attribute::Class,
+                ValueSetIutf8::from_iter([
+                    EntryClass::Object.into(),
+                    EntryClass::Account.into(),
+                    EntryClass::PosixAccount.into(),
+                    EntryClass::Person.into(),
+                ])
+                .unwrap() as ValueSet,
+            ),
+            (
+                Attribute::Name,
+                ValueSetIname::new(TESTPERSON_NAME) as ValueSet,
+            ),
+            (
+                Attribute::Uuid,
+                ValueSetUuid::new(TESTPERSON_UUID) as ValueSet,
+            ),
+            (
+                Attribute::Description,
+                ValueSetUtf8::new(TESTPERSON_NAME.into()) as ValueSet,
+            ),
+            (
+                Attribute::DisplayName,
+                ValueSetUtf8::new(TESTPERSON_NAME.into()) as ValueSet,
+            ),
+            (
+                Attribute::Mail,
+                ValueSetEmailAddress::new(email_address.clone()) as ValueSet,
+            ),
+        ]);
+
+        let ce = CreateEvent::new_internal(vec![test_entry]);
+        let cr = idms_prox_write.qs_write.create(&ce);
+        assert!(cr.is_ok());
+
+        // Create a credential update
+        // Ensure a message was made.
+
+
+        // Test no perms to reset / send.
+
+        // Test email not on account.
+
+        // What do re email send?
+
+
+        todo!();
     }
 
     #[idm_test]
@@ -3963,10 +4089,10 @@ mod tests {
             (Attribute::Class, EntryClass::PosixAccount.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::SyncParentUuid, Value::Refer(sync_uuid)),
-            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::Name, Value::new_iname(TESTPERSON_NAME)),
             (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
+            (Attribute::Description, Value::new_utf8s(TESTPERSON_NAME)),
+            (Attribute::DisplayName, Value::new_utf8s(TESTPERSON_NAME))
         );
 
         let ce = CreateEvent::new_internal(vec![e1, e2]);
