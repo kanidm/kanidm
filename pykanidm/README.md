@@ -80,14 +80,15 @@ You can still build one explicitly from config helpers in `kanidm.openapi` if ne
 
 ### OpenAPI spec tests
 
-Networked OpenAPI tests are marked `openapi` and include both spec validation and generated-client GET calls. Run them with:
+Networked OpenAPI tests are marked `openapi` and include both spec validation and generated-client GET calls. Run them
+with:
 
 ```bash
 IDM_ADMIN_PASS=... uv run pytest -m openapi
 ```
 
-OpenAPI tests regenerate `kanidm_openapi_client` once per pytest session before running marked tests.
-This uses `kanidm.openapi_codegen` and requires Docker to be available.
+OpenAPI tests regenerate `kanidm_openapi_client` once per pytest session before running marked tests. This uses
+`kanidm.openapi_codegen` and requires Docker to be available.
 
 Optional environment overrides:
 
@@ -96,7 +97,8 @@ Optional environment overrides:
 - `IDM_ADMIN_PASS` (required for auth'd OpenAPI tests; matches `scripts/setup_dev_environment.sh`)
 - `KANIDM_INSECURE` (`true`/`false`, default: `false`) disables TLS verification for tests
 
-Note: tests always verify TLS unless `KANIDM_INSECURE=true`. Provide a CA via `KANIDM_CA_PATH` (or use the default `/tmp/kanidm/ca.pem`) so the server cert validates.
+Note: tests always verify TLS unless `KANIDM_INSECURE=true`. Provide a CA via `KANIDM_CA_PATH` (or use the default
+`/tmp/kanidm/ca.pem`) so the server cert validates.
 
 ## Changelog
 

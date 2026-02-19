@@ -121,12 +121,22 @@ Alternately, `systemctl edit kanidm-unixd.service` has comments on how to use sy
 When the daemon is running you can add the nsswitch libraries to /etc/nsswitch.conf
 
 ```text
-passwd: kanidm compat
+passwd: kanidm compat # ... other modules
 group:  kanidm compat
 ```
 
-> NOTE: Unlike other nsswitch modules, Kanidm should be before compat or files. This is because Kanidm caches and
-> provides the content from `/etc/passwd` and `/etc/group`.
+> NOTE: Unlike other remote nsswitch modules, Kanidm should be before all other modules, even `compat` or `files`. This
+> is because `kanidm` provides a cached view of the `files` module, and to ensure that identities resolve in a
+> deterministic order.
+
+> [!WARNING]
+>
+> The `systemd` module _must_ always be _last_ if in use. For example:
+
+```text
+passwd: kanidm compat systemd
+group:  kanidm compat systemd
+```
 
 Then [create a user](../accounts/intro.md) and
 [enable POSIX feature on the user](../accounts/posix_accounts_and_groups.md#enabling-posix-attributes-on-accounts).
