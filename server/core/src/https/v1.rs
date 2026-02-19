@@ -3255,7 +3255,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/v1/person/{id}/_credential/_update_intent_send",
-            get(person_id_credential_update_intent_send_post),
+            post(person_id_credential_update_intent_send_post),
         )
         .route(
             "/v1/person/{id}/_ssh_pubkeys",

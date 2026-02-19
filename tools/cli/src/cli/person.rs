@@ -665,6 +665,27 @@ impl AccountCredential {
                 }
             }
 
+            AccountCredential::SendResetToken {
+                account_id,
+                ttl,
+                alternate_email,
+            } => {
+                let client = opt.to_client(OpType::Write).await;
+
+                if let Err(e) = client
+                    .idm_person_account_credential_update_send_intent(
+                        account_id,
+                        *ttl,
+                        alternate_email.clone(),
+                    )
+                    .await
+                {
+                    handle_client_error(e, opt.output_mode);
+                } else {
+                    println!("Success");
+                };
+            }
+
             AccountCredential::SoftlockReset {
                 account_id,
                 datetime,
