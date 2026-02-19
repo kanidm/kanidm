@@ -3658,6 +3658,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm-mail-sender"
+version = "1.10.0-dev"
+dependencies = [
+ "chrono",
+ "clap",
+ "clap_complete",
+ "cron",
+ "hashbrown 0.16.1",
+ "kanidm_client",
+ "kanidm_lib_file_permissions",
+ "kanidm_proto",
+ "kanidm_utils_users",
+ "lettre",
+ "serde",
+ "time",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "kanidm_build_profiles"
 version = "1.10.0-dev"
 dependencies = [
@@ -4330,28 +4354,6 @@ name = "lru-slab"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
-
-[[package]]
-name = "mail_sender"
-version = "1.10.0-dev"
-dependencies = [
- "chrono",
- "clap",
- "clap_complete",
- "cron",
- "hashbrown 0.16.1",
- "kanidm_client",
- "kanidm_lib_file_permissions",
- "kanidm_proto",
- "kanidm_utils_users",
- "lettre",
- "serde",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
 
 [[package]]
 name = "malloced"

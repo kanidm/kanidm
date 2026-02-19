@@ -400,6 +400,20 @@ pub enum AccountCredential {
         /// Default: 3600 seconds
         ttl: Option<u32>,
     },
+    /// Send a reset token to the account's email so that the user may
+    /// recover or reset their account credentials.
+    #[clap(name = "send-reset-token")]
+    SendResetToken {
+        account_id: String,
+
+        /// Optionally set how many seconds the reset token should be valid for.
+        /// Default: 3600 seconds
+        ttl: Option<u64>,
+
+        /// Optionally specify the email the token should be sent to. This email address
+        /// must exist on the account for the reset to be sent.
+        alternate_email: Option<String>,
+    },
     /// Reset the softlocks on this account. This applies to all credentials of the account.
     #[clap(name = "softlock-reset")]
     SoftlockReset {

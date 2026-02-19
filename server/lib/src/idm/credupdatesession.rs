@@ -2682,7 +2682,8 @@ mod tests {
     use super::{
         CredentialState, CredentialUpdateSessionStatus, CredentialUpdateSessionStatusWarnings,
         CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
-        MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL, MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
+        InitCredentialUpdateIntentSendEvent, MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL,
+        MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
     use crate::credential::totp::Totp;
     use crate::event::CreateEvent;
@@ -2699,6 +2700,7 @@ mod tests {
     use crate::valueset::ValueSetEmailAddress;
     use compact_jwt::JwsCompact;
     use kanidm_proto::internal::{CUExtPortal, CredentialDetailType, PasswordFeedback};
+    use kanidm_proto::v1::OutboundMessage;
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, UnixUserToken};
     use sshkey_attest::proto::PublicKey as SshPublicKey;
     use std::time::Duration;
@@ -3262,28 +3264,99 @@ mod tests {
                 Attribute::DisplayName,
                 ValueSetUtf8::new(TESTPERSON_NAME.into()) as ValueSet,
             ),
-            (
-                Attribute::Mail,
-                ValueSetEmailAddress::new(email_address.clone()) as ValueSet,
-            ),
         ]);
 
         let ce = CreateEvent::new_internal(vec![test_entry]);
         let cr = idms_prox_write.qs_write.create(&ce);
         assert!(cr.is_ok());
 
+        let idm_admin_identity = idms_prox_write
+            .qs_write
+            .impersonate_uuid_as_readwrite_identity(UUID_IDM_ADMIN)
+            .expect("Failed to retrieve identity");
+
+        // Test account with no email.
+        let event = InitCredentialUpdateIntentSendEvent {
+            ident: idm_admin_identity.clone(),
+            target: TESTPERSON_UUID,
+            max_ttl: None,
+            email: None,
+        };
+
+        let err = idms_prox_write
+            .init_credential_update_intent_send(event, ct)
+            .expect_err("Should not succeed!");
+        assert_eq!(err, OperationError::CU0008AccountMissingEmail);
+
+        // Set the account up with an email.
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(
+                TESTPERSON_UUID,
+                &ModifyList::new_set(
+                    Attribute::Mail,
+                    ValueSetEmailAddress::new(email_address.clone()) as ValueSet,
+                ),
+            )
+            .expect("Failed to update test person account");
+
+        // Request a change, but the email is not present on the account.
+
+        let event = InitCredentialUpdateIntentSendEvent {
+            ident: idm_admin_identity.clone(),
+            target: TESTPERSON_UUID,
+            max_ttl: None,
+            email: Some("email-that-is-not-present@example.com".into()),
+        };
+
+        let err = idms_prox_write
+            .init_credential_update_intent_send(event, ct)
+            .expect_err("Should not succeed!");
+        assert_eq!(err, OperationError::CU0007AccountEmailNotFound);
+
         // Create a credential update
         // Ensure a message was made.
 
+        let event = InitCredentialUpdateIntentSendEvent {
+            ident: idm_admin_identity.clone(),
+            target: TESTPERSON_UUID,
+            max_ttl: None,
+            email: Some(email_address.clone()),
+        };
 
-        // Test no perms to reset / send.
+        idms_prox_write
+            .init_credential_update_intent_send(event, ct)
+            .expect("Should succeed!");
 
-        // Test email not on account.
+        // Find the message in the queue.
+        let filter = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::OutboundMessage.into()),
+            f_eq(
+                Attribute::MailDestination,
+                PartialValue::EmailAddress(email_address)
+            )
+        ]));
 
-        // What do re email send?
+        let mut entries = idms_prox_write
+            .qs_write
+            .impersonate_search(filter.clone(), filter, &idm_admin_identity)
+            .expect("Unable to search message queue");
 
+        assert_eq!(entries.len(), 1);
+        let message_entry = entries.pop().unwrap();
 
-        todo!();
+        let message = message_entry
+            .get_ava_set(Attribute::MessageTemplate)
+            .and_then(|vs| vs.as_message())
+            .unwrap();
+
+        match message {
+            OutboundMessage::CredentialResetV1 { display_name, .. } => {
+                assert_eq!(display_name, TESTPERSON_NAME);
+            }
+            _ => panic!("Wrong message type!"),
+        }
+        // Done!!! We quwued an email to send.
     }
 
     #[idm_test]

@@ -55,6 +55,10 @@ RUN \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release && \
+    cargo build --locked -p kanidm-mail-sender ${KANIDM_BUILD_OPTIONS} \
+        --target-dir="/usr/src/kanidm/target/" \
+        --features="${KANIDM_FEATURES}" \
+        --release && \
     cargo install \
         --git https://github.com/kanidm/webauthn-rs.git \
         --rev 66a3d9903b31fa5a67fc00dd65ba8f55695df183 \
