@@ -1118,6 +1118,67 @@ impl IdmServerProxyWriteTransaction<'_> {
             .map(|_| (intent_id, expiry_time))
     }
 
+    #[instrument(level = "debug", skip_all)]
+    pub fn revoke_credential_update_intent(
+        &mut self,
+        token: CredentialUpdateIntentTokenExchange,
+        _current_time: Duration,
+    ) -> Result<(), OperationError> {
+        let CredentialUpdateIntentTokenExchange { intent_id } = token;
+        // If given an intent_id, immediately transition it to consumed to prevent it's used.
+        //
+        // NOTE: We don't need ident/authentication here because posession of the intent_id is
+        // sufficient to prove that you can revoke it - since if you have the intent_id, you could
+        // just update the credentials anyway.
+
+        let entries = self.qs_write.internal_search(filter!(f_eq(
+            Attribute::CredentialUpdateIntentToken,
+            PartialValue::IntentToken(intent_id.clone())
+        )))?;
+
+        // Given the low chance, if the intent_id conflicts we revoke them ALL.
+        let batch_mod = entries
+            .iter()
+            .filter_map(|entry| {
+                let intenttokens = entry
+                    .get_ava_set(Attribute::CredentialUpdateIntentToken)
+                    .and_then(|vs| vs.as_intenttoken_map());
+
+                // Shouldn't happen, but okay.
+                let Some(intenttoken) = intenttokens.and_then(|m| m.get(&intent_id)) else {
+                    debug_assert!(false);
+                    return None;
+                };
+
+                let max_ttl = match intenttoken {
+                    // Already invalid, move on.
+                    IntentTokenState::Consumed { max_ttl: _ } => return None,
+                    // Still valid, remove it.
+                    IntentTokenState::InProgress { max_ttl, .. }
+                    | IntentTokenState::Valid { max_ttl, .. } => *max_ttl,
+                };
+
+                let entry_uuid = entry.get_uuid();
+
+                let mut modlist = ModifyList::new();
+
+                modlist.push_mod(Modify::Removed(
+                    Attribute::CredentialUpdateIntentToken,
+                    PartialValue::IntentToken(intent_id.clone()),
+                ));
+
+                modlist.push_mod(Modify::Present(
+                    Attribute::CredentialUpdateIntentToken,
+                    Value::IntentToken(intent_id.clone(), IntentTokenState::Consumed { max_ttl }),
+                ));
+
+                Some((entry_uuid, modlist))
+            })
+            .collect::<Vec<_>>();
+
+        self.qs_write.internal_batch_modify(batch_mod.into_iter())
+    }
+
     pub fn exchange_intent_credential_update(
         &mut self,
         token: CredentialUpdateIntentTokenExchange,
@@ -2793,7 +2854,7 @@ mod tests {
 
         let cur = idms_prox_write.init_credential_update_intent(
             &InitCredentialUpdateIntentEvent::new_impersonate_entry(
-                idm_admin,
+                idm_admin.clone(),
                 TESTPERSON_UUID,
                 MINIMUM_INTENT_TTL,
             ),
@@ -2834,6 +2895,32 @@ mod tests {
 
         // Success - this was the second use of the token and is valid.
         let _ = idms_prox_write.commit_credential_update(&cust_b, ct);
+
+        debug!("Start intent token revoke");
+
+        // Create an intent token and then revoke it.
+        let intent_tok = idms_prox_write
+            .init_credential_update_intent(
+                &InitCredentialUpdateIntentEvent::new_impersonate_entry(
+                    idm_admin,
+                    TESTPERSON_UUID,
+                    MINIMUM_INTENT_TTL,
+                ),
+                ct,
+            )
+            .expect("Failed to create intent token!");
+
+        idms_prox_write
+            .revoke_credential_update_intent(intent_tok.clone().into(), ct)
+            .expect("Failed to revoke intent");
+
+        // Can't exchange, token ded.
+        let cur = idms_prox_write.exchange_intent_credential_update(
+            intent_tok.clone().into(),
+            ct + Duration::from_secs(1),
+        );
+        debug!(?cur);
+        assert!(matches!(cur, Err(OperationError::SessionExpired)));
 
         idms_prox_write.commit().expect("Failed to commit txn");
     }
