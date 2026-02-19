@@ -86,10 +86,10 @@ KerberosAuthentication no
 
 > [!WARNING]
 >
-> If you are using `ssh_config.d` drop in files, the `kanidm` configuration must be _before_ the systemd-userdb
+> If you are using `ssh_config.d` drop in files, the `kanidm` configuration must be _before_ the systemd-userdbd
 > configuration. This is because `20-systemd-userdb.conf` contains `AuthorizedKeysCommand` and `sshd_config` respects
 > the _first_ directive found. We recommend you use the filename `10-kanidm.conf` to ensure your settings take
-> precedence over systemd-userdb.
+> precedence over systemd-userdbd.
 
 ### Direct Communication Configuration
 
