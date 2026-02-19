@@ -95,9 +95,12 @@ msg_id: {message_id}
             expiry_time,
         } => {
             let mut reset_url = ctx.instance_url.clone();
-
             reset_url.set_path("/ui/reset");
             reset_url.query_pairs_mut().append_pair("token", intent_id);
+
+            let mut revoke_url = ctx.instance_url.clone();
+            revoke_url.set_path("/ui/revoke");
+            revoke_url.query_pairs_mut().append_pair("token", intent_id);
 
             // TODO - local users timezone preference.
             let pretty_expiry_time = expiry_time
@@ -115,7 +118,9 @@ This is your credential reset link:
 
 This link will expire at {pretty_expiry_time}
 
-If you did not request this message, please report it to your admin.
+If you did not request this message, please click the following link:
+
+{revoke_url}
 
 
 msg_id: {message_id}
