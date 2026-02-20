@@ -1,3 +1,4 @@
+use super::migration::MIGRATION_ENTRY_CLASSES;
 use super::profiles::{
     AccessControlCreateResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
 };
@@ -30,6 +31,12 @@ pub(super) fn apply_create_access<'a>(
         IResult::Grant | IResult::Ignore => {}
     }
 
+    match migration_filter_entry(ident, entry) {
+        IResult::Deny => denied = true,
+        IResult::Grant => grant = true,
+        IResult::Ignore => {}
+    }
+
     match create_filter_entry(ident, related_acp, entry) {
         IResult::Deny => denied = true,
         IResult::Grant => grant = true,
@@ -54,10 +61,14 @@ fn create_filter_entry<'a>(
     entry: &'a Entry<EntryInit, EntryNew>,
 ) -> IResult {
     match &ident.origin {
-        IdentType::Internal => {
+        IdentType::Internal(InternalRole::System) => {
             trace!("Internal operation, bypassing access check");
             // No need to check ACS
             return IResult::Grant;
+        }
+        IdentType::Internal(InternalRole::Migration) => {
+            // Checked in a separate function.
+            return IResult::Ignore;
         }
         IdentType::Synch(_) => {
             security_critical!("Blocking sync check");
@@ -174,7 +185,7 @@ fn create_filter_entry<'a>(
 
 fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IResult {
     match &ident.origin {
-        IdentType::Internal => {
+        IdentType::Internal(InternalRole::System) => {
             trace!("Internal operation, protected rules do not apply.");
             IResult::Ignore
         }
@@ -182,7 +193,14 @@ fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) 
             security_access!("sync agreements may not directly create entities");
             IResult::Deny
         }
-        IdentType::User(_) => {
+        IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {
+            if let Some(entry_uuid) = entry.get_uuid() {
+                if entry_uuid <= UUID_ANONYMOUS {
+                    security_access!("attempt to create a system builtin entry");
+                    return IResult::Deny;
+                }
+            }
+
             // Now check things ...
             if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
                 if classes.is_disjoint(&PROTECTED_ENTRY_CLASSES) {
@@ -199,5 +217,26 @@ fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) 
                 IResult::Ignore
             }
         }
+    }
+}
+
+fn migration_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IResult {
+    match &ident.origin {
+        IdentType::Internal(InternalRole::Migration) => {
+            trace!(uuid = ?entry.get_display_id(), "Internal migration");
+
+            let valid_migration_class = entry
+                .get_ava_as_iutf8(Attribute::Class)
+                .map(|classes| classes.is_subset(&MIGRATION_ENTRY_CLASSES))
+                .unwrap_or(false);
+
+            if valid_migration_class {
+                // Can proceed.
+                return IResult::Grant;
+            } else {
+                return IResult::Deny;
+            }
+        }
+        _ => IResult::Ignore,
     }
 }

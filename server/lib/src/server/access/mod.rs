@@ -48,6 +48,7 @@ const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
 
 mod create;
 mod delete;
+mod migration;
 mod modify;
 pub mod profiles;
 mod protected;
@@ -382,7 +383,7 @@ pub trait AccessControlsTransaction<'a> {
         }
 
         let ident_uuid = match &se.ident.origin {
-            IdentType::Internal => {
+            IdentType::Internal(_) => {
                 // In production we can't risk leaking data here, so we return
                 // empty sets.
                 security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
@@ -962,7 +963,7 @@ pub trait AccessControlsTransaction<'a> {
         // a template copy op ...
 
         let ident_uuid = match &ident.origin {
-            IdentType::Internal => {
+            IdentType::Internal(_) => {
                 // In production we can't risk leaking data here, so we return
                 // empty sets.
                 security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");

@@ -1,3 +1,4 @@
+use super::migration::MIGRATION_ENTRY_CLASSES;
 use super::profiles::{
     AccessControlDeleteResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
 };
@@ -53,10 +54,25 @@ fn delete_filter_entry<'a>(
     entry: &'a Arc<EntrySealedCommitted>,
 ) -> IResult {
     match &ident.origin {
-        IdentType::Internal => {
+        IdentType::Internal(InternalRole::System) => {
             trace!("Internal operation, bypassing access check");
             // No need to check ACS
             return IResult::Grant;
+        }
+        IdentType::Internal(InternalRole::Migration) => {
+            trace!(uuid = ?entry.get_display_id(), "Internal migration");
+
+            let valid_migration_class = entry
+                .get_ava_as_iutf8(Attribute::Class)
+                .map(|classes| classes.is_subset(&MIGRATION_ENTRY_CLASSES))
+                .unwrap_or(false);
+
+            if valid_migration_class {
+                // Can proceed.
+                return IResult::Grant;
+            } else {
+                return IResult::Deny;
+            }
         }
         IdentType::Synch(_) => {
             security_critical!("Blocking sync check");
@@ -147,7 +163,7 @@ fn delete_filter_entry<'a>(
 
 fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -> IResult {
     match &ident.origin {
-        IdentType::Internal => {
+        IdentType::Internal(InternalRole::System) => {
             trace!("Internal operation, protected rules do not apply.");
             IResult::Ignore
         }
@@ -155,7 +171,7 @@ fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -
             security_access!("sync agreements may not directly delete entities");
             IResult::Deny
         }
-        IdentType::User(_) => {
+        IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {
             // Prevent deletion of entries that exist in the system controlled entry range.
             if entry.get_uuid() <= UUID_ANONYMOUS {
                 security_access!("attempt to delete system builtin entry");
@@ -169,7 +185,7 @@ fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -
                     IResult::Ignore
                 } else {
                     // Block the mod, something is present
-                    security_access!("attempt to create with protected class type");
+                    security_access!("attempt to delete a protected class type");
                     IResult::Deny
                 }
             } else {

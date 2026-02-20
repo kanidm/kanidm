@@ -1,10 +1,10 @@
-use crate::prelude::*;
-use std::collections::BTreeSet;
-
+use super::migration::MIGRATION_ENTRY_CLASSES;
 use super::profiles::{
     AccessControlReceiverCondition, AccessControlSearchResolved, AccessControlTargetCondition,
 };
 use super::AccessSrchResult;
+use crate::prelude::*;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 pub(super) enum SearchResult {
@@ -85,10 +85,30 @@ fn search_filter_entry(
 ) -> AccessSrchResult {
     // If this is an internal search, return our working set.
     match &ident.origin {
-        IdentType::Internal => {
+        IdentType::Internal(InternalRole::System) => {
             trace!(uuid = ?entry.get_display_id(), "Internal operation, bypassing access check");
             // No need to check ACS
             return AccessSrchResult::Grant;
+        }
+        IdentType::Internal(InternalRole::Migration) => {
+            trace!(uuid = ?entry.get_display_id(), "Internal migration");
+
+            let valid_migration_class = entry
+                .get_ava_as_iutf8(Attribute::Class)
+                .map(|classes| {
+                    trace!(?classes);
+                    classes.is_subset(&MIGRATION_ENTRY_CLASSES)
+                })
+                .unwrap_or(false);
+
+            if valid_migration_class {
+                // Can proceed.
+                trace!("grant");
+                return AccessSrchResult::Grant;
+            } else {
+                trace!("deny");
+                return AccessSrchResult::Deny;
+            }
         }
         IdentType::Synch(_) => {
             security_debug!(uuid = ?entry.get_display_id(), "Blocking sync check");
@@ -178,7 +198,7 @@ fn search_oauth2_filter_entry(
     entry: &Arc<EntrySealedCommitted>,
 ) -> AccessSrchResult {
     match &ident.origin {
-        IdentType::Internal | IdentType::Synch(_) => AccessSrchResult::Ignore,
+        IdentType::Internal(_) | IdentType::Synch(_) => AccessSrchResult::Ignore,
         IdentType::User(iuser) => {
             if iuser.entry.get_uuid() == UUID_ANONYMOUS {
                 debug!("Anonymous can't access OAuth2 entries, ignoring");
@@ -223,7 +243,7 @@ fn search_applications_filter_entry(
     entry: &Arc<EntrySealedCommitted>,
 ) -> AccessSrchResult {
     match &ident.origin {
-        IdentType::Internal | IdentType::Synch(_) => AccessSrchResult::Ignore,
+        IdentType::Internal(_) | IdentType::Synch(_) => AccessSrchResult::Ignore,
         IdentType::User(iuser) => {
             if iuser.entry.get_uuid() == UUID_ANONYMOUS {
                 debug!("Anonymous can't access application entries, ignoring");
@@ -268,7 +288,7 @@ fn search_sync_account_filter_entry(
     entry: &Arc<EntrySealedCommitted>,
 ) -> AccessSrchResult {
     match &ident.origin {
-        IdentType::Internal | IdentType::Synch(_) => AccessSrchResult::Ignore,
+        IdentType::Internal(_) | IdentType::Synch(_) => AccessSrchResult::Ignore,
         IdentType::User(iuser) => {
             // Is the user a synced object?
             let is_user_sync_account = iuser

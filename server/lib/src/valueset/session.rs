@@ -64,7 +64,7 @@ impl ValueSetSession {
                         .expect("Failed to format timestamp into RFC3339!")
                 },
                 issued_by: match m.issued_by {
-                    IdentityId::Internal => DbValueIdentityId::V1Internal,
+                    IdentityId::Internal(u) => DbValueIdentityId::V2Internal(u),
                     IdentityId::User(u) => DbValueIdentityId::V1Uuid(u),
                     IdentityId::Synch(u) => DbValueIdentityId::V1Sync(u),
                 },
@@ -158,7 +158,8 @@ impl ValueSetSession {
                         };
 
                         let issued_by = match issued_by {
-                            DbValueIdentityId::V1Internal => IdentityId::Internal,
+                            DbValueIdentityId::V1Internal => IdentityId::Internal(UUID_SYSTEM),
+                            DbValueIdentityId::V2Internal(u) => IdentityId::Internal(*u),
                             DbValueIdentityId::V1Uuid(u) => IdentityId::User(*u),
                             DbValueIdentityId::V1Sync(u) => IdentityId::Synch(*u),
                         };
@@ -1101,7 +1102,8 @@ impl ValueSetApiToken {
                             .ok()?;
 
                         let issued_by = match issued_by {
-                            DbValueIdentityId::V1Internal => IdentityId::Internal,
+                            DbValueIdentityId::V1Internal => IdentityId::Internal(UUID_SYSTEM),
+                            DbValueIdentityId::V2Internal(u) => IdentityId::Internal(u),
                             DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
                             DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
                         };
@@ -1261,7 +1263,7 @@ impl ValueSetT for ValueSetApiToken {
                             .expect("Failed to format timestamp into RFC3339")
                     },
                     issued_by: match m.issued_by {
-                        IdentityId::Internal => DbValueIdentityId::V1Internal,
+                        IdentityId::Internal(u) => DbValueIdentityId::V2Internal(u),
                         IdentityId::User(u) => DbValueIdentityId::V1Uuid(u),
                         IdentityId::Synch(u) => DbValueIdentityId::V1Sync(u),
                     },
@@ -1314,8 +1316,7 @@ impl ValueSetT for ValueSetApiToken {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetOauth2Session, ValueSetSession, SESSION_MAXIMUM};
-    use crate::prelude::ValueSet;
-    use crate::prelude::{IdentityId, SessionScope, Uuid};
+    use crate::prelude::{IdentityId, SessionScope, Uuid, ValueSet, UUID_SYSTEM};
     use crate::repl::cid::Cid;
     use crate::value::{AuthType, Oauth2Session, Session, SessionState};
     use time::OffsetDateTime;
@@ -1330,7 +1331,7 @@ mod tests {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
@@ -1364,7 +1365,7 @@ mod tests {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
@@ -1378,7 +1379,7 @@ mod tests {
                 label: "hacks".to_string(),
                 state: SessionState::RevokedAt(zero_cid.clone()),
                 issued_at: OffsetDateTime::now_utc(),
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
@@ -1407,7 +1408,7 @@ mod tests {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
@@ -1421,7 +1422,7 @@ mod tests {
                 label: "hacks".to_string(),
                 state: SessionState::RevokedAt(zero_cid.clone()),
                 issued_at: OffsetDateTime::now_utc(),
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
@@ -1453,7 +1454,7 @@ mod tests {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
@@ -1468,7 +1469,7 @@ mod tests {
                     label: "hacks".to_string(),
                     state: SessionState::RevokedAt(one_cid.clone()),
                     issued_at: OffsetDateTime::now_utc(),
-                    issued_by: IdentityId::Internal,
+                    issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
@@ -1481,7 +1482,7 @@ mod tests {
                     label: "hacks".to_string(),
                     state: SessionState::RevokedAt(zero_cid.clone()),
                     issued_at: OffsetDateTime::now_utc(),
-                    issued_by: IdentityId::Internal,
+                    issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
@@ -1517,7 +1518,7 @@ mod tests {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
@@ -1532,7 +1533,7 @@ mod tests {
                     label: "hacks".to_string(),
                     state: SessionState::RevokedAt(one_cid.clone()),
                     issued_at: OffsetDateTime::now_utc(),
-                    issued_by: IdentityId::Internal,
+                    issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
@@ -1545,7 +1546,7 @@ mod tests {
                     label: "hacks".to_string(),
                     state: SessionState::RevokedAt(zero_cid.clone()),
                     issued_at: OffsetDateTime::now_utc(),
-                    issued_by: IdentityId::Internal,
+                    issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
@@ -1585,7 +1586,7 @@ mod tests {
                     state: SessionState::RevokedAt(zero_cid),
                     label: "hacks".to_string(),
                     issued_at: OffsetDateTime::now_utc(),
-                    issued_by: IdentityId::Internal,
+                    issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
@@ -1598,7 +1599,7 @@ mod tests {
                     state: SessionState::RevokedAt(one_cid),
                     label: "hacks".to_string(),
                     issued_at: OffsetDateTime::now_utc(),
-                    issued_by: IdentityId::Internal,
+                    issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
@@ -1611,7 +1612,7 @@ mod tests {
                     state: SessionState::RevokedAt(two_cid.clone()),
                     label: "hacks".to_string(),
                     issued_at: OffsetDateTime::now_utc(),
-                    issued_by: IdentityId::Internal,
+                    issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
@@ -1643,7 +1644,7 @@ mod tests {
                 state: SessionState::NeverExpires,
                 label: "hacks".to_string(),
                 issued_at,
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,
@@ -1657,7 +1658,7 @@ mod tests {
                     state: SessionState::NeverExpires,
                     label: "hacks".to_string(),
                     issued_at: OffsetDateTime::now_utc(),
-                    issued_by: IdentityId::Internal,
+                    issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
                     type_: AuthType::Passkey,
@@ -1948,7 +1949,7 @@ mod tests {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::UNIX_EPOCH,
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: s_uuid,
                 scope: SessionScope::ReadOnly,
                 type_: AuthType::Passkey,

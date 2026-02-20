@@ -4,18 +4,14 @@
 //! identity may consume during operations to prevent denial-of-service.
 
 use crate::be::Limits;
+use crate::prelude::*;
+use crate::value::Session;
+use kanidm_proto::internal::{ApiTokenPurpose, UatPurpose};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::net::IpAddr;
 use std::sync::Arc;
-use uuid::uuid;
-
-use kanidm_proto::internal::{ApiTokenPurpose, UatPurpose};
-
-use serde::{Deserialize, Serialize};
-
-use crate::prelude::*;
-use crate::value::Session;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Source {
@@ -69,11 +65,38 @@ pub struct IdentUser {
 }
 
 #[derive(Debug, Clone)]
+/// The internal role being used for this operation.
+pub enum InternalRole {
+    /// The internal database system. This has unlimited power.
+    System,
+    /// A migration operation being performed on the system.
+    Migration,
+}
+
+impl std::fmt::Display for InternalRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::System => write!(f, "System"),
+            Self::Migration => write!(f, "Migration"),
+        }
+    }
+}
+
+impl InternalRole {
+    pub fn get_uuid(&self) -> Uuid {
+        match self {
+            Self::System => UUID_SYSTEM,
+            Self::Migration => UUID_INTERNAL_MIGRATION,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 /// The type of Identity that is related to this session.
 pub enum IdentType {
     User(IdentUser),
     Synch(Uuid),
-    Internal,
+    Internal(InternalRole),
 }
 
 #[derive(Debug, Clone, PartialEq, Hash, Ord, PartialOrd, Eq, Serialize, Deserialize)]
@@ -84,14 +107,13 @@ pub enum IdentityId {
     // The uuid of the originating user
     User(Uuid),
     Synch(Uuid),
-    Internal,
+    Internal(Uuid),
 }
 
 impl From<&IdentityId> for Uuid {
     fn from(ident: &IdentityId) -> Uuid {
         match ident {
-            IdentityId::User(uuid) | IdentityId::Synch(uuid) => *uuid,
-            IdentityId::Internal => UUID_SYSTEM,
+            IdentityId::User(uuid) | IdentityId::Synch(uuid) | IdentityId::Internal(uuid) => *uuid,
         }
     }
 }
@@ -99,7 +121,7 @@ impl From<&IdentityId> for Uuid {
 impl From<&IdentType> for IdentityId {
     fn from(idt: &IdentType) -> Self {
         match idt {
-            IdentType::Internal => IdentityId::Internal,
+            IdentType::Internal(role) => IdentityId::Internal(role.get_uuid()),
             IdentType::User(u) => IdentityId::User(u.entry.get_uuid()),
             IdentType::Synch(u) => IdentityId::Synch(*u),
         }
@@ -121,7 +143,7 @@ pub struct Identity {
 impl std::fmt::Display for Identity {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match &self.origin {
-            IdentType::Internal => write!(f, "Internal ({})", self.scope),
+            IdentType::Internal(u) => write!(f, "Internal ({}) ({})", u, self.scope),
             IdentType::Synch(u) => write!(f, "Synchronise ({}) ({})", u, self.scope),
             IdentType::User(u) => {
                 let nv = u.entry.get_uuid2spn();
@@ -169,11 +191,21 @@ impl Identity {
         &mut self.limits
     }
 
+    pub(crate) fn migration() -> Self {
+        Identity {
+            origin: IdentType::Internal(InternalRole::Migration),
+            source: Source::Internal,
+            session_id: UUID_INTERNAL_SESSION_ID,
+            scope: AccessScope::ReadWrite,
+            limits: Limits::unlimited(),
+        }
+    }
+
     pub(crate) fn from_internal() -> Self {
         Identity {
-            origin: IdentType::Internal,
+            origin: IdentType::Internal(InternalRole::System),
             source: Source::Internal,
-            session_id: uuid!("00000000-0000-0000-0000-000000000000"),
+            session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
         }
@@ -186,7 +218,7 @@ impl Identity {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
             source: Source::Internal,
-            session_id: uuid!("00000000-0000-0000-0000-000000000000"),
+            session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadOnly,
             limits: Limits::unlimited(),
         }
@@ -199,7 +231,7 @@ impl Identity {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
             source: Source::Internal,
-            session_id: uuid!("00000000-0000-0000-0000-000000000000"),
+            session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
         }
@@ -221,7 +253,7 @@ impl Identity {
 
     pub fn get_session(&self) -> Option<&Session> {
         match &self.origin {
-            IdentType::Internal | IdentType::Synch(_) => None,
+            IdentType::Internal(_) | IdentType::Synch(_) => None,
             IdentType::User(u) => u
                 .entry
                 .get_ava_as_session_map(Attribute::UserAuthTokenSession)
@@ -231,7 +263,7 @@ impl Identity {
 
     pub fn get_user_entry(&self) -> Option<Arc<EntrySealedCommitted>> {
         match &self.origin {
-            IdentType::Internal | IdentType::Synch(_) => None,
+            IdentType::Internal(_) | IdentType::Synch(_) => None,
             IdentType::User(u) => Some(u.entry.clone()),
         }
     }
@@ -245,12 +277,12 @@ impl Identity {
     }
 
     pub fn is_internal(&self) -> bool {
-        matches!(self.origin, IdentType::Internal)
+        matches!(self.origin, IdentType::Internal(_))
     }
 
     pub fn get_uuid(&self) -> Option<Uuid> {
         match &self.origin {
-            IdentType::Internal => None,
+            IdentType::Internal(role) => Some(role.get_uuid()),
             IdentType::User(u) => Some(u.entry.get_uuid()),
             IdentType::Synch(u) => Some(*u),
         }
@@ -261,7 +293,7 @@ impl Identity {
     /// tokens, or PIV sessions.
     pub fn can_logout(&self) -> bool {
         match &self.origin {
-            IdentType::Internal => false,
+            IdentType::Internal(_) => false,
             IdentType::User(u) => u.entry.get_uuid() != UUID_ANONYMOUS,
             IdentType::Synch(_) => false,
         }
@@ -274,7 +306,7 @@ impl Identity {
     #[cfg(test)]
     pub fn has_claim(&self, claim: &str) -> bool {
         match &self.origin {
-            IdentType::Internal | IdentType::Synch(_) => false,
+            IdentType::Internal(_) | IdentType::Synch(_) => false,
             IdentType::User(u) => u
                 .entry
                 .attribute_equality(Attribute::Claim, &PartialValue::new_iutf8(claim)),
@@ -283,7 +315,7 @@ impl Identity {
 
     pub fn is_memberof(&self, group: Uuid) -> bool {
         match &self.origin {
-            IdentType::Internal | IdentType::Synch(_) => false,
+            IdentType::Internal(_) | IdentType::Synch(_) => false,
             IdentType::User(u) => u
                 .entry
                 .attribute_equality(Attribute::MemberOf, &PartialValue::Refer(group)),
@@ -292,14 +324,14 @@ impl Identity {
 
     pub fn get_memberof(&self) -> Option<&BTreeSet<Uuid>> {
         match &self.origin {
-            IdentType::Internal | IdentType::Synch(_) => None,
+            IdentType::Internal(_) | IdentType::Synch(_) => None,
             IdentType::User(u) => u.entry.get_ava_refer(Attribute::MemberOf),
         }
     }
 
     pub fn get_oauth2_consent_scopes(&self, oauth2_rs: Uuid) -> Option<&BTreeSet<String>> {
         match &self.origin {
-            IdentType::Internal | IdentType::Synch(_) => None,
+            IdentType::Internal(_) | IdentType::Synch(_) => None,
             IdentType::User(u) => u
                 .entry
                 .get_ava_as_oauthscopemaps(Attribute::OAuth2ConsentScopeMap)
