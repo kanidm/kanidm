@@ -60,9 +60,9 @@ pub fn migration_entry_attrs(
     if classes.contains(EntryClass::Group.into()) {
         allow_cls.clear();
         allow_cls.extend([
-            Into::<&'static str>::into(EntryClass::Group),
-            Into::<&'static str>::into(EntryClass::AccountPolicy),
-            Into::<&'static str>::into(EntryClass::PosixGroup),
+            EntryClass::Group.as_ref(),
+            EntryClass::AccountPolicy.as_ref(),
+            EntryClass::PosixGroup.as_ref(),
         ]);
         allow_attrs.extend([Attribute::Member, Attribute::Name, Attribute::Description])
     }
@@ -70,9 +70,9 @@ pub fn migration_entry_attrs(
     if classes.contains(EntryClass::Person.into()) {
         allow_cls.clear();
         allow_cls.extend([
-            Into::<&'static str>::into(EntryClass::Person),
-            Into::<&'static str>::into(EntryClass::Account),
-            Into::<&'static str>::into(EntryClass::PosixAccount),
+            EntryClass::Person.as_ref(),
+            EntryClass::Account.as_ref(),
+            EntryClass::PosixAccount.as_ref(),
         ]);
         allow_attrs.extend([
             Attribute::Name,
@@ -86,8 +86,8 @@ pub fn migration_entry_attrs(
     if classes.contains(EntryClass::ServiceAccount.into()) {
         allow_cls.clear();
         allow_cls.extend([
-            Into::<&'static str>::into(EntryClass::Account),
-            Into::<&'static str>::into(EntryClass::ServiceAccount),
+            EntryClass::Account.as_ref(),
+            EntryClass::ServiceAccount.as_ref(),
         ]);
         allow_attrs.extend([
             Attribute::Name,
@@ -113,9 +113,9 @@ pub fn migration_entry_attrs(
     if classes.contains(EntryClass::OAuth2ResourceServer.into()) {
         allow_cls.clear();
         allow_cls.extend([
-            Into::<&'static str>::into(EntryClass::OAuth2ResourceServer),
-            Into::<&'static str>::into(EntryClass::OAuth2ResourceServerBasic),
-            Into::<&'static str>::into(EntryClass::OAuth2ResourceServerPublic),
+            EntryClass::OAuth2ResourceServer.as_ref(),
+            EntryClass::OAuth2ResourceServerBasic.as_ref(),
+            EntryClass::OAuth2ResourceServerPublic.as_ref(),
         ]);
         allow_attrs.extend([
             Attribute::Name,
