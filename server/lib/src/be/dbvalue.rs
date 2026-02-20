@@ -494,6 +494,8 @@ pub enum DbValueAccessScopeV1 {
 pub enum DbValueIdentityId {
     #[serde(rename = "v1i")]
     V1Internal,
+    #[serde(rename = "v2i")]
+    V2Internal(Uuid),
     #[serde(rename = "v1u")]
     V1Uuid(Uuid),
     #[serde(rename = "v1s")]

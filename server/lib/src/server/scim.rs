@@ -131,13 +131,13 @@ pub struct ScimAssertEvent {
 }
 
 impl ScimAssertEvent {
-    pub fn new_internal(
+    pub fn new_migration(
         asserts: Vec<ScimEntryAssertion>,
         id: Uuid,
         nonce: Option<Sha256Output>,
     ) -> Self {
         ScimAssertEvent {
-            ident: Identity::from_internal(),
+            ident: Identity::migration(),
             asserts,
             id,
             nonce,
@@ -795,7 +795,7 @@ mod tests {
     async fn scim_assert_basic(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
-        let ident = Identity::from_internal();
+        let ident = Identity::migration();
 
         let uuid_group_1 = Uuid::new_v4();
         let uuid_group_2 = Uuid::new_v4();

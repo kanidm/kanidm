@@ -1,39 +1,75 @@
+use super::migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES};
 use super::profiles::{
     AccessControlCreateResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
 };
-use super::protected::PROTECTED_ENTRY_CLASSES;
+use super::protected::{PROTECTED_ENTRY_CLASSES, PROTECTED_MOD_PRES_ENTRY_CLASSES};
 use crate::prelude::*;
 use std::collections::BTreeSet;
+use std::ops::Sub;
 
-pub(super) enum CreateResult {
+pub(super) enum CreateResult<'a> {
     Deny,
     Grant,
+    Allow {
+        pres: BTreeSet<Attribute>,
+        pres_cls: BTreeSet<&'a str>,
+    },
 }
 
-enum IResult {
+enum IResult<'a> {
     Deny,
     Grant,
     Ignore,
+    Allow {
+        pres: BTreeSet<Attribute>,
+        pres_cls: BTreeSet<&'a str>,
+    },
 }
 
 pub(super) fn apply_create_access<'a>(
     ident: &Identity,
     related_acp: &'a [AccessControlCreateResolved],
     entry: &'a Entry<EntryInit, EntryNew>,
-) -> CreateResult {
+) -> CreateResult<'a> {
     let mut denied = false;
     let mut grant = false;
+
+    let constrain_pres = BTreeSet::default();
+    let mut allow_pres = BTreeSet::default();
+
+    let constrain_pres_cls = BTreeSet::default();
+    let mut allow_pres_cls = BTreeSet::default();
 
     // This module can never yield a grant.
     match protected_filter_entry(ident, entry) {
         IResult::Deny => denied = true,
-        IResult::Grant | IResult::Ignore => {}
+        IResult::Grant | IResult::Ignore | IResult::Allow { .. } => {}
+    }
+
+    match migration_filter_entry(ident, entry) {
+        IResult::Deny => denied = true,
+        IResult::Grant => grant = true,
+        IResult::Ignore => {}
+        IResult::Allow {
+            mut pres,
+            mut pres_cls,
+        } => {
+            allow_pres.append(&mut pres);
+            allow_pres_cls.append(&mut pres_cls);
+        }
     }
 
     match create_filter_entry(ident, related_acp, entry) {
         IResult::Deny => denied = true,
         IResult::Grant => grant = true,
         IResult::Ignore => {}
+        IResult::Allow {
+            mut pres,
+            mut pres_cls,
+        } => {
+            allow_pres.append(&mut pres);
+            allow_pres_cls.append(&mut pres_cls);
+        }
     }
 
     if denied {
@@ -43,8 +79,28 @@ pub(super) fn apply_create_access<'a>(
         // Something said yes
         CreateResult::Grant
     } else {
-        // Nothing said yes.
-        CreateResult::Deny
+        let allowed_pres = if !constrain_pres.is_empty() {
+            // bit_and
+            &constrain_pres & &allow_pres
+        } else {
+            allow_pres
+        };
+
+        let mut allowed_pres_cls = if !constrain_pres_cls.is_empty() {
+            // bit_and
+            &constrain_pres_cls & &allow_pres_cls
+        } else {
+            allow_pres_cls
+        };
+
+        for protected_cls in PROTECTED_MOD_PRES_ENTRY_CLASSES.iter() {
+            allowed_pres_cls.remove(protected_cls.as_str());
+        }
+
+        CreateResult::Allow {
+            pres: allowed_pres,
+            pres_cls: allowed_pres_cls,
+        }
     }
 }
 
@@ -52,12 +108,16 @@ fn create_filter_entry<'a>(
     ident: &Identity,
     related_acp: &'a [AccessControlCreateResolved],
     entry: &'a Entry<EntryInit, EntryNew>,
-) -> IResult {
+) -> IResult<'a> {
     match &ident.origin {
-        IdentType::Internal => {
+        IdentType::Internal(InternalRole::System) => {
             trace!("Internal operation, bypassing access check");
             // No need to check ACS
             return IResult::Grant;
+        }
+        IdentType::Internal(InternalRole::Migration) => {
+            // Checked in a separate function.
+            return IResult::Ignore;
         }
         IdentType::Synch(_) => {
             security_critical!("Blocking sync check");
@@ -172,9 +232,9 @@ fn create_filter_entry<'a>(
     }
 }
 
-fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IResult {
+fn protected_filter_entry<'a>(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IResult<'a> {
     match &ident.origin {
-        IdentType::Internal => {
+        IdentType::Internal(InternalRole::System) => {
             trace!("Internal operation, protected rules do not apply.");
             IResult::Ignore
         }
@@ -182,7 +242,14 @@ fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) 
             security_access!("sync agreements may not directly create entities");
             IResult::Deny
         }
-        IdentType::User(_) => {
+        IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {
+            if let Some(entry_uuid) = entry.get_uuid() {
+                if entry_uuid <= UUID_ANONYMOUS {
+                    security_access!("attempt to create a system builtin entry");
+                    return IResult::Deny;
+                }
+            }
+
             // Now check things ...
             if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
                 if classes.is_disjoint(&PROTECTED_ENTRY_CLASSES) {
@@ -199,5 +266,32 @@ fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) 
                 IResult::Ignore
             }
         }
+    }
+}
+
+fn migration_filter_entry<'a>(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IResult<'a> {
+    match &ident.origin {
+        IdentType::Internal(InternalRole::Migration) => {
+            trace!(uuid = ?entry.get_display_id(), "Internal migration");
+
+            if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
+                let classes = classes.sub(&MIGRATION_IGNORE_CLASSES);
+                if classes.is_subset(&MIGRATION_ENTRY_CLASSES) {
+                    // Check what may be allowed
+                    let (allow_attrs, allow_cls) = migration_entry_attrs(&classes);
+
+                    if allow_attrs.is_empty() {
+                        return IResult::Deny;
+                    } else {
+                        return IResult::Allow {
+                            pres: allow_attrs,
+                            pres_cls: allow_cls,
+                        };
+                    }
+                }
+            }
+            IResult::Deny
+        }
+        _ => IResult::Ignore,
     }
 }

@@ -584,7 +584,7 @@ impl IdmServerProxyWriteTransaction<'_> {
     > {
         // Assert the token is valid.
         let sync_uuid = match &sse.ident.origin {
-            IdentType::User(_) | IdentType::Internal => {
+            IdentType::User(_) | IdentType::Internal(_) => {
                 warn!("Ident type is not synchronise");
                 return Err(OperationError::AccessDenied);
             }
@@ -1527,7 +1527,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         // The ident *must* be a synchronise session.
         let sync_uuid = match &ident.origin {
-            IdentType::User(_) | IdentType::Internal => {
+            IdentType::User(_) | IdentType::Internal(_) => {
                 warn!("Ident type is not synchronise");
                 return Err(OperationError::AccessDenied);
             }
