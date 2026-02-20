@@ -13,7 +13,7 @@ Unix/Posix Settings
     (% if can_rw %)
         <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_posix">Edit</button>
     (% else %)
-        <a href=(Urls::ProfileUnlock) hx-boost="false">
+        <a href=(Urls::ProfileUnlock)>
             <button class="btn btn-primary" type="button">((UiMessage::UnlockEdit))</button>
         </a>
     (% endif %)
