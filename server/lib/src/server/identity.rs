@@ -192,7 +192,6 @@ impl Identity {
         }
     }
 
-    #[cfg(test)]
     pub fn from_impersonate_entry_readwrite(
         entry: Arc<Entry<EntrySealed, EntryCommitted>>,
     ) -> Self {

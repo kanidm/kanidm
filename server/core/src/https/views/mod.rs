@@ -103,6 +103,10 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
         .route("/apps", get(apps::view_apps_get))
         .route("/enrol", get(enrol::view_enrol_get))
         .route("/reset", get(reset::view_reset_get))
+        .route(
+            "/revoke",
+            get(reset::view_revoke_get).post(reset::view_revoke_post),
+        )
         .route("/update_credentials", get(reset::view_self_reset_get))
         .route("/profile", get(profile::view_profile_get))
         .route("/profile/diff", get(profile::view_profile_get))

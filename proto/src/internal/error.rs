@@ -174,6 +174,8 @@ pub enum OperationError {
     CU0005IntentTokenConflict,
     // The intent token was invalidated before we could commit.
     CU0006IntentTokenInvalidated,
+    CU0007AccountEmailNotFound,
+    CU0008AccountMissingEmail,
 
     // ValueSet errors
     VS0001IncomingReplSshPublicKey,
@@ -455,6 +457,8 @@ impl OperationError {
             Self::CU0004SessionInconsistent => Some("The session is unable to be committed due to unresolved warnings.".into()),
             Self::CU0005IntentTokenConflict => Some("The intent token used to create this session has been reused in another browser/tab and may not proceed.".into()),
             Self::CU0006IntentTokenInvalidated => Some("The intent token has been invalidated/revoked before the commit could be accepted. Has it been used in another browser or tab?".into()),
+            Self::CU0007AccountEmailNotFound => Some("The requested email to send the credential update intent token to is not registered to the account.".into()),
+            Self::CU0008AccountMissingEmail => Some("The account has no email addresses and may not have a credential update intent token sent to it.".into()),
 
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,

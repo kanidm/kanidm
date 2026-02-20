@@ -19,6 +19,7 @@ use kanidmd_lib::{
     idm::credupdatesession::{
         CredentialUpdateIntentTokenExchange, CredentialUpdateSessionToken,
         InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
+        InitCredentialUpdateIntentSendEvent,
     },
     idm::event::{GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent},
     idm::oauth2::{
@@ -681,6 +682,50 @@ impl QueryServerWriteV1 {
     #[instrument(
         level = "info",
         skip_all,
+        fields(uuid = ?eventid),
+    )]
+    pub async fn handle_idm_credential_update_intent_send(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        uuid_or_name: String,
+        max_ttl: Option<Duration>,
+        email: Option<String>,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
+            })?;
+
+        let event = InitCredentialUpdateIntentSendEvent {
+            ident,
+            target,
+            max_ttl,
+            email,
+        };
+
+        idms_prox_write
+            .init_credential_update_intent_send(event, ct)
+            .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+            .inspect_err(|err| {
+                error!(?err, "Failed to process init_credential_update_intent_send",);
+            })
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_idmcredentialexchangeintent(
@@ -709,6 +754,27 @@ impl QueryServerWriteV1 {
                     },
                     sta.into(),
                 )
+            })
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idm_credential_revoke_intent(
+        &self,
+        intent_id: String,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let intent_token = CredentialUpdateIntentTokenExchange { intent_id };
+        idms_prox_write
+            .revoke_credential_update_intent(intent_token, ct)
+            .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+            .inspect_err(|err| {
+                error!(?err, "Failed to perfect exchange_intent_credential_update",);
             })
     }
 
