@@ -877,20 +877,62 @@ pub trait AccessControlsTransaction<'a> {
             .collect();
 
         // For each entry
-        let r = entries.iter().all(|e| {
+        let decision = entries.iter().all(|e| {
+            let requested_pres: BTreeSet<_> = e.attr_keys().cloned().collect();
+            let Some(requested_pres_classes) = e
+                .get_ava_as_iutf8(Attribute::Class)
+                .map(|set| set.iter().map(|s| s.as_str()).collect::<BTreeSet<_>>())
+            else {
+                error!("unable to perform access control checks on entry with no classes, denied.");
+                return false;
+            };
+
+            debug!(?requested_pres, "Requested present set");
+            debug!(?requested_pres_classes, "Requested present class set");
+            debug!(entry_id = %e.get_display_id());
+
             match apply_create_access(&ce.ident, related_acp.as_slice(), e) {
                 CreateResult::Deny => false,
                 CreateResult::Grant => true,
+                CreateResult::Allow { pres, pres_cls } => {
+                    let mut decision = true;
+
+                    if !requested_pres.is_subset(&pres) {
+                        security_error!("requested_pres is not a subset of allowed");
+                        security_error!(
+                            "requested_pres: {:?} !⊆ allowed: {:?}",
+                            requested_pres,
+                            pres
+                        );
+                        decision = false
+                    };
+
+                    if !requested_pres_classes.is_subset(&pres_cls) {
+                        security_error!("requested_pres_classes is not a subset of allowed");
+                        security_error!(
+                            "requested_classes: {:?} !⊆ allowed: {:?}",
+                            requested_pres_classes,
+                            pres_cls
+                        );
+                        decision = false;
+                    };
+
+                    if decision {
+                        debug!("passed pres, classes check.");
+                    }
+
+                    decision
+                }
             }
         });
 
-        if r {
+        if decision {
             debug!("allowed create of {} entries ✅", entries.len());
         } else {
             security_access!("denied ❌ - create may not proceed");
         }
 
-        Ok(r)
+        Ok(decision)
     }
 
     #[instrument(level = "trace", name = "access::delete_related_acp", skip_all)]

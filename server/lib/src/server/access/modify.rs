@@ -1,4 +1,4 @@
-use super::migration::MIGRATION_ENTRY_CLASSES;
+use super::migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES};
 use super::profiles::{
     AccessControlModify, AccessControlModifyResolved, AccessControlReceiverCondition,
     AccessControlTargetCondition,
@@ -11,6 +11,7 @@ use super::{AccessBasicResult, AccessModResult};
 use crate::prelude::*;
 use hashbrown::HashMap;
 use std::collections::BTreeSet;
+use std::ops::Sub;
 use std::sync::Arc;
 
 pub(super) enum ModifyResult<'a> {
@@ -482,9 +483,21 @@ fn modify_migration_attrs<'a>(
     match &ident.origin {
         IdentType::Internal(InternalRole::Migration) => {
             if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
+                let classes = classes.sub(&MIGRATION_IGNORE_CLASSES);
                 if classes.is_subset(&MIGRATION_ENTRY_CLASSES) {
                     // Check what may be allowed
-                    return modify_migration_entry_attrs(classes);
+                    let (allow_attrs, allow_cls) = migration_entry_attrs(&classes);
+
+                    if allow_attrs.is_empty() {
+                        return AccessModResult::Deny;
+                    } else {
+                        return AccessModResult::Allow {
+                            pres_attr: allow_attrs.clone(),
+                            rem_attr: allow_attrs,
+                            pres_class: allow_cls.clone(),
+                            rem_class: allow_cls,
+                        };
+                    }
                 }
             }
             AccessModResult::Deny
@@ -492,74 +505,6 @@ fn modify_migration_attrs<'a>(
         _ => {
             // We don't constraint or influence these.
             AccessModResult::Ignore
-        }
-    }
-}
-
-fn modify_migration_entry_attrs<'a>(classes: &BTreeSet<String>) -> AccessModResult<'a> {
-    let mut allow_attrs = BTreeSet::default();
-    let mut allow_cls: BTreeSet<&'static str> = BTreeSet::default();
-
-    if classes.contains(EntryClass::DomainInfo.into()) {
-        allow_cls.extend([Into::<&'static str>::into(EntryClass::DomainInfo)]);
-        allow_attrs.extend([
-            Attribute::DomainLdapBasedn,
-            Attribute::LdapMaxQueryableAttrs,
-            Attribute::LdapAllowUnixPwBind,
-            Attribute::DomainDisplayName,
-            Attribute::Image,
-        ]);
-    }
-
-    if classes.contains(EntryClass::Group.into()) {
-        allow_attrs.extend([Attribute::Member, Attribute::Name, Attribute::Description])
-    }
-
-    if classes.contains(EntryClass::Person.into()) {
-        allow_attrs.extend([
-            Attribute::Name,
-            Attribute::LegalName,
-            Attribute::Mail,
-            Attribute::SshPublicKey,
-            Attribute::Description,
-        ])
-    }
-
-    if classes.contains(EntryClass::AccountPolicy.into()) {
-        allow_attrs.extend([
-            Attribute::AuthSessionExpiry,
-            Attribute::AuthPasswordMinimumLength,
-            Attribute::CredentialTypeMinimum,
-            Attribute::PrivilegeExpiry,
-            Attribute::WebauthnAttestationCaList,
-            Attribute::LimitSearchMaxResults,
-            Attribute::LimitSearchMaxFilterTest,
-            Attribute::AllowPrimaryCredFallback,
-        ]);
-    }
-
-    if classes.contains(EntryClass::OAuth2ResourceServer.into()) {
-        allow_attrs.extend([
-            Attribute::Name,
-            Attribute::Description,
-            Attribute::OAuth2RsScopeMap,
-            Attribute::OAuth2RsSupScopeMap,
-            Attribute::OAuth2JwtLegacyCryptoEnable,
-            Attribute::OAuth2PreferShortUsername,
-            Attribute::OAuth2RsClaimMap,
-            Attribute::OAuth2RsOrigin,
-            Attribute::OAuth2ConsentPromptEnable,
-        ])
-    }
-
-    if allow_attrs.is_empty() {
-        AccessModResult::Deny
-    } else {
-        AccessModResult::Allow {
-            pres_attr: allow_attrs.clone(),
-            rem_attr: allow_attrs,
-            pres_class: allow_cls.clone(),
-            rem_class: allow_cls,
         }
     }
 }

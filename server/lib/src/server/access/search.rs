@@ -1,10 +1,11 @@
-use super::migration::MIGRATION_ENTRY_CLASSES;
+use super::migration::{MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES};
 use super::profiles::{
     AccessControlReceiverCondition, AccessControlSearchResolved, AccessControlTargetCondition,
 };
 use super::AccessSrchResult;
 use crate::prelude::*;
 use std::collections::BTreeSet;
+use std::ops::Sub;
 use std::sync::Arc;
 
 pub(super) enum SearchResult {
@@ -97,6 +98,7 @@ fn search_filter_entry(
                 .get_ava_as_iutf8(Attribute::Class)
                 .map(|classes| {
                     trace!(?classes);
+                    let classes = classes.sub(&MIGRATION_IGNORE_CLASSES);
                     classes.is_subset(&MIGRATION_ENTRY_CLASSES)
                 })
                 .unwrap_or(false);

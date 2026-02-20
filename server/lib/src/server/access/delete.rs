@@ -1,9 +1,10 @@
-use super::migration::MIGRATION_ENTRY_CLASSES;
+use super::migration::{MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES};
 use super::profiles::{
     AccessControlDeleteResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
 };
 use super::protected::PROTECTED_ENTRY_CLASSES;
 use crate::prelude::*;
+use std::ops::Sub;
 use std::sync::Arc;
 
 pub(super) enum DeleteResult {
@@ -64,7 +65,10 @@ fn delete_filter_entry<'a>(
 
             let valid_migration_class = entry
                 .get_ava_as_iutf8(Attribute::Class)
-                .map(|classes| classes.is_subset(&MIGRATION_ENTRY_CLASSES))
+                .map(|classes| {
+                    let classes = classes.sub(&MIGRATION_IGNORE_CLASSES);
+                    classes.is_subset(&MIGRATION_ENTRY_CLASSES)
+                })
                 .unwrap_or(false);
 
             if valid_migration_class {
