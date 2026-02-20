@@ -130,6 +130,19 @@ function updateSubmitButtonVisibility(event) {
     submitButton.disabled = event.value === "";
 }
 
+function beforeUnloadHandler (event) {
+    console.debug("credupdate: beforeUnloadHandler");
+    var confirmationMessage = 'Unsaved changes will be lost.';
+
+    (event || window.event).returnValue = confirmationMessage;
+    return confirmationMessage;
+}
+
+window.removeBeforeUnloadHandler = function () {
+    console.debug("credupdate: removeBeforeUnloadHandler");
+    window.removeEventListener("beforeunload", beforeUnloadHandler);
+};
+
 (function () {
     console.debug("credupdate: init");
     document.body.addEventListener("addPasswordSwapped", () => {
@@ -140,4 +153,7 @@ function updateSubmitButtonVisibility(event) {
         startPasskeyEnrollment();
         setupSubmitBtnVisibility();
     });
+    window.addEventListener("beforeunload", beforeUnloadHandler);
 })();
+
+

@@ -48,7 +48,7 @@ let can_modify_any_attr = scim_effective_access.modify_present.check_any(
         (% if can_rw -%)
             <button type="submit" class="btn btn-primary">Save</button>
         (% else -%)
-            <a hx-boost="false" href="/ui/unlock">
+            <a href="/ui/unlock">
                 <button type="button" class="btn btn-secondary">Unlock Edit 🔒</button>
             </a>
         (% endif -%)
