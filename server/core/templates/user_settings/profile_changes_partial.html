@@ -95,7 +95,7 @@ Profile Difference
                 hx-swap="outerHTML">Confirm Changes
         </button>
         (% else %)
-        <a href="/ui/unlock" hx-boost="false">
+        <a href="/ui/unlock">
             <!-- TODO: at the moment, session expiring here means progress is lost. Do we just show an error screen ? We can't pass the update state through the reauth session, and we don't have profile update sessions like cred update. -->
             <button class="btn btn-primary" type="button">Unlock Confirm 🔓</button>
         </a>
