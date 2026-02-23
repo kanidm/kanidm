@@ -3324,7 +3324,7 @@ fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
 #[cfg(any(feature = "dev-oauth2-device-flow", test))]
 #[allow(dead_code)]
 fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
-    use rand::TryRngCore;
+    use rand::TryRng;
 
     let mut rng = rand::rng();
     let mut result = [0u8; 16];
