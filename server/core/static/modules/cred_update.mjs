@@ -130,9 +130,9 @@ function updateSubmitButtonVisibility(event) {
     submitButton.disabled = event.value === "";
 }
 
-function beforeUnloadHandler (event) {
+function beforeUnloadHandler(event) {
     console.debug("credupdate: beforeUnloadHandler");
-    var confirmationMessage = 'Unsaved changes will be lost.';
+    const confirmationMessage = "Unsaved changes will be lost.";
 
     (event || window.event).returnValue = confirmationMessage;
     return confirmationMessage;
@@ -155,5 +155,3 @@ window.removeBeforeUnloadHandler = function () {
     });
     window.addEventListener("beforeunload", beforeUnloadHandler);
 })();
-
-
