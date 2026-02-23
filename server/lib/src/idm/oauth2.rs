@@ -3341,7 +3341,7 @@ fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
 #[allow(dead_code)]
 /// Returns (xxx-yyy-zzz, digits) where one's the human-facing code, the other is what we store in the DB.
 fn gen_user_code() -> (String, u32) {
-    use rand::Rng;
+    use rand::RngExt;
     let mut rng = rand::rng();
     let num: u32 = rng.random_range(0..=999999999);
     let result = format!("{num:09}");

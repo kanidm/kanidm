@@ -21,7 +21,7 @@ use openssl::error::ErrorStack as OpenSSLErrorStack;
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::{Sha1, Sha256, Sha512};
-use rand::Rng;
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;

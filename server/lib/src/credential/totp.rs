@@ -5,7 +5,7 @@ use kanidm_proto::internal::{TotpAlgo as ProtoTotpAlgo, TotpSecret as ProtoTotp}
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::sign::Signer;
-use rand::prelude::*;
+use rand::RngExt;
 
 use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
 

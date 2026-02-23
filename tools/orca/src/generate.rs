@@ -7,7 +7,7 @@ use hashbrown::HashMap;
 use rand::distr::{Alphanumeric, SampleString, Uniform};
 use rand::seq::{index, IndexedRandom};
 
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use std::collections::BTreeSet;
