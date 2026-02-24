@@ -1,5 +1,6 @@
+# syntax=docker.io/docker/dockerfile:1
 # This builds the kanidm CLI tools
-ARG BASE_IMAGE=opensuse/tumbleweed:latest
+ARG BASE_IMAGE=docker.io/opensuse/tumbleweed:latest@sha256:c03233bda8a39bbce1775b14d0ebeb1ccf507a6b3dd51d407bf6d511f52961c6
 # ARG BASE_IMAGE=opensuse/leap:15.5
 
 FROM ${BASE_IMAGE} AS repos
