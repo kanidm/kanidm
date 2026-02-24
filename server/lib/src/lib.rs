@@ -98,7 +98,7 @@ pub mod prelude {
     pub use crate::server::access::AccessControlsTransaction;
     pub use crate::server::batch_modify::BatchModifyEvent;
     pub use crate::server::identity::{
-        AccessScope, IdentType, IdentUser, Identity, IdentityId, Source,
+        AccessScope, IdentType, IdentUser, Identity, IdentityId, InternalRole, Source,
     };
     pub use crate::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,

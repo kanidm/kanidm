@@ -1,3 +1,4 @@
+use super::migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES};
 use super::profiles::{
     AccessControlModify, AccessControlModifyResolved, AccessControlReceiverCondition,
     AccessControlTargetCondition,
@@ -10,6 +11,7 @@ use super::{AccessBasicResult, AccessModResult};
 use crate::prelude::*;
 use hashbrown::HashMap;
 use std::collections::BTreeSet;
+use std::ops::Sub;
 use std::sync::Arc;
 
 pub(super) enum ModifyResult<'a> {
@@ -55,6 +57,23 @@ pub(super) fn apply_modify_access<'a>(
         AccessBasicResult::Deny => denied = true,
         AccessBasicResult::Grant => grant = true,
         AccessBasicResult::Ignore => {}
+    }
+
+    // Check with protected if we should proceed.
+    match modify_migration_attrs(ident, entry) {
+        AccessModResult::Deny => denied = true,
+        AccessModResult::Allow {
+            mut pres_attr,
+            mut rem_attr,
+            mut pres_class,
+            mut rem_class,
+        } => {
+            allow_pres.append(&mut pres_attr);
+            allow_rem.append(&mut rem_attr);
+            allow_pres_cls.append(&mut pres_class);
+            allow_rem_cls.append(&mut rem_class);
+        }
+        AccessModResult::Constrain { .. } | AccessModResult::Ignore => {}
     }
 
     // Check with protected if we should proceed.
@@ -228,9 +247,12 @@ pub(super) fn apply_modify_access<'a>(
 
 fn modify_ident_test(ident: &Identity) -> AccessBasicResult {
     match &ident.origin {
-        IdentType::Internal => {
+        IdentType::Internal(InternalRole::System) => {
             trace!("Internal operation, bypassing access check");
             // No need to check ACS
+            return AccessBasicResult::Grant;
+        }
+        IdentType::Internal(InternalRole::Migration) => {
             return AccessBasicResult::Grant;
         }
         IdentType::Synch(_) => {
@@ -289,7 +311,7 @@ fn modify_sync_constrain<'a>(
     sync_agreements: &HashMap<Uuid, BTreeSet<Attribute>>,
 ) -> AccessModResult<'a> {
     match &ident.origin {
-        IdentType::Internal => AccessModResult::Ignore,
+        IdentType::Internal(_) => AccessModResult::Ignore,
         IdentType::Synch(_) => {
             // Allowed to mod sync objects. Later we'll probably need to check the limits of what
             // it can do if we go that way.
@@ -340,13 +362,15 @@ fn modify_protected_attrs<'a>(
     entry: &Arc<EntrySealedCommitted>,
 ) -> AccessModResult<'a> {
     match &ident.origin {
-        IdentType::Internal | IdentType::Synch(_) => {
+        IdentType::Internal(InternalRole::System) | IdentType::Synch(_) => {
             // We don't constraint or influence these.
             AccessModResult::Ignore
         }
-        IdentType::User(_) => {
+        IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {
             if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
-                if classes.is_disjoint(&PROTECTED_MOD_ENTRY_CLASSES) {
+                if classes.is_disjoint(&PROTECTED_MOD_ENTRY_CLASSES)
+                    || entry.get_uuid() <= UUID_ANONYMOUS
+                {
                     // Not protected, go ahead
                     AccessModResult::Ignore
                 } else {
@@ -405,6 +429,25 @@ fn modify_protected_entry_attrs<'a>(classes: &BTreeSet<String>) -> AccessModResu
         ]);
     }
 
+    if classes.contains(EntryClass::Account.into()) {
+        constrain_attrs.extend([Attribute::AccountExpire, Attribute::AccountValidFrom]);
+    }
+
+    if classes.contains(EntryClass::ServiceAccount.into()) {
+        constrain_attrs.extend([
+            Attribute::SshPublicKey,
+            Attribute::UserAuthTokenSession,
+            Attribute::OAuth2Session,
+            Attribute::Mail,
+            Attribute::PrimaryCredential,
+            Attribute::ApiTokenSession,
+        ]);
+    }
+
+    if classes.contains(EntryClass::Group.into()) {
+        constrain_attrs.extend([Attribute::Member]);
+    }
+
     // Allow account policy related attributes to be changed on dyngroup
     if classes.contains(EntryClass::DynGroup.into()) {
         constrain_attrs.extend([
@@ -429,6 +472,39 @@ fn modify_protected_entry_attrs<'a>(classes: &BTreeSet<String>) -> AccessModResu
             rem_attr: constrain_attrs,
             pres_cls: None,
             rem_cls: None,
+        }
+    }
+}
+
+fn modify_migration_attrs<'a>(
+    ident: &Identity,
+    entry: &Arc<EntrySealedCommitted>,
+) -> AccessModResult<'a> {
+    match &ident.origin {
+        IdentType::Internal(InternalRole::Migration) => {
+            if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
+                let classes = classes.sub(&MIGRATION_IGNORE_CLASSES);
+                if classes.is_subset(&MIGRATION_ENTRY_CLASSES) {
+                    // Check what may be allowed
+                    let (allow_attrs, allow_cls) = migration_entry_attrs(&classes);
+
+                    if allow_attrs.is_empty() {
+                        return AccessModResult::Deny;
+                    } else {
+                        return AccessModResult::Allow {
+                            pres_attr: allow_attrs.clone(),
+                            rem_attr: allow_attrs,
+                            pres_class: allow_cls.clone(),
+                            rem_class: allow_cls,
+                        };
+                    }
+                }
+            }
+            AccessModResult::Deny
+        }
+        _ => {
+            // We don't constraint or influence these.
+            AccessModResult::Ignore
         }
     }
 }

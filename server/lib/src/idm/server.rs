@@ -246,7 +246,7 @@ impl IdmServer {
         let qs_read = self.qs.read().await?;
 
         let mut sid = [0; 4];
-        let mut rng = StdRng::from_os_rng();
+        let mut rng = rand::rng();
         rng.fill(&mut sid);
 
         Ok(IdmServerAuthTransaction {
@@ -290,7 +290,7 @@ impl IdmServer {
         let qs_write = self.qs.write(ts).await?;
 
         let mut sid = [0; 4];
-        let mut rng = StdRng::from_os_rng();
+        let mut rng = rand::rng();
         rng.fill(&mut sid);
 
         Ok(IdmServerProxyWriteTransaction {

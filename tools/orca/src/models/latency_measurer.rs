@@ -9,7 +9,7 @@ use idlset::v2::IDLBitRange;
 
 use hashbrown::HashMap;
 use kanidm_client::KanidmClient;
-use rand::Rng;
+use rand::RngExt;
 use rand_chacha::ChaCha8Rng;
 
 use crate::{

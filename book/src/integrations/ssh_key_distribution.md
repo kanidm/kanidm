@@ -58,7 +58,7 @@ kanidm_ssh_authorizedkeys <account name>
 
 If the account has SSH public keys you should see them listed, one per line.
 
-To configure servers to accept these keys, you must change their /etc/ssh/sshd_config to contain the lines:
+To configure servers to accept these keys, you must change their `/etc/ssh/sshd_config` to contain the lines:
 
 ```text
 PubkeyAuthentication yes
@@ -69,8 +69,8 @@ AuthorizedKeysCommandUser nobody
 
 Restart sshd, and then attempt to authenticate with the keys.
 
-It's highly recommended you keep your client configuration and sshd_configuration in a configuration management tool
-such as salt or ansible.
+It's highly recommended you keep your client configuration and `sshd_config` in a configuration management tool such as
+salt or ansible.
 
 > [!NOTE]
 >
@@ -83,6 +83,13 @@ PermitEmptyPasswords no
 GSSAPIAuthentication no
 KerberosAuthentication no
 ```
+
+> [!WARNING]
+>
+> If you are using `ssh_config.d` drop in files, the `kanidm` configuration must be _before_ the systemd-userdbd
+> configuration. This is because `20-systemd-userdb.conf` contains `AuthorizedKeysCommand` and `sshd_config` respects
+> the _first_ directive found. We recommend you use the filename `10-kanidm.conf` to ensure your settings take
+> precedence over systemd-userdbd.
 
 ### Direct Communication Configuration
 
