@@ -10,7 +10,6 @@ pub struct Config {
     pub instance_display_name: String,
     pub instance_url: Url,
 
-    // pub status_bind: Option<Address>,
     pub mail_from_address: Address,
     pub mail_reply_to_address: Address,
     pub mail_relay: String,
