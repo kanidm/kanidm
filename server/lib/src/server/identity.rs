@@ -67,7 +67,7 @@ pub struct IdentUser {
 #[derive(Debug, Clone)]
 /// The internal role being used for this operation.
 pub enum InternalRole {
-    /// The internal database system. This has unlimited power.
+    /// The internal database system. This has unlimited crab power.
     System,
     /// A migration operation being performed on the system.
     Migration,
