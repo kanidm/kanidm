@@ -2,7 +2,7 @@ use crate::prelude::{Attribute, EntryClass};
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
 
-/// These entry classes may be affected by migrations. All protection rules still
+/// These entry classes can be modified by migrations. All protection rules still
 /// apply.
 pub static MIGRATION_ENTRY_CLASSES: LazyLock<BTreeSet<String>> = LazyLock::new(|| {
     let classes = vec![
