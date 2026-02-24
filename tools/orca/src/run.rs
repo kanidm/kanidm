@@ -4,7 +4,7 @@ use crate::stats::{BasicStatistics, TestPhase};
 
 use std::sync::Arc;
 
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use crossbeam::queue::{ArrayQueue, SegQueue};
