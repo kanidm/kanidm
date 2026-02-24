@@ -272,3 +272,37 @@ updates:
       all: # group all the things
         patterns:
           - "*"
+  # Update Dockerimage digests
+  - package-ecosystem: "docker"
+    directory: "/tools"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+    groups:
+      all: # group all the things
+        patterns:
+          - "*"
+  - package-ecosystem: "docker"
+    directory: "/server"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+    groups:
+      all: # group all the things
+        patterns:
+          - "*"
+  - package-ecosystem: "docker"
+    directory: "/rlm_python"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+    groups:
+      all: # group all the things
+        patterns:
+          - "*"
