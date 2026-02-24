@@ -521,6 +521,9 @@ pub const UUID_IDM_ACP_OAUTH2_CLIENT_ADMIN: Uuid = uuid!("00000000-0000-0000-000
 pub const UUID_IDM_ACP_OAUTH2_ACCOUNT_ENROL: Uuid = uuid!("00000000-0000-0000-0000-ffffff000080");
 pub const UUID_IDM_ACP_OAUTH2_MANAGE_BASIC: Uuid = uuid!("00000000-0000-0000-0000-ffffff000081");
 
+pub const UUID_INTERNAL_MIGRATION: Uuid = uuid!("00000000-0000-0000-0000-ffffff000082");
+pub const UUID_INTERNAL_SESSION_ID: Uuid = uuid!("00000000-0000-0000-0000-ffffff000083");
+
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");
 pub const UUID_ANONYMOUS: Uuid = uuid!("00000000-0000-0000-0000-ffffffffffff");
