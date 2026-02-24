@@ -716,9 +716,7 @@ mod tests {
         let create = vec![e];
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::Base(
-                "Uuid must not be in protected range".to_string()
-            ))),
+            Err(OperationError::AccessDenied),
             preload,
             create,
             Some(E_TEST_ACCOUNT.clone()),
@@ -746,9 +744,7 @@ mod tests {
         let create = vec![e];
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::Base(
-                "Uuid must not be in protected range".to_string()
-            ))),
+            Err(OperationError::AccessDenied),
             preload,
             create,
             Some(E_TEST_ACCOUNT.clone()),

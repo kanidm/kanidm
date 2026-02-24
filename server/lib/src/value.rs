@@ -1240,7 +1240,7 @@ impl fmt::Debug for Session {
         let issuer = match self.issued_by {
             IdentityId::User(u) => format!("User - {}", uuid_to_proto_string(u)),
             IdentityId::Synch(u) => format!("Synch - {}", uuid_to_proto_string(u)),
-            IdentityId::Internal => "Internal".to_string(),
+            IdentityId::Internal(u) => format!("Internal - {}", uuid_to_proto_string(u)),
         };
         let expiry = match self.state {
             SessionState::ExpiresAt(e) => e.to_string(),

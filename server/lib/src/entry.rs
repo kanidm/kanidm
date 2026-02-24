@@ -2653,6 +2653,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .unwrap_or_default()
     }
 
+    pub fn attr_keys(&self) -> impl Iterator<Item = &Attribute> {
+        self.attrs.keys()
+    }
+
     /// Get an iterator over the current set of attribute names that this entry contains.
     pub fn get_ava_names(&self) -> impl Iterator<Item = &str> {
         // Get the set of all attribute names in the entry
