@@ -1125,7 +1125,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         _current_time: Duration,
     ) -> Result<(), OperationError> {
         let CredentialUpdateIntentTokenExchange { intent_id } = token;
-        // If given an intent_id, immediately transition it to consumed to prevent it's used.
+        // If given an intent_id, immediately transition it to consumed to prevent reuse.
         //
         // NOTE: We don't need ident/authentication here because posession of the intent_id is
         // sufficient to prove that you can revoke it - since if you have the intent_id, you could
