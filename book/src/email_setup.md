@@ -7,7 +7,7 @@ as sending credential reset links.
 
 ## Architecture
 
-Kanidm internally maintains a message queue in it's the database. This allows all servers to queue
+Kanidm maintains a message queue in its database. This allows all servers to queue
 messages to be sent to users. Each queued message is sent *at least* once.
 
 `kanidmd` itself does not send the messages, but relies on an external tool, `kanidm-mail-sender`
@@ -35,7 +35,10 @@ The service account must have an api token with read-write privileges.
 ```bash
 kanidm service-account api-token generate ACCOUNT_ID LABEL [EXPIRY] --readwrite
 kanidm service-account api-token generate mail-sender "mail sender token" --readwrite
-```
+
+> [!WARNING]
+>
+> The mail-sender service account should only be a member of `idm_message_senders` - never add them to any other group - use another account for other purposes!
 
 ## Configuration
 
@@ -79,7 +82,7 @@ Once inserted, the message can be viewed in the queue.
 
 
 ```bash
-kanidm system message-queue list
+$ kanidm system message-queue list
 
 message_id:   0a9318dc-920f-4944-9ce4-91b4322b5dad
 send_after:   2026-02-18 2:49:43.163072 +00:00:00

@@ -1224,7 +1224,7 @@ pub async fn person_id_credential_update_get(
         ("ttl" = u64, description="The new TTL for the credential?")
     ),
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=CUIntentToken),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),

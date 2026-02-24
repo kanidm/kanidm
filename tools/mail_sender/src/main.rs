@@ -118,7 +118,7 @@ This is your credential reset link:
 
 This link will expire at {pretty_expiry_time}
 
-If you did not request this message, please click the following link:
+If you did not request this message, please revoke the reset using the following link:
 
 {revoke_url}
 
