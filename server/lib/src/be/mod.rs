@@ -2291,7 +2291,7 @@ mod tests {
     use std::sync::{Arc, LazyLock};
     use std::time::Duration;
 
-    static CID_ZERO: LazyLock<Cid> = LazyLock::new(|| Cid::new_zero());
+    static CID_ZERO: LazyLock<Cid> = LazyLock::new(Cid::new_zero);
     static CID_ONE: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(1));
     static CID_TWO: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(2));
     static CID_THREE: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(3));

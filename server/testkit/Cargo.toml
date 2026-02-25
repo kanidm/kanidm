@@ -19,8 +19,7 @@ doctest = false
 
 [features]
 # default = ["dev-oauth2-device-flow"]
-# Enables webdriver tests, you need to be running a webdriver server
-webdriver = []
+
 
 dev-oauth2-device-flow = []
 
@@ -42,7 +41,10 @@ tokio = { workspace = true, features = [
     "rt",
 ] }
 tracing = { workspace = true, features = ["attributes"] }
-webauthn-authenticator-rs = { workspace = true, features = ["softpasskey", "softtoken" ]  }
+webauthn-authenticator-rs = { workspace = true, features = [
+    "softpasskey",
+    "softtoken",
+] }
 url = { workspace = true, features = ["serde"] }
 
 [build-dependencies]
@@ -50,10 +52,8 @@ kanidm_build_profiles = { workspace = true }
 
 [dev-dependencies]
 cidr = { workspace = true }
-compact_jwt = { workspace = true }
+compact_jwt = { workspace = true, features = ["unsafe_release_without_verify"] }
 escargot = "0.5.15"
-# used for webdriver testing
-fantoccini = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
 hyper = { workspace = true }
