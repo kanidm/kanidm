@@ -20,10 +20,8 @@ test = false
 [dependencies]
 anyhow = { workspace = true }
 kanidm_proto = { workspace = true }
-oauth2 = "5.0.0"
-reqwest = { workspace = true, default-features = false, features = [
-    "rustls-tls",
-] }
+oauth2_ext = { workspace = true }
+reqwest = { workspace = true }
 sketching = { workspace = true }
 tokio = { workspace = true, default-features = false, features = ["rt", "macros", "time"] }
 tracing = { workspace = true }

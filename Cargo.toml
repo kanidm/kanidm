@@ -210,7 +210,7 @@ mimalloc = "0.1.48"
 nonempty = "0.12.0"
 notify-debouncer-full = { version = "0.7" }
 num_enum = "0.7.5"
-oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }
+oauth2_ext = { version = "^5.0.0", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
 openssl = "^0.10.75"
 opentelemetry = { version = "0.31.0" }
@@ -236,9 +236,10 @@ rand_chacha = "0.10.0"
 regex = "1.12.1"
 reqwest = { version = "0.12.28", default-features = false, features = [
     "cookies",
+    "gzip",
     "http2",
     "json",
-    "gzip",
+    "multipart",
     "rustls-tls-native-roots",
     "rustls-tls-native-roots-no-provider",
 ] }
