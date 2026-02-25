@@ -175,10 +175,12 @@ dialoguer = "0.12.0"
 dhat = "0.3.3"
 dyn-clone = "^1.0.20"
 enum-iterator = "2.3.0"
+fantoccini = "0.22.0"
 filetime = "^0.2.26"
 fs4 = "^0.13.0"
 futures = "^0.3.32"
 futures-util = { version = "^0.3.30", features = ["sink"] }
+gethostname = "1.1.0"
 gix = { version = "0.80.0", default-features = false }
 haproxy-protocol = { version = "0.0.4" }
 hashbrown = { version = "0.16.1", features = ["serde", "inline-more"] }
@@ -271,7 +273,10 @@ tokio = { version = "^1.49.0", default-features = false }
 tokio-openssl = "^0.6.5"
 tokio-rustls = { version = "0.26.4" }
 tokio-util = "^0.7.18"
-toml = "^1.0.3"
+toml = "^1"
+tonic = { version = "0.14.5", default-features = false }
+tower = { version = "0.5.3" }
+tower-http = { version = "0.6.7" }
 tracing = { version = "^0.1.44", features = [
     "max_level_trace",
     "release_max_level_debug",

@@ -64,8 +64,8 @@ tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-rustls = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
-tower = { version = "0.5.3", features = ["tokio-stream", "tracing"] }
-tower-http = { version = "0.6.7", features = [
+tower = { workspace = true, features = ["tokio-stream", "tracing"] }
+tower-http = { workspace = true, features = [
     "compression-gzip",
     "fs",
     "tokio",
