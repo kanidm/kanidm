@@ -25,5 +25,5 @@ reqwest = { workspace = true, default-features = false, features = [
     "rustls-tls",
 ] }
 sketching = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true, default-features = false, features = ["rt", "macros", "time"] }
 tracing = { workspace = true }

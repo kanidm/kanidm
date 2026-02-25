@@ -86,7 +86,7 @@ utoipa = { workspace = true, features = [
     "url",
     "uuid",
 ] }
-utoipa-swagger-ui = { workspace = true, features = ["axum"] }
+utoipa-swagger-ui = { workspace = true, default-features = false, features = ["axum"] }
 
 webauthn-rs = { workspace = true, features = [
     "resident-key-support",

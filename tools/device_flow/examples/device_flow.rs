@@ -72,7 +72,7 @@ async fn http_client(request: HttpRequest) -> Result<HttpResponse, oauth2::reqwe
     Ok(response)
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
 
