@@ -185,8 +185,7 @@ hashbrown = { version = "0.16.1", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
 http = "1.4.0"
 http-body-util = "0.1"
-hyper = { version = "1.8.1", features = [
-] } # hyper full includes client/server/http2
+hyper = { version = "1.8.1" }
 hyper-util = { version = "0.1.19", features = ["server", "tokio"] }
 idlset = "^0.2.5"
 image = { version = "0.25.9", default-features = false, features = [
