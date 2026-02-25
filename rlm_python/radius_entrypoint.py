@@ -15,7 +15,7 @@ from kanidm.radius import CONFIG_PATHS
 from kanidm.types import KanidmClientConfig
 from kanidm.utils import load_config
 
-DEBUG = True
+DEBUG = False
 if os.environ.get("DEBUG", False):
     DEBUG = True
 
