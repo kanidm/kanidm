@@ -208,7 +208,7 @@ impl ImageValueThings for ImageValue {
         let filetype_repr = [self.filetype.clone() as u8];
         let mut hasher = Sha256::new();
         hasher.update(self.filename.as_bytes());
-        hasher.update(&filetype_repr);
+        hasher.update(filetype_repr);
         hasher.update(&self.contents);
         hex::encode(hasher.finalize())
     }

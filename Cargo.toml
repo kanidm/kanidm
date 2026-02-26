@@ -213,7 +213,6 @@ nonempty = "0.12.0"
 notify-debouncer-full = { version = "0.7" }
 num_enum = "0.7.6"
 oauth2_ext = { version = "^5.0.0", package = "oauth2", default-features = false }
-openssl-sys = "^0.9"
 openssl = "^0.10.76"
 opentelemetry = { version = "0.31.0" }
 opentelemetry-otlp = { version = "0.31.1", default-features = false, features = [
@@ -273,7 +272,6 @@ tempfile = "3.26.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.47", features = ["formatting", "local-offset"] }
 tokio = { version = "^1.50.0", default-features = false }
-tokio-openssl = "^0.6.5"
 tokio-rustls = { version = "0.26.4" }
 tokio-util = "^0.7.18"
 toml = "^1"

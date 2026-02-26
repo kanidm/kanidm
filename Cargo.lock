@@ -3964,7 +3964,6 @@ dependencies = [
  "md-5",
  "md4",
  "openssl",
- "openssl-sys",
  "rand 0.10.0",
  "rustls",
  "serde",
@@ -4145,6 +4144,7 @@ dependencies = [
  "kanidmd_lib",
  "ldap3_proto",
  "libc",
+ "openssl",
  "opentelemetry",
  "qrcode",
  "regex",
@@ -4258,7 +4258,6 @@ dependencies = [
  "kanidmd_lib",
  "ldap3_client",
  "oauth2",
- "openssl",
  "reqwest 0.13.2",
  "serde",
  "serde_json",
@@ -4266,7 +4265,6 @@ dependencies = [
  "testkit-macros",
  "time",
  "tokio",
- "tokio-openssl",
  "tracing",
  "url",
  "uuid",
@@ -7258,17 +7256,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "tokio-openssl"
-version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59df6849caa43bb7567f9a36f863c447d95a11d5903c9cc334ba32576a27eadd"
-dependencies = [
- "openssl",
- "openssl-sys",
- "tokio",
 ]
 
 [[package]]
