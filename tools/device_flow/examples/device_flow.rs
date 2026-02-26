@@ -7,7 +7,6 @@ use oauth2_ext::{
     AuthUrl, ClientId, DeviceAuthorizationUrl, HttpRequest, HttpResponse, Scope,
     StandardDeviceAuthorizationResponse, TokenUrl,
 };
-use reqwest::Client;
 use sketching::tracing_subscriber::layer::SubscriberExt;
 use sketching::tracing_subscriber::util::SubscriberInitExt;
 use sketching::tracing_subscriber::{fmt, EnvFilter};
@@ -15,16 +14,21 @@ use std::str::FromStr;
 use tracing::level_filters::LevelFilter;
 use tracing::{debug, error, info};
 
-async fn http_client(request: HttpRequest) -> Result<HttpResponse, oauth2_ext::reqwest::Error> {
-    let client = Client::builder()
-        .danger_accept_invalid_certs(true)
-        // Following redirects opens the client up to SSRF vulnerabilities.
+pub(crate) fn get_reqwest_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .tls_danger_accept_invalid_certs(true)
+        .tls_danger_accept_invalid_hostnames(true)
         .redirect(reqwest::redirect::Policy::none())
-        .build()?;
+        .no_proxy()
+        .build()
+        .expect("Failed to create client.")
+}
 
+async fn http_client(request: HttpRequest) -> Result<HttpResponse, reqwest::Error> {
     let method = reqwest::Method::from_str(request.method().as_str())
         .expect("this is definitely a bug but OK in an example!");
 
+    let client = get_reqwest_client();
     let mut request_builder = client
         .request(method, request.uri().to_string())
         .body(request.body().to_vec());
