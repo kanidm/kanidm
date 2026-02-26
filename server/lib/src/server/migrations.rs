@@ -357,9 +357,26 @@ impl QueryServerWriteTransaction<'_> {
         let results = self.internal_search(filt.clone())?;
 
         if results.is_empty() {
-            // It does not exist. Create it.
+            // The entry does not exist. Create it.
+
+            // If there are create-once members, set them up now.
+            if let Some(members_create_once) = e.pop_ava(Attribute::MemberCreateOnce) {
+                if let Some(members) = e.get_ava_mut(Attribute::Member) {
+                    // Merge
+                    members.merge(&members_create_once).inspect_err(|err| {
+                        error!(?err, "Unable to merge member sets, mismatched types?");
+                    })?;
+                } else {
+                    // Just push
+                    e.set_ava_set(&Attribute::Member, members_create_once);
+                }
+            };
+
             self.internal_create(vec![e])
         } else if results.len() == 1 {
+            // This is always ignored during migration.
+            e.remove_ava(&Attribute::MemberCreateOnce);
+
             // For each ignored attr, we remove it from entry.
             for attr in attrs.iter() {
                 e.remove_ava(attr);
@@ -1067,6 +1084,13 @@ mod tests {
             .internal_modify_uuid(UUID_IDM_ADMINS, &modlist)
             .expect("Unable to modify CredentialTypeMinimum");
 
+        // Remove a group from an object that is "create once".  It should not
+        // be re-added.
+        let modlist = ModifyList::new_purge(Attribute::Member);
+        write_txn
+            .internal_modify_uuid(UUID_IDM_PEOPLE_SELF_NAME_WRITE, &modlist)
+            .expect("Unable to remove idm_all_persons from self-write");
+
         // Change default account policy - it should not be reverted.
         let modlist = ModifyList::new_set(
             Attribute::CredentialTypeMinimum,
@@ -1099,6 +1123,16 @@ mod tests {
         assert!(members.contains(&UUID_ANONYMOUS));
         // Was reverted
         assert!(members.contains(&UUID_IDM_ADMIN));
+
+        // Check that self-write still doesn't have all persons.
+        let idm_people_self_name_write_entry = write_txn
+            .internal_search_uuid(UUID_IDM_PEOPLE_SELF_NAME_WRITE)
+            .expect("Unable to retrieve all persons");
+
+        let members = idm_people_self_name_write_entry.get_ava_refer(Attribute::Member);
+
+        // There are no members!
+        assert!(members.is_none());
 
         // Check that the account policy did not revert.
         let all_persons_entry = write_txn

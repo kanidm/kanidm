@@ -153,6 +153,7 @@ pub const ATTR_MAIL: &str = "mail";
 pub const ATTR_MAIL_DESTINATION: &str = "mail_destination";
 pub const ATTR_MAY: &str = "may";
 pub const ATTR_MEMBER: &str = "member";
+pub const ATTR_MEMBER_CREATE_ONCE: &str = "member_create_once";
 pub const ATTR_MEMBEROF: &str = "memberof";
 pub const ATTR_MESSAGE_TEMPLATE: &str = "message_template";
 pub const ATTR_MULTIVALUE: &str = "multivalue";

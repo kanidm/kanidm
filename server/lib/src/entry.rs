@@ -485,8 +485,12 @@ impl Entry<EntryInit, EntryNew> {
         self.add_ava_int(attr, value);
     }
 
-    pub fn remove_ava(&mut self, attr: &Attribute) {
-        self.attrs.remove(attr);
+    pub fn pop_ava<A: AsRef<Attribute>>(&mut self, attr: A) -> Option<ValueSet> {
+        self.attrs.remove(attr.as_ref())
+    }
+
+    pub fn remove_ava<A: AsRef<Attribute>>(&mut self, attr: A) {
+        self.pop_ava(attr);
     }
 
     /// Set the content of this ava with this valueset, ignoring the previous data.
