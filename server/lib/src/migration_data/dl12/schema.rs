@@ -32,7 +32,7 @@ pub static SCHEMA_ATTR_EC_KEY_PRIVATE: LazyLock<SchemaAttribute> =
         indexed: true,
         unique: false,
         sync_allowed: false,
-        syntax: SyntaxType::EcKeyPrivate,
+        syntax: SyntaxType::SecretUtf8String,
         ..Default::default()
     });
 

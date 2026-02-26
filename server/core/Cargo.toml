@@ -45,7 +45,6 @@ kanidm_lib_crypto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 ldap3_proto = { workspace = true }
 libc = { workspace = true }
-openssl = { workspace = true }
 opentelemetry = { workspace = true, features = ["logs"] }
 qrcode = { workspace = true, features = ["svg"] }
 regex = { workspace = true }

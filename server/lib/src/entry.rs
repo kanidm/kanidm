@@ -53,8 +53,6 @@ use kanidm_proto::internal::{
 use kanidm_proto::scim_v1::server::ScimEffectiveAccess;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
-use openssl::ec::EcKey;
-use openssl::pkey::{Private, Public};
 use std::cmp::Ordering;
 pub use std::collections::BTreeSet as Set;
 use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
@@ -2920,22 +2918,6 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     ) -> Option<&JwsEs256Signer> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.to_jws_key_es256_single())
-    }
-
-    pub fn get_ava_single_eckey_private<A: AsRef<Attribute>>(
-        &self,
-        attr: A,
-    ) -> Option<&EcKey<Private>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_eckey_private_single())
-    }
-
-    pub fn get_ava_single_eckey_public<A: AsRef<Attribute>>(
-        &self,
-        attr: A,
-    ) -> Option<&EcKey<Public>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_eckey_public_single())
     }
 
     pub fn get_ava_webauthn_attestation_ca_list<A: AsRef<Attribute>>(
