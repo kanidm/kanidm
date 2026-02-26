@@ -103,7 +103,7 @@ codegen-units = 256
 ## with local or git versions. This patch table allows quick uncommenting to achieve that.
 
 # compact_jwt = { path = "../compact-jwt" }
-crypto-glue = { path = "../crypto-glue" }
+# crypto-glue = { path = "../crypto-glue" }
 # concread = { path = "../concread" }
 # idlset = { path = "../idlset" }
 # kanidm-hsm-crypto = { path = "../hsm-crypto" }
@@ -169,7 +169,7 @@ compact_jwt = "^0.5.5"
 concread = "^0.5.10"
 cron = "0.15.0"
 crossbeam = "0.8.4"
-crypto-glue = "^0.1.13"
+crypto-glue = "^0.1.14"
 csv = "1.4.0"
 dialoguer = "0.12.0"
 dhat = "0.3.3"
