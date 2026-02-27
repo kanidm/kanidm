@@ -202,7 +202,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request) {
     return (rlm_rcode_t) auth_result.code;
 }
 
-module_t rlm_kanidm = {
+__attribute__((visibility("default"))) module_t rlm_kanidm = {
     .magic = RLM_MODULE_INIT,
     .name = "kanidm",
     .type = RLM_TYPE_THREAD_SAFE,
