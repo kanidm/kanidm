@@ -400,21 +400,12 @@ pub struct ModuleHandle {
     module: Arc<Module>,
 }
 
-#[repr(C)]
-pub struct KVPair {
-    pub key: *const c_char,
-    pub value: *const c_char,
+mod ffi_types {
+    include!(concat!(env!("OUT_DIR"), "/ffi_types_bindings.rs"));
 }
 
-#[repr(C)]
-pub struct AuthResultC {
-    pub code: i32,
-    pub reply: *mut KVPair,
-    pub reply_len: usize,
-    pub control: *mut KVPair,
-    pub control_len: usize,
-    pub error: *mut c_char,
-}
+type KVPair = ffi_types::rust_kv_pair_t;
+type AuthResultC = ffi_types::rust_auth_result_t;
 
 fn cstr_to_string(ptr_in: *const c_char) -> Result<String, String> {
     if ptr_in.is_null() {
