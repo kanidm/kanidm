@@ -1,0 +1,33 @@
+[package]
+name = "rlm_kanidm"
+description = "Kanidm FreeRADIUS module core and FFI surface"
+
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+
+[lib]
+name = "rlm_kanidm"
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[features]
+default = []
+freeradius-module = []
+
+[dependencies]
+kanidm_client = { workspace = true }
+kanidm_proto = { workspace = true }
+libc = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+toml = { workspace = true }
+tracing = { workspace = true }
+
+[build-dependencies]
+cc = "1"
+pkg-config = { workspace = true }
