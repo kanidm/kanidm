@@ -18,6 +18,8 @@ fn main() {
 
     println!("cargo:rerun-if-changed=src/freeradius_module.c");
     println!("cargo:rerun-if-env-changed=FREERADIUS_INCLUDE_DIR");
+    println!("cargo:rustc-link-arg=-Wl,--export-dynamic-symbol=rlm_kanidm");
+    println!("cargo:rustc-link-arg=-Wl,--export-dynamic-symbol=rlm_kanidm_module_anchor");
 
     let mut build = cc::Build::new();
     build.file("src/freeradius_module.c");
