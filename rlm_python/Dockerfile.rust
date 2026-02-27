@@ -85,7 +85,6 @@ RUN module_dir="$(for d in /usr/lib64/freeradius /usr/lib/freeradius; do [ -d "$
 
 
 # # Enable the python and cache module.
-# # RUN ln -s /etc/raddb/mods-available/python3 /etc/raddb/mods-enabled/python3 && \
 RUN ln -s /etc/raddb/sites-available/check-eap-tls /etc/raddb/sites-enabled/check-eap-tls
 
 # # disable auth via methods we don't support!
