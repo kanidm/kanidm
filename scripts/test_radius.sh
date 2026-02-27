@@ -7,11 +7,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 BUILD_MODE="${BUILD_MODE:-}"
-IMAGE="${IMAGE:-kanidm/radius:devel}"
+IMAGE="${IMAGE:-}"
+PYTHON_IMAGE="${PYTHON_IMAGE:-kanidm/radius:devel}"
+RUST_IMAGE="${RUST_IMAGE:-kanidm/radius:rust-dev}"
 KEEP_CONTAINERS="${KEEP_CONTAINERS:-0}"
 RADIUS_MODULE_IMPL="${RADIUS_MODULE_IMPL:-rust}"
-RUST_BUILD_IMAGE="${RUST_BUILD_IMAGE:-rust:1}"
-RLM_BUILD_IN_DOCKER="${RLM_BUILD_IN_DOCKER:-1}"
+RUN_SETUP_DEV_ENV="${RUN_SETUP_DEV_ENV:-0}"
 RADIUS_TEST_USER="${RADIUS_TEST_USER:-radius_test_user}"
 RADIUS_GROUP="${RADIUS_GROUP:-radius_access_allowed}"
 RADIUS_SERVICE_ACCOUNT="${RADIUS_SERVICE_ACCOUNT:-radius_server}"
@@ -27,8 +28,6 @@ ASSERT_VLAN="${ASSERT_VLAN:-0}"
 KANIDM_STARTED=0
 KANIDMD_PID=""
 RADIUS_CONFIG_FILE=""
-RADIUS_MODULE_SO=""
-RADIUS_MODULE_DIR=""
 RADIUS_MOD_FILE=""
 RADIUS_DEFAULT_SITE_FILE=""
 RADIUS_INNER_SITE_FILE=""
@@ -39,6 +38,7 @@ TESTS_FAILED=0
 SETUP_DEV_SCRIPT="${REPO_ROOT}/scripts/setup_dev_environment.sh"
 RADIUS_RUN_SCRIPT="${REPO_ROOT}/rlm_python/run_radius_container.sh"
 DEFAULT_RADIUS_CONFIG="${REPO_ROOT}/examples/kanidm"
+RUST_MOD_TEMPLATE="${REPO_ROOT}/rlm_python/mods-available/kanidm_rust"
 SERVER_DAEMON_DIR="${REPO_ROOT}/server/daemon"
 KANIDM_CONFIG_FILE="${SERVER_DAEMON_DIR}/insecure_server.toml"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
@@ -133,45 +133,26 @@ build_kanidmd_cmd() {
     KANIDMD_CMD+=(-p daemon --bin kanidmd --)
 }
 
-build_rlm_kanidm_module() {
-    local build_profile="debug"
-    local cargo_build_flags=("-p" "rlm_kanidm" "--features" "freeradius-module")
-    if [[ "${BUILD_MODE}" == "--release" ]]; then
-        build_profile="release"
-        cargo_build_flags+=("--release")
-    fi
-
-    if [[ "${RLM_BUILD_IN_DOCKER}" == "1" ]]; then
-        log "Building linux rlm_kanidm in docker image ${RUST_BUILD_IMAGE}"
-        docker run --rm \
-            -v "${REPO_ROOT}:/work" \
-            -w /work \
-            "${RUST_BUILD_IMAGE}" \
-            bash -lc "apt-get update -qq && apt-get install -y -qq pkg-config libfreeradius-dev clang lld libssl-dev >/dev/null && /usr/local/cargo/bin/cargo build --manifest-path /work/Cargo.toml ${cargo_build_flags[*]} && chown -R $(id -u):$(id -g) /work/target"
-    else
-        log "Building rlm_kanidm on host toolchain"
-        cargo build --manifest-path "${REPO_ROOT}/Cargo.toml" "${cargo_build_flags[@]}"
-    fi
-
-    RADIUS_MODULE_SO="${REPO_ROOT}/target/${build_profile}/librlm_kanidm.so"
-    [[ -f "${RADIUS_MODULE_SO}" ]] || die "Rust FreeRADIUS module not built at ${RADIUS_MODULE_SO}"
-}
-
-discover_radius_module_dir() {
-    RADIUS_MODULE_DIR="$(
+verify_rust_image_has_module() {
+    local out
+    local rc=0
+    set +e
+    out="$(
         docker run --rm --entrypoint /bin/sh "${IMAGE}" -c \
-            'for d in /usr/lib64/freeradius /usr/lib/freeradius; do [ -d "$d" ] && echo "$d"; done | head -n1'
+            'for d in /usr/lib64/freeradius /usr/lib/freeradius; do [ -f "$d/rlm_kanidm.so" ] && echo "$d/rlm_kanidm.so" && exit 0; done; exit 1' 2>&1
     )"
-    [[ -n "${RADIUS_MODULE_DIR}" ]] || die "Unable to discover FreeRADIUS module directory in image ${IMAGE}"
+    rc=$?
+    set -e
+    if [[ "${rc}" -ne 0 ]]; then
+        echo "${out}" >&2
+        die "Rust module rlm_kanidm.so not found in image ${IMAGE}"
+    fi
+    log "Found Rust module in image: ${out}"
 }
 
 prepare_rust_radius_overrides() {
     RADIUS_MOD_FILE="$(mktemp /tmp/kanidm/radius_mod_kanidm.XXXXXX)"
-    cat > "${RADIUS_MOD_FILE}" <<EOF
-kanidm {
-    config_path = "/data/kanidm"
-}
-EOF
+    cp "${RUST_MOD_TEMPLATE}" "${RADIUS_MOD_FILE}"
 
     RADIUS_DEFAULT_SITE_FILE="$(mktemp /tmp/kanidm/radius_site_default.XXXXXX)"
     RADIUS_INNER_SITE_FILE="$(mktemp /tmp/kanidm/radius_site_inner.XXXXXX)"
@@ -248,16 +229,27 @@ assert_radtest_result() {
     local expected="$4"
     local output
     local rc=0
+    local err_trap=""
 
-    set +e
+    err_trap="$(trap -p ERR || true)"
+    trap - ERR
+
     if command -v radtest >/dev/null 2>&1; then
-        output="$(radtest "${username}" "${password}" "${RADIUS_CLIENT_IP}" "${RADIUS_CLIENT_NASPORT}" "${RADIUS_CLIENT_SECRET}" 2>&1)"
-        rc=$?
+        if output="$(radtest "${username}" "${password}" "${RADIUS_CLIENT_IP}" "${RADIUS_CLIENT_NASPORT}" "${RADIUS_CLIENT_SECRET}" 2>&1)"; then
+            rc=0
+        else
+            rc=$?
+        fi
     else
-        output="$(docker exec "${RADIUS_CONTAINER_NAME}" radtest "${username}" "${password}" "${RADIUS_CLIENT_IP}" "${RADIUS_CLIENT_NASPORT}" "${RADIUS_CLIENT_SECRET}" 2>&1)"
-        rc=$?
+        if output="$(docker exec "${RADIUS_CONTAINER_NAME}" radtest "${username}" "${password}" "${RADIUS_CLIENT_IP}" "${RADIUS_CLIENT_NASPORT}" "${RADIUS_CLIENT_SECRET}" 2>&1)"; then
+            rc=0
+        else
+            rc=$?
+        fi
     fi
-    set -e
+    if [[ -n "${err_trap}" ]]; then
+        eval "${err_trap}"
+    fi
 
     if ! echo "${output}" | grep -q "${expected}"; then
         TESTS_FAILED=$((TESTS_FAILED + 1))
@@ -279,8 +271,11 @@ check_cmd curl
 check_cmd docker
 check_cmd grep
 check_cmd awk
-check_file "${SETUP_DEV_SCRIPT}"
 check_file "${RADIUS_RUN_SCRIPT}"
+check_file "${RUST_MOD_TEMPLATE}"
+if [[ "${RUN_SETUP_DEV_ENV}" == "1" ]]; then
+    check_file "${SETUP_DEV_SCRIPT}"
+fi
 if [[ -n "${CONFIG_FILE:-}" ]]; then
     check_file "${CONFIG_FILE}"
 else
@@ -295,14 +290,18 @@ build_kanidmd_cmd
 
 case "${RADIUS_MODULE_IMPL}" in
     rust)
-        log "Building Rust FreeRADIUS module (rlm_kanidm)"
-        build_rlm_kanidm_module
-        log "Discovering FreeRADIUS module directory in image ${IMAGE}"
-        discover_radius_module_dir
+        if [[ -z "${IMAGE}" ]]; then
+            IMAGE="${RUST_IMAGE}"
+        fi
+        log "Validating Rust FreeRADIUS module exists in image ${IMAGE}"
+        verify_rust_image_has_module
         log "Preparing FreeRADIUS config overrides for rust module"
         prepare_rust_radius_overrides
         ;;
     python)
+        if [[ -z "${IMAGE}" ]]; then
+            IMAGE="${PYTHON_IMAGE}"
+        fi
         log "Using existing python3 FreeRADIUS module path"
         ;;
     *)
@@ -333,11 +332,15 @@ fi
 log "Waiting for Kanidm readiness at ${KANIDM_URL%/}/status"
 wait_for_kanidm
 
-log "Running base environment setup"
-(
-    cd "${REPO_ROOT}" || exit 1
-    BUILD_MODE="${BUILD_MODE}" "${SETUP_DEV_SCRIPT}"
-)
+if [[ "${RUN_SETUP_DEV_ENV}" == "1" ]]; then
+    log "Running base environment setup"
+    (
+        cd "${REPO_ROOT}" || exit 1
+        BUILD_MODE="${BUILD_MODE}" "${SETUP_DEV_SCRIPT}"
+    )
+else
+    log "Skipping setup_dev_environment.sh (RUN_SETUP_DEV_ENV=${RUN_SETUP_DEV_ENV})"
+fi
 
 export KANIDM_URL
 export KANIDM_CA_PATH
@@ -352,17 +355,8 @@ IDM_ADMIN_PASS_JSON="$(extract_last_json_line "${IDM_ADMIN_PASS_RAW}")"
 IDM_ADMIN_PASS="$(echo "${IDM_ADMIN_PASS_JSON}" | jq -r '.output // .password // empty')"
 [[ -n "${IDM_ADMIN_PASS}" ]] || die "Failed to recover idm_admin password"
 
-ADMIN_PASS_RAW="$(
-    cd "${SERVER_DAEMON_DIR}" && \
-    KANIDM_CONFIG="./insecure_server.toml" "${KANIDMD_CMD[@]}" scripting recover-account admin 2>&1
-)"
-ADMIN_PASS_JSON="$(extract_last_json_line "${ADMIN_PASS_RAW}")"
-ADMIN_PASS="$(echo "${ADMIN_PASS_JSON}" | jq -r '.output // .password // empty')"
-[[ -n "${ADMIN_PASS}" ]] || die "Failed to recover admin password"
-
-log "Logging in as ${IDM_ADMIN_SPN} and ${ADMIN_SPN}"
+log "Logging in as ${IDM_ADMIN_SPN}"
 "${KANIDM_CMD[@]}" login -D "${IDM_ADMIN_SPN}" --password "${IDM_ADMIN_PASS}"
-"${KANIDM_CMD[@]}" login -D "${ADMIN_SPN}" --password "${ADMIN_PASS}"
 
 log "Provisioning deterministic RADIUS fixtures"
 run_allow_exists "create service account ${RADIUS_SERVICE_ACCOUNT}" \
@@ -428,22 +422,29 @@ EOF
 
 log "Starting FreeRADIUS container: ${RADIUS_CONTAINER_NAME}"
 docker rm -f "${RADIUS_CONTAINER_NAME}" >/dev/null 2>&1 || true
-docker run -d \
-    --name "${RADIUS_CONTAINER_NAME}" \
-    --network host \
-    -e KANIDM_RLM_CONFIG=/data/kanidm \
-    -v /tmp/kanidm/:/data/ \
-    -v /tmp/kanidm/:/tmp/kanidm/ \
-    -v /tmp/kanidm/:/certs/ \
-    -v "${RADIUS_CONFIG_FILE}:/data/kanidm:ro" \
-    "${IMAGE}" >/dev/null
+DOCKER_RUN_ARGS=(
+    -d
+    --name "${RADIUS_CONTAINER_NAME}"
+    --network host
+    -e KANIDM_RLM_CONFIG=/data/kanidm
+    -v /tmp/kanidm/:/data/
+    -v /tmp/kanidm/:/tmp/kanidm/
+    -v /tmp/kanidm/:/certs/
+    -v "${RADIUS_CONFIG_FILE}:/data/kanidm:ro"
+)
+DOCKER_CMD_ARGS=()
 
 if [[ "${RADIUS_MODULE_IMPL}" == "rust" ]]; then
-    docker cp "${RADIUS_MODULE_SO}" "${RADIUS_CONTAINER_NAME}:${RADIUS_MODULE_DIR}/rlm_kanidm.so"
-    docker cp "${RADIUS_MOD_FILE}" "${RADIUS_CONTAINER_NAME}:/etc/raddb/mods-enabled/kanidm"
-    docker cp "${RADIUS_DEFAULT_SITE_FILE}" "${RADIUS_CONTAINER_NAME}:/etc/raddb/sites-available/default"
-    docker cp "${RADIUS_INNER_SITE_FILE}" "${RADIUS_CONTAINER_NAME}:/etc/raddb/sites-available/inner-tunnel"
+    DOCKER_RUN_ARGS+=(
+        --entrypoint /usr/sbin/radiusd
+        -v "${RADIUS_MOD_FILE}:/etc/raddb/mods-enabled/kanidm:ro"
+        -v "${RADIUS_DEFAULT_SITE_FILE}:/etc/raddb/sites-available/default:ro"
+        -v "${RADIUS_INNER_SITE_FILE}:/etc/raddb/sites-available/inner-tunnel:ro"
+    )
+    DOCKER_CMD_ARGS+=(-f -l stdout)
 fi
+
+docker run "${DOCKER_RUN_ARGS[@]}" "${IMAGE}" "${DOCKER_CMD_ARGS[@]}" >/dev/null
 
 log "Waiting for FreeRADIUS readiness"
 for _ in $(seq 1 60); do
