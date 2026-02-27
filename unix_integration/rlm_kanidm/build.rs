@@ -12,6 +12,17 @@ fn normalize_include_dir(dir: PathBuf) -> PathBuf {
 }
 
 fn main() {
+    println!("cargo:rerun-if-changed=src/ffi_types.h");
+    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR must be set"));
+    bindgen::Builder::default()
+        .header("src/ffi_types.h")
+        .allowlist_type("rust_kv_pair_t")
+        .allowlist_type("rust_auth_result_t")
+        .generate()
+        .expect("unable to generate ffi_types bindings")
+        .write_to_file(out_dir.join("ffi_types_bindings.rs"))
+        .expect("unable to write ffi_types bindings");
+
     if env::var_os("CARGO_FEATURE_FREERADIUS_MODULE").is_none() {
         return;
     }
