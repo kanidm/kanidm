@@ -55,8 +55,15 @@ RUN mkdir -p /src/kanidm
 COPY . /src/kanidm/
 
 RUN cd /src/kanidm && \
-    cargo build --quiet -p rlm_kanidm \
-    --features freeradius-module --release && \
+    cargo build --quiet -p rlm_kanidm --release && \
+    mv /src/kanidm/target/release/librlm_kanidm.so /src/kanidm/target/release/librlm_kanidm_core.so && \
+    cc -fPIC -shared \
+    -I/tmp/freeradius-src/freeradius-server-release/src \
+    /src/kanidm/unix_integration/rlm_kanidm/src/freeradius_module.c \
+    -L/src/kanidm/target/release \
+    -Wl,-rpath,'$ORIGIN' -Wl,--enable-new-dtags \
+    -l:librlm_kanidm_core.so \
+    -o /src/kanidm/target/release/rlm_kanidm.so && \
     rm -rf /tmp/freeradius-src/ && \
     zypper remove -y rust  gcc clang make pkgconf-pkg-config libtalloc-devel libopenssl-devel && \
     zypper clean -a
@@ -68,7 +75,8 @@ ARG RADIUS_USER=radiusd
 EXPOSE 1812 1813
 ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
-COPY --from=builder /src/kanidm/target/release/librlm_kanidm.so /tmp/librlm_kanidm.so
+COPY --from=builder /src/kanidm/target/release/librlm_kanidm_core.so /tmp/librlm_kanidm_core.so
+COPY --from=builder /src/kanidm/target/release/rlm_kanidm.so /tmp/rlm_kanidm.so
 
 
 RUN zypper install -y \
@@ -79,13 +87,18 @@ RUN zypper install -y \
     python3 && \
     zypper clean -a
 
+ADD rlm_python/mods-available/ /etc/raddb/mods-available/
+COPY rlm_python/sites-available/ /etc/raddb/sites-available/
+
 RUN module_dir="$(for d in /usr/lib64/freeradius /usr/lib/freeradius; do [ -d "$d" ] && echo "$d" && break; done)" && \
     test -n "${module_dir}" && \
-    install -m 0755 /tmp/librlm_kanidm.so "${module_dir}/rlm_kanidm.so"
+    install -m 0755 /tmp/librlm_kanidm_core.so "${module_dir}/librlm_kanidm_core.so" && \
+    install -m 0755 /tmp/rlm_kanidm.so "${module_dir}/rlm_kanidm.so"
 
 
-# # Enable the python and cache module.
-RUN ln -s /etc/raddb/sites-available/check-eap-tls /etc/raddb/sites-enabled/check-eap-tls
+# Enable the native kanidm module and check-eap-tls virtual server.
+RUN ln -s /etc/raddb/mods-available/kanidm_rust /etc/raddb/mods-enabled/kanidm && \
+    ln -s /etc/raddb/sites-available/check-eap-tls /etc/raddb/sites-enabled/check-eap-tls
 
 # # disable auth via methods we don't support!
 RUN rm /etc/raddb/mods-available/sql && \
