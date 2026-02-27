@@ -147,7 +147,9 @@ def run_radiusd() -> None:
     if DEBUG:
         cmd_args = ["-X"]
     else:
-        cmd_args = ["-f", "-l", "stdout"]
+        # NOTE: the python3 module for radiusd does not seem to work correctly
+        # when multithreading is enabled, hence -t. See #4168 for details.
+        cmd_args = ["-f", "-t", "-l", "stdout"]
     freeradius_bin = find_freeradius_bin()
     if freeradius_bin is None:
         print("Failed to find FreeRADIUS binary, quitting!", file=sys.stderr)
