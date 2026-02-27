@@ -151,6 +151,11 @@ test/radiusd: build/radiusd
 	cd rlm_python && \
 	./run_radius_container.sh
 
+.PHONY: test/radius/e2e
+test/radius/e2e: ## Run end-to-end RADIUS integration tests
+test/radius/e2e:
+	./scripts/test_radius.sh
+
 .PHONY: test
 test:
 	cargo test
