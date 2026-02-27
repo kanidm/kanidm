@@ -28,6 +28,7 @@ members = [
     "unix_integration/pam_sparkle",
     "unix_integration/resolver_common",
     "unix_integration/resolver_kanidm",
+    "unix_integration/rlm_kanidm",
     "server/daemon",
     "server/lib",
     "server/lib-macros",
