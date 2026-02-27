@@ -40,6 +40,7 @@ extern void *rlm_kanidm_instantiate(const char *config_path);
 extern void rlm_kanidm_detach(void *handle);
 extern rust_auth_result_t rlm_kanidm_authorize(void *handle, const rust_kv_pair_t *request_attrs, size_t request_attrs_len);
 extern void rlm_kanidm_free_auth_result(rust_auth_result_t result);
+extern module_t rlm_kanidm;
 
 typedef struct {
     char const *config_path;
@@ -202,7 +203,11 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request) {
     return (rlm_rcode_t) auth_result.code;
 }
 
-__attribute__((visibility("default"))) module_t rlm_kanidm = {
+__attribute__((used, visibility("default"))) uintptr_t rlm_kanidm_module_anchor(void) {
+    return (uintptr_t)&rlm_kanidm;
+}
+
+__attribute__((used, visibility("default"))) module_t rlm_kanidm = {
     .magic = RLM_MODULE_INIT,
     .name = "kanidm",
     .type = RLM_TYPE_THREAD_SAFE,
