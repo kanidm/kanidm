@@ -10,6 +10,7 @@ BUILD_MODE="${BUILD_MODE:-}"
 IMAGE="${IMAGE:-}"
 PYTHON_IMAGE="${PYTHON_IMAGE:-kanidm/radius:devel}"
 RUST_IMAGE="${RUST_IMAGE:-kanidm/radius:rust-dev}"
+AUTO_BUILD_RUST_IMAGE="${AUTO_BUILD_RUST_IMAGE:-1}"
 KEEP_CONTAINERS="${KEEP_CONTAINERS:-0}"
 RADIUS_MODULE_IMPL="${RADIUS_MODULE_IMPL:-rust}"
 RUN_SETUP_DEV_ENV="${RUN_SETUP_DEV_ENV:-0}"
@@ -24,6 +25,7 @@ RADIUS_CLIENT_NASPORT="${RADIUS_CLIENT_NASPORT:-10}"
 IDM_ADMIN_SPN="${IDM_ADMIN_SPN:-idm_admin@localhost}"
 ADMIN_SPN="${ADMIN_SPN:-admin@localhost}"
 ASSERT_VLAN="${ASSERT_VLAN:-0}"
+RUST_CACHE_WAIT_SECONDS="${RUST_CACHE_WAIT_SECONDS:-35}"
 
 KANIDM_STARTED=0
 KANIDMD_PID=""
@@ -31,6 +33,7 @@ RADIUS_CONFIG_FILE=""
 RADIUS_MOD_FILE=""
 RADIUS_DEFAULT_SITE_FILE=""
 RADIUS_INNER_SITE_FILE=""
+RADIUS_CHECK_EAP_TLS_SITE_FILE=""
 KANIDMD_LOG_FILE="/tmp/kanidm/test_radius_kanidmd.log"
 TESTS_PASSED=0
 TESTS_FAILED=0
@@ -72,6 +75,9 @@ cleanup() {
     fi
     if [[ -n "${RADIUS_INNER_SITE_FILE}" && -f "${RADIUS_INNER_SITE_FILE}" ]]; then
         rm -f "${RADIUS_INNER_SITE_FILE}"
+    fi
+    if [[ -n "${RADIUS_CHECK_EAP_TLS_SITE_FILE}" && -f "${RADIUS_CHECK_EAP_TLS_SITE_FILE}" ]]; then
+        rm -f "${RADIUS_CHECK_EAP_TLS_SITE_FILE}"
     fi
 }
 
@@ -150,14 +156,53 @@ verify_rust_image_has_module() {
     log "Found Rust module in image: ${out}"
 }
 
+ensure_rust_image_ready() {
+    if docker image inspect "${IMAGE}" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if [[ "${AUTO_BUILD_RUST_IMAGE}" != "1" ]]; then
+        die "Rust image ${IMAGE} not present locally (set AUTO_BUILD_RUST_IMAGE=1 to auto-build)"
+    fi
+
+    log "Rust image ${IMAGE} not found locally; building via rlm_python/Dockerfile.rust"
+    (
+        cd "${REPO_ROOT}" || exit 1
+        docker build -f rlm_python/Dockerfile.rust -t "${IMAGE}" .
+    )
+}
+
 prepare_rust_radius_overrides() {
     RADIUS_MOD_FILE="$(mktemp /tmp/kanidm/radius_mod_kanidm.XXXXXX)"
     cp "${RUST_MOD_TEMPLATE}" "${RADIUS_MOD_FILE}"
 
     RADIUS_DEFAULT_SITE_FILE="$(mktemp /tmp/kanidm/radius_site_default.XXXXXX)"
     RADIUS_INNER_SITE_FILE="$(mktemp /tmp/kanidm/radius_site_inner.XXXXXX)"
+    RADIUS_CHECK_EAP_TLS_SITE_FILE="$(mktemp /tmp/kanidm/radius_site_check_eap_tls.XXXXXX)"
     sed -E 's/^[[:space:]]*python3[[:space:]]*$/    kanidm/' "${REPO_ROOT}/rlm_python/sites-available/default" > "${RADIUS_DEFAULT_SITE_FILE}"
     sed -E 's/^[[:space:]]*python3[[:space:]]*$/    kanidm/' "${REPO_ROOT}/rlm_python/sites-available/inner-tunnel" > "${RADIUS_INNER_SITE_FILE}"
+    sed -E 's/^[[:space:]]*python3[[:space:]]*$/    kanidm/' "${REPO_ROOT}/rlm_python/sites-available/check-eap-tls" > "${RADIUS_CHECK_EAP_TLS_SITE_FILE}"
+}
+
+prepare_rust_radius_certs() {
+    local cert_source="$1"
+    local cert_target="/tmp/kanidm/server.pem"
+
+    cat "${cert_source}" "/tmp/kanidm/key.pem" > "${cert_target}"
+    chmod 644 "${cert_target}"
+
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rehash /tmp/kanidm >/dev/null 2>&1 || true
+    fi
+}
+
+wait_for_rust_cache_expiry() {
+    if [[ "${RADIUS_MODULE_IMPL}" != "rust" ]]; then
+        return 0
+    fi
+
+    log "Waiting ${RUST_CACHE_WAIT_SECONDS}s for Rust module cache expiry"
+    sleep "${RUST_CACHE_WAIT_SECONDS}"
 }
 
 run_allow_exists() {
@@ -293,6 +338,7 @@ case "${RADIUS_MODULE_IMPL}" in
         if [[ -z "${IMAGE}" ]]; then
             IMAGE="${RUST_IMAGE}"
         fi
+        ensure_rust_image_ready
         log "Validating Rust FreeRADIUS module exists in image ${IMAGE}"
         verify_rust_image_has_module
         log "Preparing FreeRADIUS config overrides for rust module"
@@ -435,11 +481,14 @@ DOCKER_RUN_ARGS=(
 DOCKER_CMD_ARGS=()
 
 if [[ "${RADIUS_MODULE_IMPL}" == "rust" ]]; then
+    prepare_rust_radius_certs "${CERT_SOURCE}"
     DOCKER_RUN_ARGS+=(
         --entrypoint /usr/sbin/radiusd
+        -v /tmp/kanidm/:/etc/raddb/certs/
         -v "${RADIUS_MOD_FILE}:/etc/raddb/mods-enabled/kanidm:ro"
         -v "${RADIUS_DEFAULT_SITE_FILE}:/etc/raddb/sites-available/default:ro"
         -v "${RADIUS_INNER_SITE_FILE}:/etc/raddb/sites-available/inner-tunnel:ro"
+        -v "${RADIUS_CHECK_EAP_TLS_SITE_FILE}:/etc/raddb/sites-available/check-eap-tls:ro"
     )
     DOCKER_CMD_ARGS+=(-f -l stdout)
 fi
@@ -470,10 +519,12 @@ assert_radtest_result "negative bad secret" "${RADIUS_TEST_USER}" "not-the-secre
 
 log "Removing ${RADIUS_TEST_USER} from ${RADIUS_GROUP} for authorization test"
 "${KANIDM_CMD[@]}" group remove-members "${RADIUS_GROUP}" "${RADIUS_TEST_USER}" -D "${IDM_ADMIN_SPN}"
+wait_for_rust_cache_expiry
 assert_radtest_result "negative missing group" "${RADIUS_TEST_USER}" "${RADIUS_USER_SECRET}" "Access-Reject" >/dev/null
 
 log "Re-adding ${RADIUS_TEST_USER} to ${RADIUS_GROUP}"
 "${KANIDM_CMD[@]}" group add-members "${RADIUS_GROUP}" "${RADIUS_TEST_USER}" -D "${IDM_ADMIN_SPN}"
+wait_for_rust_cache_expiry
 assert_radtest_result "recovery auth" "${RADIUS_TEST_USER}" "${RADIUS_USER_SECRET}" "Access-Accept" >/dev/null
 
 log "Summary: passed=${TESTS_PASSED} failed=${TESTS_FAILED} container=${RADIUS_CONTAINER_NAME} url=${KANIDM_URL}"

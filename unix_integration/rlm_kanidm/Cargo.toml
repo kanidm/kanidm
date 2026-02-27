@@ -12,7 +12,7 @@ repository = { workspace = true }
 
 [lib]
 name = "rlm_kanidm"
-crate-type = ["dylib", "rlib"]
+crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
 [features]
