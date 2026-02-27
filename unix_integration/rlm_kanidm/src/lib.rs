@@ -480,24 +480,9 @@ fn auth_error(code: Response, message: String) -> AuthResultC {
     }
 }
 
-#[cfg(feature = "freeradius-module")]
-unsafe extern "C" {
-    fn rlm_kanidm_module_anchor() -> usize;
-}
-
-#[inline(never)]
-fn link_freeradius_module_anchor() {
-    #[cfg(feature = "freeradius-module")]
-    unsafe {
-        let anchor = rlm_kanidm_module_anchor();
-        std::hint::black_box(anchor);
-    }
-}
-
 /// Instantiate module state from a config path.
 #[unsafe(no_mangle)]
 pub extern "C" fn rlm_kanidm_instantiate(config_path: *const c_char) -> *mut ModuleHandle {
-    link_freeradius_module_anchor();
     let path = match cstr_to_string(config_path) {
         Ok(v) => v,
         Err(_) => return ptr::null_mut(),

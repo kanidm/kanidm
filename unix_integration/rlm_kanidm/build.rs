@@ -18,8 +18,6 @@ fn main() {
 
     println!("cargo:rerun-if-changed=src/freeradius_module.c");
     println!("cargo:rerun-if-env-changed=FREERADIUS_INCLUDE_DIR");
-    println!("cargo:rustc-link-arg=-Wl,--export-dynamic-symbol=rlm_kanidm");
-    println!("cargo:rustc-link-arg=-Wl,--export-dynamic-symbol=rlm_kanidm_module_anchor");
 
     let mut build = cc::Build::new();
     build.file("src/freeradius_module.c");
@@ -54,5 +52,9 @@ fn main() {
         );
     }
 
-    build.compile("rlm_kanidm_freeradius");
+    // Link C objects directly into the cdylib so `module_t rlm_kanidm`
+    // remains externally visible to FreeRADIUS dlsym lookups.
+    for obj in build.compile_intermediates() {
+        println!("cargo:rustc-link-arg={}", obj.display());
+    }
 }
