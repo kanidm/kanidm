@@ -5989,11 +5989,9 @@ name = "rlm_kanidm"
 version = "1.10.0-dev"
 dependencies = [
  "bindgen 0.72.1",
- "cc",
  "kanidm_client",
  "kanidm_proto",
  "libc",
- "pkg-config",
  "serde",
  "tokio",
  "toml",
