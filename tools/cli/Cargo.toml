@@ -59,6 +59,18 @@ url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true }
 zxcvbn = { workspace = true }
 regex = { workspace = true }
+webauthn-authenticator-rs = { workspace = true, default-features = false }
+
+## See src/cli/webauthn/mod.rs for which features are
+## required for which target_os here
+[target."cfg(target_os = \"windows\")".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = ["win10"]
+
+[target."cfg(any(target_os = \"linux\",target_os = \"macos\"))".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = ["u2fhid"]
+
 
 [dev-dependencies]
 sketching = { workspace = true }
@@ -73,16 +85,6 @@ serde_json = { workspace = true }
 uuid = { workspace = true }
 url = { workspace = true }
 time = { workspace = true }
-
-## See src/cli/webauthn/mod.rs for which features are
-## required for which target_os here
-[target."cfg(target_os = \"windows\")".dependencies.webauthn-authenticator-rs]
-workspace = true
-features = ["win10"]
-
-[target."cfg(any(target_os = \"linux\",target_os = \"macos\"))".dependencies.webauthn-authenticator-rs]
-workspace = true
-features = ["u2fhid"]
 
 ## Debian packaging
 [package.metadata.deb]

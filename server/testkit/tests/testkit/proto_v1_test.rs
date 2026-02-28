@@ -1426,7 +1426,7 @@ async fn test_server_api_token_lifecycle(rsclient: &KanidmClient) {
 
     let token = jws_verifier
         .verify(&token_unverified)
-        .map(|j| j.from_json::<ApiToken>().expect("invalid token json"))
+        .map(|j: compact_jwt::Jws| j.from_json::<ApiToken>().expect("invalid token json"))
         .expect("Failed to verify token");
 
     let tokens = rsclient
@@ -1757,6 +1757,7 @@ async fn test_server_user_auth_reauthentication(rsclient: &KanidmClient) {
         .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
         .expect("Unable extract uat");
 
+    #[allow(clippy::disallowed_methods)]
     let now = time::OffsetDateTime::now_utc();
     eprintln!("{:?} {:?}", now, uat.purpose);
     assert!(matches!(uat.purpose, UatPurpose::ReadWrite { .. }));

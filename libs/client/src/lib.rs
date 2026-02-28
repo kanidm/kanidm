@@ -515,13 +515,21 @@ impl KanidmClientBuilder {
 
         let client_cookies = Arc::new(Jar::default());
 
-        let client_builder = reqwest::Client::builder()
+        let mut client_builder = reqwest::Client::builder()
             .user_agent(KanidmClientBuilder::user_agent())
             // We don't directly use cookies, but it may be required for load balancers that
             // implement sticky sessions with cookies.
             .cookie_store(true)
-            .cookie_provider(client_cookies.clone())
-            .tls_built_in_native_certs(!self.disable_system_ca_store)
+            .cookie_provider(client_cookies.clone());
+
+        if let Some(cacert) = self.ca.as_ref() {
+            if self.disable_system_ca_store {
+                client_builder = client_builder.tls_certs_only(vec![cacert.clone()])
+            }
+        };
+
+        client_builder = client_builder
+            // .tls_built_in_native_certs(!self.disable_system_ca_store)
             .danger_accept_invalid_hostnames(!self.verify_hostnames)
             .danger_accept_invalid_certs(!self.verify_ca);
 
