@@ -36,6 +36,10 @@ jobs:
           echo "Looking at /usr/include/freeradius-devel/"
           ls -lah /usr/include/freeradius-devel/
           echo "######################"
+          echo "Configure log"
+          echo "######################"
+          cat /tmp/freeradius_configure.log
+          echo "######################"
           echo "Freeradius make log:"
           echo "######################"
           cat /tmp/freeradius_make.log
