@@ -34,6 +34,9 @@ use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
 #[cfg(feature = "freeradius-module")]
+#[allow(clippy::trivially_copy_pass_by_ref)]
+#[allow(clippy::indexing_slicing)]
+#[allow(clippy::ptr_offset_with_cast)]
 mod freeradius;
 
 const ATTR_USER_NAME: &str = "User-Name";
