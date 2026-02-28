@@ -10,10 +10,10 @@ Build core crate only:
 cargo build -p rlm_kanidm
 ```
 
-Build as a FreeRADIUS module (requires FreeRADIUS development headers):
+Build as a FreeRADIUS module (requires FreeRADIUS development headers and Linux target OS):
 
 ```bash
-cargo build -p rlm_kanidm --features freeradius-module
+cargo build -p rlm_kanidm
 ```
 
 If headers are in a non-standard path, set:
