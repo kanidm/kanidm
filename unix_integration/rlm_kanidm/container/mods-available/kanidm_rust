@@ -3,5 +3,5 @@
 #
 kanidm {
 	# Path to Kanidm client config TOML consumed by rlm_kanidm
-	config_path = "/data/kanidm"
+	config_path = "/data/radius.toml"
 }

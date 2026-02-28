@@ -5,19 +5,8 @@ FROM ${BASE_IMAGE} AS builder
 ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
 RUN /zypper_fixing.sh
 
-
 RUN zypper install -y \
-    awk \
-    hostname \
-    python3 \
-    python3-devel \
-    python3-pip \
-    timezone \
-    iproute2 \
-    iputils \
-    openssl \
     libopenssl-devel \
-    gcc \
     clang \
     make \
     cargo \
@@ -41,16 +30,6 @@ RUN mkdir -p /tmp/freeradius-src && mkdir -p /usr/include/freeradius-devel/  && 
     cp -R ./src/include/* /usr/include/freeradius/ && \
     cp -R ./src/include/* /usr/include/freeradius-devel/
 
-# Don't put in the TZ at build time - it needs to be bind mounted at runtime
-# else we are forcing things on people.
-# RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-ADD rlm_python/mods-available/ /etc/raddb/mods-available/
-COPY rlm_python/sites-available/ /etc/raddb/sites-available/
-
-# Set a working directory of /etc/raddb
-WORKDIR /etc/raddb
-
 RUN mkdir -p /src/kanidm
 COPY . /src/kanidm/
 
@@ -66,7 +45,7 @@ FROM ${BASE_IMAGE} AS final
 
 ARG RADIUS_USER=radiusd
 EXPOSE 1812 1813
-ENV KANIDM_CONFIG_FILE="/data/kanidm"
+ENV KANIDM_CONFIG_FILE="/data/radius.toml"
 
 COPY --from=builder /src/kanidm/target/release/rlm_kanidm.so /tmp/rlm_kanidm.so
 
@@ -74,13 +53,13 @@ COPY --from=builder /src/kanidm/target/release/rlm_kanidm.so /tmp/rlm_kanidm.so
 RUN zypper install -y \
     freeradius-client \
     freeradius-server \
-    freeradius-server-python3 \
     freeradius-server-utils && \
     python3 && \
     zypper clean -a
 
-ADD rlm_python/mods-available/ /etc/raddb/mods-available/
-COPY rlm_python/sites-available/ /etc/raddb/sites-available/
+
+ADD unix_integration/rlm_kanidm/container/mods-available/ /etc/raddb/mods-available/
+COPY unix_integration/rlm_kanidm/container/sites-available/ /etc/raddb/sites-available/
 
 RUN module_dir="$(for d in /usr/lib64/freeradius /usr/lib/freeradius; do [ -d "$d" ] && echo "$d" && break; done)" && \
     test -n "${module_dir}" && \

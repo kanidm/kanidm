@@ -6,11 +6,16 @@ set -o errtrace
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+IMAGE=""
 BUILD_MODE="${BUILD_MODE:-}"
-IMAGE="${IMAGE:-}"
 PYTHON_IMAGE="${PYTHON_IMAGE:-kanidm/radius:devel}"
-RUST_IMAGE="${RUST_IMAGE:-kanidm/radius:rust-dev}"
+CONTAINER_IMAGE_BASE="${CONTAINER_IMAGE_BASE:-kanidm}"
+CONTAINER_IMAGE_VERSION="${CONTAINER_IMAGE_VERSION:-rust-test}"
+RUST_IMAGE="$CONTAINER_IMAGE_BASE/radius:${CONTAINER_IMAGE_VERSION}"
+
+FORCE_BUILD_RUST_IMAGE="${FORCE_BUILD_RUST_IMAGE:-0}"
 AUTO_BUILD_RUST_IMAGE="${AUTO_BUILD_RUST_IMAGE:-1}"
+
 KEEP_CONTAINERS="${KEEP_CONTAINERS:-0}"
 RADIUS_MODULE_IMPL="${RADIUS_MODULE_IMPL:-rust}"
 RUN_SETUP_DEV_ENV="${RUN_SETUP_DEV_ENV:-0}"
@@ -40,8 +45,8 @@ TESTS_FAILED=0
 
 SETUP_DEV_SCRIPT="${REPO_ROOT}/scripts/setup_dev_environment.sh"
 RADIUS_RUN_SCRIPT="${REPO_ROOT}/rlm_python/run_radius_container.sh"
-DEFAULT_RADIUS_CONFIG="${REPO_ROOT}/examples/kanidm"
-RUST_MOD_TEMPLATE="${REPO_ROOT}/rlm_python/mods-available/kanidm_rust"
+DEFAULT_RADIUS_CONFIG="${REPO_ROOT}/examples/kanidm" # so we can shove extra stuff on the end
+RUST_MOD_TEMPLATE="${REPO_ROOT}/unix_integration/rlm_kanidm/container/mods-available/kanidm_rust"
 SERVER_DAEMON_DIR="${REPO_ROOT}/server/daemon"
 KANIDM_CONFIG_FILE="${SERVER_DAEMON_DIR}/insecure_server.toml"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
@@ -157,6 +162,14 @@ verify_rust_image_has_module() {
 }
 
 ensure_rust_image_ready() {
+    if [[ "${FORCE_BUILD_RUST_IMAGE}" == "1" ]]; then
+        log "FORCE_BUILD_RUST_IMAGE=1, forcing Rust image build"
+        (
+            cd "${REPO_ROOT}" || exit 1
+            CONTAINER_IMAGE_BASE="${CONTAINER_IMAGE_BASE}" CONTAINER_IMAGE_VERSION="${CONTAINER_IMAGE_VERSION}" make build/radiusd_rust
+        )
+        return 0
+    fi
     if docker image inspect "${IMAGE}" >/dev/null 2>&1; then
         return 0
     fi
@@ -165,10 +178,10 @@ ensure_rust_image_ready() {
         die "Rust image ${IMAGE} not present locally (set AUTO_BUILD_RUST_IMAGE=1 to auto-build)"
     fi
 
-    log "Rust image ${IMAGE} not found locally; building via rlm_python/Dockerfile.rust"
+    log "Rust image ${IMAGE} not found locally; building make"
     (
         cd "${REPO_ROOT}" || exit 1
-        docker build -f rlm_python/Dockerfile.rust -t "${IMAGE}" .
+        CONTAINER_IMAGE_BASE="${CONTAINER_IMAGE_BASE}" CONTAINER_IMAGE_VERSION="${CONTAINER_IMAGE_VERSION}" make build/radiusd_rust
     )
 }
 
@@ -472,11 +485,10 @@ DOCKER_RUN_ARGS=(
     -d
     --name "${RADIUS_CONTAINER_NAME}"
     --network host
-    -e KANIDM_RLM_CONFIG=/data/kanidm
     -v /tmp/kanidm/:/data/
     -v /tmp/kanidm/:/tmp/kanidm/
     -v /tmp/kanidm/:/certs/
-    -v "${RADIUS_CONFIG_FILE}:/data/kanidm:ro"
+    -v "${RADIUS_CONFIG_FILE}:/data/radius.toml:ro"
 )
 DOCKER_CMD_ARGS=()
 

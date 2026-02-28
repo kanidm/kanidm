@@ -141,7 +141,7 @@ docker run --name radiusd \
     -p 1812:1812 \
     -p 1812:1812/udp \
     --interactive --tty \
-    --mount "type=bind,src=$(pwd)/examples/radius.toml,target=/data/kanidm" \
+    --mount "type=bind,src=$(pwd)/examples/radius.toml,target=/data/radius.toml" \
     --mount "type=bind,src=/tmp/kanidm,target=/data" \
     kanidm/radius:latest
 ```
