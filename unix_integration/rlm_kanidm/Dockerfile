@@ -19,17 +19,8 @@ RUN zypper install -y \
 # openSUSE's freeradius-server-devel headers are incomplete for building
 # out-of-tree modules (radiusd.h includes headers not shipped by package).
 # Overlay upstream 3.2.8 include set so module builds succeed.
-RUN mkdir -p /tmp/freeradius-src && mkdir -p /usr/include/freeradius-devel/  && \
-    curl -fsSL \
-    https://github.com/FreeRADIUS/freeradius-server/archive/refs/tags/release_3_2_8.tar.gz \
-    | tar -xz -C /tmp/freeradius-src && \
-    mv /tmp/freeradius-src/freeradius-server-release{*,} && \
-    cd /tmp/freeradius-src/freeradius-server-release && \
-    ./configure --with-openssl=no > /tmp/freeradius_configure.log 2>&1 && \
-    make > /tmp/freeradius_make.log 2>&1 && \
-    mkdir -p /usr/include/freeradius/ && \
-    cp -R ./src/include/* /usr/include/freeradius/ && \
-    cp -R ./src/include/* /usr/include/freeradius-devel/
+ADD unix_integration/rlm_kanidm/pull_headers.sh /tmp/pull_headers.sh
+RUN /tmp/pull_headers.sh
 
 RUN mkdir -p /src/kanidm
 COPY . /src/kanidm/
