@@ -12,19 +12,13 @@ Service account auth token (the `auth_token` field) is the only way we're doing 
 
 ## Building it
 
-Build core crate only:
+You need libtalloc development headers (packages are `libtalloc-dev` on Ubuntu and `libtalloc-devel` on OpenSUSE)
 
 ```bash
-cargo build -p rlm_kanidm
+cargo build -p rlm_kanidm --features freeradius-module
 ```
 
-Build as a FreeRADIUS module (requires FreeRADIUS development headers and Linux target OS):
-
-```bash
-cargo build -p rlm_kanidm
-```
-
-If headers are in a non-standard path, set:
+If headers are in a non-standard path, or don't play nice, you can run `pull_headers.sh` which will yeet them into place - note this is designed for CI, so it's writing into `/usr/include/`
 
 ```bash
 export FREERADIUS_INCLUDE_DIR=/path/to/freeradius/include
