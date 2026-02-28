@@ -24,7 +24,6 @@ use crypto_glue::{
 };
 use kanidm_hsm_crypto::{provider::TpmHmacS256, structures::HmacS256Key};
 use md4::Md4;
-use openssl::error::ErrorStack as OpenSSLErrorStack;
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -34,9 +33,6 @@ use std::time::{Duration, Instant};
 use tracing::{debug, error, warn};
 
 mod crypt_md5;
-pub mod mtls;
-pub mod prelude;
-pub mod serialise;
 
 pub use sha2;
 
@@ -86,21 +82,6 @@ pub enum CryptoError {
     Argon2Parameters,
     Crypt,
     InvalidServerName,
-}
-
-impl From<OpenSSLErrorStack> for CryptoError {
-    fn from(ossl_err: OpenSSLErrorStack) -> Self {
-        error!(?ossl_err);
-        let code = ossl_err.errors().first().map(|e| e.code()).unwrap_or(0);
-        #[cfg(not(target_family = "windows"))]
-        let result = CryptoError::OpenSSL(code);
-
-        // this is an .into() because on windows it's a u32 not a u64
-        #[cfg(target_family = "windows")]
-        let result = CryptoError::OpenSSL(code.into());
-
-        result
-    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]

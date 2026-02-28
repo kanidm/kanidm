@@ -143,7 +143,7 @@ pub fn check_privkey_minimums(privkey: &PrivateKeyDer<'_>) -> Result<(), String>
     }
 }
 
-/// From the server configuration, generate an OpenSSL acceptor that we can use
+/// From the server configuration, generate a TLS acceptor that we can use
 /// to build our sockets for HTTPS/LDAPS.
 pub fn setup_tls(
     tls_config: &Option<TlsConfiguration>,

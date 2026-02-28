@@ -1,13 +1,13 @@
 use self::codec::{ConsumerRequest, SupplierResponse};
 use crate::CoreAction;
 use config::{RepNodeConfig, ReplicationConfiguration};
+use crypto_glue::{traits::EncodeDer, x509::Certificate};
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
 use kanidmd_lib::prelude::duration_from_epoch_now;
 use kanidmd_lib::prelude::IdmServer;
 use kanidmd_lib::repl::proto::ConsumerState;
 use kanidmd_lib::server::QueryServerTransaction;
-use openssl::x509::X509;
 use rustls::{
     client::ClientConfig,
     pki_types::{CertificateDer, PrivateKeyDer, ServerName},
@@ -39,7 +39,7 @@ pub(crate) mod config;
 
 pub(crate) enum ReplCtrl {
     GetCertificate {
-        respond: oneshot::Sender<X509>,
+        respond: oneshot::Sender<Certificate>,
     },
     RenewCertificate {
         respond: oneshot::Sender<bool>,
@@ -811,17 +811,12 @@ async fn repl_acceptor(
         };
 
         info!(
-            replication_cert_not_before = ?server_cert.not_before(),
-            replication_cert_not_after = ?server_cert.not_after(),
+            replication_cert_not_before = ?server_cert.tbs_certificate.validity.not_before,
+            replication_cert_not_after = ?server_cert.tbs_certificate.validity.not_after,
         );
 
         // rustls expects these to be der
-        let Ok(server_key_der) = server_key.private_key_to_der() else {
-            error!("CRITICAL: Unable to convert server key to DER.");
-            continue 'event;
-        };
-
-        let Ok(server_key_der) = PrivateKeyDer::try_from(server_key_der) else {
+        let Ok(server_key_der) = PrivateKeyDer::try_from(server_key.as_bytes().to_vec()) else {
             error!("CRITICAL: Unable to convert server key from DER.");
             continue 'event;
         };

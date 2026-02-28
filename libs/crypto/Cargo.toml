@@ -20,7 +20,6 @@ base64urlsafedata = { workspace = true }
 crypto-glue = { workspace = true }
 hex = { workspace = true }
 kanidm-hsm-crypto = { workspace = true }
-openssl = { workspace = true }
 rand = { workspace = true }
 md4 = { workspace = true }
 sha2 = { workspace = true }
