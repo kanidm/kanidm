@@ -33,7 +33,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
-#[cfg(all(target_os = "linux", feature = "freeradius-module"))]
+#[cfg(feature = "freeradius-module")]
 mod freeradius;
 
 const ATTR_USER_NAME: &str = "User-Name";
@@ -189,6 +189,7 @@ pub enum ModuleError {
     Io(String),
     Config(String),
     Http(String),
+    Other(String),
 }
 
 impl std::fmt::Display for ModuleError {
@@ -197,7 +198,14 @@ impl std::fmt::Display for ModuleError {
             Self::Io(s) => write!(f, "IO Error: {s}"),
             Self::Config(s) => write!(f, "Config Error: {s}"),
             Self::Http(s) => write!(f, "HTTP Error: {s}"),
+            Self::Other(s) => write!(f, "Internal Error: {s}"),
         }
+    }
+}
+
+impl From<ModuleError> for AuthResultC {
+    fn from(input: ModuleError) -> AuthResultC {
+        auth_error(Response::Fail, input.to_string())
     }
 }
 
@@ -442,14 +450,14 @@ pub struct AuthResultC {
     pub error: *mut c_char,
 }
 
-pub(crate) fn cstr_to_string(ptr_in: *const c_char) -> Result<String, String> {
+pub(crate) fn cstr_to_string(ptr_in: *const c_char) -> Result<String, ModuleError> {
     if ptr_in.is_null() {
-        return Err("null string pointer".to_string());
+        return Err(ModuleError::Other("null string pointer".to_string()));
     }
     let cstr = unsafe { CStr::from_ptr(ptr_in) };
     cstr.to_str()
         .map(|s| s.to_string())
-        .map_err(|e| format!("invalid utf-8 string: {e}"))
+        .map_err(|e| ModuleError::Other(format!("invalid utf-8 string: {e}")))
 }
 
 fn auth_result_from_pairs(
@@ -555,7 +563,7 @@ pub unsafe extern "C" fn rlm_kanidm_authorize(
 
     let attrs = match kvpairs_to_attributes(request_attrs, request_attrs_len) {
         Ok(v) => v,
-        Err(e) => return auth_error(Response::Invalid, e),
+        Err(e) => return e.into(),
     };
 
     let module = unsafe { &(*handle).module };
@@ -599,9 +607,11 @@ fn free_kv_pairs(ptr_pairs: *mut KVPair, len: usize) {
 fn kvpairs_to_attributes(
     request_attrs: *const KVPair,
     request_attrs_len: usize,
-) -> Result<RequestAttributes, String> {
+) -> Result<RequestAttributes, ModuleError> {
     if request_attrs.is_null() && request_attrs_len != 0 {
-        return Err("request_attrs pointer is null with non-zero length".to_string());
+        return Err(ModuleError::Other(
+            "request_attrs pointer is null with non-zero length".to_string(),
+        ));
     }
     let attrs_slice = if request_attrs_len == 0 {
         &[]
