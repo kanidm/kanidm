@@ -83,23 +83,42 @@ pub struct RadiusClientConfig {
     pub secret: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct KanidmRadiusConfig {
     pub uri: String,
     pub auth_token: String,
+    #[serde(default = "default_bool_true")]
+    pub verify_hostnames: bool,
+    #[serde(default = "default_bool_true")]
+    pub verify_certificate: bool,
+
+    #[serde(default)]
     pub ca_path: Option<String>,
+
     #[serde(default)]
     pub radius_required_groups: Vec<String>,
     #[serde(default = "default_vlan")]
+    /// Defaults to 1, which is the default VLAN for "no VLAN" in many RADIUS setups, but can be set to 0 if the setup expects that for "no VLAN". Any user in a group that doesn't have a specific VLAN mapping will get this VLAN.
     pub radius_default_vlan: u32,
     #[serde(default)]
     pub radius_groups: Vec<RadiusGroupConfig>,
     #[serde(default)]
     pub radius_clients: Vec<RadiusClientConfig>,
+
+    #[serde(default = "default_connect_timeout_secs")]
+    pub connect_timeout_secs: u64,
+}
+
+fn default_bool_true() -> bool {
+    true
 }
 
 fn default_vlan() -> u32 {
     1
+}
+
+fn default_connect_timeout_secs() -> u64 {
+    30
 }
 
 #[derive(Debug, Clone)]
@@ -246,9 +265,11 @@ impl Module {
         let runtime = Runtime::new()
             .map_err(|e| ModuleError::Config(format!("Failed creating tokio runtime: {e}")))?;
 
-        let timeout_secs = options.http_timeout.as_secs().max(1);
+        let timeout_secs = options.http_timeout.as_secs().max(cfg.connect_timeout_secs);
         let mut client_builder = KanidmClientBuilder::new()
             .address(cfg.uri.clone())
+            .danger_accept_invalid_hostnames(!cfg.verify_hostnames)
+            .danger_accept_invalid_certs(!cfg.verify_certificate)
             .connect_timeout(timeout_secs)
             .request_timeout(timeout_secs);
         if let Some(ca_path) = cfg.ca_path.as_deref() {
@@ -629,6 +650,8 @@ fn kvpairs_to_attributes(
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
 
     fn sample_token(groups: Vec<Group>) -> RadiusAuthToken {
@@ -670,6 +693,7 @@ mod tests {
                 },
             ],
             radius_clients: Vec::new(),
+            ..KanidmRadiusConfig::default()
         };
 
         let module = Module::from_config(cfg, ModuleOptions::default()).expect("module");
@@ -693,9 +717,7 @@ mod tests {
             auth_token: "token".to_string(),
             ca_path: None,
             radius_required_groups: vec!["required-spn".to_string(), "required-uuid".to_string()],
-            radius_default_vlan: 1,
-            radius_groups: Vec::new(),
-            radius_clients: Vec::new(),
+            ..KanidmRadiusConfig::default()
         };
         let module = Module::from_config(cfg, ModuleOptions::default()).expect("module");
 
@@ -722,5 +744,23 @@ mod tests {
         assert!(entry.fresh(now, Duration::from_secs(30)));
         assert!(!entry.fresh(now, Duration::from_secs(5)));
         assert!(entry.stale_allowed(now, Duration::from_secs(5), Duration::from_secs(10)));
+    }
+
+    #[test]
+    fn test_parse_examples() {
+        // let's make sure our provided examples actually parse!
+        let config_files = vec!["radius.toml", "radius_full.toml"];
+        for config_file in config_files {
+            let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../examples/")
+                .join(config_file);
+            if !config_path.exists() {
+                panic!("example config file not found: {}", config_path.display());
+            }
+            let config_text =
+                fs::read_to_string(&config_path).expect("failed to read example config file");
+            let _cfg: KanidmRadiusConfig =
+                toml::from_str(&config_text).expect("failed to parse config!");
+        }
     }
 }
