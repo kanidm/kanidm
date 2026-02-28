@@ -6,6 +6,7 @@ ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
 RUN /zypper_fixing.sh
 
 RUN zypper install -y \
+    awk \
     libopenssl-devel \
     clang \
     make \
