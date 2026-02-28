@@ -31,7 +31,7 @@ jobs:
             libtss2-dev \
             libudev-dev \
             pkg-config \
-            tpm-udev
+            tpm-udev && \
           sudo unix_integration/rlm_kanidm/pull_headers.sh
       - name: "Run clippy"
         run: |
