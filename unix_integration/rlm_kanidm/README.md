@@ -1,8 +1,16 @@
 # rlm_kanidm
 
-Rust-backed FreeRADIUS module for Kanidm authentication.
+Rust-backed FreeRADIUS module for Kanidm authentication. Here be dragons.
 
-## Build
+This is VERY much designed to be used with the container, but we're happy to accept PR's if it needs tweaking.
+
+## Configuring it
+
+This matches the existing configuration, reading Kanidm-specific configuration from `/data/radius.toml` in the container. The python module tried a load of different paths but this is the default going forward.
+
+Service account auth token (the `auth_token` field) is the only way we're doing auth now, username/password is deprecated.
+
+## Building it
 
 Build core crate only:
 

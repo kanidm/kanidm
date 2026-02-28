@@ -121,11 +121,23 @@ build/orca:
 		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
+
+# TODO remove this once the rust module's confirmed as working
 .PHONY: build/radiusd
-build/radiusd:	## Build the radiusd docker image locally
+build/radiusd:	## Build the radiusd docker image locally - deprecated
 build/radiusd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
 		-f rlm_python/Dockerfile \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
+		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) .
+
+
+.PHONY: build/radiusd_rust
+build/radiusd_rust:	## Build the radiusd docker image locally
+build/radiusd_rust:
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
+		-f unix_integration/rlm_kanidm/Dockerfile \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
 		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
 		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) .
