@@ -37,6 +37,10 @@ use tokio::runtime::Runtime;
 #[allow(clippy::trivially_copy_pass_by_ref)]
 #[allow(clippy::indexing_slicing)]
 #[allow(clippy::ptr_offset_with_cast)]
+#[allow(clippy::unnecessary_cast)]
+#[allow(clippy::useless_transmute)]
+#[allow(clippy::too_many_arguments)]
+#[allow(clippy::upper_case_acronyms)]
 mod freeradius;
 
 const ATTR_USER_NAME: &str = "User-Name";
