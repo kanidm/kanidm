@@ -31,7 +31,7 @@ jobs:
             libtss2-dev \
             libudev-dev \
             pkg-config \
-            libtalloc-devel \
+            libtalloc-dev \
             tpm-udev && \
           sudo unix_integration/rlm_kanidm/pull_headers.sh
           echo "Looking at /usr/include/freeradius-devel/"
