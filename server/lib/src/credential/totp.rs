@@ -63,6 +63,12 @@ impl TotpAlgo {
         let hmac = match self {
             TotpAlgo::Sha1 => {
                 let mut key = HmacSha1Key::default();
+
+                if key_bytes.len() > key.as_slice().len() {
+                    return Err(TotpError::InvalidKeyError);
+                }
+
+                #[allow(clippy::indexing_slicing)]
                 let key_ref = &mut key.as_mut_slice()[..key_bytes.len()];
                 key_ref.copy_from_slice(key_bytes);
 
@@ -72,6 +78,12 @@ impl TotpAlgo {
             }
             TotpAlgo::Sha256 => {
                 let mut key = HmacSha256Key::default();
+
+                if key_bytes.len() > key.as_slice().len() {
+                    return Err(TotpError::InvalidKeyError);
+                }
+
+                #[allow(clippy::indexing_slicing)]
                 let key_ref = &mut key.as_mut_slice()[..key_bytes.len()];
                 key_ref.copy_from_slice(key_bytes);
 
@@ -81,6 +93,12 @@ impl TotpAlgo {
             }
             TotpAlgo::Sha512 => {
                 let mut key = HmacSha512Key::default();
+
+                if key_bytes.len() > key.as_slice().len() {
+                    return Err(TotpError::InvalidKeyError);
+                }
+
+                #[allow(clippy::indexing_slicing)]
                 let key_ref = &mut key.as_mut_slice()[..key_bytes.len()];
                 key_ref.copy_from_slice(key_bytes);
 

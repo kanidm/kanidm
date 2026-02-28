@@ -8,10 +8,9 @@ use crate::value::{
     Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, OauthClaimMapJoin, Session,
 };
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
-use crypto_glue::s256::Sha256Output;
+use crypto_glue::{s256::Sha256Output, x509::Certificate};
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
-use kanidm_lib_crypto::x509_cert::Certificate;
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::JsonValue;

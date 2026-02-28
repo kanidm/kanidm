@@ -3955,7 +3955,6 @@ dependencies = [
 name = "kanidm_lib_crypto"
 version = "1.10.0-dev"
 dependencies = [
- "argon2",
  "base64 0.22.1",
  "base64urlsafedata",
  "crypto-glue",

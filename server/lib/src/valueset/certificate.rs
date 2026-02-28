@@ -3,11 +3,10 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
-use crypto_glue::s256::Sha256Output;
-use kanidm_lib_crypto::x509_cert::{
-    der::{Decode, Encode, EncodePem},
-    pem::LineEnding,
-    x509_public_key_s256, Certificate,
+use crypto_glue::{
+    s256::Sha256Output,
+    traits::{DecodeDer, EncodeDer, EncodePem, LineEndingPem},
+    x509::{x509_digest_public_key_sha256, Certificate},
 };
 use kanidm_proto::scim_v1::client::ScimCertificate as ClientScimCertificate;
 use kanidm_proto::scim_v1::server::ScimCertificate;
@@ -23,7 +22,7 @@ impl ValueSetCertificate {
     pub fn new(certificate: Box<Certificate>) -> Result<Box<Self>, OperationError> {
         let mut map = BTreeMap::new();
 
-        let pk_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
+        let pk_s256 = x509_digest_public_key_sha256(&certificate).ok_or_else(|| {
             error!("Unable to digest public key");
             OperationError::VS0002CertificatePublicKeyDigest
         })?;
@@ -53,7 +52,7 @@ impl ValueSetCertificate {
                         })?;
 
                     // sha256 the public key
-                    let pk_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
+                    let pk_s256 = x509_digest_public_key_sha256(&certificate).ok_or_else(|| {
                         error!("Unable to digest public key");
                         OperationError::VS0004CertificatePublicKeyDigest
                     })?;
@@ -92,7 +91,7 @@ impl ValueSetCertificate {
         let mut map = BTreeMap::new();
 
         for certificate in iter {
-            let pk_s256 = x509_public_key_s256(&certificate)?;
+            let pk_s256 = x509_digest_public_key_sha256(&certificate)?;
             map.insert(pk_s256, certificate);
         }
 
@@ -121,7 +120,7 @@ impl ValueSetScimPut for ValueSetCertificate {
                 })?;
 
             // sha256 the public key
-            let pk_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
+            let pk_s256 = x509_digest_public_key_sha256(&certificate).ok_or_else(|| {
                 error!("Unable to digest public key");
                 OperationError::SC0014CertificateInvalidDigest
             })?;
@@ -139,7 +138,7 @@ impl ValueSetT for ValueSetCertificate {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::Certificate(certificate) => {
-                let pk_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
+                let pk_s256 = x509_digest_public_key_sha256(&certificate).ok_or_else(|| {
                     error!("Unable to digest public key");
                     OperationError::VS0005CertificatePublicKeyDigest
                 })?;
@@ -220,7 +219,7 @@ impl ValueSetT for ValueSetCertificate {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.map.iter().filter_map(|(pk_s256, cert)| {
-            cert.to_pem(LineEnding::LF)
+            cert.to_pem(LineEndingPem::LF)
                 .ok()
                 .map(|pem| format!("{}\n{}", hex::encode(pk_s256), pem))
         }))
@@ -308,8 +307,7 @@ impl ValueSetT for ValueSetCertificate {
 mod tests {
     use super::ValueSetCertificate;
     use crate::prelude::{ScimValueKanidm, ValueSet};
-    use kanidm_lib_crypto::x509_cert::der::DecodePem;
-    use kanidm_lib_crypto::x509_cert::Certificate;
+    use crypto_glue::{traits::DecodePem, x509::Certificate};
 
     // Generated with:
     //
