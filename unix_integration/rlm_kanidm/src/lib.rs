@@ -1,3 +1,26 @@
+//! A FreeRADIUS module for Kanidm authentication and authorization.
+//!
+//! Here be unsafe dragons.
+
+#![deny(warnings)]
+#![deny(deprecated)]
+#![recursion_limit = "512"]
+#![warn(unused_extern_crates)]
+#![deny(clippy::suspicious)]
+#![deny(clippy::perf)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
+#![deny(clippy::disallowed_types)]
+#![deny(clippy::manual_let_else)]
+#![deny(clippy::indexing_slicing)]
+#![allow(clippy::unreachable)]
+
 use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};
 use kanidm_proto::internal::{Group, RadiusAuthToken};
 use libc::c_char;
@@ -9,6 +32,9 @@ use std::ptr;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
+
+#[cfg(all(target_os = "linux", feature = "freeradius-module"))]
+mod freeradius;
 
 const ATTR_USER_NAME: &str = "User-Name";
 const ATTR_TLS_CN: &str = "TLS-Client-Cert-Common-Name";
@@ -110,7 +136,7 @@ impl RequestAttributes {
         self.attrs.get(key).map(String::as_str)
     }
 
-    pub fn select_user_id(&self) -> Option<&str> {
+    pub fn user_id(&self) -> Option<&str> {
         self.get(ATTR_TLS_SAN_DN_CN)
             .or_else(|| self.get(ATTR_TLS_CN))
             .or_else(|| self.get(ATTR_USER_NAME))
@@ -168,7 +194,9 @@ pub enum ModuleError {
 impl std::fmt::Display for ModuleError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Io(s) | Self::Config(s) | Self::Http(s) => write!(f, "{s}"),
+            Self::Io(s) => write!(f, "IO Error: {s}"),
+            Self::Config(s) => write!(f, "Config Error: {s}"),
+            Self::Http(s) => write!(f, "HTTP Error: {s}"),
         }
     }
 }
@@ -251,7 +279,7 @@ impl Module {
     }
 
     pub fn authorize(&self, attrs: &RequestAttributes) -> AuthorizeResult {
-        let Some(user_id) = attrs.select_user_id() else {
+        let Some(user_id) = attrs.user_id() else {
             return AuthorizeResult::new(Response::Invalid);
         };
 
@@ -327,9 +355,8 @@ impl Module {
     }
 
     fn lookup_cache(&self, user_id: &str, now: Instant) -> Option<RadiusAuthToken> {
-        let cache_guard = match self.cache.lock() {
-            Ok(guard) => guard,
-            Err(_) => return None,
+        let Ok(cache_guard) = self.cache.lock() else {
+            return None;
         };
         let entry = cache_guard.get(user_id)?;
         if entry.fresh(now, self.options.cache_ttl) {
@@ -339,9 +366,8 @@ impl Module {
     }
 
     fn lookup_stale_cache(&self, user_id: &str, now: Instant) -> Option<RadiusAuthToken> {
-        let cache_guard = match self.cache.lock() {
-            Ok(guard) => guard,
-            Err(_) => return None,
+        let Ok(cache_guard) = self.cache.lock() else {
+            return None;
         };
         let entry = cache_guard.get(user_id)?;
         if entry.stale_allowed(
@@ -400,14 +426,23 @@ pub struct ModuleHandle {
     module: Arc<Module>,
 }
 
-mod ffi_types {
-    include!(concat!(env!("OUT_DIR"), "/ffi_types_bindings.rs"));
+#[repr(C)]
+pub struct KVPair {
+    pub key: *const c_char,
+    pub value: *const c_char,
 }
 
-type KVPair = ffi_types::rust_kv_pair_t;
-type AuthResultC = ffi_types::rust_auth_result_t;
+#[repr(C)]
+pub struct AuthResultC {
+    pub code: i32,
+    pub reply: *mut KVPair,
+    pub reply_len: usize,
+    pub control: *mut KVPair,
+    pub control_len: usize,
+    pub error: *mut c_char,
+}
 
-fn cstr_to_string(ptr_in: *const c_char) -> Result<String, String> {
+pub(crate) fn cstr_to_string(ptr_in: *const c_char) -> Result<String, String> {
     if ptr_in.is_null() {
         return Err("null string pointer".to_string());
     }
@@ -443,13 +478,12 @@ fn auth_result_from_pairs(
 }
 
 fn into_kvpairs(pairs: Vec<(String, String)>) -> Vec<KVPair> {
+    #[allow(clippy::expect_used)]
     pairs
         .into_iter()
         .map(|(k, v)| {
-            let k_c = CString::new(k)
-                .unwrap_or_else(|_| CString::new("invalid-key").expect("literal CString"));
-            let v_c = CString::new(v)
-                .unwrap_or_else(|_| CString::new("invalid-value").expect("literal CString"));
+            let k_c = CString::new(k).expect("literal CString");
+            let v_c = CString::new(v).expect("literal CString");
             KVPair {
                 key: k_c.into_raw(),
                 value: v_c.into_raw(),
@@ -458,7 +492,10 @@ fn into_kvpairs(pairs: Vec<(String, String)>) -> Vec<KVPair> {
         .collect()
 }
 
+/// Create an AuthError result with the given message. Might panic if `message` can't be turned into a C string, but since we only call this with static strings or error messages from Rust code, that should be fine.
 fn auth_error(code: Response, message: String) -> AuthResultC {
+    // At some point we just have to convert to a C string, and if that fails we can't do much about it, so it's fine to panic with a literal here
+    #[allow(clippy::expect_used)]
     let c_message = CString::new(message)
         .unwrap_or_else(|_| CString::new("module error").expect("literal CString"));
     AuthResultC {
@@ -474,9 +511,8 @@ fn auth_error(code: Response, message: String) -> AuthResultC {
 /// Instantiate module state from a config path.
 #[unsafe(no_mangle)]
 pub extern "C" fn rlm_kanidm_instantiate(config_path: *const c_char) -> *mut ModuleHandle {
-    let path = match cstr_to_string(config_path) {
-        Ok(v) => v,
-        Err(_) => return ptr::null_mut(),
+    let Ok(path) = cstr_to_string(config_path) else {
+        return ptr::null_mut();
     };
     match Module::from_config_path(&path, ModuleOptions::default()) {
         Ok(module) => {
@@ -539,6 +575,7 @@ pub extern "C" fn rlm_kanidm_free_auth_result(result: AuthResultC) {
     }
 }
 
+/// Helper to free an array of KVPair allocated in Rust and returned to C. This should be called for the `reply` and `control` fields of `AuthResultC` after the caller is done using them, to avoid memory leaks.
 fn free_kv_pairs(ptr_pairs: *mut KVPair, len: usize) {
     if ptr_pairs.is_null() || len == 0 {
         return;
@@ -601,7 +638,7 @@ mod tests {
             (ATTR_TLS_CN.to_string(), "cn".to_string()),
             (ATTR_TLS_SAN_DN_CN.to_string(), "san".to_string()),
         ]);
-        assert_eq!(attrs.select_user_id(), Some("san"));
+        assert_eq!(attrs.user_id(), Some("san"));
     }
 
     #[test]
