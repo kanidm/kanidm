@@ -32,6 +32,7 @@ jobs:
             libudev-dev \
             pkg-config \
             tpm-udev
+          sudo unix_integration/rlm_kanidm/pull_headers.sh
       - name: "Run clippy"
         run: |
           rustup component add clippy
