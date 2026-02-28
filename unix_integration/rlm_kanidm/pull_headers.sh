@@ -12,5 +12,20 @@ mkdir -p /usr/include/freeradius/
 cp -R ./src/include/* /usr/include/freeradius/
 cp -R ./src/include/* /usr/include/freeradius-devel/
 
+if [ "${DEBUG:-0}" -eq 1 ]; then
+    echo "######################"
+    echo "Looking at /usr/include/freeradius-devel/"
+    ls -lah /usr/include/freeradius-devel/
+    echo "######################"
+    echo "Configure log"
+    echo "######################"
+    cat /tmp/freeradius_configure.log
+    echo "######################"
+    echo "Freeradius make log:"
+    echo "######################"
+    cat /tmp/freeradius_make.log
+    echo "######################"
+fi
+
 echo "Done! Moving back to $CURRDIR"
 cd "$CURRDIR" || exit 0
