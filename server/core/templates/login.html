@@ -2,7 +2,7 @@
 
 (% block logincontainer %)
 (% if let Some(error) = display_ctx.error %)
-	<div class="alert alert-danger" role="alert">
+	<div class="alert (( error.alert_class() ))" role="alert">
 		(( error ))
 	</div>
 (% endif %)

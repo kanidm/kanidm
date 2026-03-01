@@ -1,7 +1,6 @@
 use super::constants::{ProfileMenuItems, Urls};
 use super::errors::HtmxError;
 use super::navbar::NavbarCtx;
-use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::reauth::{uat_privileges_active, uat_privileges_possible};
@@ -109,8 +108,10 @@ pub(crate) async fn view_profile_get(
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
-) -> Result<Response, WebError> {
-    let uat: &UserAuthToken = client_auth_info.pre_validated_uat()?;
+) -> axum::response::Result<Response> {
+    let uat: &UserAuthToken = client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let (scim_person, scim_effective_access) =
         crate::https::views::admin::persons::get_person_info(

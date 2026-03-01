@@ -68,12 +68,23 @@ impl fmt::Display for ReauthPurpose {
 #[derive(Clone)]
 pub enum LoginError {
     InvalidUsername,
+    SessionExpired,
+}
+
+impl LoginError {
+    pub fn alert_class(&self) -> &'static str {
+        match self {
+            Self::InvalidUsername => "alert-danger",
+            Self::SessionExpired => "alert-warning",
+        }
+    }
 }
 
 impl fmt::Display for LoginError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidUsername => write!(f, "Invalid username"),
+            Self::SessionExpired => write!(f, "Session expired, please log in again"),
         }
     }
 }
@@ -369,6 +380,9 @@ pub async fn view_index_get(
     // ui loops
     let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &state);
 
+    let is_session_expired =
+        matches!(&session_valid_result, Err(OperationError::SessionExpired));
+
     match session_valid_result {
         Ok(()) => {
             // Send the user to the landing.
@@ -383,11 +397,17 @@ pub async fn view_index_get(
 
             let remember_me = !username.is_empty();
 
+            let error = if is_session_expired {
+                Some(LoginError::SessionExpired)
+            } else {
+                None
+            };
+
             let display_ctx = LoginDisplayCtx {
                 domain_info,
                 oauth2: None,
                 reauth: None,
-                error: None,
+                error,
             };
 
             (
