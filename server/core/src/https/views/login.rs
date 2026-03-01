@@ -71,15 +71,6 @@ pub enum LoginError {
     SessionExpired,
 }
 
-impl LoginError {
-    pub fn alert_class(&self) -> &'static str {
-        match self {
-            Self::InvalidUsername => "alert-danger",
-            Self::SessionExpired => "alert-warning",
-        }
-    }
-}
-
 impl fmt::Display for LoginError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
