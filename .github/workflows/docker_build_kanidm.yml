@@ -59,7 +59,7 @@ jobs:
           # Must use OCI exporter for multi-arch: https://github.com/docker/buildx/pull/1813
           outputs: type=oci,dest=/tmp/kanidm-docker.tar
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: kanidm-docker
           path: /tmp/kanidm-docker.tar
@@ -76,7 +76,7 @@ jobs:
 
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: kanidm-docker
           path: /tmp
