@@ -418,13 +418,13 @@ Whenever code is merged with the `master` branch of Kanidm, containers are autom
 To find information on the packages,
 [visit the Kanidm packages page](https://github.com/orgs/kanidm/packages?repo_name=kanidm).
 
-An example command for pulling and running the radius container is below. You'll need to
+An example command for pulling and running the RADIUS container is below. You'll need to
 [authenticate with the GitHub container registry first](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry).
 
 ```bash
 docker pull ghcr.io/kanidm/radius:devel
 docker run --rm -it \
-    -v $(pwd)/kanidm:/data/kanidm \
+    -v $(pwd)/radius.toml:/data/radius.toml \
     ghcr.io/kanidm/radius:devel
 ```
 

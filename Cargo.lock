@@ -5983,6 +5983,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rlm_kanidm"
+version = "1.10.0-dev"
+dependencies = [
+ "bindgen 0.72.1",
+ "kanidm_client",
+ "kanidm_proto",
+ "libc",
+ "serde",
+ "tokio",
+ "toml",
+ "tracing",
+]
+
+[[package]]
 name = "rpassword"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
