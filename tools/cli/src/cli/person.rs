@@ -34,6 +34,36 @@ use uuid::Uuid;
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 use crate::webauthn::get_authenticator;
 
+use kanidm_client::ClientError;
+use kanidm_client::OutputFormat;
+use kanidm_client::SSHKEY_ATTEST_FEATURE;
+use kanidm_proto::identity::v1::{
+    IdentityGetReply, KeyAttestationVerifyRequest, KeyType as SSHKeyAttestationType,
+};
+use kanidm_proto::identity::{self};
+use kanidm_proto::internal::{
+    CUCredState, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus, CredentialDetail,
+    PasskeyDetail, SshPublicKey, TotpSecret,
+};
+use kanidm_proto::scim_v1::{
+    client::{ScimSshPublicKeys, PATCHOP_SCHEMA_URI}, 
+    PatchOp, PatchOperation, PatchRequest, ScimEntryGetQuery,
+    ATTR_DISPLAYNAME, ATTR_GIDNUMBER, ATTR_LEGALNAME, ATTR_MAIL, ATTR_NAME, ATTR_PASSWORD, ATTR_POSIXACCOUNTS,
+    ATTR_SSH_PUBLICKEY,
+};
+use kanidm_proto::MessageError;
+use serde_json::json;
+use sshkey_attest::{Error as AttestationError, RegisterChallengeResponse};
+use sshkeys::PublicKey as ActualSshPublicKey;
+use std::collections::BTreeMap;
+use std::fmt;
+use std::path::PathBuf;
+use std::str::FromStr;
+
+use dialoguer::Input;
+use tracing::{debug, error, info, trace, warn};
+use uuid::Uuid;
+
 impl PersonOpt {
     pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
@@ -278,15 +308,73 @@ impl PersonOpt {
                 }
             }
             PersonOpt::Update(aopt) => {
-                let client = opt.to_client(OpType::Write).await;
+                let client = aopt.copt.to_client(OpType::Write).await;
+
+                let mut patch_ops = Vec::new();
+
+                // Helper to create a replace operation
+                let replace_op = |path: &str, value: &str| -> PatchOperation {
+                    PatchOperation {
+                        op: PatchOp::Replace,
+                        path: Some(path.to_string()),
+                        value: Some(json!(value)),
+                    }
+                };
+
+                // Helper to create a replace operation for Vec<String>
+                let replace_op_vec = |path: &str, value: &[String]| -> PatchOperation {
+                    PatchOperation {
+                        op: PatchOp::Replace,
+                        path: Some(path.to_string()),
+                        value: Some(json!(value)),
+                    }
+                };
+
+                // Helper to create a remove operation
+                let remove_op = |path: &str| -> PatchOperation {
+                    PatchOperation {
+                        op: PatchOp::Remove,
+                        path: Some(path.to_string()),
+                        value: None,
+                    }
+                };
+
+                if let Some(newname) = &aopt.newname {
+                    patch_ops.push(replace_op(ATTR_NAME, newname));
+                }
+                if let Some(displayname) = &aopt.displayname {
+                    patch_ops.push(replace_op(ATTR_DISPLAYNAME, displayname));
+                }
+                if let Some(legalname) = &aopt.legalname {
+                    if legalname.is_empty() {
+                        // Empty string means clear the attribute
+                        patch_ops.push(remove_op(ATTR_LEGALNAME));
+                    } else {
+                        patch_ops.push(replace_op(ATTR_LEGALNAME, legalname));
+                    }
+                }
+                if let Some(mail) = &aopt.mail {
+                    if mail.is_empty() {
+                         // Empty list means clear the attribute
+                        patch_ops.push(remove_op(ATTR_MAIL));
+                    } else {
+                        patch_ops.push(replace_op_vec(ATTR_MAIL, mail));
+                    }
+                }
+
+                if patch_ops.is_empty() {
+                    println!("No changes specified.");
+                    return;
+                }
+
+                let patch_request = PatchRequest {
+                    schemas: vec![PATCHOP_SCHEMA_URI.to_string()],
+                    operations: patch_ops,
+                };
+
+
                 match client
-                    .idm_person_account_update(
-                        aopt.aopts.account_id.as_str(),
-                        aopt.newname.as_deref(),
-                        aopt.displayname.as_deref(),
-                        aopt.legalname.as_deref(),
-                        aopt.mail.as_deref(),
-                    )
+                    .idm_person_account_patch(aopt.aopts.account_id.as_str(), patch_request)
                     .await
                 {
                     Ok(()) => println!("Success"),
