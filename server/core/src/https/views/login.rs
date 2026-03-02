@@ -96,6 +96,12 @@ pub struct LoginDisplayCtx {
     pub error: Option<LoginError>,
 }
 
+fn is_safe_reauth_return_location(path: &str) -> bool {
+    // Accept only absolute local paths. Reject network-path references (//host)
+    // to prevent open redirects.
+    path.starts_with('/') && !path.starts_with("//") && path != "*"
+}
+
 #[derive(Template, WebTemplate)]
 #[template(path = "login.html")]
 struct LoginView {
@@ -212,6 +218,7 @@ pub async fn view_reauth_to_referer_get(
     let redirect = redirect
         .as_ref()
         .map(|uri| uri.path())
+        .filter(|path| is_safe_reauth_return_location(path))
         .unwrap_or(Urls::Apps.as_ref());
 
     let display_ctx = LoginDisplayCtx {
@@ -1069,7 +1076,10 @@ async fn view_login_step(
                         // Now, we need to decided where to go.
                         let res = if jar.get(COOKIE_OAUTH2_REQ).is_some() {
                             Redirect::to(Urls::Oauth2Resume.as_ref()).into_response()
-                        } else if let Some(auth_loc) = session_context.after_auth_loc {
+                        } else if let Some(auth_loc) = session_context
+                            .after_auth_loc
+                            .filter(|loc| is_safe_reauth_return_location(loc.as_str()))
+                        {
                             Redirect::to(auth_loc.as_str()).into_response()
                         } else {
                             Redirect::to(Urls::Apps.as_ref()).into_response()
@@ -1153,4 +1163,21 @@ fn add_session_cookie(
             jar.add(cookie)
         })
         .ok_or(OperationError::InvalidSessionState)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_safe_reauth_return_location;
+
+    #[test]
+    fn test_is_safe_reauth_return_location() {
+        assert!(is_safe_reauth_return_location("/"));
+        assert!(is_safe_reauth_return_location("/ui/profile"));
+        assert!(is_safe_reauth_return_location("/ui/profile/diff"));
+
+        assert!(!is_safe_reauth_return_location(""));
+        assert!(!is_safe_reauth_return_location("*"));
+        assert!(!is_safe_reauth_return_location("ui/profile"));
+        assert!(!is_safe_reauth_return_location("//evil.example/steal"));
+    }
 }
