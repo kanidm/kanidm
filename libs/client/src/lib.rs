@@ -1702,6 +1702,21 @@ impl KanidmClient {
             .await
     }
 
+    #[instrument(level = "debug", skip(self))]
+    pub async fn idm_person_account_credential_update_send_intent(
+        &self,
+        id: &str,
+        ttl: Option<u64>,
+        email: Option<String>,
+    ) -> Result<(), ClientError> {
+        let req = CUIntentSend { ttl, email };
+        self.perform_post_request(
+            &format!("/v1/person/{id}/_credential/_update_intent_send"),
+            req,
+        )
+        .await
+    }
+
     // == new credential update session code.
     #[instrument(level = "debug", skip(self))]
     pub async fn idm_person_account_credential_update_intent(

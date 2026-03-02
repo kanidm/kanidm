@@ -27,6 +27,7 @@
   - [Recycle Bin](recycle_bin.md)
   - [Customising](customising.md)
   - [Entry Management](entry_management.md)
+  - [Outgoing Email](email_setup.md)
 
 - [Accounts and Groups](accounts/intro.md)
   - [People Accounts](accounts/people_accounts.md)

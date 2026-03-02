@@ -60,6 +60,7 @@ pub(crate) mod migrations;
 pub mod modify;
 pub(crate) mod recycle;
 pub mod scim;
+pub(crate) mod utils;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 256;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 8;
@@ -687,6 +688,18 @@ pub trait QueryServerTransaction<'a> {
             Some(entry) if vs.is_empty() => Ok(entry),
             _ => Err(OperationError::NoMatchingEntries),
         }
+    }
+
+    /// Given an entries UUID, return an impersonation session for that account. This
+    /// should be used with care, as it allows you to perform actions internally on
+    /// behalf of a another user, without checking the permissions of the original
+    /// user.
+    fn impersonate_uuid_as_readwrite_identity(
+        &mut self,
+        uuid: Uuid,
+    ) -> Result<Identity, OperationError> {
+        self.internal_search_uuid(uuid)
+            .map(Identity::from_impersonate_entry_readwrite)
     }
 
     /// Do a schema aware conversion from a String:String to String:Value for modification
