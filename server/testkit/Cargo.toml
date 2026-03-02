@@ -53,7 +53,7 @@ cidr = { workspace = true }
 compact_jwt = { workspace = true }
 escargot = "0.5.15"
 # used for webdriver testing
-fantoccini = { version = "0.22.0" }
+fantoccini = { version = "0.22.1" }
 futures = { workspace = true }
 hex = { workspace = true }
 hyper = { workspace = true }
