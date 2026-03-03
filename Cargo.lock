@@ -4143,7 +4143,6 @@ dependencies = [
  "kanidmd_lib",
  "ldap3_proto",
  "libc",
- "openssl",
  "opentelemetry",
  "qrcode",
  "regex",

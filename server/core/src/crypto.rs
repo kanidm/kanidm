@@ -1,27 +1,18 @@
 //! This module contains cryptographic setup code, a long with what policy
 //! and ciphers we accept.
 
-use openssl::ec::{EcGroup, EcKey};
-use openssl::error::ErrorStack;
-use openssl::nid::Nid;
-use openssl::rsa::Rsa;
-use openssl::x509::{
-    extension::{
-        AuthorityKeyIdentifier, BasicConstraints, ExtendedKeyUsage, KeyUsage,
-        SubjectAlternativeName, SubjectKeyIdentifier,
-    },
-    X509NameBuilder, X509ReqBuilder, X509,
-};
-use openssl::{asn1, bn, hash, pkey};
-
-// use sketching::*;
 use crate::config::TlsConfiguration;
 use crypto_glue::{
     ec::EcPrivateKey,
+    ecdsa_p256::{EcdsaP256Signature, EcdsaP256SigningKey, EcdsaP256VerifyingKey},
+    ecdsa_p384::{EcdsaP384Signature, EcdsaP384SigningKey, EcdsaP384VerifyingKey},
     pkcs8::PrivateKeyInfo,
     rsa::RS256PrivateKey,
-    traits::{DecodeDer, Pkcs1DecodeRsaPrivateKey, PublicKeyParts},
-    x509::oiddb::rfc5912,
+    traits::{
+        DecodeDer, DecodePem, EncodePem, Pkcs1DecodeRsaPrivateKey, Pkcs8DecodePrivateKey,
+        Pkcs8EncodePrivateKey, PublicKeyParts,
+    },
+    x509::{oiddb::rfc5912, Certificate, CertificateBuilder, SubjectPublicKeyInfoOwned},
 };
 use rustls::{
     pki_types::{pem::PemObject, CertificateDer, CertificateRevocationListDer, PrivateKeyDer},
@@ -256,14 +247,10 @@ pub fn setup_tls(
     Ok(Some(tls_acceptor))
 }
 
-fn get_ec_group() -> Result<EcGroup, ErrorStack> {
-    EcGroup::from_curve_name(Nid::X9_62_PRIME256V1)
-}
-
 #[derive(Debug)]
 pub(crate) struct CaHandle {
-    key: pkey::PKey<pkey::Private>,
-    cert: X509,
+    key: EcdsaP384SigningKey,
+    cert: Certificate,
 }
 
 pub(crate) fn write_ca(
@@ -274,7 +261,7 @@ pub(crate) fn write_ca(
     let key_path: &Path = key_ar.as_ref();
     let cert_path: &Path = cert_ar.as_ref();
 
-    let key_pem = handle.key.private_key_to_pem_pkcs8().map_err(|e| {
+    let key_pem = handle.key.to_pkcs8_pem().map_err(|e| {
         error!(err = ?e, "Failed to convert key to PEM");
     })?;
 
@@ -298,17 +285,12 @@ pub(crate) fn write_ca(
 #[derive(Debug, Default)]
 pub enum KeyType {
     #[default]
-    Ec,
-    #[allow(dead_code)]
-    Rsa,
+    EcdsaP256,
 }
 
 #[derive(Debug)]
 pub struct CAConfig {
     pub key_type: KeyType,
-    pub key_bits: u64,
-    #[allow(dead_code)]
-    pub skip_enforce_minimums: bool,
 }
 
 impl Default for CAConfig {
@@ -359,80 +341,38 @@ impl CAConfig {
     }
 }
 
-pub(crate) fn gen_private_key(
-    key_type: &KeyType,
-    key_bits: Option<u64>,
-) -> Result<pkey::PKey<pkey::Private>, ErrorStack> {
-    match key_type {
-        KeyType::Rsa => {
-            let key_bits = key_bits.unwrap_or(RSA_MIN_KEY_SIZE_BITS);
-            let rsa = Rsa::generate(key_bits as u32)?;
-            pkey::PKey::from_rsa(rsa)
-        }
-        KeyType::Ec => {
-            // TODO: take key bitlength and use it for the curve group, somehow?
-            let ecgroup = get_ec_group()?;
-            let eckey = EcKey::generate(&ecgroup)?;
-            pkey::PKey::from_ec_key(eckey)
-        }
-    }
-}
-
 /// build up a CA certificate and key.
-pub(crate) fn build_ca(ca_config: Option<CAConfig>) -> Result<CaHandle, ErrorStack> {
-    // We never actually call ca_config from any external input, it's fully internal
-    // and controlled by us. Should we remove ca_config instead?
-    let ca_config = ca_config.unwrap_or_default();
+pub(crate) fn build_ca() -> Result<CaHandle, ()> {
+    let mut rng = rand::thread_rng();
 
-    // We don't need to check minimums here because we are the ones generating the key.
-    let ca_key = gen_private_key(&ca_config.key_type, Some(ca_config.key_bits))?;
+    let root_serial_uuid = Uuid::new_v4();
+    let serial_number = uuid_to_serial(root_serial_uuid);
 
-    let mut x509_name = X509NameBuilder::new()?;
+    let validity = Validity {
+        not_before,
+        not_after,
+    };
 
-    x509_name.append_entry_by_text("C", "AU")?;
-    x509_name.append_entry_by_text("ST", "QLD")?;
-    x509_name.append_entry_by_text("O", "Kanidm")?;
-    x509_name.append_entry_by_text("CN", "Kanidm Generated CA")?;
-    x509_name.append_entry_by_text("OU", "Development and Evaluation - NOT FOR PRODUCTION")?;
-    let x509_name = x509_name.build();
+    let profile = Profile::Root;
+    let root_subject = Name::from_str("C=AU,ST=QLD,O=Kanidm,CN=Kanidm Generated CA,OU=Development and Evaluation - NOT FOR PRODUCTION").unwrap();
 
-    let mut cert_builder = X509::builder()?;
-    // Yes, 2 actually means 3 here ...
-    cert_builder.set_version(2)?;
+    let signing_key = EcdsaP384SigningKey::random(&mut rng);
+    let verifying_key = EcdsaP384VerifyingKey::from(&signing_key); // Serialize with `::to_encoded_point()`
+    let pub_key = SubjectPublicKeyInfoOwned::from_key(verifying_key).expect("get rsa pub key");
 
-    let serial_number = bn::BigNum::from_u32(1).and_then(|serial| serial.to_asn1_integer())?;
+    let mut builder = CertificateBuilder::new(
+        profile,
+        serial_number,
+        validity,
+        root_subject.clone(),
+        pub_key.clone(),
+        &signing_key,
+    )
+    .expect("Create certificate");
 
-    cert_builder.set_serial_number(&serial_number)?;
-    cert_builder.set_subject_name(&x509_name)?;
-    cert_builder.set_issuer_name(&x509_name)?;
-
-    let not_before = asn1::Asn1Time::days_from_now(0)?;
-    cert_builder.set_not_before(&not_before)?;
-    let not_after = asn1::Asn1Time::days_from_now(CA_VALID_DAYS)?;
-    cert_builder.set_not_after(&not_after)?;
-
-    cert_builder.append_extension(BasicConstraints::new().critical().ca().pathlen(0).build()?)?;
-    cert_builder.append_extension(
-        KeyUsage::new()
-            .critical()
-            .key_cert_sign()
-            .crl_sign()
-            .build()?,
-    )?;
-
-    let subject_key_identifier =
-        SubjectKeyIdentifier::new().build(&cert_builder.x509v3_context(None, None))?;
-    cert_builder.append_extension(subject_key_identifier)?;
-
-    cert_builder.set_pubkey(&ca_key)?;
-
-    cert_builder.sign(&ca_key, get_signing_func())?;
-    let ca_cert = cert_builder.build();
-
-    Ok(CaHandle {
-        key: ca_key,
-        cert: ca_cert,
-    })
+    let cert = builder
+        .build_with_rng::<EcdsaP384Signature>(&mut rng)
+        .unwrap();
 }
 
 pub(crate) fn load_ca(
@@ -456,19 +396,11 @@ pub(crate) fn load_ca(
             error!(err = ?e, "Failed to read {:?}", ca_cert_path);
         })?;
 
-    let ca_key = pkey::PKey::private_key_from_pem(&ca_key_pem).map_err(|e| {
+    let ca_key = EcdsaP384SigningKey::from_pkcs8_pem(&ca_key_pem).map_err(|e| {
         error!(err = ?e, "Failed to convert PEM to key");
     })?;
 
-    /*
-    check_privkey_minimums(&ca_key).map_err(|err| {
-        #[cfg(any(test, debug_assertions))]
-        println!("{:?}", err);
-        admin_error!("{}", err);
-    })?;
-    */
-
-    let ca_cert = X509::from_pem(&ca_cert_pem).map_err(|e| {
+    let ca_cert = Certificate::from_pem(&ca_cert_pem).map_err(|e| {
         error!(err = ?e, "Failed to convert PEM to cert");
     })?;
 
@@ -479,9 +411,9 @@ pub(crate) fn load_ca(
 }
 
 pub(crate) struct CertHandle {
-    key: pkey::PKey<pkey::Private>,
-    cert: X509,
-    chain: Vec<X509>,
+    key: EcdsaP256SigningKey,
+    cert: Certificate,
+    chain: Vec<Certificate>,
 }
 
 pub(crate) fn write_cert(
@@ -494,7 +426,7 @@ pub(crate) fn write_cert(
     let chain_path: &Path = chain_ar.as_ref();
     let cert_path: &Path = cert_ar.as_ref();
 
-    let key_pem = handle.key.private_key_to_pem_pkcs8().map_err(|e| {
+    let key_pem = handle.key.to_pkcs8_pem().map_err(|e| {
         error!(err = ?e, "Failed to convert key to PEM");
     })?;
 
@@ -539,79 +471,56 @@ pub(crate) fn write_cert(
 pub(crate) fn build_cert(
     domain_name: &str,
     ca_handle: &CaHandle,
-    key_type: Option<KeyType>,
-    key_bits: Option<u64>,
 ) -> Result<CertHandle, ErrorStack> {
-    let key_type = key_type.unwrap_or_default();
-    let int_key = gen_private_key(&key_type, key_bits)?;
+    let mut rng = rand::thread_rng();
 
-    let mut req_builder = X509ReqBuilder::new()?;
-    req_builder.set_pubkey(&int_key)?;
+    let root_serial_uuid = Uuid::new_v4();
+    let serial_number = uuid_to_serial(root_serial_uuid);
 
-    let mut x509_name = X509NameBuilder::new()?;
-    x509_name.append_entry_by_text("C", "AU")?;
-    x509_name.append_entry_by_text("ST", "QLD")?;
-    x509_name.append_entry_by_text("O", "Kanidm")?;
-    x509_name.append_entry_by_text("CN", domain_name)?;
-    // Requirement of packed attestation.
-    x509_name.append_entry_by_text("OU", "Development and Evaluation - NOT FOR PRODUCTION")?;
-    let x509_name = x509_name.build();
+    let validity = Validity {
+        not_before,
+        not_after,
+    };
 
-    req_builder.set_subject_name(&x509_name)?;
-    req_builder.sign(&int_key, get_signing_func())?;
-    let req = req_builder.build();
-    // ==
+    let profile = Profile::Leaf {
+        issuer: ca_handle.cert.tbs_certificate.subject.clone(),
+        enable_key_agreement: true,
+        enable_key_encipherment: true,
+        include_subject_key_identifier: true,
+    };
+    let root_subject = Name::from_str("C=AU,ST=QLD,O=Kanidm,CN=Kanidm Generated Server Certificate,OU=Development and Evaluation - NOT FOR PRODUCTION").unwrap();
 
-    let mut cert_builder = X509::builder()?;
-    // Yes, 2 actually means 3 here ...
-    cert_builder.set_version(2)?;
-    let serial_number = bn::BigNum::from_u32(2).and_then(|serial| serial.to_asn1_integer())?;
+    let signing_key = EcdsaP384SigningKey::random(&mut rng);
+    let verifying_key = EcdsaP384VerifyingKey::from(&signing_key); // Serialize with `::to_encoded_point()`
+    let pub_key = SubjectPublicKeyInfoOwned::from_key(verifying_key).expect("get rsa pub key");
 
-    cert_builder.set_pubkey(&int_key)?;
+    let mut builder = CertificateBuilder::new(
+        profile,
+        serial_number,
+        validity,
+        root_subject.clone(),
+        pub_key.clone(),
+        &ca_handle.key,
+    )
+    .expect("Create certificate");
 
-    cert_builder.set_serial_number(&serial_number)?;
-    cert_builder.set_subject_name(req.subject_name())?;
-    cert_builder.set_issuer_name(ca_handle.cert.subject_name())?;
+    let eku_extension = ExtendedKeyUsage(vec![const_oid::db::rfc5280::ID_KP_SERVER_AUTH]);
 
-    let not_before = asn1::Asn1Time::days_from_now(0)?;
-    cert_builder.set_not_before(&not_before)?;
-    let not_after = asn1::Asn1Time::days_from_now(CERT_VALID_DAYS)?;
-    cert_builder.set_not_after(&not_after)?;
+    builder
+        .add_extension(&eku_extension)
+        .expect("Unable to add extension");
 
-    cert_builder.append_extension(BasicConstraints::new().build()?)?;
+    let alt_name = Ia5String::new("localhost").unwrap();
 
-    cert_builder.append_extension(
-        KeyUsage::new()
-            .critical()
-            .digital_signature()
-            .key_encipherment()
-            .build()?,
-    )?;
+    let san = SubjectAltName(vec![GeneralName::DnsName(alt_name)]);
 
-    cert_builder.append_extension(
-        ExtendedKeyUsage::new()
-            // .critical()
-            .server_auth()
-            .build()?,
-    )?;
+    builder
+        .add_extension(&san)
+        .expect("Unable to add extension");
 
-    let subject_key_identifier = SubjectKeyIdentifier::new()
-        .build(&cert_builder.x509v3_context(Some(&ca_handle.cert), None))?;
-    cert_builder.append_extension(subject_key_identifier)?;
-
-    let auth_key_identifier = AuthorityKeyIdentifier::new()
-        .keyid(false)
-        .issuer(false)
-        .build(&cert_builder.x509v3_context(Some(&ca_handle.cert), None))?;
-    cert_builder.append_extension(auth_key_identifier)?;
-
-    let subject_alt_name = SubjectAlternativeName::new()
-        .dns(domain_name)
-        .build(&cert_builder.x509v3_context(Some(&ca_handle.cert), None))?;
-    cert_builder.append_extension(subject_alt_name)?;
-
-    cert_builder.sign(&ca_handle.key, get_signing_func())?;
-    let int_cert = cert_builder.build();
+    let cert = builder
+        .build_with_rng::<EcdsaP384Signature>(&mut rng)
+        .unwrap();
 
     Ok(CertHandle {
         key: int_key,
@@ -620,81 +529,36 @@ pub(crate) fn build_cert(
     })
 }
 
-#[test]
-// might as well test my logic
-fn test_enforced_minimums() {
-    let good_ca_configs = vec![
-        // test rsa 4096 (ok)
-        (KeyType::Rsa, 4096, false),
-        // test rsa 2048 (ok)
-        (KeyType::Rsa, 2048, false),
-        // test ec 256 (ok)
-        (KeyType::Ec, 256, false),
-    ];
-    good_ca_configs.into_iter().for_each(|config| {
-        dbg!(&config);
-        assert!(CAConfig::new(config.0, config.1, config.2).is_ok());
-    });
-    /*
-    let bad_ca_configs = vec![
-        // test rsa 1024 (no)
-        (KeyType::Rsa, 1024, false),
-        // test ec 128 (no)
-        (KeyType::Ec, 128, false),
-    ];
-    bad_ca_configs.into_iter().for_each(|config| {
-        dbg!(&config);
-        assert!(CAConfig::new(config.0, config.1, config.2).is_err());
-    });
-    */
-}
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_ca_loader() {
+        let ca_key_tempfile = tempfile::NamedTempFile::new().unwrap();
+        let ca_cert_tempfile = tempfile::NamedTempFile::new().unwrap();
+        // let's test the defaults first
 
-#[test]
-fn test_ca_loader() {
-    let ca_key_tempfile = tempfile::NamedTempFile::new().unwrap();
-    let ca_cert_tempfile = tempfile::NamedTempFile::new().unwrap();
-    // let's test the defaults first
+        let ca_config = CAConfig::default();
+        if let Ok(ca) = build_ca(Some(ca_config)) {
+            write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
+            assert!(load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path()).is_ok());
+        };
 
-    let ca_config = CAConfig::default();
-    if let Ok(ca) = build_ca(Some(ca_config)) {
-        write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
-        assert!(load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path()).is_ok());
-    };
-
-    let good_ca_configs = vec![
-        // test rsa 4096 (ok)
-        (KeyType::Rsa, 4096, false),
-        // test rsa 2048 (ok)
-        (KeyType::Rsa, 2048, false),
-        // test ec 256 (ok)
-        (KeyType::Ec, 256, false),
-    ];
-    good_ca_configs.into_iter().for_each(|config| {
-        println!("testing good config {config:?}");
-        let ca_config = CAConfig::new(config.0, config.1, config.2).unwrap();
-        let ca = build_ca(Some(ca_config)).unwrap();
-        write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
-        let ca_result = load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path());
-        println!("result: {ca_result:?}");
-        assert!(ca_result.is_ok());
-    });
-
-    /*
-    let bad_ca_configs = vec![
-        // test rsa 1024 (bad)
-        (KeyType::Rsa, 1024, true),
-    ];
-    bad_ca_configs.into_iter().for_each(|config| {
-        println!(
-            "\ntesting bad config keytype: {:?} key size: {}, skip_enforce_minimums: {}",
-            config.0, config.1, config.2
-        );
-        let ca_config = CAConfig::new(config.0, config.1, config.2).unwrap();
-        let ca = build_ca(Some(ca_config)).unwrap();
-        write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
-        let ca_result = load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path());
-        println!("result: {:?}", ca_result);
-        assert!(ca_result.is_err());
-    });
-    */
+        let good_ca_configs = vec![
+            // test rsa 4096 (ok)
+            (KeyType::Rsa, 4096, false),
+            // test rsa 2048 (ok)
+            (KeyType::Rsa, 2048, false),
+            // test ec 256 (ok)
+            (KeyType::Ec, 256, false),
+        ];
+        good_ca_configs.into_iter().for_each(|config| {
+            println!("testing good config {config:?}");
+            let ca_config = CAConfig::new(config.0, config.1, config.2).unwrap();
+            let ca = build_ca(Some(ca_config)).unwrap();
+            write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
+            let ca_result = load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path());
+            println!("result: {ca_result:?}");
+            assert!(ca_result.is_ok());
+        });
+    }
 }
