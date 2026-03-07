@@ -22,7 +22,7 @@ For more information, see the examples below or read Traefik's official document
 # Configuration file
 providers:
   file:
-    directory: "/path/to/dynamic/conf"
+    directory: /path/to/dynamic/conf
 # Command-line arguments in compose file:
 command:
   - --providers.file.directory=/path/to/dynamic/conf
