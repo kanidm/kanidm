@@ -27,7 +27,7 @@ volumes:
 providers:
   file:
     directory: /config/dynamic
-# Command-line arguments in compose file:
+# Command-line arguments via compose:
 command:
   - --providers.file.directory=/config/dynamic
 ```
