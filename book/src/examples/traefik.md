@@ -16,14 +16,14 @@ Because Kanidm uses another set of certificates in its container, Traefik must b
 
 If your Traefik deployment does not use a routing configuration, mount the routing configuration file to the container and define the rightmost path as a provider in Traefik's [install configuration](https://doc.traefik.io/traefik/getting-started/configuration-overview/#the-install-configuration) (formerly known as static configuration). Because static configuration can be defined in three different, mutually exclusive ways, this will depend on your current deployment. 
 
-For more information, see the examples below or read Traefik's official documentation for [providing routing configuration to Traefik](https://doc.traefik.io/traefik/reference/routing-configuration/dynamic-configuration-methods/#using-the-file-provider).
+For more information, see the examples below or read Traefik's official documentation for [providing routing configuration to Traefik](https://doc.traefik.io/traefik/reference/routing-configuration/dynamic-configuration-methods/#using-the-file-provider) and their [CLI reference](https://doc.traefik.io/traefik/reference/install-configuration/configuration-options/#opt-providers-file-directory).
 
 ```
 # Configuration file
 providers:
   file:
     directory: "/path/to/dynamic/conf"
-# Command-line arguments in compose file: https://doc.traefik.io/traefik/reference/install-configuration/configuration-options/#opt-providers-file-directory
+# Command-line arguments in compose file:
 command:
   - --providers.file.directory=/path/to/dynamic/conf
 ```
