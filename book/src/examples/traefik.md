@@ -18,7 +18,7 @@ If your Traefik deployment does not use a routing configuration, mount the routi
 
 For more information, see the examples below or read Traefik's official documentation for [providing routing configuration to Traefik](https://doc.traefik.io/traefik/reference/routing-configuration/dynamic-configuration-methods/#using-the-file-provider) and their [CLI reference](https://doc.traefik.io/traefik/reference/install-configuration/configuration-options/#opt-providers-file-directory).
 
-```
+```yaml
 # Configuration file
 providers:
   file:
