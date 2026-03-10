@@ -80,7 +80,7 @@ time = { workspace = true }
 workspace = true
 features = ["win10"]
 
-[target."cfg(any(target_os = \"linux\",target_os = \"macos\"))".dependencies.webauthn-authenticator-rs]
+[target."cfg(any(target_os = \"linux\",target_os = \"macos\",target_os = \"android\"))".dependencies.webauthn-authenticator-rs]
 workspace = true
 features = ["u2fhid"]
 
