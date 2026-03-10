@@ -60,6 +60,14 @@ impl TotpSecret {
     }
 }
 
+/// Structure denoting the parameters for triggering a credential update intent
+/// token to be send to the account.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CUIntentSend {
+    pub ttl: Option<u64>,
+    pub email: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CUIntentToken {
     pub token: String,
