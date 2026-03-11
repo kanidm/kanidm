@@ -8,8 +8,8 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, Ns
 use libnss::group::Group;
 use libnss::interop::Response;
 use libnss::passwd::Passwd;
-use std::cell::RefCell;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::ops::{Deref, DerefMut};
+use std::sync::RwLock;
 
 #[cfg(test)]
 use kanidm_unix_common::client_sync::UnixStream;
@@ -26,11 +26,7 @@ pub enum RequestOptions {
     },
 }
 
-static TLS_IS_TAINTED: AtomicBool = AtomicBool::new(false);
-
-thread_local! {
-    pub static CLIENT: RefCell<Option<DaemonClientBlocking>> = const { RefCell::new(None) };
-}
+pub static CLIENT: RwLock<Option<DaemonClientBlocking>> = const { RwLock::new(None) };
 
 enum Source {
     Daemon(DaemonClientBlocking),
@@ -42,28 +38,18 @@ enum Source {
 
 impl RequestOptions {
     fn connect_to_daemon(self) -> Source {
-        let is_tainted = TLS_IS_TAINTED.load(Ordering::Relaxed);
-
-        // DaemonClientBlocking has an internal Arc + Mutex.
-        if !is_tainted {
-            let maybe_blocking_client = CLIENT.try_with(|cell| cell.borrow().clone());
-
-            match maybe_blocking_client {
-                Ok(Some(client)) => {
-                    // We already initialised the client in this thread, return it.
-                    return Source::Daemon(client);
-                }
-                Ok(None) => {
-                    // Not yet setup, continue.
-                }
-                Err(_) => {
-                    // The TLS value is tainted - this often occurs with forking processes. Since this
-                    // has occured, we mark that the taint is present, and we just initialise the client
-                    // each time we do an operation.
-                    TLS_IS_TAINTED.store(true, Ordering::Relaxed);
-                }
+        // Fast path - is the client already setup?
+        match CLIENT.read().map(|guard| guard.deref().clone()) {
+            Ok(Some(client)) => {
+                return Source::Daemon(client);
             }
-        }
+            Ok(None) => {
+                // Fall through, we need to setup.
+            }
+            Err(_) => {
+                // Failed to take the read lock, let's fall through to the safe options.
+            }
+        };
 
         match self {
             RequestOptions::Main { config_path } => {
@@ -76,20 +62,10 @@ impl RequestOptions {
                     });
 
                 if let Some(client) = maybe_client {
-                    if !is_tainted {
-                        // Store a copy of the client in thread local storage.
-                        let _ = CLIENT.replace(Some(client.clone()));
-
-                        let is_tainted = CLIENT
-                            .try_with(|cell| cell.replace(Some(client.clone())))
-                            .is_err();
-
-                        // The TLS has become tainted, update to avoid it.
-                        if is_tainted {
-                            TLS_IS_TAINTED.store(true, Ordering::Relaxed);
-                        }
+                    if let Ok(mut client_guard) = CLIENT.write() {
+                        let mut client_clone = Some(client.clone());
+                        std::mem::swap(client_guard.deref_mut(), &mut client_clone)
                     }
-
                     Source::Daemon(client)
                 } else {
                     let users = read_etc_passwd_file(SYSTEM_PASSWD_PATH).unwrap_or_default();
@@ -107,7 +83,12 @@ impl RequestOptions {
             } => {
                 if let Some(socket) = socket {
                     let client = DaemonClientBlocking::from(socket);
-                    let _ = CLIENT.replace(Some(client.clone()));
+
+                    if let Ok(mut client_guard) = CLIENT.write() {
+                        let mut client_clone = Some(client.clone());
+                        std::mem::swap(client_guard.deref_mut(), &mut client_clone)
+                    }
+
                     Source::Daemon(client)
                 } else {
                     Source::Fallback { users, groups }
