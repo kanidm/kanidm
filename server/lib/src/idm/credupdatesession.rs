@@ -1823,7 +1823,9 @@ impl IdmServerCredUpdateTransaction<'_> {
             }
         }
 
-        // zxcvbn doesn't appear to be picking these up?
+        // zxcvbn doesn't appear to be picking up related inputs, so we check
+        // these manually. This can sometimes trip up if the input is short,
+        // such as a user with the name "a".
         for related in related_inputs {
             if cleartext.contains(related) {
                 return Err(PasswordQuality::Feedback(vec![
