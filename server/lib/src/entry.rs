@@ -2630,13 +2630,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub(crate) fn get_display_id(&self) -> String {
         self.attrs
-            .get(&Attribute::Name)
+            .get(&Attribute::Spn)
             .map(|vs| vs.to_proto_string_clone_iter())
-            .or_else(|| {
-                self.attrs
-                    .get(&Attribute::Spn)
-                    .map(|vs| vs.to_proto_string_clone_iter())
-            })
             .or_else(|| {
                 self.attrs
                     .get(&Attribute::Uuid)
