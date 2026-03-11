@@ -32,6 +32,16 @@ enum AuthMethod {
     ClientSecretPost,
 }
 
+pub(crate) fn get_reqwest_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .tls_danger_accept_invalid_certs(true)
+        .tls_danger_accept_invalid_hostnames(true)
+        .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
+        .build()
+        .expect("Failed to create client.")
+}
+
 /// Tests an OAuth 2.0 / OpenID confidential client Authorisation Client flow.
 ///
 /// ## Arguments
@@ -51,6 +61,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     state: Option<&str>,
     auth_method: AuthMethod,
 ) {
+    let client = get_reqwest_client();
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
@@ -147,12 +158,6 @@ async fn test_oauth2_openid_basic_flow_impl(
 
     // from here, we can now begin what would be a "interaction" to the oauth server.
     // Create a new reqwest client - we'll be using this manually.
-    let client = reqwest::Client::builder()
-        .tls_built_in_native_certs(false)
-        .redirect(reqwest::redirect::Policy::none())
-        .no_proxy()
-        .build()
-        .expect("Failed to create client.");
 
     // Step 0 - get the openid discovery details and the public key.
     let response = client
@@ -331,7 +336,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     let redir_str = response
         .headers()
         .get("Location")
-        .and_then(|hv| hv.to_str().ok().map(str::to_string))
+        .and_then(|hv: &HeaderValue| hv.to_str().ok().map(str::to_string))
         .expect("Invalid redirect url");
 
     // Now check it's content
@@ -848,12 +853,7 @@ async fn test_oauth2_openid_public_flow_impl(
 
     // from here, we can now begin what would be a "interaction" to the oauth server.
     // Create a new reqwest client - we'll be using this manually.
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .tls_built_in_native_certs(false)
-        .no_proxy()
-        .build()
-        .expect("Failed to create client.");
+    let client = get_reqwest_client();
 
     // Step 0 - get the jwks public key.
     let response = client
@@ -1139,12 +1139,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: &KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .tls_built_in_native_certs(false)
-        .no_proxy()
-        .build()
-        .expect("Failed to create client.");
+    let client = get_reqwest_client();
 
     // test for a bad-body request on token
     let response = client
@@ -1175,13 +1170,7 @@ async fn test_oauth2_token_revoke_post_bearer(rsclient: &KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .tls_built_in_native_certs(false)
-        .no_proxy()
-        .build()
-        .expect("Failed to create client.");
-
+    let client = get_reqwest_client();
     // test for a bad-body request on token
     let response = client
         .post(rsclient.make_url(OAUTH2_TOKEN_REVOKE_ENDPOINT))
@@ -1235,12 +1224,7 @@ async fn test_oauth2_token_revoke_post_postauth(rsclient: &KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .tls_built_in_native_certs(false)
-        .no_proxy()
-        .build()
-        .expect("Failed to create client.");
+    let client = get_reqwest_client();
 
     let form = TokenRevokeRequest {
         token: "lolol".into(),

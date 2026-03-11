@@ -4,8 +4,6 @@ use crate::prelude::*;
 use crate::schema::{SchemaClass, SchemaTransaction};
 use crate::value::ApiToken;
 use crate::valueset::ValueSetDateTime;
-use crate::valueset::ValueSetEmailAddress;
-use crate::valueset::ValueSetMessage;
 use base64::{
     engine::general_purpose::{STANDARD, URL_SAFE},
     Engine as _,
@@ -213,30 +211,11 @@ impl IdmServerProxyWriteTransaction<'_> {
             .ok_or(OperationError::MissingAttribute(Attribute::Mail))?;
 
         // Create a message to send.
-
-        let curtime_odt = self.qs_write.get_curtime_odt();
-        let delete_after_odt = curtime_odt + DEFAULT_MESSAGE_RETENTION;
-
-        let mut e_msg: EntryInitNew = Entry::new();
-        e_msg.set_ava_set(
-            &Attribute::Class,
-            ValueSetIutf8::new(EntryClass::OutboundMessage.into()),
-        );
-        e_msg.set_ava_set(&Attribute::SendAfter, ValueSetDateTime::new(curtime_odt));
-        e_msg.set_ava_set(
-            &Attribute::DeleteAfter,
-            ValueSetDateTime::new(delete_after_odt),
-        );
-        e_msg.set_ava_set(
-            &Attribute::MessageTemplate,
-            ValueSetMessage::new(OutboundMessage::TestMessageV1 { display_name }),
-        );
-        e_msg.set_ava_set(
-            &Attribute::MailDestination,
-            ValueSetEmailAddress::new(mail_primary),
-        );
-
-        self.qs_write.impersonate_create(ident, vec![e_msg])
+        self.qs_write.queue_message(
+            ident,
+            OutboundMessage::TestMessageV1 { display_name },
+            mail_primary,
+        )
     }
 
     pub fn scim_message_mark_sent(
