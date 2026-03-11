@@ -23,7 +23,7 @@ impl<B> tower_http::trace::MakeSpan<B> for SpanCreator {
         // will not be an event uuid available which causes TONS of problems. Like
         // crashing.
 
-        // This marks some spans as defered on "noisy" routes that people often don't want
+        // This marks some spans as deferred on "noisy" routes that people often don't want
         // to see.
         let is_deferred = request.uri() == "/" || request.uri() == "/status";
 
