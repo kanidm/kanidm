@@ -80,6 +80,7 @@ pub struct Config {
     pub ldap_sync_pw: String,
     pub ldap_sync_base_dn: String,
 
+    #[serde(deserialize_with = "ldap3_proto::filter::deserialise_ldap_filter")]
     pub ldap_filter: LdapFilter,
 
     pub sync_password_as_unix_password: Option<bool>,
