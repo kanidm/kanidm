@@ -39,7 +39,7 @@ impl<B> tower_http::trace::MakeSpan<B> for SpanCreator {
             status_code = tracing::field::Empty, // filled in later, used by tracing forest
             http.response.status_code = tracing::field::Empty, // filled in later, used by otel
             latency = tracing::field::Empty, // filled in later
-            defer = is_defered,
+            defer = is_deferred,
         )
     }
 }
