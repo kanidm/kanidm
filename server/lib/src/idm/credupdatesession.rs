@@ -2783,7 +2783,6 @@ impl IdmServerCredUpdateTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use time::OffsetDateTime;
     use super::{
         CredentialState, CredentialUpdateSessionStatus, CredentialUpdateSessionStatusWarnings,
         CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
@@ -2809,6 +2808,7 @@ mod tests {
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, UnixUserToken};
     use sshkey_attest::proto::PublicKey as SshPublicKey;
     use std::time::Duration;
+    use time::OffsetDateTime;
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::softtoken::{self, SoftToken};
