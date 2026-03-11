@@ -63,6 +63,28 @@ We need a uniform policy distribution plane that:
 
 ## Data Model
 
+## Policy broadly
+
+A **policy** is a signed, versioned, scoped intent that tells an implementor what behavior is required, allowed, or forbidden for a target context. (Configuration of software)
+
+In this design, a policy is composed of two layers:
+
+- **Control layer (standardized):** metadata in the signed manifest that defines identity, version, validity window, scope, and implementor bindings. (Read by, and enforced by the client daemon)
+- **Payload layer (implementor-defined):** the artifact content consumed by a specific implementor (for example KDE), in that implementor’s own schema and format.
+
+A policy is considered valid on a client only when:
+
+- its manifest signature chains to a trusted key,
+- signing keys are not revoked,
+- time validity is satisfied (`not_before`/`not_after`),
+- all referenced artifact digests match,
+- and the policy scope applies to that client / session. 
+
+This document seeks to standardize **distribution, integrity, authenticity, scope, and activation semantics** of policies, while intentionally not standardizing the internal payload semantics of each implementor.
+
+This leaves something like a Windows GPO Implementor on the table, or a MacOS Profiles Implementor, which should be simpler to integrate, whereas Linux desktop would require added upstream support from DE's and other pieces of software. 
+
+
 ### Signed Policy Manifest
 (Please comment)
 
