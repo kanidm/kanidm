@@ -22,6 +22,11 @@ impl<B> tower_http::trace::MakeSpan<B> for SpanCreator {
         // span to always be at the info level. If this is not done, then there
         // will not be an event uuid available which causes TONS of problems. Like
         // crashing.
+
+        // This marks some spans as deferred on "noisy" routes that people often don't want
+        // to see.
+        let is_deferred = request.uri() == "/" || request.uri() == "/status";
+
         tracing::span!(
             Level::INFO,
             "request",
@@ -34,6 +39,7 @@ impl<B> tower_http::trace::MakeSpan<B> for SpanCreator {
             status_code = tracing::field::Empty, // filled in later, used by tracing forest
             http.response.status_code = tracing::field::Empty, // filled in later, used by otel
             latency = tracing::field::Empty, // filled in later
+            defer = is_deferred,
         )
     }
 }
