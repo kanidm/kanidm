@@ -30,7 +30,13 @@ impl ValueSetUtf8 {
         // validate. This converts empty -> "Not Present" which technically is a valid string.
         let set = data
             .into_iter()
-            .map(|s| s.is_empty().then(|| "Not Present".to_string()).unwrap_or(s))
+            .map(|s| {
+                if s.is_empty() {
+                    "Not Present".to_string()
+                } else {
+                    s
+                }
+            })
             .collect();
         Ok(Box::new(ValueSetUtf8 { set }))
     }
