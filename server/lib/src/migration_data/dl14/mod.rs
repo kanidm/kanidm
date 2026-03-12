@@ -2,7 +2,7 @@ mod access;
 pub(super) mod accounts;
 mod groups;
 mod key_providers;
-mod schema;
+pub(crate) mod schema;
 mod system_config;
 
 use self::access::*;

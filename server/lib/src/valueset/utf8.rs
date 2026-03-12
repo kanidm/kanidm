@@ -25,7 +25,19 @@ impl ValueSetUtf8 {
     }
 
     pub fn from_dbvs2(data: Vec<String>) -> Result<ValueSet, OperationError> {
-        let set = data.into_iter().collect();
+        // #4200 - It was accidentally possible to have an empty string in the UTF8 field. When
+        // we rehydrate these from the DB we need to ensure they will pass the !empty check in
+        // validate. This converts empty -> "Not Present" which technically is a valid string.
+        let set = data
+            .into_iter()
+            .map(|s| {
+                if s.is_empty() {
+                    "Not Present".to_string()
+                } else {
+                    s
+                }
+            })
+            .collect();
         Ok(Box::new(ValueSetUtf8 { set }))
     }
 }
@@ -149,9 +161,9 @@ impl ValueSetT for ValueSetUtf8 {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        self.set
-            .iter()
-            .all(|s| Value::validate_str_escapes(s) && Value::validate_singleline(s))
+        self.set.iter().all(|s| {
+            !s.is_empty() && Value::validate_str_escapes(s) && Value::validate_singleline(s)
+        })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -219,6 +231,7 @@ impl ValueSetT for ValueSetUtf8 {
 #[cfg(test)]
 mod tests {
     use super::ValueSetUtf8;
+    use crate::migration_data::latest::schema::SCHEMA_ATTR_DISPLAYNAME_DL7;
     use crate::prelude::{PartialValue, ValueSet, ValueSetT};
 
     #[test]
@@ -240,6 +253,16 @@ mod tests {
         assert!(!vs.endswith(&pv_xx));
         assert!(!vs.endswith(&pv_test));
         assert!(vs.endswith(&pv_user));
+    }
+
+    #[test]
+    fn test_utf8_validation() {
+        // # 4200 - prevent empty strings from being set.
+        let vs = ValueSetUtf8::new("".into());
+        assert!(!vs.validate(&SCHEMA_ATTR_DISPLAYNAME_DL7));
+
+        let vs = ValueSetUtf8::new("Tobias Oxford".into());
+        assert!(vs.validate(&SCHEMA_ATTR_DISPLAYNAME_DL7));
     }
 
     #[test]
