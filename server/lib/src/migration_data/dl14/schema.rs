@@ -757,7 +757,7 @@ pub static SCHEMA_ATTR_PATCH_LEVEL_DL7: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_PATCH_LEVEL,
         name: Attribute::PatchLevel,
-        description: "The domains patch level".to_string(),
+        description: "The domain's patch level".to_string(),
         syntax: SyntaxType::Uint32,
         ..Default::default()
     });
