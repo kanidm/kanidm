@@ -17,6 +17,7 @@ use kanidm_hsm_crypto::{
     provider::{BoxedDynTpm, SoftTpm, Tpm},
     AuthValue,
 };
+use kanidm_lib_file_permissions::diagnose_path;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_proto::internal::OperationError;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
@@ -26,11 +27,14 @@ use kanidm_unix_common::unix_passwd::EtcDb;
 use kanidm_unix_common::unix_proto::{
     ClientRequest, ClientResponse, TaskRequest, TaskRequestFrame, TaskResponse,
 };
-use kanidm_unix_resolver::db::{Cache, Db};
 use kanidm_unix_resolver::idprovider::interface::IdProvider;
 use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
 use kanidm_unix_resolver::idprovider::system::SystemProvider;
 use kanidm_unix_resolver::resolver::{AuthSession, Resolver};
+use kanidm_unix_resolver::{
+    check_nsswitch_has_kanidm,
+    db::{Cache, Db},
+};
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
 use lru::LruCache;
@@ -130,9 +134,16 @@ async fn handle_task_client(
                     // Other things ....
                     // Some(Ok(TaskResponse::ReloadSystemIds))
 
+                    None => {
+                        // The stream has ended, we should stop operation.
+                        info!("Task client disconnected, stopping task handler.");
+                        return Ok(())
+                    }
+
                     other => {
-                        error!("Error -> {:?}", other);
-                        return Err(Box::new(IoError::other("oh no!")));
+                        let errmsg = format!("Received unexpected message from kanidm-unixd-tasks: {:?}", other);
+                        error!("{}", errmsg);
+                        return Err(Box::new(IoError::other(errmsg)));
                     }
                 }
             }
@@ -543,7 +554,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
             "Client config missing from {} - cannot start up. Quitting.",
             cfg_path_str
         );
-        let diag = kanidm_lib_file_permissions::diagnose_path(cfg_path.as_ref());
+        let diag = diagnose_path(cfg_path.as_ref());
         info!(%diag);
         return ExitCode::FAILURE;
     } else {
@@ -551,7 +562,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
             Ok(v) => v,
             Err(e) => {
                 error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                let diag = kanidm_lib_file_permissions::diagnose_path(cfg_path.as_ref());
+                let diag = diagnose_path(cfg_path.as_ref());
                 info!(%diag);
                 return ExitCode::FAILURE;
             }
@@ -581,7 +592,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
             "unixd config missing from {} - cannot start up. Quitting.",
             unixd_path_str
         );
-        let diag = kanidm_lib_file_permissions::diagnose_path(unixd_path.as_ref());
+        let diag = diagnose_path(unixd_path.as_ref());
         info!(%diag);
         return ExitCode::FAILURE;
     } else {
@@ -589,7 +600,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
             Ok(v) => v,
             Err(e) => {
                 error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
-                let diag = kanidm_lib_file_permissions::diagnose_path(unixd_path.as_ref());
+                let diag = diagnose_path(unixd_path.as_ref());
                 info!(%diag);
                 return ExitCode::FAILURE;
             }
@@ -633,6 +644,8 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
         None
     };
 
+    check_nsswitch_has_kanidm(None);
+
     if clap_args.get_flag("configtest") {
         eprintln!("###################################");
         eprintln!("Dumping configs:\n###################################");
@@ -664,7 +677,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
                         .to_str()
                         .unwrap_or("<db_parent_path invalid>")
                 );
-                let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
+                let diag = diagnose_path(cache_db_path.as_ref());
                 info!(%diag);
                 return ExitCode::FAILURE;
             }
@@ -714,7 +727,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
                     "Refusing to run - DB path {} already exists and is not a file.",
                     cache_db_path.to_str().unwrap_or("<cache_db_path invalid>")
                 );
-                let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
+                let diag = diagnose_path(cache_db_path.as_ref());
                 info!(%diag);
                 return ExitCode::FAILURE;
             };
@@ -727,7 +740,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
                         cache_db_path.to_str().unwrap_or("<cache_db_path invalid>"),
                         e
                     );
-                    let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
+                    let diag = diagnose_path(cache_db_path.as_ref());
                     info!(%diag);
                     return ExitCode::FAILURE;
                 }
@@ -753,7 +766,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
 
     // Check for and create the hsm pin if required.
     if let Err(err) = write_hsm_pin(cfg.hsm_pin_path.as_str()).await {
-        let diag = kanidm_lib_file_permissions::diagnose_path(cfg.hsm_pin_path.as_ref());
+        let diag = diagnose_path(cfg.hsm_pin_path.as_ref());
         info!(%diag);
         error!(
             ?err,
@@ -767,7 +780,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
     let hsm_pin = match read_hsm_pin(cfg.hsm_pin_path.as_str()).await {
         Ok(hp) => hp,
         Err(err) => {
-            let diag = kanidm_lib_file_permissions::diagnose_path(cfg.hsm_pin_path.as_ref());
+            let diag = diagnose_path(cfg.hsm_pin_path.as_ref());
             info!(%diag);
             error!(
                 ?err,
@@ -930,7 +943,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
     let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
         Ok(l) => l,
         Err(_e) => {
-            let diag = kanidm_lib_file_permissions::diagnose_path(cfg.task_sock_path.as_ref());
+            let diag = diagnose_path(cfg.task_sock_path.as_ref());
             info!(%diag);
             error!("Failed to bind UNIX socket {}", cfg.task_sock_path.as_str());
             return ExitCode::FAILURE;

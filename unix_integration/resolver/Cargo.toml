@@ -102,6 +102,7 @@ kanidm_utils_users = { workspace = true }
 [dev-dependencies]
 kanidmd_core = { workspace = true }
 kanidmd_testkit = { workspace = true }
+tempfile = { workspace = true }
 
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }

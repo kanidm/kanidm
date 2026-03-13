@@ -56,6 +56,8 @@ use std::fs::{create_dir, remove_file};
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use kanidm_unix_common::selinux_util;
 
+static KANIDM_UNIX_RETRY_SECS: u64 = 5;
+
 fn chown(path: &Path, gid: u32) -> Result<(), String> {
     let path_os = CString::new(path.as_os_str().as_bytes())
         .map_err(|_| "Unable to create c-string".to_string())?;
@@ -493,7 +495,7 @@ async fn handle_tasks(
             biased; // tell tokio to poll these in order
             _ = ctl_broadcast_rx.recv() => {
                 // We received a shutdown signal.
-                debug!("Received shutdown signal, breaking task handler loop ...");
+                info!("Received shutdown signal, breaking task handler loop ...");
                 return
             }
             // We bias to *sending* messages in tasks.
@@ -734,15 +736,15 @@ async fn main() -> ExitCode {
                                     info!("Found kanidm_unixd, waiting for tasks ...");
 
                                     // Yep! Now let the main handler do its job.
-                                    // If it returns (dc, etc, then we loop and try again).
+                                    // If it returns (disconnected, etc, then we loop and try again).
                                     handle_tasks(stream, &mut d_broadcast_rx, &mut shadow_data_watch_rx, &cfg).await;
                                     continue;
                                 }
                                 Err(e) => {
                                     debug!("\\---> {:?}", e);
-                                    error!("Unable to find kanidm_unixd, sleeping ...");
+                                    error!("Unable to find kanidm_unixd, sleeping for {} seconds ...", KANIDM_UNIX_RETRY_SECS);
                                     // Back off.
-                                    time::sleep(Duration::from_millis(5000)).await;
+                                    time::sleep(Duration::from_secs(KANIDM_UNIX_RETRY_SECS)).await;
                                 }
                             }
                         }
