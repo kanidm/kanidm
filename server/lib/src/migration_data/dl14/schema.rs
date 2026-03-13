@@ -257,6 +257,15 @@ pub static SCHEMA_ATTR_UNIX_PASSWORD: LazyLock<SchemaAttribute> =
         ..Default::default()
     });
 
+pub static SCHEMA_ATTR_PASSWORD_CHANGED_TIME: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_PASSWORD_CHANGED_TIME,
+        name: Attribute::PasswordChangedTime,
+        description: "The time when the password was last changed.".to_string(),
+        syntax: SyntaxType::DateTime,
+        ..Default::default()
+    });
+
 pub static SCHEMA_ATTR_NSUNIQUEID: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_NSUNIQUEID,
     name: Attribute::NsUniqueId,
@@ -679,7 +688,7 @@ pub static SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_DATA,
         name: Attribute::KeyInternalData,
-        description: "".to_string(),
+        description: "Internal Key Data".to_string(),
         multivalue: true,
         syntax: SyntaxType::KeyInternal,
         ..Default::default()
@@ -689,7 +698,7 @@ pub static SCHEMA_ATTR_KEY_PROVIDER_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_PROVIDER,
         name: Attribute::KeyProvider,
-        description: "".to_string(),
+        description: "Cryptographic Key Provider".to_string(),
         multivalue: false,
         indexed: true,
         syntax: SyntaxType::ReferenceUuid,
@@ -700,7 +709,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_ROTATE,
         name: Attribute::KeyActionRotate,
-        description: "".to_string(),
+        description: "Marker attribute that denotes a key rotation should occur.".to_string(),
         multivalue: false,
         // Ephemeral action.
         phantom: true,
@@ -712,7 +721,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_REVOKE,
         name: Attribute::KeyActionRevoke,
-        description: "".to_string(),
+        description: "Marker attribute that denotes a key should be revoked.".to_string(),
         multivalue: true,
         // Ephemeral action.
         phantom: true,
@@ -724,7 +733,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6: LazyLock<SchemaAttribute
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256,
         name: Attribute::KeyActionImportJwsEs256,
-        description: "".to_string(),
+        description: "Marker attribute that denotes a jws es256 key to be imported.".to_string(),
         multivalue: true,
         // Ephemeral action.
         phantom: true,
@@ -736,7 +745,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256_DL6: LazyLock<SchemaAttribute
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256,
         name: Attribute::KeyActionImportJwsRs256,
-        description: "".to_string(),
+        description: "Marker attribute that denotes a jws rs256 key to be imported.".to_string(),
         multivalue: true,
         // Ephemeral action.
         phantom: true,
@@ -748,7 +757,7 @@ pub static SCHEMA_ATTR_PATCH_LEVEL_DL7: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_PATCH_LEVEL,
         name: Attribute::PatchLevel,
-        description: "".to_string(),
+        description: "The domain's patch level".to_string(),
         syntax: SyntaxType::Uint32,
         ..Default::default()
     });
@@ -1032,7 +1041,7 @@ pub static SCHEMA_ATTR_S256: LazyLock<SchemaAttribute> = LazyLock::new(|| Schema
 });
 
 // === classes ===
-pub static SCHEMA_CLASS_PERSON_DL8: LazyLock<SchemaClass> = LazyLock::new(|| SchemaClass {
+pub static SCHEMA_CLASS_PERSON_DL14: LazyLock<SchemaClass> = LazyLock::new(|| SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
     name: EntryClass::Person.into(),
     description: "Object representation of a person".to_string(),
@@ -1051,6 +1060,7 @@ pub static SCHEMA_CLASS_PERSON_DL8: LazyLock<SchemaClass> = LazyLock::new(|| Sch
         Attribute::Mail,
         Attribute::LegalName,
         Attribute::ApplicationPassword,
+        Attribute::PasswordChangedTime,
     ],
     systemmust: vec![Attribute::Name],
     systemexcludes: vec![

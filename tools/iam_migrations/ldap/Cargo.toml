@@ -29,6 +29,8 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 
 
 ldap3_client = { workspace = true }
+ldap3_proto = { workspace = true, features = ["serde"] }
+rustls = { workspace = true, features = ["aws-lc-rs"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 toml = { workspace = true }

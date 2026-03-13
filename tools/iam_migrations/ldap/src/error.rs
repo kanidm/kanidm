@@ -1,6 +1,8 @@
 #[derive(Clone, Debug)]
 pub enum SyncError {
     ClientConfig,
+    TlsInvalidCertificate,
+    TlsInvalidCaStore,
     LdapConn,
     LdapAuth,
     LdapSyncrepl,

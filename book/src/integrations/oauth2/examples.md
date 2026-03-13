@@ -955,6 +955,15 @@ kanidm system oauth2 create_scope_map <client name> velociraptor_users openid em
 Grafana is a open source analytics and interactive visualization web application. It provides charts, graphs and alerts
 when connected to supported data source.
 
+Create Grafana user groups:
+
+```bash
+kanidm group create 'grafana_superadmins'
+kanidm group create 'grafana_admins'
+kanidm group create 'grafana_editors'
+kanidm group create 'grafana_users'
+```
+
 Prepare the environment:
 
 ```bash
@@ -965,15 +974,6 @@ kanidm system oauth2 enable-pkce grafana
 kanidm system oauth2 get grafana
 kanidm system oauth2 show-basic-secret grafana
 <SECRET>
-```
-
-Create Grafana user groups:
-
-```bash
-kanidm group create 'grafana_superadmins'
-kanidm group create 'grafana_admins'
-kanidm group create 'grafana_editors'
-kanidm group create 'grafana_users'
 ```
 
 Setup the claim-map that will set what role each group will map to in Grafana:

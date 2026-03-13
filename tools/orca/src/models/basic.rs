@@ -6,7 +6,7 @@ use crate::state::*;
 use kanidm_client::KanidmClient;
 
 use async_trait::async_trait;
-use rand::Rng;
+use rand::RngExt;
 use rand_chacha::ChaCha8Rng;
 
 use std::collections::BTreeSet;

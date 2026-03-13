@@ -265,7 +265,7 @@ impl QueryServerWriteV1 {
         ScimAssertGeneric { id, assertions }: ScimAssertGeneric,
         nonce: Sha256Output,
     ) -> Result<(), OperationError> {
-        let assert_event = ScimAssertEvent::new_internal(assertions, id, Some(nonce));
+        let assert_event = ScimAssertEvent::new_migration(assertions, id, Some(nonce));
 
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;

@@ -485,8 +485,12 @@ impl Entry<EntryInit, EntryNew> {
         self.add_ava_int(attr, value);
     }
 
-    pub fn remove_ava(&mut self, attr: &Attribute) {
-        self.attrs.remove(attr);
+    pub fn pop_ava<A: AsRef<Attribute>>(&mut self, attr: A) -> Option<ValueSet> {
+        self.attrs.remove(attr.as_ref())
+    }
+
+    pub fn remove_ava<A: AsRef<Attribute>>(&mut self, attr: A) {
+        self.pop_ava(attr);
     }
 
     /// Set the content of this ava with this valueset, ignoring the previous data.
@@ -2627,18 +2631,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub(crate) fn get_display_id(&self) -> String {
         self.attrs
             .get(&Attribute::Spn)
-            .and_then(|vs| vs.to_value_single())
-            .or_else(|| {
-                self.attrs
-                    .get(&Attribute::Name)
-                    .and_then(|vs| vs.to_value_single())
-            })
+            .map(|vs| vs.to_proto_string_clone_iter())
             .or_else(|| {
                 self.attrs
                     .get(&Attribute::Uuid)
-                    .and_then(|vs| vs.to_value_single())
+                    .map(|vs| vs.to_proto_string_clone_iter())
             })
-            .map(|value| value.to_proto_string_clone())
+            // Take the first value
+            .and_then(|mut string_iter| string_iter.next())
             .unwrap_or_else(|| "no entry id available".to_string())
     }
 
@@ -2650,6 +2650,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 set.contains(class_name)
             })
             .unwrap_or_default()
+    }
+
+    pub fn attr_keys(&self) -> impl Iterator<Item = &Attribute> {
+        self.attrs.keys()
     }
 
     /// Get an iterator over the current set of attribute names that this entry contains.

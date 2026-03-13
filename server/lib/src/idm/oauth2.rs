@@ -2571,20 +2571,9 @@ impl IdmServerProxyReadTransaction<'_> {
                 Oauth2Error::AuthenticationRequired
             })?;
 
-        // check the secret.
-        match &o2rs.type_ {
-            OauthRSType::Basic { authz_secret, .. } => {
-                if Some(authz_secret) != client_auth.client_secret.as_ref() {
-                    info!("Invalid OAuth2 client_id secret");
-                    return Err(Oauth2Error::AuthenticationRequired);
-                }
-            }
-            // Relies on the token to be valid.
-            OauthRSType::Public { .. } => {}
-        };
-
-        // We are authenticated! Yay! Now we can actually check things ...
-
+        // We don't need to authenticate, since possession of the access token is already enough
+        // to prove identity, and we enforce it is cryptographically valid so it can't be bruteforced
+        // by a scanning attack.
         let prefer_short_username = o2rs.prefer_short_username;
 
         if let Ok(jwsc) = JwsCompact::from_str(&intr_req.token) {
@@ -3350,7 +3339,7 @@ fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
 #[cfg(any(feature = "dev-oauth2-device-flow", test))]
 #[allow(dead_code)]
 fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
-    use rand::TryRngCore;
+    use rand::TryRng;
 
     let mut rng = rand::rng();
     let mut result = [0u8; 16];
@@ -3367,7 +3356,7 @@ fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
 #[allow(dead_code)]
 /// Returns (xxx-yyy-zzz, digits) where one's the human-facing code, the other is what we store in the DB.
 fn gen_user_code() -> (String, u32) {
-    use rand::Rng;
+    use rand::RngExt;
     let mut rng = rand::rng();
     let num: u32 = rng.random_range(0..=999999999);
     let result = format!("{num:09}");
@@ -3432,6 +3421,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::str::FromStr;
     use std::time::Duration;
+    use time::OffsetDateTime;
     use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 
     const TEST_CURRENT_TIME: u64 = 6000;
@@ -3603,7 +3593,8 @@ mod tests {
             .unwrap_or(SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred =
+            Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
         let cred_id = cred.uuid;
 
         let session = Value::Session(
@@ -3612,7 +3603,7 @@ mod tests {
                 label: "label".to_string(),
                 state,
                 issued_at: time::OffsetDateTime::UNIX_EPOCH + ct,
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id,
                 scope: SessionScope::ReadWrite,
                 type_: AuthType::Passkey,
@@ -3740,7 +3731,8 @@ mod tests {
             .unwrap_or(SessionState::NeverExpires);
 
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred =
+            Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
         let cred_id = cred.uuid;
 
         let session = Value::Session(
@@ -3749,7 +3741,7 @@ mod tests {
                 label: "label".to_string(),
                 state,
                 issued_at: time::OffsetDateTime::UNIX_EPOCH + ct,
-                issued_by: IdentityId::Internal,
+                issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id,
                 scope: SessionScope::ReadWrite,
                 type_: AuthType::Passkey,

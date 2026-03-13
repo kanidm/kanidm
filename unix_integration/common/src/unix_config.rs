@@ -102,6 +102,7 @@ enum ConfigVersion {
 enum HomeStrategyV2 {
     #[default]
     Symlink,
+    BindMount,
 }
 
 #[derive(Debug, Deserialize)]
@@ -200,6 +201,8 @@ pub struct KanidmConfig {
 pub enum HomeStrategy {
     #[default]
     Symlink,
+    #[cfg(target_os = "linux")]
+    BindMount,
 }
 
 #[derive(Debug)]
@@ -240,6 +243,7 @@ impl Display for UnixdConfig {
         writeln!(f, "unix_sock_timeout: {}", self.unix_sock_timeout)?;
         writeln!(f, "cache_timeout: {}", self.cache_timeout)?;
         writeln!(f, "default_shell: {}", self.default_shell)?;
+        writeln!(f, "home_strategy: {:?}", self.home_strategy)?;
         writeln!(f, "home_prefix: {:?}", self.home_prefix)?;
         match self.home_mount_prefix.as_deref() {
             Some(val) => writeln!(f, "home_mount_prefix: {val:?}")?,
@@ -570,6 +574,13 @@ impl UnixdConfig {
                 .unwrap_or(self.home_alias),
             home_strategy: match config.home_strategy {
                 HomeStrategyV2::Symlink => HomeStrategy::Symlink,
+                #[cfg(target_os = "linux")]
+                HomeStrategyV2::BindMount => HomeStrategy::BindMount,
+                #[cfg(not(target_os = "linux"))]
+                HomeStrategyV2::BindMount => {
+                    warn!("Bind mounts not supported on this operating system - falling back to symlink for home directories");
+                    HomeStrategy::Symlink
+                }
             },
             use_etc_skel: config.use_etc_skel.unwrap_or(self.use_etc_skel),
             uid_attr_map: config

@@ -286,6 +286,18 @@ impl Account {
         self.name.as_deref().unwrap_or(self.spn.as_str())
     }
 
+    pub(crate) fn display_name(&self) -> &str {
+        &self.displayname
+    }
+
+    pub(crate) fn mail_primary(&self) -> Option<&str> {
+        self.mail_primary.as_deref()
+    }
+
+    pub(crate) fn mail(&self) -> &[String] {
+        self.mail.as_slice()
+    }
+
     pub(crate) fn softlock_expire(&self) -> Option<OffsetDateTime> {
         self.softlock_expire
     }
@@ -573,11 +585,12 @@ impl Account {
         &self,
         cleartext: &str,
         crypto_policy: &CryptoPolicy,
+        ct: OffsetDateTime,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         match &self.primary {
             // Change the cred
             Some(primary) => {
-                let ncred = primary.set_password(crypto_policy, cleartext)?;
+                let ncred = primary.set_password(crypto_policy, cleartext, ct)?;
                 let vcred = Value::new_credential("primary", ncred);
                 Ok(ModifyList::new_purge_and_set(
                     Attribute::PrimaryCredential,
@@ -586,7 +599,11 @@ impl Account {
             }
             // Make a new credential instead
             None => {
-                let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
+                let ncred = Credential::new_password_only(
+                    crypto_policy,
+                    cleartext,
+                    OffsetDateTime::UNIX_EPOCH,
+                )?;
                 let vcred = Value::new_credential("primary", ncred);
                 Ok(ModifyList::new_purge_and_set(
                     Attribute::PrimaryCredential,

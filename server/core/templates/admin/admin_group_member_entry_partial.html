@@ -1,6 +1,5 @@
 <li class="list-group-item d-flex flex-row justify-content-between" hx-target="this">
-    <form hx-boost="true"
-          hx-post="/ui/api/admin/group/(( group_uuid ))/remove_member"
+    <form hx-post="/ui/api/admin/group/(( group_uuid ))/remove_member"
           hx-swap="delete"
           class="d-flex align-items-center flex-grow-1">
         <div class="flex-grow-1"><input readonly type="text" name="member" value="(( member_name ))" class="form-control-plaintext py-0"></div>

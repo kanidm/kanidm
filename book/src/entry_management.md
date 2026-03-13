@@ -9,8 +9,8 @@ that allows commenting.
 Migrations are stored in the path defined by `server.toml`:`migration_path`. The default for containers is
 `/data/migrations.d`.
 
-Files within the folder must match the pattern `xx-name.json` / `xx-name.hjson` where `xx` are numeric digits. For example the following
-are valid names:
+Files within the folder must match the pattern `xx-name.json` / `xx-name.hjson` where `xx` are numeric digits. For
+example the following are valid names:
 
 - `00-base.json`
 - `99-user.json`
@@ -32,8 +32,8 @@ Attributes of an entry can be removed by setting them to `null`.
 {{#rustdoc_include ../../examples/migrations/00-basic.hjson}}
 ```
 
-This example is located in
-[examples/migrations](https://github.com/kanidm/kanidm/blob/master/examples/migrations/) in the repository. There are other migrations there you may find useful.
+This example is located in [examples/migrations](https://github.com/kanidm/kanidm/blob/master/examples/migrations/) in
+the repository. There are other migrations there you may find useful.
 
 ## Recommendations
 

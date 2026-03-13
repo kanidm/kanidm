@@ -26,12 +26,13 @@ Before upgrading you should review [our upgrade documentation]
 
 #### 1.9.0 Important Changes
 
-* An HJSON based entry migration framework has been introduced, allowing configuration management of database entries.
-* Upgrade/Downgrade constraints are now stricter to prevent mistakes during administrative tasks.
-* Service Accounts can issue OIDC/OAuth2 token using RFC8693 Token Exchange.
-* CSS can be set by overriding a default file (`override.css`).
-* Kanidmd now has a JSON scripting CLI, replacing the `--output json` CLI option.
-* Service Account tokens now support a short-format for applications that can not process credentials greater than 128 characters.
+- An HJSON based entry migration framework has been introduced, allowing configuration management of database entries.
+- Upgrade/Downgrade constraints are now stricter to prevent mistakes during administrative tasks.
+- Service Accounts can issue OIDC/OAuth2 token using RFC8693 Token Exchange.
+- CSS can be set by overriding a default file (`override.css`).
+- Kanidmd now has a JSON scripting CLI, replacing the `--output json` CLI option.
+- Service Account tokens now support a short-format for applications that can not process credentials greater than 128
+  characters.
 
 #### 1.9.0 Release Highlights
 

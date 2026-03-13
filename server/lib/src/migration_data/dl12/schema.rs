@@ -680,7 +680,7 @@ pub static SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_DATA,
         name: Attribute::KeyInternalData,
-        description: "".to_string(),
+        description: "-".to_string(),
         multivalue: true,
         syntax: SyntaxType::KeyInternal,
         ..Default::default()
@@ -690,7 +690,7 @@ pub static SCHEMA_ATTR_KEY_PROVIDER_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_PROVIDER,
         name: Attribute::KeyProvider,
-        description: "".to_string(),
+        description: "-".to_string(),
         multivalue: false,
         indexed: true,
         syntax: SyntaxType::ReferenceUuid,
@@ -701,7 +701,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_ROTATE,
         name: Attribute::KeyActionRotate,
-        description: "".to_string(),
+        description: "-".to_string(),
         multivalue: false,
         // Ephemeral action.
         phantom: true,
@@ -713,7 +713,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_REVOKE,
         name: Attribute::KeyActionRevoke,
-        description: "".to_string(),
+        description: "-".to_string(),
         multivalue: true,
         // Ephemeral action.
         phantom: true,
@@ -725,7 +725,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6: LazyLock<SchemaAttribute
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256,
         name: Attribute::KeyActionImportJwsEs256,
-        description: "".to_string(),
+        description: "-".to_string(),
         multivalue: true,
         // Ephemeral action.
         phantom: true,
@@ -737,7 +737,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256_DL6: LazyLock<SchemaAttribute
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256,
         name: Attribute::KeyActionImportJwsRs256,
-        description: "".to_string(),
+        description: "-".to_string(),
         multivalue: true,
         // Ephemeral action.
         phantom: true,
@@ -749,7 +749,7 @@ pub static SCHEMA_ATTR_PATCH_LEVEL_DL7: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_PATCH_LEVEL,
         name: Attribute::PatchLevel,
-        description: "".to_string(),
+        description: "-".to_string(),
         syntax: SyntaxType::Uint32,
         ..Default::default()
     });

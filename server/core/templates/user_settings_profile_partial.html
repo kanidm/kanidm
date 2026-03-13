@@ -38,7 +38,6 @@ Profile
             <label for="profileEmail" class="fw-bold">Email addresses (% if can_edit_email %)(select primary)(% endif %)</label>
             (% if can_edit_email %)
             <a class="cursor-pointer float-end"
-               hx-boost="true"
                hx-get="/ui/api/user_settings/add_email"
                hx-target="#emailAddresses"
                hx-include="#emailAddresses :last-child .email-index-state"
@@ -72,7 +71,7 @@ Profile
         (% if rw_active %)
         <button class="btn btn-primary" type="submit">Save</button>
         (% else %)
-        <a href="/ui/unlock" hx-boost="false"
+        <a href="/ui/unlock"
               (% if !rw_possible %)disabled(% endif %)
           >
             <button

@@ -14,7 +14,7 @@ dependencies = [
 ]
 name = "kanidm"
 description = "Kanidm client library"
-version = "1.2.0"
+version = "1.3.0"
 readme = "README.md"
 
 keywords = ["kanidm", "idm", "api"]
@@ -22,8 +22,7 @@ keywords = ["kanidm", "idm", "api"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
 ]
 
@@ -39,7 +38,7 @@ openapi_codegen = ["docker>=7.1.0"]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.15.0",
+    "ruff>=0.15.1",
     "pytest>=9.0.2",
     "mypy>=1.19.1",
     "types-requests>=2.32.0.20241016",
@@ -49,14 +48,14 @@ dev = [
     "pylint-pydantic>=0.4.1",
     "coverage>=7.13.1",
     "pook>=2.1.3",
-    "ty>=0.0.15",
+    "ty>=0.0.17",
     "openapi-spec-validator>=0.7.2",
     "coveralls>=4.0.2",
 ]
 docs = [
     "mkdocs>=1.6.1",
     "mkdocs-gen-files>=0.6.0",
-    "mkdocs-material>=9.7.1",
+    "mkdocs-material>=9.7.2",
     "mkdocstrings>=0.29.1",
     "mkdocstrings-python>=1.16.10",
 ]

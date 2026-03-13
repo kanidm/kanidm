@@ -357,9 +357,26 @@ impl QueryServerWriteTransaction<'_> {
         let results = self.internal_search(filt.clone())?;
 
         if results.is_empty() {
-            // It does not exist. Create it.
+            // The entry does not exist. Create it.
+
+            // If there are create-once members, set them up now.
+            if let Some(members_create_once) = e.pop_ava(Attribute::MemberCreateOnce) {
+                if let Some(members) = e.get_ava_mut(Attribute::Member) {
+                    // Merge
+                    members.merge(&members_create_once).inspect_err(|err| {
+                        error!(?err, "Unable to merge member sets, mismatched types?");
+                    })?;
+                } else {
+                    // Just push
+                    e.set_ava_set(&Attribute::Member, members_create_once);
+                }
+            };
+
             self.internal_create(vec![e])
         } else if results.len() == 1 {
+            // This is always ignored during migration.
+            e.remove_ava(&Attribute::MemberCreateOnce);
+
             // For each ignored attr, we remove it from entry.
             for attr in attrs.iter() {
                 e.remove_ava(attr);
@@ -851,6 +868,17 @@ impl QueryServerWriteTransaction<'_> {
 
         self.reload()?;
 
+        // Default PasswordChangedTime to UNIX_EPOCH
+        let filter = filter_all!(f_and!([
+            f_eq(Attribute::Class, EntryClass::Person.into()),
+            f_andnot(f_pres(Attribute::PasswordChangedTime)),
+        ]));
+        let modlist = ModifyList::new_purge_and_set(
+            Attribute::PasswordChangedTime,
+            Value::DateTime(time::OffsetDateTime::UNIX_EPOCH),
+        );
+        self.internal_modify(&filter, &modlist)?;
+
         Ok(())
     }
 
@@ -1067,6 +1095,13 @@ mod tests {
             .internal_modify_uuid(UUID_IDM_ADMINS, &modlist)
             .expect("Unable to modify CredentialTypeMinimum");
 
+        // Remove a group from an object that is "create once".  It should not
+        // be re-added.
+        let modlist = ModifyList::new_purge(Attribute::Member);
+        write_txn
+            .internal_modify_uuid(UUID_IDM_PEOPLE_SELF_NAME_WRITE, &modlist)
+            .expect("Unable to remove idm_all_persons from self-write");
+
         // Change default account policy - it should not be reverted.
         let modlist = ModifyList::new_set(
             Attribute::CredentialTypeMinimum,
@@ -1099,6 +1134,16 @@ mod tests {
         assert!(members.contains(&UUID_ANONYMOUS));
         // Was reverted
         assert!(members.contains(&UUID_IDM_ADMIN));
+
+        // Check that self-write still doesn't have all persons.
+        let idm_people_self_name_write_entry = write_txn
+            .internal_search_uuid(UUID_IDM_PEOPLE_SELF_NAME_WRITE)
+            .expect("Unable to retrieve all persons");
+
+        let members = idm_people_self_name_write_entry.get_ava_refer(Attribute::Member);
+
+        // There are no members!
+        assert!(members.is_none());
 
         // Check that the account policy did not revert.
         let all_persons_entry = write_txn
@@ -1353,6 +1398,31 @@ mod tests {
 
         assert_eq!(db_domain_version, DOMAIN_LEVEL_13);
 
+        // Create a person without pwd_changed_time
+        let tuuid = Uuid::new_v4();
+        let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(tuuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        );
+
+        write_txn
+            .internal_create(vec![e1])
+            .expect("Unable to create test person");
+
+        let user = write_txn
+            .internal_search_uuid(tuuid)
+            .expect("Unable to load test person");
+
+        // sanity check
+        assert!(user
+            .get_ava_single_datetime(Attribute::PasswordChangedTime)
+            .is_none());
+
         write_txn.commit().expect("Unable to commit");
 
         // == pre migration verification. ==
@@ -1371,6 +1441,16 @@ mod tests {
             .expect("Unable to set domain level to version 14");
 
         // post migration verification.
+        // pwd_changed_time should be defaulted to UNIX_EPOCH
+        let user = write_txn
+            .internal_search_uuid(tuuid)
+            .expect("Unable to load test person after migration");
+
+        let pwd_changed = user
+            .get_ava_single_datetime(Attribute::PasswordChangedTime)
+            .expect("PasswordChangedTime should be set after DL13->DL14 migration");
+
+        assert_eq!(pwd_changed, time::OffsetDateTime::UNIX_EPOCH);
 
         write_txn.commit().expect("Unable to commit");
     }

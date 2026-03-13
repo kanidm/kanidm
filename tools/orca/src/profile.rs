@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::state::{GroupName, Model};
-use rand::{rng, Rng};
+use rand::{rng, RngExt};
 use serde::de::{value, IntoDeserializer};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

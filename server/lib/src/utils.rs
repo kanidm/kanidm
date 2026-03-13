@@ -3,7 +3,7 @@
 use crate::prelude::*;
 use hashbrown::HashSet;
 use rand::distr::{Distribution, Uniform};
-use rand::{rng, Rng};
+use rand::{rng, Rng, RngExt};
 use std::ops::Range;
 
 #[derive(Debug)]

@@ -1,8 +1,8 @@
-# kanidm
+# Kanidm
 
 A Python module for interacting with Kanidm.
 
-Currently in very very very early beta, please [log an issue](https://github.com/kanidm/kanidm/issues/new/choose) for
+Currently in very very very early beta, please [log an issue](https://github.com/kanidm/kanidm/issues/new) for
 feature requests and bugs.
 
 ## Installation
@@ -26,7 +26,7 @@ Pytest it used for testing, if you don't have a live server to test against and 
 
 ### OpenAPI client generation
 
-The OpenAPI spec is served by the running server. To generate/update the OpenAPI-based client package:
+The OpenAPI spec is served by the running Kanidm server. To generate/update the OpenAPI-based client package:
 
 ```bash
 uv run kanidm_openapi_codegen
@@ -55,7 +55,8 @@ generate_openapi_client(
     spec_url="https://localhost:8443/docs/v1/openapi.json",
     verify_tls=True,
     ca_file=Path("/tmp/kanidm/ca.pem"),
-    output=Path("pykanidm/kanidm_openapi_client"),
+    # season to taste
+    output=Path("pykanidm/kanidm_openapi_client"), 
 )
 ```
 
@@ -80,14 +81,15 @@ You can still build one explicitly from config helpers in `kanidm.openapi` if ne
 
 ### OpenAPI spec tests
 
-Networked OpenAPI tests are marked `openapi` and include both spec validation and generated-client GET calls. Run them with:
+Networked OpenAPI tests are marked `openapi` and include both spec validation and generated-client GET calls. Run them
+with:
 
 ```bash
 IDM_ADMIN_PASS=... uv run pytest -m openapi
 ```
 
-OpenAPI tests regenerate `kanidm_openapi_client` once per pytest session before running marked tests.
-This uses `kanidm.openapi_codegen` and requires Docker to be available.
+OpenAPI tests regenerate `kanidm_openapi_client` once per pytest session before running marked tests. This uses
+`kanidm.openapi_codegen` and requires Docker to be available.
 
 Optional environment overrides:
 
@@ -96,13 +98,15 @@ Optional environment overrides:
 - `IDM_ADMIN_PASS` (required for auth'd OpenAPI tests; matches `scripts/setup_dev_environment.sh`)
 - `KANIDM_INSECURE` (`true`/`false`, default: `false`) disables TLS verification for tests
 
-Note: tests always verify TLS unless `KANIDM_INSECURE=true`. Provide a CA via `KANIDM_CA_PATH` (or use the default `/tmp/kanidm/ca.pem`) so the server cert validates.
+Note: tests always verify TLS unless `KANIDM_INSECURE=true`. Provide a CA via `KANIDM_CA_PATH` (or use the default
+`/tmp/kanidm/ca.pem`) so the server cert validates.
 
 ## Changelog
 
-| Version | Date       | Notes                                                 |
-| ------- | ---------- | ----------------------------------------------------- |
-| 0.0.1   | 2022-08-16 | Initial release                                       |
-| 0.0.2   | 2022-08-16 | Updated license, including test code in package       |
-| 0.0.3   | 2022-08-17 | Updated test suite to allow skipping of network tests |
-| 1.2.0   | 2025-05-13 | Replaced poetry with uv for packaging                 |
+| Version | Date       | Notes                                                               |
+| ------- | ---------- | ------------------------------------------------------------------- |
+| 0.0.1   | 2022-08-16 | Initial release                                                     |
+| 0.0.2   | 2022-08-16 | Updated license, including test code in package                     |
+| 0.0.3   | 2022-08-17 | Updated test suite to allow skipping of network tests               |
+| 1.2.0   | 2025-05-13 | Replaced poetry with uv for packaging                               |
+| 1.3.0   | 2026-02-19 | Major rewrite to use openapi-generated codebase, based on 1.9.0 API |
