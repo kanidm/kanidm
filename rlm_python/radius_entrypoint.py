@@ -46,6 +46,8 @@ def write_clients_conf(
             file_handle.write(f"client {client.name} {{\n")
             file_handle.write(f"    ipaddr = {client.ipaddr}\n")
             file_handle.write(f"    secret = {client.secret}\n")
+            # Required for BlastRADIUS mitigation when clients send Message-Authenticator.
+            file_handle.write("    require_message_authenticator = yes\n")
             file_handle.write("    proto = *\n")
             file_handle.write("}\n")
 
