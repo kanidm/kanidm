@@ -161,8 +161,8 @@ base64urlsafedata = "0.5.4"
 bitflags = "^2.11.0"
 bytes = "^1.11.1"
 cidr = "0.3.2"
-clap = { version = "4.5.60", features = ["derive", "env"] }
-clap_complete = "^4.5.66"
+clap = { version = "4.6.0", features = ["derive", "env"] }
+clap_complete = "^4.6.0"
 # Forced by saffron/cron
 chrono = "^0.4.44"
 compact_jwt = "^0.5.5"
@@ -196,7 +196,7 @@ image = { version = "0.25.9", default-features = false, features = [
     "webp",
 ] }
 itertools = "0.14.0"
-jsonschema = "0.44.1"
+jsonschema = "0.45.0"
 ldap3_client = "^0.7.0"
 ldap3_proto = { version = "^0.7.0", features = ["serde"] }
 lettre = { version = "0.11.19", default-features = false }
@@ -214,7 +214,7 @@ notify-debouncer-full = { version = "0.7" }
 num_enum = "0.7.5"
 oauth2_ext = { version = "^5.0.0", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
-openssl = "^0.10.75"
+openssl = "^0.10.76"
 opentelemetry = { version = "0.31.0" }
 opentelemetry-otlp = { version = "0.31.0", default-features = false, features = [
     "serde",
@@ -247,19 +247,19 @@ reqwest = { version = "0.13.2", default-features = false, features = [
     "rustls",
     "query",
 ] }
-rusqlite = { version = "0.38.0", features = ["array", "bundled"] }
+rusqlite = { version = "0.39.0", features = ["array", "bundled"] }
 rustls = { version = "0.23.37", default-features = false, features = [
     "std",
     "aws_lc_rs",
 ] }
-sd-notify = "^0.4.5"
+sd-notify = "^0.5.0"
 selinux = "^0.6.0"
 serde = "^1.0.228"
 serde_cbor = { version = "0.13.0", package = "serde_cbor_2" }
 serde-hjson = "1.1.0"
 serde_json = "^1.0.149"
 serde_urlencoded = "^0.7.1"
-serde_with = "3.17.0"
+serde_with = "3.18.0"
 sha-crypt = "0.5.0"
 sha2 = "0.11.0-rc.5"
 shellexpand = "3.1.2"
@@ -284,7 +284,7 @@ tracing = { version = "^0.1.44", features = [
     "max_level_trace",
     "release_max_level_debug",
 ] }
-tracing-subscriber = { version = "^0.3.22", features = ["env-filter"] }
+tracing-subscriber = { version = "^0.3.23", features = ["env-filter"] }
 tracing-forest = { version = "^0.3.1", features = ["defer"] }
 url = "^2.5.8"
 urlencoding = "2.1.3"
