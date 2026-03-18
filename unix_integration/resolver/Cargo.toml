@@ -134,6 +134,7 @@ assets = [
     [ "../../examples/kanidm-safe-default", "etc/kanidm/config", "644" ],
     [ "../../examples/kanidm", "usr/share/kanidm-unixd/", "444" ],
     [ "../../examples/unixd", "usr/share/kanidm-unixd/", "444" ],
+    [ "../../examples/sshd-config.conf", "etc/ssh/sshd_config.d/10-kanidm.conf", "644"],
 ]
 maintainer-scripts = "debian/"
 systemd-units = [
