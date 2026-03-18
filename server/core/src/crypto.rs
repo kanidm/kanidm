@@ -4,25 +4,28 @@
 use crate::config::TlsConfiguration;
 use crypto_glue::{
     ec::EcPrivateKey,
-    ecdsa_p256::{EcdsaP256Signature, EcdsaP256SigningKey, EcdsaP256VerifyingKey},
-    ecdsa_p384::{EcdsaP384Signature, EcdsaP384SigningKey, EcdsaP384VerifyingKey},
+    ecdsa_p256::{EcdsaP256SigningKey, EcdsaP256VerifyingKey},
+    ecdsa_p384::{EcdsaP384SigningKey, EcdsaP384VerifyingKey, EcdsaP384DerSignature},
     pkcs8::PrivateKeyInfo,
+    rand,
     rsa::RS256PrivateKey,
     traits::{
         DecodeDer, DecodePem, EncodePem, Pkcs1DecodeRsaPrivateKey, Pkcs8DecodePrivateKey,
         Pkcs8EncodePrivateKey, PublicKeyParts,
     },
-    x509::{oiddb::rfc5912, Certificate, CertificateBuilder, SubjectPublicKeyInfoOwned},
+    x509::{Builder, oiddb::{rfc5912, rfc5280}, Certificate, CertificateBuilder, SubjectPublicKeyInfoOwned, GeneralName, SubjectAltName, Ia5String, ExtendedKeyUsage, Name, Profile, Validity, uuid_to_serial},
 };
 use rustls::{
     pki_types::{pem::PemObject, CertificateDer, CertificateRevocationListDer, PrivateKeyDer},
     server::{ServerConfig, WebPkiClientVerifier},
     RootCertStore,
 };
+use uuid::Uuid;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::Arc;
+use std::str::FromStr;
 use tokio_rustls::TlsAcceptor;
 
 const CA_VALID_DAYS: u32 = 30;
@@ -45,11 +48,6 @@ const CERT_VALID_DAYS: u32 = 5;
 
 const RSA_MIN_KEY_SIZE_BITS: u64 = 2048;
 const EC_MIN_KEY_SIZE_BITS: u64 = 224;
-
-/// returns a signing function that meets a sensible minimum
-fn get_signing_func() -> hash::MessageDigest {
-    hash::MessageDigest::sha256()
-}
 
 /// Ensure we're enforcing safe minimums for TLS keys
 pub fn check_privkey_minimums(privkey: &PrivateKeyDer<'_>) -> Result<(), String> {
@@ -261,84 +259,25 @@ pub(crate) fn write_ca(
     let key_path: &Path = key_ar.as_ref();
     let cert_path: &Path = cert_ar.as_ref();
 
-    let key_pem = handle.key.to_pkcs8_pem().map_err(|e| {
+    let key_pem = handle.key.to_pkcs8_pem(Default::default()).map_err(|e| {
         error!(err = ?e, "Failed to convert key to PEM");
     })?;
 
-    let cert_pem = handle.cert.to_pem().map_err(|e| {
+    let cert_pem = handle.cert.to_pem(Default::default()).map_err(|e| {
         error!(err = ?e, "Failed to convert cert to PEM");
     })?;
 
     fs::File::create(key_path)
-        .and_then(|mut file| file.write_all(&key_pem))
+        .and_then(|mut file| file.write_all(key_pem.as_bytes()))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", key_path);
         })?;
 
     fs::File::create(cert_path)
-        .and_then(|mut file| file.write_all(&cert_pem))
+        .and_then(|mut file| file.write_all(cert_pem.as_bytes()))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", cert_path);
         })
-}
-
-#[derive(Debug, Default)]
-pub enum KeyType {
-    #[default]
-    EcdsaP256,
-}
-
-#[derive(Debug)]
-pub struct CAConfig {
-    pub key_type: KeyType,
-}
-
-impl Default for CAConfig {
-    fn default() -> Self {
-        #[allow(clippy::expect_used)]
-        Self::new(KeyType::Ec, 256, false)
-            .expect("Somehow the defaults failed to pass validation while building a CA Config?")
-    }
-}
-
-impl CAConfig {
-    fn new(key_type: KeyType, key_bits: u64, skip_enforce_minimums: bool) -> Result<Self, String> {
-        let res = Self {
-            key_type,
-            key_bits,
-            skip_enforce_minimums,
-        };
-        if !skip_enforce_minimums {
-            res.enforce_minimums()?;
-        };
-        Ok(res)
-    }
-
-    /// Make sure we're meeting the minimum spec for key length etc
-    fn enforce_minimums(&self) -> Result<(), String> {
-        match self.key_type {
-            KeyType::Rsa => {
-                trace!(
-                    "Generating CA Config for RSA Key with {} bits",
-                    self.key_bits
-                );
-                if self.key_bits < RSA_MIN_KEY_SIZE_BITS {
-                    return Err(format!(
-                        "RSA key size must be at least {RSA_MIN_KEY_SIZE_BITS} bits"
-                    ));
-                }
-            }
-            KeyType::Ec => {
-                trace!("Generating CA Config for EcKey with {} bits", self.key_bits);
-                if self.key_bits < EC_MIN_KEY_SIZE_BITS {
-                    return Err(format!(
-                        "EC key size must be at least {EC_MIN_KEY_SIZE_BITS} bits"
-                    ));
-                }
-            }
-        };
-        Ok(())
-    }
 }
 
 /// build up a CA certificate and key.
@@ -371,8 +310,13 @@ pub(crate) fn build_ca() -> Result<CaHandle, ()> {
     .expect("Create certificate");
 
     let cert = builder
-        .build_with_rng::<EcdsaP384Signature>(&mut rng)
+        .build_with_rng::<EcdsaP384DerSignature>(&mut rng)
         .unwrap();
+
+    Ok(CaHandle {
+        key: signing_key,
+        cert,
+    })
 }
 
 pub(crate) fn load_ca(
@@ -382,16 +326,16 @@ pub(crate) fn load_ca(
     let ca_key_path: &Path = ca_key_ar.as_ref();
     let ca_cert_path: &Path = ca_cert_ar.as_ref();
 
-    let mut ca_key_pem = vec![];
+    let mut ca_key_pem = String::new();
     fs::File::open(ca_key_path)
-        .and_then(|mut file| file.read_to_end(&mut ca_key_pem))
+        .and_then(|mut file| file.read_to_string(&mut ca_key_pem))
         .map_err(|e| {
             error!(err = ?e, "Failed to read {:?}", ca_key_path);
         })?;
 
-    let mut ca_cert_pem = vec![];
+    let mut ca_cert_pem = String::new();
     fs::File::open(ca_cert_path)
-        .and_then(|mut file| file.read_to_end(&mut ca_cert_pem))
+        .and_then(|mut file| file.read_to_string(&mut ca_cert_pem))
         .map_err(|e| {
             error!(err = ?e, "Failed to read {:?}", ca_cert_path);
         })?;
@@ -426,11 +370,11 @@ pub(crate) fn write_cert(
     let chain_path: &Path = chain_ar.as_ref();
     let cert_path: &Path = cert_ar.as_ref();
 
-    let key_pem = handle.key.to_pkcs8_pem().map_err(|e| {
+    let key_pem = handle.key.to_pkcs8_pem(Default::default()).map_err(|e| {
         error!(err = ?e, "Failed to convert key to PEM");
     })?;
 
-    let cert_pem = handle.cert.to_pem().map_err(|e| {
+    let cert_pem = handle.cert.to_pem(Default::default()).map_err(|e| {
         error!(err = ?e, "Failed to convert cert to PEM");
     })?;
 
@@ -438,9 +382,9 @@ pub(crate) fn write_cert(
 
     // Build the chain PEM.
     for ca_cert in &handle.chain {
-        match ca_cert.to_pem() {
+        match ca_cert.to_pem(Default::default()) {
             Ok(c) => {
-                chain_pem.extend_from_slice(&c);
+                chain_pem.push_str(&c);
             }
             Err(e) => {
                 error!(err = ?e, "Failed to convert cert to PEM");
@@ -450,19 +394,19 @@ pub(crate) fn write_cert(
     }
 
     fs::File::create(key_path)
-        .and_then(|mut file| file.write_all(&key_pem))
+        .and_then(|mut file| file.write_all(key_pem.as_bytes()))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", key_path);
         })?;
 
     fs::File::create(chain_path)
-        .and_then(|mut file| file.write_all(&chain_pem))
+        .and_then(|mut file| file.write_all(chain_pem.as_bytes()))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", chain_path);
         })?;
 
     fs::File::create(cert_path)
-        .and_then(|mut file| file.write_all(&cert_pem))
+        .and_then(|mut file| file.write_all(cert_pem.as_bytes()))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", cert_path);
         })
@@ -471,7 +415,7 @@ pub(crate) fn write_cert(
 pub(crate) fn build_cert(
     domain_name: &str,
     ca_handle: &CaHandle,
-) -> Result<CertHandle, ErrorStack> {
+) -> Result<CertHandle, ()> {
     let mut rng = rand::thread_rng();
 
     let root_serial_uuid = Uuid::new_v4();
@@ -490,8 +434,8 @@ pub(crate) fn build_cert(
     };
     let root_subject = Name::from_str("C=AU,ST=QLD,O=Kanidm,CN=Kanidm Generated Server Certificate,OU=Development and Evaluation - NOT FOR PRODUCTION").unwrap();
 
-    let signing_key = EcdsaP384SigningKey::random(&mut rng);
-    let verifying_key = EcdsaP384VerifyingKey::from(&signing_key); // Serialize with `::to_encoded_point()`
+    let signing_key = EcdsaP256SigningKey::random(&mut rng);
+    let verifying_key = EcdsaP256VerifyingKey::from(&signing_key); // Serialize with `::to_encoded_point()`
     let pub_key = SubjectPublicKeyInfoOwned::from_key(verifying_key).expect("get rsa pub key");
 
     let mut builder = CertificateBuilder::new(
@@ -504,7 +448,7 @@ pub(crate) fn build_cert(
     )
     .expect("Create certificate");
 
-    let eku_extension = ExtendedKeyUsage(vec![const_oid::db::rfc5280::ID_KP_SERVER_AUTH]);
+    let eku_extension = ExtendedKeyUsage(vec![rfc5280::ID_KP_SERVER_AUTH]);
 
     builder
         .add_extension(&eku_extension)
@@ -519,46 +463,31 @@ pub(crate) fn build_cert(
         .expect("Unable to add extension");
 
     let cert = builder
-        .build_with_rng::<EcdsaP384Signature>(&mut rng)
+        .build_with_rng::<EcdsaP384DerSignature>(&mut rng)
         .unwrap();
 
     Ok(CertHandle {
-        key: int_key,
-        cert: int_cert,
+        key: signing_key,
+        cert,
         chain: vec![ca_handle.cert.clone()],
     })
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::crypto::{
+        build_ca, write_ca, load_ca
+    };
+
     #[test]
     fn test_ca_loader() {
         let ca_key_tempfile = tempfile::NamedTempFile::new().unwrap();
         let ca_cert_tempfile = tempfile::NamedTempFile::new().unwrap();
         // let's test the defaults first
 
-        let ca_config = CAConfig::default();
-        if let Ok(ca) = build_ca(Some(ca_config)) {
+        if let Ok(ca) = build_ca() {
             write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
             assert!(load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path()).is_ok());
         };
-
-        let good_ca_configs = vec![
-            // test rsa 4096 (ok)
-            (KeyType::Rsa, 4096, false),
-            // test rsa 2048 (ok)
-            (KeyType::Rsa, 2048, false),
-            // test ec 256 (ok)
-            (KeyType::Ec, 256, false),
-        ];
-        good_ca_configs.into_iter().for_each(|config| {
-            println!("testing good config {config:?}");
-            let ca_config = CAConfig::new(config.0, config.1, config.2).unwrap();
-            let ca = build_ca(Some(ca_config)).unwrap();
-            write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
-            let ca_result = load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path());
-            println!("result: {ca_result:?}");
-            assert!(ca_result.is_ok());
-        });
     }
 }

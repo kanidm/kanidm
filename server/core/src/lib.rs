@@ -723,7 +723,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
     let ca_handle = if !ca_cert.exists() || !ca_key.exists() {
         // Generate the CA again.
-        let ca_handle = match crypto::build_ca(None) {
+        let ca_handle = match crypto::build_ca() {
             Ok(ca_handle) => ca_handle,
             Err(e) => {
                 error!(err = ?e, "Failed to build CA");
@@ -749,7 +749,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
     if !tls_key_path.exists() || !tls_chain_path.exists() || !tls_cert_path.exists() {
         // Generate the cert from the ca.
-        let cert_handle = match crypto::build_cert(origin_domain, &ca_handle, None, None) {
+        let cert_handle = match crypto::build_cert(origin_domain, &ca_handle) {
             Ok(cert_handle) => cert_handle,
             Err(e) => {
                 error!(err = ?e, "Failed to build certificate");
