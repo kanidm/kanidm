@@ -48,7 +48,7 @@ pub struct KanidmdCli {
     pub db_arc_size: Option<usize>,
 
     #[clap(
-        env = "KANIDM_SERVER_ADMIN_BIND_PATH",
+        env = "KANIDM_ADMIN_BIND_PATH",
         global = true,
         help = "Specify the admin bind path"
     )]

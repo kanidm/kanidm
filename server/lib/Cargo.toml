@@ -50,6 +50,7 @@ regex = { workspace = true, features = [
     "unicode",
     "unicode-gencat",
 ] }
+rustls = { workspace = true }
 rusqlite = { workspace = true, features = ["array", "bundled"] }
 
 serde = { workspace = true, features = ["derive"] }

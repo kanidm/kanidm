@@ -12,9 +12,10 @@ use crypto_glue::{
     traits::Pkcs8EncodePrivateKey,
     x509::{
         self, oiddb, Builder, Certificate, CertificateBuilder, ExtendedKeyUsage, GeneralName,
-        GeneralizedTime, Ia5String, SubjectAltName, SubjectPublicKeyInfoOwned,
+        GeneralizedTime, Ia5String, OctetString, SubjectAltName, SubjectPublicKeyInfoOwned,
     },
 };
+use rustls::pki_types::{IpAddr, ServerName};
 use std::str::FromStr;
 
 impl QueryServerWriteTransaction<'_> {
@@ -89,16 +90,45 @@ impl QueryServerWriteTransaction<'_> {
         })?;
 
         // Subject Alt Name
-        let alt_name = Ia5String::new(domain_name).map_err(|err| {
-            error!(?err, "Invalid subject alt name");
-            OperationError::CryptographyError
-        })?;
-        let san = SubjectAltName(vec![GeneralName::DnsName(alt_name)]);
+        // We need to understand how rustls treats this to issue the correct SAN value.
+        // How does rustls interpret this name?
+        let Ok(server_name) = ServerName::try_from(domain_name.to_owned()) else {
+            error!("Invalid server name for replication");
+            return Err(OperationError::CryptographyError);
+        };
 
-        x509_builder.add_extension(&san).map_err(|err| {
-            error!(?err, "Unable to add subject alt name");
-            OperationError::CryptographyError
-        })?;
+        let subject_alt_name = match server_name {
+            ServerName::DnsName(_) => {
+                let alt_name = Ia5String::new(domain_name).map_err(|err| {
+                    error!(?err, "Invalid subject alt name");
+                    OperationError::CryptographyError
+                })?;
+                SubjectAltName(vec![GeneralName::DnsName(alt_name)])
+            }
+            ServerName::IpAddress(IpAddr::V4(ipv4_addr)) => {
+                let ip_address = OctetString::new(ipv4_addr.as_ref()).map_err(|err| {
+                    error!(?err, "Unable to convert ipv4 address to octet string");
+                    OperationError::CryptographyError
+                })?;
+                SubjectAltName(vec![GeneralName::IpAddress(ip_address)])
+            }
+            ServerName::IpAddress(IpAddr::V6(ipv6_addr)) => {
+                let ip_address = OctetString::new(ipv6_addr.as_ref()).map_err(|err| {
+                    error!(?err, "Unable to convert ipv6 address to octet string");
+                    OperationError::CryptographyError
+                })?;
+                SubjectAltName(vec![GeneralName::IpAddress(ip_address)])
+            }
+
+            _ => return Err(OperationError::CryptographyError),
+        };
+
+        x509_builder
+            .add_extension(&subject_alt_name)
+            .map_err(|err| {
+                error!(?err, "Unable to add subject alt name");
+                OperationError::CryptographyError
+            })?;
 
         let mut rng = rand::thread_rng();
         let x509 = x509_builder
