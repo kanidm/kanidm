@@ -213,7 +213,6 @@ nonempty = "0.12.0"
 notify-debouncer-full = { version = "0.7" }
 num_enum = "0.7.6"
 oauth2_ext = { version = "^5.0.0", package = "oauth2", default-features = false }
-openssl = "^0.10.76"
 opentelemetry = { version = "0.31.0" }
 opentelemetry-otlp = { version = "0.31.1", default-features = false, features = [
     "serde",
