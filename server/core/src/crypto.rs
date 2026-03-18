@@ -5,7 +5,7 @@ use crate::config::TlsConfiguration;
 use crypto_glue::{
     ec::EcPrivateKey,
     ecdsa_p256::{EcdsaP256SigningKey, EcdsaP256VerifyingKey},
-    ecdsa_p384::{EcdsaP384SigningKey, EcdsaP384VerifyingKey, EcdsaP384DerSignature},
+    ecdsa_p384::{EcdsaP384DerSignature, EcdsaP384SigningKey, EcdsaP384VerifyingKey},
     pkcs8::PrivateKeyInfo,
     rand,
     rsa::RS256PrivateKey,
@@ -13,23 +13,28 @@ use crypto_glue::{
         DecodeDer, DecodePem, EncodePem, Pkcs1DecodeRsaPrivateKey, Pkcs8DecodePrivateKey,
         Pkcs8EncodePrivateKey, PublicKeyParts,
     },
-    x509::{Builder, oiddb::{rfc5912, rfc5280}, Certificate, CertificateBuilder, SubjectPublicKeyInfoOwned, GeneralName, SubjectAltName, Ia5String, ExtendedKeyUsage, Name, Profile, Validity, uuid_to_serial},
+    x509::{
+        oiddb::{rfc5280, rfc5912},
+        uuid_to_serial, Builder, Certificate, CertificateBuilder, ExtendedKeyUsage, GeneralName,
+        Ia5String, Name, Profile, SubjectAltName, SubjectPublicKeyInfoOwned, Time, Validity,
+    },
 };
 use rustls::{
     pki_types::{pem::PemObject, CertificateDer, CertificateRevocationListDer, PrivateKeyDer},
     server::{ServerConfig, WebPkiClientVerifier},
     RootCertStore,
 };
-use uuid::Uuid;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
-use std::sync::Arc;
 use std::str::FromStr;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 use tokio_rustls::TlsAcceptor;
+use uuid::Uuid;
 
-const CA_VALID_DAYS: u32 = 30;
-const CERT_VALID_DAYS: u32 = 5;
+const CA_VALID_DAYS: u64 = 30;
+const CERT_VALID_DAYS: u64 = 5;
 
 // Basing minimums off https://www.keylength.com setting "year" to 2030 - tested as at 2023-09-25
 //
@@ -47,7 +52,6 @@ const CERT_VALID_DAYS: u32 = 5;
 // FM - Factoring Modulus
 
 const RSA_MIN_KEY_SIZE_BITS: u64 = 2048;
-const EC_MIN_KEY_SIZE_BITS: u64 = 224;
 
 /// Ensure we're enforcing safe minimums for TLS keys
 pub fn check_privkey_minimums(privkey: &PrivateKeyDer<'_>) -> Result<(), String> {
@@ -287,6 +291,10 @@ pub(crate) fn build_ca() -> Result<CaHandle, ()> {
     let root_serial_uuid = Uuid::new_v4();
     let serial_number = uuid_to_serial(root_serial_uuid);
 
+    let now = SystemTime::now();
+    let not_before = Time::try_from(now).unwrap();
+    let not_after = Time::try_from(now + Duration::from_secs(CA_VALID_DAYS * 86400)).unwrap();
+
     let validity = Validity {
         not_before,
         not_after,
@@ -299,7 +307,7 @@ pub(crate) fn build_ca() -> Result<CaHandle, ()> {
     let verifying_key = EcdsaP384VerifyingKey::from(&signing_key); // Serialize with `::to_encoded_point()`
     let pub_key = SubjectPublicKeyInfoOwned::from_key(verifying_key).expect("get rsa pub key");
 
-    let mut builder = CertificateBuilder::new(
+    let builder = CertificateBuilder::new(
         profile,
         serial_number,
         validity,
@@ -412,14 +420,15 @@ pub(crate) fn write_cert(
         })
 }
 
-pub(crate) fn build_cert(
-    domain_name: &str,
-    ca_handle: &CaHandle,
-) -> Result<CertHandle, ()> {
+pub(crate) fn build_cert(domain_name: &str, ca_handle: &CaHandle) -> Result<CertHandle, ()> {
     let mut rng = rand::thread_rng();
 
     let root_serial_uuid = Uuid::new_v4();
     let serial_number = uuid_to_serial(root_serial_uuid);
+
+    let now = SystemTime::now();
+    let not_before = Time::try_from(now).unwrap();
+    let not_after = Time::try_from(now + Duration::from_secs(CERT_VALID_DAYS * 86400)).unwrap();
 
     let validity = Validity {
         not_before,
@@ -454,7 +463,7 @@ pub(crate) fn build_cert(
         .add_extension(&eku_extension)
         .expect("Unable to add extension");
 
-    let alt_name = Ia5String::new("localhost").unwrap();
+    let alt_name = Ia5String::new(domain_name).unwrap();
 
     let san = SubjectAltName(vec![GeneralName::DnsName(alt_name)]);
 
@@ -475,9 +484,7 @@ pub(crate) fn build_cert(
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto::{
-        build_ca, write_ca, load_ca
-    };
+    use crate::crypto::{build_ca, load_ca, write_ca};
 
     #[test]
     fn test_ca_loader() {
