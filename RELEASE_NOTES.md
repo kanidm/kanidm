@@ -14,7 +14,7 @@ We value your feedback! First, please see our [code of conduct]. If you have que
 
 ## Release Notes
 
-### 2025-02-11 - Kanidm 1.9.0
+### 2026-02-11 - Kanidm 1.9.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
 community and we appreciate their invaluable contributions, comments, questions, feedback and support.
