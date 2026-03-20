@@ -18,6 +18,7 @@ use crate::idprovider::system::{
 };
 use hashbrown::HashMap;
 use kanidm_hsm_crypto::provider::BoxedDynTpm;
+use kanidm_lib_file_permissions::diagnose_path;
 use kanidm_unix_common::constants::{
     DEFAULT_CACHE_TIMEOUT_JITTER_MS, DEFAULT_CACHE_TIMEOUT_MAXIMUM, DEFAULT_CACHE_TIMEOUT_MINIMUM,
     DEFAULT_SHELL_SEARCH_PATHS, SYSTEM_SHADOW_PATH,
@@ -403,7 +404,7 @@ impl Resolver {
             let mut exists = shell_path
                 .canonicalize()
                 .map_err(|err| {
-                    debug!(
+                    warn!(
                         "Failed to canonicalize path, using base path. Tried: {} Error: {:?}",
                         shell_path.to_string_lossy(),
                         err
@@ -447,7 +448,9 @@ impl Resolver {
                 warn!(
                         "Configured shell \"{}\" for {} is not present on this system. Check `/etc/shells` for valid shell options.",
                         shell_path.to_string_lossy(), token.name
-                    )
+                    );
+                let diag = diagnose_path(shell_path.as_ref());
+                info!(%diag);
             }
 
             exists
