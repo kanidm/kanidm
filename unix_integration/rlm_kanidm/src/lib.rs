@@ -32,6 +32,7 @@ use std::ptr;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
+use tracing::error;
 
 #[cfg(feature = "freeradius-module")]
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -68,8 +69,8 @@ pub enum Response {
     Reject,
     Fail,
     Ok {
-        reply: Vec<(String, String)>,
-        control: Vec<(String, String)>,
+        reply: Vec<(&'static str, String)>,
+        control: Vec<(&'static str, String)>,
     },
     Handled,
     Invalid,
@@ -94,14 +95,14 @@ impl Response {
         }
     }
 
-    pub fn reply(&self) -> Vec<(String, String)> {
+    pub fn reply(&self) -> Vec<(&'static str, String)> {
         match self {
             Response::Ok { reply, .. } => reply.clone(),
             _ => Vec::new(),
         }
     }
 
-    pub fn control(&self) -> Vec<(String, String)> {
+    pub fn control(&self) -> Vec<(&'static str, String)> {
         match self {
             Response::Ok { control, .. } => control.clone(),
             _ => Vec::new(),
@@ -163,18 +164,12 @@ fn default_connect_timeout_secs() -> u64 {
 #[derive(Debug, Clone)]
 pub struct ModuleOptions {
     pub http_timeout: Duration,
-    pub cache_ttl: Duration,
-    pub cache_stale_if_error: Duration,
-    pub cache_max_entries: usize,
 }
 
 impl Default for ModuleOptions {
     fn default() -> Self {
         Self {
             http_timeout: Duration::from_secs(5),
-            cache_ttl: Duration::from_secs(30),
-            cache_stale_if_error: Duration::from_secs(120),
-            cache_max_entries: 10_000,
         }
     }
 }
@@ -252,18 +247,86 @@ impl From<ModuleError> for AuthResultC {
 
 impl std::error::Error for ModuleError {}
 
+struct LookupCache {
+    cache_ttl: Duration,
+    cache_stale_if_error: Duration,
+    cache_max_entries: usize,
+    cache: Mutex<BTreeMap<String, CacheEntry>>,
+}
+
+impl LookupCache {
+    fn new() -> Self {
+        Self {
+            cache_ttl: Duration::from_secs(30),
+            cache_stale_if_error: Duration::from_secs(120),
+            cache_max_entries: 10_000,
+            cache: Mutex::new(BTreeMap::new()),
+        }
+    }
+
+    fn lookup_cache(&self, user_id: &str, now: Instant) -> Option<RadiusAuthToken> {
+        let Ok(mut cache_guard) = self.cache.lock() else {
+            error!("Couldn't acquire cache lock for lookup_cache");
+            return None;
+        };
+        let entry = cache_guard.get(user_id)?;
+        if entry.fresh(now, self.cache_ttl) {
+            return Some(entry.token.clone());
+        } else {
+            cache_guard.remove(user_id);
+        }
+        None
+    }
+
+    fn lookup_stale_cache(&self, user_id: &str, now: Instant) -> Option<RadiusAuthToken> {
+        let Ok(mut cache_guard) = self.cache.lock() else {
+            error!("Couldn't acquire cache lock for lookup_stale_cache");
+            return None;
+        };
+        let entry = cache_guard.get(user_id)?;
+        if entry.stale_allowed(now, self.cache_ttl, self.cache_stale_if_error) {
+            return Some(entry.token.clone());
+        } else {
+            cache_guard.remove(user_id);
+        }
+        None
+    }
+
+    fn insert_cache(&self, user_id: String, token: RadiusAuthToken, now: Instant) {
+        if let Ok(mut guard) = self.cache.lock() {
+            if guard.len() >= self.cache_max_entries && !guard.contains_key(&user_id) {
+                if let Some(oldest_key) = guard
+                    .iter()
+                    .min_by_key(|(_, entry)| entry.fetched_at)
+                    .map(|(k, _)| k.clone())
+                {
+                    guard.remove(&oldest_key);
+                }
+            }
+            guard.insert(
+                user_id,
+                CacheEntry {
+                    token,
+                    fetched_at: now,
+                },
+            );
+        } else {
+            error!("Couldn't acquire cache lock for insert_cache");
+        }
+    }
+}
+
 pub struct Module {
     cfg: KanidmRadiusConfig,
     required_groups: BTreeSet<String>,
     vlan_by_spn: BTreeMap<String, u32>,
-    cache: Mutex<BTreeMap<String, CacheEntry>>,
     client: KanidmClient,
     runtime: Runtime,
-    options: ModuleOptions,
+    cache: LookupCache,
 }
 
 impl Module {
-    pub fn from_config_path(path: &str, options: ModuleOptions) -> Result<Arc<Self>, ModuleError> {
+    pub fn from_config_path(path: &str, options: &ModuleOptions) -> Result<Arc<Self>, ModuleError> {
         let config_text = fs::read_to_string(path)
             .map_err(|e| ModuleError::Io(format!("failed reading config {path}: {e}")))?;
         let cfg: KanidmRadiusConfig = toml::from_str(&config_text)
@@ -273,7 +336,7 @@ impl Module {
 
     pub fn from_config(
         cfg: KanidmRadiusConfig,
-        options: ModuleOptions,
+        options: &ModuleOptions,
     ) -> Result<Arc<Self>, ModuleError> {
         if cfg.uri.trim().is_empty() {
             return Err(ModuleError::Config("uri must not be empty".to_string()));
@@ -322,10 +385,9 @@ impl Module {
             cfg,
             required_groups,
             vlan_by_spn,
-            cache: Mutex::new(BTreeMap::new()),
+            cache: LookupCache::new(),
             client,
             runtime,
-            options,
         }))
     }
 
@@ -348,18 +410,12 @@ impl Module {
         let selected_vlan = self.resolve_vlan(&token.groups);
 
         let mut reply = Vec::new();
-        reply.push((REPLY_USER_NAME.to_string(), token.name.clone()));
-        reply.push((
-            REPLY_MESSAGE.to_string(),
-            format!("Kanidm-Uuid: {}", token.uuid),
-        ));
-        reply.push((REPLY_TUNNEL_TYPE.to_string(), "13".to_string()));
-        reply.push((REPLY_TUNNEL_MEDIUM_TYPE.to_string(), "6".to_string()));
-        reply.push((
-            REPLY_TUNNEL_PRIVATE_GROUP_ID.to_string(),
-            selected_vlan.to_string(),
-        ));
-        let control = vec![(CONTROL_CLEARTEXT_PASSWORD.to_string(), token.secret.clone())];
+        reply.push((REPLY_USER_NAME, token.name.clone()));
+        reply.push((REPLY_MESSAGE, format!("Kanidm-Uuid: {}", token.uuid)));
+        reply.push((REPLY_TUNNEL_TYPE, "13".to_string()));
+        reply.push((REPLY_TUNNEL_MEDIUM_TYPE, "6".to_string()));
+        reply.push((REPLY_TUNNEL_PRIVATE_GROUP_ID, selected_vlan.to_string()));
+        let control = vec![(CONTROL_CLEARTEXT_PASSWORD, token.secret.clone())];
         Response::Ok { reply, control }
     }
 
@@ -385,76 +441,27 @@ impl Module {
     ) -> Result<Option<RadiusAuthToken>, ModuleError> {
         let now = Instant::now();
 
-        if let Some(cached) = self.lookup_cache(user_id, now) {
+        if let Some(cached) = self.cache.lookup_cache(user_id, now) {
             return Ok(Some(cached));
         }
 
-        match self.runtime.block_on(self.fetch_token_http(user_id))? {
+        match self.runtime.block_on(self.fetch_token(user_id))? {
             Some(token) => {
-                self.insert_cache(user_id.to_string(), token.clone(), now);
+                self.cache
+                    .insert_cache(user_id.to_string(), token.clone(), now);
                 Ok(Some(token))
             }
             None => Ok(None),
         }
     }
 
-    fn lookup_cache(&self, user_id: &str, now: Instant) -> Option<RadiusAuthToken> {
-        let Ok(cache_guard) = self.cache.lock() else {
-            return None;
-        };
-        let entry = cache_guard.get(user_id)?;
-        if entry.fresh(now, self.options.cache_ttl) {
-            return Some(entry.token.clone());
-        }
-        None
-    }
-
-    fn lookup_stale_cache(&self, user_id: &str, now: Instant) -> Option<RadiusAuthToken> {
-        let Ok(cache_guard) = self.cache.lock() else {
-            return None;
-        };
-        let entry = cache_guard.get(user_id)?;
-        if entry.stale_allowed(
-            now,
-            self.options.cache_ttl,
-            self.options.cache_stale_if_error,
-        ) {
-            return Some(entry.token.clone());
-        }
-        None
-    }
-
-    fn insert_cache(&self, user_id: String, token: RadiusAuthToken, now: Instant) {
-        if let Ok(mut guard) = self.cache.lock() {
-            if guard.len() >= self.options.cache_max_entries && !guard.contains_key(&user_id) {
-                if let Some(oldest_key) = guard
-                    .iter()
-                    .min_by_key(|(_, entry)| entry.fetched_at)
-                    .map(|(k, _)| k.clone())
-                {
-                    guard.remove(&oldest_key);
-                }
-            }
-            guard.insert(
-                user_id,
-                CacheEntry {
-                    token,
-                    fetched_at: now,
-                },
-            );
-        }
-    }
-
-    async fn fetch_token_http(
-        &self,
-        user_id: &str,
-    ) -> Result<Option<RadiusAuthToken>, ModuleError> {
+    async fn fetch_token(&self, user_id: &str) -> Result<Option<RadiusAuthToken>, ModuleError> {
         match self.client.idm_account_radius_token_get(user_id).await {
             Ok(token) => Ok(Some(token)),
             Err(ClientError::Http(status, _, _)) if status == StatusCode::NOT_FOUND => Ok(None),
             Err(error) => {
                 let now = Instant::now();
-                if let Some(stale) = self.lookup_stale_cache(user_id, now) {
+                if let Some(stale) = self.cache.lookup_stale_cache(user_id, now) {
                     tracing::warn!("using stale cache token after upstream error");
                     return Ok(Some(stale));
                 }
@@ -517,7 +524,7 @@ fn auth_result_from_pairs(response: &Response) -> AuthResultC {
     }
 }
 
-fn into_kvpairs(pairs: Vec<(String, String)>) -> Vec<KVPair> {
+fn into_kvpairs(pairs: Vec<(&'static str, String)>) -> Vec<KVPair> {
     #[allow(clippy::expect_used)]
     pairs
         .into_iter()
@@ -554,7 +561,7 @@ pub extern "C" fn rlm_kanidm_instantiate(config_path: *const c_char) -> *mut Mod
     let Ok(path) = cstr_to_string(config_path) else {
         return ptr::null_mut();
     };
-    match Module::from_config_path(&path, ModuleOptions::default()) {
+    match Module::from_config_path(&path, &ModuleOptions::default()) {
         Ok(module) => {
             let handle = ModuleHandle { module };
             Box::into_raw(Box::new(handle))
@@ -706,7 +713,7 @@ mod tests {
             ..KanidmRadiusConfig::default()
         };
 
-        let module = Module::from_config(cfg, ModuleOptions::default()).expect("module");
+        let module = Module::from_config(cfg, &ModuleOptions::default()).expect("module");
         let groups = vec![
             Group {
                 spn: "g1".to_string(),
@@ -729,7 +736,7 @@ mod tests {
             radius_required_groups: vec!["required-spn".to_string(), "required-uuid".to_string()],
             ..KanidmRadiusConfig::default()
         };
-        let module = Module::from_config(cfg, ModuleOptions::default()).expect("module");
+        let module = Module::from_config(cfg, &ModuleOptions::default()).expect("module");
 
         let token_spn = sample_token(vec![Group {
             spn: "required-spn".to_string(),
