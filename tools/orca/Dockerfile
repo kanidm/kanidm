@@ -25,7 +25,6 @@ RUN \
         make \
         automake \
         autoconf \
-        libopenssl-3-devel \
         pam-devel \
         libudev-devel \
         sqlite3-devel \
