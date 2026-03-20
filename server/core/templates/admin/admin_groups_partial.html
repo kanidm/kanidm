@@ -9,15 +9,20 @@
     </ol>
 </nav>
 
-<ul class="list-group">
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Uuid</th>
+        </tr>
+    </thead>
+    <tbody>
     (% for (group, _) in groups %)
-    <li class="list-group-item d-flex flex-row justify-content-between">
-        <div class="d-flex align-items-center">
-            <a href="/ui/admin/group/(( group.uuid ))/view" hx-target="#main">(( group.name ))</a> <span class="text-secondary d-none d-lg-inline-block mx-4">(( group.uuid ))</span>
-        </div>
-        <div class="buttons float-end">
-        </div>
-    </li>
+        <tr>
+            <td><a href="/ui/admin/group/(( group.uuid ))/view" hx-target="#main">(( group.name ))</a></td>
+            <td>(( group.uuid ))</td>
+        </tr>
     (% endfor %)
-</ul>
+    </tbody>
+</table>
 (% endblock %)
