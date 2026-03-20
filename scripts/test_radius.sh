@@ -31,6 +31,7 @@ IDM_ADMIN_SPN="${IDM_ADMIN_SPN:-idm_admin@localhost}"
 ADMIN_SPN="${ADMIN_SPN:-admin@localhost}"
 ASSERT_VLAN="${ASSERT_VLAN:-0}"
 RUST_CACHE_WAIT_SECONDS="${RUST_CACHE_WAIT_SECONDS:-35}"
+KANIDM_TMP_DIR="${KANIDM_TMP_DIR:-/tmp/kanidm}"
 
 KANIDM_STARTED=0
 KANIDMD_PID=""
@@ -39,7 +40,7 @@ RADIUS_MOD_FILE=""
 RADIUS_DEFAULT_SITE_FILE=""
 RADIUS_INNER_SITE_FILE=""
 RADIUS_CHECK_EAP_TLS_SITE_FILE=""
-KANIDMD_LOG_FILE="/tmp/kanidm/test_radius_kanidmd.log"
+KANIDMD_LOG_FILE="${KANIDM_TMP_DIR}/test_radius_kanidmd.log"
 TESTS_PASSED=0
 TESTS_FAILED=0
 
@@ -49,7 +50,7 @@ DEFAULT_RADIUS_CONFIG="${REPO_ROOT}/examples/kanidm" # so we can shove extra stu
 RUST_MOD_TEMPLATE="${REPO_ROOT}/unix_integration/rlm_kanidm/container/mods-available/kanidm_rust"
 SERVER_DAEMON_DIR="${REPO_ROOT}/server/daemon"
 KANIDM_CONFIG_FILE="${SERVER_DAEMON_DIR}/insecure_server.toml"
-KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
+KANIDM_CA_PATH="${KANIDM_TMP_DIR}/ca.pem"
 
 log() {
     echo "[test_radius] $*"
@@ -112,6 +113,10 @@ check_cmd() {
 check_file() {
     local file="${1}"
     [[ -f "${file}" ]] || die "Missing required file: ${file}"
+}
+
+ensure_kanidm_tmp_dir() {
+    mkdir -p "${KANIDM_TMP_DIR}"
 }
 
 wait_for_kanidm() {
@@ -186,12 +191,13 @@ ensure_rust_image_ready() {
 }
 
 prepare_rust_radius_overrides() {
-    RADIUS_MOD_FILE="$(mktemp /tmp/kanidm/radius_mod_kanidm.XXXXXX)"
+    ensure_kanidm_tmp_dir
+    RADIUS_MOD_FILE="$(mktemp "${KANIDM_TMP_DIR}/radius_mod_kanidm.XXXXXX")"
     cp "${RUST_MOD_TEMPLATE}" "${RADIUS_MOD_FILE}"
 
-    RADIUS_DEFAULT_SITE_FILE="$(mktemp /tmp/kanidm/radius_site_default.XXXXXX)"
-    RADIUS_INNER_SITE_FILE="$(mktemp /tmp/kanidm/radius_site_inner.XXXXXX)"
-    RADIUS_CHECK_EAP_TLS_SITE_FILE="$(mktemp /tmp/kanidm/radius_site_check_eap_tls.XXXXXX)"
+    RADIUS_DEFAULT_SITE_FILE="$(mktemp "${KANIDM_TMP_DIR}/radius_site_default.XXXXXX")"
+    RADIUS_INNER_SITE_FILE="$(mktemp "${KANIDM_TMP_DIR}/radius_site_inner.XXXXXX")"
+    RADIUS_CHECK_EAP_TLS_SITE_FILE="$(mktemp "${KANIDM_TMP_DIR}/radius_site_check_eap_tls.XXXXXX")"
     sed -E 's/^[[:space:]]*python3[[:space:]]*$/    kanidm/' "${REPO_ROOT}/rlm_python/sites-available/default" > "${RADIUS_DEFAULT_SITE_FILE}"
     sed -E 's/^[[:space:]]*python3[[:space:]]*$/    kanidm/' "${REPO_ROOT}/rlm_python/sites-available/inner-tunnel" > "${RADIUS_INNER_SITE_FILE}"
     sed -E 's/^[[:space:]]*python3[[:space:]]*$/    kanidm/' "${REPO_ROOT}/rlm_python/sites-available/check-eap-tls" > "${RADIUS_CHECK_EAP_TLS_SITE_FILE}"
@@ -199,13 +205,13 @@ prepare_rust_radius_overrides() {
 
 prepare_rust_radius_certs() {
     local cert_source="$1"
-    local cert_target="/tmp/kanidm/server.pem"
+    local cert_target="${KANIDM_TMP_DIR}/server.pem"
 
-    cat "${cert_source}" "/tmp/kanidm/key.pem" > "${cert_target}"
+    cat "${cert_source}" "${KANIDM_TMP_DIR}/key.pem" > "${cert_target}"
     chmod 644 "${cert_target}"
 
     if command -v openssl >/dev/null 2>&1; then
-        openssl rehash /tmp/kanidm >/dev/null 2>&1 || true
+        openssl rehash "${KANIDM_TMP_DIR}" >/dev/null 2>&1 || true
     fi
 }
 
@@ -345,6 +351,7 @@ fi
 
 build_kanidm_cmd
 build_kanidmd_cmd
+ensure_kanidm_tmp_dir
 
 case "${RADIUS_MODULE_IMPL}" in
     rust)
@@ -374,17 +381,16 @@ KANIDM_URL="$(grep -E '^origin.*https' "${KANIDM_CONFIG_FILE}" | awk '{print $NF
 
 if ! curl --cacert "${KANIDM_CA_PATH}" -fs "${KANIDM_URL%/}/status" >/dev/null 2>&1; then
     log "Kanidm not healthy; starting temporary dev server"
-    mkdir -p /tmp/kanidm
-    rm -f /tmp/kanidm/kanidm.db
+    rm -f "${KANIDM_TMP_DIR}/kanidm.db"
     (
         cd "${SERVER_DAEMON_DIR}" || exit 1
         export KANIDM_CONFIG="./insecure_server.toml"
         "${KANIDMD_CMD[@]}" cert-generate >/dev/null
         "${KANIDMD_CMD[@]}" server >"${KANIDMD_LOG_FILE}" 2>&1 &
-        echo $! > /tmp/kanidm/test_radius_kanidmd.pid
+        echo $! > "${KANIDM_TMP_DIR}/test_radius_kanidmd.pid"
     )
-    KANIDMD_PID="$(cat /tmp/kanidm/test_radius_kanidmd.pid)"
-    rm -f /tmp/kanidm/test_radius_kanidmd.pid
+    KANIDMD_PID="$(cat "${KANIDM_TMP_DIR}/test_radius_kanidmd.pid")"
+    rm -f "${KANIDM_TMP_DIR}/test_radius_kanidmd.pid"
     KANIDM_STARTED=1
 fi
 
@@ -445,16 +451,16 @@ API_TOKEN_JSON="$("${KANIDM_CMD[@]}" service-account api-token generate "${RADIU
 SERVICE_ACCOUNT_TOKEN="$(extract_api_token "${API_TOKEN_JSON}")"
 [[ -n "${SERVICE_ACCOUNT_TOKEN}" ]] || die "Failed to parse service account API token"
 
-CERT_SOURCE="/tmp/kanidm/cert.pem"
+CERT_SOURCE="${KANIDM_TMP_DIR}/cert.pem"
 if [[ ! -f "${CERT_SOURCE}" ]]; then
-    CERT_SOURCE="/tmp/kanidm/chain.pem"
+    CERT_SOURCE="${KANIDM_TMP_DIR}/chain.pem"
 fi
-[[ -f "/tmp/kanidm/ca.pem" ]] || die "Missing /tmp/kanidm/ca.pem"
-[[ -f "/tmp/kanidm/key.pem" ]] || die "Missing /tmp/kanidm/key.pem"
-[[ -f "${CERT_SOURCE}" ]] || die "Missing certificate file (/tmp/kanidm/cert.pem or /tmp/kanidm/chain.pem)"
+[[ -f "${KANIDM_TMP_DIR}/ca.pem" ]] || die "Missing ${KANIDM_TMP_DIR}/ca.pem"
+[[ -f "${KANIDM_TMP_DIR}/key.pem" ]] || die "Missing ${KANIDM_TMP_DIR}/key.pem"
+[[ -f "${CERT_SOURCE}" ]] || die "Missing certificate file (${KANIDM_TMP_DIR}/cert.pem or ${KANIDM_TMP_DIR}/chain.pem)"
 
 CERT_BASENAME="$(basename "${CERT_SOURCE}")"
-RADIUS_CONFIG_FILE="$(mktemp /tmp/kanidm/radius_e2e.XXXXXX.toml)"
+RADIUS_CONFIG_FILE="$(mktemp "${KANIDM_TMP_DIR}/radius_e2e.XXXXXX.toml")"
 KANIDM_URL_ESCAPED="$(toml_escape "${KANIDM_URL}")"
 SERVICE_ACCOUNT_TOKEN_ESCAPED="$(toml_escape "${SERVICE_ACCOUNT_TOKEN}")"
 RADIUS_GROUP_ESCAPED="$(toml_escape "${RADIUS_GROUP}")"
@@ -485,9 +491,9 @@ DOCKER_RUN_ARGS=(
     -d
     --name "${RADIUS_CONTAINER_NAME}"
     --network host
-    -v /tmp/kanidm/:/data/
-    -v /tmp/kanidm/:/tmp/kanidm/
-    -v /tmp/kanidm/:/certs/
+    -v "${KANIDM_TMP_DIR}/:/data/"
+    -v "${KANIDM_TMP_DIR}/:/tmp/kanidm/"
+    -v "${KANIDM_TMP_DIR}/:/certs/"
     -v "${RADIUS_CONFIG_FILE}:/data/radius.toml:ro"
 )
 DOCKER_CMD_ARGS=()
@@ -496,7 +502,7 @@ if [[ "${RADIUS_MODULE_IMPL}" == "rust" ]]; then
     prepare_rust_radius_certs "${CERT_SOURCE}"
     DOCKER_RUN_ARGS+=(
         --entrypoint /usr/sbin/radiusd
-        -v /tmp/kanidm/:/etc/raddb/certs/
+        -v "${KANIDM_TMP_DIR}/:/etc/raddb/certs/"
         -v "${RADIUS_MOD_FILE}:/etc/raddb/mods-enabled/kanidm:ro"
         -v "${RADIUS_DEFAULT_SITE_FILE}:/etc/raddb/sites-available/default:ro"
         -v "${RADIUS_INNER_SITE_FILE}:/etc/raddb/sites-available/inner-tunnel:ro"

@@ -64,17 +64,49 @@ const CONTROL_CLEARTEXT_PASSWORD: &str = "Cleartext-Password";
 ///
 ///
 /// ```
-#[repr(i32)]
 pub enum Response {
-    Reject = 0,
-    Fail = 1,
-    Ok = 2,
-    Handled = 3,
-    Invalid = 4,
-    UserLock = 5,
-    NotFound = 6,
-    NoOp = 7,
-    Updated = 8,
+    Reject,
+    Fail,
+    Ok {
+        reply: Vec<(String, String)>,
+        control: Vec<(String, String)>,
+    },
+    Handled,
+    Invalid,
+    UserLock,
+    NotFound,
+    NoOp,
+    Updated,
+}
+
+impl Response {
+    pub fn code(&self) -> i32 {
+        match self {
+            Response::Reject => 0,
+            Response::Fail => 1,
+            Response::Ok { .. } => 2,
+            Response::Handled => 3,
+            Response::Invalid => 4,
+            Response::UserLock => 5,
+            Response::NotFound => 6,
+            Response::NoOp => 7,
+            Response::Updated => 8,
+        }
+    }
+
+    pub fn reply(&self) -> Vec<(String, String)> {
+        match self {
+            Response::Ok { reply, .. } => reply.clone(),
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn control(&self) -> Vec<(String, String)> {
+        match self {
+            Response::Ok { control, .. } => control.clone(),
+            _ => Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -169,23 +201,6 @@ impl RequestAttributes {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct AuthorizeResult {
-    pub code: i32,
-    pub reply: Vec<(String, String)>,
-    pub control: Vec<(String, String)>,
-}
-
-impl AuthorizeResult {
-    fn new(code: Response) -> Self {
-        Self {
-            code: code as i32,
-            reply: Vec::new(),
-            control: Vec::new(),
-        }
-    }
-}
-
 #[derive(Debug)]
 struct CacheEntry {
     token: RadiusAuthToken,
@@ -231,7 +246,7 @@ impl std::fmt::Display for ModuleError {
 
 impl From<ModuleError> for AuthResultC {
     fn from(input: ModuleError) -> AuthResultC {
-        auth_error(Response::Fail, input.to_string())
+        auth_error(&Response::Fail, input.to_string())
     }
 }
 
@@ -314,45 +329,38 @@ impl Module {
         }))
     }
 
-    pub fn authorize(&self, attrs: &RequestAttributes) -> AuthorizeResult {
+    pub fn authorize(&self, attrs: &RequestAttributes) -> Response {
         let Some(user_id) = attrs.user_id() else {
-            return AuthorizeResult::new(Response::Invalid);
+            return Response::Invalid;
         };
 
         let token_result = self.fetch_token_with_cache(user_id);
         let token = match token_result {
             Ok(Some(tok)) => tok,
-            Ok(None) => return AuthorizeResult::new(Response::NotFound),
-            Err(_) => return AuthorizeResult::new(Response::Fail),
+            Ok(None) => return Response::NotFound,
+            Err(_) => return Response::Fail,
         };
 
         if !self.user_in_required_groups(&token.groups) {
-            return AuthorizeResult::new(Response::Reject);
+            return Response::Reject;
         }
 
         let selected_vlan = self.resolve_vlan(&token.groups);
-        let mut result = AuthorizeResult::new(Response::Ok);
-        result
-            .reply
-            .push((REPLY_USER_NAME.to_string(), token.name.clone()));
-        result.reply.push((
+
+        let mut reply = Vec::new();
+        reply.push((REPLY_USER_NAME.to_string(), token.name.clone()));
+        reply.push((
             REPLY_MESSAGE.to_string(),
             format!("Kanidm-Uuid: {}", token.uuid),
         ));
-        result
-            .reply
-            .push((REPLY_TUNNEL_TYPE.to_string(), "13".to_string()));
-        result
-            .reply
-            .push((REPLY_TUNNEL_MEDIUM_TYPE.to_string(), "6".to_string()));
-        result.reply.push((
+        reply.push((REPLY_TUNNEL_TYPE.to_string(), "13".to_string()));
+        reply.push((REPLY_TUNNEL_MEDIUM_TYPE.to_string(), "6".to_string()));
+        reply.push((
             REPLY_TUNNEL_PRIVATE_GROUP_ID.to_string(),
             selected_vlan.to_string(),
         ));
-        result
-            .control
-            .push((CONTROL_CLEARTEXT_PASSWORD.to_string(), token.secret.clone()));
-        result
+        let control = vec![(CONTROL_CLEARTEXT_PASSWORD.to_string(), token.secret.clone())];
+        Response::Ok { reply, control }
     }
 
     fn user_in_required_groups(&self, user_groups: &[Group]) -> bool {
@@ -488,13 +496,9 @@ pub(crate) fn cstr_to_string(ptr_in: *const c_char) -> Result<String, ModuleErro
         .map_err(|e| ModuleError::Other(format!("invalid utf-8 string: {e}")))
 }
 
-fn auth_result_from_pairs(
-    code: i32,
-    reply: Vec<(String, String)>,
-    control: Vec<(String, String)>,
-) -> AuthResultC {
-    let reply_vec = into_kvpairs(reply);
-    let control_vec = into_kvpairs(control);
+fn auth_result_from_pairs(response: &Response) -> AuthResultC {
+    let reply_vec = into_kvpairs(response.reply());
+    let control_vec = into_kvpairs(response.control());
     let reply_len = reply_vec.len();
     let control_len = control_vec.len();
     let mut reply_boxed = reply_vec.into_boxed_slice();
@@ -504,7 +508,7 @@ fn auth_result_from_pairs(
     std::mem::forget(reply_boxed);
     std::mem::forget(control_boxed);
     AuthResultC {
-        code,
+        code: response.code(),
         reply: reply_ptr,
         reply_len,
         control: control_ptr,
@@ -529,13 +533,13 @@ fn into_kvpairs(pairs: Vec<(String, String)>) -> Vec<KVPair> {
 }
 
 /// Create an AuthError result with the given message. Might panic if `message` can't be turned into a C string, but since we only call this with static strings or error messages from Rust code, that should be fine.
-fn auth_error(code: Response, message: String) -> AuthResultC {
+fn auth_error(response: &Response, message: String) -> AuthResultC {
     // At some point we just have to convert to a C string, and if that fails we can't do much about it, so it's fine to panic with a literal here
     #[allow(clippy::expect_used)]
     let c_message = CString::new(message)
         .unwrap_or_else(|_| CString::new("module error").expect("literal CString"));
     AuthResultC {
-        code: code as i32,
+        code: response.code(),
         reply: ptr::null_mut(),
         reply_len: 0,
         control: ptr::null_mut(),
@@ -586,7 +590,7 @@ pub unsafe extern "C" fn rlm_kanidm_authorize(
     request_attrs_len: usize,
 ) -> AuthResultC {
     if handle.is_null() {
-        return auth_error(Response::Fail, "null module handle".to_string());
+        return auth_error(&Response::Fail, "null module handle".to_string());
     }
 
     let attrs = match kvpairs_to_attributes(request_attrs, request_attrs_len) {
@@ -595,8 +599,7 @@ pub unsafe extern "C" fn rlm_kanidm_authorize(
     };
 
     let module = unsafe { &(*handle).module };
-    let result = module.authorize(&attrs);
-    auth_result_from_pairs(result.code, result.reply, result.control)
+    auth_result_from_pairs(&module.authorize(&attrs))
 }
 
 /// Free memory allocated in `AuthResultC`.
@@ -613,7 +616,7 @@ pub extern "C" fn rlm_kanidm_free_auth_result(result: AuthResultC) {
 
 /// Helper to free an array of KVPair allocated in Rust and returned to C. This should be called for the `reply` and `control` fields of `AuthResultC` after the caller is done using them, to avoid memory leaks.
 fn free_kv_pairs(ptr_pairs: *mut KVPair, len: usize) {
-    if ptr_pairs.is_null() || len == 0 {
+    if ptr_pairs.is_null() {
         return;
     }
     let slice_ptr = ptr::slice_from_raw_parts_mut(ptr_pairs, len);
@@ -641,10 +644,10 @@ fn kvpairs_to_attributes(
             "request_attrs pointer is null with non-zero length".to_string(),
         ));
     }
-    let attrs_slice = if request_attrs_len == 0 {
-        &[]
-    } else {
+    let attrs_slice: &[KVPair] = if request_attrs_len != 0 {
         unsafe { std::slice::from_raw_parts(request_attrs, request_attrs_len) }
+    } else {
+        &[]
     };
     let mut attrs = BTreeMap::<String, String>::new();
     for pair in attrs_slice {
