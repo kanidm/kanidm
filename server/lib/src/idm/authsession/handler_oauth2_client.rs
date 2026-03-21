@@ -88,6 +88,7 @@ impl CredHandlerOAuth2Client {
                     ..Default::default()
                 },
                 max_age: None,
+                prompt: None,
                 unknown_keys: Default::default(),
             },
         )

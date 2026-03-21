@@ -66,6 +66,7 @@ pub struct AuthorisationRequest {
     pub oidc_ext: AuthorisationRequestOidc,
     // Needs to be hoisted here due to serde flatten bug #3185
     pub max_age: Option<i64>,
+    pub prompt: Option<Prompt>,
     #[serde(flatten)]
     pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
 }
@@ -436,6 +437,18 @@ pub enum ResponseMode {
 fn response_modes_supported_default() -> Vec<ResponseMode> {
     vec![ResponseMode::Query, ResponseMode::Fragment]
 }
+
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Prompt {
+    None,
+    Login,
+    Consent,
+    SelectAccount,
+    #[serde(other, deserialize_with = "deserialize_ignore_any")]
+    Invalid,
+}
+
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
