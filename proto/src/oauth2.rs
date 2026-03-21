@@ -449,7 +449,6 @@ pub enum Prompt {
     Invalid,
 }
 
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum GrantType {

@@ -25,7 +25,6 @@ use crypto_glue::{s256::Sha256, traits::Digest};
 use hashbrown::HashMap;
 use hashbrown::HashSet;
 use kanidm_proto::constants::*;
-use kanidm_proto::oauth2::{IssuedTokenType, Prompt};
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AccessTokenType, AuthorisationRequest, ClaimType, ClientAuth,
@@ -35,6 +34,7 @@ pub use kanidm_proto::oauth2::{
     PkceAlg, PkceRequest, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
     TokenRevokeRequest, OAUTH2_TOKEN_TYPE_ACCESS_TOKEN,
 };
+use kanidm_proto::oauth2::{IssuedTokenType, Prompt};
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
 use std::collections::btree_map::Entry as BTreeEntry;
@@ -2327,7 +2327,7 @@ impl IdmServerProxyReadTransaction<'_> {
         // prompt - if set to login, we need to force a re-auth. But we don't want to
         // if the user "only just" logged in, that's annoying. So we need a time window for
         // this, to detect when we should force it to the consent req.
-        // 
+        //
         // Idk man, Sure its a little awkward but with how few apps actually use `prompt=login`
         // I think it is unlikely we will cause a significant amount of user friction by forcing
         // Login on every request with this param.
@@ -2403,7 +2403,8 @@ impl IdmServerProxyReadTransaction<'_> {
 
         // OIDC Core 1.0 §3.1.2.1:
         // prompt=consent - The Authorization Server SHOULD prompt the End-User for consent
-        let force_consent = auth_req.prompt == Some(Prompt::Consent) && o2rs.enable_consent_prompt();
+        let force_consent =
+            auth_req.prompt == Some(Prompt::Consent) && o2rs.enable_consent_prompt();
 
         if !force_consent && (consent_previously_granted || !o2rs.enable_consent_prompt()) {
             if event_enabled!(tracing::Level::DEBUG) {
@@ -8189,7 +8190,10 @@ mod tests {
         assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
     }
 
-    fn auth_req_with_prompt(pkce_request: PkceRequest, prompt: Option<Prompt>) -> AuthorisationRequest {
+    fn auth_req_with_prompt(
+        pkce_request: PkceRequest,
+        prompt: Option<Prompt>,
+    ) -> AuthorisationRequest {
         AuthorisationRequest {
             response_type: ResponseType::Code,
             response_mode: None,
@@ -8205,7 +8209,6 @@ mod tests {
             unknown_keys: Default::default(),
         }
     }
-
 
     async fn grant_consent_for_identity(
         idms: &IdmServer,
@@ -8262,8 +8265,7 @@ mod tests {
 
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::Invalid));
 
-        let result = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
 
         assert!(
             result.unwrap_err() == Oauth2Error::InvalidRequest,
@@ -8293,8 +8295,7 @@ mod tests {
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::None));
 
         // No identity provided (None) - user is not authenticated.
-        let result = idms_prox_read
-            .check_oauth2_authorisation(None, &auth_req, ct);
+        let result = idms_prox_read.check_oauth2_authorisation(None, &auth_req, ct);
 
         assert!(
             result.unwrap_err() == Oauth2Error::LoginRequired,
@@ -8324,8 +8325,7 @@ mod tests {
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::None));
 
         // Ident is authenticated but has never granted consent.
-        let result = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
 
         assert!(
             result.unwrap_err() == Oauth2Error::InteractionRequired,
@@ -8338,7 +8338,7 @@ mod tests {
     /// > The Authorization Server MUST NOT display any authentication or consent
     /// > user interface pages. An error is returned if an End-User is not already
     /// > authenticated
-    /// 
+    ///
     /// If the user is logged in *and* has given consent, we return permitted.
     #[idm_test]
     async fn test_idm_oauth2_prompt_none_with_prior_consent_succeeds(
