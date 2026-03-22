@@ -23,7 +23,7 @@ RADIUS_TEST_USER="${RADIUS_TEST_USER:-radius_test_user}"
 RADIUS_GROUP="${RADIUS_GROUP:-radius_access_allowed}"
 RADIUS_SERVICE_ACCOUNT="${RADIUS_SERVICE_ACCOUNT:-radius_server}"
 RADIUS_DEFAULT_VLAN="${RADIUS_DEFAULT_VLAN:-10}"
-RADIUS_CLIENT_SECRET="${RADIUS_CLIENT_SECRET:-testing123}"
+RADIUS_CLIENT_SECRET="${RADIUS_CLIENT_SECRET:-kanidm-radius-e2e-secret}"
 RADIUS_CONTAINER_NAME="${RADIUS_CONTAINER_NAME:-radiusd-e2e}"
 RADIUS_CLIENT_IP="${RADIUS_CLIENT_IP:-127.0.0.1}"
 RADIUS_CLIENT_NASPORT="${RADIUS_CLIENT_NASPORT:-10}"
@@ -36,10 +36,6 @@ KANIDM_TMP_DIR="${KANIDM_TMP_DIR:-/tmp/kanidm}"
 KANIDM_STARTED=0
 KANIDMD_PID=""
 RADIUS_CONFIG_FILE=""
-RADIUS_MOD_FILE=""
-RADIUS_DEFAULT_SITE_FILE=""
-RADIUS_INNER_SITE_FILE=""
-RADIUS_CHECK_EAP_TLS_SITE_FILE=""
 KANIDMD_LOG_FILE="${KANIDM_TMP_DIR}/test_radius_kanidmd.log"
 TESTS_PASSED=0
 TESTS_FAILED=0
@@ -47,7 +43,6 @@ TESTS_FAILED=0
 SETUP_DEV_SCRIPT="${REPO_ROOT}/scripts/setup_dev_environment.sh"
 RADIUS_RUN_SCRIPT="${REPO_ROOT}/rlm_python/run_radius_container.sh"
 DEFAULT_RADIUS_CONFIG="${REPO_ROOT}/examples/kanidm" # so we can shove extra stuff on the end
-RUST_MOD_TEMPLATE="${REPO_ROOT}/unix_integration/rlm_kanidm/container/mods-available/kanidm_rust"
 SERVER_DAEMON_DIR="${REPO_ROOT}/server/daemon"
 KANIDM_CONFIG_FILE="${SERVER_DAEMON_DIR}/insecure_server.toml"
 KANIDM_CA_PATH="${KANIDM_TMP_DIR}/ca.pem"
@@ -72,18 +67,6 @@ cleanup() {
     fi
     if [[ -n "${RADIUS_CONFIG_FILE}" && -f "${RADIUS_CONFIG_FILE}" ]]; then
         rm -f "${RADIUS_CONFIG_FILE}"
-    fi
-    if [[ -n "${RADIUS_MOD_FILE}" && -f "${RADIUS_MOD_FILE}" ]]; then
-        rm -f "${RADIUS_MOD_FILE}"
-    fi
-    if [[ -n "${RADIUS_DEFAULT_SITE_FILE}" && -f "${RADIUS_DEFAULT_SITE_FILE}" ]]; then
-        rm -f "${RADIUS_DEFAULT_SITE_FILE}"
-    fi
-    if [[ -n "${RADIUS_INNER_SITE_FILE}" && -f "${RADIUS_INNER_SITE_FILE}" ]]; then
-        rm -f "${RADIUS_INNER_SITE_FILE}"
-    fi
-    if [[ -n "${RADIUS_CHECK_EAP_TLS_SITE_FILE}" && -f "${RADIUS_CHECK_EAP_TLS_SITE_FILE}" ]]; then
-        rm -f "${RADIUS_CHECK_EAP_TLS_SITE_FILE}"
     fi
 }
 
@@ -188,31 +171,6 @@ ensure_rust_image_ready() {
         cd "${REPO_ROOT}" || exit 1
         CONTAINER_IMAGE_BASE="${CONTAINER_IMAGE_BASE}" CONTAINER_IMAGE_VERSION="${CONTAINER_IMAGE_VERSION}" make build/radiusd_rust
     )
-}
-
-prepare_rust_radius_overrides() {
-    ensure_kanidm_tmp_dir
-    RADIUS_MOD_FILE="$(mktemp "${KANIDM_TMP_DIR}/radius_mod_kanidm.XXXXXX")"
-    cp "${RUST_MOD_TEMPLATE}" "${RADIUS_MOD_FILE}"
-
-    RADIUS_DEFAULT_SITE_FILE="$(mktemp "${KANIDM_TMP_DIR}/radius_site_default.XXXXXX")"
-    RADIUS_INNER_SITE_FILE="$(mktemp "${KANIDM_TMP_DIR}/radius_site_inner.XXXXXX")"
-    RADIUS_CHECK_EAP_TLS_SITE_FILE="$(mktemp "${KANIDM_TMP_DIR}/radius_site_check_eap_tls.XXXXXX")"
-    sed -E 's/^[[:space:]]*python3[[:space:]]*$/    kanidm/' "${REPO_ROOT}/rlm_python/sites-available/default" > "${RADIUS_DEFAULT_SITE_FILE}"
-    sed -E 's/^[[:space:]]*python3[[:space:]]*$/    kanidm/' "${REPO_ROOT}/rlm_python/sites-available/inner-tunnel" > "${RADIUS_INNER_SITE_FILE}"
-    sed -E 's/^[[:space:]]*python3[[:space:]]*$/    kanidm/' "${REPO_ROOT}/rlm_python/sites-available/check-eap-tls" > "${RADIUS_CHECK_EAP_TLS_SITE_FILE}"
-}
-
-prepare_rust_radius_certs() {
-    local cert_source="$1"
-    local cert_target="${KANIDM_TMP_DIR}/server.pem"
-
-    cat "${cert_source}" "${KANIDM_TMP_DIR}/key.pem" > "${cert_target}"
-    chmod 644 "${cert_target}"
-
-    if command -v openssl >/dev/null 2>&1; then
-        openssl rehash "${KANIDM_TMP_DIR}" >/dev/null 2>&1 || true
-    fi
 }
 
 wait_for_rust_cache_expiry() {
@@ -336,7 +294,6 @@ check_cmd docker
 check_cmd grep
 check_cmd awk
 check_file "${RADIUS_RUN_SCRIPT}"
-check_file "${RUST_MOD_TEMPLATE}"
 if [[ "${RUN_SETUP_DEV_ENV}" == "1" ]]; then
     check_file "${SETUP_DEV_SCRIPT}"
 fi
@@ -361,8 +318,6 @@ case "${RADIUS_MODULE_IMPL}" in
         ensure_rust_image_ready
         log "Validating Rust FreeRADIUS module exists in image ${IMAGE}"
         verify_rust_image_has_module
-        log "Preparing FreeRADIUS config overrides for rust module"
-        prepare_rust_radius_overrides
         ;;
     python)
         if [[ -z "${IMAGE}" ]]; then
@@ -496,22 +451,8 @@ DOCKER_RUN_ARGS=(
     -v "${KANIDM_TMP_DIR}/:/certs/"
     -v "${RADIUS_CONFIG_FILE}:/data/radius.toml:ro"
 )
-DOCKER_CMD_ARGS=()
 
-if [[ "${RADIUS_MODULE_IMPL}" == "rust" ]]; then
-    prepare_rust_radius_certs "${CERT_SOURCE}"
-    DOCKER_RUN_ARGS+=(
-        --entrypoint /usr/sbin/radiusd
-        -v "${KANIDM_TMP_DIR}/:/etc/raddb/certs/"
-        -v "${RADIUS_MOD_FILE}:/etc/raddb/mods-enabled/kanidm:ro"
-        -v "${RADIUS_DEFAULT_SITE_FILE}:/etc/raddb/sites-available/default:ro"
-        -v "${RADIUS_INNER_SITE_FILE}:/etc/raddb/sites-available/inner-tunnel:ro"
-        -v "${RADIUS_CHECK_EAP_TLS_SITE_FILE}:/etc/raddb/sites-available/check-eap-tls:ro"
-    )
-    DOCKER_CMD_ARGS+=(-f -l stdout)
-fi
-
-docker run "${DOCKER_RUN_ARGS[@]}" "${IMAGE}" "${DOCKER_CMD_ARGS[@]}" >/dev/null
+docker run "${DOCKER_RUN_ARGS[@]}" "${IMAGE}" >/dev/null
 
 log "Waiting for FreeRADIUS readiness"
 for _ in $(seq 1 60); do

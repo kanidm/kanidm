@@ -6128,7 +6128,9 @@ dependencies = [
 name = "rlm_kanidm"
 version = "1.10.0-dev"
 dependencies = [
+ "anyhow",
  "bindgen 0.72.1",
+ "clap",
  "kanidm_client",
  "kanidm_proto",
  "libc",

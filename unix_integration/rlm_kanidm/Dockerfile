@@ -26,7 +26,8 @@ RUN mkdir -p /src/kanidm
 COPY . /src/kanidm/
 
 RUN cd /src/kanidm && \
-    cargo build --quiet -p rlm_kanidm  --features freeradius-module --release && \
+    cargo build --quiet -p rlm_kanidm --features freeradius-module --lib --release && \
+    cargo build --quiet -p rlm_kanidm --bin kanidm_radiusd --release && \
     cp /src/kanidm/target/release/librlm_kanidm.so /src/kanidm/target/release/rlm_kanidm.so && \
     rm -rf /tmp/freeradius-src/ && \
     zypper remove -y rust  gcc clang make pkgconf-pkg-config libtalloc-devel libopenssl-devel && \
@@ -40,13 +41,15 @@ EXPOSE 1812 1813
 ENV KANIDM_CONFIG_FILE="/data/radius.toml"
 
 COPY --from=builder /src/kanidm/target/release/rlm_kanidm.so /tmp/rlm_kanidm.so
+COPY --from=builder /src/kanidm/target/release/kanidm_radiusd /tmp/kanidm_radiusd
 
 
-RUN zypper install -y \
+RUN zypper install -y --no-recommends \
     freeradius-client \
     freeradius-server \
-    freeradius-server-utils && \
-    python3 && \
+    freeradius-server-utils \
+    openssl && \
+    rpm -e --nodeps libpython3_13-1_0 python313-base && \
     zypper clean -a
 
 
@@ -55,7 +58,8 @@ COPY unix_integration/rlm_kanidm/container/sites-available/ /etc/raddb/sites-ava
 
 RUN module_dir="$(for d in /usr/lib64/freeradius /usr/lib/freeradius; do [ -d "$d" ] && echo "$d" && break; done)" && \
     test -n "${module_dir}" && \
-    install -m 0755 /tmp/rlm_kanidm.so "${module_dir}/rlm_kanidm.so"
+    install -m 0755 /tmp/rlm_kanidm.so "${module_dir}/rlm_kanidm.so" && \
+    install -m 0755 /tmp/kanidm_radiusd /usr/local/bin/kanidm_radiusd
 
 
 # Enable the native kanidm module and check-eap-tls virtual server.
@@ -72,11 +76,8 @@ RUN chown -R $RADIUS_USER:$RADIUS_USER /etc/raddb/ && \
     chmod 775 /etc/raddb/certs && \
     chmod 640 /etc/raddb/clients.conf
 
-
-COPY rlm_python/radius_entrypoint.py /radius_entrypoint.py
-
 RUN mkdir /data && chown radiusd /data && \
     mkdir -p /etc/raddb/certs/ && chmod a+r /etc/raddb/certs/ -R
 USER $RADIUS_USER
 
-CMD [ "/usr/bin/python3", "/radius_entrypoint.py" ]
+CMD [ "/usr/local/bin/kanidm_radiusd" ]

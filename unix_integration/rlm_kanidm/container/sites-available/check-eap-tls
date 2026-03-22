@@ -109,7 +109,7 @@ authorize {
 	# or, to be more specific, you could use the group's full DN:
 	# if (!(Ldap-Group == "CN=Permitted-Laptops,OU=Groups,DC=example,DC=org")) {
 
-    python3
+    kanidm
 
 	#
 	# This may be a better place to call the files modules when using
