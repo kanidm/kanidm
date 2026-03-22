@@ -162,7 +162,7 @@ authorize {
     # }
     # cache
 
-    python3
+    kanidm
 
 	#
 	#  Enforce daily limits on time spent logged in.

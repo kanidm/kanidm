@@ -44,6 +44,8 @@ use tracing::error;
 #[allow(clippy::upper_case_acronyms)]
 mod freeradius;
 
+pub mod bootstrap;
+
 const ATTR_USER_NAME: &str = "User-Name";
 const ATTR_TLS_CN: &str = "TLS-Client-Cert-Common-Name";
 const ATTR_TLS_SAN_DN_CN: &str = "TLS-Client-Cert-Subject-Alt-Name-Directory-Name-Common-Name";
@@ -58,10 +60,17 @@ const CONTROL_CLEARTEXT_PASSWORD: &str = "Cleartext-Password";
 /// RADIUS response codes as expected by FreeRADIUS.
 /// ```rust
 /// use rlm_kanidm::Response;
-/// assert_eq!(Response::Reject as i32, 0);
-/// assert_eq!(Response::Fail as i32, 1);
-/// assert_eq!(Response::Ok as i32, 2);
-/// assert_eq!(Response::Handled as i32, 3);
+/// assert_eq!(Response::Reject.code(), 0);
+/// assert_eq!(Response::Fail.code(), 1);
+/// assert_eq!(
+///     Response::Ok {
+///         reply: Vec::new(),
+///         control: Vec::new(),
+///     }
+///     .code(),
+///     2
+/// );
+/// assert_eq!(Response::Handled.code(), 3);
 ///
 ///
 /// ```
@@ -123,7 +132,7 @@ pub struct RadiusClientConfig {
     pub secret: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct KanidmRadiusConfig {
     pub uri: String,
     pub auth_token: String,
@@ -144,9 +153,38 @@ pub struct KanidmRadiusConfig {
     pub radius_groups: Vec<RadiusGroupConfig>,
     #[serde(default)]
     pub radius_clients: Vec<RadiusClientConfig>,
+    #[serde(default = "default_radius_cert_path")]
+    pub radius_cert_path: String,
+    #[serde(default = "default_radius_key_path")]
+    pub radius_key_path: String,
+    #[serde(default)]
+    pub radius_ca_path: Option<String>,
+    #[serde(default)]
+    pub radius_ca_dir: Option<String>,
 
     #[serde(default = "default_connect_timeout_secs")]
     pub connect_timeout_secs: u64,
+}
+
+impl Default for KanidmRadiusConfig {
+    fn default() -> Self {
+        Self {
+            uri: String::new(),
+            auth_token: String::new(),
+            verify_hostnames: default_bool_true(),
+            verify_certificate: default_bool_true(),
+            ca_path: None,
+            radius_required_groups: Vec::new(),
+            radius_default_vlan: default_vlan(),
+            radius_groups: Vec::new(),
+            radius_clients: Vec::new(),
+            radius_cert_path: default_radius_cert_path(),
+            radius_key_path: default_radius_key_path(),
+            radius_ca_path: None,
+            radius_ca_dir: None,
+            connect_timeout_secs: default_connect_timeout_secs(),
+        }
+    }
 }
 
 fn default_bool_true() -> bool {
@@ -159,6 +197,14 @@ fn default_vlan() -> u32 {
 
 fn default_connect_timeout_secs() -> u64 {
     30
+}
+
+fn default_radius_cert_path() -> String {
+    "/data/cert.pem".to_string()
+}
+
+fn default_radius_key_path() -> String {
+    "/data/key.pem".to_string()
 }
 
 #[derive(Debug, Clone)]

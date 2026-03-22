@@ -15,11 +15,17 @@ name = "rlm_kanidm"
 crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
+[[bin]]
+name = "kanidm_radiusd"
+path = "src/bin/kanidm_radiusd.rs"
+
 [features]
 default = []
 freeradius-module = []
 
 [dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 libc = { workspace = true }
