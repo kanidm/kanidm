@@ -2583,11 +2583,12 @@ mod tests {
 
         // Manually craft
         let inv1 = Value::DateTime(
+            #[allow(clippy::disallowed_methods)]
             OffsetDateTime::now_utc()
                 .to_offset(time::UtcOffset::from_whole_seconds(36000).unwrap()),
         );
         assert!(!inv1.validate());
-
+        #[allow(clippy::disallowed_methods)]
         let val3 = Value::DateTime(OffsetDateTime::now_utc());
         assert!(val3.validate());
     }

@@ -1324,12 +1324,13 @@ mod tests {
     #[test]
     fn test_valueset_session_purge() {
         let s_uuid = Uuid::new_v4();
-
+        #[deny(clippy::disallowed_methods)]
         let mut vs: ValueSet = ValueSetSession::new(
             s_uuid,
             Session {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
@@ -1364,6 +1365,7 @@ mod tests {
             Session {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
@@ -1378,6 +1380,7 @@ mod tests {
             Session {
                 label: "hacks".to_string(),
                 state: SessionState::RevokedAt(zero_cid.clone()),
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
@@ -1407,6 +1410,7 @@ mod tests {
             Session {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
@@ -1421,6 +1425,7 @@ mod tests {
             Session {
                 label: "hacks".to_string(),
                 state: SessionState::RevokedAt(zero_cid.clone()),
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
@@ -1453,6 +1458,7 @@ mod tests {
             Session {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
@@ -1468,6 +1474,7 @@ mod tests {
                 Session {
                     label: "hacks".to_string(),
                     state: SessionState::RevokedAt(one_cid.clone()),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
@@ -1481,6 +1488,7 @@ mod tests {
                 Session {
                     label: "hacks".to_string(),
                     state: SessionState::RevokedAt(zero_cid.clone()),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
@@ -1517,6 +1525,7 @@ mod tests {
             Session {
                 label: "hacks".to_string(),
                 state: SessionState::NeverExpires,
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 issued_by: IdentityId::Internal(UUID_SYSTEM),
                 cred_id: Uuid::new_v4(),
@@ -1532,6 +1541,7 @@ mod tests {
                 Session {
                     label: "hacks".to_string(),
                     state: SessionState::RevokedAt(one_cid.clone()),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
@@ -1545,6 +1555,7 @@ mod tests {
                 Session {
                     label: "hacks".to_string(),
                     state: SessionState::RevokedAt(zero_cid.clone()),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
@@ -1585,6 +1596,7 @@ mod tests {
                 Session {
                     state: SessionState::RevokedAt(zero_cid),
                     label: "hacks".to_string(),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
@@ -1598,6 +1610,7 @@ mod tests {
                 Session {
                     state: SessionState::RevokedAt(one_cid),
                     label: "hacks".to_string(),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
@@ -1611,6 +1624,7 @@ mod tests {
                 Session {
                     state: SessionState::RevokedAt(two_cid.clone()),
                     label: "hacks".to_string(),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
@@ -1657,6 +1671,7 @@ mod tests {
                 Session {
                     state: SessionState::NeverExpires,
                     label: "hacks".to_string(),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     issued_by: IdentityId::Internal(UUID_SYSTEM),
                     cred_id: Uuid::new_v4(),
@@ -1687,6 +1702,7 @@ mod tests {
             s_uuid,
             Oauth2Session {
                 state: SessionState::NeverExpires,
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
@@ -1717,6 +1733,7 @@ mod tests {
             s_uuid,
             Oauth2Session {
                 state: SessionState::NeverExpires,
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
@@ -1727,6 +1744,7 @@ mod tests {
             s_uuid,
             Oauth2Session {
                 state: SessionState::RevokedAt(zero_cid.clone()),
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
@@ -1752,6 +1770,7 @@ mod tests {
             s_uuid,
             Oauth2Session {
                 state: SessionState::NeverExpires,
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
@@ -1762,6 +1781,7 @@ mod tests {
             s_uuid,
             Oauth2Session {
                 state: SessionState::RevokedAt(zero_cid.clone()),
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
@@ -1790,6 +1810,7 @@ mod tests {
             s_uuid,
             Oauth2Session {
                 state: SessionState::NeverExpires,
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
@@ -1801,6 +1822,7 @@ mod tests {
                 s_uuid,
                 Oauth2Session {
                     state: SessionState::RevokedAt(one_cid.clone()),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
@@ -1810,6 +1832,7 @@ mod tests {
                 r_uuid,
                 Oauth2Session {
                     state: SessionState::RevokedAt(zero_cid.clone()),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
@@ -1844,6 +1867,7 @@ mod tests {
             s_uuid,
             Oauth2Session {
                 state: SessionState::NeverExpires,
+                #[allow(clippy::disallowed_methods)]
                 issued_at: OffsetDateTime::now_utc(),
                 parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
@@ -1855,6 +1879,7 @@ mod tests {
                 s_uuid,
                 Oauth2Session {
                     state: SessionState::RevokedAt(one_cid.clone()),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
@@ -1864,6 +1889,7 @@ mod tests {
                 r_uuid,
                 Oauth2Session {
                     state: SessionState::RevokedAt(zero_cid.clone()),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
@@ -1902,6 +1928,7 @@ mod tests {
                 zero_uuid,
                 Oauth2Session {
                     state: SessionState::RevokedAt(zero_cid),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
@@ -1909,6 +1936,7 @@ mod tests {
             ),
             (
                 one_uuid,
+                #[allow(clippy::disallowed_methods)]
                 Oauth2Session {
                     state: SessionState::RevokedAt(one_cid),
                     issued_at: OffsetDateTime::now_utc(),
@@ -1920,6 +1948,7 @@ mod tests {
                 two_uuid,
                 Oauth2Session {
                     state: SessionState::RevokedAt(two_cid.clone()),
+                    #[allow(clippy::disallowed_methods)]
                     issued_at: OffsetDateTime::now_utc(),
                     parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
