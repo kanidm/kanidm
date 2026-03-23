@@ -512,6 +512,7 @@ async fn test_cache_account_delete() {
 
 #[tokio::test]
 async fn test_cache_account_password() {
+    #[allow(clippy::disallowed_methods)]
     let current_time = OffsetDateTime::now_utc();
     let (cachelayer, async_refresh_rx, adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
@@ -641,6 +642,7 @@ async fn test_cache_account_pam_allowed() {
 
 #[tokio::test]
 async fn test_cache_account_pam_nonexist() {
+    #[allow(clippy::disallowed_methods)]
     let current_time = OffsetDateTime::now_utc();
     let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
@@ -676,6 +678,7 @@ async fn test_cache_account_pam_nonexist() {
 
 #[tokio::test]
 async fn test_cache_account_expiry() {
+    #[allow(clippy::disallowed_methods)]
     let current_time = OffsetDateTime::now_utc();
     let (cachelayer, async_refresh_rx, adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;

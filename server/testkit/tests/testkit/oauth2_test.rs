@@ -112,7 +112,7 @@ async fn test_oauth2_openid_basic_flow_impl(
         .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true)
         .await
         .expect("Failed to update oauth2 config");
-
+    #[allow(clippy::disallowed_methods)]
     rsclient
         .idm_oauth2_rs_rotate_keys(TEST_INTEGRATION_RS_ID, OffsetDateTime::now_utc())
         .await
