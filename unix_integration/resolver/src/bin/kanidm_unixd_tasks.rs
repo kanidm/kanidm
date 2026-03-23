@@ -756,7 +756,9 @@ async fn main() -> ExitCode {
 
             // On linux, notify systemd.
             #[cfg(target_os = "linux")]
-            let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+            unsafe {
+                let _ = sd_notify::notify_and_unset_env( &[sd_notify::NotifyState::Ready]);
+            }
 
             loop {
                 tokio::select! {
