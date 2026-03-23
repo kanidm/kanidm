@@ -1128,7 +1128,7 @@ async fn main_inner(clap_args: clap::ArgMatches) -> ExitCode {
     // On linux, notify systemd.
     #[cfg(target_os = "linux")]
     unsafe {
-        let _ = sd_notify::notify_and_unset_env(true, &[sd_notify::NotifyState::Ready]);
+        let _ = sd_notify::notify_and_unset_env(&[sd_notify::NotifyState::Ready]);
     }
 
     loop {
