@@ -87,4 +87,3 @@ fn default_radius_cert_path() -> String {
 fn default_radius_key_path() -> String {
     "/data/key.pem".to_string()
 }
-

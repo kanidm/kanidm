@@ -3,6 +3,14 @@
 //! - [FreeRADIUS module page](https://wiki.freeradius.org/contributing/Modules)
 //! - [Example module source](https://github.com/jacques/freeradius/blob/master/src/modules/rlm_example/rlm_example.c)
 
+#![allow(clippy::trivially_copy_pass_by_ref)]
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::ptr_offset_with_cast)]
+#![allow(clippy::unnecessary_cast)]
+#![allow(clippy::useless_transmute)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::upper_case_acronyms)]
+
 use crate::{KVPair, ModuleHandle};
 use libc::c_char;
 use std::ffi::{CStr, CString};

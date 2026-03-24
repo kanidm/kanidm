@@ -14,10 +14,6 @@ repository = { workspace = true }
 name = "kanidm_radiusd"
 path = "src/kanidm_radiusd.rs"
 
-[features]
-default = []
-freeradius-module = []
-
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
