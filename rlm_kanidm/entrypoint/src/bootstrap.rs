@@ -234,9 +234,9 @@ pub fn run(config_override: Option<&Path>, debug: bool) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
     use super::*;
     use rlm_kanidm_shared::config::{KanidmRadiusConfig, RadiusClientConfig};
+    use std::io::Cursor;
 
     #[test]
     fn write_clients_conf_renders_message_authenticator_and_proto() {
