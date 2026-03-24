@@ -137,7 +137,7 @@ build/radiusd:
 build/radiusd_rust:	## Build the radiusd docker image locally
 build/radiusd_rust:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
-		-f unix_integration/rlm_kanidm/Dockerfile \
+		-f rlm_kanidm/Dockerfile \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
 		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
 		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) .

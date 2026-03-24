@@ -44,6 +44,8 @@ use tracing::error;
 #[allow(clippy::upper_case_acronyms)]
 mod freeradius;
 
+mod ffi;
+
 pub mod bootstrap;
 
 const ATTR_USER_NAME: &str = "User-Name";
