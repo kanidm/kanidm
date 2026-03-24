@@ -45,7 +45,7 @@ impl QueryServerWriteTransaction<'_> {
                 OperationError::CryptographyError
             })?;
         let not_after = GeneralizedTime::from_unix_duration(
-            self.get_curtime() + Duration::from_secs(REPL_MTLS_CERTIFICATE_DAYS),
+            self.get_curtime() + Duration::from_secs(REPL_MTLS_CERTIFICATE_EXPIRY),
         )
         .map(x509::Time::from)
         .map_err(|err| {
