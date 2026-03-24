@@ -1,4 +1,4 @@
-use crate::KanidmRadiusConfig;
+use rlm_kanidm_shared::config::{KanidmRadiusConfig};
 use anyhow::{anyhow, bail, Context, Result};
 use std::ffi::OsString;
 use std::fs;

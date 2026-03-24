@@ -17,14 +17,14 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 libc = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 toml = { workspace = true }
 tracing = { workspace = true }
+
+rlm_kanidm_shared = { workspace = true }
 
 [build-dependencies]
 bindgen = "0.72.1"

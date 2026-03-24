@@ -1,6 +1,7 @@
 use clap::Parser;
-use rlm_kanidm::bootstrap;
 use std::path::PathBuf;
+
+mod bootstrap;
 
 #[derive(Debug, Parser)]
 struct Cli {

@@ -3,11 +3,6 @@ use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rerun-if-env-changed=FREERADIUS_INCLUDE_DIR");
-    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_FREERADIUS_MODULE");
-
-    if env::var_os("CARGO_FEATURE_FREERADIUS_MODULE").is_none() {
-        return;
-    }
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR must be set"));
 
