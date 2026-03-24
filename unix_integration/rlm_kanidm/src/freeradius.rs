@@ -33,7 +33,6 @@ struct OwnedPair {
 
 const CONFIG_PATH_KEY: &[u8] = b"config_path\0";
 const DEFAULT_CONFIG_PATH: &[u8] = b"/data/radius.toml\0";
-//
 const MODULE_NAME: &[u8] = b"kanidm\0";
 
 const MODULE_METHODS: [fr::rlm_kanidm_packetmethod_t; fr::RLM_KANIDM_MOD_COUNT as usize] = {
