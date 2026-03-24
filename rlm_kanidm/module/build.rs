@@ -3,13 +3,18 @@ use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rerun-if-env-changed=FREERADIUS_INCLUDE_DIR");
+    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_FREERADIUS_MODULE");
+
+    if env::var_os("CARGO_FEATURE_EXTERN_FREERADIUS_MODULE").is_none() {
+        return;
+    }
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR must be set"));
 
     let wrapper_header = include_str!("./include/freeradius_wrapper.h");
 
     let builder = bindgen::Builder::default()
-        .header_contents("freeradius_wrapper.h", &wrapper_header)
+        .header_contents("freeradius_wrapper.h", wrapper_header)
         .allowlist_type("rlm_kanidm_conf_parser_t")
         .allowlist_type("rlm_kanidm_module_t")
         .allowlist_type("rlm_kanidm_.*_t")

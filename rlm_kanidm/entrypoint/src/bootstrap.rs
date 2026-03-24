@@ -1,5 +1,5 @@
-use rlm_kanidm_shared::config::{KanidmRadiusConfig};
 use anyhow::{anyhow, bail, Context, Result};
+use rlm_kanidm_shared::config::KanidmRadiusConfig;
 use std::ffi::OsString;
 use std::fs;
 use std::io::Write;
@@ -302,6 +302,7 @@ fn exec_radiusd(debug: bool) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rlm_kanidm_shared::config::{KanidmRadiusConfig, RadiusClientConfig};
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -362,7 +363,7 @@ mod tests {
         let tmp = TestTempDir::new();
         let clients_conf = tmp.path().join("clients.conf");
         let config = KanidmRadiusConfig {
-            radius_clients: vec![crate::RadiusClientConfig {
+            radius_clients: vec![RadiusClientConfig {
                 name: "localhost".to_string(),
                 ipaddr: "127.0.0.1".to_string(),
                 secret: "radius-secret".to_string(),

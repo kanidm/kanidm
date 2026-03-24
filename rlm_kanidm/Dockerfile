@@ -41,7 +41,7 @@ RUN --mount=type=cache,id=cargo,target=/cargo \
     export SCCACHE_DIR=/sccache && \
     export RUSTC_WRAPPER=/usr/bin/sccache && \
     export CC="/usr/bin/clang" && \
-    cargo build --locked -p rlm_kanidm --lib --release && \
+    cargo build --locked -p rlm_kanidm --features extern-freeradius-module --lib --release && \
     cargo build --locked -p kanidm_radiusd --bin kanidm_radiusd --release && \
     cp /src/kanidm/target/release/librlm_kanidm.so /src/kanidm/target/release/rlm_kanidm.so && \
     sccache -s

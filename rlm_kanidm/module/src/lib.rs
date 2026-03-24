@@ -23,8 +23,8 @@
 
 use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};
 use kanidm_proto::internal::{Group, RadiusAuthToken};
-use rlm_kanidm_shared::config::{KanidmRadiusConfig};
 use libc::c_char;
+use rlm_kanidm_shared::config::KanidmRadiusConfig;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{CStr, CString};
 use std::fs;
@@ -34,13 +34,7 @@ use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 use tracing::error;
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
-#[allow(clippy::indexing_slicing)]
-#[allow(clippy::ptr_offset_with_cast)]
-#[allow(clippy::unnecessary_cast)]
-#[allow(clippy::useless_transmute)]
-#[allow(clippy::too_many_arguments)]
-#[allow(clippy::upper_case_acronyms)]
+#[cfg(feature = "extern-freeradius-module")]
 mod freeradius;
 
 mod ffi;
@@ -117,7 +111,6 @@ impl Response {
         }
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct ModuleOptions {
@@ -625,6 +618,8 @@ fn kvpairs_to_attributes(
 
 #[cfg(test)]
 mod tests {
+    use rlm_kanidm_shared::config::RadiusGroupConfig;
+
     use std::path::PathBuf;
 
     use super::*;

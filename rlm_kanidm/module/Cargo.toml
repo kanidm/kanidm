@@ -15,6 +15,9 @@ name = "rlm_kanidm"
 crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
+[features]
+extern-freeradius-module = []
+
 [dependencies]
 anyhow = { workspace = true }
 kanidm_client = { workspace = true }
