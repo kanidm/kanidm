@@ -4011,6 +4011,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm_radiusd"
+version = "1.10.0-dev"
+dependencies = [
+ "anyhow",
+ "bindgen 0.72.1",
+ "clap",
+ "kanidm_client",
+ "kanidm_proto",
+ "libc",
+ "serde",
+ "tokio",
+ "toml",
+ "tracing",
+]
+
+[[package]]
 name = "kanidm_tools"
 version = "1.10.0-dev"
 dependencies = [

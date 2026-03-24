@@ -1,6 +1,6 @@
 [package]
-name = "rlm_kanidm"
-description = "Kanidm FreeRADIUS module core and FFI surface"
+name = "kanidm_radiusd"
+description = "Kanidm FreeRADIUS container entrypoint"
 
 version = { workspace = true }
 authors = { workspace = true }
@@ -10,14 +10,9 @@ license = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
 
-[lib]
-name = "rlm_kanidm"
-crate-type = ["cdylib", "rlib"]
-path = "src/lib.rs"
-
 [[bin]]
 name = "kanidm_radiusd"
-path = "src/bin/kanidm_radiusd.rs"
+path = "src/kanidm_radiusd.rs"
 
 [features]
 default = []
