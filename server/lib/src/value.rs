@@ -13,16 +13,17 @@ use crate::server::keys::KeyId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
-use crypto_glue::{s256::Sha256Output, traits::Zeroizing};
+use crypto_glue::{
+    s256::Sha256Output,
+    traits::{DecodePem, Zeroizing},
+    x509::Certificate,
+};
 use hashbrown::HashSet;
-use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
 use kanidm_proto::v1::UatPurposeStatus;
 use num_enum::TryFromPrimitive;
-use openssl::ec::EcKey;
-use openssl::pkey::Private;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
@@ -1422,7 +1423,6 @@ pub enum Value {
 
     TotpSecret(String, Totp),
     AuditLogString(Cid, String),
-    EcKeyPrivate(EcKey<Private>),
 
     Image(ImageValue),
     CredentialType(CredentialType),
@@ -2319,7 +2319,6 @@ impl Value {
             | Value::Session(_, _)
             | Value::Oauth2Session(_, _)
             | Value::JwsKeyRs256(_)
-            | Value::EcKeyPrivate(_)
             | Value::UiHint(_)
             | Value::CredentialType(_)
             | Value::Json(_)

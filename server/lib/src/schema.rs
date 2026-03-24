@@ -340,7 +340,6 @@ impl SchemaAttribute {
                 SyntaxType::UiHint => matches!(v, Value::UiHint(_)),
                 SyntaxType::TotpSecret => matches!(v, Value::TotpSecret(_, _)),
                 SyntaxType::AuditLogString => matches!(v, Value::Utf8(_)),
-                SyntaxType::EcKeyPrivate => matches!(v, Value::EcKeyPrivate(_)),
                 SyntaxType::Image => matches!(v, Value::Image(_)),
                 SyntaxType::CredentialType => matches!(v, Value::CredentialType(_)),
                 SyntaxType::WebauthnAttestationCaList => {
@@ -352,6 +351,7 @@ impl SchemaAttribute {
                 SyntaxType::ApplicationPassword => matches!(v, Value::ApplicationPassword(..)),
                 SyntaxType::Json => matches!(v, Value::Json(_)),
                 SyntaxType::Sha256 => matches!(v, Value::Sha256(_)),
+                SyntaxType::EcKeyPrivate => matches!(v, Value::SecretValue(_)),
                 SyntaxType::Message => false,
             };
         if r {

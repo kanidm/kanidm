@@ -1,22 +1,23 @@
+use crypto_glue::{
+    hmac_s1::{HmacSha1, HmacSha1Key},
+    hmac_s256::{HmacSha256, HmacSha256Key},
+    hmac_s512::{HmacSha512, HmacSha512Key},
+    traits::Mac,
+};
+use kanidm_proto::internal::{TotpAlgo as ProtoTotpAlgo, TotpSecret as ProtoTotp};
+use rand::RngExt;
 use std::convert::{TryFrom, TryInto};
 use std::time::{Duration, SystemTime};
 
-use kanidm_proto::internal::{TotpAlgo as ProtoTotpAlgo, TotpSecret as ProtoTotp};
-use openssl::hash::MessageDigest;
-use openssl::pkey::PKey;
-use openssl::sign::Signer;
-use rand::RngExt;
-
 use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
 
-// Update to match advice that totp hmac key should be the same
-// number of bytes as the output.
+// This is the same size as an AES256KEY making it infeasible to bruteforce.
 const SECRET_SIZE_BYTES: usize = 32;
 pub const TOTP_DEFAULT_STEP: u64 = 30;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum TotpError {
-    OpenSSLError,
+    InvalidKeyError,
     HmacError,
     TimeError,
 }
@@ -58,30 +59,55 @@ pub enum TotpAlgo {
 }
 
 impl TotpAlgo {
-    pub(crate) fn digest(self, key: &[u8], counter: u64) -> Result<Vec<u8>, TotpError> {
-        let key = PKey::hmac(key).map_err(|_e| TotpError::OpenSSLError)?;
-        let mut signer =
-            match self {
-                TotpAlgo::Sha1 => Signer::new(MessageDigest::sha1(), &key)
-                    .map_err(|_e| TotpError::OpenSSLError)?,
-                TotpAlgo::Sha256 => Signer::new(MessageDigest::sha256(), &key)
-                    .map_err(|_e| TotpError::OpenSSLError)?,
-                TotpAlgo::Sha512 => Signer::new(MessageDigest::sha512(), &key)
-                    .map_err(|_e| TotpError::OpenSSLError)?,
-            };
-        signer
-            .update(&counter.to_be_bytes())
-            .map_err(|_e| TotpError::OpenSSLError)?;
-        let hmac = signer.sign_to_vec().map_err(|_e| TotpError::OpenSSLError)?;
+    pub(crate) fn digest(self, key_bytes: &[u8], counter: u64) -> Result<Vec<u8>, TotpError> {
+        let hmac = match self {
+            TotpAlgo::Sha1 => {
+                let mut key = HmacSha1Key::default();
 
-        let expect = match self {
-            TotpAlgo::Sha1 => 20,
-            TotpAlgo::Sha256 => 32,
-            TotpAlgo::Sha512 => 64,
+                if key_bytes.len() > key.as_slice().len() {
+                    return Err(TotpError::InvalidKeyError);
+                }
+
+                #[allow(clippy::indexing_slicing)]
+                let key_ref = &mut key.as_mut_slice()[..key_bytes.len()];
+                key_ref.copy_from_slice(key_bytes);
+
+                let mut hmac = HmacSha1::new(&key);
+                hmac.update(&counter.to_be_bytes());
+                hmac.finalize().into_bytes().to_vec()
+            }
+            TotpAlgo::Sha256 => {
+                let mut key = HmacSha256Key::default();
+
+                if key_bytes.len() > key.as_slice().len() {
+                    return Err(TotpError::InvalidKeyError);
+                }
+
+                #[allow(clippy::indexing_slicing)]
+                let key_ref = &mut key.as_mut_slice()[..key_bytes.len()];
+                key_ref.copy_from_slice(key_bytes);
+
+                let mut hmac = HmacSha256::new(&key);
+                hmac.update(&counter.to_be_bytes());
+                hmac.finalize().into_bytes().to_vec()
+            }
+            TotpAlgo::Sha512 => {
+                let mut key = HmacSha512Key::default();
+
+                if key_bytes.len() > key.as_slice().len() {
+                    return Err(TotpError::InvalidKeyError);
+                }
+
+                #[allow(clippy::indexing_slicing)]
+                let key_ref = &mut key.as_mut_slice()[..key_bytes.len()];
+                key_ref.copy_from_slice(key_bytes);
+
+                let mut hmac = HmacSha512::new(&key);
+                hmac.update(&counter.to_be_bytes());
+                hmac.finalize().into_bytes().to_vec()
+            }
         };
-        if hmac.len() != expect {
-            return Err(TotpError::HmacError);
-        }
+
         Ok(hmac)
     }
 }

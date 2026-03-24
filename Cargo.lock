@@ -362,22 +362,25 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
 name = "authenticator"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82d71e457dc518a15eecc90d3b0660dee4b51623b34ac4262c9326e0d7e0f8e2"
+checksum = "bbd6f57365675990f2db272a6560b28945df74cf3749c70aafd9b1c7829edebc"
 dependencies = [
+ "aes",
  "base64 0.21.7",
  "bitflags 1.3.2",
+ "cbc",
  "cfg-if",
  "core-foundation 0.9.4",
  "devd-rs",
+ "hmac 0.12.1",
  "libc",
  "libudev",
  "log",
  "memoffset",
- "openssl",
- "openssl-sys",
+ "p256",
  "rand 0.8.5",
+ "rand_core 0.6.4",
  "runloop",
  "serde",
  "serde_bytes",
@@ -571,6 +574,17 @@ name = "base64urlsafedata"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f7f6be94fa637132933fd0a68b9140bcb60e3d46164cb68e82a2bb8d102b3a"
+dependencies = [
+ "base64 0.21.7",
+ "pastey",
+ "serde",
+]
+
+[[package]]
+name = "base64urlsafedata"
+version = "0.6.0-dev"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "079474127d73fa81d78e0709f88f87535de17a3386f3dc1a721bd33065a88109"
 dependencies = [
  "base64 0.21.7",
  "pastey",
@@ -1001,7 +1015,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8dc33c125f8cf0d52762795a46e42896ff457eb1435f43283e7137045221a657"
 dependencies = [
  "base64 0.22.1",
- "base64urlsafedata",
+ "base64urlsafedata 0.5.4",
  "crypto-glue",
  "hex",
  "kanidm-hsm-crypto",
@@ -1939,21 +1953,6 @@ name = "foldhash"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
-
-[[package]]
-name = "foreign-types"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6f339eb8adc052cd2ca78910fda869aefa38d22d5cb648e6485e4d3fc06f3b1"
-dependencies = [
- "foreign-types-shared",
-]
-
-[[package]]
-name = "foreign-types-shared"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
 name = "form_urlencoded"
@@ -3957,16 +3956,13 @@ dependencies = [
 name = "kanidm_lib_crypto"
 version = "1.10.0-dev"
 dependencies = [
- "argon2",
  "base64 0.22.1",
- "base64urlsafedata",
+ "base64urlsafedata 0.6.0-dev",
  "crypto-glue",
  "hex",
  "kanidm-hsm-crypto",
  "md-5",
  "md4",
- "openssl",
- "openssl-sys",
  "rand 0.10.0",
  "rustls",
  "serde",
@@ -4127,6 +4123,7 @@ dependencies = [
  "axum-extra",
  "axum-htmx",
  "axum-macros",
+ "base64 0.22.1",
  "bytes",
  "chrono",
  "cidr",
@@ -4147,7 +4144,6 @@ dependencies = [
  "kanidmd_lib",
  "ldap3_proto",
  "libc",
- "openssl",
  "opentelemetry",
  "qrcode",
  "regex",
@@ -4184,7 +4180,7 @@ name = "kanidmd_lib"
 version = "1.10.0-dev"
 dependencies = [
  "base64 0.22.1",
- "base64urlsafedata",
+ "base64urlsafedata 0.6.0-dev",
  "bitflags 2.11.0",
  "compact_jwt",
  "concread",
@@ -4207,11 +4203,10 @@ dependencies = [
  "mimalloc",
  "nonempty",
  "num_enum",
- "openssl",
- "openssl-sys",
  "rand 0.10.0",
  "regex",
  "rusqlite",
+ "rustls",
  "serde",
  "serde_cbor_2",
  "serde_json",
@@ -4263,7 +4258,6 @@ dependencies = [
  "kanidmd_lib",
  "ldap3_client",
  "oauth2",
- "openssl",
  "reqwest 0.13.2",
  "serde",
  "serde_json",
@@ -4271,7 +4265,6 @@ dependencies = [
  "testkit-macros",
  "time",
  "tokio",
- "tokio-openssl",
  "tracing",
  "url",
  "uuid",
@@ -5129,48 +5122,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
-name = "openssl"
-version = "0.10.76"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "951c002c75e16ea2c65b8c7e4d3d51d5530d8dfa7d060b4776828c88cfb18ecf"
-dependencies = [
- "bitflags 2.11.0",
- "cfg-if",
- "foreign-types",
- "libc",
- "once_cell",
- "openssl-macros",
- "openssl-sys",
-]
-
-[[package]]
-name = "openssl-macros"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
 name = "openssl-probe"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
-
-[[package]]
-name = "openssl-sys"
-version = "0.9.112"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57d55af3b3e226502be1526dfdba67ab0e9c96fc293004e79576b2b9edb0dbdb"
-dependencies = [
- "cc",
- "libc",
- "pkg-config",
- "vcpkg",
-]
 
 [[package]]
 name = "opentelemetry"
@@ -6471,7 +6426,7 @@ dependencies = [
 name = "scim_proto"
 version = "1.10.0-dev"
 dependencies = [
- "base64urlsafedata",
+ "base64urlsafedata 0.6.0-dev",
  "peg",
  "serde",
  "serde_json",
@@ -6692,9 +6647,9 @@ dependencies = [
 
 [[package]]
 name = "serde_spanned"
-version = "1.0.4"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8bbf91e5a4d6315eee45e704372590b30e260ee83af6639d64557f51b067776"
+checksum = "876ac351060d4f882bb1032b6369eb0aef79ad9df1ea8bc404874d8cc3d0cd98"
 dependencies = [
  "serde_core",
 ]
@@ -6954,14 +6909,14 @@ dependencies = [
 
 [[package]]
 name = "sshkey-attest"
-version = "0.5.4"
+version = "0.6.0-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e96ed05af7b994897d460de87333974147e206a45f791994a44c226b0ab9f846"
+checksum = "e97e87baabd9b7a96ecbf9bff9d3ca9461dfe8e3dc0e6c8c37d3e14e0ad64841"
 dependencies = [
  "base64 0.21.7",
- "base64urlsafedata",
+ "base64urlsafedata 0.6.0-dev",
+ "crypto-glue",
  "nom 7.1.3",
- "openssl",
  "serde",
  "serde_cbor_2",
  "sshkeys",
@@ -7266,17 +7221,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-openssl"
-version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59df6849caa43bb7567f9a36f863c447d95a11d5903c9cc334ba32576a27eadd"
-dependencies = [
- "openssl",
- "openssl-sys",
- "tokio",
-]
-
-[[package]]
 name = "tokio-rustls"
 version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7313,9 +7257,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "1.0.7+spec-1.1.0"
+version = "1.1.0+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd28d57d8a6f6e458bc0b8784f8fdcc4b99a437936056fa122cb234f18656a96"
+checksum = "f8195ca05e4eb728f4ba94f3e3291661320af739c4e43779cbdfae82ab239fcc"
 dependencies = [
  "indexmap 2.13.0",
  "serde_core",
@@ -7328,18 +7272,18 @@ dependencies = [
 
 [[package]]
 name = "toml_datetime"
-version = "1.0.1+spec-1.1.0"
+version = "1.1.0+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b320e741db58cac564e26c607d3cc1fdc4a88fd36c879568c07856ed83ff3e9"
+checksum = "97251a7c317e03ad83774a8752a7e81fb6067740609f75ea2b585b569a59198f"
 dependencies = [
  "serde_core",
 ]
 
 [[package]]
 name = "toml_edit"
-version = "0.25.5+spec-1.1.0"
+version = "0.25.8+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ca1a40644a28bce036923f6a431df0b34236949d111cc07cb6dca830c9ef2e1"
+checksum = "16bff38f1d86c47f9ff0647e6838d7bb362522bdf44006c7068c2b1e606f1f3c"
 dependencies = [
  "indexmap 2.13.0",
  "toml_datetime",
@@ -7349,18 +7293,18 @@ dependencies = [
 
 [[package]]
 name = "toml_parser"
-version = "1.0.10+spec-1.1.0"
+version = "1.1.0+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7df25b4befd31c4816df190124375d5a20c6b6921e2cad937316de3fccd63420"
+checksum = "2334f11ee363607eb04df9b8fc8a13ca1715a72ba8662a26ac285c98aabb4011"
 dependencies = [
  "winnow 1.0.0",
 ]
 
 [[package]]
 name = "toml_writer"
-version = "1.0.7+spec-1.1.0"
+version = "1.1.0+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f17aaa1c6e3dc22b1da4b6bba97d066e354c7945cac2f7852d4e4e7ca7a6b56d"
+checksum = "d282ade6016312faf3e41e57ebbba0c073e4056dab1232ab1cb624199648f8ed"
 
 [[package]]
 name = "tonic"
@@ -7964,37 +7908,36 @@ dependencies = [
 
 [[package]]
 name = "webauthn-attestation-ca"
-version = "0.5.4"
+version = "0.6.0-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fafcf13f7dc1fb292ed4aea22cdd3757c285d7559e9748950ee390249da4da6b"
+checksum = "2a6bba3f4e2e2cfca832f4eb79dd7b7f6a59a888e7726351e5ab790cb626013f"
 dependencies = [
- "base64urlsafedata",
- "openssl",
- "openssl-sys",
+ "base64urlsafedata 0.6.0-dev",
+ "crypto-glue",
  "serde",
+ "serde_with",
  "tracing",
  "uuid",
 ]
 
 [[package]]
 name = "webauthn-authenticator-rs"
-version = "0.5.4"
+version = "0.6.0-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78b41ed08aba475a969094226ae0691a286686210ae497bb2c5d0ed722d8d526"
+checksum = "cb7439d101b5967fc6734941d24a968b70d0c27e1c1a1c2744879a3def6393d0"
 dependencies = [
  "async-stream",
  "async-trait",
  "authenticator",
  "base64 0.21.7",
- "base64urlsafedata",
+ "base64urlsafedata 0.6.0-dev",
  "bitflags 1.3.2",
+ "crypto-glue",
  "futures",
  "hex",
  "nom 7.1.3",
  "num-derive 0.4.2",
  "num-traits",
- "openssl",
- "openssl-sys",
  "rpassword",
  "serde",
  "serde_bytes",
@@ -8014,11 +7957,11 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs"
-version = "0.5.4"
+version = "0.6.0-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b24d082d3360258fefb6ffe56123beef7d6868c765c779f97b7a2fcf06727f8"
+checksum = "3e379c545d596d28034c6a39282550f87e68338b808f93cc4b92fcbd520848fe"
 dependencies = [
- "base64urlsafedata",
+ "base64urlsafedata 0.6.0-dev",
  "serde",
  "tracing",
  "url",
@@ -8028,17 +7971,16 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs-core"
-version = "0.5.4"
+version = "0.6.0-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15784340a24c170ce60567282fb956a0938742dbfbf9eff5df793a686a009b8b"
+checksum = "3ac53e0b6d48f09b8cdc7349d11a01e80c2adb65a88e819bab7e77a3a583cf54"
 dependencies = [
  "base64 0.21.7",
- "base64urlsafedata",
+ "base64urlsafedata 0.6.0-dev",
+ "crypto-glue",
  "der-parser",
  "hex",
  "nom 7.1.3",
- "openssl",
- "openssl-sys",
  "rand 0.9.2",
  "rand_chacha 0.9.0",
  "serde",
@@ -8055,12 +7997,12 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs-proto"
-version = "0.5.4"
+version = "0.6.0-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16a1fb2580ce73baa42d3011a24de2ceab0d428de1879ece06e02e8c416e497c"
+checksum = "03d3b99492f4a00cd24da8b7c88e2fe822b0b415a3fbed0fc11b02c028c89486"
 dependencies = [
  "base64 0.21.7",
- "base64urlsafedata",
+ "base64urlsafedata 0.6.0-dev",
  "serde",
  "serde_json",
  "url",

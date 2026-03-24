@@ -25,7 +25,6 @@ RUN \
         make \
         automake \
         autoconf \
-        libopenssl-3-devel \
         pam-devel \
         libudev-devel \
         sqlite3-devel \
@@ -61,7 +60,7 @@ RUN \
         --release && \
     cargo install \
         --git https://github.com/kanidm/webauthn-rs.git \
-        --rev 66a3d9903b31fa5a67fc00dd65ba8f55695df183 \
+        --rev 2ac5ff0e20f323cd904856a38a15899adf13fa5b \
         --force fido-mds-tool \
         --target-dir="/usr/src/kanidm/target/" && \
     sccache -s

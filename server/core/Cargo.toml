@@ -26,6 +26,7 @@ axum = { workspace = true }
 axum-htmx = { workspace = true }
 axum-extra = { workspace = true, features = ["form"] }
 axum-macros = { workspace = true }
+base64 = { workspace = true }
 bytes = { workspace = true }
 cidr = { workspace = true, features = ["serde"] }
 chrono = { workspace = true }
@@ -45,7 +46,6 @@ kanidm_lib_crypto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 ldap3_proto = { workspace = true }
 libc = { workspace = true }
-openssl = { workspace = true }
 opentelemetry = { workspace = true, features = ["logs"] }
 qrcode = { workspace = true, features = ["svg"] }
 regex = { workspace = true }

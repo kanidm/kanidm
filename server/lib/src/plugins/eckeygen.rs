@@ -1,18 +1,7 @@
-use openssl::ec::{EcGroup, EcKey};
-use openssl::nid::Nid;
-
-use crate::prelude::*;
-use std::sync::Arc;
-
 use super::Plugin;
-
-// it contains all the partialvalues used to match against an Entry's class,
-// we need ALL partialvalues to match in order to target the entry
-static DEFAULT_KEY_GROUP: LazyLock<EcGroup> = LazyLock::new(|| {
-    let nid = Nid::X9_62_PRIME256V1; // NIST P-256 curve
-    #[allow(clippy::unwrap_used)]
-    EcGroup::from_curve_name(nid).unwrap()
-});
+use crate::prelude::*;
+use crate::valueset::ValueSetSecret;
+use std::sync::Arc;
 
 pub struct EcdhKeyGen {}
 
@@ -38,13 +27,9 @@ impl EcdhKeyGen {
                     cand.get_display_id()
                 );
 
-                let new_private_key = EcKey::generate(&DEFAULT_KEY_GROUP).map_err(|e| {
-                    error!(err = ?e, "Unable to generate id verification ECDH private key");
-                    OperationError::CryptographyError
-                })?;
-                cand.add_ava_if_not_exist(
-                    Attribute::IdVerificationEcKey,
-                    crate::value::Value::EcKeyPrivate(new_private_key),
+                cand.set_ava_set(
+                    &Attribute::IdVerificationEcKey,
+                    ValueSetSecret::new("no-longer-used".into()),
                 )
             }
         }

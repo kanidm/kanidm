@@ -592,7 +592,7 @@ mod tests {
     use crate::event::CreateEvent;
     use crate::prelude::*;
     use crate::value::{AuthType, Oauth2Session, OauthClaimMapJoin, Session, SessionState};
-    use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
+    use crypto_glue::{traits::DecodePem, x509::Certificate};
     use kanidm_lib_crypto::CryptoPolicy;
     use kanidm_proto::internal::Filter as ProtoFilter;
     use time::OffsetDateTime;

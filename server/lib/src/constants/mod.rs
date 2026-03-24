@@ -193,7 +193,7 @@ pub const REPL_SUPPLIER_ADVANCE_WINDOW: Duration = Duration::from_secs(600);
 
 /// The number of days that the default replication MTLS cert lasts for when
 /// configured manually. Defaults to 4 years (including 1 day for the leap year).
-pub const REPL_MTLS_CERTIFICATE_DAYS: u32 = 1461;
+pub const REPL_MTLS_CERTIFICATE_EXPIRY: u64 = 1461 * 86400;
 
 /// The default number of entries that a user may retrieve in a search
 pub const DEFAULT_LIMIT_SEARCH_MAX_RESULTS: u64 = 1024;

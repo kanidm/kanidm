@@ -1,5 +1,4 @@
-use kanidm_lib_crypto::prelude::X509;
-use kanidm_lib_crypto::serialise::x509b64;
+use crypto_glue::x509::{x509b64, Certificate};
 use kanidm_proto::constants::{
     AUTH_TOKEN_GRACE_WINDOW, DEFAULT_REPLICATION_ADDRESS, DEFAULT_REPLICATION_ORIGIN,
     DEFAULT_REPL_TASK_POLL_INTERVAL,
@@ -16,19 +15,19 @@ pub enum RepNodeConfig {
     #[serde(rename = "allow-pull")]
     AllowPull {
         #[serde(with = "x509b64")]
-        consumer_cert: X509,
+        consumer_cert: Certificate,
     },
     #[serde(rename = "pull")]
     Pull {
         #[serde(with = "x509b64")]
-        supplier_cert: X509,
+        supplier_cert: Certificate,
         #[serde(default)]
         automatic_refresh: bool,
     },
     #[serde(rename = "mutual-pull")]
     MutualPull {
         #[serde(with = "x509b64")]
-        partner_cert: X509,
+        partner_cert: Certificate,
         #[serde(default)]
         automatic_refresh: bool,
     },

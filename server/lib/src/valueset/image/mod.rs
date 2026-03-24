@@ -1,17 +1,16 @@
-#![allow(dead_code)]
-use crate::valueset::ScimResolveStatus;
-use std::fmt::Display;
-use std::io::Cursor;
-
 use crate::be::dbvalue::DbValueImage;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use crypto_glue::{s256::Sha256, traits::Digest};
 use hashbrown::HashSet;
 use image::codecs::gif::GifDecoder;
 use image::codecs::webp::WebPDecoder;
 use image::ImageDecoder;
 use kanidm_proto::internal::{ImageType, ImageValue};
+use std::fmt::Display;
+use std::io::Cursor;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetImage {
@@ -207,11 +206,11 @@ impl ImageValueThings for ImageValue {
     /// because proto don't need that jazz
     fn hash_imagevalue(&self) -> String {
         let filetype_repr = [self.filetype.clone() as u8];
-        let mut hasher = openssl::sha::Sha256::new();
+        let mut hasher = Sha256::new();
         hasher.update(self.filename.as_bytes());
-        hasher.update(&filetype_repr);
+        hasher.update(filetype_repr);
         hasher.update(&self.contents);
-        hex::encode(hasher.finish())
+        hex::encode(hasher.finalize())
     }
 }
 

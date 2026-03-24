@@ -8,18 +8,14 @@ use crate::value::{
     Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, OauthClaimMapJoin, Session,
 };
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
-use crypto_glue::s256::Sha256Output;
+use crypto_glue::{s256::Sha256Output, x509::Certificate};
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
-use kanidm_lib_crypto::x509_cert::Certificate;
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::JsonValue;
 use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
 use kanidm_proto::v1::OutboundMessage;
-use openssl::ec::EcKey;
-use openssl::pkey::Private;
-use openssl::pkey::Public;
 use smolset::SmolSet;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::cmp::Ordering;
@@ -41,7 +37,6 @@ pub use self::cred::{
     ValueSetPasskey, ValueSetWebauthnAttestationCaList,
 };
 pub use self::datetime::ValueSetDateTime;
-pub use self::eckey::ValueSetEcKeyPrivate;
 pub use self::hexstring::ValueSetHexString;
 use self::image::ValueSetImage;
 pub use self::iname::ValueSetIname;
@@ -80,7 +75,6 @@ mod certificate;
 mod cid;
 mod cred;
 mod datetime;
-pub mod eckey;
 mod hexstring;
 pub mod image;
 mod iname;
@@ -629,16 +623,6 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn to_eckey_private_single(&self) -> Option<&EcKey<Private>> {
-        debug_assert!(false);
-        None
-    }
-
-    fn to_eckey_public_single(&self) -> Option<&EcKey<Public>> {
-        debug_assert!(false);
-        None
-    }
-
     fn as_jws_key_es256_set(&self) -> Option<&HashSet<JwsEs256Signer>> {
         debug_assert!(false);
         None
@@ -665,11 +649,6 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn as_audit_log_string(&self) -> Option<&BTreeMap<Cid, String>> {
-        debug_assert!(false);
-        None
-    }
-
-    fn as_ec_key_private(&self) -> Option<&EcKey<Private>> {
         debug_assert!(false);
         None
     }
@@ -912,7 +891,6 @@ pub fn from_result_value_iter(
         Value::EmailAddress(a, _) => ValueSetEmailAddress::new(a),
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
-        Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
         Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
         Value::CredentialType(c) => ValueSetCredentialType::new(c),
         Value::Certificate(c) => ValueSetCertificate::new(c)?,
@@ -991,7 +969,6 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::TotpSecret(l, t) => ValueSetTotpSecret::new(l, t),
         Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
-        Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
         Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
         Value::CredentialType(c) => ValueSetCredentialType::new(c),
         Value::WebauthnAttestationCaList(ca_list) => {
@@ -1073,7 +1050,6 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::UiHint(set) => ValueSetUiHint::from_dbvs2(set),
         DbValueSetV2::TotpSecret(set) => ValueSetTotpSecret::from_dbvs2(set),
         DbValueSetV2::AuditLogString(set) => ValueSetAuditLogString::from_dbvs2(set),
-        DbValueSetV2::EcKeyPrivate(key) => ValueSetEcKeyPrivate::from_dbvs2(&key),
         DbValueSetV2::PhoneNumber(_, _) | DbValueSetV2::TrustedDeviceEnrollment(_) => {
             debug_assert!(false);
             Err(OperationError::InvalidValueState)
@@ -1091,6 +1067,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Json(object) => Ok(ValueSetJson::new(object)),
         DbValueSetV2::Sha256(set) => ValueSetSha256::from_dbvs2(set),
         DbValueSetV2::Message(object) => Ok(ValueSetMessage::new(object)),
+        DbValueSetV2::EcKeyPrivate(_key) => Err(OperationError::InvalidState),
     }
 }
 
