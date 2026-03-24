@@ -85,7 +85,7 @@ impl QueryServerWriteTransaction<'_> {
         ]);
 
         x509_builder.add_extension(&eku_extension).map_err(|err| {
-            error!(?err, "Unable to extended key usage extension");
+            error!(?err, "Unable to add extended key usage extension");
             OperationError::CryptographyError
         })?;
 
