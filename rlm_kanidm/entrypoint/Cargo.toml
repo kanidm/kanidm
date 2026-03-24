@@ -17,14 +17,5 @@ path = "src/kanidm_radiusd.rs"
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-kanidm_client = { workspace = true }
-kanidm_proto = { workspace = true }
-libc = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread"] }
 toml = { workspace = true }
-tracing = { workspace = true }
-
 rlm_kanidm_shared = { workspace = true }
-
-[build-dependencies]
-bindgen = "0.72.1"
