@@ -17,6 +17,7 @@
 # include <freeradius-devel/modules.h>
 #endif
 
+// TODO: Remove this, it's broken.
 enum {
     RLM_KANIDM_MOD_AUTHORIZE = MOD_AUTHORIZE,
     RLM_KANIDM_MOD_COUNT = MOD_COUNT,
@@ -26,14 +27,4 @@ enum {
     RLM_KANIDM_PW_TYPE_STRING = PW_TYPE_STRING,
     RLM_KANIDM_T_OP_EQ = T_OP_EQ,
 };
-
-typedef struct rlm_kanidm_conf_parser_t {
-    char const *name;
-    int type;
-    size_t offset;
-    void *data;
-    void const *dflt;
-} rlm_kanidm_conf_parser_t;
-
-
 

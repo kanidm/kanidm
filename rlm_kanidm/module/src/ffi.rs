@@ -1,24 +1,27 @@
 //! FFI boundary - this is the translation layer between RLM C structures
 //! and internal native rust types.
 
-use libc::c_char;
-use std::ffi::{CStr};
 use crate::error::ModuleError;
+use crate::{RequestAttributes, Response};
+use libc::c_char;
+use std::collections::BTreeMap;
+use std::ffi::{CStr, CString};
+use std::ptr;
 
-const ATTR_USER_NAME: &str = "User-Name";
-const ATTR_TLS_CN: &str = "TLS-Client-Cert-Common-Name";
-const ATTR_TLS_SAN_DN_CN: &str = "TLS-Client-Cert-Subject-Alt-Name-Directory-Name-Common-Name";
-const REPLY_USER_NAME: &str = "User-Name";
-const REPLY_MESSAGE: &str = "Reply-Message";
-const REPLY_TUNNEL_TYPE: &str = "Tunnel-Type";
-const REPLY_TUNNEL_MEDIUM_TYPE: &str = "Tunnel-Medium-Type";
-const REPLY_TUNNEL_PRIVATE_GROUP_ID: &str = "Tunnel-Private-Group-ID";
-const CONTROL_CLEARTEXT_PASSWORD: &str = "Cleartext-Password";
+// TODO: These should be private!
+pub const ATTR_USER_NAME: &str = "User-Name";
+pub const ATTR_TLS_CN: &str = "TLS-Client-Cert-Common-Name";
+pub const ATTR_TLS_SAN_DN_CN: &str = "TLS-Client-Cert-Subject-Alt-Name-Directory-Name-Common-Name";
+pub const REPLY_USER_NAME: &str = "User-Name";
+pub const REPLY_MESSAGE: &str = "Reply-Message";
+pub const REPLY_TUNNEL_TYPE: &str = "Tunnel-Type";
+pub const REPLY_TUNNEL_MEDIUM_TYPE: &str = "Tunnel-Medium-Type";
+pub const REPLY_TUNNEL_PRIVATE_GROUP_ID: &str = "Tunnel-Private-Group-ID";
+pub const CONTROL_CLEARTEXT_PASSWORD: &str = "Cleartext-Password";
 
-
-struct OwnedPair {
-    key: CString,
-    value: CString,
+pub struct OwnedPair {
+    pub key: CString,
+    pub value: CString,
 }
 
 pub(crate) fn cstr_to_string(ptr_in: *const c_char) -> Result<String, ModuleError> {
@@ -31,9 +34,8 @@ pub(crate) fn cstr_to_string(ptr_in: *const c_char) -> Result<String, ModuleErro
         .map_err(|e| ModuleError::Other(format!("invalid utf-8 string: {e}")))
 }
 
-
 /// Helper to free an array of KVPair allocated in Rust and returned to C. This should be called for the `reply` and `control` fields of `AuthResultC` after the caller is done using them, to avoid memory leaks.
-fn free_kv_pairs(ptr_pairs: *mut KVPair, len: usize) {
+pub fn free_kv_pairs(ptr_pairs: *mut KVPair, len: usize) {
     if ptr_pairs.is_null() {
         return;
     }
@@ -53,7 +55,7 @@ fn free_kv_pairs(ptr_pairs: *mut KVPair, len: usize) {
     }
 }
 
-fn kvpairs_to_attributes(
+pub fn kvpairs_to_attributes(
     request_attrs: *const KVPair,
     request_attrs_len: usize,
 ) -> Result<RequestAttributes, ModuleError> {
@@ -92,7 +94,13 @@ pub struct AuthResultC {
     pub error: *mut c_char,
 }
 
-fn auth_result_from_pairs(response: &Response) -> AuthResultC {
+impl From<ModuleError> for AuthResultC {
+    fn from(input: ModuleError) -> AuthResultC {
+        auth_error(&Response::Fail, input.to_string())
+    }
+}
+
+pub fn auth_result_from_pairs(response: &Response) -> AuthResultC {
     let reply_vec = into_kvpairs(response.reply());
     let control_vec = into_kvpairs(response.control());
     let reply_len = reply_vec.len();
@@ -129,7 +137,7 @@ fn into_kvpairs(pairs: Vec<(&'static str, String)>) -> Vec<KVPair> {
 }
 
 /// Create an AuthError result with the given message. Might panic if `message` can't be turned into a C string, but since we only call this with static strings or error messages from Rust code, that should be fine.
-fn auth_error(response: &Response, message: String) -> AuthResultC {
+pub fn auth_error(response: &Response, message: String) -> AuthResultC {
     // At some point we just have to convert to a C string, and if that fails we can't do much about it, so it's fine to panic with a literal here
     #[allow(clippy::expect_used)]
     let c_message = CString::new(message)
@@ -143,5 +151,3 @@ fn auth_error(response: &Response, message: String) -> AuthResultC {
         error: c_message.into_raw(),
     }
 }
-
-

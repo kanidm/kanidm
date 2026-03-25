@@ -1,4 +1,3 @@
-
 #[derive(Debug)]
 pub enum ModuleError {
     Io(String),
@@ -18,12 +17,4 @@ impl std::fmt::Display for ModuleError {
     }
 }
 
-impl From<ModuleError> for AuthResultC {
-    fn from(input: ModuleError) -> AuthResultC {
-        auth_error(&Response::Fail, input.to_string())
-    }
-}
-
 impl std::error::Error for ModuleError {}
-
-

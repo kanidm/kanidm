@@ -31,3 +31,4 @@ rlm_kanidm_shared = { workspace = true }
 
 [build-dependencies]
 bindgen = "0.72.1"
+cc = "^1.2.57"
