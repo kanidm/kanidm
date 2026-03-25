@@ -28,6 +28,7 @@ fn main() {
         .allowlist_type("module_t")
         .allowlist_type("packetmethod")
         .allowlist_item("rlm_components")
+        .allowlist_item("rlm_kanidm_module")
         .allowlist_item("rlm_rcodes")
         .allowlist_item("rlm_rcode_t")
         .allowlist_item("vp_cursor_t")

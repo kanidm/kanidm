@@ -2,36 +2,32 @@
 //! and internal native rust types.
 
 use crate::error::ModuleError;
-use crate::{RequestAttributes, Response};
+use crate::freeradius::rlm_rcodes;
+use crate::{RequestAttributes, Response, ResponseControlAttributes, ResponseReplyAttributes};
 use libc::c_char;
-use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::ptr;
 
 // TODO: These should be private!
-pub const ATTR_USER_NAME: &str = "User-Name";
-pub const ATTR_TLS_CN: &str = "TLS-Client-Cert-Common-Name";
-pub const ATTR_TLS_SAN_DN_CN: &str = "TLS-Client-Cert-Subject-Alt-Name-Directory-Name-Common-Name";
-pub const REPLY_USER_NAME: &str = "User-Name";
-pub const REPLY_MESSAGE: &str = "Reply-Message";
-pub const REPLY_TUNNEL_TYPE: &str = "Tunnel-Type";
-pub const REPLY_TUNNEL_MEDIUM_TYPE: &str = "Tunnel-Medium-Type";
-pub const REPLY_TUNNEL_PRIVATE_GROUP_ID: &str = "Tunnel-Private-Group-ID";
-pub const CONTROL_CLEARTEXT_PASSWORD: &str = "Cleartext-Password";
-
-pub struct OwnedPair {
-    pub key: CString,
-    pub value: CString,
-}
+pub const ATTR_USER_NAME: &CStr = c"User-Name";
+pub const ATTR_TLS_CN: &CStr = c"TLS-Client-Cert-Common-Name";
+pub const ATTR_TLS_SAN_DN_CN: &CStr =
+    c"TLS-Client-Cert-Subject-Alt-Name-Directory-Name-Common-Name";
+pub const REPLY_USER_NAME: &CStr = c"User-Name";
+pub const REPLY_MESSAGE: &CStr = c"Reply-Message";
+pub const REPLY_TUNNEL_TYPE: &CStr = c"Tunnel-Type";
+pub const REPLY_TUNNEL_MEDIUM_TYPE: &CStr = c"Tunnel-Medium-Type";
+pub const REPLY_TUNNEL_PRIVATE_GROUP_ID: &CStr = c"Tunnel-Private-Group-ID";
+pub const CONTROL_CLEARTEXT_PASSWORD: &CStr = c"Cleartext-Password";
 
 pub(crate) fn cstr_to_string(ptr_in: *const c_char) -> Result<String, ModuleError> {
     if ptr_in.is_null() {
-        return Err(ModuleError::Other("null string pointer".to_string()));
+        return Err(ModuleError::Other("null pointer".to_string()));
     }
     let cstr = unsafe { CStr::from_ptr(ptr_in) };
     cstr.to_str()
-        .map(|s| s.to_string())
-        .map_err(|e| ModuleError::Other(format!("invalid utf-8 string: {e}")))
+        .map(String::from)
+        .map_err(|err| ModuleError::Other(format!("invalid utf-8 string: {err}")))
 }
 
 /// Helper to free an array of KVPair allocated in Rust and returned to C. This should be called for the `reply` and `control` fields of `AuthResultC` after the caller is done using them, to avoid memory leaks.
@@ -39,9 +35,12 @@ pub fn free_kv_pairs(ptr_pairs: *mut KVPair, len: usize) {
     if ptr_pairs.is_null() {
         return;
     }
-    let slice_ptr = ptr::slice_from_raw_parts_mut(ptr_pairs, len);
-    let boxed = unsafe { Box::from_raw(slice_ptr) };
-    for pair in boxed.iter() {
+
+    // This works because of the use of shrink_to_fit in ownedpairs.into().
+    let pairs = unsafe { Vec::from_raw_parts(ptr_pairs, len, len) };
+
+    // This drains and frees Pairs at the end.
+    for pair in pairs {
         if !pair.key.is_null() {
             unsafe {
                 drop(CString::from_raw(pair.key.cast_mut()));
@@ -69,13 +68,27 @@ pub fn kvpairs_to_attributes(
     } else {
         &[]
     };
-    let mut attrs = BTreeMap::<String, String>::new();
+
+    let mut request_attrs = RequestAttributes::default();
+
     for pair in attrs_slice {
-        let key = cstr_to_string(pair.key)?;
         let value = cstr_to_string(pair.value)?;
-        attrs.insert(key, value);
+
+        let key = unsafe { CStr::from_ptr(pair.key) };
+
+        if key == ATTR_TLS_SAN_DN_CN {
+            request_attrs.tls_san_dn_cn = Some(value);
+        } else if key == ATTR_TLS_CN {
+            request_attrs.tls_cn = Some(value);
+        } else if key == ATTR_USER_NAME {
+            request_attrs.user_name = Some(value);
+        } else {
+            let key = cstr_to_string(pair.key)?;
+            request_attrs.attrs.insert(key, value);
+        };
     }
-    Ok(RequestAttributes { attrs })
+
+    Ok(request_attrs)
 }
 
 #[repr(C)]
@@ -86,7 +99,7 @@ pub struct KVPair {
 
 #[repr(C)]
 pub struct AuthResultC {
-    pub code: i32,
+    pub code: u32,
     pub reply: *mut KVPair,
     pub reply_len: usize,
     pub control: *mut KVPair,
@@ -95,59 +108,158 @@ pub struct AuthResultC {
 }
 
 impl From<ModuleError> for AuthResultC {
-    fn from(input: ModuleError) -> AuthResultC {
-        auth_error(&Response::Fail, input.to_string())
+    fn from(input: ModuleError) -> Self {
+        let c_message =
+            CString::new(input.to_string()).unwrap_or_else(|_| CString::from(c"module error"));
+
+        AuthResultC {
+            code: rlm_rcodes::RLM_MODULE_FAIL,
+            reply: ptr::null_mut(),
+            reply_len: 0,
+            control: ptr::null_mut(),
+            control_len: 0,
+            error: c_message.into_raw(),
+        }
     }
 }
 
-pub fn auth_result_from_pairs(response: &Response) -> AuthResultC {
-    let reply_vec = into_kvpairs(response.reply());
-    let control_vec = into_kvpairs(response.control());
-    let reply_len = reply_vec.len();
-    let control_len = control_vec.len();
-    let mut reply_boxed = reply_vec.into_boxed_slice();
-    let mut control_boxed = control_vec.into_boxed_slice();
-    let reply_ptr = reply_boxed.as_mut_ptr();
-    let control_ptr = control_boxed.as_mut_ptr();
-    std::mem::forget(reply_boxed);
-    std::mem::forget(control_boxed);
-    AuthResultC {
-        code: response.code(),
-        reply: reply_ptr,
-        reply_len,
-        control: control_ptr,
-        control_len,
-        error: ptr::null_mut(),
+impl Response {
+    fn code(&self) -> u32 {
+        // TODO: Make these use the header values
+        match self {
+            Response::Reject => rlm_rcodes::RLM_MODULE_REJECT,
+            Response::Fail => rlm_rcodes::RLM_MODULE_FAIL,
+            Response::Ok { .. } => rlm_rcodes::RLM_MODULE_OK,
+            Response::Handled => rlm_rcodes::RLM_MODULE_HANDLED,
+            Response::Invalid => rlm_rcodes::RLM_MODULE_INVALID,
+            Response::UserLock => rlm_rcodes::RLM_MODULE_USERLOCK,
+            Response::NotFound => rlm_rcodes::RLM_MODULE_NOTFOUND,
+            Response::NoOp => rlm_rcodes::RLM_MODULE_NOOP,
+            Response::Updated => rlm_rcodes::RLM_MODULE_UPDATED,
+        }
     }
 }
 
-fn into_kvpairs(pairs: Vec<(&'static str, String)>) -> Vec<KVPair> {
-    #[allow(clippy::expect_used)]
-    pairs
-        .into_iter()
-        .map(|(k, v)| {
-            let k_c = CString::new(k).expect("literal CString");
-            let v_c = CString::new(v).expect("literal CString");
-            KVPair {
-                key: k_c.into_raw(),
-                value: v_c.into_raw(),
-            }
+pub struct OwnedPair {
+    pub key: CString,
+    pub value: CString,
+}
+
+impl<S> TryFrom<(&CStr, S)> for OwnedPair
+where
+    S: AsRef<str>,
+{
+    type Error = ModuleError;
+
+    fn try_from((key, value): (&CStr, S)) -> Result<Self, Self::Error> {
+        Ok(OwnedPair {
+            key: CString::from(key),
+            value: CString::new(value.as_ref())
+                .map_err(|err| ModuleError::Other(format!("invalid c string: {key:?} {err}")))?,
         })
-        .collect()
+    }
 }
 
-/// Create an AuthError result with the given message. Might panic if `message` can't be turned into a C string, but since we only call this with static strings or error messages from Rust code, that should be fine.
-pub fn auth_error(response: &Response, message: String) -> AuthResultC {
-    // At some point we just have to convert to a C string, and if that fails we can't do much about it, so it's fine to panic with a literal here
-    #[allow(clippy::expect_used)]
-    let c_message = CString::new(message)
-        .unwrap_or_else(|_| CString::new("module error").expect("literal CString"));
-    AuthResultC {
-        code: response.code(),
-        reply: ptr::null_mut(),
-        reply_len: 0,
-        control: ptr::null_mut(),
-        control_len: 0,
-        error: c_message.into_raw(),
+pub struct OwnedPairs {
+    pairs: Vec<OwnedPair>,
+}
+
+impl Into<Vec<KVPair>> for OwnedPairs {
+    fn into(self: OwnedPairs) -> Vec<KVPair> {
+        let mut raw_vec = self
+            .pairs
+            .into_iter()
+            .map(|OwnedPair { key, value }| KVPair {
+                key: key.into_raw(),
+                value: value.into_raw(),
+            })
+            .collect::<Vec<_>>();
+
+        // IMPORTANT: This is required so that when we reconstruct
+        // this vector, we can use length as capacity.
+        raw_vec.shrink_to_fit();
+
+        raw_vec
+    }
+}
+
+impl TryFrom<ResponseControlAttributes> for OwnedPairs {
+    type Error = ModuleError;
+
+    fn try_from(response: ResponseControlAttributes) -> Result<Self, Self::Error> {
+        let ResponseControlAttributes { cleartext_password } = response;
+
+        let pairs = if let Some(cleartext_password) = cleartext_password {
+            vec![OwnedPair::try_from((
+                CONTROL_CLEARTEXT_PASSWORD,
+                cleartext_password,
+            ))?]
+        } else {
+            Vec::default()
+        };
+
+        Ok(OwnedPairs { pairs })
+    }
+}
+
+impl TryFrom<ResponseReplyAttributes> for OwnedPairs {
+    type Error = ModuleError;
+
+    fn try_from(response: ResponseReplyAttributes) -> Result<Self, Self::Error> {
+        let ResponseReplyAttributes {
+            user_name,
+            message,
+            tunnel_type,
+            tunnel_medium_type,
+            tunnel_private_group_id,
+        } = response;
+
+        let pairs = vec![
+            OwnedPair::try_from((REPLY_USER_NAME, user_name))?,
+            OwnedPair::try_from((REPLY_MESSAGE, message))?,
+            OwnedPair::try_from((REPLY_TUNNEL_TYPE, tunnel_type))?,
+            OwnedPair::try_from((REPLY_TUNNEL_MEDIUM_TYPE, tunnel_medium_type))?,
+            OwnedPair::try_from((REPLY_TUNNEL_PRIVATE_GROUP_ID, tunnel_private_group_id))?,
+        ];
+
+        Ok(OwnedPairs { pairs })
+    }
+}
+
+impl TryFrom<Response> for AuthResultC {
+    type Error = ModuleError;
+
+    fn try_from(response: Response) -> Result<Self, Self::Error> {
+        match response {
+            Response::Ok { reply, control } => {
+                let reply_pairs = OwnedPairs::try_from(reply)?;
+                let control_pairs = OwnedPairs::try_from(control)?;
+
+                // ========================================================
+                // After this point we MUST NOT FAIL else we leak memory!!!
+                let reply_vec: Vec<KVPair> = reply_pairs.into();
+                let control_vec: Vec<KVPair> = control_pairs.into();
+
+                let (reply_ptr, reply_len, _) = reply_vec.into_raw_parts();
+                let (control_ptr, control_len, _) = control_vec.into_raw_parts();
+
+                Ok(AuthResultC {
+                    code: rlm_rcodes::RLM_MODULE_OK,
+                    reply: reply_ptr,
+                    reply_len,
+                    control: control_ptr,
+                    control_len,
+                    error: ptr::null_mut(),
+                })
+            }
+            _ => Ok(AuthResultC {
+                code: response.code(),
+                reply: ptr::null_mut(),
+                reply_len: 0,
+                control: ptr::null_mut(),
+                control_len: 0,
+                error: ptr::null_mut(),
+            }),
+        }
     }
 }

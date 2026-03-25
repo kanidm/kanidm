@@ -1,30 +1,25 @@
 //! Externally Facing Symbols - This is what we export to FreeRADIUS to call into us
 //! to drive the operation of the rlm_kanidm module.
 
+use crate::error::ModuleError;
 use crate::ffi::{
-    auth_error, auth_result_from_pairs, cstr_to_string, free_kv_pairs, kvpairs_to_attributes,
-    AuthResultC, KVPair, OwnedPair,
+    cstr_to_string, free_kv_pairs, kvpairs_to_attributes, AuthResultC, KVPair, OwnedPair,
 };
-use crate::{Module, ModuleHandle, ModuleOptions, Response};
+use crate::{Module, ModuleHandle, ModuleOptions};
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::mem::offset_of;
 use std::ptr;
 
 use crate::freeradius::{
-    self as fr,
-    conf_part as conf_part_t,
+    self as fr, conf_part as conf_part_t,
     fr_token_t::T_OP_EQ,
-    // RADIUSD_MAGIC_NUMBER as RLM_MODULE_INIT,
-    module_t,
-    packetmethod as packetmethod_t,
+    module_t, packetmethod as packetmethod_t,
     rlm_components::{MOD_AUTHORIZE, MOD_COUNT},
-    rlm_rcode_t,
+    rlm_kanidm_module, rlm_rcode_t,
     rlm_rcodes::RLM_MODULE_FAIL,
     CONF_PARSER as conf_parser_t,
     PW_TYPE::PW_TYPE_STRING,
-    REQUEST,
-    RLM_MODULE_INIT,
-    RLM_TYPE_THREAD_SAFE,
+    REQUEST, RLM_TYPE_THREAD_SAFE,
 };
 
 #[repr(C)]
@@ -68,7 +63,7 @@ const MODULE_METHODS: [packetmethod_t; MOD_COUNT as usize] = {
 #[unsafe(no_mangle)]
 #[used]
 pub static mut rlm_kanidm: module_t = module_t {
-    magic: RLM_MODULE_INIT as u64,
+    magic: rlm_kanidm_module::INIT as u64,
     name: MODULE_NAME.as_ptr(),
     type_: RLM_TYPE_THREAD_SAFE as c_int,
     inst_size: size_of::<RlmKanidmInstance>(),
@@ -205,7 +200,7 @@ unsafe extern "C" fn rlm_kanidm_authorize(
     request_attrs_len: usize,
 ) -> AuthResultC {
     if handle.is_null() {
-        return auth_error(&Response::Fail, "null module handle".to_string());
+        return ModuleError::Other("null module handle".to_string()).into();
     }
 
     let attrs = match kvpairs_to_attributes(request_attrs, request_attrs_len) {
@@ -214,7 +209,12 @@ unsafe extern "C" fn rlm_kanidm_authorize(
     };
 
     let module = unsafe { &(*handle).module };
-    auth_result_from_pairs(&module.authorize(&attrs))
+
+    let module_result = module.authorize(&attrs);
+
+    let auth_result = AuthResultC::try_from(module_result).unwrap_or_else(AuthResultC::from);
+
+    auth_result
 }
 
 /// Free memory allocated in `AuthResultC`.
