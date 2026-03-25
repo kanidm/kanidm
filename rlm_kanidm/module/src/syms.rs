@@ -11,10 +11,20 @@ use std::mem::offset_of;
 use std::ptr;
 
 use crate::freeradius::{
-    self as fr, conf_part as conf_part_t, module_t, packetmethod as packetmethod_t, rlm_rcode_t,
-    CONF_PARSER as conf_parser_t, RLM_MODULE_FAIL, MOD_AUTHORIZE,
-    MOD_COUNT, PW_TYPE_STRING, RLM_KANIDM_RLM_MODULE_INIT,
-    RLM_TYPE_THREAD_SAFE, REQUEST, RLM_MODULE_INIT,
+    self as fr,
+    conf_part as conf_part_t,
+    fr_token_t::T_OP_EQ,
+    // RADIUSD_MAGIC_NUMBER as RLM_MODULE_INIT,
+    module_t,
+    packetmethod as packetmethod_t,
+    rlm_components::{MOD_AUTHORIZE, MOD_COUNT},
+    rlm_rcode_t,
+    rlm_rcodes::RLM_MODULE_FAIL,
+    CONF_PARSER as conf_parser_t,
+    PW_TYPE::PW_TYPE_STRING,
+    REQUEST,
+    RLM_MODULE_INIT,
+    RLM_TYPE_THREAD_SAFE,
 };
 
 #[repr(C)]
@@ -46,8 +56,7 @@ static mut MODULE_CONFIG: [conf_parser_t; 2] = [
 ];
 
 const MODULE_METHODS: [packetmethod_t; MOD_COUNT as usize] = {
-    let mut methods: [packetmethod_t; MOD_COUNT as usize] =
-        [None; MOD_COUNT as usize];
+    let mut methods: [packetmethod_t; MOD_COUNT as usize] = [None; MOD_COUNT as usize];
 
     methods[MOD_AUTHORIZE as usize] =
         Some(mod_authorize as unsafe extern "C" fn(*mut c_void, *mut REQUEST) -> _);
@@ -307,7 +316,7 @@ unsafe fn add_pairs_to_request(
                     ptr::addr_of_mut!(request_ref.config),
                     pair.key,
                     pair.value,
-                    T_OP_EQ as FR_TOKEN,
+                    T_OP_EQ,
                 )
             }
         } else {
@@ -323,7 +332,7 @@ unsafe fn add_pairs_to_request(
                     ptr::addr_of_mut!(reply_ref.vps),
                     pair.key,
                     pair.value,
-                    T_OP_EQ as FR_TOKEN,
+                    T_OP_EQ,
                 )
             }
         };
