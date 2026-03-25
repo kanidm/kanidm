@@ -17,3 +17,11 @@
 # include <freeradius-devel/modules.h>
 #endif
 
+
+// This is required to work around an issue in bindgen where it can't include the
+// defined magic value.
+enum rlm_kanidm_module {
+    INIT = RLM_MODULE_INIT,
+};
+
+

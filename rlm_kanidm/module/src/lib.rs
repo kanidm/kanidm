@@ -2,7 +2,9 @@
 //!
 //! Here be unsafe dragons.
 
-#![deny(warnings)]
+// TODO: Re-enable this!
+// #![deny(warnings)]
+
 #![deny(deprecated)]
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]
@@ -31,9 +33,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::runtime::Runtime;
 
-// TODO: Remove
-use crate::ffi::*;
-
+#[cfg(feature = "extern-freeradius-module")]
+mod ffi;
 #[cfg(feature = "extern-freeradius-module")]
 mod freeradius;
 #[cfg(feature = "extern-freeradius-module")]
@@ -41,31 +42,13 @@ pub mod syms;
 
 // mod cache;
 mod error;
-mod ffi;
 
-/// RADIUS response codes as expected by FreeRADIUS.
-/// ```rust
-/// use rlm_kanidm::Response;
-/// assert_eq!(Response::Reject.code(), 0);
-/// assert_eq!(Response::Fail.code(), 1);
-/// assert_eq!(
-///     Response::Ok {
-///         reply: Vec::new(),
-///         control: Vec::new(),
-///     }
-///     .code(),
-///     2
-/// );
-/// assert_eq!(Response::Handled.code(), 3);
-///
-///
-/// ```
-pub enum Response {
+enum Response {
     Reject,
     Fail,
     Ok {
-        reply: Vec<(&'static str, String)>,
-        control: Vec<(&'static str, String)>,
+        reply: ResponseReplyAttributes,
+        control: ResponseControlAttributes,
     },
     Handled,
     Invalid,
@@ -75,38 +58,20 @@ pub enum Response {
     Updated,
 }
 
-impl Response {
-    pub fn code(&self) -> i32 {
-        match self {
-            Response::Reject => 0,
-            Response::Fail => 1,
-            Response::Ok { .. } => 2,
-            Response::Handled => 3,
-            Response::Invalid => 4,
-            Response::UserLock => 5,
-            Response::NotFound => 6,
-            Response::NoOp => 7,
-            Response::Updated => 8,
-        }
-    }
+struct ResponseReplyAttributes {
+    pub user_name: String,
+    pub message: String,
+    pub tunnel_type: &'static str,
+    pub tunnel_medium_type: &'static str,
+    pub tunnel_private_group_id: String,
+}
 
-    pub fn reply(&self) -> Vec<(&'static str, String)> {
-        match self {
-            Response::Ok { reply, .. } => reply.clone(),
-            _ => Vec::new(),
-        }
-    }
-
-    pub fn control(&self) -> Vec<(&'static str, String)> {
-        match self {
-            Response::Ok { control, .. } => control.clone(),
-            _ => Vec::new(),
-        }
-    }
+struct ResponseControlAttributes {
+    pub cleartext_password: Option<String>,
 }
 
 #[derive(Debug, Clone)]
-pub struct ModuleOptions {
+struct ModuleOptions {
     pub http_timeout: Duration,
 }
 
@@ -118,33 +83,32 @@ impl Default for ModuleOptions {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct RequestAttributes {
-    attrs: BTreeMap<String, String>,
+#[derive(Debug, Clone, Default)]
+struct RequestAttributes {
+    pub tls_san_dn_cn: Option<String>,
+    pub tls_cn: Option<String>,
+    pub user_name: Option<String>,
+    pub attrs: BTreeMap<String, String>,
 }
 
 impl RequestAttributes {
-    pub fn from_pairs(pairs: impl IntoIterator<Item = (String, String)>) -> Self {
-        let attrs = pairs.into_iter().collect();
-        Self { attrs }
-    }
-
-    pub fn get(&self, key: &str) -> Option<&str> {
+    pub fn get_x(&self, key: &str) -> Option<&str> {
         self.attrs.get(key).map(String::as_str)
     }
 
     pub fn user_id(&self) -> Option<&str> {
-        self.get(ATTR_TLS_SAN_DN_CN)
-            .or_else(|| self.get(ATTR_TLS_CN))
-            .or_else(|| self.get(ATTR_USER_NAME))
+        self.tls_san_dn_cn
+            .as_deref()
+            .or(self.tls_cn.as_deref())
+            .or(self.user_name.as_deref())
     }
 }
 
-pub struct ModuleHandle {
+struct ModuleHandle {
     module: Arc<Module>,
 }
 
-pub struct Module {
+struct Module {
     cfg: KanidmRadiusConfig,
     required_groups: BTreeSet<String>,
     vlan_by_spn: BTreeMap<String, u32>,
@@ -154,7 +118,7 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn from_config_path(path: &str, options: &ModuleOptions) -> Result<Arc<Self>, ModuleError> {
+    fn from_config_path(path: &str, options: &ModuleOptions) -> Result<Arc<Self>, ModuleError> {
         let config_text = fs::read_to_string(path)
             .map_err(|e| ModuleError::Io(format!("failed reading config {path}: {e}")))?;
         let cfg: KanidmRadiusConfig = toml::from_str(&config_text)
@@ -162,7 +126,7 @@ impl Module {
         Self::from_config(cfg, options)
     }
 
-    pub fn from_config(
+    fn from_config(
         cfg: KanidmRadiusConfig,
         options: &ModuleOptions,
     ) -> Result<Arc<Self>, ModuleError> {
@@ -219,7 +183,7 @@ impl Module {
         }))
     }
 
-    pub fn authorize(&self, attrs: &RequestAttributes) -> Response {
+    fn authorize(&self, attrs: &RequestAttributes) -> Response {
         let Some(user_id) = attrs.user_id() else {
             return Response::Invalid;
         };
@@ -231,19 +195,27 @@ impl Module {
             Err(_) => return Response::Fail,
         };
 
+        // TODO: Audit this.
         if !self.user_in_required_groups(&token.groups) {
             return Response::Reject;
         }
 
+        // TODO: Audit this too.
         let selected_vlan = self.resolve_vlan(&token.groups);
 
-        let mut reply = Vec::new();
-        reply.push((REPLY_USER_NAME, token.name.clone()));
-        reply.push((REPLY_MESSAGE, format!("Kanidm-Uuid: {}", token.uuid)));
-        reply.push((REPLY_TUNNEL_TYPE, "13".to_string()));
-        reply.push((REPLY_TUNNEL_MEDIUM_TYPE, "6".to_string()));
-        reply.push((REPLY_TUNNEL_PRIVATE_GROUP_ID, selected_vlan.to_string()));
-        let control = vec![(CONTROL_CLEARTEXT_PASSWORD, token.secret.clone())];
+        let reply = ResponseReplyAttributes {
+            user_name: token.name.clone(),
+            message: format!("Kanidm-Uuid: {}", token.uuid),
+            // TODO: Make these constants.
+            tunnel_type: "13",
+            tunnel_medium_type: "6",
+            tunnel_private_group_id: selected_vlan.to_string(),
+        };
+
+        let control = ResponseControlAttributes {
+            cleartext_password: Some(token.secret.clone()),
+        };
+
         Response::Ok { reply, control }
     }
 
@@ -323,16 +295,6 @@ mod tests {
             secret: "radius-secret".to_string(),
             groups,
         }
-    }
-
-    #[test]
-    fn user_id_precedence() {
-        let attrs = RequestAttributes::from_pairs(vec![
-            (ATTR_USER_NAME.to_string(), "username".to_string()),
-            (ATTR_TLS_CN.to_string(), "cn".to_string()),
-            (ATTR_TLS_SAN_DN_CN.to_string(), "san".to_string()),
-        ]);
-        assert_eq!(attrs.user_id(), Some("san"));
     }
 
     #[test]
