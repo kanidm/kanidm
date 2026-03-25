@@ -21,25 +21,25 @@
 #![deny(clippy::indexing_slicing)]
 #![allow(clippy::unreachable)]
 
+use crate::error::ModuleError;
 use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};
 use kanidm_proto::internal::{Group, RadiusAuthToken};
-use libc::c_char;
 use rlm_kanidm_shared::config::KanidmRadiusConfig;
 use std::collections::{BTreeMap, BTreeSet};
-use std::ffi::{CStr, CString};
 use std::fs;
-use std::ptr;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::runtime::Runtime;
-use tracing::error;
+
+// TODO: Remove
+use crate::ffi::*;
 
 #[cfg(feature = "extern-freeradius-module")]
 mod freeradius;
 #[cfg(feature = "extern-freeradius-module")]
 pub mod syms;
 
-mod cache;
+// mod cache;
 mod error;
 mod ffi;
 
@@ -140,7 +140,6 @@ impl RequestAttributes {
     }
 }
 
-
 pub struct ModuleHandle {
     module: Arc<Module>,
 }
@@ -151,7 +150,7 @@ pub struct Module {
     vlan_by_spn: BTreeMap<String, u32>,
     client: KanidmClient,
     runtime: Runtime,
-    cache: LookupCache,
+    // cache: LookupCache,
 }
 
 impl Module {
@@ -214,7 +213,7 @@ impl Module {
             cfg,
             required_groups,
             vlan_by_spn,
-            cache: LookupCache::new(),
+            // cache: LookupCache::new(),
             client,
             runtime,
         }))
@@ -268,16 +267,20 @@ impl Module {
         &self,
         user_id: &str,
     ) -> Result<Option<RadiusAuthToken>, ModuleError> {
+        /*
         let now = Instant::now();
 
         if let Some(cached) = self.cache.lookup_cache(user_id, now) {
             return Ok(Some(cached));
         }
+        */
 
         match self.runtime.block_on(self.fetch_token(user_id))? {
             Some(token) => {
+                /*
                 self.cache
                     .insert_cache(user_id.to_string(), token.clone(), now);
+                */
                 Ok(Some(token))
             }
             None => Ok(None),
@@ -289,11 +292,13 @@ impl Module {
             Ok(token) => Ok(Some(token)),
             Err(ClientError::Http(status, _, _)) if status == StatusCode::NOT_FOUND => Ok(None),
             Err(error) => {
+                /*
                 let now = Instant::now();
                 if let Some(stale) = self.cache.lookup_stale_cache(user_id, now) {
                     tracing::warn!("using stale cache token after upstream error");
                     return Ok(Some(stale));
                 }
+                */
                 Err(ModuleError::Http(format!(
                     "kanidm_client request failed: {error:?}"
                 )))
@@ -390,6 +395,7 @@ mod tests {
         assert!(module.user_in_required_groups(&token_uuid.groups));
     }
 
+    /*
     #[test]
     fn cache_entry_timing_helpers() {
         let entry = CacheEntry {
@@ -401,6 +407,7 @@ mod tests {
         assert!(!entry.fresh(now, Duration::from_secs(5)));
         assert!(entry.stale_allowed(now, Duration::from_secs(5), Duration::from_secs(10)));
     }
+    */
 
     #[test]
     fn test_parse_examples() {

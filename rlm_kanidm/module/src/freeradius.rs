@@ -13,4 +13,3 @@
 )]
 
 include!(concat!(env!("OUT_DIR"), "/freeradius_bindings.rs"));
-

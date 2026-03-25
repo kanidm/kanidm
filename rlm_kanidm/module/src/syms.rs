@@ -1,27 +1,21 @@
 //! Externally Facing Symbols - This is what we export to FreeRADIUS to call into us
 //! to drive the operation of the rlm_kanidm module.
 
-use std::ffi::{
-    CStr,
-    c_int,
+use crate::ffi::{
+    auth_error, auth_result_from_pairs, cstr_to_string, free_kv_pairs, kvpairs_to_attributes,
+    AuthResultC, KVPair, OwnedPair,
 };
+use crate::{Module, ModuleHandle, ModuleOptions, Response};
+use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::mem::offset_of;
 use std::ptr;
 
 use crate::freeradius::{
-    self as fr,
-    module_t,
-    rlm_kanidm_conf_parser_t,
-    RLM_KANIDM_RLM_MODULE_INIT,
+    self as fr, conf_part as conf_part_t, module_t, packetmethod as packetmethod_t, rlm_rcode_t,
+    CONF_PARSER as conf_parser_t, RLM_KANIDM_MODULE_FAIL, RLM_KANIDM_MOD_AUTHORIZE,
+    RLM_KANIDM_MOD_COUNT, RLM_KANIDM_PW_TYPE_STRING, RLM_KANIDM_RLM_MODULE_INIT,
     RLM_KANIDM_RLM_TYPE_THREAD_SAFE,
-    RLM_KANIDM_PW_TYPE_STRING,
-    RLM_KANIDM_MOD_COUNT,
-    rlm_kanidm_packetmethod_t,
-    RLM_KANIDM_MOD_AUTHORIZE,
-    RLM_KANIDM_MODULE_FAIL,
-
 };
-
 
 #[repr(C)]
 struct RlmKanidmInstance {
@@ -33,8 +27,8 @@ const CONFIG_PATH_KEY: &CStr = c"config_path";
 const DEFAULT_CONFIG_PATH: &CStr = c"/data/radius.toml";
 const MODULE_NAME: &CStr = c"kanidm";
 
-static mut MODULE_CONFIG: [rlm_kanidm_conf_parser_t; 2] = [
-    rlm_kanidm_conf_parser_t {
+static mut MODULE_CONFIG: [conf_parser_t; 2] = [
+    conf_parser_t {
         name: CONFIG_PATH_KEY.as_ptr(),
         type_: RLM_KANIDM_PW_TYPE_STRING as c_int,
         // TODO: Not sure this is safe?
@@ -42,7 +36,7 @@ static mut MODULE_CONFIG: [rlm_kanidm_conf_parser_t; 2] = [
         data: ptr::null_mut(),
         dflt: DEFAULT_CONFIG_PATH.as_ptr().cast(),
     },
-    rlm_kanidm_conf_parser_t {
+    conf_parser_t {
         name: ptr::null(),
         type_: -1,
         offset: 0,
@@ -51,16 +45,14 @@ static mut MODULE_CONFIG: [rlm_kanidm_conf_parser_t; 2] = [
     },
 ];
 
-const MODULE_METHODS: [rlm_kanidm_packetmethod_t; RLM_KANIDM_MOD_COUNT as usize] = {
-    let mut methods: 
-        [rlm_kanidm_packetmethod_t; RLM_KANIDM_MOD_COUNT as usize] =
+const MODULE_METHODS: [packetmethod_t; RLM_KANIDM_MOD_COUNT as usize] = {
+    let mut methods: [packetmethod_t; RLM_KANIDM_MOD_COUNT as usize] =
         [None; RLM_KANIDM_MOD_COUNT as usize];
 
     methods[RLM_KANIDM_MOD_AUTHORIZE as usize] =
         Some(mod_authorize as unsafe extern "C" fn(*mut c_void, *mut fr::REQUEST) -> _);
     methods
 };
-
 
 /// This is the entry point that allows FreeRADIUS to start the module. It must be named the same
 /// as the module, and must be the only publicly exported symbol.
@@ -72,15 +64,14 @@ pub static mut rlm_kanidm: module_t = module_t {
     type_: RLM_KANIDM_RLM_TYPE_THREAD_SAFE as c_int,
     inst_size: size_of::<RlmKanidmInstance>(),
     config: ptr::addr_of!(MODULE_CONFIG).cast(),
+    bootstrap: None,
     instantiate: Some(mod_instantiate),
     detach: Some(mod_detach),
     methods: MODULE_METHODS,
 };
 
-
-
 /// the instantiate method is called when the module is loaded, and should return 0 on success. The instance pointer is a pointer to a block of memory of size `inst_size`, which can be used to store module state. The config pointer is a pointer to the module configuration, which is parsed according to the `config` field of the module struct.
-unsafe extern "C" fn mod_instantiate(_conf: *mut c_void, instance: *mut c_void) -> c_int {
+unsafe extern "C" fn mod_instantiate(_conf: *mut conf_part_t, instance: *mut c_void) -> c_int {
     if instance.is_null() {
         return -1;
     }
@@ -91,7 +82,7 @@ unsafe extern "C" fn mod_instantiate(_conf: *mut c_void, instance: *mut c_void) 
         return -1;
     }
 
-    let handle = crate::rlm_kanidm_instantiate(inst.config_path);
+    let handle = rlm_kanidm_instantiate(inst.config_path);
     if handle.is_null() {
         // tracing::error!("rlm_kanidm: rust instantiate failed");
         return -1;
@@ -108,7 +99,7 @@ unsafe extern "C" fn mod_detach(instance: *mut c_void) -> c_int {
 
     let inst = unsafe { &mut *(instance.cast::<RlmKanidmInstance>()) };
     if !inst.rust_handle.is_null() {
-        unsafe { crate::rlm_kanidm_detach(inst.rust_handle) };
+        unsafe { rlm_kanidm_detach(inst.rust_handle) };
         inst.rust_handle = ptr::null_mut();
     }
 
@@ -132,19 +123,20 @@ unsafe extern "C" fn mod_authorize(
     let owned_pairs = unsafe { collect_request_attrs(request) };
     let raw_pairs = build_raw_pairs(&owned_pairs);
 
-    let auth_result = unsafe {
-        crate::rlm_kanidm_authorize(inst.rust_handle, raw_pairs.as_ptr(), raw_pairs.len())
-    };
+    let auth_result =
+        unsafe { rlm_kanidm_authorize(inst.rust_handle, raw_pairs.as_ptr(), raw_pairs.len()) };
 
+    /*
     if !auth_result.error.is_null() {
         let message = unsafe { CStr::from_ptr(auth_result.error) }.to_string_lossy();
         // tracing::error!("rlm_kanidm authorize error: {message}");
     }
+    */
 
     let reply_ok =
         unsafe { add_pairs_to_request(request, auth_result.reply, auth_result.reply_len, false) };
     if !reply_ok {
-        crate::rlm_kanidm_free_auth_result(auth_result);
+        rlm_kanidm_free_auth_result(auth_result);
         return fail_code();
     }
 
@@ -152,30 +144,14 @@ unsafe extern "C" fn mod_authorize(
         add_pairs_to_request(request, auth_result.control, auth_result.control_len, true)
     };
     if !control_ok {
-        crate::rlm_kanidm_free_auth_result(auth_result);
+        rlm_kanidm_free_auth_result(auth_result);
         return fail_code();
     }
 
     let code = auth_result.code as fr::rlm_rcode_t;
-    crate::rlm_kanidm_free_auth_result(auth_result);
+    rlm_kanidm_free_auth_result(auth_result);
     code
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /// Instantiate module state from a config path.
 #[unsafe(no_mangle)]
@@ -204,9 +180,6 @@ unsafe extern "C" fn rlm_kanidm_detach(handle: *mut ModuleHandle) {
 
     unsafe {
         let _ = Box::from_raw(handle);
-        // Set the handle to null now to prevent further calls to it, or double calls
-        // of rlm_kanidm_detach.
-        handle = ptr::null_mut();
     }
 }
 
@@ -247,14 +220,9 @@ extern "C" fn rlm_kanidm_free_auth_result(result: AuthResultC) {
     }
 }
 
-
-
-
-
 const fn fail_code() -> rlm_rcode_t {
     RLM_KANIDM_MODULE_FAIL as rlm_rcode_t
 }
-
 
 unsafe fn collect_request_attrs(request: *mut fr::REQUEST) -> Vec<OwnedPair> {
     let mut cursor = unsafe { std::mem::zeroed::<fr::vp_cursor_t>() };
@@ -279,12 +247,14 @@ unsafe fn collect_request_attrs(request: *mut fr::REQUEST) -> Vec<OwnedPair> {
         };
 
         if !key_ptr.is_null() {
+            // TODO: FIX THIS
             let mut value_buf = [0 as c_char; 4096];
             unsafe {
                 fr::vp_prints_value(
                     value_buf.as_mut_ptr(),
                     value_buf.len(),
                     pair,
+                    // TODO: Fix this to be a null type.
                     '\0' as c_char,
                 )
             };
@@ -365,4 +335,3 @@ unsafe fn add_pairs_to_request(
 
     true
 }
-
