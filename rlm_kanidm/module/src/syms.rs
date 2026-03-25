@@ -12,9 +12,9 @@ use std::ptr;
 
 use crate::freeradius::{
     self as fr, conf_part as conf_part_t, module_t, packetmethod as packetmethod_t, rlm_rcode_t,
-    CONF_PARSER as conf_parser_t, RLM_KANIDM_MODULE_FAIL, RLM_KANIDM_MOD_AUTHORIZE,
-    RLM_KANIDM_MOD_COUNT, RLM_KANIDM_PW_TYPE_STRING, RLM_KANIDM_RLM_MODULE_INIT,
-    RLM_KANIDM_RLM_TYPE_THREAD_SAFE,
+    CONF_PARSER as conf_parser_t, RLM_MODULE_FAIL, MOD_AUTHORIZE,
+    MOD_COUNT, PW_TYPE_STRING, RLM_KANIDM_RLM_MODULE_INIT,
+    RLM_TYPE_THREAD_SAFE, REQUEST, RLM_MODULE_INIT,
 };
 
 #[repr(C)]
@@ -30,7 +30,7 @@ const MODULE_NAME: &CStr = c"kanidm";
 static mut MODULE_CONFIG: [conf_parser_t; 2] = [
     conf_parser_t {
         name: CONFIG_PATH_KEY.as_ptr(),
-        type_: RLM_KANIDM_PW_TYPE_STRING as c_int,
+        type_: PW_TYPE_STRING as c_int,
         // TODO: Not sure this is safe?
         offset: offset_of!(RlmKanidmInstance, config_path),
         data: ptr::null_mut(),
@@ -45,12 +45,12 @@ static mut MODULE_CONFIG: [conf_parser_t; 2] = [
     },
 ];
 
-const MODULE_METHODS: [packetmethod_t; RLM_KANIDM_MOD_COUNT as usize] = {
-    let mut methods: [packetmethod_t; RLM_KANIDM_MOD_COUNT as usize] =
-        [None; RLM_KANIDM_MOD_COUNT as usize];
+const MODULE_METHODS: [packetmethod_t; MOD_COUNT as usize] = {
+    let mut methods: [packetmethod_t; MOD_COUNT as usize] =
+        [None; MOD_COUNT as usize];
 
-    methods[RLM_KANIDM_MOD_AUTHORIZE as usize] =
-        Some(mod_authorize as unsafe extern "C" fn(*mut c_void, *mut fr::REQUEST) -> _);
+    methods[MOD_AUTHORIZE as usize] =
+        Some(mod_authorize as unsafe extern "C" fn(*mut c_void, *mut REQUEST) -> _);
     methods
 };
 
@@ -59,9 +59,9 @@ const MODULE_METHODS: [packetmethod_t; RLM_KANIDM_MOD_COUNT as usize] = {
 #[unsafe(no_mangle)]
 #[used]
 pub static mut rlm_kanidm: module_t = module_t {
-    magic: RLM_KANIDM_RLM_MODULE_INIT as u64,
+    magic: RLM_MODULE_INIT as u64,
     name: MODULE_NAME.as_ptr(),
-    type_: RLM_KANIDM_RLM_TYPE_THREAD_SAFE as c_int,
+    type_: RLM_TYPE_THREAD_SAFE as c_int,
     inst_size: size_of::<RlmKanidmInstance>(),
     config: ptr::addr_of!(MODULE_CONFIG).cast(),
     bootstrap: None,
@@ -221,7 +221,7 @@ extern "C" fn rlm_kanidm_free_auth_result(result: AuthResultC) {
 }
 
 const fn fail_code() -> rlm_rcode_t {
-    RLM_KANIDM_MODULE_FAIL as rlm_rcode_t
+    RLM_MODULE_FAIL as rlm_rcode_t
 }
 
 unsafe fn collect_request_attrs(request: *mut fr::REQUEST) -> Vec<OwnedPair> {
@@ -307,7 +307,7 @@ unsafe fn add_pairs_to_request(
                     ptr::addr_of_mut!(request_ref.config),
                     pair.key,
                     pair.value,
-                    fr::RLM_KANIDM_T_OP_EQ as fr::FR_TOKEN,
+                    T_OP_EQ as FR_TOKEN,
                 )
             }
         } else {
@@ -323,7 +323,7 @@ unsafe fn add_pairs_to_request(
                     ptr::addr_of_mut!(reply_ref.vps),
                     pair.key,
                     pair.value,
-                    fr::RLM_KANIDM_T_OP_EQ as fr::FR_TOKEN,
+                    T_OP_EQ as FR_TOKEN,
                 )
             }
         };
