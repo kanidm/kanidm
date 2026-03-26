@@ -3,7 +3,6 @@ pub enum ModuleError {
     Io(String),
     Config(String),
     Http(String),
-    Other(String),
 }
 
 impl std::fmt::Display for ModuleError {
@@ -12,7 +11,6 @@ impl std::fmt::Display for ModuleError {
             Self::Io(s) => write!(f, "IO Error: {s}"),
             Self::Config(s) => write!(f, "Config Error: {s}"),
             Self::Http(s) => write!(f, "HTTP Error: {s}"),
-            Self::Other(s) => write!(f, "Internal Error: {s}"),
         }
     }
 }

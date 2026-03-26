@@ -31,6 +31,9 @@ rlm_kanidm_shared = { workspace = true }
 [dev-dependencies]
 kanidmd_core = { workspace = true }
 kanidmd_testkit = { workspace = true }
+url = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
 
 [build-dependencies]
 bindgen = "0.72.1"

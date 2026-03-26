@@ -2,9 +2,7 @@
 //!
 //! Here be unsafe dragons.
 
-// TODO: Re-enable this!
-// #![deny(warnings)]
-
+#![deny(warnings)]
 #![deny(deprecated)]
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]
@@ -27,6 +25,9 @@
 pub mod ffi;
 #[cfg(feature = "extern-freeradius-module")]
 mod freeradius;
+
+#[cfg(feature = "extern-freeradius-module")]
+mod glue;
 
 #[cfg(any(test, feature = "extern-freeradius-module"))]
 pub(crate) mod error;
