@@ -1,9 +1,9 @@
 //! Externally Facing Symbols - This is what we export to FreeRADIUS to call into us
 //! to drive the operation of the rlm_kanidm module.
 
+use crate::glue::{rlm_kanidm_authorise, rlm_kanidm_instantiate, ModuleHandle};
 use crate::logic::{
-    rlm_kanidm_authorise, rlm_kanidm_instantiate, AuthError, AuthRequest, AuthResponse,
-    ModuleHandle, ResponseControlAttributes, ResponseReplyAttributes,
+    AuthError, AuthRequest, AuthResponse, ResponseControlAttributes, ResponseReplyAttributes,
 };
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::mem::offset_of;
