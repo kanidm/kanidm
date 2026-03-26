@@ -246,20 +246,12 @@ impl AuthResponse {
         }
         let reply_vp: *mut value_pair = unsafe { (*request.reply).vps };
 
-        //
-
-        /*
+        // Control Attributes
         let ResponseControlAttributes { cleartext_password } = response;
 
-        let pairs = if let Some(cleartext_password) = cleartext_password {
-            vec![OwnedPair::try_from((
-                CONTROL_CLEARTEXT_PASSWORD,
-                cleartext_password,
-            ))?]
-        } else {
-            Vec::default()
-        };
+        vp_add_pair(talloc_ctx, control_vp, CONTROL_CLEARTEXT_PASSWORD, cleartext_password.as_str())?;
 
+        // Reply Attributes
         let ResponseReplyAttributes {
             user_name,
             message,
@@ -268,48 +260,42 @@ impl AuthResponse {
             tunnel_private_group_id,
         } = response;
 
-        let pairs = vec![
-            OwnedPair::try_from((REPLY_USER_NAME, user_name))?,
-            OwnedPair::try_from((REPLY_MESSAGE, message))?,
-            OwnedPair::try_from((REPLY_TUNNEL_TYPE, tunnel_type))?,
-            OwnedPair::try_from((REPLY_TUNNEL_MEDIUM_TYPE, tunnel_medium_type))?,
-            OwnedPair::try_from((REPLY_TUNNEL_PRIVATE_GROUP_ID, tunnel_private_group_id))?,
-        ];
-
-
-        */
-
-        /*
-            let added = if control {
-                unsafe {
-                    fr_pair_make(
-                        talloc_ctx,
-                        control_vp,
-                        pair.key,
-                        pair.value,
-                        T_OP_EQ,
-                    )
-                }
-            } else {
-                unsafe {
-                    fr_pair_make(
-                        talloc_ctx,
-                        reply_vp,
-                        pair.key,
-                        pair.value,
-                        T_OP_EQ,
-                    )
-                }
-            };
-
-            if added.is_null() {
-                return false;
-            }
-        }
-
-        */
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_USER_NAME, user_name.as_str())?;
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_MESSAGE, message.as_str())?;
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_TUNNEL_TYPE, tunnel_type.as_str())?;
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_TUNNEL_MEDIUM_TYPE, tunnel_medium_type.as_str())?;
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_TUNNEL_PRIVATE_GROUP_ID, tunnel_private_group_id.as_str())?;
 
         Ok(())
+    }
+
+    fn vp_add_pair(
+        talloc_ctx: *mut c_void,
+        vp: *mut value_pair,
+        key: &CStr,
+        value: &str,
+    ) -> Result<(), AuthError> {
+        let value = CString::new(value)
+            .map_err(|_| AuthError::Fail)?;
+
+        let key_c = key.as_ptr();
+        let value_c = value.as_ptr();
+
+        let return_code = unsafe {
+            fr_pair_make(
+                talloc_ctx,
+                reply_vp,
+                key_c,
+                value_c,
+                T_OP_EQ,
+            )
+        };
+
+        if return_code.is_null() {
+            Err(AuthError::Fail)
+        } else {
+            Ok(())
+        }
     }
 }
 
