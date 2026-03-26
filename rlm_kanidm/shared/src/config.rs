@@ -1,4 +1,6 @@
 use serde::Deserialize;
+use std::fs;
+use std::path::Path;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RadiusGroupConfig {
@@ -86,4 +88,17 @@ fn default_radius_cert_path() -> String {
 
 fn default_radius_key_path() -> String {
     "/data/key.pem".to_string()
+}
+
+impl TryFrom<&Path> for KanidmRadiusConfig {
+    type Error = String;
+
+    fn try_from(path: &Path) -> Result<Self, Self::Error> {
+        fs::read_to_string(path)
+            .map_err(|err| format!("failed reading config {}: {:?}", path.display(), err))
+            .and_then(|config_text| {
+                toml::from_str(&config_text)
+                    .map_err(|err| format!("failed parsing config {}: {:?}", path.display(), err))
+            })
+    }
 }
