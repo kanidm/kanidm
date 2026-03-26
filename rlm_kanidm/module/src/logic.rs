@@ -50,6 +50,7 @@ pub struct AuthRequest {
     pub tls_san_dn_cn: Option<String>,
     pub tls_cn: Option<String>,
     pub user_name: Option<String>,
+    #[allow(dead_code)]
     pub attrs: BTreeMap<String, String>,
 }
 
