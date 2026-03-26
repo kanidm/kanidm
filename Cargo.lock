@@ -6028,7 +6028,6 @@ dependencies = [
  "libc",
  "rlm_kanidm_shared",
  "tokio",
- "toml",
  "tracing",
 ]
 
@@ -6037,6 +6036,7 @@ name = "rlm_kanidm_shared"
 version = "1.10.0-dev"
 dependencies = [
  "serde",
+ "toml",
 ]
 
 [[package]]

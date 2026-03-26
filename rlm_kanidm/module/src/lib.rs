@@ -28,9 +28,7 @@ use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};
 use kanidm_proto::internal::{Group, RadiusAuthToken};
 use rlm_kanidm_shared::config::KanidmRadiusConfig;
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::runtime::Runtime;
 
 #[cfg(feature = "extern-freeradius-module")]
@@ -43,19 +41,20 @@ pub mod syms;
 // mod cache;
 mod error;
 
-enum Response {
+pub(crate) enum AuthError {
     Reject,
     Fail,
-    Ok {
-        reply: ResponseReplyAttributes,
-        control: ResponseControlAttributes,
-    },
     Handled,
     Invalid,
     UserLock,
     NotFound,
     NoOp,
     Updated,
+}
+
+pub(crate) struct AuthResponse {
+    pub reply: ResponseReplyAttributes,
+    pub control: ResponseControlAttributes,
 }
 
 struct ResponseReplyAttributes {
@@ -70,32 +69,15 @@ struct ResponseControlAttributes {
     pub cleartext_password: Option<String>,
 }
 
-#[derive(Debug, Clone)]
-struct ModuleOptions {
-    pub http_timeout: Duration,
-}
-
-impl Default for ModuleOptions {
-    fn default() -> Self {
-        Self {
-            http_timeout: Duration::from_secs(5),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default)]
-struct RequestAttributes {
+pub(crate) struct AuthRequest {
     pub tls_san_dn_cn: Option<String>,
     pub tls_cn: Option<String>,
     pub user_name: Option<String>,
     pub attrs: BTreeMap<String, String>,
 }
 
-impl RequestAttributes {
-    pub fn get_x(&self, key: &str) -> Option<&str> {
-        self.attrs.get(key).map(String::as_str)
-    }
-
+impl AuthRequest {
     pub fn user_id(&self) -> Option<&str> {
         self.tls_san_dn_cn
             .as_deref()
@@ -118,18 +100,7 @@ struct Module {
 }
 
 impl Module {
-    fn from_config_path(path: &str, options: &ModuleOptions) -> Result<Arc<Self>, ModuleError> {
-        let config_text = fs::read_to_string(path)
-            .map_err(|e| ModuleError::Io(format!("failed reading config {path}: {e}")))?;
-        let cfg: KanidmRadiusConfig = toml::from_str(&config_text)
-            .map_err(|e| ModuleError::Config(format!("failed parsing TOML {path}: {e}")))?;
-        Self::from_config(cfg, options)
-    }
-
-    fn from_config(
-        cfg: KanidmRadiusConfig,
-        options: &ModuleOptions,
-    ) -> Result<Arc<Self>, ModuleError> {
+    fn from_config(cfg: KanidmRadiusConfig) -> Result<Arc<Self>, ModuleError> {
         if cfg.uri.trim().is_empty() {
             return Err(ModuleError::Config("uri must not be empty".to_string()));
         }
@@ -142,13 +113,15 @@ impl Module {
         let runtime = Runtime::new()
             .map_err(|e| ModuleError::Config(format!("Failed creating tokio runtime: {e}")))?;
 
-        let timeout_secs = options.http_timeout.as_secs().max(cfg.connect_timeout_secs);
+        // Should be in the config!
+        // let timeout_secs = options.http_timeout.as_secs().max(cfg.connect_timeout_secs);
+
         let mut client_builder = KanidmClientBuilder::new()
             .address(cfg.uri.clone())
             .danger_accept_invalid_hostnames(!cfg.verify_hostnames)
-            .danger_accept_invalid_certs(!cfg.verify_certificate)
-            .connect_timeout(timeout_secs)
-            .request_timeout(timeout_secs);
+            .danger_accept_invalid_certs(!cfg.verify_certificate);
+        // .connect_timeout(timeout_secs)
+        // .request_timeout(timeout_secs);
         if let Some(ca_path) = cfg.ca_path.as_deref() {
             client_builder = client_builder
                 .add_root_certificate_filepath(ca_path)
@@ -183,21 +156,21 @@ impl Module {
         }))
     }
 
-    fn authorize(&self, attrs: &RequestAttributes) -> Response {
-        let Some(user_id) = attrs.user_id() else {
-            return Response::Invalid;
+    fn authorise(&self, request: &AuthRequest) -> Result<AuthResponse, AuthError> {
+        let Some(user_id) = request.user_id() else {
+            return Err(AuthError::Invalid);
         };
 
         let token_result = self.fetch_token_with_cache(user_id);
         let token = match token_result {
             Ok(Some(tok)) => tok,
-            Ok(None) => return Response::NotFound,
-            Err(_) => return Response::Fail,
+            Ok(None) => return Err(AuthError::NotFound),
+            Err(_) => return Err(AuthError::Fail),
         };
 
         // TODO: Audit this.
         if !self.user_in_required_groups(&token.groups) {
-            return Response::Reject;
+            return Err(AuthError::Reject);
         }
 
         // TODO: Audit this too.
@@ -216,7 +189,7 @@ impl Module {
             cleartext_password: Some(token.secret.clone()),
         };
 
-        Response::Ok { reply, control }
+        Ok(AuthResponse { reply, control })
     }
 
     fn user_in_required_groups(&self, user_groups: &[Group]) -> bool {
@@ -319,7 +292,7 @@ mod tests {
             ..KanidmRadiusConfig::default()
         };
 
-        let module = Module::from_config(cfg, &ModuleOptions::default()).expect("module");
+        let module = Module::from_config(cfg).expect("module");
         let groups = vec![
             Group {
                 spn: "g1".to_string(),
@@ -342,7 +315,7 @@ mod tests {
             radius_required_groups: vec!["required-spn".to_string(), "required-uuid".to_string()],
             ..KanidmRadiusConfig::default()
         };
-        let module = Module::from_config(cfg, &ModuleOptions::default()).expect("module");
+        let module = Module::from_config(cfg).expect("module");
 
         let token_spn = sample_token(vec![Group {
             spn: "required-spn".to_string(),

@@ -16,4 +16,5 @@ path = "src/lib.rs"
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
+toml = { workspace = true }
 
