@@ -40,7 +40,7 @@ mod utils;
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::admin::AdminActor;
-use crate::config::Configuration;
+use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::{JwsHs256Signer, JwsSigner};
@@ -49,7 +49,6 @@ use crypto_glue::{
     traits::Digest,
 };
 use kanidm_proto::backup::BackupCompression;
-use kanidm_proto::config::ServerRole;
 use kanidm_proto::internal::OperationError;
 use kanidm_proto::scim_v1::client::ScimAssertGeneric;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
