@@ -6025,6 +6025,8 @@ dependencies = [
  "cc",
  "kanidm_client",
  "kanidm_proto",
+ "kanidmd_core",
+ "kanidmd_testkit",
  "libc",
  "rlm_kanidm_shared",
  "tokio",

@@ -28,6 +28,10 @@ tracing = { workspace = true }
 
 rlm_kanidm_shared = { workspace = true }
 
+[dev-dependencies]
+kanidmd_core = { workspace = true }
+kanidmd_testkit = { workspace = true }
+
 [build-dependencies]
 bindgen = "0.72.1"
 cc = "^1.2.57"

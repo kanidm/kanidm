@@ -1,8 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
-use syn::{parse::Parser, punctuated::Punctuated, spanned::Spanned, ExprAssign, Token};
-
 use quote::{quote, quote_spanned, ToTokens};
+use syn::{parse::Parser, punctuated::Punctuated, spanned::Spanned, ExprAssign, Token};
 
 // for now we only allow a subset of the configuration to be tweaked, but it can be expanded in the future as needed
 
@@ -16,6 +15,7 @@ const ALLOWED_ATTRIBUTES: &[&str] = &[
     "log_level",
     "ldap",
     "with_test_env",
+    "role",
 ];
 
 #[derive(Default)]

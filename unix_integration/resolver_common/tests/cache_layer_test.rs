@@ -4,7 +4,6 @@ use kanidm_hsm_crypto::{
     provider::{BoxedDynTpm, SoftTpm, Tpm},
     AuthValue,
 };
-use kanidm_proto::config::ServerRole;
 use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig};
 use kanidmd_core::create_server_core;
