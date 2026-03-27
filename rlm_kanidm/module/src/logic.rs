@@ -4,6 +4,7 @@ use kanidm_proto::internal::{Group, RadiusAuthToken};
 use rlm_kanidm_shared::config::KanidmRadiusConfig;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::marker::PhantomData;
 
 const TUNNEL_TYPE_VLAN: &str = "13";
 const TUNNEL_MEDIUM_TYPE_IEEE_802: &str = "6";
@@ -48,16 +49,47 @@ impl fmt::Debug for ResponseControlAttributes {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct AuthRequest {
+pub struct AuthRequest<'a> {
     pub tls_san_dn_cn: Option<String>,
     pub tls_cn: Option<String>,
     pub user_name: Option<String>,
     #[allow(dead_code)]
     pub attrs: BTreeMap<String, String>,
+
+    // Needed so that lifetime signatures work even when not in ffi mode.
+    pub phantom: PhantomData<&'a ()>,
+
+    #[cfg(feature = "extern-freeradius-module")]
+    pub request: &'a mut crate::freeradius::REQUEST,
 }
 
-impl AuthRequest {
+impl fmt::Debug for AuthRequest<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AuthRequest")
+            .field("tls_san_dn_cn", &self.tls_san_dn_cn)
+            .field("tls_cn", &self.tls_cn)
+            .field("user_name", &self.user_name)
+            .field("attrs", &self.attrs)
+            .finish()
+    }
+}
+
+#[cfg(not(feature = "extern-freeradius-module"))]
+impl<'a> AuthRequest<'a> {
+    pub fn error(&mut self, message: &str) {
+        tracing::error!("{}", message)
+    }
+
+    pub fn info(&mut self, message: &str) {
+        tracing::info!("{}", message)
+    }
+
+    pub fn debug(&mut self, message: &str) {
+        tracing::debug!("{}", message)
+    }
+}
+
+impl<'a> AuthRequest<'a> {
     pub fn user_id(&self) -> Option<&str> {
         self.tls_san_dn_cn
             .as_deref()
@@ -127,19 +159,29 @@ impl Module {
         })
     }
 
-    pub async fn authorise(&self, request: &AuthRequest) -> Result<AuthResponse, AuthError> {
+    pub async fn authorise(&self, mut request: AuthRequest<'_>) -> Result<AuthResponse, AuthError> {
+        request.debug(format!("authorise: {:?}", request).as_str());
+
         let Some(user_id) = request.user_id() else {
-            return Err(AuthError::Invalid);
+            request.error("authorise: user_id not present in request");
+            return Err(AuthError::Fail);
         };
 
         let token_result = self.fetch_token(user_id).await;
         let token = match token_result {
             Ok(Some(tok)) => tok,
-            Ok(None) => return Err(AuthError::NotFound),
-            Err(_) => return Err(AuthError::Fail),
+            Ok(None) => {
+                request.error("authorise: user_id not found");
+                return Err(AuthError::NotFound);
+            }
+            Err(err) => {
+                request.error(format!("authorise: lookup error - {:?}", err).as_str());
+                return Err(AuthError::Fail);
+            }
         };
 
         if !self.user_in_required_groups(&token.groups) {
+            request.error("authorise: user is not a member of an allowed access group");
             return Err(AuthError::Reject);
         }
 
@@ -156,6 +198,8 @@ impl Module {
         let control = ResponseControlAttributes {
             cleartext_password: Some(token.secret.clone()),
         };
+
+        request.info("authorise: success");
 
         Ok(AuthResponse { reply, control })
     }
@@ -194,6 +238,7 @@ mod tests {
     use super::*;
     use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
     use rlm_kanidm_shared::config::RadiusGroupConfig;
+    use std::marker::PhantomData;
     use std::path::PathBuf;
     use url::Url;
 
@@ -360,11 +405,14 @@ mod tests {
         let module = Module::from_config(cfg).await.expect("module");
 
         let auth_request = AuthRequest {
+            tls_san_dn_cn: None,
+            tls_cn: None,
             user_name: Some("testuser".to_string()),
-            ..Default::default()
+            attrs: Default::default(),
+            phantom: PhantomData,
         };
 
-        let result = module.authorise(&auth_request).await.unwrap();
+        let result = module.authorise(auth_request).await.unwrap();
 
         assert_eq!(result.reply.user_name, "testuser");
         assert_eq!(result.reply.tunnel_type, "13");

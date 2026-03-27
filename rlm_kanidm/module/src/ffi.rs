@@ -5,7 +5,9 @@ use crate::glue::{rlm_kanidm_authorise, rlm_kanidm_instantiate, ModuleHandle};
 use crate::logic::{
     AuthError, AuthRequest, AuthResponse, ResponseControlAttributes, ResponseReplyAttributes,
 };
+use std::collections::BTreeMap;
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
+use std::marker::PhantomData;
 use std::mem::offset_of;
 use std::ptr;
 
@@ -20,6 +22,15 @@ use crate::freeradius::{
     PW_TYPE::PW_TYPE_STRING,
     REQUEST, RLM_TYPE_THREAD_SAFE,
 };
+
+// From rlm_kanidm.c
+unsafe extern "C" {
+    pub unsafe fn rlm_kanidm_rdebug(message: *const c_char, request: &mut REQUEST) -> ();
+
+    pub unsafe fn rlm_kanidm_rinfo(message: *const c_char, request: &mut REQUEST) -> ();
+
+    pub unsafe fn rlm_kanidm_rerror(message: *const c_char, request: &mut REQUEST) -> ();
+}
 
 const ATTR_USER_NAME: &str = "User-Name";
 const ATTR_TLS_CN: &str = "TLS-Client-Cert-Common-Name";
@@ -140,41 +151,69 @@ unsafe extern "C" fn mod_authorise(
 
     let talloc_ctx = request as *mut c_void;
 
+    let Some(request) = request.as_mut() else {
+        return RLM_MODULE_FAIL;
+    };
+
+    rdebug("mod_authorise: begin", request);
+
     let Some(instance) = instance_ptr.as_ref() else {
+        rerror("mod_authorise: invalid instance_ptr", request);
         return RLM_MODULE_FAIL;
     };
 
     let Some(module_handle) = instance.handle.as_ref() else {
-        return RLM_MODULE_FAIL;
-    };
-
-    let Some(request) = request.as_mut() else {
+        rerror("mod_authorise: invalid module handle", request);
         return RLM_MODULE_FAIL;
     };
 
     let auth_request = match AuthRequest::new(request) {
         Ok(auth_request) => auth_request,
-        Err(auth_error) => return auth_error.into(),
+        Err(auth_error) => {
+            rerror(
+                "mod_authorise: auth_request was unable to be constructed",
+                request,
+            );
+            return auth_error.into();
+        }
     };
 
     let auth_response = match rlm_kanidm_authorise(auth_request, module_handle) {
         Ok(auth_response) => auth_response,
-        Err(auth_error) => return auth_error.into(),
+        Err(auth_error) => {
+            rerror("mod_authorise: rlm_kanidm_authorise failed", request);
+            return auth_error.into();
+        }
     };
 
     match auth_response.populate_request(request, talloc_ctx) {
         Ok(()) => RLM_MODULE_OK,
-        Err(auth_error) => auth_error.into(),
+        Err(auth_error) => {
+            rerror(
+                "mod_authorise: unable to populate return values to radius",
+                request,
+            );
+            auth_error.into()
+        }
     }
 }
 
-impl AuthRequest {
-    fn new(request: &mut REQUEST) -> Result<Self, AuthError> {
+#[derive(Debug, Clone, Default)]
+struct AuthRequestBuilder {
+    pub tls_san_dn_cn: Option<String>,
+    pub tls_cn: Option<String>,
+    pub user_name: Option<String>,
+    #[allow(dead_code)]
+    pub attrs: BTreeMap<String, String>,
+}
+
+impl<'a> AuthRequest<'a> {
+    fn new(request: &'a mut REQUEST) -> Result<Self, AuthError> {
         if request.packet.is_null() {
             return Err(AuthError::Fail);
         }
 
-        let mut request_builder = AuthRequest::default();
+        let mut request_builder = AuthRequestBuilder::default();
         let mut cursor = unsafe { std::mem::zeroed::<vp_cursor_t>() };
 
         let request_vp: *const *mut value_pair = unsafe { &(*request.packet).vps as *const _ };
@@ -232,7 +271,33 @@ impl AuthRequest {
             pair = unsafe { fr_cursor_next(&mut cursor) };
         }
 
-        Ok(request_builder)
+        let AuthRequestBuilder {
+            tls_san_dn_cn,
+            tls_cn,
+            user_name,
+            attrs,
+        } = request_builder;
+
+        Ok(AuthRequest {
+            tls_san_dn_cn,
+            tls_cn,
+            user_name,
+            attrs,
+            phantom: PhantomData,
+            request,
+        })
+    }
+
+    pub fn error(&mut self, message: &str) {
+        rerror(message, self.request)
+    }
+
+    pub fn info(&mut self, message: &str) {
+        rinfo(message, self.request)
+    }
+
+    pub fn debug(&mut self, message: &str) {
+        rdebug(message, self.request)
     }
 }
 
@@ -325,5 +390,29 @@ impl Into<rlm_rcode_t> for AuthError {
             AuthError::NoOp => rlm_rcodes::RLM_MODULE_NOOP,
             AuthError::Updated => rlm_rcodes::RLM_MODULE_UPDATED,
         }
+    }
+}
+
+fn rerror(message: &str, request: &mut REQUEST) -> () {
+    if let Ok(message) = CString::new(message) {
+        unsafe { rlm_kanidm_rerror(message.as_ptr(), request) };
+    } else {
+        unsafe { rlm_kanidm_rerror(c"BUG: INVALID MESSAGE".as_ptr(), request) };
+    }
+}
+
+fn rinfo(message: &str, request: &mut REQUEST) -> () {
+    if let Ok(message) = CString::new(message) {
+        unsafe { rlm_kanidm_rinfo(message.as_ptr(), request) };
+    } else {
+        unsafe { rlm_kanidm_rerror(c"BUG: INVALID MESSAGE".as_ptr(), request) };
+    }
+}
+
+fn rdebug(message: &str, request: &mut REQUEST) -> () {
+    if let Ok(message) = CString::new(message) {
+        unsafe { rlm_kanidm_rdebug(message.as_ptr(), request) };
+    } else {
+        unsafe { rlm_kanidm_rerror(c"BUG: INVALID MESSAGE".as_ptr(), request) };
     }
 }
