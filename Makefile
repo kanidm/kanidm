@@ -96,6 +96,18 @@ buildx/radiusd:
 		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) \
 		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_EXT_VERSION) .
 
+.PHONY: buildx/radiusd_rust
+buildx/radiusd_rust: ## Build multi-arch radius docker images and push to docker hub
+buildx/radiusd_rust:
+	echo @$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
+		--pull $(CONTAINER_BUILDX_ACTION) --platform $(CONTAINER_IMAGE_ARCH) \
+		-f rlm_kanidm/Dockerfile \
+		--progress $(BUILDKIT_PROGRESS) \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
+		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) \
+		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_EXT_VERSION) .
+
 .PHONY: buildx
 buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
 

@@ -9,16 +9,16 @@ use std::process::Command;
 
 const CONTAINER_CONFIG_FILE_PATH: &str = "/data/radius.toml";
 
-const CLIENTS_CONF_PATH: &str = "/etc/raddb/clients.conf";
-const CERTS_DIR_PATH: &str = "/etc/raddb/certs";
+const CLIENTS_CONF_PATH_DEST: &str = "/etc/raddb/clients.conf";
+const CA_DIR_PATH: &str = "/etc/raddb/certs";
 const CERT_CA_DEST_PATH: &str = "/etc/raddb/certs/ca.pem";
 const CERT_SERVER_DEST_PATH: &str = "/etc/raddb/certs/server.pem";
 const FREERADIUS_EXEC: &str = "/usr/sbin/radiusd";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BootstrapLayout {
-    pub clients_conf: PathBuf,
-    pub certs_dir: PathBuf,
+    pub clients_conf_dest: PathBuf,
+    pub ca_dir_dest: PathBuf,
     pub cert_ca_dest: PathBuf,
     pub cert_server_dest: PathBuf,
 }
@@ -26,8 +26,8 @@ pub struct BootstrapLayout {
 impl Default for BootstrapLayout {
     fn default() -> Self {
         Self {
-            clients_conf: PathBuf::from(CLIENTS_CONF_PATH),
-            certs_dir: PathBuf::from(CERTS_DIR_PATH),
+            clients_conf_dest: PathBuf::from(CLIENTS_CONF_PATH_DEST),
+            ca_dir_dest: PathBuf::from(CA_DIR_PATH),
             cert_ca_dest: PathBuf::from(CERT_CA_DEST_PATH),
             cert_server_dest: PathBuf::from(CERT_SERVER_DEST_PATH),
         }
@@ -68,10 +68,10 @@ pub fn write_clients_conf<O: Write>(
 }
 
 pub fn prepare_certs(config: &KanidmRadiusConfig, layout: &BootstrapLayout) -> Result<()> {
-    fs::create_dir_all(&layout.certs_dir).with_context(|| {
+    fs::create_dir_all(&layout.ca_dir_dest).with_context(|| {
         format!(
             "failed to create certificate directory {}",
-            layout.certs_dir.display()
+            layout.ca_dir_dest.display()
         )
     })?;
 
@@ -82,9 +82,9 @@ pub fn prepare_certs(config: &KanidmRadiusConfig, layout: &BootstrapLayout) -> R
 
     if let Some(radius_ca_dir) = &config.radius_ca_dir {
         let ca_dir_source = resolve_existing_dir(radius_ca_dir, "radius CA directory")?;
-        copy_dir(&ca_dir_source, &layout.certs_dir)?;
+        copy_dir(&ca_dir_source, &layout.ca_dir_dest)?;
         // Only the CA dir needs rehash
-        rehash_certificates(radius_ca_dir.as_ref())?;
+        rehash_certificates(layout.ca_dir_dest.as_ref())?;
     }
 
     let cert_source = resolve_existing_file(&config.radius_cert_path, "server certificate")?;
@@ -218,11 +218,11 @@ pub fn run(config_override: Option<&Path>, debug: bool) -> Result<()> {
     let config = load_radius_config(config_path)?;
     let layout = BootstrapLayout::default();
 
-    let mut clients_conf = fs::File::create(&layout.clients_conf)?;
-    write_clients_conf(&config, &mut clients_conf).with_context(|| {
+    let mut clients_conf_dest = fs::File::create(&layout.clients_conf_dest)?;
+    write_clients_conf(&config, &mut clients_conf_dest).with_context(|| {
         format!(
             "failed to write clients.conf to {}",
-            layout.clients_conf.display()
+            layout.clients_conf_dest.display()
         )
     })?;
 
