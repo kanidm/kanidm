@@ -63,7 +63,6 @@ static mut MODULE_CONFIG: [CONF_PARSER; 2] = [
     CONF_PARSER {
         name: CONFIG_PATH_KEY.as_ptr(),
         type_: PW_TYPE_STRING as c_int,
-        // TODO: Not sure this is safe?
         offset: offset_of!(RlmKanidmInstance, config_path),
         data: ptr::null_mut(),
         dflt: DEFAULT_CONFIG_PATH.as_ptr().cast(),
