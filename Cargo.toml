@@ -102,7 +102,7 @@ codegen-units = 256
 ## As Kanidm maintains a number of libraries, sometimes during development we need to override them
 ## with local or git versions. This patch table allows quick uncommenting to achieve that.
 
-# compact_jwt = { path = "../compact-jwt" }
+compact_jwt = { path = "../compact-jwt" }
 # crypto-glue = { path = "../crypto-glue" }
 # concread = { path = "../concread" }
 # idlset = { path = "../idlset" }
