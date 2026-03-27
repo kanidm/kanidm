@@ -2585,9 +2585,9 @@ impl IdmServerProxyReadTransaction<'_> {
         // by a scanning attack.
 
         if let Ok(jwsc) = JwsCompact::from_str(&intr_req.token) {
-            self.oauth2_token_introspect_jwt(jwsc, ct)
+            self.oauth2_token_introspect_jwt(&jwsc, ct)
         } else if let Ok(jwec) = JweCompact::from_str(&intr_req.token) {
-            self.oauth2_token_introspect_jwe(jwec, ct)
+            self.oauth2_token_introspect_jwe(&jwec, ct)
         } else {
             error!("Failed to deserialise a valid JWE");
             Err(Oauth2Error::AuthenticationRequired)
@@ -2597,7 +2597,7 @@ impl IdmServerProxyReadTransaction<'_> {
     #[instrument(level = "trace", skip_all)]
     pub fn oauth2_token_introspect_jwt(
         &mut self,
-        jwsc: JwsCompact,
+        jwsc: &JwsCompact,
         ct: Duration,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
         let unverified_client_id = jwsc.header().client_id.as_ref().ok_or_else(|| {
@@ -2616,7 +2616,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let access_token = o2rs
             .key_object
-            .jws_verify(&jwsc)
+            .jws_verify(jwsc)
             .map_err(|err| {
                 error!(?err, "Unable to verify access token");
                 Oauth2Error::AuthenticationRequired
@@ -2706,7 +2706,7 @@ impl IdmServerProxyReadTransaction<'_> {
     #[instrument(level = "trace", skip_all)]
     pub fn oauth2_token_introspect_jwe(
         &mut self,
-        jwec: JweCompact,
+        jwec: &JweCompact,
         ct: Duration,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
         let unverified_client_id = jwec.header().client_id.as_ref().ok_or_else(|| {
@@ -2725,7 +2725,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let token: Oauth2TokenType = o2rs
             .key_object
-            .jwe_decrypt(&jwec)
+            .jwe_decrypt(jwec)
             .map_err(|_| {
                 admin_error!("Failed to decrypt token introspection request");
                 Oauth2Error::AuthenticationRequired
