@@ -5,6 +5,9 @@ use rlm_kanidm_shared::config::KanidmRadiusConfig;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
+const TUNNEL_TYPE_VLAN: &str = "13";
+const TUNNEL_MEDIUM_TYPE_IEEE_802: &str = "6";
+
 #[derive(Debug)]
 #[allow(dead_code)]
 pub(crate) enum AuthError {
@@ -145,9 +148,8 @@ impl Module {
         let reply = ResponseReplyAttributes {
             user_name: token.name.clone(),
             message: format!("Kanidm-Uuid: {}", token.uuid),
-            // TODO: Make these constants.
-            tunnel_type: "13",
-            tunnel_medium_type: "6",
+            tunnel_type: TUNNEL_TYPE_VLAN,
+            tunnel_medium_type: TUNNEL_MEDIUM_TYPE_IEEE_802,
             tunnel_private_group_id: selected_vlan.to_string(),
         };
 

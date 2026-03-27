@@ -99,7 +99,7 @@ buildx/radiusd:
 .PHONY: buildx/radiusd_rust
 buildx/radiusd_rust: ## Build multi-arch radius docker images and push to docker hub
 buildx/radiusd_rust:
-	echo @$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
+	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull $(CONTAINER_BUILDX_ACTION) --platform $(CONTAINER_IMAGE_ARCH) \
 		-f rlm_kanidm/Dockerfile \
 		--progress $(BUILDKIT_PROGRESS) \
