@@ -1400,7 +1400,6 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_oauth2_token_introspect(
         &self,
-        client_auth_info: ClientAuthInfo,
         intr_req: AccessTokenIntrospectRequest,
         eventid: Uuid,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
@@ -1411,7 +1410,7 @@ impl QueryServerReadV1 {
             .await
             .map_err(Oauth2Error::ServerError)?;
         // Now we can send to the idm server for introspection checking.
-        idms_prox_read.check_oauth2_token_introspect(&client_auth_info, &intr_req, ct)
+        idms_prox_read.check_oauth2_token_introspect(&intr_req, ct)
     }
 
     #[instrument(
