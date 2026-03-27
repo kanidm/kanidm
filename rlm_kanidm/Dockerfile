@@ -53,9 +53,6 @@ ARG RADIUS_USER=radiusd
 EXPOSE 1812 1813
 ENV KANIDM_CONFIG_FILE="/data/radius.toml"
 
-COPY --from=builder /src/kanidm/target/release/rlm_kanidm.so /tmp/rlm_kanidm.so
-COPY --from=builder /src/kanidm/target/release/kanidm_radiusd /tmp/kanidm_radiusd
-
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y --no-recommends \
@@ -63,22 +60,17 @@ RUN \
     freeradius-server \
     freeradius-server-utils \
     openssl && \
-    rpm -e --nodeps libpython3_13-1_0 python313-base && \
     zypper clean -a
-
 
 ADD  rlm_kanidm/container/mods-available/ /etc/raddb/mods-available/
 COPY rlm_kanidm/container/sites-available/ /etc/raddb/sites-available/
 
-RUN module_dir="$(for d in /usr/lib64/freeradius /usr/lib/freeradius; do [ -d "$d" ] && echo "$d" && break; done)" && \
-    test -n "${module_dir}" && \
-    install -m 0755 /tmp/rlm_kanidm.so "${module_dir}/rlm_kanidm.so" && \
-    install -m 0755 /tmp/kanidm_radiusd /usr/local/bin/kanidm_radiusd
-
-
 # Enable the native kanidm module and check-eap-tls virtual server.
 RUN ln -s /etc/raddb/mods-available/kanidm_rust /etc/raddb/mods-enabled/kanidm && \
     ln -s /etc/raddb/sites-available/check-eap-tls /etc/raddb/sites-enabled/check-eap-tls
+
+COPY --from=builder /src/kanidm/target/release/rlm_kanidm.so /usr/lib64/freeradius/rlm_kanidm.so
+COPY --from=builder /src/kanidm/target/release/kanidm_radiusd /usr/local/bin/kanidm_radiusd
 
 # # disable auth via methods we don't support!
 RUN rm /etc/raddb/mods-available/sql && \
