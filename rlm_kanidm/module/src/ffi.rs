@@ -139,6 +139,8 @@ unsafe extern "C" fn mod_authorise(
 ) -> rlm_rcode_t {
     let instance_ptr: *mut RlmKanidmInstance = instance_ptr as _;
 
+    let talloc_ctx = request as *mut c_void;
+
     let Some(instance) = instance_ptr.as_ref() else {
         return RLM_MODULE_FAIL;
     };
@@ -161,7 +163,7 @@ unsafe extern "C" fn mod_authorise(
         Err(auth_error) => return auth_error.into(),
     };
 
-    match auth_response.populate_request(request) {
+    match auth_response.populate_request(request, talloc_ctx) {
         Ok(()) => RLM_MODULE_OK,
         Err(auth_error) => auth_error.into(),
     }
@@ -193,10 +195,10 @@ impl AuthRequest {
             };
 
             if !key_ptr.is_null() {
-                let mut value_buf = [0 as c_char; 4096];
+                let mut value_buf = [0 as u8; 4096];
                 unsafe {
                     vp_prints_value(
-                        value_buf.as_mut_ptr(),
+                        value_buf.as_mut_ptr() as *mut c_char,
                         value_buf.len(),
                         pair,
                         // Quote character to be added before and after the value. default/0 for no quoting
@@ -236,14 +238,17 @@ impl AuthRequest {
 }
 
 impl AuthResponse {
-    fn populate_request(self, mut request: &mut REQUEST) -> Result<(), AuthError> {
+    fn populate_request(
+        self,
+        request: &mut REQUEST,
+        talloc_ctx: *mut c_void,
+    ) -> Result<(), AuthError> {
         if request.reply.is_null() {
             return Err(AuthError::Fail);
         }
 
         let AuthResponse { control, reply } = self;
 
-        let talloc_ctx: *mut c_void = ptr::addr_of_mut!(request).cast::<c_void>();
         let control_vp: *mut *mut value_pair = &mut request.config as *mut _;
         let reply_vp: *mut *mut value_pair = unsafe { &mut (*request.reply).vps as *mut _ };
 
