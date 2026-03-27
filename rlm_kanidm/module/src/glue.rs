@@ -30,5 +30,5 @@ pub fn rlm_kanidm_authorise(
 ) -> Result<AuthResponse, AuthError> {
     module_handle
         .runtime
-        .block_on(module_handle.module.authorise(&request))
+        .block_on(module_handle.module.authorise(request))
 }

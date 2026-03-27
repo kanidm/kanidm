@@ -9,6 +9,7 @@ fn main() {
     }
 
     cc::Build::new()
+        .include("./include")
         .file("src/rlm_kanidm.c")
         .link_lib_modifier("+whole-archive")
         .compile("rlm_kanidm");
