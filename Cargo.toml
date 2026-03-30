@@ -23,6 +23,9 @@ members = [
     "unix_integration/nss_kanidm",
     "unix_integration/pam_kanidm",
     "unix_integration/resolver",
+    "rlm_kanidm/entrypoint",
+    "rlm_kanidm/module",
+    "rlm_kanidm/shared",
     "server/daemon",
     "server/lib",
     "server/lib-macros",
@@ -132,6 +135,8 @@ kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.
 kanidm_proto = { path = "./proto", version = "=1.10.0-dev" }
 kanidm_unix_common = { path = "./unix_integration/common", version = "=1.10.0-dev" }
 kanidm_utils_users = { path = "./libs/users", version = "=1.10.0-dev" }
+rlm_kanidm_shared = { path = "./rlm_kanidm/shared", version = "=1.10.0-dev" }
+
 scim_proto = { path = "./libs/scim_proto", version = "=1.10.0-dev" }
 sketching = { path = "./libs/sketching", version = "=1.10.0-dev" }
 

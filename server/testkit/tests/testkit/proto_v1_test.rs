@@ -11,6 +11,7 @@ use kanidm_proto::v1::{
     AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
     Entry,
 };
+use kanidmd_core::config::ServerRole;
 use kanidmd_lib::constants::{NAME_IDM_ADMINS, NAME_SYSTEM_ADMINS};
 use kanidmd_lib::credential::totp::Totp;
 use kanidmd_lib::prelude::{Attribute, APPLICATION_JSON};
@@ -817,7 +818,7 @@ async fn test_server_rest_recycle_lifecycle(rsclient: &KanidmClient) {
     assert!(acc.is_some());
 }
 
-#[kanidmd_testkit::test]
+#[kanidmd_testkit::test(role = ServerRole::WriteReplica)]
 async fn test_server_rest_oauth2_basic_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
