@@ -139,7 +139,7 @@ kanidm-hsm-crypto = { version = "^0.3.5" }
 
 anyhow = { version = "1.0.102" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
-askama = { version = "0.15.5" }
+askama = { version = "0.15.6" }
 askama_web = { version = "0.15.2", features = ["axum-0.8"] }
 async-trait = "^0.1.89"
 axum = { version = "0.8.8", features = [
@@ -165,9 +165,9 @@ clap = { version = "4.6.0", features = ["derive", "env"] }
 clap_complete = "^4.6.0"
 # Forced by saffron/cron
 chrono = "^0.4.44"
-compact_jwt = "^0.5.5"
+compact_jwt = "^0.5.6"
 concread = "^0.5.10"
-cron = "0.15.0"
+cron = "0.16.0"
 crossbeam = "0.8.4"
 crypto-glue = "^0.1.16"
 csv = "1.4.0"
@@ -199,7 +199,7 @@ itertools = "0.14.0"
 jsonschema = "0.45.0"
 ldap3_client = "^0.7.0"
 ldap3_proto = { version = "^0.7.0", features = ["serde"] }
-lettre = { version = "0.11.19", default-features = false }
+lettre = { version = "0.11.20", default-features = false }
 libc = "0.2.183"
 libnss = "^0.9.0"
 lodepng = "3.12.2"
@@ -289,7 +289,7 @@ utoipa = { version = "5.4.0", features = ["url", "uuid"] }
 utoipa-swagger-ui = { version = "9.0.2", default-features = false, features = [
     "vendored",
 ] }
-uuid = "^1.22.0"
+uuid = "^1.23.0"
 webauthn-authenticator-rs = { version = "0.6.0-dev", default-features = false }
 webauthn-rs = { version = "0.6.0-dev", features = ["preview-features"] }
 webauthn-rs-core = "0.6.0-dev"
