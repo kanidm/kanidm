@@ -24,6 +24,11 @@ Initially, a person does not have these attributes. If desired, a person may be 
 kanidm person update demo_user --legalname "initial name" --mail "initial@email.address"
 ```
 
+> [!NOTE]
+>
+> Specify the mail attribute multiple times to associate multiple addresses (read: email aliases) with a person account.
+> The first mail attribute set will be the primary mail address and all subsequent addresses will be aliases.
+
 You can also use anonymous to view accounts - note that you won't see certain fields due to the limits of the anonymous
 access control profile.
 
