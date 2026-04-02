@@ -25,7 +25,6 @@ use crypto_glue::{s256::Sha256, traits::Digest};
 use hashbrown::HashMap;
 use hashbrown::HashSet;
 use kanidm_proto::constants::*;
-use kanidm_proto::oauth2::IssuedTokenType;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AccessTokenType, AuthorisationRequest, ClaimType, ClientAuth,
@@ -35,6 +34,7 @@ pub use kanidm_proto::oauth2::{
     PkceAlg, PkceRequest, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
     TokenRevokeRequest, OAUTH2_TOKEN_TYPE_ACCESS_TOKEN,
 };
+use kanidm_proto::oauth2::{IssuedTokenType, Prompt};
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
 use std::collections::btree_map::Entry as BTreeEntry;
@@ -62,6 +62,8 @@ pub enum Oauth2Error {
     InvalidRequest,
     InvalidGrant,
     UnauthorizedClient,
+    LoginRequired,
+    InteractionRequired,
     AccessDenied,
     UnsupportedResponseType,
     InvalidScope,
@@ -103,6 +105,8 @@ impl std::fmt::Display for Oauth2Error {
             Oauth2Error::InvalidGrant => "invalid_grant",
             Oauth2Error::InvalidRequest => "invalid_request",
             Oauth2Error::UnauthorizedClient => "unauthorized_client",
+            Oauth2Error::LoginRequired => "login_required",
+            Oauth2Error::InteractionRequired => "interaction_required",
             Oauth2Error::AccessDenied => "access_denied",
             Oauth2Error::UnsupportedResponseType => "unsupported_response_type",
             Oauth2Error::InvalidScope => "invalid_scope",
@@ -2178,6 +2182,12 @@ impl IdmServerProxyReadTransaction<'_> {
             }
         };
 
+        // We could throw an error OR we could ignore it, what do we want to do?
+        if auth_req.prompt == Some(Prompt::Invalid) {
+            warn!("Invalid prompt value requested, unable to proceed");
+            return Err(Oauth2Error::InvalidRequest);
+        }
+
         /*
          * 4.1.2.1.  Error Response
          *
@@ -2317,6 +2327,21 @@ impl IdmServerProxyReadTransaction<'_> {
         // prompt - if set to login, we need to force a re-auth. But we don't want to
         // if the user "only just" logged in, that's annoying. So we need a time window for
         // this, to detect when we should force it to the consent req.
+        //
+        // Idk man, Sure its a little awkward but with how few apps actually use `prompt=login`
+        // I think it is unlikely we will cause a significant amount of user friction by forcing
+        // Login on every request with this param.
+        // We can always add a login timestamp later on.
+
+        // OIDC Core 1.0 §3.1.2.1
+        // prompt=login - The Authorization Server MUST prompt the End-User to re-authenticate
+        if auth_req.prompt == Some(Prompt::Login) {
+            debug!("prompt=login was requested, forcing re-authentication");
+            return Ok(AuthoriseResponse::AuthenticationRequired {
+                client_name: o2rs.displayname.clone(),
+                login_hint: auth_req.oidc_ext.login_hint.clone(),
+            });
+        }
 
         // TODO: display = popup vs touch vs wap etc.
 
@@ -2330,10 +2355,18 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let Some(ident) = maybe_ident else {
             debug!("No identity available, assume authentication required");
-            return Ok(AuthoriseResponse::AuthenticationRequired {
-                client_name: o2rs.displayname.clone(),
-                login_hint: auth_req.oidc_ext.login_hint.clone(),
-            });
+
+            // OIDC Core 1.0 §3.1.2.1
+            // prompt=none - The Authorization Server MUST NOT display any authentication or consent user interface pages
+            if auth_req.prompt == Some(Prompt::None) {
+                debug!("prompt=none was requested, but no identity is available, returning error");
+                return Err(Oauth2Error::LoginRequired);
+            } else {
+                return Ok(AuthoriseResponse::AuthenticationRequired {
+                    client_name: o2rs.displayname.clone(),
+                    login_hint: auth_req.oidc_ext.login_hint.clone(),
+                });
+            }
         };
 
         let Some(account_uuid) = ident.get_uuid() else {
@@ -2368,7 +2401,12 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let session_id = ident.get_session_id();
 
-        if consent_previously_granted || !o2rs.enable_consent_prompt() {
+        // OIDC Core 1.0 §3.1.2.1:
+        // prompt=consent - The Authorization Server SHOULD prompt the End-User for consent
+        let force_consent =
+            auth_req.prompt == Some(Prompt::Consent) && o2rs.enable_consent_prompt();
+
+        if !force_consent && (consent_previously_granted || !o2rs.enable_consent_prompt()) {
             if event_enabled!(tracing::Level::DEBUG) {
                 let pretty_scopes: Vec<String> =
                     granted_scopes.iter().map(|s| s.to_owned()).collect();
@@ -2416,6 +2454,14 @@ impl IdmServerProxyReadTransaction<'_> {
                 response_mode,
             }))
         } else {
+            // OIDC Core 1.0 §3.1.2.1:
+            // prompt=none - The Authorization Server MUST NOT display any authentication or
+            // consent user interface pages.
+            if auth_req.prompt == Some(Prompt::None) {
+                debug!("prompt=none was requested, but consent is required, returning error");
+                return Err(Oauth2Error::InteractionRequired);
+            }
+
             //  Check that the scopes are the same as a previous consent (if any)
             // If oidc, what PII is visible?
             // TODO: Scopes map to claims:
@@ -3452,6 +3498,7 @@ mod tests {
                 nonce: Some("abcdef".to_string()),
                 oidc_ext: Default::default(),
                 max_age: None,
+                prompt: None,
                 unknown_keys: Default::default(),
             };
 
@@ -4041,6 +4088,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4063,6 +4111,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4085,6 +4134,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4107,6 +4157,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4129,6 +4180,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4151,6 +4203,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4172,6 +4225,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4193,6 +4247,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4215,6 +4270,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4239,6 +4295,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4261,6 +4318,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4283,6 +4341,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4580,6 +4639,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -4662,6 +4722,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -6052,6 +6113,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -6301,6 +6363,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -6362,6 +6425,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -6501,6 +6565,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -6578,6 +6643,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -7576,6 +7642,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
 
@@ -8063,6 +8130,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: None,
             unknown_keys: Default::default(),
         };
         println!("{auth_req:?}");
@@ -8120,5 +8188,248 @@ mod tests {
 
         // Assert that it still doesn't have any consent maps
         assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
+    }
+
+    fn auth_req_with_prompt(
+        pkce_request: PkceRequest,
+        prompt: Option<Prompt>,
+    ) -> AuthorisationRequest {
+        AuthorisationRequest {
+            response_type: ResponseType::Code,
+            response_mode: None,
+            client_id: "test_resource_server".to_string(),
+            state: Some("123".to_string()),
+            pkce_request: Some(pkce_request),
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            nonce: Some("abcdef".to_string()),
+            oidc_ext: Default::default(),
+            max_age: None,
+            prompt,
+            unknown_keys: Default::default(),
+        }
+    }
+
+    async fn grant_consent_for_identity(
+        idms: &IdmServer,
+        ident: &Identity,
+        uat: &UserAuthToken,
+        ct: Duration,
+    ) -> Identity {
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let pkce_secret = PkceS256Secret::default();
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            ident,
+            ct,
+            pkce_secret.to_request(),
+            OAUTH2_SCOPE_OPENID.to_string()
+        );
+
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!("Expected ConsentRequested, got: {consent_request:?}");
+        };
+
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let _permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        let new_ident = idms_prox_write
+            .process_uat_to_identity(uat, ct, Source::Internal)
+            .expect("Unable to process uat");
+
+        assert!(idms_prox_write.commit().is_ok());
+        new_ident
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1:
+    /// > If an OP receives a prompt value outside the set defined above that it does not understand,
+    /// > it MAY return an error or it MAY ignore it
+    ///
+    /// Currently we return an error but for more compatibility/flexibility we could ignore it instead. Unsure what is best
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_invalid_returns_error(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::Invalid));
+
+        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+
+        assert!(
+            result.unwrap_err() == Oauth2Error::InvalidRequest,
+            "An invalid/unrecognised prompt value must return InvalidRequest"
+        );
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1 prompt=none:
+    ///
+    /// > The Authorization Server MUST NOT display any authentication or consent
+    /// > user interface pages. An error is returned if an End-User is not already
+    /// > authenticated
+    ///
+    /// If the user isn't already logged in we return `login_required`
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_none_unauthenticated_returns_login_required(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, _ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::None));
+
+        // No identity provided (None) - user is not authenticated.
+        let result = idms_prox_read.check_oauth2_authorisation(None, &auth_req, ct);
+
+        assert!(
+            result.unwrap_err() == Oauth2Error::LoginRequired,
+            "prompt=none without authentication must return login_required"
+        );
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1 prompt=none:
+    ///
+    /// > The Authorization Server MUST NOT display any authentication or consent
+    /// > user interface pages. An error is returned if an End-User is not already
+    /// > authenticated
+    ///
+    /// If the user is logged in, but hasn't given consent, we return `interaction_required`
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_none_no_consent_returns_interaction_required(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::None));
+
+        // Ident is authenticated but has never granted consent.
+        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+
+        assert!(
+            result.unwrap_err() == Oauth2Error::InteractionRequired,
+            "prompt=none with authenticated user but no prior consent must return interaction_required"
+        );
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1 prompt=none:
+    ///
+    /// > The Authorization Server MUST NOT display any authentication or consent
+    /// > user interface pages. An error is returned if an End-User is not already
+    /// > authenticated
+    ///
+    /// If the user is logged in *and* has given consent, we return permitted.
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_none_with_prior_consent_succeeds(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        // First, grant consent via the normal flow.
+        let ident = grant_consent_for_identity(idms, &ident, &uat, ct).await;
+
+        // Now issue a prompt=none request - should succeed silently.
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::None));
+
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .expect("prompt=none with prior consent should succeed");
+
+        assert!(
+            matches!(result, AuthoriseResponse::Permitted(_)),
+            "prompt=none with authenticated user and prior consent must return Permitted"
+        );
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1 prompt=login:
+    ///
+    /// > The Authorization Server SHOULD prompt the End-User for reauthentication.
+    ///
+    /// If the user is already authenticated, we still prompt for re-authentication.
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_login_forces_reauthentication(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::Login));
+
+        // Even though the user is authenticated, prompt=login should force re-auth.
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .expect("prompt=login should not error");
+
+        assert!(
+            matches!(result, AuthoriseResponse::AuthenticationRequired { .. }),
+            "prompt=login must force re-authentication even when user is already authenticated"
+        );
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1 prompt=consent:
+    ///
+    /// > The Authorization Server SHOULD prompt the End-User for consent before
+    /// > returning information to the Client.
+    ///
+    /// If the user is logged in and has already given consent, we prompt for consent again
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_consent_forces_reconsent(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        // First, grant consent via the normal flow.
+        let ident = grant_consent_for_identity(idms, &ident, &uat, ct).await;
+
+        // Now issue prompt=consent - should force re-consent even though
+        // the user has previously consented.
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::Consent));
+
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .expect("prompt=consent should not error");
+
+        assert!(
+            matches!(result, AuthoriseResponse::ConsentRequested { .. }),
+            "prompt=consent must force the consent screen even when consent was previously granted"
+        );
     }
 }
