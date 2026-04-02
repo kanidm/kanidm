@@ -21,6 +21,7 @@ RUN \
     zypper install -y --no-recommends \
         sccache \
         cargo \
+        cargo-auditable \
         clang \
         gcc \
         cmake \
@@ -48,7 +49,7 @@ RUN --mount=type=cache,id=cargo,target=/cargo \
     export SCCACHE_DIR=/sccache && \
     export RUSTC_WRAPPER=/usr/bin/sccache && \
     export CC="/usr/bin/clang" && \
-    cargo build --locked -p daemon ${KANIDM_BUILD_OPTIONS} \
+    cargo auditable build --locked -p daemon ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release; \
