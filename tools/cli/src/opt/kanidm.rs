@@ -628,7 +628,7 @@ pub enum ServiceAccountApiToken {
     #[clap(name = "status")]
     Status(AccountNamedOpt),
     /// Generate a new api token for this service account.
-    #[clap(name = "generate")]
+    #[clap(name = "generate", visible_aliases = &["create"])]
     Generate {
         #[clap(flatten)]
         aopts: AccountCommonOpt,
