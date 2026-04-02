@@ -1,0 +1,13 @@
+#!/usr/bin/env rash
+
+- name: Install pre-commit
+  become: true
+  become_method: sudo
+  apt:
+    name: pre-commit
+    state: present
+    update_cache: true
+
+- name: Configure pre-commit in repository
+  command:
+    cmd: pre-commit install
