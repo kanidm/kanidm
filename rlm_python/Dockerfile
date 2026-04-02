@@ -11,22 +11,22 @@ RUN /zypper_fixing.sh
 # FROM repos
 ARG RADIUS_USER=radiusd
 EXPOSE 1812 1813
-ENV KANIDM_CONFIG_FILE="/data/kanidm"
+ENV KANIDM_CONFIG_FILE="/data/radius.toml"
 
 RUN zypper install -y \
-        freeradius-client \
-        freeradius-server \
-        freeradius-server-python3 \
-        freeradius-server-utils \
-        hostname \
-        python3 \
-        python3-devel \
-        python3-pip \
-        timezone \
-        iproute2 \
-        iputils \
-        openssl \
-        curl
+    freeradius-client \
+    freeradius-server \
+    freeradius-server-python3 \
+    freeradius-server-utils \
+    hostname \
+    python3 \
+    python3-devel \
+    python3-pip \
+    timezone \
+    iproute2 \
+    iputils \
+    openssl \
+    curl
 
 # Don't put in the TZ at build time - it needs to be bind mounted at runtime
 # else we are forcing things on people.
