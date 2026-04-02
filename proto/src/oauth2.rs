@@ -478,15 +478,16 @@ pub enum IdTokenSignAlg {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum TokenEndpointAuthMethod {
+pub enum EndpointAuthMethod {
+    None,
     ClientSecretPost,
     ClientSecretBasic,
     ClientSecretJwt,
     PrivateKeyJwt,
 }
 
-fn token_endpoint_auth_methods_supported_default() -> Vec<TokenEndpointAuthMethod> {
-    vec![TokenEndpointAuthMethod::ClientSecretBasic]
+fn token_endpoint_auth_methods_supported_default() -> Vec<EndpointAuthMethod> {
+    vec![EndpointAuthMethod::ClientSecretBasic]
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -576,7 +577,7 @@ pub struct OidcDiscoveryResponse {
     pub request_object_encryption_enc_values_supported: Option<Vec<String>>,
     // Defaults to client_secret_basic
     #[serde(default = "token_endpoint_auth_methods_supported_default")]
-    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub token_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
     pub token_endpoint_auth_signing_alg_values_supported: Option<Vec<String>>,
     // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
     pub display_values_supported: Option<Vec<DisplayValue>>,
@@ -612,11 +613,11 @@ pub struct OidcDiscoveryResponse {
 
     // rfc7009
     pub revocation_endpoint: Option<Url>,
-    pub revocation_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub revocation_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
 
     // rfc7662
     pub introspection_endpoint: Option<Url>,
-    pub introspection_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub introspection_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
     pub introspection_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
 
     /// Ref <https://www.rfc-editor.org/rfc/rfc8628#section-4>
@@ -646,7 +647,7 @@ pub struct Oauth2Rfc8414MetadataResponse {
     pub grant_types_supported: Vec<GrantType>,
 
     #[serde(default = "token_endpoint_auth_methods_supported_default")]
-    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub token_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
 
     pub token_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
 
@@ -658,11 +659,11 @@ pub struct Oauth2Rfc8414MetadataResponse {
 
     // rfc7009
     pub revocation_endpoint: Option<Url>,
-    pub revocation_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub revocation_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
 
     // rfc7662
     pub introspection_endpoint: Option<Url>,
-    pub introspection_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub introspection_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
     pub introspection_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
 
     // RFC7636

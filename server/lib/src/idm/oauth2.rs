@@ -16,7 +16,7 @@ use base64::{engine::general_purpose, Engine as _};
 pub use compact_jwt::{compact::JwkKeySet, OidcToken};
 use compact_jwt::{
     crypto::{JweA128GCMEncipher, JweA128KWEncipher},
-    jwe::Jwe,
+    jwe::JweBuilder,
     jws::JwsBuilder,
     JweCompact, JwsCompact, OidcClaims, OidcSubject,
 };
@@ -29,11 +29,11 @@ use kanidm_proto::oauth2::IssuedTokenType;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AccessTokenType, AuthorisationRequest, ClaimType, ClientAuth,
-    ClientPostAuth, CodeChallengeMethod, DeviceAuthorizationResponse, DisplayValue, ErrorResponse,
-    GrantType, GrantTypeReq, IdTokenSignAlg, OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions,
-    Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse,
-    PkceAlg, PkceRequest, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
-    TokenRevokeRequest, OAUTH2_TOKEN_TYPE_ACCESS_TOKEN,
+    ClientPostAuth, CodeChallengeMethod, DeviceAuthorizationResponse, DisplayValue,
+    EndpointAuthMethod, ErrorResponse, GrantType, GrantTypeReq, IdTokenSignAlg, OAuth2RFC9068Token,
+    OAuth2RFC9068TokenExtensions, Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse,
+    OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, PkceRequest, ResponseMode, ResponseType,
+    SubjectType, TokenRevokeRequest, OAUTH2_TOKEN_TYPE_ACCESS_TOKEN,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
@@ -623,7 +623,6 @@ fn get_client_auth(
             client_secret: client_post_auth.client_secret.clone(),
         })
     } else {
-        admin_warn!("OAuth2 client authentication not provided");
         Err(Oauth2Error::AuthenticationRequired)
     }
 }
@@ -964,46 +963,38 @@ impl IdmServerProxyWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn oauth2_token_revoke(
         &mut self,
-        client_auth_info: &ClientAuthInfo,
         revoke_req: &TokenRevokeRequest,
         ct: Duration,
     ) -> Result<(), Oauth2Error> {
-        let client_auth = get_client_auth(client_auth_info, &revoke_req.client_post_auth)?;
-
-        // Get the o2rs for the handle.
-        let o2rs = self
-            .oauth2rs
-            .inner
-            .rs_set_get(client_auth.client_id.as_str())
-            .ok_or_else(|| {
-                warn!("Invalid OAuth2 client_id");
-                Oauth2Error::AuthenticationRequired
-            })?;
-
-        // check the secret.
-        match &o2rs.type_ {
-            OauthRSType::Basic { authz_secret, .. } => {
-                if Some(authz_secret) != client_auth.client_secret.as_ref() {
-                    info!("Invalid OAuth2 client_id secret, this can happen if your RS is public but you configured a 'basic' type.");
-                    return Err(Oauth2Error::AuthenticationRequired);
-                }
-            }
-            // Relies on the token to be valid.
-            OauthRSType::Public { .. } => {}
-        };
-
-        // We are authenticated! Yay! Now we can actually check things ...
+        // We don't need to authenticate, since possession of the access token is already enough
+        // to prove identity, and we enforce it is cryptographically valid so it can't be bruteforced
+        // by a scanning attack.
 
         // Because this is the only path that deals with the tokens that
         // are either signed *or* encrypted, we need to check both options.
 
         let (session_id, expiry, uuid) = if let Ok(jwsc) = JwsCompact::from_str(&revoke_req.token) {
+            let unverified_client_id = jwsc.header().client_id.as_ref().ok_or_else(|| {
+                error!("Token does not contain the OAuth2 client id");
+                Oauth2Error::AuthenticationRequired
+            })?;
+
+            // Get the o2rs for the handle.
+            let o2rs = self
+                .oauth2rs
+                .inner
+                .rs_set_get(unverified_client_id)
+                .ok_or_else(|| {
+                    warn!("Invalid OAuth2 client_id");
+                    Oauth2Error::AuthenticationRequired
+                })?;
+
             let access_token = o2rs
                 .key_object
                 .jws_verify(&jwsc)
                 .map_err(|err| {
                     admin_error!(?err, "Unable to verify access token");
-                    Oauth2Error::InvalidRequest
+                    Oauth2Error::AuthenticationRequired
                 })
                 .and_then(|jws| {
                     jws.from_json().map_err(|err| {
@@ -1020,19 +1011,29 @@ impl IdmServerProxyWriteTransaction<'_> {
             } = access_token;
 
             (session_id, exp, uuid)
-        } else {
+        } else if let Ok(jwec) = JweCompact::from_str(&revoke_req.token) {
             // Assume it's encrypted.
-            let jwe_compact = JweCompact::from_str(&revoke_req.token).map_err(|_| {
-                error!("Failed to deserialise a valid JWE");
-                Oauth2Error::InvalidRequest
+            let unverified_client_id = jwec.header().client_id.as_ref().ok_or_else(|| {
+                error!("Token does not contain the OAuth2 client id");
+                Oauth2Error::AuthenticationRequired
             })?;
+
+            // Get the o2rs for the handle.
+            let o2rs = self
+                .oauth2rs
+                .inner
+                .rs_set_get(unverified_client_id)
+                .ok_or_else(|| {
+                    warn!("Invalid OAuth2 client_id");
+                    Oauth2Error::AuthenticationRequired
+                })?;
 
             let token: Oauth2TokenType = o2rs
                 .key_object
-                .jwe_decrypt(&jwe_compact)
+                .jwe_decrypt(&jwec)
                 .map_err(|_| {
                     error!("Failed to decrypt token revoke request");
-                    Oauth2Error::InvalidRequest
+                    Oauth2Error::AuthenticationRequired
                 })
                 .and_then(|jwe| {
                     jwe.from_json().map_err(|err| {
@@ -1055,6 +1056,9 @@ impl IdmServerProxyWriteTransaction<'_> {
                     ..
                 } => (session_id, exp, uuid),
             }
+        } else {
+            error!("Failed to deserialise a valid JWE or JWS");
+            return Err(Oauth2Error::AuthenticationRequired);
         };
 
         // Only submit a revocation if the token is not yet expired.
@@ -1095,7 +1099,10 @@ impl IdmServerProxyWriteTransaction<'_> {
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         // Public clients will send the client_id via the ATR, so we need to handle this case.
-        let client_auth = get_client_auth(client_auth_info, &token_req.client_post_auth)?;
+        let client_auth = get_client_auth(client_auth_info, &token_req.client_post_auth)
+            .inspect_err(|_| {
+                warn!("OAuth2 Client Authentcation Required");
+            })?;
 
         let o2rs = self.get_client(&client_auth.client_id)?;
         let is_token_exchange = matches!(token_req.grant_type, GrantTypeReq::TokenExchange { .. });
@@ -1347,10 +1354,12 @@ impl IdmServerProxyWriteTransaction<'_> {
         };
 
         // Encrypt the exchange token
-        let code_data_jwe = Jwe::into_json(&xchg_code).map_err(|err| {
-            error!(?err, "Unable to encode xchg_code data");
-            OperationError::SerdeJsonError
-        })?;
+        let code_data_jwe = JweBuilder::into_json(&xchg_code)
+            .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+            .map_err(|err| {
+                error!(?err, "Unable to encode xchg_code data");
+                OperationError::SerdeJsonError
+            })?;
 
         let code = o2rs
             .key_object
@@ -1813,10 +1822,12 @@ impl IdmServerProxyWriteTransaction<'_> {
             nbf: iat,
         };
 
-        let access_token_data = Jwe::into_json(&access_token_raw).map_err(|err| {
-            error!(?err, "Unable to encode token data");
-            Oauth2Error::ServerError(OperationError::SerdeJsonError)
-        })?;
+        let access_token_data = JweBuilder::into_json(&access_token_raw)
+            .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+            .map_err(|err| {
+                error!(?err, "Unable to encode token data");
+                Oauth2Error::ServerError(OperationError::SerdeJsonError)
+            })?;
 
         let access_token = o2rs
             .key_object
@@ -1955,7 +1966,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 
             trace!(?oidc);
             let oidc = JwsBuilder::into_json(&oidc)
-                .map(|builder| builder.build())
+                .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
                 .map_err(|err| {
                     admin_error!(?err, "Unable to encode access token data");
                     Oauth2Error::ServerError(OperationError::InvalidState)
@@ -1998,7 +2009,12 @@ impl IdmServerProxyWriteTransaction<'_> {
         };
 
         let access_token_data = JwsBuilder::into_json(&access_token_data)
-            .map(|builder| builder.set_typ(Some("at+jwt")).build())
+            .map(|builder| {
+                builder
+                    .set_typ(Some("at+jwt"))
+                    .set_client_id(Some(&o2rs.name))
+                    .build()
+            })
             .map_err(|err| {
                 error!(?err, "Unable to encode access token data");
                 Oauth2Error::ServerError(OperationError::InvalidState)
@@ -2024,10 +2040,12 @@ impl IdmServerProxyWriteTransaction<'_> {
             nonce,
         };
 
-        let refresh_token_data = Jwe::into_json(&refresh_token_raw).map_err(|err| {
-            error!(?err, "Unable to encode token data");
-            Oauth2Error::ServerError(OperationError::SerdeJsonError)
-        })?;
+        let refresh_token_data = JweBuilder::into_json(&refresh_token_raw)
+            .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+            .map_err(|err| {
+                error!(?err, "Unable to encode token data");
+                Oauth2Error::ServerError(OperationError::SerdeJsonError)
+            })?;
 
         let refresh_token = o2rs
             .key_object
@@ -2395,10 +2413,12 @@ impl IdmServerProxyReadTransaction<'_> {
             };
 
             // Encrypt the exchange token with the key of the client
-            let code_data_jwe = Jwe::into_json(&xchg_code).map_err(|err| {
-                error!(?err, "Unable to encode xchg_code data");
-                Oauth2Error::ServerError(OperationError::SerdeJsonError)
-            })?;
+            let code_data_jwe = JweBuilder::into_json(&xchg_code)
+                .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+                .map_err(|err| {
+                    error!(?err, "Unable to encode xchg_code data");
+                    Oauth2Error::ServerError(OperationError::SerdeJsonError)
+                })?;
 
             let code = o2rs
                 .key_object
@@ -2463,10 +2483,12 @@ impl IdmServerProxyReadTransaction<'_> {
                 response_mode,
             };
 
-            let consent_jwe = Jwe::into_json(&consent_req).map_err(|err| {
-                error!(?err, "Unable to encode consent data");
-                Oauth2Error::ServerError(OperationError::SerdeJsonError)
-            })?;
+            let consent_jwe = JweBuilder::into_json(&consent_req)
+                .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+                .map_err(|err| {
+                    error!(?err, "Unable to encode consent data");
+                    Oauth2Error::ServerError(OperationError::SerdeJsonError)
+                })?;
 
             let consent_token = self
                 .oauth2rs
@@ -2555,190 +2577,226 @@ impl IdmServerProxyReadTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_token_introspect(
         &mut self,
-        client_auth_info: &ClientAuthInfo,
         intr_req: &AccessTokenIntrospectRequest,
         ct: Duration,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
-        let client_auth = get_client_auth(client_auth_info, &intr_req.client_post_auth)?;
+        // We don't need to authenticate, since possession of the access token is already enough
+        // to prove identity, and we enforce it is cryptographically valid so it can't be bruteforced
+        // by a scanning attack.
 
-        // Get the o2rs for the handle.
+        if let Ok(jwsc) = JwsCompact::from_str(&intr_req.token) {
+            self.oauth2_token_introspect_jwt(&jwsc, ct)
+        } else if let Ok(jwec) = JweCompact::from_str(&intr_req.token) {
+            self.oauth2_token_introspect_jwe(&jwec, ct)
+        } else {
+            error!("Failed to deserialise a valid JWE");
+            Err(Oauth2Error::AuthenticationRequired)
+        }
+    }
+
+    #[instrument(level = "trace", skip_all)]
+    pub fn oauth2_token_introspect_jwt(
+        &mut self,
+        jwsc: &JwsCompact,
+        ct: Duration,
+    ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
+        let unverified_client_id = jwsc.header().client_id.as_ref().ok_or_else(|| {
+            error!("Token does not contain the OAuth2 client id");
+            Oauth2Error::AuthenticationRequired
+        })?;
+
         let o2rs = self
             .oauth2rs
             .inner
-            .rs_set_get(&client_auth.client_id)
+            .rs_set_get(unverified_client_id)
             .ok_or_else(|| {
                 warn!("Invalid OAuth2 client_id");
                 Oauth2Error::AuthenticationRequired
             })?;
 
-        // We don't need to authenticate, since possession of the access token is already enough
-        // to prove identity, and we enforce it is cryptographically valid so it can't be bruteforced
-        // by a scanning attack.
-        let prefer_short_username = o2rs.prefer_short_username;
-
-        if let Ok(jwsc) = JwsCompact::from_str(&intr_req.token) {
-            let access_token = o2rs
-                .key_object
-                .jws_verify(&jwsc)
-                .map_err(|err| {
-                    error!(?err, "Unable to verify access token");
+        let access_token = o2rs
+            .key_object
+            .jws_verify(jwsc)
+            .map_err(|err| {
+                error!(?err, "Unable to verify access token");
+                Oauth2Error::AuthenticationRequired
+            })
+            .and_then(|jws| {
+                jws.from_json().map_err(|err| {
+                    error!(?err, "Unable to deserialise access token");
                     Oauth2Error::InvalidRequest
                 })
-                .and_then(|jws| {
-                    jws.from_json().map_err(|err| {
-                        error!(?err, "Unable to deserialise access token");
-                        Oauth2Error::InvalidRequest
-                    })
-                })?;
-
-            let OAuth2RFC9068Token::<_> {
-                iss: _,
-                sub,
-                aud: _,
-                exp,
-                nbf,
-                iat,
-                jti,
-                client_id: _,
-                extensions:
-                    OAuth2RFC9068TokenExtensions {
-                        auth_time: _,
-                        acr: _,
-                        amr: _,
-                        scope: scopes,
-                        nonce: _,
-                        session_id,
-                        parent_session_id,
-                    },
-            } = access_token;
-
-            // Has this token expired?
-            if exp <= ct.as_secs() as i64 {
-                security_info!(?sub, "access token has expired, returning inactive");
-                return Ok(AccessTokenIntrospectResponse::inactive(jti));
-            }
-
-            // Is the user expired, or the OAuth2 session invalid?
-            let valid = self
-                .check_oauth2_account_uuid_valid(sub, session_id, parent_session_id, iat, ct)
-                .map_err(|_| admin_error!("Account is not valid"));
-
-            let Ok(Some(entry)) = valid else {
-                security_info!(
-                    ?sub,
-                    "access token account is not valid, returning inactive"
-                );
-                return Ok(AccessTokenIntrospectResponse::inactive(jti));
-            };
-
-            let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
-                Ok(account) => account,
-                Err(err) => return Err(Oauth2Error::ServerError(err)),
-            };
-
-            // ==== good to generate response ====
-
-            let scope = scopes.clone();
-
-            let preferred_username = if prefer_short_username {
-                Some(account.name().into())
-            } else {
-                Some(account.spn().into())
-            };
-
-            let token_type = Some(AccessTokenType::Bearer);
-            Ok(AccessTokenIntrospectResponse {
-                active: true,
-                scope,
-                client_id: Some(client_auth.client_id.clone()),
-                username: preferred_username,
-                token_type,
-                iat: Some(iat),
-                exp: Some(exp),
-                nbf: Some(nbf),
-                sub: Some(sub.to_string()),
-                aud: Some(client_auth.client_id),
-                iss: None,
-                jti,
-            })
-        } else {
-            let jwe_compact = JweCompact::from_str(&intr_req.token).map_err(|_| {
-                error!("Failed to deserialise a valid JWE");
-                Oauth2Error::InvalidRequest
             })?;
 
-            let token: Oauth2TokenType = o2rs
-                .key_object
-                .jwe_decrypt(&jwe_compact)
-                .map_err(|_| {
-                    admin_error!("Failed to decrypt token introspection request");
+        let OAuth2RFC9068Token::<_> {
+            iss: _,
+            sub,
+            aud: _,
+            exp,
+            nbf,
+            iat,
+            jti,
+            client_id: _,
+            extensions:
+                OAuth2RFC9068TokenExtensions {
+                    auth_time: _,
+                    acr: _,
+                    amr: _,
+                    scope: scopes,
+                    nonce: _,
+                    session_id,
+                    parent_session_id,
+                },
+        } = access_token;
+
+        // Has this token expired?
+        if exp <= ct.as_secs() as i64 {
+            security_info!(?sub, "access token has expired, returning inactive");
+            return Ok(AccessTokenIntrospectResponse::inactive(jti));
+        }
+
+        let prefer_short_username = o2rs.prefer_short_username;
+        let client_id = o2rs.name.clone();
+
+        // Is the user expired, or the OAuth2 session invalid?
+        let valid = self
+            .check_oauth2_account_uuid_valid(sub, session_id, parent_session_id, iat, ct)
+            .map_err(|_| admin_error!("Account is not valid"));
+
+        let Ok(Some(entry)) = valid else {
+            security_info!(
+                ?sub,
+                "access token account is not valid, returning inactive"
+            );
+            return Ok(AccessTokenIntrospectResponse::inactive(jti));
+        };
+
+        let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
+            Ok(account) => account,
+            Err(err) => return Err(Oauth2Error::ServerError(err)),
+        };
+
+        // ==== good to generate response ====
+
+        let scope = scopes.clone();
+
+        let preferred_username = if prefer_short_username {
+            Some(account.name().into())
+        } else {
+            Some(account.spn().into())
+        };
+
+        let token_type = Some(AccessTokenType::Bearer);
+        Ok(AccessTokenIntrospectResponse {
+            active: true,
+            scope,
+            client_id: Some(client_id.clone()),
+            username: preferred_username,
+            token_type,
+            iat: Some(iat),
+            exp: Some(exp),
+            nbf: Some(nbf),
+            sub: Some(sub.to_string()),
+            aud: Some(client_id),
+            iss: None,
+            jti,
+        })
+    }
+
+    #[instrument(level = "trace", skip_all)]
+    pub fn oauth2_token_introspect_jwe(
+        &mut self,
+        jwec: &JweCompact,
+        ct: Duration,
+    ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
+        let unverified_client_id = jwec.header().client_id.as_ref().ok_or_else(|| {
+            error!("Token does not contain the OAuth2 client id");
+            Oauth2Error::AuthenticationRequired
+        })?;
+
+        let o2rs = self
+            .oauth2rs
+            .inner
+            .rs_set_get(unverified_client_id)
+            .ok_or_else(|| {
+                warn!("Invalid OAuth2 client_id");
+                Oauth2Error::AuthenticationRequired
+            })?;
+
+        let token: Oauth2TokenType = o2rs
+            .key_object
+            .jwe_decrypt(jwec)
+            .map_err(|_| {
+                admin_error!("Failed to decrypt token introspection request");
+                Oauth2Error::AuthenticationRequired
+            })
+            .and_then(|jwe| {
+                jwe.from_json().map_err(|err| {
+                    error!(?err, "Failed to deserialise token");
                     Oauth2Error::InvalidRequest
                 })
-                .and_then(|jwe| {
-                    jwe.from_json().map_err(|err| {
-                        error!(?err, "Failed to deserialise token");
-                        Oauth2Error::InvalidRequest
-                    })
-                })?;
+            })?;
 
-            match token {
-                Oauth2TokenType::ClientAccess {
-                    scopes,
-                    session_id,
-                    uuid,
-                    exp,
-                    iat,
-                    nbf,
-                } => {
-                    // Has this token expired?
-                    if exp <= ct.as_secs() as i64 {
-                        security_info!(?uuid, "access token has expired, returning inactive");
-                        return Ok(AccessTokenIntrospectResponse::inactive(session_id));
-                    }
-
-                    // We can't do the same validity check for the client as we do with an account
-                    let valid = self
-                        .check_oauth2_account_uuid_valid(uuid, session_id, None, iat, ct)
-                        .map_err(|_| admin_error!("Account is not valid"));
-
-                    let Ok(Some(entry)) = valid else {
-                        security_info!(
-                            ?uuid,
-                            "access token account is not valid, returning inactive"
-                        );
-                        return Ok(AccessTokenIntrospectResponse::inactive(session_id));
-                    };
-
-                    let scope = scopes.clone();
-
-                    let token_type = Some(AccessTokenType::Bearer);
-
-                    let username = if prefer_short_username {
-                        entry
-                            .get_ava_single_iname(Attribute::Name)
-                            .map(|s| s.to_string())
-                    } else {
-                        entry.get_ava_single_proto_string(Attribute::Spn)
-                    };
-
-                    Ok(AccessTokenIntrospectResponse {
-                        active: true,
-                        scope,
-                        client_id: Some(client_auth.client_id.clone()),
-                        username,
-                        token_type,
-                        iat: Some(iat),
-                        exp: Some(exp),
-                        nbf: Some(nbf),
-                        sub: Some(uuid.to_string()),
-                        aud: Some(client_auth.client_id),
-                        iss: None,
-                        jti: session_id,
-                    })
+        match token {
+            Oauth2TokenType::ClientAccess {
+                scopes,
+                session_id,
+                uuid,
+                exp,
+                iat,
+                nbf,
+            } => {
+                // Has this token expired?
+                if exp <= ct.as_secs() as i64 {
+                    security_info!(?uuid, "access token has expired, returning inactive");
+                    return Ok(AccessTokenIntrospectResponse::inactive(session_id));
                 }
-                Oauth2TokenType::Refresh { session_id, .. } => {
-                    Ok(AccessTokenIntrospectResponse::inactive(session_id))
-                }
+
+                let prefer_short_username = o2rs.prefer_short_username;
+                let client_id = o2rs.name.clone();
+
+                // We can't do the same validity check for the client as we do with an account
+                let valid = self
+                    .check_oauth2_account_uuid_valid(uuid, session_id, None, iat, ct)
+                    .map_err(|_| admin_error!("Account is not valid"));
+
+                let Ok(Some(entry)) = valid else {
+                    security_info!(
+                        ?uuid,
+                        "access token account is not valid, returning inactive"
+                    );
+                    return Ok(AccessTokenIntrospectResponse::inactive(session_id));
+                };
+
+                let scope = scopes.clone();
+
+                let token_type = Some(AccessTokenType::Bearer);
+
+                let username = if prefer_short_username {
+                    entry
+                        .get_ava_single_iname(Attribute::Name)
+                        .map(|s| s.to_string())
+                } else {
+                    entry.get_ava_single_proto_string(Attribute::Spn)
+                };
+
+                Ok(AccessTokenIntrospectResponse {
+                    active: true,
+                    scope,
+                    client_id: Some(client_id.clone()),
+                    username,
+                    token_type,
+                    iat: Some(iat),
+                    exp: Some(exp),
+                    nbf: Some(nbf),
+                    sub: Some(uuid.to_string()),
+                    aud: Some(client_id),
+                    iss: None,
+                    jti: session_id,
+                })
+            }
+            Oauth2TokenType::Refresh { session_id, .. } => {
+                Ok(AccessTokenIntrospectResponse::inactive(session_id))
             }
         }
     }
@@ -2872,19 +2930,13 @@ impl IdmServerProxyReadTransaction<'_> {
         let grant_types_supported = vec![GrantType::AuthorisationCode, GrantType::TokenExchange];
 
         let token_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
+            EndpointAuthMethod::ClientSecretBasic,
+            EndpointAuthMethod::ClientSecretPost,
         ];
 
-        let revocation_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
-        ];
+        let revocation_endpoint_auth_methods_supported = vec![EndpointAuthMethod::None];
 
-        let introspection_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
-        ];
+        let introspection_endpoint_auth_methods_supported = vec![EndpointAuthMethod::None];
 
         let service_documentation = Some(URL_SERVICE_DOCUMENTATION.clone());
 
@@ -2952,8 +3004,8 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let userinfo_signing_alg_values_supported = None;
         let token_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
+            EndpointAuthMethod::ClientSecretBasic,
+            EndpointAuthMethod::ClientSecretPost,
         ];
         let display_values_supported = Some(vec![DisplayValue::Page]);
         let claim_types_supported = vec![ClaimType::Normal];
@@ -2970,16 +3022,10 @@ impl IdmServerProxyReadTransaction<'_> {
         // The following are extensions allowed by the oidc specification.
 
         let revocation_endpoint = Some(o2rs.revocation_endpoint.clone());
-        let revocation_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
-        ];
+        let revocation_endpoint_auth_methods_supported = vec![EndpointAuthMethod::None];
 
         let introspection_endpoint = Some(o2rs.introspection_endpoint.clone());
-        let introspection_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
-        ];
+        let introspection_endpoint_auth_methods_supported = vec![EndpointAuthMethod::None];
 
         Ok(OidcDiscoveryResponse {
             issuer,
@@ -4760,7 +4806,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
 
         eprintln!("👉  {intr_response:?}");
@@ -4799,7 +4845,7 @@ mod tests {
         // check again.
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
 
         assert!(!intr_response.active);
@@ -4861,29 +4907,14 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
         drop(idms_prox_read);
 
-        // First, the revoke needs basic auth. Provide incorrect auth, and we fail.
-        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
-
-        let bad_client_authz = ClientAuthInfo::encode_basic("test_resource_server", "12345");
-
-        let revoke_request = TokenRevokeRequest {
-            token: oauth2_token.access_token.clone(),
-            token_type_hint: None,
-            client_post_auth: ClientPostAuth::default(),
-        };
-        let e = idms_prox_write
-            .oauth2_token_revoke(&bad_client_authz, &revoke_request, ct)
-            .unwrap_err();
-        assert!(matches!(e, Oauth2Error::AuthenticationRequired));
-        assert!(idms_prox_write.commit().is_ok());
-
-        // Now submit a non-existent/invalid token. Does not affect our tokens validity.
+        // Now submit a non-existent/invalid token. Considered a failure to authenticate
+        // as the token wasn't valid.
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let revoke_request = TokenRevokeRequest {
             token: "this is an invalid token, nothing will happen!".to_string(),
@@ -4891,15 +4922,15 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let e = idms_prox_write
-            .oauth2_token_revoke(&client_authz, &revoke_request, ct)
+            .oauth2_token_revoke(&revoke_request, ct)
             .unwrap_err();
-        assert!(matches!(e, Oauth2Error::InvalidRequest));
+        assert!(matches!(e, Oauth2Error::AuthenticationRequired));
         assert!(idms_prox_write.commit().is_ok());
 
         // Check our token is still valid.
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
         assert!(intr_response.active);
         drop(idms_prox_read);
@@ -4912,14 +4943,14 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
-            .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
+            .oauth2_token_revoke(&revoke_request, ct,)
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
         // Assert it is now invalid.
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
 
         assert!(!intr_response.active);
@@ -4948,14 +4979,14 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
         // Grace window in effect.
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
         assert!(intr_response.active);
 
         // Grace window passed, it will now be invalid.
         let ct = ct + AUTH_TOKEN_GRACE_WINDOW;
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
         assert!(!intr_response.active);
 
@@ -4969,7 +5000,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
-            .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
+            .oauth2_token_revoke(&revoke_request, ct,)
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -5232,8 +5263,8 @@ mod tests {
         assert!(
             discovery.token_endpoint_auth_methods_supported
                 == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
+                    EndpointAuthMethod::ClientSecretBasic,
+                    EndpointAuthMethod::ClientSecretPost
                 ]
         );
         assert!(discovery.service_documentation.is_some());
@@ -5252,11 +5283,7 @@ mod tests {
                 )
         );
         assert!(
-            discovery.revocation_endpoint_auth_methods_supported
-                == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
-                ]
+            discovery.revocation_endpoint_auth_methods_supported == vec![EndpointAuthMethod::None,]
         );
 
         assert!(
@@ -5271,10 +5298,7 @@ mod tests {
         );
         assert!(
             discovery.introspection_endpoint_auth_methods_supported
-                == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
-                ]
+                == vec![EndpointAuthMethod::None,]
         );
         assert!(discovery
             .introspection_endpoint_auth_signing_alg_values_supported
@@ -5398,8 +5422,8 @@ mod tests {
         assert!(
             discovery.token_endpoint_auth_methods_supported
                 == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
+                    EndpointAuthMethod::ClientSecretBasic,
+                    EndpointAuthMethod::ClientSecretPost
                 ]
         );
         assert_eq!(
@@ -5452,11 +5476,7 @@ mod tests {
                 )
         );
         assert!(
-            discovery.revocation_endpoint_auth_methods_supported
-                == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
-                ]
+            discovery.revocation_endpoint_auth_methods_supported == vec![EndpointAuthMethod::None,]
         );
 
         assert!(
@@ -5470,10 +5490,7 @@ mod tests {
         );
         assert!(
             discovery.introspection_endpoint_auth_methods_supported
-                == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
-                ]
+                == vec![EndpointAuthMethod::None,]
         );
         assert!(discovery
             .introspection_endpoint_auth_signing_alg_values_supported
@@ -6845,7 +6862,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
-            .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
+            .oauth2_token_revoke(&revoke_request, ct,)
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
@@ -7506,7 +7523,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
 
         eprintln!("👉  {intr_response:?}");
@@ -7737,7 +7754,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to introspect service account token");
 
         assert!(intr_response.active);
@@ -7759,7 +7776,6 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, _uat, _ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
-        let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
         // scope: Some(btreeset!["invalid_scope".to_string()]),
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
@@ -7791,7 +7807,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
 
         eprintln!("👉  {intr_response:?}");
@@ -7819,7 +7835,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
-            .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
+            .oauth2_token_revoke(&revoke_request, ct,)
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
@@ -7834,7 +7850,7 @@ mod tests {
         };
 
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
         assert!(!intr_response.active);
 

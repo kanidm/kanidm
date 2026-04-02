@@ -614,13 +614,12 @@ pub async fn oauth2_openid_publickey_get(
 pub async fn oauth2_token_introspect_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Form(intr_req): Form<AccessTokenIntrospectRequest>,
 ) -> impl IntoResponse {
     request_trace!("Introspect Request - {:?}", intr_req);
     let res = state
         .qe_r_ref
-        .handle_oauth2_token_introspect(client_auth_info, intr_req, kopid.eventid)
+        .handle_oauth2_token_introspect(intr_req, kopid.eventid)
         .await;
 
     match res {
@@ -676,14 +675,13 @@ pub async fn oauth2_token_introspect_post(
 pub async fn oauth2_token_revoke_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Form(intr_req): Form<TokenRevokeRequest>,
 ) -> impl IntoResponse {
     request_trace!("Revoke Request - {:?}", intr_req);
 
     let res = state
         .qe_w_ref
-        .handle_oauth2_token_revoke(client_auth_info, intr_req, kopid.eventid)
+        .handle_oauth2_token_revoke(intr_req, kopid.eventid)
         .await;
 
     match res {
