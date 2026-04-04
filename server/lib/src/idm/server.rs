@@ -412,7 +412,7 @@ pub trait IdmServerTransaction<'a> {
     /// The primary method of verification selection is the use of the KID parameter
     /// that we internally sign with. We can use this to select the appropriate token type
     /// and validation method.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn validate_client_auth_info_to_ident(
         &mut self,
         client_auth_info: ClientAuthInfo,
