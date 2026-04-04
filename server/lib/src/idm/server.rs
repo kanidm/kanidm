@@ -1185,7 +1185,7 @@ impl IdmServerAuthTransaction<'_> {
                 // Get the first / single entry we expect here ....
                 let entry = self.qs_read.internal_search_uuid(euuid)?;
 
-                security_info!(
+                info!(
                     username = %init.username,
                     issue = ?init.issue,
                     privileged = ?init.privileged,

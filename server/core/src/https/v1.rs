@@ -3124,7 +3124,7 @@ fn cacheable_routes(state: ServerState) -> Router<ServerState> {
         .with_state(state)
 }
 
-#[instrument(skip(state), name = "https_v1_route_setup")]
+#[instrument(skip(state), name = "https_v1_route_setup" level="debug"   )]
 pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
     Router::new()
         .route("/v1/oauth2", get(super::v1_oauth2::oauth2_get))
