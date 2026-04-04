@@ -456,7 +456,7 @@ pub trait IdmServerTransaction<'a> {
     /// info will not need to perform all the same checks (time, cryptography, etc).
     /// However, subsequent callers will still need to load the entry into the
     /// identity.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn pre_validate_client_auth_info(
         &mut self,
         client_auth_info: &mut ClientAuthInfo,

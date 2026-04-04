@@ -748,7 +748,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "info",
+        level = "debug",
         skip_all,
         fields(uuid = ?eventid)
     )]
@@ -794,7 +794,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "info",
+        level = "debug",
         skip_all,
         fields(uuid = ?eventid)
     )]
