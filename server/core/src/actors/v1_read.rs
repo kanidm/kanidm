@@ -177,7 +177,10 @@ impl QueryServerReadV1 {
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 
-        security_info!(?res, "Sending reauth result");
+        match &res {
+            Ok(r) => security_info!("Reauth result: {}", r),
+            Err(e) => security_error!("Reauth result: {:?}", e),
+        }
 
         res
     }
