@@ -1230,7 +1230,7 @@ impl QueryServerWriteV1 {
                 .name_to_uuid(uuid_or_name.as_str())
                 .inspect_err(|err| {
                     if &OperationError::NoMatchingEntries == err {
-                        info!("No account found");
+                        info!("Account not found");
                     } else {
                         info!(?err, "Error resolving from gidnumber ...");
                     }

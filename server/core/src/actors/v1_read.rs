@@ -731,7 +731,7 @@ impl QueryServerReadV1 {
                     true => "<empty uuid_or_name>",
                     false => &uuid_or_name,
                 };
-                admin_info!(
+                debug!(
                     err = ?e,
                     "Error resolving {} as gidnumber continuing ...",
                     uuid_or_name_val
