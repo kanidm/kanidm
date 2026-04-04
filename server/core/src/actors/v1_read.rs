@@ -112,7 +112,7 @@ impl QueryServerReadV1 {
         // "authenticated" or not.
         let ct = duration_from_epoch_now();
         let mut idm_auth = self.idms.auth().await?;
-        security_info!(?sessionid, ?req, "Begin auth event");
+        debug!(?sessionid, ?req, "Begin auth event");
 
         // Destructure it.
         // Convert the AuthRequest to an AuthEvent that the idm server
@@ -134,7 +134,10 @@ impl QueryServerReadV1 {
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 
-        security_info!(?res, "Sending auth result");
+        match &res {
+            Ok(r) => security_info!("Auth result: {}", r),
+            Err(e) => security_error!("Auth result: {:?}", e),
+        }
 
         res
     }

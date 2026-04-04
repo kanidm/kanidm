@@ -479,10 +479,10 @@ pub trait IdmServerTransaction<'a> {
         result
     }
 
-    /// This function is not using in authentication flows - it is a reflector of the
+    /// This function is not used in authentication flows - it is a reflector of the
     /// current session state to allow a user-auth-token to be presented to the
     /// user via the whoami call.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn validate_client_auth_info_to_uat(
         &mut self,
         client_auth_info: &ClientAuthInfo,
