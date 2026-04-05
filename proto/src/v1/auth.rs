@@ -141,6 +141,15 @@ pub enum AuthIssueSession {
     Cookie,
 }
 
+impl AsRef<str> for AuthIssueSession {
+    fn as_ref(&self) -> &str {
+        match self {
+            AuthIssueSession::Token => "Token",
+            AuthIssueSession::Cookie => "Cookie",
+        }
+    }
+}
+
 /// A request for the next step of an authentication.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuthRequest {

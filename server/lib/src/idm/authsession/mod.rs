@@ -1640,9 +1640,9 @@ impl AuthSession {
                     }
                 };
 
-                security_info!(
-                    "Issuing {:?} session ({:?}) {} for {} {}",
-                    self.issue,
+                info!(
+                    "Issuing {} session ({}) {} for {} {}",
+                    self.issue.as_ref(),
                     scope,
                     session_id,
                     self.account.spn(),
