@@ -187,7 +187,7 @@ hashbrown = { version = "0.16.1", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
 http = "1.4.0"
 http-body-util = "0.1"
-hyper = { version = "1.8.1" }
+hyper = { version = "1.9.0" }
 hyper-util = { version = "0.1.20", features = ["server", "tokio"] }
 idlset = "^0.2.5"
 image = { version = "0.25.9", default-features = false, features = [
@@ -199,8 +199,8 @@ itertools = "0.14.0"
 jsonschema = "0.45.0"
 ldap3_client = "^0.7.0"
 ldap3_proto = { version = "^0.7.0", features = ["serde"] }
-lettre = { version = "0.11.20", default-features = false }
-libc = "0.2.183"
+lettre = { version = "0.11.21", default-features = false }
+libc = "0.2.184"
 libnss = "^0.9.0"
 lodepng = "3.12.2"
 lru = "0.16.3"
@@ -270,7 +270,7 @@ syn = { version = "2.0.117", features = ["full"] }
 tempfile = "3.26.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.47", features = ["formatting", "local-offset"] }
-tokio = { version = "^1.50.0", default-features = false }
+tokio = { version = "^1.51.0", default-features = false }
 tokio-rustls = { version = "0.26.4" }
 tokio-util = "^0.7.18"
 toml = "^1"
