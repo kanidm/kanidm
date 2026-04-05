@@ -15,7 +15,7 @@ repository.workspace = true
 name = "kanidm-mail-sender"
 path = "src/main.rs"
 doc = false
-test = false
+test = true
 doctest = false
 
 [dependencies]
@@ -26,7 +26,18 @@ hashbrown = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
-lettre = { workspace = true, default-features = false, features = ["builder", "pool", "hostname", "smtp-transport", "tokio1-rustls", "aws-lc-rs", "rustls-platform-verifier", "tokio1", "serde", "tracing"] }
+lettre = { workspace = true, default-features = false, features = [
+    "builder",
+    "pool",
+    "hostname",
+    "smtp-transport",
+    "tokio1-rustls",
+    "aws-lc-rs",
+    "rustls-platform-verifier",
+    "tokio1",
+    "serde",
+    "tracing",
+] }
 tokio = { workspace = true, features = ["rt", "macros", "net"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
