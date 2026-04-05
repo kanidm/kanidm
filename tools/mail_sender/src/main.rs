@@ -361,6 +361,29 @@ fn config_security_checks(cfg_path: &Path) -> bool {
     }
 }
 
+/// Build the mailer object, tests to ensure that the server doesn't include a scheme
+fn build_mailer(
+    mail_relay: &str,
+    creds: Credentials,
+    timeout: u64,
+) -> Result<AsyncSmtpTransport<Tokio1Executor>, ()> {
+    if mail_relay.contains("://") {
+        error!("Mail relay should not contain a scheme (e.g. 'smtp://'), just the hostname or hostname:port");
+        return Err(());
+    }
+
+    match AsyncSmtpTransport::<Tokio1Executor>::relay(mail_relay) {
+        Ok(mailer_builder) => Ok(mailer_builder
+            .timeout(Some(Duration::from_secs(timeout)))
+            .credentials(creds)
+            .build()),
+        Err(err) => {
+            error!(?err, "Unable to build mail transport");
+            Err(())
+        }
+    }
+}
+
 async fn driver_main(opt: Opt) -> Result<(), ()> {
     let mut f = match File::open(&opt.mail_sender_config) {
         Ok(f) => f,
@@ -434,14 +457,11 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
         mail_config.mail_password.clone(),
     );
 
-    let mailer: AsyncSmtpTransport<Tokio1Executor> =
-        match AsyncSmtpTransport::<Tokio1Executor>::relay(mail_config.mail_relay.as_str()) {
-            Ok(mailer_builder) => mailer_builder.credentials(creds).build(),
-            Err(err) => {
-                error!(?err, "Unable to build mail transport");
-                return Err(());
-            }
-        };
+    let mailer = build_mailer(
+        mail_config.mail_relay.as_str(),
+        creds,
+        mail_config.mail_connect_timeout_seconds,
+    )?;
 
     // Channel for submission of mails that need to be sent
     let (outbound_tx, outbound_rx) = mpsc::channel(CHANNEL_CAPACITY);
@@ -637,4 +657,16 @@ fn main() {
     if rt.block_on(async move { driver_main(opt).await }).is_err() {
         std::process::exit(1);
     };
+}
+
+#[tokio::test]
+async fn test_build_mailer() {
+    let creds = Credentials::new("username".to_owned(), "password".to_owned());
+
+    build_mailer("example.com", creds.clone(), 1).expect("Failed to build mailer");
+    build_mailer("example.com:12345", creds.clone(), 1).expect("Failed to build mailer with port");
+    build_mailer("examplehost", creds.clone(), 1).expect("Failed to build mailer with short name");
+
+    // no scheme allowed
+    build_mailer("smtp://example.com", creds, 1).expect_err("Should fail with invalid host format");
 }
