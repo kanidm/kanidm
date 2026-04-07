@@ -882,7 +882,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: &KanidmClient) {
         )
         .await
         .expect("Failed to update config");
-
+    #[allow(clippy::disallowed_methods)]
     rsclient
         .idm_oauth2_rs_rotate_keys("test_integration", OffsetDateTime::now_utc())
         .await

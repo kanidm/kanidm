@@ -28,7 +28,6 @@ kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidmd_core = { workspace = true }
 kanidmd_lib = { workspace = true }
-openssl = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 sketching = { workspace = true }
@@ -65,7 +64,6 @@ oauth2_ext = { workspace = true, default-features = false, features = [
 ] }
 serde_json = { workspace = true }
 time = { workspace = true }
-tokio-openssl = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 uuid = { workspace = true }
 jsonschema = { workspace = true }

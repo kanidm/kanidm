@@ -28,6 +28,9 @@ mail_from_address = "kanidm@example.com"
 mail_reply_to_address = "tobias@example.com"
 
 # The hostname/address of the outgoing SMTP relay. This must support TLS.
+# You can specify the port as well if it is not the default (465). For example:
+# mail_relay = "smtp.example.com:12345"
+
 mail_relay = "smtp.example.com"
 
 # The username to authenticate to the SMTP relay as.
@@ -36,3 +39,5 @@ mail_username = "kanidm@example.com"
 # The password to authenticate to the SMTP relay.
 mail_password = ""
 
+# The timeout in seconds for connecting to the SMTP relay. Defaults to 15 seconds if not specified.
+# mail_connect_timeout_seconds = 15

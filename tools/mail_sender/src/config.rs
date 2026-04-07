@@ -15,4 +15,11 @@ pub struct Config {
     pub mail_relay: String,
     pub mail_username: String,
     pub mail_password: String,
+    /// Defaults to 15 seconds if not specified
+    #[serde(default = "default_mail_connect_timeout_seconds")]
+    pub mail_connect_timeout_seconds: u64,
+}
+
+fn default_mail_connect_timeout_seconds() -> u64 {
+    15
 }

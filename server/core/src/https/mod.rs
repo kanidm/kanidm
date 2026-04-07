@@ -15,10 +15,13 @@ use axum::{
 };
 use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
+use crypto_glue::{
+    traits::DecodeDer,
+    x509::{x509_digest_public_key_sha256, Certificate},
+};
 use futures::pin_mut;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
-use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 use kanidm_proto::{config::ServerRole, constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::authentication::ClientCertInfo, status::StatusActor};
 use serde::de::DeserializeOwned;
@@ -619,7 +622,7 @@ pub(crate) async fn handle_tls_conn(
             std::io::Error::from(ErrorKind::ConnectionAborted)
         })?;
 
-        let public_key_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
+        let public_key_s256 = x509_digest_public_key_sha256(&certificate).ok_or_else(|| {
             error!("subject public key bitstring is not octet aligned");
             std::io::Error::from(ErrorKind::ConnectionAborted)
         })?;

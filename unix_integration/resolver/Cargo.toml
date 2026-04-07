@@ -102,6 +102,7 @@ kanidm_utils_users = { workspace = true }
 [dev-dependencies]
 kanidmd_core = { workspace = true }
 kanidmd_testkit = { workspace = true }
+tempfile = { workspace = true }
 
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }
@@ -113,11 +114,9 @@ kanidm_build_profiles = { workspace = true }
 [package.metadata.deb]
 name = "kanidm-unixd"
 maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
-# Can't use $auto depends because the name of libssl3 varies by distro and version
 depends = [
 	"libc6",
 	"tpm-udev",
-	"libssl3 | libssl3t64",
 	"libpam-kanidm",
 	"libnss-kanidm"
 ]
@@ -133,6 +132,7 @@ assets = [
     [ "../../examples/kanidm-safe-default", "etc/kanidm/config", "644" ],
     [ "../../examples/kanidm", "usr/share/kanidm-unixd/", "444" ],
     [ "../../examples/unixd", "usr/share/kanidm-unixd/", "444" ],
+    [ "../../examples/sshd-config.conf", "etc/ssh/sshd_config.d/10-kanidm.conf", "644"],
 ]
 maintainer-scripts = "debian/"
 systemd-units = [

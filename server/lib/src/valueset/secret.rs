@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-
 use smolset::SmolSet;
 
 #[derive(Debug, Clone)]

@@ -63,9 +63,14 @@ impl KanidmClient {
             );
         }
         if let Some(newlegalname) = legalname {
-            update_entry
-                .attrs
-                .insert(ATTR_LEGALNAME.to_string(), vec![newlegalname.to_string()]);
+            // An empty string means we should purge the attribute, which
+            // is done by inserting an empty vec as the entry value
+            let val = if newlegalname.is_empty() {
+                vec![]
+            } else {
+                vec![newlegalname.to_string()]
+            };
+            update_entry.attrs.insert(ATTR_LEGALNAME.to_string(), val);
         }
         if let Some(mail) = mail {
             update_entry

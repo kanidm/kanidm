@@ -22,6 +22,7 @@ use kanidm_unix_common::unix_config::PamNssConfig;
 use kanidm_unix_common::unix_proto::{
     ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo,
 };
+use kanidm_unix_resolver::check_nsswitch_has_kanidm;
 use std::path::PathBuf;
 
 include!("../opt/tool.rs");
@@ -252,6 +253,8 @@ async fn main() -> ExitCode {
 
             let mut daemon_client = setup_client!();
             let req = ClientRequest::Status;
+
+            check_nsswitch_has_kanidm(None);
 
             match daemon_client.call(req, None).await {
                 Ok(r) => match r {

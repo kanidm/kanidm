@@ -35,6 +35,7 @@ The service account must have an api token with read-write privileges.
 ```bash
 kanidm service-account api-token generate ACCOUNT_ID LABEL [EXPIRY] --readwrite
 kanidm service-account api-token generate mail-sender "mail sender token" --readwrite
+```
 
 > [!WARNING]
 >
