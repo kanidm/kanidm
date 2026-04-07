@@ -494,6 +494,36 @@ pub struct AuthResult {
     pub state: AuthState,
 }
 
+impl std::fmt::Display for AuthResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.state {
+            AuthState::Choose(auth_mechs) => write!(
+                f,
+                "Choose({})",
+                auth_mechs
+                    .iter()
+                    .map(|m| m.to_value())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
+            AuthState::Continue(auth_alloweds) => write!(
+                f,
+                "Continue ({})",
+                auth_alloweds
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
+            AuthState::External(auth_external) => write!(f, "External({:?})", auth_external),
+            AuthState::Denied(reason) => write!(f, "Denied: {}", reason),
+            AuthState::Success(_jws_compact, auth_issue_session) => {
+                write!(f, "Success({})", auth_issue_session)
+            }
+        }
+    }
+}
+
 /*
 impl AuthResult {
     pub fn response(self) -> AuthResponse {

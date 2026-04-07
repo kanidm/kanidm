@@ -77,7 +77,7 @@ pub enum AuthState {
     /// For example, we may need to issue a redirect to an external OAuth2.
     /// provider, or we may need to do a background query of some kind to proceed.
     External(AuthExternal),
-
+    /// Denied authentication, with a reason.
     Denied(String),
     Success(Box<JwsCompact>, AuthIssueSession),
 }
@@ -89,7 +89,9 @@ impl fmt::Debug for AuthState {
             AuthState::Continue(allow) => write!(f, "AuthState::Continue({allow:?})"),
             AuthState::External(allow) => write!(f, "AuthState::External({allow:?})"),
             AuthState::Denied(reason) => write!(f, "AuthState::Denied({reason:?})"),
-            AuthState::Success(_token, issue) => write!(f, "AuthState::Success({issue:?})"),
+            AuthState::Success(_token, issue) => {
+                write!(f, "AuthState::Success({})", issue)
+            }
         }
     }
 }
