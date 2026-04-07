@@ -1642,7 +1642,7 @@ impl AuthSession {
 
                 info!(
                     "Issuing {} session ({}) {} for {} {}",
-                    self.issue.as_ref(),
+                    self.issue,
                     scope,
                     session_id,
                     self.account.spn(),

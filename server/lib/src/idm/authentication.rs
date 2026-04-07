@@ -91,7 +91,7 @@ impl fmt::Debug for AuthState {
             AuthState::External(allow) => write!(f, "AuthState::External({allow:?})"),
             AuthState::Denied(reason) => write!(f, "AuthState::Denied({reason:?})"),
             AuthState::Success(_token, issue) => {
-                write!(f, "AuthState::Success({})", issue.as_ref())
+                write!(f, "AuthState::Success({})", issue)
             }
         }
     }

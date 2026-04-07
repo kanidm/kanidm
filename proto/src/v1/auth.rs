@@ -141,11 +141,11 @@ pub enum AuthIssueSession {
     Cookie,
 }
 
-impl AsRef<str> for AuthIssueSession {
-    fn as_ref(&self) -> &str {
+impl std::fmt::Display for AuthIssueSession {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AuthIssueSession::Token => "Token",
-            AuthIssueSession::Cookie => "Cookie",
+            AuthIssueSession::Token => write!(f, "Token"),
+            AuthIssueSession::Cookie => write!(f, "Cookie"),
         }
     }
 }

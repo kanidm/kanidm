@@ -518,7 +518,7 @@ impl std::fmt::Display for AuthResult {
             AuthState::External(auth_external) => write!(f, "External({:?})", auth_external),
             AuthState::Denied(reason) => write!(f, "Denied: {}", reason),
             AuthState::Success(_jws_compact, auth_issue_session) => {
-                write!(f, "Success({})", auth_issue_session.as_ref())
+                write!(f, "Success({})", auth_issue_session)
             }
         }
     }
