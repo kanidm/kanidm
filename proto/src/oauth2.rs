@@ -1,6 +1,7 @@
 //! Oauth2 RFC protocol definitions.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::fmt::Display;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
@@ -66,7 +67,9 @@ pub struct AuthorisationRequest {
     pub oidc_ext: AuthorisationRequestOidc,
     // Needs to be hoisted here due to serde flatten bug #3185
     pub max_age: Option<i64>,
-    pub prompt: Option<Prompt>,
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Prompt>")]
+    #[serde(default)]
+    pub prompt: HashSet<Prompt>,
     #[serde(flatten)]
     pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
 }
@@ -438,15 +441,42 @@ fn response_modes_supported_default() -> Vec<ResponseMode> {
     vec![ResponseMode::Query, ResponseMode::Fragment]
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum Prompt {
     None,
     Login,
     Consent,
     SelectAccount,
-    #[serde(other, deserialize_with = "deserialize_ignore_any")]
-    Invalid,
+    #[serde(untagged)]
+    Invalid(String),
+}
+
+impl Display for Prompt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Prompt::None => "none",
+            Prompt::Login => "login",
+            Prompt::Consent => "consent",
+            Prompt::SelectAccount => "select_account",
+            Prompt::Invalid(str) => &format!("invalid({})", str),
+        };
+        write!(f, "{s}")
+    }
+}
+
+impl std::str::FromStr for Prompt {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "none" => Prompt::None,
+            "login" => Prompt::Login,
+            "consent" => Prompt::Consent,
+            "select_account" => Prompt::SelectAccount,
+            other => Prompt::Invalid(other.to_string()),
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

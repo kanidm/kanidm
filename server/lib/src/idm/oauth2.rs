@@ -2182,9 +2182,22 @@ impl IdmServerProxyReadTransaction<'_> {
             }
         };
 
-        // We could throw an error OR we could ignore it, what do we want to do?
-        if auth_req.prompt == Some(Prompt::Invalid) {
-            warn!("Invalid prompt value requested, unable to proceed");
+        let invalid_prompts: Vec<&str> = auth_req
+            .prompt
+            .iter()
+            .filter_map(|v| match v {
+                Prompt::Invalid(s) => Some(s.as_str()),
+                _ => None,
+            })
+            .collect();
+
+        if !invalid_prompts.is_empty() {
+            warn!("Invalid prompt value(s): {:?}", invalid_prompts);
+            return Err(Oauth2Error::InvalidRequest);
+        }
+
+        if auth_req.prompt.contains(&Prompt::None) && auth_req.prompt.len() > 1 {
+            warn!("Prompt cannot be none and contain other values at the same time");
             return Err(Oauth2Error::InvalidRequest);
         }
 
@@ -2335,7 +2348,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         // OIDC Core 1.0 §3.1.2.1
         // prompt=login - The Authorization Server MUST prompt the End-User to re-authenticate
-        if auth_req.prompt == Some(Prompt::Login) {
+        if auth_req.prompt.contains(&Prompt::Login) {
             debug!("prompt=login was requested, forcing re-authentication");
             return Ok(AuthoriseResponse::AuthenticationRequired {
                 client_name: o2rs.displayname.clone(),
@@ -2358,7 +2371,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
             // OIDC Core 1.0 §3.1.2.1
             // prompt=none - The Authorization Server MUST NOT display any authentication or consent user interface pages
-            if auth_req.prompt == Some(Prompt::None) {
+            if auth_req.prompt.contains(&Prompt::None) {
                 debug!("prompt=none was requested, but no identity is available, returning error");
                 return Err(Oauth2Error::LoginRequired);
             } else {
@@ -2401,12 +2414,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let session_id = ident.get_session_id();
 
-        // OIDC Core 1.0 §3.1.2.1:
-        // prompt=consent - The Authorization Server SHOULD prompt the End-User for consent
-        let force_consent =
-            auth_req.prompt == Some(Prompt::Consent) && o2rs.enable_consent_prompt();
-
-        if !force_consent && (consent_previously_granted || !o2rs.enable_consent_prompt()) {
+        if consent_previously_granted || !o2rs.enable_consent_prompt() {
             if event_enabled!(tracing::Level::DEBUG) {
                 let pretty_scopes: Vec<String> =
                     granted_scopes.iter().map(|s| s.to_owned()).collect();
@@ -2457,7 +2465,7 @@ impl IdmServerProxyReadTransaction<'_> {
             // OIDC Core 1.0 §3.1.2.1:
             // prompt=none - The Authorization Server MUST NOT display any authentication or
             // consent user interface pages.
-            if auth_req.prompt == Some(Prompt::None) {
+            if auth_req.prompt.contains(&Prompt::None) {
                 debug!("prompt=none was requested, but consent is required, returning error");
                 return Err(Oauth2Error::InteractionRequired);
             }
@@ -3463,7 +3471,7 @@ mod tests {
     use kanidm_proto::constants::*;
     use kanidm_proto::internal::{SshPublicKey, UserAuthToken};
     use kanidm_proto::oauth2::*;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::{BTreeMap, BTreeSet, HashSet};
     use std::convert::TryFrom;
     use std::str::FromStr;
     use std::time::Duration;
@@ -3498,7 +3506,7 @@ mod tests {
                 nonce: Some("abcdef".to_string()),
                 oidc_ext: Default::default(),
                 max_age: None,
-                prompt: None,
+                prompt: Default::default(),
                 unknown_keys: Default::default(),
             };
 
@@ -4088,7 +4096,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4111,7 +4119,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4134,7 +4142,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4157,7 +4165,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4180,7 +4188,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4203,7 +4211,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4225,7 +4233,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4247,7 +4255,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4270,7 +4278,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4295,7 +4303,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4318,7 +4326,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4341,7 +4349,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4639,7 +4647,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4722,7 +4730,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -6113,7 +6121,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -6363,7 +6371,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -6425,7 +6433,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -6565,7 +6573,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -6643,7 +6651,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -7642,7 +7650,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -8130,7 +8138,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
-            prompt: None,
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
         println!("{auth_req:?}");
@@ -8192,7 +8200,7 @@ mod tests {
 
     fn auth_req_with_prompt(
         pkce_request: PkceRequest,
-        prompt: Option<Prompt>,
+        prompt: HashSet<Prompt>,
     ) -> AuthorisationRequest {
         AuthorisationRequest {
             response_type: ResponseType::Code,
@@ -8250,12 +8258,14 @@ mod tests {
     /// > If an OP receives a prompt value outside the set defined above that it does not understand,
     /// > it MAY return an error or it MAY ignore it
     ///
-    /// Currently we return an error but for more compatibility/flexibility we could ignore it instead. Unsure what is best
+    /// We want to return error in case we do not recognize the prompt provided
     #[idm_test]
     async fn test_idm_oauth2_prompt_invalid_returns_error(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
+        let invalid_value = "bor-sirhc".to_string();
+
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, _uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
@@ -8263,12 +8273,16 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::Invalid));
+        let auth_req = auth_req_with_prompt(
+            pkce_secret.to_request(),
+            HashSet::from([Prompt::Invalid(invalid_value)]),
+        );
 
         let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
 
-        assert!(
-            result.unwrap_err() == Oauth2Error::InvalidRequest,
+        assert_eq!(
+            result.unwrap_err(),
+            Oauth2Error::InvalidRequest,
             "An invalid/unrecognised prompt value must return InvalidRequest"
         );
     }
@@ -8292,7 +8306,8 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::None));
+        let auth_req =
+            auth_req_with_prompt(pkce_secret.to_request(), HashSet::from([Prompt::None]));
 
         // No identity provided (None) - user is not authenticated.
         let result = idms_prox_read.check_oauth2_authorisation(None, &auth_req, ct);
@@ -8322,7 +8337,8 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::None));
+        let auth_req =
+            auth_req_with_prompt(pkce_secret.to_request(), HashSet::from([Prompt::None]));
 
         // Ident is authenticated but has never granted consent.
         let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
@@ -8356,7 +8372,8 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::None));
+        let auth_req =
+            auth_req_with_prompt(pkce_secret.to_request(), HashSet::from([Prompt::None]));
 
         let result = idms_prox_read
             .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
@@ -8385,7 +8402,8 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::Login));
+        let auth_req =
+            auth_req_with_prompt(pkce_secret.to_request(), HashSet::from([Prompt::Login]));
 
         // Even though the user is authenticated, prompt=login should force re-auth.
         let result = idms_prox_read
@@ -8421,7 +8439,8 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Some(Prompt::Consent));
+        let auth_req =
+            auth_req_with_prompt(pkce_secret.to_request(), HashSet::from([Prompt::Consent]));
 
         let result = idms_prox_read
             .check_oauth2_authorisation(Some(&ident), &auth_req, ct)

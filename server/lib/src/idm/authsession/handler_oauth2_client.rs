@@ -10,7 +10,7 @@ use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationRequestOidc,
     GrantTypeReq, ResponseType,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fmt;
 
 pub struct CredHandlerOAuth2Client {
@@ -88,7 +88,7 @@ impl CredHandlerOAuth2Client {
                     ..Default::default()
                 },
                 max_age: None,
-                prompt: None,
+                prompt: HashSet::new(),
                 unknown_keys: Default::default(),
             },
         )
