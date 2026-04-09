@@ -512,7 +512,7 @@ pub trait IdmServerTransaction<'a> {
                 match self.validate_and_parse_token_to_identity_token(token, ct)? {
                     Token::UserAuthToken(uat) => Ok(uat),
                     Token::ApiToken(_apit, _entry) => {
-                        warn!("Unable to process non user auth token");
+                        debug!("Unable to process non user auth token");
                         Err(OperationError::NotAuthenticated)
                     }
                 }

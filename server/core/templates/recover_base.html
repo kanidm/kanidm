@@ -1,0 +1,21 @@
+(% extends "base.html" %)
+
+(% block title %)Account Recovery(% endblock %)
+
+(% block body %)
+<main id="main" class="form-signin m-auto align-items-center d-flex flex-column">
+	(% if domain_info.image().is_some() %)
+	<img src="/ui/images/domain"
+		alt="(( domain_info.display_name() ))" class="kanidm_logo" />
+	(% else %)
+	<img
+		src="/pkg/img/logo-square.svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
+		alt="(( domain_info.display_name() ))" class="kanidm_logo" />
+	(% endif %)
+	<h3>(( domain_info.display_name() ))</h3>
+
+	<div>
+		(% block content %)(% endblock %)
+	</div>
+</main>
+(% endblock %)

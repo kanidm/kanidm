@@ -20,6 +20,7 @@ mod admin;
 mod apps;
 pub(crate) mod constants;
 mod cookies;
+mod csrf;
 mod enrol;
 mod errors;
 mod login;
@@ -28,6 +29,7 @@ mod oauth2;
 mod profile;
 mod radius;
 mod reauth;
+mod recover;
 mod reset;
 
 #[derive(Template, WebTemplate)]
@@ -103,6 +105,10 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
         .route("/apps", get(apps::view_apps_get))
         .route("/enrol", get(enrol::view_enrol_get))
         .route("/reset", get(reset::view_reset_get))
+        .route(
+            "/recover",
+            get(recover::view_recover_get).post(recover::view_recover_post),
+        )
         .route(
             "/revoke",
             get(reset::view_revoke_get).post(reset::view_revoke_post),

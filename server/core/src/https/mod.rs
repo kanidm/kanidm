@@ -162,6 +162,7 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
             "external/confetti.js",
             "external/base64.js",
             "modules/cred_update.mjs",
+            "csrf.js",
             "pkhtml.js",
             "style.js",
         ];
