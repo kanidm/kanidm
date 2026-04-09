@@ -5,13 +5,15 @@ use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInforma
 
 // use crate::https::middleware::KOpId;
 // use crate::https::views::cookies;
-// use crate::https::ServerState;
 
+use crate::https::ServerState;
 use askama::Template;
 use askama_web::WebTemplate;
+use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use axum::Form;
 use axum_extra::extract::CookieJar;
+use kanidmd_lib::prelude::duration_from_epoch_now;
 use serde::Deserialize;
 
 // use axum_extra::extract::cookie::SameSite;
@@ -43,11 +45,11 @@ struct RecoverComplete {
 pub(crate) struct RecoverForm {
     email: String,
     #[serde(flatten)]
-    csrf_data: CsrfSolution,
+    csrf_solution: CsrfSolution,
 }
 
 pub(crate) async fn view_recover_get(
-    // State(state): State<ServerState>,
+    State(state): State<ServerState>,
     // Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
@@ -62,22 +64,46 @@ pub(crate) async fn view_recover_get(
         return Ok(RecoverDisabledView { domain_info }.into_response());
     }
 
-    let csrf =
-        csrf::generate_parameters("email").map_err(|_err| "Failed to generate CSRF parameters")?;
+    let (jar, csrf) = csrf::generate_parameters(&state, jar, "email")
+        .map_err(|_err| "Failed to generate CSRF parameters")?;
 
     Ok((jar, RecoverView { domain_info, csrf }).into_response())
 }
 
 pub(crate) async fn view_recover_post(
-    // State(state): State<ServerState>,
+    State(state): State<ServerState>,
     // Extension(kopid): Extension<KOpId>,
     // VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     // Query(params): Query<ResetTokenParam>,
-    // mut jar: CookieJar,
+    jar: CookieJar,
     Form(recover_form): Form<RecoverForm>,
 ) -> axum::response::Result<Response> {
-    warn!(?recover_form);
+    // Prevent the post if this feature is disabled. Still not a "security control"
+    // IMO, but it prevents a lot of damage at least.
+    if !domain_info.allow_credential_reset_email() {
+        return Ok(RecoverDisabledView { domain_info }.into_response());
+    }
+
+    // Validate
+    let current_time = duration_from_epoch_now();
+
+    match csrf::verify_parameters(
+        &state,
+        &jar,
+        recover_form.email.as_bytes(),
+        &recover_form.csrf_solution,
+        current_time,
+    ) {
+        Ok(()) => {
+            // Actually submit the requested operation.
+
+            warn!("CSRF Pass!");
+        }
+        Err(()) => {
+            warn!("CSRF verification failed, silently ignoring to confuse the spammers.");
+        }
+    };
 
     Ok(RecoverComplete { domain_info }.into_response())
 }

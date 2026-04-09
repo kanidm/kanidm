@@ -25,6 +25,7 @@ pub use self::error::*;
 pub use self::raw::*;
 pub use self::token::*;
 
+pub const COOKIE_CSRF_NONCE: &str = "csrf-nonce";
 pub const COOKIE_AUTH_SESSION_ID: &str = "auth-session-id";
 pub const COOKIE_BEARER_TOKEN: &str = "bearer";
 pub const COOKIE_CU_SESSION_TOKEN: &str = "cu-session-token";
