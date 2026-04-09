@@ -1,5 +1,7 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::constants::ATTR_DOMAIN_ALLOW_EASTER_EGGS;
+use kanidm_proto::constants::{
+    ATTR_DOMAIN_ALLOW_CREDENTIAL_RESET_EMAIL, ATTR_DOMAIN_ALLOW_EASTER_EGGS,
+};
 use kanidm_proto::internal::ImageValue;
 use reqwest::multipart;
 
@@ -12,6 +14,20 @@ impl KanidmClient {
     pub async fn idm_set_domain_allow_easter_eggs(&self, enable: bool) -> Result<(), ClientError> {
         self.perform_put_request(
             &format!("{}{}", "/v1/domain/_attr/", ATTR_DOMAIN_ALLOW_EASTER_EGGS),
+            vec![enable.to_string()],
+        )
+        .await
+    }
+
+    pub async fn idm_set_domain_allow_credential_reset_email(
+        &self,
+        enable: bool,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!(
+                "{}{}",
+                "/v1/domain/_attr/", ATTR_DOMAIN_ALLOW_CREDENTIAL_RESET_EMAIL
+            ),
             vec![enable.to_string()],
         )
         .await

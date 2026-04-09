@@ -51,6 +51,22 @@ impl DomainOpt {
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
+            DomainOpt::SetAllowCredentialResetEmail { enable } => {
+                let client = opt.to_client(OpType::Write).await;
+                match client
+                    .idm_set_domain_allow_credential_reset_email(*enable)
+                    .await
+                {
+                    Ok(_) => {
+                        if *enable {
+                            println!("Success ✉️")
+                        } else {
+                            println!("Success")
+                        }
+                    }
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
             DomainOpt::SetAllowEasterEggs { enable } => {
                 let client = opt.to_client(OpType::Write).await;
                 match client.idm_set_domain_allow_easter_eggs(*enable).await {
