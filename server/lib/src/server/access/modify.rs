@@ -255,6 +255,9 @@ fn modify_ident_test(ident: &Identity) -> AccessBasicResult {
         IdentType::Internal(InternalRole::Migration) => {
             return AccessBasicResult::Grant;
         }
+        IdentType::Internal(InternalRole::AccountRequest) => {
+            return AccessBasicResult::Deny;
+        }
         IdentType::Synch(_) => {
             security_critical!("Blocking sync check");
             return AccessBasicResult::Deny;
@@ -365,6 +368,9 @@ fn modify_protected_attrs<'a>(
         IdentType::Internal(InternalRole::System) | IdentType::Synch(_) => {
             // We don't constraint or influence these.
             AccessModResult::Ignore
+        }
+        IdentType::Internal(InternalRole::AccountRequest) => {
+            AccessModResult::Deny
         }
         IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {
             if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {

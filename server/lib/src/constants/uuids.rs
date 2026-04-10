@@ -530,6 +530,7 @@ pub const UUID_IDM_ACP_OAUTH2_MANAGE_BASIC: Uuid = uuid!("00000000-0000-0000-000
 
 pub const UUID_INTERNAL_MIGRATION: Uuid = uuid!("00000000-0000-0000-0000-ffffff000082");
 pub const UUID_INTERNAL_SESSION_ID: Uuid = uuid!("00000000-0000-0000-0000-ffffff000083");
+pub const UUID_INTERNAL_ACCOUNT_REQUEST: Uuid = uuid!("00000000-0000-0000-0000-ffffff000084");
 
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");

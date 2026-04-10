@@ -91,6 +91,11 @@ fn search_filter_entry(
             // No need to check ACS
             return AccessSrchResult::Grant;
         }
+        IdentType::Internal(InternalRole::AccountRequest) => {
+            trace!(uuid = ?entry.get_display_id(), "Account Request");
+
+                return AccessSrchResult::Deny;
+        }
         IdentType::Internal(InternalRole::Migration) => {
             trace!(uuid = ?entry.get_display_id(), "Internal migration");
 

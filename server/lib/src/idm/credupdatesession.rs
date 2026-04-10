@@ -977,6 +977,21 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok((CredentialUpdateSessionToken { token_enc }, status))
     }
 
+    pub fn credential_update_anonymous_account_request(
+        
+    ) -> Result<(), OperationError> {
+        if self.qs_write.domain_info.allow_credential_email_reset() {
+            error!("Credential Reset is Disabled, Rejecting Attempt");
+            // AccessDenied,
+        }
+
+        let ident = Identity::
+
+        // Look up the account.
+
+        // Process the send.
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn init_credential_update_intent_send(
         &mut self,

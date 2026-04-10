@@ -78,6 +78,10 @@ fn delete_filter_entry<'a>(
                 return IResult::Deny;
             }
         }
+        IdentType::Internal(InternalRole::AccountRequest) => {
+            security_critical!("Blocking role from deletion");
+            return IResult::Deny;
+        }
         IdentType::Synch(_) => {
             security_critical!("Blocking sync check");
             return IResult::Deny;
@@ -173,6 +177,10 @@ fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -
         }
         IdentType::Synch(_) => {
             security_access!("sync agreements may not directly delete entities");
+            IResult::Deny
+        }
+        IdentType::Internal(InternalRole::AccountRequest) => {
+            security_access!("account requests may not delete entries");
             IResult::Deny
         }
         IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {

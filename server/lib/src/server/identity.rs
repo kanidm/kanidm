@@ -71,6 +71,11 @@ pub enum InternalRole {
     System,
     /// A migration operation being performed on the system.
     Migration,
+
+    /// An anonymous account action - this could be a credential reset
+    /// request, or a request to create a new account.
+    AccountRequest,
+
 }
 
 impl std::fmt::Display for InternalRole {
@@ -78,6 +83,7 @@ impl std::fmt::Display for InternalRole {
         match self {
             Self::System => write!(f, "System"),
             Self::Migration => write!(f, "Migration"),
+            Self::AccountRequest => write!(f, "AccountRequest"),
         }
     }
 }
@@ -87,6 +93,7 @@ impl InternalRole {
         match self {
             Self::System => UUID_SYSTEM,
             Self::Migration => UUID_INTERNAL_MIGRATION,
+            Self::AccountRequest => UUID_INTERNAL_ACCOUNT_REQUEST,
         }
     }
 }
@@ -194,6 +201,16 @@ impl Identity {
     pub(crate) fn migration() -> Self {
         Identity {
             origin: IdentType::Internal(InternalRole::Migration),
+            source: Source::Internal,
+            session_id: UUID_INTERNAL_SESSION_ID,
+            scope: AccessScope::ReadWrite,
+            limits: Limits::unlimited(),
+        }
+    }
+
+    pub(crate) fn account_request() -> Self {
+        Identity {
+            origin: IdentType::Internal(InternalRole::AccountRequest),
             source: Source::Internal,
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,
