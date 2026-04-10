@@ -295,11 +295,11 @@ impl Identity {
         matches!(self.origin, IdentType::Internal(_))
     }
 
-    pub fn get_uuid(&self) -> Option<Uuid> {
+    pub fn get_uuid(&self) -> Uuid {
         match &self.origin {
-            IdentType::Internal(role) => Some(role.get_uuid()),
-            IdentType::User(u) => Some(u.entry.get_uuid()),
-            IdentType::Synch(u) => Some(*u),
+            IdentType::Internal(role) => role.get_uuid(),
+            IdentType::User(u) => u.entry.get_uuid(),
+            IdentType::Synch(u) => *u,
         }
     }
 

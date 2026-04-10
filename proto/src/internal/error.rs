@@ -177,6 +177,7 @@ pub enum OperationError {
     CU0007AccountEmailNotFound,
     CU0008AccountMissingEmail,
     CU0009AccountEmailNotFound,
+    CU0010AnonymousCredentialResetDisabled,
 
     // ValueSet errors
     VS0001IncomingReplSshPublicKey,
@@ -442,14 +443,14 @@ impl OperationError {
             Self::ReferenceLoop => Some("The change you have made would introduce an invalid reference loop. Unable to proceed.".into()),
             Self::SessionMayNotReauth => Some("The current session is not able to re-authenticate to elevate privileges to read-write.".into()),
 
-    Self::AU0001InvalidState => Some("Invalid authentication session state for request".into()),
-    Self::AU0002JwsSerialisation => Some("JWS serialisation failed".into()),
-    Self::AU0003JwsSignature => Some("JWS signature failed".into()),
-    Self::AU0004UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
-    Self::AU0005DelayedProcessFailure => Some("Delaying processing failure, unable to proceed".into()),
-    Self::AU0006CredentialMayNotReauthenticate => Some("Credential may not reauthenticate".into()),
-    Self::AU0007UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
-    Self::AU0008ClientAuthInfoPrevalidation => Some("Client Authentication Info prevalidation did not occur when expected".into()),
+            Self::AU0001InvalidState => Some("Invalid authentication session state for request".into()),
+            Self::AU0002JwsSerialisation => Some("JWS serialisation failed".into()),
+            Self::AU0003JwsSignature => Some("JWS signature failed".into()),
+            Self::AU0004UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
+            Self::AU0005DelayedProcessFailure => Some("Delaying processing failure, unable to proceed".into()),
+            Self::AU0006CredentialMayNotReauthenticate => Some("Credential may not reauthenticate".into()),
+            Self::AU0007UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
+            Self::AU0008ClientAuthInfoPrevalidation => Some("Client Authentication Info prevalidation did not occur when expected".into()),
 
             Self::CU0001WebauthnAttestationNotTrusted => None,
             Self::CU0002WebauthnRegistrationError => None,
@@ -462,6 +463,7 @@ impl OperationError {
             Self::CU0009AccountEmailNotFound
             => Some("The requested email to send the credential update intent token to is not registered to the account.".into()),
             Self::CU0008AccountMissingEmail => Some("The account has no email addresses and may not have a credential update intent token sent to it.".into()),
+            Self::CU0010AnonymousCredentialResetDisabled => Some("The anonymous credential reset feature is disabled. See `kanidm system domain set-allow-credential-reset-email`".into()),
 
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,

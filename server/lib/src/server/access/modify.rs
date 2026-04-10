@@ -144,9 +144,8 @@ pub(super) fn apply_modify_access<'a>(
                                 .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
                                 .unwrap_or_default();
 
-                            let user_check = ident_uuid
-                                .map(|u| entry_manager_uuids.contains(&u))
-                                .unwrap_or_default();
+                            let user_check =
+                                entry_manager_uuids.contains(&ident_uuid);
 
                             if !(group_check || user_check) {
                                 // Not the entry manager
@@ -369,11 +368,12 @@ fn modify_protected_attrs<'a>(
             // We don't constraint or influence these.
             AccessModResult::Ignore
         }
-        IdentType::Internal(InternalRole::AccountRequest) => AccessModResult::Deny,
-        IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {
+        IdentType::Internal(InternalRole::AccountRequest)
+        | IdentType::Internal(InternalRole::Migration)
+        | IdentType::User(_) => {
             if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
-                if classes.is_disjoint(&PROTECTED_MOD_ENTRY_CLASSES)
-                    || entry.get_uuid() <= UUID_ANONYMOUS
+                if entry.get_uuid() > UUID_ANONYMOUS
+                    && classes.is_disjoint(&PROTECTED_MOD_ENTRY_CLASSES)
                 {
                     // Not protected, go ahead
                     AccessModResult::Ignore
@@ -430,6 +430,8 @@ fn modify_protected_entry_attrs<'a>(classes: &BTreeSet<String>) -> AccessModResu
             Attribute::DeniedName,
             Attribute::DomainDisplayName,
             Attribute::Image,
+            Attribute::DomainAllowEasterEggs,
+            Attribute::DomainAllowCredentialResetEmail,
         ]);
     }
 

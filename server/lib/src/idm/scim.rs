@@ -1606,7 +1606,7 @@ mod tests {
             .validate_sync_client_auth_info_to_ident(sync_token.into(), ct)
             .expect("Failed to validate sync token");
 
-        assert_eq!(Some(sync_uuid), ident.get_uuid());
+        assert_eq!(ident.get_uuid(), sync_uuid);
 
         let sync_state = idms_prox_read
             .scim_sync_get_state(&ident)
@@ -1657,7 +1657,7 @@ mod tests {
         let ident = idms_prox_read
             .validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct)
             .expect("Failed to validate sync token");
-        assert_eq!(Some(sync_uuid), ident.get_uuid());
+        assert_eq!(ident.get_uuid(), sync_uuid);
         drop(idms_prox_read);
 
         // -- Revoke the session

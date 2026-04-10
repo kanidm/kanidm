@@ -565,10 +565,7 @@ impl QueryServerWriteV1 {
             return Ok(());
         };
 
-        let target = ident.get_uuid().ok_or_else(|| {
-            error!("Invalid identity - no uuid present");
-            OperationError::InvalidState
-        })?;
+        let target = ident.get_uuid();
 
         let token_id = ident.get_session_id();
 

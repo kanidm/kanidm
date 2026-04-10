@@ -1296,10 +1296,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         consent_token: &str,
         ct: Duration,
     ) -> Result<AuthorisePermitSuccess, OperationError> {
-        let Some(account_uuid) = ident.get_uuid() else {
-            error!("consent request ident does not have a valid uuid, unable to proceed");
-            return Err(OperationError::InvalidSessionState);
-        };
+        let account_uuid = ident.get_uuid();
 
         let consent_token_jwe = JweCompact::from_str(consent_token).map_err(|err| {
             error!(?err, "Consent token is not a valid jwe compact");
@@ -2415,10 +2412,7 @@ impl IdmServerProxyReadTransaction<'_> {
             }
         };
 
-        let Some(account_uuid) = ident.get_uuid() else {
-            error!("Consent request ident does not have a valid UUID, unable to proceed");
-            return Err(Oauth2Error::InvalidRequest);
-        };
+        let account_uuid = ident.get_uuid();
 
         // Deny anonymous access to oauth2
         if account_uuid == UUID_ANONYMOUS {
@@ -5057,10 +5051,7 @@ mod tests {
 
         // Force trim the session and wait for the grace window to pass. The token will be invalidated
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
-        let filt = filter!(f_eq(
-            Attribute::Uuid,
-            PartialValue::Uuid(ident.get_uuid().unwrap())
-        ));
+        let filt = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(ident.get_uuid())));
         let mut work_set = idms_prox_write
             .qs_write
             .internal_search_writeable(&filt)

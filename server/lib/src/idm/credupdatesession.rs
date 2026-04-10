@@ -567,11 +567,7 @@ impl InitCredentialUpdateEvent {
     #[cfg(test)]
     pub fn new_impersonate_entry(e: std::sync::Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         let ident = Identity::from_impersonate_entry_readwrite(e);
-
-        let target = ident
-            .get_uuid()
-            .ok_or(OperationError::InvalidState)
-            .expect("Identity has no uuid associated");
+        let target = ident.get_uuid();
         InitCredentialUpdateEvent { ident, target }
     }
 }
@@ -989,9 +985,9 @@ impl IdmServerProxyWriteTransaction<'_> {
         event: CredentialUpdateAnonymousAccountRequest,
         ct: Duration,
     ) -> Result<(), OperationError> {
-        if self.qs_write.domain_info().allow_credential_reset_email() {
+        if !self.qs_write.domain_info().allow_credential_reset_email() {
             error!("Credential Reset is Disabled, Rejecting Attempt");
-            // AccessDenied,
+            return Err(OperationError::CU0010AnonymousCredentialResetDisabled);
         }
 
         // This is an internal identity that can only process limited
@@ -1016,10 +1012,20 @@ impl IdmServerProxyWriteTransaction<'_> {
         let target = entry.get_uuid();
 
         // Verify our internal service account has access to modify the target.
-        let (account, _resolved_account_policy, perms) =
-            self.validate_init_credential_update(target, &ident)?;
+        //
+        // IMPORTANT: We use the permissions of the *target* as this is effectively a "self-request"
+        // to change their credentials. If we were to use the AccountRequest identity, we MAY be allowing
+        // someone to modify credentials they are not allowed to!
+        //
+        // This shows a limitation of the current security system in how we currently focus permissions
+        // on attributes, not *actions*.
+        let target_ident = Identity::from_impersonate_entry_readwrite(entry);
 
-        // Setup and process the credential update transmission
+        let (account, _resolved_account_policy, perms) =
+            self.validate_init_credential_update(target, &target_ident)?;
+
+        // Setup and process the credential update transmission. We do this as the AccountRequest
+        // identity which needs to be able to create/modify the email object.
         self.process_credential_update_send(&ident, &account, event.max_ttl, perms, event.email, ct)
     }
 

@@ -1502,14 +1502,19 @@ impl FilterResolved {
                     .and_then(NonZeroU8::new);
                 Some(FilterResolved::Eq(a, v, idx))
             }
-            FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
+            FilterComp::SelfUuid => {
+                let uuid = ev.get_uuid();
                 let idxkref = IdxKeyRef::new(Attribute::Uuid.as_ref(), &IndexType::Equality);
                 let idx = idxmeta
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                FilterResolved::Eq(Attribute::Uuid, PartialValue::Uuid(uuid), idx)
-            }),
+                Some(FilterResolved::Eq(
+                    Attribute::Uuid,
+                    PartialValue::Uuid(uuid),
+                    idx,
+                ))
+            }
             FilterComp::Cnt(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
                 let idx = idxmeta
@@ -1600,13 +1605,14 @@ impl FilterResolved {
                 let idx = NonZeroU8::new(idx as u8);
                 Some(FilterResolved::Eq(a, v, idx))
             }
-            FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
-                FilterResolved::Eq(
+            FilterComp::SelfUuid => {
+                let uuid = ev.get_uuid();
+                Some(FilterResolved::Eq(
                     Attribute::Uuid,
                     PartialValue::Uuid(uuid),
                     NonZeroU8::new(true as u8),
-                )
-            }),
+                ))
+            }
             FilterComp::Cnt(a, v) => Some(FilterResolved::Cnt(a, v, None)),
             FilterComp::Stw(a, v) => Some(FilterResolved::Stw(a, v, None)),
             FilterComp::Enw(a, v) => Some(FilterResolved::Enw(a, v, None)),

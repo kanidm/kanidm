@@ -382,7 +382,7 @@ pub trait AccessControlsTransaction<'a> {
             sync_agmts: &'b HashMap<Uuid, BTreeSet<Attribute>>,
         }
 
-        let ident_uuid = match &se.ident.origin {
+        match &se.ident.origin {
             IdentType::Internal(_) => {
                 // In production we can't risk leaking data here, so we return
                 // empty sets.
@@ -453,7 +453,6 @@ pub trait AccessControlsTransaction<'a> {
                         let effective_permissions = do_effective_check.as_ref().map(|do_check| {
                             self.entry_effective_permission_check(
                                 &se.ident,
-                                ident_uuid,
                                 &entry,
                                 &search_related_acp,
                                 &do_check.modify_related_acp,
@@ -1003,9 +1002,9 @@ pub trait AccessControlsTransaction<'a> {
         // Does create make sense here? I don't think it does. Create requires you to
         // have an entry template. I think james was right about the create being
         // a template copy op ...
-
-        let ident_uuid = match &ident.origin {
-            IdentType::Internal(_) => {
+        match &ident.origin {
+            IdentType::Internal(InternalRole::System)
+            | IdentType::Internal(InternalRole::Migration) => {
                 // In production we can't risk leaking data here, so we return
                 // empty sets.
                 security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
@@ -1016,7 +1015,9 @@ pub trait AccessControlsTransaction<'a> {
                 security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
-            IdentType::User(u) => u.entry.get_uuid(),
+            // Can proceed with effective permission check. Account Request requires this
+            // for credential update sessions.
+            IdentType::Internal(InternalRole::AccountRequest) | IdentType::User(_) => {}
         };
 
         trace!(ident = %ident, "Effective permission check");
@@ -1037,7 +1038,6 @@ pub trait AccessControlsTransaction<'a> {
             .map(|entry| {
                 self.entry_effective_permission_check(
                     ident,
-                    ident_uuid,
                     entry,
                     &search_related_acp,
                     &modify_related_acp,
@@ -1057,7 +1057,6 @@ pub trait AccessControlsTransaction<'a> {
     fn entry_effective_permission_check<'b>(
         &'b self,
         ident: &Identity,
-        ident_uuid: Uuid,
         entry: &Arc<EntrySealedCommitted>,
         search_related_acp: &[AccessControlSearchResolved<'b>],
         modify_related_acp: &[AccessControlModifyResolved<'b>],
@@ -1111,7 +1110,7 @@ pub trait AccessControlsTransaction<'a> {
         };
 
         AccessEffectivePermission {
-            ident: ident_uuid,
+            ident: ident.get_uuid(),
             target: entry.get_uuid(),
             delete,
             search: search_effective,
