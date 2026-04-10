@@ -2849,8 +2849,9 @@ impl IdmServerCredUpdateTransaction<'_> {
 #[cfg(test)]
 mod tests {
     use super::{
-        CredentialState, CredentialUpdateSessionStatus, CredentialUpdateSessionStatusWarnings,
-        CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
+        CredentialState, CredentialUpdateAnonymousAccountRequest, CredentialUpdateSessionStatus,
+        CredentialUpdateSessionStatusWarnings, CredentialUpdateSessionToken,
+        InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
         InitCredentialUpdateIntentSendEvent, MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL,
         MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
@@ -3545,6 +3546,140 @@ mod tests {
         idms_prox_write
             .init_credential_update_intent_send(event, ct)
             .expect("Should succeed!");
+
+        // Find the message in the queue.
+        let filter = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::OutboundMessage.into()),
+            f_eq(
+                Attribute::MailDestination,
+                PartialValue::EmailAddress(email_address)
+            )
+        ]));
+
+        let mut entries = idms_prox_write
+            .qs_write
+            .impersonate_search(filter.clone(), filter, &idm_admin_identity)
+            .expect("Unable to search message queue");
+
+        assert_eq!(entries.len(), 1);
+        let message_entry = entries.pop().unwrap();
+
+        let message = message_entry
+            .get_ava_set(Attribute::MessageTemplate)
+            .and_then(|vs| vs.as_message())
+            .unwrap();
+
+        match message {
+            OutboundMessage::CredentialResetV1 { display_name, .. } => {
+                assert_eq!(display_name, TESTPERSON_NAME);
+            }
+            _ => panic!("Wrong message type!"),
+        }
+        // Done!!! We quwued an email to send.
+    }
+
+    #[idm_test]
+    async fn anonymous_credential_update_request(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let idm_admin_identity = idms_prox_write
+            .qs_write
+            .impersonate_uuid_as_readwrite_identity(UUID_IDM_ADMIN)
+            .expect("Failed to retrieve identity");
+
+        let email_address = format!("{}@example.com", TESTPERSON_NAME);
+
+        let test_entry = EntryInitNew::from_iter([
+            (
+                Attribute::Class,
+                ValueSetIutf8::from_iter([
+                    EntryClass::Object.into(),
+                    EntryClass::Account.into(),
+                    EntryClass::Person.into(),
+                ])
+                .unwrap() as ValueSet,
+            ),
+            (
+                Attribute::Name,
+                ValueSetIname::new(TESTPERSON_NAME) as ValueSet,
+            ),
+            (
+                Attribute::Uuid,
+                ValueSetUuid::new(TESTPERSON_UUID) as ValueSet,
+            ),
+            (
+                Attribute::DisplayName,
+                ValueSetUtf8::new(TESTPERSON_NAME.into()) as ValueSet,
+            ),
+            (
+                Attribute::Mail,
+                ValueSetEmailAddress::new(email_address.clone()) as ValueSet,
+            ),
+        ]);
+
+        let ce =
+            CreateEvent::new_impersonate_identity(idm_admin_identity.clone(), vec![test_entry]);
+        let cr = idms_prox_write.qs_write.create(&ce);
+        assert!(cr.is_ok());
+
+        // Test with the feature DISABLED. Must be rejected!
+        let event = CredentialUpdateAnonymousAccountRequest {
+            email: "invalid@example.com".into(),
+            max_ttl: None,
+        };
+
+        let result = idms_prox_write
+            .credential_update_anonymous_account_request(event, ct)
+            .expect_err("Must not succeed!");
+
+        assert_eq!(
+            result,
+            OperationError::CU0010AnonymousCredentialResetDisabled
+        );
+
+        // Enable the feature
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_set(
+                    Attribute::DomainAllowCredentialResetEmail,
+                    ValueSetBool::new(true),
+                ),
+            )
+            .expect("Unable to activate credential reset feature.");
+
+        idms_prox_write
+            .qs_write
+            .reload()
+            .expect("Unable to reload domain info.");
+
+        // Use a non-existant email.
+        let event = CredentialUpdateAnonymousAccountRequest {
+            email: "invalid@example.com".into(),
+            max_ttl: None,
+        };
+
+        let result = idms_prox_write
+            .credential_update_anonymous_account_request(event, ct)
+            .expect_err("Must not succeed!");
+
+        assert_eq!(result, OperationError::CU0009AccountEmailNotFound);
+
+        // Use a real email.
+        let event = CredentialUpdateAnonymousAccountRequest {
+            email: email_address.clone(),
+            max_ttl: None,
+        };
+
+        idms_prox_write
+            .credential_update_anonymous_account_request(event, ct)
+            .expect("Must succeed!");
 
         // Find the message in the queue.
         let filter = filter!(f_and(vec![
