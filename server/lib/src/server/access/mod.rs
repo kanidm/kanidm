@@ -995,30 +995,13 @@ pub trait AccessControlsTransaction<'a> {
         attrs: Option<BTreeSet<Attribute>>,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<Vec<AccessEffectivePermission>, OperationError> {
-        // I think we need a structure like " CheckResult, which is in the order of the
+        // I think we need a structure like CheckResult, which is in the order of the
         // entries, but also stashes the uuid. Then it has search, mod, create, delete,
         // as separate attrs to describe what is capable.
 
         // Does create make sense here? I don't think it does. Create requires you to
         // have an entry template. I think james was right about the create being
         // a template copy op ...
-        match &ident.origin {
-            IdentType::Internal(InternalRole::System)
-            | IdentType::Internal(InternalRole::Migration) => {
-                // In production we can't risk leaking data here, so we return
-                // empty sets.
-                security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
-                // No need to check ACS
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            // Can proceed with effective permission check. Account Request requires this
-            // for credential update sessions.
-            IdentType::Internal(InternalRole::AccountRequest) | IdentType::User(_) => {}
-        };
 
         trace!(ident = %ident, "Effective permission check");
         // I think we separate this to multiple checks ...?

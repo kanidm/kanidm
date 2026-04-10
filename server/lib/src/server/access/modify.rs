@@ -254,7 +254,8 @@ fn modify_ident_test(ident: &Identity) -> AccessBasicResult {
         IdentType::Internal(InternalRole::Migration) => {
             return AccessBasicResult::Grant;
         }
-        IdentType::Internal(InternalRole::AccountRequest) => {
+        IdentType::Internal(InternalRole::MessageQueue)
+        | IdentType::Internal(InternalRole::AccountRequest) => {
             return AccessBasicResult::Deny;
         }
         IdentType::Synch(_) => {
@@ -369,6 +370,7 @@ fn modify_protected_attrs<'a>(
             AccessModResult::Ignore
         }
         IdentType::Internal(InternalRole::AccountRequest)
+        | IdentType::Internal(InternalRole::MessageQueue)
         | IdentType::Internal(InternalRole::Migration)
         | IdentType::User(_) => {
             if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {

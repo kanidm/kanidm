@@ -1026,7 +1026,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         // Setup and process the credential update transmission. We do this as the AccountRequest
         // identity which needs to be able to create/modify the email object.
-        self.process_credential_update_send(&ident, &account, event.max_ttl, perms, event.email, ct)
+        self.process_credential_update_send(&account, event.max_ttl, perms, event.email, ct)
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -1056,19 +1056,11 @@ impl IdmServerProxyWriteTransaction<'_> {
             })
         }?;
 
-        self.process_credential_update_send(
-            &event.ident,
-            &account,
-            event.max_ttl,
-            perms,
-            to_email,
-            ct,
-        )
+        self.process_credential_update_send(&account, event.max_ttl, perms, to_email, ct)
     }
 
     fn process_credential_update_send(
         &mut self,
-        ident: &Identity,
         account: &Account,
         max_ttl: Option<Duration>,
         perms: CredUpdateSessionPerms,
@@ -1088,10 +1080,12 @@ impl IdmServerProxyWriteTransaction<'_> {
             expiry_time,
         };
 
+        let ident = Identity::message_queue();
+
         self.qs_write.queue_message(
             // Should we actually impersonate here? We probably need an account for internal sending
             // that is disconnected from the act of creating the reset.
-            ident, message, to_email,
+            &ident, message, to_email,
         )
     }
 

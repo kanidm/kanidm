@@ -75,6 +75,9 @@ pub enum InternalRole {
     /// An anonymous account action - this could be a credential reset
     /// request, or a request to create a new account.
     AccountRequest,
+
+    /// An internal role than can manage the outbound message queue.
+    MessageQueue,
 }
 
 impl std::fmt::Display for InternalRole {
@@ -83,6 +86,7 @@ impl std::fmt::Display for InternalRole {
             Self::System => write!(f, "System"),
             Self::Migration => write!(f, "Migration"),
             Self::AccountRequest => write!(f, "AccountRequest"),
+            Self::MessageQueue => write!(f, "MessageQueue"),
         }
     }
 }
@@ -93,6 +97,7 @@ impl InternalRole {
             Self::System => UUID_SYSTEM,
             Self::Migration => UUID_INTERNAL_MIGRATION,
             Self::AccountRequest => UUID_INTERNAL_ACCOUNT_REQUEST,
+            Self::MessageQueue => UUID_INTERNAL_MESSAGE_QUEUE,
         }
     }
 }
@@ -210,6 +215,16 @@ impl Identity {
     pub(crate) fn account_request() -> Self {
         Identity {
             origin: IdentType::Internal(InternalRole::AccountRequest),
+            source: Source::Internal,
+            session_id: UUID_INTERNAL_SESSION_ID,
+            scope: AccessScope::ReadOnly,
+            limits: Limits::unlimited(),
+        }
+    }
+
+    pub(crate) fn message_queue() -> Self {
+        Identity {
+            origin: IdentType::Internal(InternalRole::MessageQueue),
             source: Source::Internal,
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,

@@ -78,7 +78,8 @@ fn delete_filter_entry<'a>(
                 return IResult::Deny;
             }
         }
-        IdentType::Internal(InternalRole::AccountRequest) => {
+        IdentType::Internal(InternalRole::AccountRequest)
+        | IdentType::Internal(InternalRole::MessageQueue) => {
             debug!("Blocking role from deletion");
             return IResult::Deny;
         }
@@ -177,8 +178,9 @@ fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -
             security_access!("sync agreements may not directly delete entities");
             IResult::Deny
         }
-        IdentType::Internal(InternalRole::AccountRequest) => {
-            debug!("account requests may not delete entries");
+        IdentType::Internal(InternalRole::AccountRequest)
+        | IdentType::Internal(InternalRole::MessageQueue) => {
+            debug!("Internal Role may not delete entries");
             IResult::Deny
         }
         IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {

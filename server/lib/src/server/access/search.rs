@@ -131,6 +131,10 @@ fn search_filter_entry(
                 return AccessSrchResult::Deny;
             }
         }
+        IdentType::Internal(InternalRole::MessageQueue) => {
+            security_debug!(uuid = ?entry.get_display_id(), "Blocking message queue check");
+            return AccessSrchResult::Deny;
+        }
         IdentType::Synch(_) => {
             security_debug!(uuid = ?entry.get_display_id(), "Blocking sync check");
             return AccessSrchResult::Deny;
@@ -316,7 +320,7 @@ fn search_sync_account_filter_entry(
                 .get_ava_as_iutf8(Attribute::Class)
                 .map(|set| {
                     trace!(?set);
-                    set.contains(&EntryClass::SyncObject.to_string())
+                    set.contains(EntryClass::SyncObject.into())
                         && set.contains(EntryClass::Account.into())
                 })
                 .unwrap_or(false);
