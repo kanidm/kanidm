@@ -1,33 +1,35 @@
 use super::QueryServerWriteV1;
-use kanidmd_lib::identity::Identity;
+use kanidmd_lib::idm::credupdatesession::CredentialUpdateAnonymousAccountRequest;
+use kanidmd_lib::prelude::{duration_from_epoch_now, OperationError};
+use uuid::Uuid;
 
 impl QueryServerWriteV1 {
-    #[instrument(level = "debug", skip_all)]
-    async fn action_credential_reset_email(
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub(crate) async fn action_credential_reset_email(
         &self,
         email: String,
+        eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
 
-
-        // Use the internal AccountRequest role to authenticate the credential reset.
-        let ident = Identity::account_request();
-
-        let event = InitCredentialUpdateIntentSendEvent {
-            ident,
-            target,
-            max_ttl,
+        let event = CredentialUpdateAnonymousAccountRequest {
             email,
+            max_ttl: None,
         };
 
         idms_prox_write
-            .init_credential_update_intent_send(event, ct)
+            .credential_update_anonymous_account_request(event, ct)
             .and_then(|tok| idms_prox_write.commit().map(|_| tok))
             .inspect_err(|err| {
-                error!(?err, "Failed to process init_credential_update_intent_send",);
+                error!(
+                    ?err,
+                    "Failed to process credential_update_anonymous_account_request"
+                );
             })
-
-
     }
 }

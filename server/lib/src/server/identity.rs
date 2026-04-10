@@ -75,7 +75,6 @@ pub enum InternalRole {
     /// An anonymous account action - this could be a credential reset
     /// request, or a request to create a new account.
     AccountRequest,
-
 }
 
 impl std::fmt::Display for InternalRole {

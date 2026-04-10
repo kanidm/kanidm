@@ -369,9 +369,7 @@ fn modify_protected_attrs<'a>(
             // We don't constraint or influence these.
             AccessModResult::Ignore
         }
-        IdentType::Internal(InternalRole::AccountRequest) => {
-            AccessModResult::Deny
-        }
+        IdentType::Internal(InternalRole::AccountRequest) => AccessModResult::Deny,
         IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {
             if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
                 if classes.is_disjoint(&PROTECTED_MOD_ENTRY_CLASSES)

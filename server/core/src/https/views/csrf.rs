@@ -56,8 +56,8 @@ pub(crate) fn generate_parameters(
         })
         .ok_or(())?;
 
-    let nonce_hex = hex::encode(&nonce);
-    let mask_hex = hex::encode(&MASK.to_be_bytes());
+    let nonce_hex = hex::encode(nonce);
+    let mask_hex = hex::encode(MASK.to_be_bytes());
 
     Ok((
         jar,
@@ -85,17 +85,12 @@ pub(crate) fn verify_parameters(
     let timestamp = hex::decode(&solution.timestamp_hex).map_err(|_| ())?;
     let solution = hex::decode(&solution.solution_hex).map_err(|_| ())?;
 
-    // IMPORTANT CHECK LENGTH
     let mut client_time_bytes: [u8; 8] = [0; 8];
     if timestamp.len() != client_time_bytes.len() {
         return Err(());
     }
     client_time_bytes.copy_from_slice(&timestamp);
 
-    // IMPORTANT CHECK LENGTH
-    if client_time_bytes.len() != 8 {
-        return Err(());
-    }
     let client_time = u64::from_be_bytes(client_time_bytes);
     // For some reason JS time is millis from epoch.
     let client_time = Duration::from_millis(client_time);
@@ -134,7 +129,11 @@ fn verify(nonce: &[u8], related: &[u8], solution: &[u8], timestamp: &[u8]) -> bo
     let result_str = hex::encode(result_bytes);
 
     let mut buffer: [u8; 4] = [0; 4];
-    buffer.copy_from_slice(&result_bytes[..4]);
+    if let Some(bytes) = result_bytes.get(..4) {
+        buffer.copy_from_slice(bytes);
+    } else {
+        return false;
+    }
 
     let result_u32 = u32::from_be_bytes(buffer) & MASK;
 

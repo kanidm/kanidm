@@ -536,6 +536,13 @@ impl InitCredentialUpdateIntentEvent {
     }
 }
 
+pub struct CredentialUpdateAnonymousAccountRequest {
+    // Who is it targeting?
+    pub email: String,
+    // How long is it valid for?
+    pub max_ttl: Option<Duration>,
+}
+
 pub struct InitCredentialUpdateIntentSendEvent {
     // Who initiated this?
     pub ident: Identity,
@@ -978,18 +985,42 @@ impl IdmServerProxyWriteTransaction<'_> {
     }
 
     pub fn credential_update_anonymous_account_request(
-        
+        &mut self,
+        event: CredentialUpdateAnonymousAccountRequest,
+        ct: Duration,
     ) -> Result<(), OperationError> {
-        if self.qs_write.domain_info.allow_credential_email_reset() {
+        if self.qs_write.domain_info().allow_credential_reset_email() {
             error!("Credential Reset is Disabled, Rejecting Attempt");
             // AccessDenied,
         }
 
-        let ident = Identity::
+        // This is an internal identity that can only process limited
+        // account requests.
+        let ident = Identity::account_request();
 
         // Look up the account.
+        let filter = filter!(f_eq(
+            Attribute::Mail,
+            PartialValue::EmailAddress(event.email.clone())
+        ));
 
-        // Process the send.
+        let mut entries = self
+            .qs_write
+            .impersonate_search(filter.clone(), filter, &ident)?;
+
+        let entry = entries
+            .pop()
+            .and_then(|entry| entries.is_empty().then_some(entry))
+            .ok_or(OperationError::CU0009AccountEmailNotFound)?;
+
+        let target = entry.get_uuid();
+
+        // Verify our internal service account has access to modify the target.
+        let (account, _resolved_account_policy, perms) =
+            self.validate_init_credential_update(target, &ident)?;
+
+        // Setup and process the credential update transmission
+        self.process_credential_update_send(&ident, &account, event.max_ttl, perms, event.email, ct)
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -1019,9 +1050,28 @@ impl IdmServerProxyWriteTransaction<'_> {
             })
         }?;
 
+        self.process_credential_update_send(
+            &event.ident,
+            &account,
+            event.max_ttl,
+            perms,
+            to_email,
+            ct,
+        )
+    }
+
+    fn process_credential_update_send(
+        &mut self,
+        ident: &Identity,
+        account: &Account,
+        max_ttl: Option<Duration>,
+        perms: CredUpdateSessionPerms,
+        to_email: String,
+        ct: Duration,
+    ) -> Result<(), OperationError> {
         // ==== AUTHORISATION CHECKED ===
         let (intent_id, expiry_time) =
-            self.build_credential_update_intent(event.max_ttl, &account, perms, ct)?;
+            self.build_credential_update_intent(max_ttl, account, perms, ct)?;
 
         // Queue the message to be sent.
         let display_name = account.display_name().to_owned();
@@ -1035,9 +1085,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         self.qs_write.queue_message(
             // Should we actually impersonate here? We probably need an account for internal sending
             // that is disconnected from the act of creating the reset.
-            &event.ident,
-            message,
-            to_email,
+            ident, message, to_email,
         )
     }
 

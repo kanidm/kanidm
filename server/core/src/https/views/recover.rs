@@ -1,25 +1,16 @@
-// use super::constants::Urls;
-//use super::UnrecoverableErrorView;
-
+use super::csrf::{self, CsrfData, CsrfSolution};
 use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
-
-// use crate::https::middleware::KOpId;
-// use crate::https::views::cookies;
-
+use crate::https::middleware::KOpId;
 use crate::https::ServerState;
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
+use axum::Extension;
 use axum::Form;
 use axum_extra::extract::CookieJar;
 use kanidmd_lib::prelude::duration_from_epoch_now;
 use serde::Deserialize;
-
-// use axum_extra::extract::cookie::SameSite;
-// use serde_with::skip_serializing_none;
-
-use super::csrf::{self, CsrfData, CsrfSolution};
 
 #[derive(Template, WebTemplate)]
 #[template(path = "recover_disabled.html")]
@@ -53,13 +44,11 @@ pub(crate) async fn view_recover_get(
     // Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
-    // Query(params): Query<ResetTokenParam>,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
     // Return an error if this feature is disabled. NOTE that this is NOT a security
     // control, but a user experience once. The feature is also checked in the submission
     // flow.
-
     if !domain_info.allow_credential_reset_email() {
         return Ok(RecoverDisabledView { domain_info }.into_response());
     }
@@ -72,10 +61,9 @@ pub(crate) async fn view_recover_get(
 
 pub(crate) async fn view_recover_post(
     State(state): State<ServerState>,
-    // Extension(kopid): Extension<KOpId>,
+    Extension(kopid): Extension<KOpId>,
     // VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
-    // Query(params): Query<ResetTokenParam>,
     jar: CookieJar,
     Form(recover_form): Form<RecoverForm>,
 ) -> axum::response::Result<Response> {
@@ -96,14 +84,24 @@ pub(crate) async fn view_recover_post(
         current_time,
     ) {
         Ok(()) => {
-            // Actually submit the requested operation.
-
-            warn!("CSRF Pass!");
+            // Actually submit the requested operation since the CSRF passed.
+            if let Err(err) = state
+                .qe_w_ref
+                .action_credential_reset_email(recover_form.email, kopid.eventid)
+                .await
+            {
+                warn!(
+                    ?err,
+                    "Account recovery failed - returning a false positive for privacy."
+                );
+            }
         }
         Err(()) => {
             warn!("CSRF verification failed, silently ignoring to confuse the spammers.");
         }
     };
 
+    // We always return a positive response so that we don't disclose email address presence
+    // or other potential information to a potential attacker.
     Ok(RecoverComplete { domain_info }.into_response())
 }

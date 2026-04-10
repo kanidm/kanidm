@@ -281,6 +281,8 @@ pub trait QueryServerTransaction<'a> {
 
     fn denied_names(&self) -> &HashSet<String>;
 
+    fn domain_info(&self) -> &DomainInfo;
+
     fn get_domain_version(&self) -> DomainVersion;
 
     fn get_domain_patch_level(&self) -> u32;
@@ -1452,6 +1454,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.system_config.denied_names
     }
 
+    fn domain_info(&self) -> &DomainInfo {
+        &self.d_info
+    }
+
     fn get_domain_version(&self) -> DomainVersion {
         self.d_info.d_vers
     }
@@ -1487,7 +1493,7 @@ impl QueryServerReadTransaction<'_> {
     }
 
     /// Retrieve the domain info of this server
-    pub fn domain_info(&mut self) -> Result<ProtoDomainInfo, OperationError> {
+    pub fn public_domain_info(&mut self) -> Result<ProtoDomainInfo, OperationError> {
         let d_info = &self.d_info;
 
         Ok(ProtoDomainInfo {
@@ -1799,6 +1805,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 
     fn denied_names(&self) -> &HashSet<String> {
         &self.system_config.denied_names
+    }
+
+    fn domain_info(&self) -> &DomainInfo {
+        &self.d_info
     }
 
     fn get_domain_version(&self) -> DomainVersion {

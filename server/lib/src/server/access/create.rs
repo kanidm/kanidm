@@ -115,13 +115,11 @@ fn create_filter_entry<'a>(
             // No need to check ACS
             return IResult::Grant;
         }
-        IdentType::Internal(InternalRole::Migration) 
-        => {
+        IdentType::Internal(InternalRole::Migration) => {
             // Checked in a separate function.
             return IResult::Ignore;
         }
-        IdentType::Internal(InternalRole::AccountRequest)
-        => {
+        IdentType::Internal(InternalRole::AccountRequest) => {
             // No current rules.
             return IResult::Ignore;
         }
@@ -248,9 +246,9 @@ fn protected_filter_entry<'a>(ident: &Identity, entry: &Entry<EntryInit, EntryNe
             security_access!("sync agreements may not directly create entities");
             IResult::Deny
         }
-        IdentType::Internal(InternalRole::Migration) |
-        IdentType::Internal(InternalRole::AccountRequest) |
-        IdentType::User(_) => {
+        IdentType::Internal(InternalRole::Migration)
+        | IdentType::Internal(InternalRole::AccountRequest)
+        | IdentType::User(_) => {
             if let Some(entry_uuid) = entry.get_uuid() {
                 if entry_uuid <= UUID_ANONYMOUS {
                     security_access!("attempt to create a system builtin entry");
