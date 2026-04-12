@@ -80,7 +80,7 @@ jobs:
           name: kanidmd-docker
           path: /tmp
       - name: Set up ORAS
-        uses: oras-project/setup-oras@v1
+        uses: oras-project/setup-oras@v2
       - name: Push image to GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | \
