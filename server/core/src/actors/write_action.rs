@@ -22,17 +22,14 @@ impl QueryServerWriteV1 {
             max_ttl: None,
         };
 
-        let result = idms_prox_write
+        idms_prox_write
             .credential_update_anonymous_account_request(event, ct)
-            .and_then(move |tok| idms_prox_write.commit().map(|_| tok))
+            .and_then(|tok| idms_prox_write.commit().map(|_| tok))
             .inspect_err(|err| {
                 error!(
                     ?err,
                     "Failed to process credential_update_anonymous_account_request"
                 );
-            });
-
-        // Return the result.
-        result
+            })
     }
 }
