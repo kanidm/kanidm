@@ -837,4 +837,112 @@ mod tests {
             _ => panic!("Wrong grant type"),
         }
     }
+
+    #[test]
+    fn test_authorisation_request_prompt_single_value() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=login";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 1);
+        assert!(req.prompt.contains(&super::Prompt::Login));
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_multiple_values() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=login%20consent";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 2);
+        assert!(req.prompt.contains(&super::Prompt::Login));
+        assert!(req.prompt.contains(&super::Prompt::Consent));
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_none() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=none";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 1);
+        assert!(req.prompt.contains(&super::Prompt::None));
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_absent() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert!(req.prompt.is_empty());
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_invalid_value() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=bogus";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 1);
+        assert!(req
+            .prompt
+            .contains(&super::Prompt::Invalid("bogus".to_string())));
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_select_account() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=select_account";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 1);
+        assert!(req.prompt.contains(&super::Prompt::SelectAccount));
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_all_valid_values() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=login+consent+select_account";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 3);
+        assert!(req.prompt.contains(&super::Prompt::Login));
+        assert!(req.prompt.contains(&super::Prompt::Consent));
+        assert!(req.prompt.contains(&super::Prompt::SelectAccount));
+    }
 }
