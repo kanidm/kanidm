@@ -3471,7 +3471,7 @@ mod tests {
     use kanidm_proto::constants::*;
     use kanidm_proto::internal::{SshPublicKey, UserAuthToken};
     use kanidm_proto::oauth2::*;
-    use std::collections::{BTreeMap, BTreeSet, HashSet};
+    use std::collections::{BTreeMap, BTreeSet};
     use std::convert::TryFrom;
     use std::str::FromStr;
     use std::time::Duration;
@@ -8200,7 +8200,7 @@ mod tests {
 
     fn auth_req_with_prompt(
         pkce_request: PkceRequest,
-        prompt: HashSet<Prompt>,
+        prompt: Vec<Prompt>,
     ) -> AuthorisationRequest {
         AuthorisationRequest {
             response_type: ResponseType::Code,
@@ -8275,7 +8275,7 @@ mod tests {
 
         let auth_req = auth_req_with_prompt(
             pkce_secret.to_request(),
-            HashSet::from([Prompt::Invalid(invalid_value)]),
+            Vec::from([Prompt::Invalid(invalid_value)]),
         );
 
         let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
@@ -8307,7 +8307,7 @@ mod tests {
         let pkce_secret = PkceS256Secret::default();
 
         let auth_req =
-            auth_req_with_prompt(pkce_secret.to_request(), HashSet::from([Prompt::None]));
+            auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // No identity provided (None) - user is not authenticated.
         let result = idms_prox_read.check_oauth2_authorisation(None, &auth_req, ct);
@@ -8338,7 +8338,7 @@ mod tests {
         let pkce_secret = PkceS256Secret::default();
 
         let auth_req =
-            auth_req_with_prompt(pkce_secret.to_request(), HashSet::from([Prompt::None]));
+            auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // Ident is authenticated but has never granted consent.
         let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
@@ -8373,7 +8373,7 @@ mod tests {
         let pkce_secret = PkceS256Secret::default();
 
         let auth_req =
-            auth_req_with_prompt(pkce_secret.to_request(), HashSet::from([Prompt::None]));
+            auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         let result = idms_prox_read
             .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
@@ -8403,7 +8403,7 @@ mod tests {
         let pkce_secret = PkceS256Secret::default();
 
         let auth_req =
-            auth_req_with_prompt(pkce_secret.to_request(), HashSet::from([Prompt::Login]));
+            auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Login]));
 
         // Even though the user is authenticated, prompt=login should force re-auth.
         let result = idms_prox_read
@@ -8440,7 +8440,7 @@ mod tests {
         let pkce_secret = PkceS256Secret::default();
 
         let auth_req =
-            auth_req_with_prompt(pkce_secret.to_request(), HashSet::from([Prompt::Consent]));
+            auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Consent]));
 
         let result = idms_prox_read
             .check_oauth2_authorisation(Some(&ident), &auth_req, ct)

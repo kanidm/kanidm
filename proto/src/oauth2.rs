@@ -1,6 +1,6 @@
 //! Oauth2 RFC protocol definitions.
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Display;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -69,7 +69,7 @@ pub struct AuthorisationRequest {
     pub max_age: Option<i64>,
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Prompt>")]
     #[serde(default)]
-    pub prompt: HashSet<Prompt>,
+    pub prompt: Vec<Prompt>,
     #[serde(flatten)]
     pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
 }
