@@ -8306,8 +8306,7 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req =
-            auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // No identity provided (None) - user is not authenticated.
         let result = idms_prox_read.check_oauth2_authorisation(None, &auth_req, ct);
@@ -8337,8 +8336,7 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req =
-            auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // Ident is authenticated but has never granted consent.
         let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
@@ -8372,8 +8370,7 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req =
-            auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         let result = idms_prox_read
             .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
@@ -8402,8 +8399,7 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req =
-            auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Login]));
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Login]));
 
         // Even though the user is authenticated, prompt=login should force re-auth.
         let result = idms_prox_read
@@ -8439,8 +8435,7 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req =
-            auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Consent]));
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Consent]));
 
         let result = idms_prox_read
             .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
