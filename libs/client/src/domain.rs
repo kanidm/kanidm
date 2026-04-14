@@ -13,7 +13,7 @@ impl KanidmClient {
 
     pub async fn idm_set_domain_allow_easter_eggs(&self, enable: bool) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("{}{}", "/v1/domain/_attr/", ATTR_DOMAIN_ALLOW_EASTER_EGGS),
+            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_ALLOW_EASTER_EGGS),
             vec![enable.to_string()],
         )
         .await
@@ -25,8 +25,8 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         self.perform_put_request(
             &format!(
-                "{}{}",
-                "/v1/domain/_attr/", ATTR_DOMAIN_ALLOW_CREDENTIAL_RESET_EMAIL
+                "/v1/domain/_attr/{}",
+                ATTR_DOMAIN_ALLOW_CREDENTIAL_RESET_EMAIL
             ),
             vec![enable.to_string()],
         )

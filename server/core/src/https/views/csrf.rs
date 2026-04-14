@@ -80,8 +80,6 @@ pub(crate) fn verify_parameters(
 ) -> Result<(), ()> {
     let nonce: Nonce = cookies::get_signed(state, jar, COOKIE_CSRF_NONCE).ok_or(())?;
 
-    warn!(?related_input, ?solution);
-
     let timestamp = hex::decode(&solution.timestamp_hex).map_err(|_| ())?;
     let solution = hex::decode(&solution.solution_hex).map_err(|_| ())?;
 

@@ -398,6 +398,7 @@ pub enum AccountCredential {
 
         /// Optionally set how many seconds the reset token should be valid for.
         /// Default: 3600 seconds
+        #[clap(long)]
         ttl: Option<u32>,
     },
     /// Send a reset token to the account's email so that the user may
@@ -408,6 +409,7 @@ pub enum AccountCredential {
 
         /// Optionally set how many seconds the reset token should be valid for.
         /// Default: 3600 seconds
+        #[clap(long)]
         ttl: Option<u64>,
 
         /// Optionally specify the email the token should be sent to. This email address

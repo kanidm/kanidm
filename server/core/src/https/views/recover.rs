@@ -11,6 +11,9 @@ use axum::Form;
 use axum_extra::extract::CookieJar;
 use kanidmd_lib::prelude::duration_from_epoch_now;
 use serde::Deserialize;
+use tokio::time::{sleep_until, Duration, Instant};
+
+const CONSTANT_TIME_DEADLINE: Duration = Duration::from_millis(500);
 
 #[derive(Template, WebTemplate)]
 #[template(path = "recover_disabled.html")]
@@ -73,6 +76,12 @@ pub(crate) async fn view_recover_post(
         return Ok(RecoverDisabledView { domain_info }.into_response());
     }
 
+    // Setup a deadline so that we always return in constant time.
+    // This prevents a specific type of information leak where the
+    // timing of the operation can yield if the email address
+    // existed or not.
+    let deadline = Instant::now() + CONSTANT_TIME_DEADLINE;
+
     // Validate
     let current_time = duration_from_epoch_now();
 
@@ -100,6 +109,9 @@ pub(crate) async fn view_recover_post(
             warn!("CSRF verification failed, silently ignoring to confuse the spammers.");
         }
     };
+
+    // Let the deadline pass.
+    sleep_until(deadline).await;
 
     // We always return a positive response so that we don't disclose email address presence
     // or other potential information to a potential attacker.
