@@ -2182,6 +2182,14 @@ impl IdmServerProxyReadTransaction<'_> {
             }
         };
 
+        if auth_req.prompt.len() > 4 {
+            warn!(
+                "Request contained too many prompt values. Max: 4, Provided: {}",
+                auth_req.prompt.len()
+            );
+            return Err(Oauth2Error::InvalidRequest);
+        }
+
         let invalid_prompts: Vec<&str> = auth_req
             .prompt
             .iter()
@@ -8254,6 +8262,42 @@ mod tests {
         new_ident
     }
 
+    /// When provided with too many arguments for the `prompt` key, we should return a InvalidRequest as we want to
+    /// protect ourselves from having to linearly search across hundreds or thousands of values
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_fails_for_too_many_values(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(
+            pkce_secret.to_request(),
+            Vec::from([
+                Prompt::Login,
+                Prompt::Consent,
+                Prompt::SelectAccount,
+                Prompt::None,
+                Prompt::Invalid("bagel".into()),
+                Prompt::Invalid("panko".into()),
+            ]),
+        );
+
+        // Too many prompt values should cause the request to be rejected with InvalidRequest
+        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+
+        assert_eq!(
+            result.unwrap_err(),
+            Oauth2Error::InvalidRequest,
+            "An invalid/unrecognised prompt value must return InvalidRequest"
+        );
+    }
+
     /// OIDC Core 1.0 §3.1.2.1:
     /// > If an OP receives a prompt value outside the set defined above that it does not understand,
     /// > it MAY return an error or it MAY ignore it
@@ -8414,12 +8458,12 @@ mod tests {
 
     //TODO: Implement prompt=consent. Requires supporting prompt=login%20consent which will require extra thinking
 
-    /// OIDC Core 1.0 §3.1.2.1 prompt=consent:
-    ///
-    /// > The Authorization Server SHOULD prompt the End-User for consent before
-    /// > returning information to the Client.
-    ///
-    /// If the user is logged in and has already given consent, we prompt for consent again
+    // /// OIDC Core 1.0 §3.1.2.1 prompt=consent:
+    // ///
+    // /// > The Authorization Server SHOULD prompt the End-User for consent before
+    // /// > returning information to the Client.
+    // ///
+    // /// If the user is logged in and has already given consent, we prompt for consent again
     // #[idm_test]
     // async fn test_idm_oauth2_prompt_consent_forces_reconsent(
     //     idms: &IdmServer,
