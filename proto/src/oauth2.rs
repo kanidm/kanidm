@@ -444,6 +444,14 @@ fn response_modes_supported_default() -> Vec<ResponseMode> {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum Prompt {
+    /// None is not the absence of a value but a rather a value itself.
+    /// Prompt::None signifies to kanidm that *if* the authentications server
+    /// cannot automatically proceed thanks to an already logged in user,
+    /// It must return a error response rather than allowing a user to proceed
+    /// through the regular login flow.
+    ///
+    /// This is specified in OIDC Core 1.0 §3.1.2.1
+    /// https://openid.net/specs/openid-connect-core-1_0.html
     None,
     Login,
     Consent,
