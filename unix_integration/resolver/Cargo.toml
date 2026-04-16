@@ -114,11 +114,9 @@ kanidm_build_profiles = { workspace = true }
 [package.metadata.deb]
 name = "kanidm-unixd"
 maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
-# Can't use $auto depends because the name of libssl3 varies by distro and version
 depends = [
 	"libc6",
 	"tpm-udev",
-	"libssl3 | libssl3t64",
 	"libpam-kanidm",
 	"libnss-kanidm"
 ]

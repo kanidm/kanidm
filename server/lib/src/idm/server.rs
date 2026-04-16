@@ -412,7 +412,7 @@ pub trait IdmServerTransaction<'a> {
     /// The primary method of verification selection is the use of the KID parameter
     /// that we internally sign with. We can use this to select the appropriate token type
     /// and validation method.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn validate_client_auth_info_to_ident(
         &mut self,
         client_auth_info: ClientAuthInfo,
@@ -456,7 +456,7 @@ pub trait IdmServerTransaction<'a> {
     /// info will not need to perform all the same checks (time, cryptography, etc).
     /// However, subsequent callers will still need to load the entry into the
     /// identity.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn pre_validate_client_auth_info(
         &mut self,
         client_auth_info: &mut ClientAuthInfo,
@@ -479,10 +479,10 @@ pub trait IdmServerTransaction<'a> {
         result
     }
 
-    /// This function is not using in authentication flows - it is a reflector of the
+    /// This function is not used in authentication flows - it is a reflector of the
     /// current session state to allow a user-auth-token to be presented to the
     /// user via the whoami call.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn validate_client_auth_info_to_uat(
         &mut self,
         client_auth_info: &ClientAuthInfo,
@@ -1185,7 +1185,7 @@ impl IdmServerAuthTransaction<'_> {
                 // Get the first / single entry we expect here ....
                 let entry = self.qs_read.internal_search_uuid(euuid)?;
 
-                security_info!(
+                info!(
                     username = %init.username,
                     issue = ?init.issue,
                     privileged = ?init.privileged,

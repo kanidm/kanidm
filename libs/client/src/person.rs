@@ -1,11 +1,9 @@
-use std::collections::BTreeMap;
-
+use crate::{ClientError, KanidmClient};
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::{CredentialStatus, IdentifyUserRequest, IdentifyUserResponse};
 use kanidm_proto::v1::{AccountUnixExtend, Entry, SingleStringRequest, UatStatus};
+use std::collections::BTreeMap;
 use uuid::Uuid;
-
-use crate::{ClientError, KanidmClient};
 
 impl KanidmClient {
     pub async fn idm_person_account_list(&self) -> Result<Vec<Entry>, ClientError> {
@@ -63,9 +61,14 @@ impl KanidmClient {
             );
         }
         if let Some(newlegalname) = legalname {
-            update_entry
-                .attrs
-                .insert(ATTR_LEGALNAME.to_string(), vec![newlegalname.to_string()]);
+            // An empty string means we should purge the attribute, which
+            // is done by inserting an empty vec as the entry value
+            let val = if newlegalname.is_empty() {
+                vec![]
+            } else {
+                vec![newlegalname.to_string()]
+            };
+            update_entry.attrs.insert(ATTR_LEGALNAME.to_string(), val);
         }
         if let Some(mail) = mail {
             update_entry
@@ -162,7 +165,8 @@ impl KanidmClient {
         tag: &str,
         pubkey: &str,
     ) -> Result<(), ClientError> {
-        let sk = (tag.to_string(), pubkey.to_string());
+        let tag = urlencoding::encode(tag);
+        let sk = (tag, pubkey.to_string());
         self.perform_post_request(format!("/v1/person/{id}/_ssh_pubkeys").as_str(), sk)
             .await
     }
@@ -172,6 +176,7 @@ impl KanidmClient {
         id: &str,
         tag: &str,
     ) -> Result<(), ClientError> {
+        let tag = urlencoding::encode(tag);
         self.perform_delete_request(format!("/v1/person/{id}/_ssh_pubkeys/{tag}").as_str())
             .await
     }

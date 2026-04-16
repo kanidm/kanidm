@@ -1641,7 +1641,7 @@ impl AuthSession {
                 };
 
                 security_info!(
-                    "Issuing {:?} session ({:?}) {} for {} {}",
+                    "Issuing {} session ({}) {} for {} {}",
                     self.issue,
                     scope,
                     session_id,

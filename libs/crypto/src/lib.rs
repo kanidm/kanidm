@@ -10,17 +10,20 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 #![deny(clippy::unreachable)]
 
-use argon2::{Algorithm, Argon2, Params, PasswordHash, Version};
 use base64::engine::general_purpose;
 use base64::engine::GeneralPurpose;
 use base64::{alphabet, Engine};
 use base64urlsafedata::Base64UrlSafeData;
+use crypto_glue::{
+    argon2::{Algorithm, Argon2, Params, PasswordHash, Version},
+    pbkdf2::pbkdf2_hmac,
+    s256::Sha256,
+    s512::Sha512,
+    sha1::Sha1,
+    traits::Digest,
+};
 use kanidm_hsm_crypto::{provider::TpmHmacS256, structures::HmacS256Key};
-use md4::{Digest, Md4};
-use openssl::error::ErrorStack as OpenSSLErrorStack;
-use openssl::hash::MessageDigest;
-use openssl::pkcs5::pbkdf2_hmac;
-use openssl::sha::{Sha1, Sha256, Sha512};
+use md4::Md4;
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -30,10 +33,6 @@ use std::time::{Duration, Instant};
 use tracing::{debug, error, warn};
 
 mod crypt_md5;
-pub mod mtls;
-pub mod prelude;
-pub mod serialise;
-pub mod x509_cert;
 
 pub use sha2;
 
@@ -43,9 +42,9 @@ const PBKDF2_SALT_LEN: usize = 24;
 pub const PBKDF2_MIN_NIST_SALT_LEN: usize = 14;
 
 // Min number of rounds for a pbkdf2
-pub const PBKDF2_MIN_NIST_COST: usize = 10_000;
+pub const PBKDF2_MIN_NIST_COST: u32 = 10_000;
 // Default rounds - owasp recommend 600_000 rounds.
-pub const PBKDF2_DEFAULT_COST: usize = 600_000;
+pub const PBKDF2_DEFAULT_COST: u32 = 600_000;
 
 // 32 * u8 -> 256 bits of out.
 const PBKDF2_KEY_LEN: usize = 32;
@@ -85,21 +84,6 @@ pub enum CryptoError {
     InvalidServerName,
 }
 
-impl From<OpenSSLErrorStack> for CryptoError {
-    fn from(ossl_err: OpenSSLErrorStack) -> Self {
-        error!(?ossl_err);
-        let code = ossl_err.errors().first().map(|e| e.code()).unwrap_or(0);
-        #[cfg(not(target_family = "windows"))]
-        let result = CryptoError::OpenSSL(code);
-
-        // this is an .into() because on windows it's a u32 not a u64
-        #[cfg(target_family = "windows")]
-        let result = CryptoError::OpenSSL(code.into());
-
-        result
-    }
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[allow(non_camel_case_types)]
 pub enum DbPasswordV1 {
@@ -119,9 +103,9 @@ pub enum DbPasswordV1 {
         s: Base64UrlSafeData,
         k: Base64UrlSafeData,
     },
-    PBKDF2(usize, Vec<u8>, Vec<u8>),
-    PBKDF2_SHA1(usize, Vec<u8>, Vec<u8>),
-    PBKDF2_SHA512(usize, Vec<u8>, Vec<u8>),
+    PBKDF2(u32, Vec<u8>, Vec<u8>),
+    PBKDF2_SHA1(u32, Vec<u8>, Vec<u8>),
+    PBKDF2_SHA512(u32, Vec<u8>, Vec<u8>),
     SHA1(Vec<u8>),
     SSHA1(Vec<u8>, Vec<u8>),
     SHA256(Vec<u8>),
@@ -165,7 +149,7 @@ impl fmt::Debug for DbPasswordV1 {
 
 #[derive(Debug)]
 pub struct CryptoPolicy {
-    pub(crate) pbkdf2_cost: usize,
+    pub(crate) pbkdf2_cost: u32,
     // https://docs.rs/argon2/0.5.0/argon2/struct.Params.html
     // defaults to 19mb memory, 2 iterations and 1 thread, with a 32byte output.
     pub(crate) argon2id_params: Params,
@@ -344,13 +328,13 @@ enum Kdf {
         key: Vec<u8>,
     },
     //     cost, salt,   hash
-    PBKDF2(usize, Vec<u8>, Vec<u8>),
+    PBKDF2(u32, Vec<u8>, Vec<u8>),
 
     // Imported types, will upgrade to the above.
     //         cost,   salt,    hash
-    PBKDF2_SHA1(usize, Vec<u8>, Vec<u8>),
+    PBKDF2_SHA1(u32, Vec<u8>, Vec<u8>),
     //           cost,   salt,    hash
-    PBKDF2_SHA512(usize, Vec<u8>, Vec<u8>),
+    PBKDF2_SHA512(u32, Vec<u8>, Vec<u8>),
     //      salt     hash
     SHA1(Vec<u8>),
     SSHA1(Vec<u8>, Vec<u8>),
@@ -526,7 +510,7 @@ fn parse_django_password(value: &str) -> Result<Password, PasswordError> {
     let cost = django_pbkdf[1];
     let salt = django_pbkdf[2];
     let hash = django_pbkdf[3];
-    let c = cost.parse::<usize>()?;
+    let c = cost.parse::<u32>()?;
     let s: Vec<_> = salt.as_bytes().to_vec();
     let h = general_purpose::STANDARD.decode(hash)?;
     if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
@@ -598,7 +582,7 @@ fn parse_pbkdf2(hash_format: &str, hash_value: &str) -> Result<Password, Passwor
     let salt = ol_pbkdf[1];
     let hash = ol_pbkdf[2];
 
-    let c: usize = cost.parse()?;
+    let c: u32 = cost.parse()?;
 
     let s = ab64_to_b64!(salt);
     let base64_decoder_config =
@@ -846,19 +830,17 @@ impl Password {
         let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.random()).collect();
         let mut key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
 
-        pbkdf2_hmac(
+        pbkdf2_hmac::<Sha256>(
             cleartext.as_bytes(),
             salt.as_slice(),
             pbkdf2_cost,
-            MessageDigest::sha256(),
             key.as_mut_slice(),
-        )
-        .map(|()| {
-            // Turn key to a vec.
-            Kdf::PBKDF2(pbkdf2_cost, salt, key)
+        );
+
+        // Turn key to a vec.
+        Ok(Password {
+            material: Kdf::PBKDF2(pbkdf2_cost, salt, key),
         })
-        .map(|material| Password { material })
-        .map_err(|e| e.into())
     }
 
     pub fn new_argon2id(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, CryptoError> {
@@ -1039,90 +1021,84 @@ impl Password {
                 let key_len = key.len();
                 debug_assert!(key_len >= PBKDF2_MIN_NIST_KEY_LEN);
                 let mut chal_key: Vec<u8> = (0..key_len).map(|_| 0).collect();
-                pbkdf2_hmac(
+
+                pbkdf2_hmac::<Sha256>(
                     cleartext.as_bytes(),
                     salt.as_slice(),
                     *cost,
-                    MessageDigest::sha256(),
                     chal_key.as_mut_slice(),
-                )
-                .map(|()| {
-                    // Actually compare the outputs.
-                    &chal_key == key
-                })
-                .map_err(|e| e.into())
+                );
+
+                // Actually compare the outputs.
+                Ok(&chal_key == key)
             }
             (Kdf::PBKDF2_SHA1(cost, salt, key), _) => {
                 let key_len = key.len();
                 debug_assert!(key_len >= PBKDF2_SHA1_MIN_KEY_LEN);
                 let mut chal_key: Vec<u8> = (0..key_len).map(|_| 0).collect();
-                pbkdf2_hmac(
+
+                pbkdf2_hmac::<Sha1>(
                     cleartext.as_bytes(),
                     salt.as_slice(),
                     *cost,
-                    MessageDigest::sha1(),
                     chal_key.as_mut_slice(),
-                )
-                .map(|()| {
-                    // Actually compare the outputs.
-                    &chal_key == key
-                })
-                .map_err(|e| e.into())
+                );
+
+                // Actually compare the outputs.
+                Ok(&chal_key == key)
             }
             (Kdf::PBKDF2_SHA512(cost, salt, key), _) => {
                 let key_len = key.len();
                 debug_assert!(key_len >= PBKDF2_MIN_NIST_KEY_LEN);
                 let mut chal_key: Vec<u8> = (0..key_len).map(|_| 0).collect();
-                pbkdf2_hmac(
+
+                pbkdf2_hmac::<Sha512>(
                     cleartext.as_bytes(),
                     salt.as_slice(),
                     *cost,
-                    MessageDigest::sha512(),
                     chal_key.as_mut_slice(),
-                )
-                .map(|()| {
-                    // Actually compare the outputs.
-                    &chal_key == key
-                })
-                .map_err(|e| e.into())
+                );
+
+                // Actually compare the outputs.
+                Ok(&chal_key == key)
             }
             (Kdf::SHA1(key), _) => {
                 let mut hasher = Sha1::new();
                 hasher.update(cleartext.as_bytes());
-                let r = hasher.finish();
+                let r = hasher.finalize();
                 Ok(key == &(r.to_vec()))
             }
             (Kdf::SSHA1(salt, key), _) => {
                 let mut hasher = Sha1::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(salt);
-                let r = hasher.finish();
+                let r = hasher.finalize();
                 Ok(key == &(r.to_vec()))
             }
             (Kdf::SHA256(key), _) => {
                 let mut hasher = Sha256::new();
                 hasher.update(cleartext.as_bytes());
-                let r = hasher.finish();
+                let r = hasher.finalize();
                 Ok(key == &(r.to_vec()))
             }
             (Kdf::SSHA256(salt, key), _) => {
                 let mut hasher = Sha256::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(salt);
-                let r = hasher.finish();
+                let r = hasher.finalize();
                 Ok(key == &(r.to_vec()))
             }
             (Kdf::SHA512(key), _) => {
                 let mut hasher = Sha512::new();
                 hasher.update(cleartext.as_bytes());
-                let r = hasher.finish();
+                let r = hasher.finalize();
                 Ok(key == &(r.to_vec()))
             }
             (Kdf::SSHA512(salt, key), _) => {
                 let mut hasher = Sha512::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(salt);
-                let r = hasher.finish();
+                let r = hasher.finalize();
                 Ok(key == &(r.to_vec()))
             }
             (Kdf::NT_MD4(key), _) => {

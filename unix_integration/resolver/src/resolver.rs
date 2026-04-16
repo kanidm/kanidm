@@ -18,6 +18,7 @@ use crate::idprovider::system::{
 };
 use hashbrown::HashMap;
 use kanidm_hsm_crypto::provider::BoxedDynTpm;
+use kanidm_lib_file_permissions::diagnose_path;
 use kanidm_unix_common::constants::{
     DEFAULT_CACHE_TIMEOUT_JITTER_MS, DEFAULT_CACHE_TIMEOUT_MAXIMUM, DEFAULT_CACHE_TIMEOUT_MINIMUM,
     DEFAULT_SHELL_SEARCH_PATHS, SYSTEM_SHADOW_PATH,
@@ -400,17 +401,22 @@ impl Resolver {
 
         let requested_shell_exists = if let Some(shell_path) = maybe_shell.as_ref() {
             // Does the shell path as configured exist?
+            //
+            // Canonicalisation fails in two cases per https://doc.rust-lang.org/std/fs/fn.canonicalize.html#errors
+            //
+            // * Path does not exist
+            // * An intermediate element of the path is a file (not a directory/link).
+            //
             let mut exists = shell_path
                 .canonicalize()
                 .map_err(|err| {
-                    debug!(
-                        "Failed to canonicalize path, using base path. Tried: {} Error: {:?}",
-                        shell_path.to_string_lossy(),
-                        err
+                    warn!(
+                        ?err,
+                        path = ?shell_path.display(),
+                        "Failed to canonicalise shell path",
                     );
                 })
-                .unwrap_or(Path::new(shell_path).to_path_buf())
-                .exists();
+                .is_ok();
 
             if !exists {
                 // Does the shell binary exist in a search path that is configured?
@@ -446,8 +452,10 @@ impl Resolver {
             if !exists {
                 warn!(
                         "Configured shell \"{}\" for {} is not present on this system. Check `/etc/shells` for valid shell options.",
-                        shell_path.to_string_lossy(), token.name
-                    )
+                        shell_path.display(), token.name
+                    );
+                let diag = diagnose_path(shell_path.as_ref());
+                info!(%diag);
             }
 
             exists

@@ -193,6 +193,17 @@ async fn submit_admin_req_human(path: &str, req: AdminTaskRequest) -> ExitCode {
         Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => {
             info!(certificate = ?cert)
         }
+        Some(Ok(AdminTaskResponse::ShowReplicationCertificateMetadata {
+            not_before,
+            not_after,
+            subject,
+            expired,
+        })) => {
+            info!("not_before : {}", not_before);
+            info!("not_after  : {}", not_after);
+            info!("subject    : {}", subject);
+            info!("expired    : {}", expired);
+        }
         Some(Ok(AdminTaskResponse::DomainUpgradeCheck { report })) => {
             let ProtoDomainUpgradeCheckReport {
                 name,
@@ -970,6 +981,15 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             )
             .await;
         }
+        KanidmdOpt::ShowReplicationCertificateMetadata => {
+            info!("Running show replication certificate metadata ...");
+            submit_admin_req_human(
+                config.adminbindpath.as_str(),
+                AdminTaskRequest::ShowReplicationCertificateMetadata,
+            )
+            .await;
+        }
+
         KanidmdOpt::RenewReplicationCertificate => {
             info!("Running renew replication certificate ...");
             submit_admin_req_human(

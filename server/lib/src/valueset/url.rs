@@ -3,6 +3,7 @@ use crate::schema::SchemaAttribute;
 use crate::valueset::{
     DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
 };
+use kanidm_proto::scim_v1::client::ScimUrls;
 use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
 
@@ -41,13 +42,12 @@ impl ValueSetUrl {
 
 impl ValueSetScimPut for ValueSetUrl {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let value: Url = serde_json::from_value(value).map_err(|err| {
+        let ScimUrls(url_set) = serde_json::from_value(value).map_err(|err| {
             error!(?err, "SCIM URL syntax invalid");
             OperationError::SC0007UrlSyntaxInvalid
         })?;
 
-        let mut set = SmolSet::new();
-        set.insert(value);
+        let set = SmolSet::from_iter(url_set);
 
         Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUrl {
             set,
@@ -126,7 +126,8 @@ impl ValueSetT for ValueSetUrl {
             let v = iter.next().unwrap_or_default();
             Some(v.into())
         } else {
-            let arr = iter.collect::<Vec<_>>();
+            let mut arr = iter.collect::<Vec<_>>();
+            arr.sort();
             Some(arr.into())
         }
     }
@@ -186,6 +187,16 @@ mod tests {
         crate::valueset::scim_json_reflexive(&vs, r#""https://idm.example.com/""#);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetUrl>(&vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetUrl>(&vs, &[]);
+
+        // Check multivalued arrays.
+        let u1 = Url::parse("https://idm1.example.com").unwrap();
+        let u2 = Url::parse("https://idm2.example.com").unwrap();
+        let vs: ValueSet = ValueSetUrl::from_iter([u1, u2]).expect("Unable to create ValueSet");
+        crate::valueset::scim_json_reflexive(
+            &vs,
+            r#"["https://idm1.example.com/", "https://idm2.example.com/"]"#,
+        );
+        crate::valueset::scim_json_put_reflexive::<ValueSetUrl>(&vs, &[]);
     }
 }
