@@ -3923,6 +3923,7 @@ dependencies = [
  "toml",
  "tracing",
  "url",
+ "urlencoding",
  "uuid",
  "webauthn-rs-proto",
 ]
