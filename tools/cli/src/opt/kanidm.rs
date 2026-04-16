@@ -1008,6 +1008,13 @@ pub enum Oauth2Opt {
     #[clap(name = "remove-image")]
     RemoveImage(Named),
 
+    /// Set the refresh token expiry in seconds. An empty value will reset the value to default.
+    #[clap(name = "set-refresh-token-expiry")]
+    SetRefreshTokenExpiry {
+        name: String,
+        expiry: Option<u32>,
+    },
+
     /// Add a supplemental URL as a redirection target. For example a phone app
     /// may use a redirect URL such as `app://my-cool-app` to trigger a native
     /// redirection event out of a browser.

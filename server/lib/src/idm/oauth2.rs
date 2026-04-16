@@ -482,6 +482,8 @@ pub struct Oauth2RS {
     sign_alg: SignatureAlgo,
     key_object: Arc<KeyObject>,
 
+    refresh_token_expiry: u32,
+
     // For oidc we also need our issuer url.
     iss: Url,
     // For discovery we need to build and keep a number of values.
@@ -864,6 +866,10 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
 
                 let has_custom_image = ent.get_ava_single_image(Attribute::Image).is_some();
 
+                let refresh_token_expiry = ent
+                    .get_ava_single_uint32(Attribute::OAuth2RefreshTokenExpiry)
+                    .unwrap_or(OAUTH_REFRESH_TOKEN_EXPIRY);
+
                 let mut authorization_endpoint = self.inner.origin.clone();
                 authorization_endpoint.set_path("/ui/oauth2");
 
@@ -929,6 +935,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     claim_map,
                     sign_alg,
                     key_object,
+                    refresh_token_expiry,
                     iss,
                     authorization_endpoint,
                     token_endpoint,
@@ -1888,8 +1895,8 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         let expiry = odt_ct + Duration::from_secs(OAUTH2_ACCESS_TOKEN_EXPIRY as u64);
         let expires_in = OAUTH2_ACCESS_TOKEN_EXPIRY;
-        let refresh_expiry = iat + OAUTH_REFRESH_TOKEN_EXPIRY as i64;
-        let odt_refresh_expiry = odt_ct + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY);
+        let refresh_expiry = iat + o2rs.refresh_token_expiry as i64;
+        let odt_refresh_expiry = odt_ct + Duration::from_secs(o2rs.refresh_token_expiry as u64);
 
         let scope = scopes.clone();
 
@@ -3406,7 +3413,7 @@ mod tests {
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
     use crate::prelude::*;
     use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
-    use crate::valueset::{ValueSetOauthScopeMap, ValueSetSshKey};
+    use crate::valueset::{ValueSetOauthScopeMap, ValueSetSshKey, ValueSetUint32};
     use base64::{engine::general_purpose, Engine as _};
     use compact_jwt::{
         compact::JwkUse, crypto::JwsRs256Verifier, dangernoverify::JwsDangerReleaseWithoutVerify,
@@ -6638,9 +6645,9 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
         ct: Duration,
-    ) -> (AccessTokenResponse, ClientAuthInfo) {
+    ) -> (AccessTokenResponse, ClientAuthInfo, Uuid) {
         // First, setup to get a token.
-        let (secret, _uat, ident, _) =
+        let (secret, _uat, ident, oauth2_rs_uuid) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
@@ -6683,7 +6690,7 @@ mod tests {
 
         trace!(?access_token_response_1);
 
-        (access_token_response_1, client_authz)
+        (access_token_response_1, client_authz, oauth2_rs_uuid)
     }
 
     #[idm_test]
@@ -6694,7 +6701,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
@@ -6779,7 +6786,7 @@ mod tests {
             SessionState::ExpiresAt(
                 time::OffsetDateTime::UNIX_EPOCH
                     + ct
-                    + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY)
+                    + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY as u64)
             ),
             session.1.state
         );
@@ -6792,15 +6799,32 @@ mod tests {
         assert!(access_token_response_3.refresh_token != access_token_response_2.refresh_token);
         assert!(access_token_response_3.id_token != access_token_response_2.id_token);
 
-        // refresh after refresh has expired.
-        // Refresh tokens have a max time limit - the session time limit still bounds it though, but
-        // so does the refresh token limit. We check both, but the refresh time is checked first so
-        // we can guarantee this in this test.
+        // ========================================
+        // Check that a custom refresh time applies.
 
-        let ct = Duration::from_secs(
-            TEST_CURRENT_TIME + refresh_exp as u64 + access_token_response_3.expires_in as u64,
-        );
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
+        let custom_exp = OAUTH_REFRESH_TOKEN_EXPIRY + 1;
+
+        let modlist = ModifyList::new_list(vec![
+            // Member of a claim map.
+            Modify::Set(
+                Attribute::OAuth2RefreshTokenExpiry,
+                ValueSetUint32::new(custom_exp),
+            ),
+        ]);
+
+        assert!(idms_prox_write
+            .qs_write
+            .internal_modify(
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(oauth2_rs_uuid))),
+                &modlist,
+            )
+            .is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now check the new token has the updated refresh lifetime.
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_3
@@ -6816,9 +6840,57 @@ mod tests {
         .into();
         let access_token_response_4 = idms_prox_write
             .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .unwrap();
+
+        let entry = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_TESTPERSON_1)
+            .expect("failed");
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
+            .and_then(|sessions| sessions.first_key_value())
+            // If there is no map, then something is wrong.
+            .unwrap();
+
+        trace!(?session);
+        // The Oauth2 Session must be updated with a newer session time, this time it's
+        // the custom expiration.
+        assert_eq!(
+            SessionState::ExpiresAt(
+                time::OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(custom_exp as u64)
+            ),
+            session.1.state
+        );
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // refresh after refresh has expired.
+        // Refresh tokens have a max time limit - the session time limit still bounds it though, but
+        // so does the refresh token limit. We check both, but the refresh time is checked first so
+        // we can guarantee this in this test.
+
+        let ct = Duration::from_secs(
+            TEST_CURRENT_TIME + refresh_exp as u64 + access_token_response_4.expires_in as u64,
+        );
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let refresh_token = access_token_response_4
+            .refresh_token
+            .as_ref()
+            .expect("no refresh token was issued")
+            .clone();
+
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: None,
+        }
+        .into();
+        let access_token_response_5 = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
             .unwrap_err();
 
-        assert_eq!(access_token_response_4, Oauth2Error::InvalidGrant);
+        assert_eq!(access_token_response_5, Oauth2Error::InvalidGrant);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -6832,7 +6904,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
@@ -6883,7 +6955,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, _client_authz) =
+        let (access_token_response_1, _client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         let bad_client_authz = ClientAuthInfo::encode_basic("test_resource_server", "12345");
@@ -6922,7 +6994,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
@@ -6961,7 +7033,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
@@ -7039,7 +7111,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
@@ -7100,7 +7172,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // https://www.rfc-editor.org/rfc/rfc6749#section-1.5

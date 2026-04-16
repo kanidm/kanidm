@@ -181,7 +181,7 @@ pub const DEFAULT_AUTH_PRIVILEGE_EXPIRY: u32 = 600;
 // Default - directly privileged sessions only last 1 hour.
 pub const DEFAULT_AUTH_SESSION_LIMITED_EXPIRY: u32 = 3600;
 // Default - oauth refresh tokens last for 16 hours.
-pub const OAUTH_REFRESH_TOKEN_EXPIRY: u64 = 3600 * 16;
+pub const OAUTH_REFRESH_TOKEN_EXPIRY: u32 = 3600 * 16;
 
 /// How long access tokens should last. This is NOT the length
 /// of the refresh token, which is bound to the issuing session.

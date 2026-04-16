@@ -1144,7 +1144,7 @@ impl Ord for SessionState {
             // ExpiresAt with a greater time = higher
             (SessionState::ExpiresAt(e_self), SessionState::ExpiresAt(e_other)) => {
                 // Keep the "newer" expiry. This can be because a session was extended
-                // by some mechanism, generally in oauth2.
+                // by some mechanism, generally in oauth2 during a refresh token exchange.
                 e_self.cmp(e_other)
             }
             (SessionState::ExpiresAt(_), _) => Ordering::Greater,

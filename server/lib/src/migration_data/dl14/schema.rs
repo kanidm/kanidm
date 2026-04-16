@@ -560,6 +560,16 @@ pub static SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME: LazyLock<SchemaAttribute> =
         ..Default::default()
     });
 
+pub static SCHEMA_ATTR_OAUTH2_REFRESH_TOKEN_EXPIRY: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_REFRESH_TOKEN_EXPIRY,
+        name: Attribute::OAuth2RefreshTokenExpiry,
+        description: "Defines the duration in seconds that a refresh token is valid for."
+            .to_string(),
+        syntax: SyntaxType::Uint32,
+        ..Default::default()
+    });
+
 pub static SCHEMA_ATTR_API_TOKEN_SESSION: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_API_TOKEN_SESSION,
@@ -1276,6 +1286,7 @@ pub static SCHEMA_CLASS_OAUTH2_RS_DL9: LazyLock<SchemaClass> = LazyLock::new(|| 
         Attribute::OAuth2RsSupScopeMap,
         Attribute::OAuth2JwtLegacyCryptoEnable,
         Attribute::OAuth2PreferShortUsername,
+        Attribute::OAuth2RefreshTokenExpiry,
         Attribute::Image,
         Attribute::OAuth2RsClaimMap,
         Attribute::OAuth2Session,
