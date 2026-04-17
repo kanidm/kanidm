@@ -38,5 +38,5 @@ mod bsd_nss_compat {
 
 use nss_sparkle_common::{SparkleGroup, SparklePasswd};
 
-libnss::libnss_passwd_hooks!(kanidm, SparklePasswd);
-libnss::libnss_group_hooks!(kanidm, SparkleGroup);
+libnss::libnss_passwd_hooks!(sparkle, SparklePasswd);
+libnss::libnss_group_hooks!(sparkle, SparkleGroup);

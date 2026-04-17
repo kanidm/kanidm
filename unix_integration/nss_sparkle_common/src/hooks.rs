@@ -4,10 +4,9 @@ use libnss::group::{Group, GroupHooks};
 use libnss::interop::Response;
 use libnss::passwd::{Passwd, PasswdHooks};
 
-struct KanidmPasswd;
-libnss_passwd_hooks!(kanidm, KanidmPasswd);
+pub struct SparklePasswd;
 
-impl PasswdHooks for KanidmPasswd {
+impl PasswdHooks for SparklePasswd {
     fn get_all_entries() -> Response<Vec<Passwd>> {
         let req_opt = RequestOptions::Main {
             config_path: DEFAULT_CONFIG_PATH,
@@ -33,10 +32,9 @@ impl PasswdHooks for KanidmPasswd {
     }
 }
 
-struct KanidmGroup;
-libnss_group_hooks!(kanidm, KanidmGroup);
+pub struct SparkleGroup;
 
-impl GroupHooks for KanidmGroup {
+impl GroupHooks for SparkleGroup {
     fn get_all_entries() -> Response<Vec<Group>> {
         let req_opt = RequestOptions::Main {
             config_path: DEFAULT_CONFIG_PATH,

@@ -20,7 +20,9 @@ members = [
     "tools/iam_migrations/ldap",
     "tools/orca",
     "unix_integration/common",
+    "unix_integration/nss_sparkle_common",
     "unix_integration/nss_kanidm",
+    "unix_integration/nss_sparkle",
     "unix_integration/pam_kanidm",
     "unix_integration/resolver",
     "server/daemon",
@@ -132,6 +134,7 @@ kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.
 kanidm_proto = { path = "./proto", version = "=1.10.0-dev" }
 kanidm_unix_common = { path = "./unix_integration/common", version = "=1.10.0-dev" }
 kanidm_utils_users = { path = "./libs/users", version = "=1.10.0-dev" }
+nss_sparkle_common = { path = "./unix_integration/nss_sparkle_common", version = "=1.10.0-dev" }
 scim_proto = { path = "./libs/scim_proto", version = "=1.10.0-dev" }
 sketching = { path = "./libs/sketching", version = "=1.10.0-dev" }
 

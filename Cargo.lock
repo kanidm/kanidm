@@ -4828,6 +4828,25 @@ name = "nss_kanidm"
 version = "1.10.0-dev"
 dependencies = [
  "cc",
+ "libc",
+ "libnss",
+ "nss_sparkle_common",
+]
+
+[[package]]
+name = "nss_sparkle"
+version = "1.10.0-dev"
+dependencies = [
+ "cc",
+ "libc",
+ "libnss",
+ "nss_sparkle_common",
+]
+
+[[package]]
+name = "nss_sparkle_common"
+version = "1.10.0-dev"
+dependencies = [
  "kanidm_unix_common",
  "libc",
  "libnss",
