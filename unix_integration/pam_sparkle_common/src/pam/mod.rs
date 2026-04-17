@@ -41,7 +41,6 @@ use kanidm_unix_common::unix_config::PamNssConfig;
 use crate::core::{self, RequestOptions};
 use crate::pam::constants::*;
 use crate::pam::module::{PamHandle, PamHooks};
-use crate::pam_hooks;
 use constants::PamResultCode;
 use time::OffsetDateTime;
 
@@ -99,11 +98,9 @@ impl TryFrom<&Vec<&CStr>> for ModuleOptions {
     }
 }
 
-pub struct PamKanidm;
+pub struct PamSparkle;
 
-pam_hooks!(PamKanidm);
-
-impl PamHooks for PamKanidm {
+impl PamHooks for PamSparkle {
     fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
         let opts = match ModuleOptions::try_from(&args) {
             Ok(o) => o,

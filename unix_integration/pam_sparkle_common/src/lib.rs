@@ -12,7 +12,10 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 #[cfg(target_family = "unix")]
-mod pam;
+pub mod pam;
+
+#[cfg(target_family = "unix")]
+pub use pam::{module::PamHooks, PamSparkle};
 
 pub(crate) mod core;
 
