@@ -3997,31 +3997,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanidm_unix_common"
-version = "1.10.0-dev"
-dependencies = [
- "bytes",
- "csv",
- "futures",
- "kanidm_build_profiles",
- "kanidm_proto",
- "kanidm_utils_users",
- "selinux",
- "serde",
- "serde_json",
- "serde_with",
- "sha-crypt",
- "time",
- "tokio",
- "tokio-util",
- "toml",
- "tracing",
- "tracing-subscriber",
- "yescrypt",
-]
-
-[[package]]
-name = "kanidm_unix_int"
+name = "kanidm_unix_resolver"
 version = "1.10.0-dev"
 dependencies = [
  "async-trait",
@@ -4037,7 +4013,6 @@ dependencies = [
  "kanidm_lib_crypto",
  "kanidm_lib_file_permissions",
  "kanidm_proto",
- "kanidm_unix_common",
  "kanidm_utils_users",
  "kanidmd_core",
  "kanidmd_testkit",
@@ -4053,6 +4028,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sketching",
+ "sparkle_resolver_common",
+ "sparkle_unix_common",
  "tempfile",
  "time",
  "tokio",
@@ -4847,9 +4824,9 @@ dependencies = [
 name = "nss_sparkle_common"
 version = "1.10.0-dev"
 dependencies = [
- "kanidm_unix_common",
  "libc",
  "libnss",
+ "sparkle_unix_common",
 ]
 
 [[package]]
@@ -5290,8 +5267,8 @@ dependencies = [
 name = "pam_sparkle_common"
 version = "1.10.0-dev"
 dependencies = [
- "kanidm_unix_common",
  "libc",
+ "sparkle_unix_common",
  "time",
  "tracing",
  "tracing-subscriber",
@@ -6908,6 +6885,72 @@ checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "sparkle_resolver_common"
+version = "1.10.0-dev"
+dependencies = [
+ "async-trait",
+ "clap",
+ "clap_complete",
+ "dhat",
+ "dialoguer",
+ "futures",
+ "hashbrown 0.17.0",
+ "kanidm-hsm-crypto",
+ "kanidm_build_profiles",
+ "kanidm_client",
+ "kanidm_lib_crypto",
+ "kanidm_lib_file_permissions",
+ "kanidm_proto",
+ "kanidm_utils_users",
+ "kanidmd_core",
+ "kanidmd_testkit",
+ "libc",
+ "lru",
+ "nix",
+ "notify-debouncer-full",
+ "prctl",
+ "procfs",
+ "rand 0.10.1",
+ "rusqlite",
+ "sd-notify",
+ "serde",
+ "serde_json",
+ "sketching",
+ "sparkle_unix_common",
+ "tempfile",
+ "time",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
+name = "sparkle_unix_common"
+version = "1.10.0-dev"
+dependencies = [
+ "bytes",
+ "csv",
+ "futures",
+ "kanidm_build_profiles",
+ "kanidm_proto",
+ "kanidm_utils_users",
+ "selinux",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "sha-crypt",
+ "time",
+ "tokio",
+ "tokio-util",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "yescrypt",
 ]
 
 [[package]]

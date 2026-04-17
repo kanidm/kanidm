@@ -1,14 +1,14 @@
 use crate::constants::PamResultCode;
 use crate::module::PamResult;
 use crate::pam::ModuleOptions;
-use kanidm_unix_common::client_sync::DaemonClientBlocking;
-use kanidm_unix_common::constants::{SYSTEM_PASSWD_PATH, SYSTEM_SHADOW_PATH};
-use kanidm_unix_common::unix_config::PamNssConfig;
-use kanidm_unix_common::unix_passwd::{
+use sparkle_unix_common::client_sync::DaemonClientBlocking;
+use sparkle_unix_common::constants::{SYSTEM_PASSWD_PATH, SYSTEM_SHADOW_PATH};
+use sparkle_unix_common::unix_config::PamNssConfig;
+use sparkle_unix_common::unix_passwd::{
     read_etc_passwd_file, read_etc_shadow_file, EtcShadow, EtcUser,
 };
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
-use kanidm_unix_common::unix_proto::{
+use sparkle_unix_common::unix_proto::{ClientRequest, ClientResponse};
+use sparkle_unix_common::unix_proto::{
     DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo,
 };
 use std::cell::RefCell;
@@ -17,7 +17,7 @@ use time::OffsetDateTime;
 use tracing::{debug, error};
 
 #[cfg(test)]
-use kanidm_unix_common::client_sync::UnixStream;
+use sparkle_unix_common::client_sync::UnixStream;
 
 pub enum RequestOptions {
     Main {

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use kanidm_hsm_crypto::provider::BoxedDynTpm;
-use kanidm_unix_common::unix_proto::{
+use sparkle_unix_common::unix_proto::{
     DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse,
 };
 use serde::{Deserialize, Serialize};
@@ -14,6 +14,7 @@ use uuid::Uuid;
 pub type XKeyId = String;
 
 pub use kanidm_hsm_crypto as tpm;
+pub use sparkle_unix_common as unix_common;
 
 /// Errors that the IdProvider may return. These drive the resolver state machine
 /// and should be carefully selected to match your expected errors.

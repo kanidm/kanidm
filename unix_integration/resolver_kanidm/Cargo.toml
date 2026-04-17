@@ -1,6 +1,6 @@
 [package]
-name = "kanidm_unix_int"
-description = "Kanidm Unix Integration Clients"
+name = "kanidm_unix_resolver"
+description = "Kanidm Unix Resolver"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
 version = { workspace = true }
@@ -14,10 +14,16 @@ repository = { workspace = true }
 [features]
 default = ["unix"]
 unix = []
-selinux = ["kanidm_unix_common/selinux"]
-tpm = ["kanidm-hsm-crypto/tpm", "kanidm_unix_common/tpm"]
+selinux = ["sparkle_resolver_common/selinux"]
+tpm = ["sparkle_resolver_common/tpm"]
 dhat-heap = ["dep:dhat"]
 dhat-ad-hoc = ["dep:dhat"]
+
+[lib]
+name = "kanidm_flavour"
+path = "src/lib.rs"
+test = false
+doctest = false
 
 [[bin]]
 name = "kanidm_unixd"
@@ -47,12 +53,6 @@ required-features = ["unix"]
 test = false
 doctest = false
 
-[lib]
-name = "kanidm_unix_resolver"
-path = "src/lib.rs"
-test = true
-doctest = false
-
 [dependencies]
 async-trait = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
@@ -67,7 +67,8 @@ kanidm_proto = { workspace = true }
 kanidm-hsm-crypto = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
-kanidm_unix_common = { workspace = true }
+sparkle_unix_common = { workspace = true }
+sparkle_resolver_common = { workspace = true }
 notify-debouncer-full = { workspace = true }
 rand = { workspace = true }
 rusqlite = { workspace = true }
@@ -108,6 +109,7 @@ tempfile = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace = true }
 kanidm_build_profiles = { workspace = true }
+sparkle_resolver_common = { workspace = true }
 
 ## Debian packaging
 # We only package unixd itself here as shared libraries must be packaged separarately due to multiarch rules.
@@ -142,3 +144,4 @@ systemd-units = [
 
 [package.metadata.cargo-machete]
 ignored = ["kanidm_build_profiles", "clap_complete"]
+

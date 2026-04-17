@@ -15,7 +15,7 @@ name = "nss_sparkle_common"
 path = "src/lib.rs"
 
 [dependencies]
-kanidm_unix_common = { workspace = true }
+sparkle_unix_common = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 libnss = { workspace = true }

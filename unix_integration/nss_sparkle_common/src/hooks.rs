@@ -1,5 +1,5 @@
 use crate::core::{self, RequestOptions};
-use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use sparkle_unix_common::constants::DEFAULT_CONFIG_PATH;
 use libnss::group::{Group, GroupHooks};
 use libnss::interop::Response;
 use libnss::passwd::{Passwd, PasswdHooks};

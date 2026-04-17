@@ -1,4 +1,4 @@
-use clap::Subcommand;
+use clap::{Parser, Subcommand};
 
 #[derive(Debug, Subcommand)]
 #[clap(about = "Kanidm Unixd Management Utility")]
@@ -40,7 +40,7 @@ pub enum KanidmUnixOpt {
     }
 }
 
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, Parser)]
 #[clap(about = "Kanidm Unixd Management Utility")]
 #[command(name = "kanidm_unixd")]
 pub struct KanidmUnixParser {

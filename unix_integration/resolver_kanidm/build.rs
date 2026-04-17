@@ -2,19 +2,18 @@
 use std::env;
 use std::path::PathBuf;
 
-use clap::{CommandFactory, Parser};
+use clap::{CommandFactory};
 use clap_complete::{generate_to, Shell};
 
-include!("src/opt/ssh_authorizedkeys.rs");
-include!("src/opt/tool.rs");
+use sparkle_resolver_common::opt::{
+    SshAuthorizedOpt, KanidmUnixParser
+};
 
 fn main() {
     profiles::apply_profile();
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=OUT_DIR");
-    println!("cargo:rerun-if-changed=src/opt/tool.rs");
-    println!("cargo:rerun-if-changed=src/opt/ssh_authorizedkeys.rs");
     let outdir = match env::var_os("OUT_DIR") {
         None => return,
         Some(outdir) => outdir,

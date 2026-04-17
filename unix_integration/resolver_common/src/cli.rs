@@ -1,31 +1,15 @@
-#![deny(warnings)]
-#![warn(unused_extern_crates)]
-#![deny(clippy::todo)]
-#![deny(clippy::unimplemented)]
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
-#![deny(clippy::unreachable)]
-#![deny(clippy::await_holding_lock)]
-#![deny(clippy::needless_pass_by_value)]
-#![deny(clippy::trivially_copy_pass_by_ref)]
-
-#[macro_use]
-extern crate tracing;
-
 use std::process::ExitCode;
-
 use clap::Parser;
-use kanidm_unix_common::client::DaemonClient;
-use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_config::PamNssConfig;
-use kanidm_unix_common::unix_proto::{
+use crate::SparkleFlavour;
+use sparkle_unix_common::client::DaemonClient;
+use sparkle_unix_common::constants::DEFAULT_CONFIG_PATH;
+use sparkle_unix_common::unix_config::PamNssConfig;
+use sparkle_unix_common::unix_proto::{
     ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo,
 };
-use kanidm_unix_resolver::check_nsswitch_has_kanidm;
+use crate::check::check_nsswitch_has_module;
 use std::path::PathBuf;
-
-include!("../opt/tool.rs");
+use crate::opt::tool::{KanidmUnixParser, KanidmUnixOpt};
 
 macro_rules! setup_client {
     () => {{
@@ -65,8 +49,7 @@ macro_rules! setup_client {
     }};
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> ExitCode {
+pub async fn main<F: SparkleFlavour>(flavour: F) -> ExitCode {
     let opt = KanidmUnixParser::parse();
 
     let debug = match opt.commands {
@@ -254,7 +237,7 @@ async fn main() -> ExitCode {
             let mut daemon_client = setup_client!();
             let req = ClientRequest::Status;
 
-            check_nsswitch_has_kanidm(None);
+            check_nsswitch_has_module(None, flavour.nss_module_name());
 
             match daemon_client.call(req, None).await {
                 Ok(r) => match r {
@@ -283,3 +266,4 @@ async fn main() -> ExitCode {
         }
     }
 }
+
