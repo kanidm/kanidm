@@ -5274,9 +5274,16 @@ dependencies = [
 name = "pam_kanidm"
 version = "1.10.0-dev"
 dependencies = [
+ "pam_sparkle_common",
+ "pkg-config",
+]
+
+[[package]]
+name = "pam_sparkle_common"
+version = "1.10.0-dev"
+dependencies = [
  "kanidm_unix_common",
  "libc",
- "pkg-config",
  "time",
  "tracing",
  "tracing-subscriber",
