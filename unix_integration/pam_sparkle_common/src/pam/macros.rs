@@ -1,35 +1,4 @@
 /// Macro to generate the `extern "C"` entrypoint bindings needed by PAM
-///
-/// You can call `pam_hooks!(SomeType);` for any type that implements `PamHooks`
-///
-/// ## Examples:
-///
-/// Here is full example of a PAM module that would authenticate and authorize everybody:
-///
-/// ```
-/// #[macro_use]
-/// extern crate pam;
-///
-/// use pam::constants::{PamFlag, PamResultCode};
-/// use pam::module::{PamHandle, PamHooks};
-/// use std::ffi::CStr;
-///
-/// # fn main() {}
-/// struct MyPamModule;
-/// pam_hooks!(MyPamModule);
-///
-/// impl PamHooks for MyPamModule {
-///     fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-///         println!("Everybody is authenticated!");
-///         PamResultCode::PAM_SUCCESS
-///     }
-///
-///     fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-///         println!("Everybody is authorized!");
-///         PamResultCode::PAM_SUCCESS
-///     }
-/// }
-/// ```
 #[macro_export]
 macro_rules! pam_hooks {
     ($ident:ident) => {
