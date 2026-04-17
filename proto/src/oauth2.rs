@@ -451,7 +451,7 @@ pub enum Prompt {
     /// through the regular login flow.
     ///
     /// This is specified in OIDC Core 1.0 §3.1.2.1
-    /// https://openid.net/specs/openid-connect-core-1_0.html
+    /// <https://openid.net/specs/openid-connect-core-1_0.html>
     None,
     Login,
     Consent,
