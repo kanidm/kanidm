@@ -25,6 +25,7 @@ members = [
     "unix_integration/nss_sparkle",
     "unix_integration/pam_sparkle_common",
     "unix_integration/pam_kanidm",
+    "unix_integration/pam_sparkle",
     "unix_integration/resolver",
     "server/daemon",
     "server/lib",

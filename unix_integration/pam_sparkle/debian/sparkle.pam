@@ -1,0 +1,19 @@
+Name: Sparkle Authentication
+Default: yes
+Priority: 128
+
+Auth-Type: Primary
+Auth:
+  [success=end new_authtok_reqd=done default=ignore]    pam_sparkle.so ignore_unknown_user use_first_pass
+
+Account-Type: Primary
+Account:
+  [success=end new_authtok_reqd=done default=ignore]    pam_sparkle.so ignore_unknown_user
+
+Session-Type: Additional
+Session:
+  optional      pam_sparkle.so
+
+Password-Type: Additional
+Password:
+  optional      pam_sparkle.so

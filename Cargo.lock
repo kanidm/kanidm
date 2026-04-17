@@ -5279,6 +5279,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "pam_sparkle"
+version = "1.10.0-dev"
+dependencies = [
+ "pam_sparkle_common",
+ "pkg-config",
+]
+
+[[package]]
 name = "pam_sparkle_common"
 version = "1.10.0-dev"
 dependencies = [

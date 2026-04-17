@@ -1,6 +1,6 @@
 [package]
-name = "pam_kanidm"
-description = "Kanidm PAM module"
+name = "pam_sparkle"
+description = "Sparkling PAM module"
 
 version = { workspace = true }
 authors = { workspace = true }
@@ -11,7 +11,7 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [lib]
-name = "pam_kanidm"
+name = "pam_sparkle"
 crate-type = ["cdylib"]
 path = "src/lib.rs"
 
@@ -23,7 +23,7 @@ pkg-config = { workspace = true }
 
 ## Debian packaging
 [package.metadata.deb]
-name = "libpam-kanidm"
+name = "libpam-sparkle"
 maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
 depends = ["libc6", "libpam0g"]
 section = "network"
@@ -31,14 +31,14 @@ priority = "optional"
 maintainer-scripts = "debian/"
 assets = [
     [
-        "target/release/libpam_kanidm.so",
+        "target/release/libpam_sparkle.so",
         # This is not the final path as cargo-deb needs to be run with --multiarch=foreign
-        "usr/lib/security/pam_kanidm.so",
+        "usr/lib/security/pam_sparkle.so",
         "644",
     ],
     [
-        "debian/kanidm.pam",
-        "usr/share/pam-configs/kanidm",
+        "debian/sparkle.pam",
+        "usr/share/pam-configs/sparkle",
         "644",
     ],
 ]
