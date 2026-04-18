@@ -49,7 +49,8 @@ pub fn check_nsswitch_has_module(path: Option<PathBuf>, module_name: &str) -> bo
                 if missing_lines.is_empty() {
                     debug!(
                         "{} appears to have {} configured OK for passwd/group resolution",
-                        nsswitch_conf.display(), module_name
+                        nsswitch_conf.display(),
+                        module_name
                     );
                     true
                 } else {
@@ -77,3 +78,28 @@ pub fn check_nsswitch_has_module(path: Option<PathBuf>, module_name: &str) -> bo
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::parse_nsswitch_contents_return_missing;
+
+    #[test]
+    fn parse_nsswitch_contents() {
+        let contents = r#"
+            # this is a comment
+            passwd: files
+            group: files
+        "#;
+        let missing = parse_nsswitch_contents_return_missing(contents, "test");
+        assert_eq!(missing.len(), 2);
+        assert!(missing.contains(&"passwd: files".to_string()));
+        assert!(missing.contains(&"group: files".to_string()));
+
+        let contents = r#"
+            # this is a comment
+            passwd: files test
+            group: files test
+        "#;
+        let missing = parse_nsswitch_contents_return_missing(contents, "test");
+        assert!(missing.is_empty());
+    }
+}

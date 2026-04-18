@@ -16,8 +16,8 @@ default = ["unix"]
 unix = []
 selinux = ["sparkle_resolver_common/selinux"]
 tpm = ["sparkle_resolver_common/tpm"]
-dhat-heap = ["dep:dhat"]
-dhat-ad-hoc = ["dep:dhat"]
+dhat-heap = ["sparkle_resolver_common/dhat-heap"]
+dhat-ad-hoc = ["sparkle_resolver_common/dhat-ad-hoc"]
 
 [lib]
 name = "kanidm_flavour"
@@ -54,28 +54,7 @@ test = false
 doctest = false
 
 [dependencies]
-async-trait = { workspace = true }
-clap = { workspace = true, features = ["derive", "env"] }
-dialoguer = { workspace = true }
-dhat = { workspace = true, optional = true }
-futures = { workspace = true }
-hashbrown = { workspace = true }
-libc = { workspace = true }
-lru = { workspace = true }
-kanidm_client = { workspace = true }
-kanidm_proto = { workspace = true }
-kanidm-hsm-crypto = { workspace = true }
-kanidm_lib_crypto = { workspace = true }
-kanidm_lib_file_permissions = { workspace = true }
-sparkle_unix_common = { workspace = true }
 sparkle_resolver_common = { workspace = true }
-notify-debouncer-full = { workspace = true }
-rand = { workspace = true }
-rusqlite = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-sketching = { workspace = true }
-time = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = [
     "rt",
     "rt-multi-thread",
@@ -86,24 +65,6 @@ tokio = { workspace = true, features = [
     "net",
     "io-util",
 ] }
-tokio-util = { workspace = true, features = ["codec"] }
-tracing = { workspace = true }
-uuid = { workspace = true }
-walkdir = { workspace = true }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-nix = { workspace = true }
-sd-notify = { workspace = true }
-prctl = { workspace = true }
-procfs = { workspace = true }
-
-[target.'cfg(not(target_family = "windows"))'.dependencies]
-kanidm_utils_users = { workspace = true }
-
-[dev-dependencies]
-kanidmd_core = { workspace = true }
-kanidmd_testkit = { workspace = true }
-tempfile = { workspace = true }
 
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }

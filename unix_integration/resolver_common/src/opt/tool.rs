@@ -37,7 +37,7 @@ pub enum KanidmUnixOpt {
     Version {
         #[clap(short, long)]
         debug: bool,
-    }
+    },
 }
 
 #[derive(Debug, Parser)]
@@ -47,4 +47,3 @@ pub struct KanidmUnixParser {
     #[clap(subcommand)]
     pub commands: KanidmUnixOpt,
 }
-

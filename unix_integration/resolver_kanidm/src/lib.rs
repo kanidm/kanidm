@@ -1,9 +1,7 @@
 use sparkle_resolver_common::SparkleFlavour;
 
 /// The Kanidm Flavour Enhancer!!!
-pub struct Msg {
-    
-}
+pub struct Msg {}
 
 impl Default for Msg {
     fn default() -> Self {

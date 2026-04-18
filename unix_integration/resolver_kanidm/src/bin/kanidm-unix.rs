@@ -11,10 +11,9 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 use kanidm_flavour::Msg;
+use std::process::ExitCode;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
-    sparkle_resolver_common::cli::main(
-        Msg::default()
-    )
+    sparkle_resolver_common::cli::tool::main(Msg::default()).await
 }

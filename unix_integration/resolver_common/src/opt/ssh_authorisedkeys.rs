@@ -2,11 +2,11 @@ use clap::Parser;
 
 #[derive(Debug, Parser)]
 #[command(name = "kanidm_ssh_authorizedkeys")]
-pub struct SshAuthorizedOpt {
+pub struct SshAuthorisedKeysOpt {
     #[clap(short, long)]
-    debug: bool,
+    pub debug: bool,
     #[clap()]
-    account_id: Option<String>,
+    pub account_id: Option<String>,
     #[clap(short, long, action = clap::ArgAction::SetTrue)]
-    version: bool,
+    pub version: bool,
 }

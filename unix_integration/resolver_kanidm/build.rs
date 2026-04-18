@@ -2,12 +2,10 @@
 use std::env;
 use std::path::PathBuf;
 
-use clap::{CommandFactory};
+use clap::CommandFactory;
 use clap_complete::{generate_to, Shell};
 
-use sparkle_resolver_common::opt::{
-    SshAuthorizedOpt, KanidmUnixParser
-};
+use sparkle_resolver_common::opt::{KanidmUnixParser, SshAuthorisedKeysOpt};
 
 fn main() {
     profiles::apply_profile();
@@ -32,7 +30,7 @@ fn main() {
     for shell in [Shell::Bash, Shell::Elvish, Shell::Fish, Shell::Zsh] {
         generate_to(
             shell,
-            &mut SshAuthorizedOpt::command(),
+            &mut SshAuthorisedKeysOpt::command(),
             "kanidm_ssh_authorizedkeys",
             comp_dir.clone(),
         )

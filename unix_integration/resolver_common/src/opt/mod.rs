@@ -1,8 +1,7 @@
-
+pub mod ssh_authorisedkeys;
 pub mod tool;
-pub mod ssh_authorizedkeys;
 
 pub use self::{
-    tool::{KanidmUnixParser, KanidmUnixOpt},
-    ssh_authorizedkeys::SshAuthorizedOpt
+    ssh_authorisedkeys::SshAuthorisedKeysOpt,
+    tool::{KanidmUnixOpt, KanidmUnixParser},
 };

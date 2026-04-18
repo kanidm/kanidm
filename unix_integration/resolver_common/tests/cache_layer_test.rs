@@ -6,21 +6,21 @@ use kanidm_hsm_crypto::{
 };
 use kanidm_proto::config::ServerRole;
 use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
-use kanidm_unix_common::constants::{
+use kanidmd_core::config::{Configuration, IntegrationTestConfig};
+use kanidmd_core::create_server_core;
+use kanidmd_testkit::{is_free_port, PORT_ALLOC};
+use sparkle_resolver_common::db::{Cache, Db};
+use sparkle_resolver_common::idprovider::interface::Id;
+use sparkle_resolver_common::idprovider::kanidm::KanidmProvider;
+use sparkle_resolver_common::idprovider::system::SystemProvider;
+use sparkle_resolver_common::resolver::Resolver;
+use sparkle_unix_common::constants::{
     DEFAULT_CACHE_TIMEOUT, DEFAULT_CACHE_TIMEOUT_JITTER_MS, DEFAULT_GID_ATTR_MAP,
     DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL,
     DEFAULT_UID_ATTR_MAP,
 };
-use kanidm_unix_common::unix_config::{GroupMap, KanidmConfig};
-use kanidm_unix_common::unix_passwd::{CryptPw, EtcGroup, EtcShadow, EtcUser};
-use kanidm_unix_resolver::db::{Cache, Db};
-use kanidm_unix_resolver::idprovider::interface::Id;
-use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
-use kanidm_unix_resolver::idprovider::system::SystemProvider;
-use kanidm_unix_resolver::resolver::Resolver;
-use kanidmd_core::config::{Configuration, IntegrationTestConfig};
-use kanidmd_core::create_server_core;
-use kanidmd_testkit::{is_free_port, PORT_ALLOC};
+use sparkle_unix_common::unix_config::{GroupMap, KanidmConfig};
+use sparkle_unix_common::unix_passwd::{CryptPw, EtcGroup, EtcShadow, EtcUser};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::Ordering;
