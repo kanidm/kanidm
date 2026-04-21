@@ -70,6 +70,11 @@ pub struct AuthorisationRequest {
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Prompt>")]
     #[serde(default)]
     pub prompt: Vec<Prompt>,
+
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
+    #[serde(default)]
+    pub ui_locales: Vec<String>,
+
     #[serde(flatten)]
     pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
 }
@@ -935,6 +940,42 @@ mod tests {
 
         assert_eq!(req.prompt.len(), 1);
         assert!(req.prompt.contains(&super::Prompt::SelectAccount));
+    }
+
+    #[test]
+    fn test_authorisation_request_ui_locales() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &ui_locales=en-US";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.ui_locales.len(), 1);
+        assert!(req.ui_locales.contains(&"en-US".to_string()));
+
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &ui_locales=en-US%20fr-FR";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+        assert_eq!(req.ui_locales.len(), 2);
+        assert!(req.ui_locales.contains(&"fr-FR".to_string()));
+
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+        assert_eq!(req.ui_locales.len(), 0);
+        assert!(req.ui_locales.is_empty());
     }
 
     #[test]
