@@ -3515,6 +3515,7 @@ mod tests {
                 oidc_ext: Default::default(),
                 max_age: None,
                 prompt: Default::default(),
+                ui_locales: Default::default(),
                 unknown_keys: Default::default(),
             };
 
@@ -4104,6 +4105,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4127,6 +4129,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4150,6 +4153,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4174,6 +4178,7 @@ mod tests {
             oidc_ext: Default::default(),
             max_age: None,
             prompt: Default::default(),
+            ui_locales: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4196,6 +4201,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4219,6 +4225,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4241,6 +4248,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4263,6 +4271,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4286,6 +4295,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4311,6 +4321,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4334,6 +4345,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4357,6 +4369,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4655,6 +4668,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -4738,6 +4752,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -6129,6 +6144,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -6379,6 +6395,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -6441,6 +6458,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -6581,6 +6599,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -6659,6 +6678,7 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -7658,6 +7678,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -8146,6 +8167,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt: Default::default(),
             unknown_keys: Default::default(),
         };
@@ -8221,6 +8243,7 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
             prompt,
             unknown_keys: Default::default(),
         }

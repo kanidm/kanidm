@@ -89,6 +89,7 @@ impl CredHandlerOAuth2Client {
                 },
                 max_age: None,
                 prompt: Vec::new(),
+                ui_locales: Vec::new(),
                 unknown_keys: Default::default(),
             },
         )
