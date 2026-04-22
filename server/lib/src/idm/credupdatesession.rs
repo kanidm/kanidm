@@ -980,12 +980,12 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok((CredentialUpdateSessionToken { token_enc }, status))
     }
 
-    pub fn credential_update_anonymous_account_request(
+    pub fn credential_update_account_recovery(
         &mut self,
         event: CredentialUpdateAnonymousAccountRequest,
         ct: Duration,
     ) -> Result<(), OperationError> {
-        if !self.qs_write.domain_info().allow_credential_reset_email() {
+        if !self.qs_write.domain_info().allow_account_recovery() {
             error!("Credential Reset is Disabled, Rejecting Attempt");
             return Err(OperationError::CU0010AnonymousCredentialResetDisabled);
         }
@@ -3634,7 +3634,7 @@ mod tests {
         };
 
         let result = idms_prox_write
-            .credential_update_anonymous_account_request(event, ct)
+            .credential_update_account_recovery(event, ct)
             .expect_err("Must not succeed!");
 
         assert_eq!(
@@ -3648,7 +3648,7 @@ mod tests {
             .internal_modify_uuid(
                 UUID_DOMAIN_INFO,
                 &ModifyList::new_set(
-                    Attribute::DomainAllowCredentialResetEmail,
+                    Attribute::DomainAllowAccountRecovery,
                     ValueSetBool::new(true),
                 ),
             )
@@ -3666,7 +3666,7 @@ mod tests {
         };
 
         let result = idms_prox_write
-            .credential_update_anonymous_account_request(event, ct)
+            .credential_update_account_recovery(event, ct)
             .expect_err("Must not succeed!");
 
         assert_eq!(result, OperationError::CU0009AccountEmailNotFound);
@@ -3678,7 +3678,7 @@ mod tests {
         };
 
         idms_prox_write
-            .credential_update_anonymous_account_request(event, ct)
+            .credential_update_account_recovery(event, ct)
             .expect("Must succeed!");
 
         // Find the message in the queue.

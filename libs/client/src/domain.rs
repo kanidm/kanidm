@@ -1,7 +1,5 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::constants::{
-    ATTR_DOMAIN_ALLOW_CREDENTIAL_RESET_EMAIL, ATTR_DOMAIN_ALLOW_EASTER_EGGS,
-};
+use kanidm_proto::constants::{ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY, ATTR_DOMAIN_ALLOW_EASTER_EGGS};
 use kanidm_proto::internal::ImageValue;
 use reqwest::multipart;
 
@@ -24,10 +22,7 @@ impl KanidmClient {
         enable: bool,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!(
-                "/v1/domain/_attr/{}",
-                ATTR_DOMAIN_ALLOW_CREDENTIAL_RESET_EMAIL
-            ),
+            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY),
             vec![enable.to_string()],
         )
         .await

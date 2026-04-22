@@ -9,7 +9,7 @@ impl QueryServerWriteV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
-    pub(crate) async fn action_credential_reset_email(
+    pub(crate) async fn action_account_recovery(
         &self,
         email: String,
         eventid: Uuid,
@@ -23,13 +23,10 @@ impl QueryServerWriteV1 {
         };
 
         idms_prox_write
-            .credential_update_anonymous_account_request(event, ct)
+            .credential_update_account_recovery(event, ct)
             .and_then(|tok| idms_prox_write.commit().map(|_| tok))
             .inspect_err(|err| {
-                error!(
-                    ?err,
-                    "Failed to process credential_update_anonymous_account_request"
-                );
+                error!(?err, "Failed to process credential_update_account_recovery");
             })
     }
 }

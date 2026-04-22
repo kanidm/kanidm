@@ -52,7 +52,7 @@ pub(crate) async fn view_recover_get(
     // Return an error if this feature is disabled. NOTE that this is NOT a security
     // control, but a user experience once. The feature is also checked in the submission
     // flow.
-    if !domain_info.allow_credential_reset_email() {
+    if !domain_info.allow_account_recovery() {
         return Ok(RecoverDisabledView { domain_info }.into_response());
     }
 
@@ -72,7 +72,7 @@ pub(crate) async fn view_recover_post(
 ) -> axum::response::Result<Response> {
     // Prevent the post if this feature is disabled. Still not a "security control"
     // IMO, but it prevents a lot of damage at least.
-    if !domain_info.allow_credential_reset_email() {
+    if !domain_info.allow_account_recovery() {
         return Ok(RecoverDisabledView { domain_info }.into_response());
     }
 
@@ -96,7 +96,7 @@ pub(crate) async fn view_recover_post(
             // Actually submit the requested operation since the CSRF passed.
             if let Err(err) = state
                 .qe_w_ref
-                .action_credential_reset_email(recover_form.email, kopid.eventid)
+                .action_account_recovery(recover_form.email, kopid.eventid)
                 .await
             {
                 warn!(

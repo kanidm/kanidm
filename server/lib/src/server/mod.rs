@@ -85,7 +85,7 @@ pub struct DomainInfo {
     pub(crate) d_devel_taint: bool,
     pub(crate) d_ldap_allow_unix_pw_bind: bool,
     pub(crate) d_allow_easter_eggs: bool,
-    pub(crate) d_allow_credential_reset_email: bool,
+    pub(crate) d_allow_account_recovery: bool,
     // In future this should be image reference instead of the image itself.
     d_image: Option<ImageValue>,
 }
@@ -115,8 +115,8 @@ impl DomainInfo {
         self.d_allow_easter_eggs
     }
 
-    pub fn allow_credential_reset_email(&self) -> bool {
-        self.d_allow_credential_reset_email
+    pub fn allow_account_recovery(&self) -> bool {
+        self.d_allow_account_recovery
     }
 
     #[cfg(feature = "test")]
@@ -130,7 +130,7 @@ impl DomainInfo {
             d_devel_taint: false,
             d_ldap_allow_unix_pw_bind: false,
             d_allow_easter_eggs: false,
-            d_allow_credential_reset_email: false,
+            d_allow_account_recovery: false,
             d_image: None,
         })
     }
@@ -1877,7 +1877,7 @@ impl QueryServer {
             d_devel_taint: option_env!("KANIDM_PRE_RELEASE").is_some(),
             d_ldap_allow_unix_pw_bind: false,
             d_allow_easter_eggs: false,
-            d_allow_credential_reset_email: false,
+            d_allow_account_recovery: false,
             d_image: None,
         }));
 
@@ -2539,8 +2539,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // This defaults to false for release versions, and true in development
             .unwrap_or(option_env!("KANIDM_PRE_RELEASE").is_some());
 
-        let domain_allow_credential_reset_email = domain_info
-            .get_ava_single_bool(Attribute::DomainAllowCredentialResetEmail)
+        let domain_allow_account_recovery = domain_info
+            .get_ava_single_bool(Attribute::DomainAllowAccountRecovery)
             .unwrap_or_default();
 
         // We have to set the domain version here so that features which check for it
@@ -2555,7 +2555,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         mut_d_info.d_patch_level = domain_info_patch_level;
         mut_d_info.d_devel_taint = domain_info_devel_taint;
         mut_d_info.d_allow_easter_eggs = domain_allow_easter_eggs;
-        mut_d_info.d_allow_credential_reset_email = domain_allow_credential_reset_email;
+        mut_d_info.d_allow_account_recovery = domain_allow_account_recovery;
 
         debug!(?mut_d_info);
 

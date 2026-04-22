@@ -796,10 +796,10 @@ pub static SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9: LazyLock<SchemaAttribute> =
     },
 );
 
-pub static SCHEMA_ATTR_DOMAIN_ALLOW_CREDENTIAL_RESET_EMAIL: LazyLock<SchemaAttribute> =
+pub static SCHEMA_ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
-        uuid: UUID_SCHEMA_ATTR_DOMAIN_ALLOW_CREDENTIAL_RESET_EMAIL,
-        name: Attribute::DomainAllowCredentialResetEmail,
+        uuid: UUID_SCHEMA_ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY,
+        name: Attribute::DomainAllowAccountRecovery,
         description: "A flag to enable credential reset emails requests to be submitted by users."
             .to_string(),
         syntax: SyntaxType::Boolean,
@@ -1236,7 +1236,7 @@ pub static SCHEMA_CLASS_DOMAIN_INFO_DL10: LazyLock<SchemaClass> = LazyLock::new(
         Attribute::PatchLevel,
         Attribute::DomainDevelopmentTaint,
         Attribute::DomainAllowEasterEggs,
-        Attribute::DomainAllowCredentialResetEmail,
+        Attribute::DomainAllowAccountRecovery,
         Attribute::DomainDisplayName,
     ],
     systemmust: vec![

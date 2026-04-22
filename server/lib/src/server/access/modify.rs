@@ -433,7 +433,7 @@ fn modify_protected_entry_attrs<'a>(classes: &BTreeSet<String>) -> AccessModResu
             Attribute::DomainDisplayName,
             Attribute::Image,
             Attribute::DomainAllowEasterEggs,
-            Attribute::DomainAllowCredentialResetEmail,
+            Attribute::DomainAllowAccountRecovery,
         ]);
     }
 
