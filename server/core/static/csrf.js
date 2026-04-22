@@ -1,30 +1,24 @@
 const form = document.getElementById("protected_form");
 
-function value_from_hex(value_id) {
-    const nonce_hex = document.getElementById(value_id).innerText;
-    return Uint8Array.fromHex(nonce_hex);
-}
-
 async function protectedSubmitHandler(event) {
     event.preventDefault();
 
-    const related_input_id = document.getElementById("protected_form_related_input_id").innerText;
+    const related_input_id = form.dataset.relatedInputId;
+    const nonce = Uint8Array.fromHex(form.dataset.nonceHex);
+    const mask = Uint8Array.fromHex(form.dataset.maskHex);
 
     document.getElementById("protected_form_submit").disabled = true;
 
-    const nonce = value_from_hex("protected_form_nonce_hex");
-    const mask = value_from_hex("protected_form_mask_hex");
-
-    let expected_buffer = new ArrayBuffer(4);
-    let expected_view = new DataView(expected_buffer);
+    const expected_buffer = new ArrayBuffer(4);
+    const expected_view = new DataView(expected_buffer);
     // DataView get/set always writes BigEndian
     expected_view.setUint32(0);
     const expected_u32 = expected_view.getUint32();
 
-    let mask_view = new DataView(mask.buffer);
+    const mask_view = new DataView(mask.buffer);
     const mask_u32 = mask_view.getUint32();
 
-    let key = await window.crypto.subtle.importKey(
+    const key = await window.crypto.subtle.importKey(
         "raw",
         nonce,
         {
@@ -39,10 +33,10 @@ async function protectedSubmitHandler(event) {
     const encoder = new TextEncoder();
     const email_bytes = encoder.encode(email_value);
 
-    let timestamp_buffer = new ArrayBuffer(8);
-    let timestamp_view = new DataView(timestamp_buffer);
+    const timestamp_buffer = new ArrayBuffer(8);
+    const timestamp_view = new DataView(timestamp_buffer);
     // DataView get/set always writes BigEndian
-    let timestamp = BigInt(Date.now());
+    const timestamp = BigInt(Date.now());
     timestamp_view.setBigUint64(0, timestamp);
 
     const timestamp_u64 = timestamp_view.getBigUint64();
@@ -59,22 +53,21 @@ async function protectedSubmitHandler(event) {
         // This is what we have to send back.
         const solution_bytes = new Uint8Array(buffer);
 
-        var mergedArray = new Uint8Array(email_bytes.length + solution_bytes.length + timestamp_bytes.length);
+        const mergedArray = new Uint8Array(email_bytes.length + solution_bytes.length + timestamp_bytes.length);
         mergedArray.set(email_bytes);
         mergedArray.set(solution_bytes, email_bytes.length);
         mergedArray.set(timestamp_bytes, email_bytes.length + solution_bytes.length);
 
-        let signature = await window.crypto.subtle.sign("HMAC", key, mergedArray);
+        const signature = await window.crypto.subtle.sign("HMAC", key, mergedArray);
 
-        let signature_bytes = new Uint8Array(signature);
+        const signature_bytes = new Uint8Array(signature);
 
-        let signature_view = new DataView(signature_bytes.buffer);
+        const signature_view = new DataView(signature_bytes.buffer);
         const signature_u32 = signature_view.getUint32();
 
         const signature_u32_masked = signature_u32 & mask_u32;
 
-        const matches = expected_u32 == signature_u32_masked;
-        if (matches) {
+        if (expected_u32 == signature_u32_masked) {
             break;
         }
 

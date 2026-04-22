@@ -9,11 +9,14 @@
 (% block content %)
 		<p>Enter your email to recover your account</p>
 
-		<p id="protected_form_nonce_hex" hidden>(( csrf.nonce_hex ))</p>
-		<p id="protected_form_mask_hex" hidden>(( csrf.mask_hex ))</p>
-		<p id="protected_form_related_input_id" hidden>(( csrf.related_input_id ))</p>
-
-		<form id="protected_form" action="#" method="post">
+		<form
+			id="protected_form"
+			action="#"
+			method="post"
+			data-nonce-hex="(( csrf.nonce_hex ))"
+			data-mask-hex="(( csrf.mask_hex ))"
+			data-related-input-id="(( csrf.related_input_id ))"
+			>
 			<input type="hidden" id="protected_form_solution_hex" name="solution_hex" type="text" />
 			<input
 				type="hidden"

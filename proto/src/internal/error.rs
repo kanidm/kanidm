@@ -461,7 +461,7 @@ impl OperationError {
             Self::CU0006IntentTokenInvalidated => Some("The intent token has been invalidated/revoked before the commit could be accepted. Has it been used in another browser or tab?".into()),
             Self::CU0007AccountEmailNotFound |
             Self::CU0009AccountEmailNotFound
-            => Some("The requested email to send the credential update intent token to is not registered to the account.".into()),
+            => Some("The target email for a credential update intent token send request is not registered to the account.".into()),
             Self::CU0008AccountMissingEmail => Some("The account has no email addresses and may not have a credential update intent token sent to it.".into()),
             Self::CU0010AnonymousCredentialResetDisabled => Some("The anonymous credential reset feature is disabled. See `kanidm system domain set-allow-credential-reset-email`".into()),
 
