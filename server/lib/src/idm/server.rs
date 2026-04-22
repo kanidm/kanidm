@@ -423,14 +423,25 @@ pub trait IdmServerTransaction<'a> {
             client_cert,
             bearer_token,
             basic_authz: _,
-            pre_validated_token: _,
+            pre_validated_token,
         } = client_auth_info;
 
-        // Future - if there is a pre-validated UAT, use that. For now I want to review
-        // all the auth and validation flows to ensure that the UAT path is security
-        // wise equivalent to the other paths. This pre-validation is an "optimisation"
+        // If there is a pre-validated UAT, use that. This pre-validation is an "optimisation"
         // for the web-ui where operations will make a number of api calls, and we don't
         // want to do redundant work.
+        match pre_validated_token {
+            PreValidatedTokenStatus::Valid(uat) => {
+                return self.process_uat_to_identity(&uat, ct, source)
+            }
+            PreValidatedTokenStatus::SessionExpired => return Err(OperationError::SessionExpired),
+            PreValidatedTokenStatus::NotAuthenticated | PreValidatedTokenStatus::None => {
+                // Fall through and verify the credential details.
+                //
+                // TODO: Currently pre-validation only applies to UAT, not certificate
+                // or api token flows. These will incorrectly set the pre-validation
+                // to NotAuthenticated. It's a larger refactor to correct that.
+            }
+        }
 
         match (client_cert, bearer_token) {
             (Some(client_cert_info), _) => {
@@ -747,9 +758,15 @@ pub trait IdmServerTransaction<'a> {
         let entry = self
             .get_qs_txn()
             .internal_search_uuid(uat.uuid)
-            .map_err(|e| {
-                admin_error!(?e, "from_ro_uat failed");
-                e
+            .map_err(|err| {
+                error!(?err, "from_ro_uat failed");
+                // If the account was deleted, or has not yet been replicated to this instance,
+                // we need to inform the user that the session they are using isn't valid. So
+                // we pass up SessionExpired here.
+                match err {
+                    OperationError::NoMatchingEntries => OperationError::SessionExpired,
+                    err => err,
+                }
             })?;
 
         let valid = Account::check_user_auth_token_valid(ct, uat, &entry);

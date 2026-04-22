@@ -13,6 +13,7 @@ pub fn md5_sha2_hash64_encode(bs: &[u8]) -> String {
     for g in 0..ngroups {
         let mut g_idx = g * 3;
         let mut enc = 0u32;
+        #[allow(clippy::explicit_counter_loop)]
         for _ in 0..3 {
             let b = (if g_idx < bs.len() { bs[g_idx] } else { 0 }) as u32;
             enc >>= 8;
