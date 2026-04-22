@@ -1762,7 +1762,6 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_oauth2_token_revoke(
         &self,
-        client_auth_info: ClientAuthInfo,
         intr_req: TokenRevokeRequest,
         eventid: Uuid,
     ) -> Result<(), Oauth2Error> {
@@ -1773,7 +1772,7 @@ impl QueryServerWriteV1 {
             .await
             .map_err(Oauth2Error::ServerError)?;
         idms_prox_write
-            .oauth2_token_revoke(&client_auth_info, &intr_req, ct)
+            .oauth2_token_revoke(&intr_req, ct)
             .and_then(|()| idms_prox_write.commit().map_err(Oauth2Error::ServerError))
     }
 
