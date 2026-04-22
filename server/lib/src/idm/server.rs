@@ -437,7 +437,7 @@ pub trait IdmServerTransaction<'a> {
             PreValidatedTokenStatus::NotAuthenticated | PreValidatedTokenStatus::None => {
                 // Fall through and verify the credential details.
                 //
-                // NOTE: Currently pre-validation only applies to UAT, not certificate
+                // TODO: Currently pre-validation only applies to UAT, not certificate
                 // or api token flows. These will incorrectly set the pre-validation
                 // to NotAuthenticated. It's a larger refactor to correct that.
             }
