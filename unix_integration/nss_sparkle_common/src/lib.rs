@@ -11,7 +11,6 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 #[cfg(target_family = "unix")]
-#[cfg(target_family = "unix")]
 mod hooks;
 
 #[cfg(target_family = "unix")]

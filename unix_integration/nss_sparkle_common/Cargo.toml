@@ -1,6 +1,6 @@
 [package]
 name = "nss_sparkle_common"
-description = "Sparkling Common NSS libraries"
+description = "Sparkle Common NSS libraries"
 
 version = { workspace = true }
 authors = { workspace = true }

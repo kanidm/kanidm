@@ -4009,7 +4009,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanidm_unix_resolver"
+name = "kanidm_unix_int"
 version = "1.10.0-dev"
 dependencies = [
  "clap",

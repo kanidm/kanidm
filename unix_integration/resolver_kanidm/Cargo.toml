@@ -1,7 +1,6 @@
 [package]
 name = "kanidm_unix_int"
 description = "Kanidm Unix Integration and Identity Resolver"
-documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
 version = { workspace = true }
 authors = { workspace = true }

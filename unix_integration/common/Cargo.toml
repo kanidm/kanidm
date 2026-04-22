@@ -1,6 +1,6 @@
 [package]
 name = "sparkle_unix_common"
-description = "Sparkling Unix Resolver - Common Libraries"
+description = "Sparkle Unix Resolver - Common Libraries"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
 version = { workspace = true }

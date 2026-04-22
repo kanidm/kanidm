@@ -1,6 +1,6 @@
 [package]
 name = "nss_sparkle"
-description = "Sparkling NSS module"
+description = "Sparkle NSS module"
 
 version = { workspace = true }
 authors = { workspace = true }

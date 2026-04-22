@@ -1,6 +1,6 @@
 [package]
 name = "pam_sparkle_common"
-description = "Sparkling Common PAM Library"
+description = "Sparkle Common PAM Library"
 
 version = { workspace = true }
 authors = { workspace = true }

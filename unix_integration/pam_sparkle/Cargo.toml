@@ -1,6 +1,6 @@
 [package]
 name = "pam_sparkle"
-description = "Sparkling PAM module"
+description = "Sparkle PAM module"
 
 version = { workspace = true }
 authors = { workspace = true }
