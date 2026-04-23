@@ -61,7 +61,7 @@
 			class="btn btn-primary"
 		>Begin</button>
 	</div>
-	(% if display_ctx.domain_info.allow_credential_reset_email() -%)
+	(% if display_ctx.domain_info.allow_account_recovery() -%)
 	<div class="input-group mb-3 justify-content-md-center">
 		<a href="(( Urls::Recover ))">Recover Account</a>
 	</div>
