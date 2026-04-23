@@ -58,8 +58,8 @@ impl ValueSetApplicationPassword {
 
     fn to_vec_dbvs(&self) -> Vec<DbValueApplicationPassword> {
         self.map
-            .iter()
-            .flat_map(|(_, v)| {
+            .values()
+            .flat_map(|v| {
                 v.iter().map(|ap| DbValueApplicationPassword::V1 {
                     refer: ap.uuid,
                     application_refer: ap.application,
@@ -178,7 +178,7 @@ impl ValueSetT for ValueSetApplicationPassword {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.map.iter().flat_map(|(_, v)| {
+        Box::new(self.map.values().flat_map(|v| {
             v.iter()
                 .map(|ap| format!("App: {} Label: {}", ap.application, ap.label))
         }))
@@ -206,8 +206,8 @@ impl ValueSetT for ValueSetApplicationPassword {
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(
             self.map
-                .iter()
-                .flat_map(|(_, v)| v.iter().map(|ap| ap.uuid))
+                .values()
+                .flat_map(|v| v.iter().map(|ap| ap.uuid))
                 .map(PartialValue::Refer),
         )
     }
@@ -215,8 +215,8 @@ impl ValueSetT for ValueSetApplicationPassword {
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
         Box::new(
             self.map
-                .iter()
-                .flat_map(|(_, v)| v.iter().map(|ap| Value::ApplicationPassword(ap.clone()))),
+                .values()
+                .flat_map(|v| v.iter().map(|ap| Value::ApplicationPassword(ap.clone()))),
         )
     }
 
