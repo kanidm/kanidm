@@ -1,5 +1,5 @@
 use super::QueryServerWriteV1;
-use kanidmd_lib::idm::credupdatesession::CredentialUpdateAnonymousAccountRequest;
+use kanidmd_lib::idm::credupdatesession::CredentialUpdateAccountRecovery;
 use kanidmd_lib::prelude::{duration_from_epoch_now, OperationError};
 use uuid::Uuid;
 
@@ -17,7 +17,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
 
-        let event = CredentialUpdateAnonymousAccountRequest {
+        let event = CredentialUpdateAccountRecovery {
             email,
             max_ttl: None,
         };

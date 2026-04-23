@@ -1175,10 +1175,10 @@ pub enum DomainOpt {
         #[clap(name = "allow", action = clap::ArgAction::Set)]
         enable: bool,
     },
-    /// Enable or disable credential reset email functionality. If enabled, users who have forgotten
-    /// their credentials can trigger a credential reset to be sent to them if they are able to prove
-    /// knowledge of their own email address.
-    SetAllowCredentialResetEmail {
+    /// Enable or disable the account recovery feature. If enabled, users who have forgotten
+    /// their credentials can trigger a credential reset link to be sent to them if they are able to prove
+    /// knowledge of one of their own email addresses.
+    SetAllowAccountRecovery {
         #[clap(name = "allow", action = clap::ArgAction::Set)]
         enable: bool,
     },

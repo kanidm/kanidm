@@ -139,11 +139,11 @@ kanidm self whoami --name demo_user
 You can allow users to perform account recovery without support. This is disabled by default.
 
 ```
-kanidm system domain set-allow-credential-reset-email true
+kanidm system domain set-allow-account-recovery true
 ```
 
 When enabled, users will be able to follow the account recovery link from the login page and have
-a credential reset link sent to their email. Users must prove knowledge of their account email address
+a credential reset link sent to their email. Users must prove knowledge of one of their account email addresses
 to proceed.
 
 > [!NOTE]

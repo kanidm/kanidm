@@ -51,12 +51,9 @@ impl DomainOpt {
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
-            DomainOpt::SetAllowCredentialResetEmail { enable } => {
+            DomainOpt::SetAllowAccountRecovery { enable } => {
                 let client = opt.to_client(OpType::Write).await;
-                match client
-                    .idm_set_domain_allow_credential_reset_email(*enable)
-                    .await
-                {
+                match client.idm_set_domain_allow_account_recovery(*enable).await {
                     Ok(_) => {
                         if *enable {
                             println!("Success ✉️")

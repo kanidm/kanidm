@@ -536,7 +536,7 @@ impl InitCredentialUpdateIntentEvent {
     }
 }
 
-pub struct CredentialUpdateAnonymousAccountRequest {
+pub struct CredentialUpdateAccountRecovery {
     // Who is it targeting?
     pub email: String,
     // How long is it valid for?
@@ -982,12 +982,12 @@ impl IdmServerProxyWriteTransaction<'_> {
 
     pub fn credential_update_account_recovery(
         &mut self,
-        event: CredentialUpdateAnonymousAccountRequest,
+        event: CredentialUpdateAccountRecovery,
         ct: Duration,
     ) -> Result<(), OperationError> {
         if !self.qs_write.domain_info().allow_account_recovery() {
-            error!("Credential Reset is Disabled, Rejecting Attempt");
-            return Err(OperationError::CU0010AnonymousCredentialResetDisabled);
+            error!("Account Recovery is Disabled, Rejecting Attempt");
+            return Err(OperationError::CU0010AccountRecoveryDisabled);
         }
 
         // This is an internal identity that can only process limited
@@ -2849,7 +2849,7 @@ impl IdmServerCredUpdateTransaction<'_> {
 #[cfg(test)]
 mod tests {
     use super::{
-        CredentialState, CredentialUpdateAnonymousAccountRequest, CredentialUpdateSessionStatus,
+        CredentialState, CredentialUpdateAccountRecovery, CredentialUpdateSessionStatus,
         CredentialUpdateSessionStatusWarnings, CredentialUpdateSessionToken,
         InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
         InitCredentialUpdateIntentSendEvent, MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL,
@@ -3579,10 +3579,7 @@ mod tests {
     }
 
     #[idm_test]
-    async fn anonymous_credential_update_request(
-        idms: &IdmServer,
-        _idms_delayed: &mut IdmServerDelayed,
-    ) {
+    async fn account_recovery_basic(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
@@ -3628,7 +3625,7 @@ mod tests {
         assert!(cr.is_ok());
 
         // Test with the feature DISABLED. Must be rejected!
-        let event = CredentialUpdateAnonymousAccountRequest {
+        let event = CredentialUpdateAccountRecovery {
             email: "invalid@example.com".into(),
             max_ttl: None,
         };
@@ -3637,10 +3634,7 @@ mod tests {
             .credential_update_account_recovery(event, ct)
             .expect_err("Must not succeed!");
 
-        assert_eq!(
-            result,
-            OperationError::CU0010AnonymousCredentialResetDisabled
-        );
+        assert_eq!(result, OperationError::CU0010AccountRecoveryDisabled);
 
         // Enable the feature
         idms_prox_write
@@ -3660,7 +3654,7 @@ mod tests {
             .expect("Unable to reload domain info.");
 
         // Use a non-existant email.
-        let event = CredentialUpdateAnonymousAccountRequest {
+        let event = CredentialUpdateAccountRecovery {
             email: "invalid@example.com".into(),
             max_ttl: None,
         };
@@ -3672,7 +3666,7 @@ mod tests {
         assert_eq!(result, OperationError::CU0009AccountEmailNotFound);
 
         // Use a real email.
-        let event = CredentialUpdateAnonymousAccountRequest {
+        let event = CredentialUpdateAccountRecovery {
             email: email_address.clone(),
             max_ttl: None,
         };

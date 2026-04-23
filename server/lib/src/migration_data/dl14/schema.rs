@@ -800,7 +800,7 @@ pub static SCHEMA_ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY: LazyLock<SchemaAttribute> 
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY,
         name: Attribute::DomainAllowAccountRecovery,
-        description: "A flag to enable credential reset emails requests to be submitted by users."
+        description: "A flag to enable account recovery requests to be submitted by users."
             .to_string(),
         syntax: SyntaxType::Boolean,
         ..Default::default()

@@ -17,7 +17,7 @@ impl KanidmClient {
         .await
     }
 
-    pub async fn idm_set_domain_allow_credential_reset_email(
+    pub async fn idm_set_domain_allow_account_recovery(
         &self,
         enable: bool,
     ) -> Result<(), ClientError> {

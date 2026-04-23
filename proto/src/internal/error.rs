@@ -177,7 +177,7 @@ pub enum OperationError {
     CU0007AccountEmailNotFound,
     CU0008AccountMissingEmail,
     CU0009AccountEmailNotFound,
-    CU0010AnonymousCredentialResetDisabled,
+    CU0010AccountRecoveryDisabled,
 
     // ValueSet errors
     VS0001IncomingReplSshPublicKey,
@@ -463,7 +463,7 @@ impl OperationError {
             Self::CU0009AccountEmailNotFound
             => Some("The target email for a credential update intent token send request is not registered to the account.".into()),
             Self::CU0008AccountMissingEmail => Some("The account has no email addresses and may not have a credential update intent token sent to it.".into()),
-            Self::CU0010AnonymousCredentialResetDisabled => Some("The anonymous credential reset feature is disabled. See `kanidm system domain set-allow-credential-reset-email`".into()),
+            Self::CU0010AccountRecoveryDisabled => Some("The account recovery feature is disabled. See `kanidm system domain set-allow-account-recovery`".into()),
 
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,
