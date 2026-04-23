@@ -40,7 +40,6 @@ async function protectedSubmitHandler(event) {
     timestamp_view.setBigUint64(0, timestamp);
 
     const timestamp_u64 = timestamp_view.getBigUint64();
-    console.log(timestamp_u64);
 
     const timestamp_bytes = new Uint8Array(timestamp_buffer);
 
@@ -81,8 +80,6 @@ async function protectedSubmitHandler(event) {
     // This is what we have to send back.
     const solution_bytes = new Uint8Array(buffer);
     const solution_hex = solution_bytes.toHex();
-
-    console.log(solution_hex);
 
     const timestamp_hex = timestamp_bytes.toHex();
 
