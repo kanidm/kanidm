@@ -32,7 +32,7 @@ jobs:
             libudev-dev \
             pkg-config \
             libtalloc-dev \
-            tpm-udev && \
+            tpm-udev
       - name: "Run clippy"
         run: |
           rustup component add clippy
