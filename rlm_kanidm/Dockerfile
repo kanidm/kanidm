@@ -10,7 +10,6 @@ FROM repos AS builder
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y \
-    awk \
     libopenssl-devel \
     clang \
     make \

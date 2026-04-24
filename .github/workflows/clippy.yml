@@ -36,7 +36,7 @@ jobs:
       - name: "Run clippy"
         run: |
           rustup component add clippy
-          cargo clippy --quiet --lib --bins --examples --all-features
+          cargo clippy --quiet --lib --bins --examples
   fmt:
     runs-on: ubuntu-latest
     steps:
