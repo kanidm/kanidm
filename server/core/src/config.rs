@@ -959,7 +959,7 @@ impl ConfigurationBuilder {
 
     // We always set threads to 1 unless it's the main server.
     pub fn is_server_mode(mut self, is_server: bool) -> Self {
-        if is_server {
+        if !is_server {
             self.threads = 1;
         }
         self
