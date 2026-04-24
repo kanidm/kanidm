@@ -771,6 +771,14 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
             "/oauth2/openid/{client_id}/.well-known/webfinger",
             get(oauth2_openid_webfinger_get).options(oauth2_preflight_options),
         )
+        .route(
+            "/.well-known/openid-configuration/oauth2/openid/{client_id}",
+            get(oauth2_openid_discovery_get).options(oauth2_preflight_options),
+        )
+        .route(
+            "/.well-known/webfinger/oauth2/openid/{client_id}",
+            get(oauth2_openid_webfinger_get).options(oauth2_preflight_options),
+        )
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
@@ -789,6 +797,10 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OAUTH2 DISCOVERY URLS
         .route(
             "/oauth2/openid/{client_id}/.well-known/oauth-authorization-server",
+            get(oauth2_rfc8414_metadata_get).options(oauth2_preflight_options),
+        )
+        .route(
+            "/.well-known/oauth-authorization-server/oauth2/openid/{client_id}",
             get(oauth2_rfc8414_metadata_get).options(oauth2_preflight_options),
         )
         .with_state(state.clone());
