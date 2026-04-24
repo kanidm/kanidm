@@ -9,6 +9,9 @@ peg::parser! {
 
         pub(crate) rule attrname() -> String =
             s:$([ 'a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' ]*) { s.to_string() }
+
+        pub(crate) rule test() -> A =
+            s:$([ 'a'..='z' | 'A'..='Z']*) { A::from_str(s) }
     }
 }
 
