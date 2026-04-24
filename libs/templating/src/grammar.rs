@@ -1,20 +1,29 @@
-
-
-
 peg::parser! {
     grammar template() for str {
         pub rule parse() -> Vec<TemplateIntermediate> =
             s:(element()*) { s }
 
         rule element() -> TemplateIntermediate = precedence!{
-            start_template() separator()+ e:attrname() separator()+ end_template()
-                { TemplateIntermediate::Operand (e) }
+            start_template() o:operand() end_template()
+                { o }
             --
             s:(literal())
                 {  TemplateIntermediate::Literal (s) }
         }
 
-        // rule value() -> TemplateIntermediate =
+        rule operand() -> TemplateIntermediate =
+            separator() a:attrname() separator() o:options()*
+                { TemplateIntermediate::Operand ( a.to_string(), o ) }
+
+        rule options() -> TemplateOption =
+            start_option() separator() os:option_str() separator()
+                { os }
+
+        rule option_str() -> TemplateOption = precedence!{
+            "json"
+            { TemplateOption::FormatJson }
+        }
+
 
         rule literal() -> String =
             s:$((!start_template()[_])+)
@@ -22,6 +31,9 @@ peg::parser! {
 
         rule attrname() -> String =
             s:$([ 'a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' ]*) { s.to_string() }
+
+        rule start_option() =
+            ['|']
 
         rule start_template() =
             ['{']['{']
@@ -31,21 +43,21 @@ peg::parser! {
 
         rule separator() =
             ['\n' | ' ' | '\t' ]
-
-
-
     }
 }
 
+#[derive(Debug)]
+enum TemplateOption {
+    FormatJson,
+}
 
 #[derive(Debug)]
 enum TemplateIntermediate {
     // None,
     Literal(String),
     // Join(Self, Self),
-    Operand(String)
+    Operand(String, Vec<TemplateOption>),
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -113,6 +125,13 @@ mod tests {
 
         tracing::trace!(?x);
     }
+
+    #[test]
+    fn operand_option_json() {
+        let _ = tracing_subscriber::fmt::try_init();
+
+        let x = template::parse("{{ ident | json }}");
+
+        tracing::trace!(?x);
+    }
 }
-
-

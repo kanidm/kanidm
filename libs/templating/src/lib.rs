@@ -1,25 +1,14 @@
-
-
-
-
-
 mod grammar;
-
-
-
-
 
 pub struct Template {
     // Parsed ast
 
     // Min buffer size
-
 }
 
 enum TemplateAst {
     Literal(String),
 }
-
 
 /*
 #[cfg(test)]
@@ -37,5 +26,3 @@ mod tests {
     }
 }
 */
-
-
