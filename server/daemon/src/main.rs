@@ -30,7 +30,6 @@ use whoami;
 use std::fs::{metadata, File};
 // This works on both unix and windows.
 use clap::{Args, Parser, Subcommand};
-use fs4::FileExt;
 use futures::{SinkExt, StreamExt};
 use kanidmd_core::admin::{
     AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
@@ -612,15 +611,7 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
             };
 
             match flock.try_lock() {
-                Ok(true) => debug!("Acquired kanidm exclusive lock"),
-                Ok(false) => {
-                    error!(
-                        "ERROR: Refusing to start - unable to lock kanidmd exclusive lock at {}",
-                        klock_path.display()
-                    );
-                    error!("Is another kanidmd process running?");
-                    return ExitCode::FAILURE;
-                }
+                Ok(_) => debug!("Acquired kanidm exclusive lock"),
                 Err(err) => {
                     error!(
                         "ERROR: Refusing to start - unable to lock kanidmd exclusive lock at {}",
