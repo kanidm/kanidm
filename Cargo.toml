@@ -177,11 +177,11 @@ dyn-clone = "^1.0.20"
 enum-iterator = "2.3.0"
 fantoccini = "0.22.0"
 filetime = "^0.2.27"
-fs4 = "^0.13.1"
+fs4 = "^1.0.2"
 futures = "^0.3.32"
 futures-util = { version = "^0.3.32", features = ["sink"] }
 gethostname = "1.1.0"
-gix = { version = "0.81.0", default-features = false, features = ["sha1"] }
+gix = { version = "0.82.0", default-features = false, features = ["sha1"] }
 haproxy-protocol = { version = "0.0.4" }
 hashbrown = { version = "0.17.0", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
@@ -200,10 +200,10 @@ jsonschema = "0.46.0"
 ldap3_client = "^0.7.0"
 ldap3_proto = { version = "^0.7.0", features = ["serde"] }
 lettre = { version = "0.11.21", default-features = false }
-libc = "0.2.184"
+libc = "0.2.186"
 libnss = "^0.9.0"
 lodepng = "3.12.2"
-lru = "0.16.3"
+lru = "0.17.0"
 mathru = "0.16.2"
 md4 = "0.10.2"
 md-5 = "0.10.6"
@@ -298,4 +298,4 @@ whoami = "^2.1.1"
 walkdir = "2"
 x509-cert = "0.2.5"
 yescrypt = "0.1.0-rc.5"
-zxcvbn = "3.1.0"
+zxcvbn = "3.1.1"
