@@ -30,7 +30,7 @@ use whoami;
 use std::fs::{metadata, File};
 // This works on both unix and windows.
 use clap::{Args, Parser, Subcommand};
-use fs4::fs_std::FileExt;
+use fs4::FileExt;
 use futures::{SinkExt, StreamExt};
 use kanidmd_core::admin::{
     AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
@@ -611,7 +611,7 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
                 }
             };
 
-            match flock.try_lock_exclusive() {
+            match flock.try_lock() {
                 Ok(true) => debug!("Acquired kanidm exclusive lock"),
                 Ok(false) => {
                     error!(
