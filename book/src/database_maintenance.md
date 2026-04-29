@@ -1,5 +1,29 @@
 # Database Maintenance
 
+## Server Migration
+
+There are three methods available to migrate your Kanidm instance between servers.
+
+### Backup/Restore
+
+1) Ensure the original server is stopped.
+1) [Backup](backup_and_restore.md) on the original server.
+1) Restore the data on the new server.
+1) Start the new server.
+
+### Data Copy
+
+1) Ensure the original server is stopped.
+1) Copy the full content of your `kanidmd` volume to the new server.
+1) Start the new server with the same docker arguments.
+
+### Replication
+
+1) Create a new server.
+1) Configure [replication](repl/) between the new and original server.
+1) Ensure that that the initial [refresh](repl/#refresh) is complete.
+1) Stop the original server.
+
 ## Reindexing
 
 In some (rare) cases you may need to reindex. Please note the server will sometimes reindex on startup as a result of
