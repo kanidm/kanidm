@@ -152,7 +152,7 @@ struct LoginWebauthnView {
     // Control if we are rendering in security key or passkey mode.
     passkey: bool,
     // chal: RequestChallengeResponse,
-    chal: String,
+    challenge: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -948,7 +948,7 @@ async fn view_login_step(
                                 LoginWebauthnView {
                                     display_ctx,
                                     passkey: false,
-                                    chal: chal_json,
+                                    challenge: chal_json,
                                 }
                                 .into_response()
                             }
@@ -958,7 +958,7 @@ async fn view_login_step(
                                 LoginWebauthnView {
                                     display_ctx,
                                     passkey: true,
-                                    chal: chal_json,
+                                    challenge: chal_json,
                                 }
                                 .into_response()
                             }

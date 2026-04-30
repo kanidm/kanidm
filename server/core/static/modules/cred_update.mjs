@@ -88,8 +88,8 @@ function onPasskeyCreated(assertion) {
 
 function startPasskeyEnrollment() {
     try {
-        const data_elem = document.getElementById("data");
-        const credentialRequestOptions = JSON.parse(data_elem.textContent);
+        const form = document.getElementById("passkeyNamingForm");
+        const credentialRequestOptions = JSON.parse(decodeURIComponent(form.dataset.challenge));
         credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(
             credentialRequestOptions.publicKey.challenge,
         );

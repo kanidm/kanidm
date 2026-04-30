@@ -11,7 +11,8 @@
  */
 
 function passkey_login() {
-    let credentialRequestOptions = JSON.parse(document.getElementById("data").textContent);
+    let form = document.getElementById("cred-form");
+    let credentialRequestOptions = JSON.parse(decodeURIComponent(form.dataset.challenge));
     credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(credentialRequestOptions.publicKey.challenge);
     credentialRequestOptions.publicKey.allowCredentials?.forEach(function (listItem) {
         listItem.id = Base64.toUint8Array(listItem.id);
