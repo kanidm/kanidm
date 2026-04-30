@@ -7,6 +7,7 @@ use kanidm_proto::internal::{
     Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin, OperationError,
 };
 use kanidm_proto::v1::{AccountUnixExtend, Entry as ProtoEntry, GroupUnixExtend};
+use kanidmd_lib::valueset::image::ImageValueThings;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use tracing::{info, instrument, trace};
@@ -1198,6 +1199,13 @@ impl QueryServerWriteV1 {
             .inspect_err(|err| {
                 error!(?err, "Invalid identity in handle_image_update");
             })?;
+
+        if let Some(image) = &image {
+            image.validate_image().map_err(|err| {
+                error!(?err, "Invalid image in handle_image_update");
+                OperationError::InvalidRequestState
+            })?;
+        }
 
         let modlist = if let Some(image) = image {
             ModifyList::new_purge_and_set(Attribute::Image, Value::Image(image))

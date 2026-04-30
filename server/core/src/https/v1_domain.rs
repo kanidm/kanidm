@@ -12,8 +12,6 @@ use axum::{
 };
 use kanidm_proto::internal::{ImageType, ImageValue};
 use kanidmd_lib::prelude::*;
-use kanidmd_lib::valueset::image::ImageValueThings;
-use sketching::admin_error;
 
 pub(crate) async fn image_get(DomainInfo(domain_info): DomainInfo) -> Response {
     match domain_info.image() {
@@ -115,23 +113,13 @@ pub(crate) async fn image_post(
 
     match image {
         Some(image) => {
-            let image_validation_result = image.validate_image();
-            match image_validation_result {
-                Err(err) => {
-                    admin_error!("Invalid image uploaded: {:?}", err);
-                    Err(WebError::from(OperationError::InvalidRequestState))
-                }
-                Ok(_) => {
-                    let f_uuid =
-                        filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO)));
-                    state
-                        .qe_w_ref
-                        .handle_image_update(client_auth_info, f_uuid, Some(image))
-                        .await
-                        .map(Json::from)
-                        .map_err(WebError::from)
-                }
-            }
+            let f_uuid = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO)));
+            state
+                .qe_w_ref
+                .handle_image_update(client_auth_info, f_uuid, Some(image))
+                .await
+                .map(Json::from)
+                .map_err(WebError::from)
         }
         None => Err(WebError::from(OperationError::InvalidAttribute(
             "No image included, did you mean to use the DELETE method?".to_string(),
