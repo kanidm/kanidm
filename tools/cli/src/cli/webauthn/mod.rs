@@ -9,7 +9,7 @@ mod win10;
 use win10::get_authenticator_backend;
 
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
-use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
+use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 /// Gets a [WebauthnAuthenticator] with an appropriate backend for the current platform:
 ///
@@ -23,6 +23,6 @@ use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
 ///   This only supports USB tokens, and doesn't work on Windows systems which
 ///   have the platform WebAuthn API available.
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
-pub(crate) fn get_authenticator() -> WebauthnAuthenticator<impl AuthenticatorBackend> {
-    WebauthnAuthenticator::new(get_authenticator_backend())
+pub(crate) fn get_authenticator() -> impl WebauthnAuthenticator {
+    get_authenticator_backend()
 }

@@ -2878,7 +2878,7 @@ mod tests {
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::softtoken::{self, SoftToken};
-    use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
     use webauthn_rs::prelude::AttestationCaListBuilder;
 
     const TEST_CURRENT_TIME: u64 = 6000;
@@ -3343,10 +3343,10 @@ mod tests {
         }
     }
 
-    async fn check_testperson_passkey<T: AuthenticatorBackend>(
+    async fn check_testperson_passkey<T: WebauthnAuthenticator>(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
-        wa: &mut WebauthnAuthenticator<T>,
+        wa: &mut T,
         origin: Url,
         ct: Duration,
     ) -> Option<JwsCompact> {
@@ -4368,7 +4368,7 @@ mod tests {
         origin: &Url,
         cutxn: &IdmServerCredUpdateTransaction<'_>,
         cust: &CredentialUpdateSessionToken,
-        wa: &mut WebauthnAuthenticator<SoftPasskey>,
+        wa: &mut SoftPasskey,
     ) -> CredentialUpdateSessionStatus {
         // Start the registration
         let c_status = cutxn
@@ -4416,7 +4416,7 @@ mod tests {
         let origin = cutxn.get_origin().clone();
 
         // Create a soft passkey
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
@@ -4767,7 +4767,7 @@ mod tests {
         assert!(c_status.primary.is_none());
 
         let origin = cutxn.get_origin().clone();
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
@@ -4825,7 +4825,7 @@ mod tests {
         assert!(matches!(err, OperationError::AccessDenied));
 
         let origin = cutxn.get_origin().clone();
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
@@ -4848,11 +4848,11 @@ mod tests {
 
         // Create the attested soft token we will use in this test.
         let (soft_token_valid_a, ca_root_a) = SoftToken::new(true).unwrap();
-        let mut wa_token_valid = WebauthnAuthenticator::new(soft_token_valid_a);
+        let mut wa_token_valid = soft_token_valid_a;
 
         // We need a second for when we rotate the token.
         let (soft_token_valid_b, ca_root_b) = SoftToken::new(true).unwrap();
-        let mut wa_token_valid_b = WebauthnAuthenticator::new(soft_token_valid_b);
+        let mut wa_token_valid_b = soft_token_valid_b;
 
         // Create it's associated policy.
         let mut att_ca_builder = AttestationCaListBuilder::new();
@@ -4889,9 +4889,9 @@ mod tests {
 
         // Create the invalid tokens
         let (soft_token_invalid, _) = SoftToken::new(true).unwrap();
-        let mut wa_token_invalid = WebauthnAuthenticator::new(soft_token_invalid);
+        let mut wa_token_invalid = soft_token_invalid;
 
-        let mut wa_passkey_invalid = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa_passkey_invalid = SoftPasskey::new(true);
 
         // Setup the cred update session.
 
@@ -5090,10 +5090,10 @@ mod tests {
 
         // Setup the policy.
         let (soft_token_1, ca_root_1) = SoftToken::new(true).unwrap();
-        let mut wa_token_1 = WebauthnAuthenticator::new(soft_token_1);
+        let mut wa_token_1 = soft_token_1;
 
         let (soft_token_2, ca_root_2) = SoftToken::new(true).unwrap();
-        let mut wa_token_2 = WebauthnAuthenticator::new(soft_token_2);
+        let mut wa_token_2 = soft_token_2;
 
         // This is the original policy that we enroll.
         let mut att_ca_builder = AttestationCaListBuilder::new();
@@ -5276,7 +5276,7 @@ mod tests {
 
         // Setup the policy.
         let (soft_token_1, ca_root_1) = SoftToken::new(true).unwrap();
-        let mut wa_token_1 = WebauthnAuthenticator::new(soft_token_1);
+        let mut wa_token_1 = soft_token_1;
 
         let mut att_ca_builder = AttestationCaListBuilder::new();
         att_ca_builder
@@ -5782,7 +5782,7 @@ mod tests {
         // Setting Passkey with no Password Credentials causes EPOCH to be set
         let cutxn = idms.cred_update_transaction().await.unwrap();
         let origin = cutxn.get_origin().clone();
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
         assert!(c_status.can_commit);

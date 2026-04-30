@@ -165,7 +165,7 @@ axum-macros = "0.5.0"
 axum-htmx = { version = "0.8.1", features = ["serde", "guards"] }
 base32 = "^0.5.1"
 base64 = "^0.22.1"
-base64urlsafedata = "0.6.0-dev"
+base64urlsafedata = "0.6.1-dev"
 bitflags = "^2.11.0"
 bytes = "^1.11.1"
 cidr = "0.3.2"
@@ -205,8 +205,8 @@ image = { version = "0.25.9", default-features = false, features = [
 ] }
 itertools = "0.14.0"
 jsonschema = "0.46.0"
-ldap3_client = "^0.7.0"
-ldap3_proto = { version = "^0.7.0", features = ["serde"] }
+ldap3_client = "^0.7.1"
+ldap3_proto = { version = "^0.7.1", features = ["serde"] }
 lettre = { version = "0.11.21", default-features = false }
 libc = "0.2.186"
 libnss = "^0.9.0"
@@ -272,7 +272,7 @@ subtle = "2.6"
 shellexpand = "3.1.2"
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
-sshkey-attest = "0.6.0-dev"
+sshkey-attest = "0.6.1-dev"
 sshkeys = "0.3.4"
 svg = "0.18.0"
 syn = { version = "2.0.117", features = ["full"] }
@@ -299,10 +299,10 @@ utoipa-swagger-ui = { version = "9.0.2", default-features = false, features = [
     "vendored",
 ] }
 uuid = "^1.23.0"
-webauthn-authenticator-rs = { version = "0.6.0-dev", default-features = false }
-webauthn-rs = { version = "0.6.0-dev", features = ["preview-features"] }
-webauthn-rs-core = "0.6.0-dev"
-webauthn-rs-proto = "0.6.0-dev"
+webauthn-authenticator-rs = { version = "0.6.1-dev", default-features = false }
+webauthn-rs = { version = "0.6.1-dev", features = ["preview-features"] }
+webauthn-rs-core = "0.6.1-dev"
+webauthn-rs-proto = "0.6.1-dev"
 whoami = "^2.1.1"
 walkdir = "2"
 x509-cert = "0.2.5"

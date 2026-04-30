@@ -562,9 +562,9 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "base64urlsafedata"
-version = "0.5.4"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42f7f6be94fa637132933fd0a68b9140bcb60e3d46164cb68e82a2bb8d102b3a"
+checksum = "b08e33815c87d8cadcddb1e74ac307368a3751fbe40c961538afa21a1899f21c"
 dependencies = [
  "base64 0.21.7",
  "pastey",
@@ -573,9 +573,9 @@ dependencies = [
 
 [[package]]
 name = "base64urlsafedata"
-version = "0.6.0-dev"
+version = "0.6.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "079474127d73fa81d78e0709f88f87535de17a3386f3dc1a721bd33065a88109"
+checksum = "9283b2d58cdc7bb808295ff4cd7063701b13818a2680e1584ba61e948ab83229"
 dependencies = [
  "base64 0.21.7",
  "pastey",
@@ -981,7 +981,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0edc5af3006c35170ccbc0ecd24ead895bf19cdc1f1a2805c636bc5d53576954"
 dependencies = [
  "base64 0.22.1",
- "base64urlsafedata 0.5.4",
+ "base64urlsafedata 0.5.5",
  "crypto-glue",
  "hex",
  "kanidm-hsm-crypto",
@@ -3925,7 +3925,7 @@ name = "kanidm_lib_crypto"
 version = "1.10.0-dev"
 dependencies = [
  "base64 0.22.1",
- "base64urlsafedata 0.6.0-dev",
+ "base64urlsafedata 0.6.1-dev",
  "crypto-glue",
  "hex",
  "kanidm-hsm-crypto",
@@ -4093,7 +4093,7 @@ name = "kanidmd_lib"
 version = "1.10.0-dev"
 dependencies = [
  "base64 0.22.1",
- "base64urlsafedata 0.6.0-dev",
+ "base64urlsafedata 0.6.1-dev",
  "bitflags 2.11.1",
  "compact_jwt",
  "concread",
@@ -4260,9 +4260,9 @@ dependencies = [
 
 [[package]]
 name = "ldap3_client"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "518f03b8a65565f82cdd0a2cf8fc0a92f52b9ae7ad7e25c9a0d0e9b7ead6441b"
+checksum = "d9f2b46b3421cff7744d300b56571709819b4dc3a088253122ab4b621027944b"
 dependencies = [
  "base64 0.22.1",
  "futures-util",
@@ -4280,9 +4280,9 @@ dependencies = [
 
 [[package]]
 name = "ldap3_proto"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50cf44fdc4669a144168b7faec2b5239c1a632ff933d37b241d866310744e09a"
+checksum = "61954eefd3ff2b74d2d5bfa899c235b4c77536b4d17627607ff55430d05e0c61"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -6445,7 +6445,7 @@ dependencies = [
 name = "scim_proto"
 version = "1.10.0-dev"
 dependencies = [
- "base64urlsafedata 0.6.0-dev",
+ "base64urlsafedata 0.6.1-dev",
  "peg",
  "serde",
  "serde_json",
@@ -7016,12 +7016,11 @@ dependencies = [
 
 [[package]]
 name = "sshkey-attest"
-version = "0.6.0-dev"
+version = "0.6.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e97e87baabd9b7a96ecbf9bff9d3ca9461dfe8e3dc0e6c8c37d3e14e0ad64841"
+checksum = "0caad261e18adf21f16505e855be6c8f02446208b62cefcbb16735c805891e8b"
 dependencies = [
  "base64 0.21.7",
- "base64urlsafedata 0.6.0-dev",
  "crypto-glue",
  "nom 7.1.3",
  "serde",
@@ -7998,11 +7997,10 @@ dependencies = [
 
 [[package]]
 name = "webauthn-attestation-ca"
-version = "0.6.0-dev"
+version = "0.6.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a6bba3f4e2e2cfca832f4eb79dd7b7f6a59a888e7726351e5ab790cb626013f"
+checksum = "f756e22e0d79c05be2c61ce56e8a84062e82bd4039d98c27a6c35ca9bdd126f5"
 dependencies = [
- "base64urlsafedata 0.6.0-dev",
  "crypto-glue",
  "serde",
  "serde_with",
@@ -8012,15 +8010,14 @@ dependencies = [
 
 [[package]]
 name = "webauthn-authenticator-rs"
-version = "0.6.0-dev"
+version = "0.6.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb7439d101b5967fc6734941d24a968b70d0c27e1c1a1c2744879a3def6393d0"
+checksum = "cd96e0e791a6748c1fd36bf8e10980ec22023466b10fa0bdb871aeb91be7a750"
 dependencies = [
  "async-stream",
  "async-trait",
  "authenticator",
  "base64 0.21.7",
- "base64urlsafedata 0.6.0-dev",
  "bitflags 1.3.2",
  "crypto-glue",
  "futures",
@@ -8047,11 +8044,10 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs"
-version = "0.6.0-dev"
+version = "0.6.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e379c545d596d28034c6a39282550f87e68338b808f93cc4b92fcbd520848fe"
+checksum = "70fccc5023feca68f60a70e6dc4f3312e65475de272890974dd70f0c0d299ac8"
 dependencies = [
- "base64urlsafedata 0.6.0-dev",
  "serde",
  "tracing",
  "url",
@@ -8061,12 +8057,11 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs-core"
-version = "0.6.0-dev"
+version = "0.6.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ac53e0b6d48f09b8cdc7349d11a01e80c2adb65a88e819bab7e77a3a583cf54"
+checksum = "4df5bb62f5cb2b5653bbdee8529d676b5e9df1b864f5d60fd9ea45b940415d10"
 dependencies = [
  "base64 0.21.7",
- "base64urlsafedata 0.6.0-dev",
  "crypto-glue",
  "der-parser",
  "hex",
@@ -8076,6 +8071,7 @@ dependencies = [
  "serde",
  "serde_cbor_2",
  "serde_json",
+ "serde_with",
  "thiserror 1.0.69",
  "tracing",
  "url",
@@ -8087,14 +8083,14 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs-proto"
-version = "0.6.0-dev"
+version = "0.6.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03d3b99492f4a00cd24da8b7c88e2fe822b0b415a3fbed0fc11b02c028c89486"
+checksum = "996291533cde7dc8c9b2ac6d1a169d545204cc1a1ea9de2f8c4abb74e4e133ad"
 dependencies = [
  "base64 0.21.7",
- "base64urlsafedata 0.6.0-dev",
  "serde",
  "serde_json",
+ "serde_with",
  "url",
 ]
 

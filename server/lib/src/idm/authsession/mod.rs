@@ -2450,12 +2450,12 @@ mod tests {
         name: &str,
     ) -> (
         webauthn_rs::prelude::Webauthn,
-        webauthn_authenticator_rs::WebauthnAuthenticator<SoftPasskey>,
+        SoftPasskey,
         webauthn_rs::prelude::Passkey,
     ) {
         let webauthn = create_webauthn();
         // Setup a soft token
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let uuid = Uuid::new_v4();
 
@@ -2478,12 +2478,12 @@ mod tests {
         spn: &str,
     ) -> (
         webauthn_rs::prelude::Webauthn,
-        webauthn_authenticator_rs::WebauthnAuthenticator<SoftPasskey>,
+        SoftPasskey,
         webauthn_rs::prelude::SecurityKey,
     ) {
         let webauthn = create_webauthn();
         // Setup a soft token
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let uuid = Uuid::new_v4();
 
@@ -2604,7 +2604,7 @@ mod tests {
 
         // Use an incorrect softtoken.
         {
-            let mut inv_wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+            let mut inv_wa = SoftPasskey::new(true);
             let (chal, reg_state) = webauthn
                 .start_passkey_registration(account.uuid, account.spn(), &account.displayname, None)
                 .expect("Failed to setup webauthn rego challenge");

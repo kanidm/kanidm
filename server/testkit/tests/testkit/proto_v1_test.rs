@@ -1233,7 +1233,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: &KanidmClient) 
     assert!(res.is_ok());
 }
 
-async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenticator<SoftPasskey> {
+async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> SoftPasskey {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -1271,7 +1271,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
         .unwrap();
 
     // Setup and update the passkey
-    let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let mut wa = SoftPasskey::new(true);
 
     let status = rsclient
         .idm_account_credential_update_passkey_init(&session_token)
