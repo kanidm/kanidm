@@ -85,8 +85,8 @@ buildx/kanidm_tools:
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: buildx/radiusd
-buildx/radiusd: ## Build multi-arch radius docker images and push to docker hub
-buildx/radiusd:
+buildx/radiusd_py: ## Build multi-arch radius docker images and push to docker hub
+buildx/radiusd_py:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull $(CONTAINER_BUILDX_ACTION) --platform $(CONTAINER_IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
@@ -109,7 +109,7 @@ buildx/radiusd_rust:
 		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_EXT_VERSION) .
 
 .PHONY: buildx
-buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
+buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd_rust
 
 .PHONY: build/kanidmd
 build/kanidmd:	## Build the kanidmd docker image locally
