@@ -25,11 +25,8 @@ md4 = { workspace = true }
 sha2 = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true }
-uuid = { workspace = true }
-x509-cert = { workspace = true, features = ["pem"] }
 md-5 = { workspace = true }
 sha-crypt = { workspace = true }
-rustls = { workspace = true }
 
 [dev-dependencies]
 sketching = { workspace = true }
