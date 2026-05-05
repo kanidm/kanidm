@@ -147,8 +147,8 @@ kanidm-hsm-crypto = { version = "^0.3.5" }
 
 anyhow = { version = "1.0.102" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
-askama = { version = "0.15.6" }
-askama_web = { version = "0.15.2", features = ["axum-0.8"] }
+askama = { version = "0.16.0" }
+askama_web = { version = "0.16.0", features = ["axum-0.8"] }
 async-trait = "^0.1.89"
 axum = { version = "0.8.8", features = [
     "form",
@@ -204,14 +204,14 @@ image = { version = "0.25.9", default-features = false, features = [
     "webp",
 ] }
 itertools = "0.14.0"
-jsonschema = "0.46.0"
+jsonschema = "0.46.4"
 ldap3_client = "^0.7.1"
 ldap3_proto = { version = "^0.7.1", features = ["serde"] }
 lettre = { version = "0.11.21", default-features = false }
 libc = "0.2.186"
 libnss = "^0.9.0"
 lodepng = "3.12.2"
-lru = "0.17.0"
+lru = "0.18.0"
 mathru = "0.16.2"
 md4 = "0.10.2"
 md-5 = "0.10.6"
@@ -265,7 +265,7 @@ serde_cbor = { version = "0.13.0", package = "serde_cbor_2" }
 serde-hjson = "1.1.0"
 serde_json = "^1.0.149"
 serde_urlencoded = "^0.7.1"
-serde_with = "3.18.0"
+serde_with = "3.19.0"
 sha-crypt = "0.5.0"
 sha2 = "0.11.0-rc.5"
 subtle = "2.6"
