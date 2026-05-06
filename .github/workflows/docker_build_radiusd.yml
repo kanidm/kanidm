@@ -80,7 +80,7 @@ jobs:
           name: radius-docker
           path: /tmp
       - name: Set up ORAS
-        uses: oras-project/setup-oras@v1
+        uses: oras-project/setup-oras@v2
       # Docker won't directly import OCI images and keep their multi-arch
       # features, but ORAS will: https://oras.land/docs/commands/oras_copy
       - name: Push image to GHCR

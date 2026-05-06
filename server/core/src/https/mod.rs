@@ -162,6 +162,7 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
             "external/confetti.js",
             "external/base64.js",
             "modules/cred_update.mjs",
+            "csrf.js",
             "pkhtml.js",
             "style.js",
         ];
@@ -314,6 +315,10 @@ pub async fn create_https_server(
         .route(
             views::constants::Urls::WellKnownChangePassword.as_ref(),
             get(generic::redirect_to_update_credentials),
+        )
+        .route(
+            views::constants::Urls::WellKnownPasskeyEndpoints.as_ref(),
+            get(generic::passkey_endpoints),
         );
 
     let app = match config.role {

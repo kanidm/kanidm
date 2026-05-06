@@ -1,6 +1,7 @@
 //! Oauth2 RFC protocol definitions.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Display;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
@@ -66,6 +67,14 @@ pub struct AuthorisationRequest {
     pub oidc_ext: AuthorisationRequestOidc,
     // Needs to be hoisted here due to serde flatten bug #3185
     pub max_age: Option<i64>,
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, Prompt>")]
+    #[serde(default)]
+    pub prompt: Vec<Prompt>,
+
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
+    #[serde(default)]
+    pub ui_locales: Vec<String>,
+
     #[serde(flatten)]
     pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
 }
@@ -437,6 +446,52 @@ fn response_modes_supported_default() -> Vec<ResponseMode> {
     vec![ResponseMode::Query, ResponseMode::Fragment]
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum Prompt {
+    /// None is not the absence of a value but a rather a value itself.
+    /// Prompt::None signifies to kanidm that *if* the authentications server
+    /// cannot automatically proceed thanks to an already logged in user,
+    /// It must return a error response rather than allowing a user to proceed
+    /// through the regular login flow.
+    ///
+    /// This is specified in OIDC Core 1.0 §3.1.2.1
+    /// <https://openid.net/specs/openid-connect-core-1_0.html>
+    None,
+    Login,
+    Consent,
+    SelectAccount,
+    #[serde(untagged)]
+    Invalid(String),
+}
+
+impl Display for Prompt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Prompt::None => "none",
+            Prompt::Login => "login",
+            Prompt::Consent => "consent",
+            Prompt::SelectAccount => "select_account",
+            Prompt::Invalid(str) => &format!("invalid({})", str),
+        };
+        write!(f, "{s}")
+    }
+}
+
+impl std::str::FromStr for Prompt {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "none" => Prompt::None,
+            "login" => Prompt::Login,
+            "consent" => Prompt::Consent,
+            "select_account" => Prompt::SelectAccount,
+            other => Prompt::Invalid(other.to_string()),
+        })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum GrantType {
@@ -478,15 +533,16 @@ pub enum IdTokenSignAlg {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum TokenEndpointAuthMethod {
+pub enum EndpointAuthMethod {
+    None,
     ClientSecretPost,
     ClientSecretBasic,
     ClientSecretJwt,
     PrivateKeyJwt,
 }
 
-fn token_endpoint_auth_methods_supported_default() -> Vec<TokenEndpointAuthMethod> {
-    vec![TokenEndpointAuthMethod::ClientSecretBasic]
+fn token_endpoint_auth_methods_supported_default() -> Vec<EndpointAuthMethod> {
+    vec![EndpointAuthMethod::ClientSecretBasic]
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -576,7 +632,7 @@ pub struct OidcDiscoveryResponse {
     pub request_object_encryption_enc_values_supported: Option<Vec<String>>,
     // Defaults to client_secret_basic
     #[serde(default = "token_endpoint_auth_methods_supported_default")]
-    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub token_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
     pub token_endpoint_auth_signing_alg_values_supported: Option<Vec<String>>,
     // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
     pub display_values_supported: Option<Vec<DisplayValue>>,
@@ -612,11 +668,11 @@ pub struct OidcDiscoveryResponse {
 
     // rfc7009
     pub revocation_endpoint: Option<Url>,
-    pub revocation_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub revocation_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
 
     // rfc7662
     pub introspection_endpoint: Option<Url>,
-    pub introspection_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub introspection_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
     pub introspection_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
 
     /// Ref <https://www.rfc-editor.org/rfc/rfc8628#section-4>
@@ -646,7 +702,7 @@ pub struct Oauth2Rfc8414MetadataResponse {
     pub grant_types_supported: Vec<GrantType>,
 
     #[serde(default = "token_endpoint_auth_methods_supported_default")]
-    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub token_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
 
     pub token_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
 
@@ -658,11 +714,11 @@ pub struct Oauth2Rfc8414MetadataResponse {
 
     // rfc7009
     pub revocation_endpoint: Option<Url>,
-    pub revocation_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub revocation_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
 
     // rfc7662
     pub introspection_endpoint: Option<Url>,
-    pub introspection_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub introspection_endpoint_auth_methods_supported: Vec<EndpointAuthMethod>,
     pub introspection_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
 
     // RFC7636
@@ -794,5 +850,149 @@ mod tests {
             }
             _ => panic!("Wrong grant type"),
         }
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_single_value() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=login";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 1);
+        assert!(req.prompt.contains(&super::Prompt::Login));
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_multiple_values() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=login%20consent";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 2);
+        assert!(req.prompt.contains(&super::Prompt::Login));
+        assert!(req.prompt.contains(&super::Prompt::Consent));
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_none() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=none";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 1);
+        assert!(req.prompt.contains(&super::Prompt::None));
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_absent() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert!(req.prompt.is_empty());
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_invalid_value() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=bogus";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 1);
+        assert!(req
+            .prompt
+            .contains(&super::Prompt::Invalid("bogus".to_string())));
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_select_account() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=select_account";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 1);
+        assert!(req.prompt.contains(&super::Prompt::SelectAccount));
+    }
+
+    #[test]
+    fn test_authorisation_request_ui_locales() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &ui_locales=en-US";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.ui_locales.len(), 1);
+        assert!(req.ui_locales.contains(&"en-US".to_string()));
+
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &ui_locales=en-US%20fr-FR";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+        assert_eq!(req.ui_locales.len(), 2);
+        assert!(req.ui_locales.contains(&"fr-FR".to_string()));
+
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+        assert_eq!(req.ui_locales.len(), 0);
+        assert!(req.ui_locales.is_empty());
+    }
+
+    #[test]
+    fn test_authorisation_request_prompt_all_valid_values() {
+        let qs = "response_type=code\
+            &client_id=test_client\
+            &redirect_uri=http%3A%2F%2Flocalhost\
+            &scope=openid\
+            &prompt=login+consent+select_account";
+
+        let req: super::AuthorisationRequest =
+            serde_urlencoded::from_str(qs).expect("Failed to deserialize");
+
+        assert_eq!(req.prompt.len(), 3);
+        assert!(req.prompt.contains(&super::Prompt::Login));
+        assert!(req.prompt.contains(&super::Prompt::Consent));
+        assert!(req.prompt.contains(&super::Prompt::SelectAccount));
     }
 }

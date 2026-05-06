@@ -382,7 +382,7 @@ pub trait AccessControlsTransaction<'a> {
             sync_agmts: &'b HashMap<Uuid, BTreeSet<Attribute>>,
         }
 
-        let ident_uuid = match &se.ident.origin {
+        match &se.ident.origin {
             IdentType::Internal(_) => {
                 // In production we can't risk leaking data here, so we return
                 // empty sets.
@@ -453,7 +453,6 @@ pub trait AccessControlsTransaction<'a> {
                         let effective_permissions = do_effective_check.as_ref().map(|do_check| {
                             self.entry_effective_permission_check(
                                 &se.ident,
-                                ident_uuid,
                                 &entry,
                                 &search_related_acp,
                                 &do_check.modify_related_acp,
@@ -566,32 +565,26 @@ pub trait AccessControlsTransaction<'a> {
 
         for modify in me.modlist.iter() {
             match modify {
-                Modify::Present(a, v) => {
-                    if a == Attribute::Class.as_ref() {
-                        // Here we have an option<&str> which could mean there is a risk of
-                        // a malicious entity attempting to trick us by masking class mods
-                        // in non-iutf8 types. However, the server first won't respect their
-                        // existence, and second, we would have failed the mod at schema checking
-                        // earlier in the process as these were not correctly type. As a result
-                        // we can trust these to be correct here and not to be "None".
-                        requested_pres_classes.extend(v.to_str())
-                    }
+                Modify::Present(a, v) if a == Attribute::Class.as_ref() => {
+                    // Here we have an option<&str> which could mean there is a risk of
+                    // a malicious entity attempting to trick us by masking class mods
+                    // in non-iutf8 types. However, the server first won't respect their
+                    // existence, and second, we would have failed the mod at schema checking
+                    // earlier in the process as these were not correctly type. As a result
+                    // we can trust these to be correct here and not to be "None".
+                    requested_pres_classes.extend(v.to_str())
                 }
-                Modify::Removed(a, v) => {
-                    if a == Attribute::Class.as_ref() {
-                        requested_rem_classes.extend(v.to_str())
-                    }
+                Modify::Removed(a, v) if a == Attribute::Class.as_ref() => {
+                    requested_rem_classes.extend(v.to_str())
                 }
-                Modify::Set(a, v) => {
-                    if a == Attribute::Class.as_ref() {
-                        // This is a reasonably complex case - we actually have to contemplate
-                        // the difference between what exists and what doesn't, but that's per-entry.
-                        //
-                        // for now, we treat this as both pres and rem, but I think that ultimately
-                        // to fix this we need to make all modifies apply in terms of "batch mod"
-                        requested_pres_classes.extend(v.as_iutf8_iter().into_iter().flatten());
-                        requested_rem_classes.extend(v.as_iutf8_iter().into_iter().flatten());
-                    }
+                Modify::Set(a, v) if a == Attribute::Class.as_ref() => {
+                    // This is a reasonably complex case - we actually have to contemplate
+                    // the difference between what exists and what doesn't, but that's per-entry.
+                    //
+                    // for now, we treat this as both pres and rem, but I think that ultimately
+                    // to fix this we need to make all modifies apply in terms of "batch mod"
+                    requested_pres_classes.extend(v.as_iutf8_iter().into_iter().flatten());
+                    requested_rem_classes.extend(v.as_iutf8_iter().into_iter().flatten());
                 }
                 _ => {}
             }
@@ -730,41 +723,35 @@ pub trait AccessControlsTransaction<'a> {
 
             for modify in modlist.iter() {
                 match modify {
-                    Modify::Present(a, v) => {
-                        if a == Attribute::Class.as_ref() {
-                            requested_pres_classes.extend(v.to_str())
-                        }
+                    Modify::Present(a, v) if a == Attribute::Class.as_ref() => {
+                        requested_pres_classes.extend(v.to_str())
                     }
-                    Modify::Removed(a, v) => {
-                        if a == Attribute::Class.as_ref() {
-                            requested_rem_classes.extend(v.to_str())
-                        }
+                    Modify::Removed(a, v) if a == Attribute::Class.as_ref() => {
+                        requested_rem_classes.extend(v.to_str())
                     }
-                    Modify::Set(a, v) => {
-                        if a == Attribute::Class.as_ref() {
-                            // When we apply the set of classes, we base the access control decision
-                            // only on what CHANGED, rather than the full set that is present.
-                            if let Some(current_classes) = e.get_ava_as_iutf8(Attribute::Class) {
-                                if let Some(requested_classes) = v.as_iutf8_set() {
-                                    // Diff the classes to determine what changed. We only perform access
-                                    // checks on what is different, rather than everything in the set. This
-                                    // is what allow's SCIM PUT to operate since you have to "set" every
-                                    // value in the set, even if it's not one you have access too.
-                                    requested_pres_classes.extend( requested_classes.difference(current_classes).map(|s| s.as_str()) );
-                                    requested_rem_classes.extend( current_classes.difference(requested_classes).map(|s| s.as_str()) );
-                                } else {
-                                    // This should be an impossible case - to have made it to this
-                                    // point, then the modify should have passed schema validation
-                                    // an must be a valid iutf8 set, and return a Some(). However
-                                    // in the interest of completeness, we defend from this and
-                                    // and deny the operation.
-                                    error!("invalid valueset state - requested class set is not valid");
-                                    return false;
-                                }
+                    Modify::Set(a, v) if a == Attribute::Class.as_ref() => {
+                        // When we apply the set of classes, we base the access control decision
+                        // only on what CHANGED, rather than the full set that is present.
+                        if let Some(current_classes) = e.get_ava_as_iutf8(Attribute::Class) {
+                            if let Some(requested_classes) = v.as_iutf8_set() {
+                                // Diff the classes to determine what changed. We only perform access
+                                // checks on what is different, rather than everything in the set. This
+                                // is what allow's SCIM PUT to operate since you have to "set" every
+                                // value in the set, even if it's not one you have access too.
+                                requested_pres_classes.extend( requested_classes.difference(current_classes).map(|s| s.as_str()) );
+                                requested_rem_classes.extend( current_classes.difference(requested_classes).map(|s| s.as_str()) );
                             } else {
-                                error!("invalid entry state - entry does not have attribute class and is not valid");
+                                // This should be an impossible case - to have made it to this
+                                // point, then the modify should have passed schema validation
+                                // an must be a valid iutf8 set, and return a Some(). However
+                                // in the interest of completeness, we defend from this and
+                                // and deny the operation.
+                                error!("invalid valueset state - requested class set is not valid");
                                 return false;
                             }
+                        } else {
+                            error!("invalid entry state - entry does not have attribute class and is not valid");
+                            return false;
                         }
                     }
                     _ => {}
@@ -996,28 +983,13 @@ pub trait AccessControlsTransaction<'a> {
         attrs: Option<BTreeSet<Attribute>>,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<Vec<AccessEffectivePermission>, OperationError> {
-        // I think we need a structure like " CheckResult, which is in the order of the
+        // I think we need a structure like CheckResult, which is in the order of the
         // entries, but also stashes the uuid. Then it has search, mod, create, delete,
         // as separate attrs to describe what is capable.
 
         // Does create make sense here? I don't think it does. Create requires you to
         // have an entry template. I think james was right about the create being
         // a template copy op ...
-
-        let ident_uuid = match &ident.origin {
-            IdentType::Internal(_) => {
-                // In production we can't risk leaking data here, so we return
-                // empty sets.
-                security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
-                // No need to check ACS
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(u) => u.entry.get_uuid(),
-        };
 
         trace!(ident = %ident, "Effective permission check");
         // I think we separate this to multiple checks ...?
@@ -1037,7 +1009,6 @@ pub trait AccessControlsTransaction<'a> {
             .map(|entry| {
                 self.entry_effective_permission_check(
                     ident,
-                    ident_uuid,
                     entry,
                     &search_related_acp,
                     &modify_related_acp,
@@ -1057,7 +1028,6 @@ pub trait AccessControlsTransaction<'a> {
     fn entry_effective_permission_check<'b>(
         &'b self,
         ident: &Identity,
-        ident_uuid: Uuid,
         entry: &Arc<EntrySealedCommitted>,
         search_related_acp: &[AccessControlSearchResolved<'b>],
         modify_related_acp: &[AccessControlModifyResolved<'b>],
@@ -1111,7 +1081,7 @@ pub trait AccessControlsTransaction<'a> {
         };
 
         AccessEffectivePermission {
-            ident: ident_uuid,
+            ident: ident.get_uuid(),
             target: entry.get_uuid(),
             delete,
             search: search_effective,

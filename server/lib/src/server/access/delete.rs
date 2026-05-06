@@ -78,6 +78,11 @@ fn delete_filter_entry<'a>(
                 return IResult::Deny;
             }
         }
+        IdentType::Internal(InternalRole::AccountRequest)
+        | IdentType::Internal(InternalRole::MessageQueue) => {
+            debug!("Blocking role from deletion");
+            return IResult::Deny;
+        }
         IdentType::Synch(_) => {
             security_critical!("Blocking sync check");
             return IResult::Deny;
@@ -119,9 +124,7 @@ fn delete_filter_entry<'a>(
                         .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
                         .unwrap_or_default();
 
-                    let user_check = ident_uuid
-                        .map(|u| entry_manager_uuids.contains(&u))
-                        .unwrap_or_default();
+                    let user_check = entry_manager_uuids.contains(&ident_uuid);
 
                     if !(group_check || user_check) {
                         // Not the entry manager
@@ -173,6 +176,11 @@ fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -
         }
         IdentType::Synch(_) => {
             security_access!("sync agreements may not directly delete entities");
+            IResult::Deny
+        }
+        IdentType::Internal(InternalRole::AccountRequest)
+        | IdentType::Internal(InternalRole::MessageQueue) => {
+            debug!("Internal Role may not delete entries");
             IResult::Deny
         }
         IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {

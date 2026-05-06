@@ -4,28 +4,33 @@ use crate::CoreAction;
 use bytes::{BufMut, BytesMut};
 use crypto_glue::x509::x509b64;
 use futures::{SinkExt, StreamExt};
-use kanidm_utils_users::get_current_uid;
-use serde::{Deserialize, Serialize};
-use std::error::Error;
-use std::io;
-use tokio::net::{UnixListener, UnixStream};
-use tokio::sync::broadcast;
-use tokio::sync::mpsc;
-use tokio::sync::oneshot;
-use tokio_util::codec::{Decoder, Encoder, Framed};
-use tracing::{span, Instrument, Level};
-use uuid::Uuid;
-
 pub use kanidm_proto::internal::{
     DomainInfo as ProtoDomainInfo, DomainUpgradeCheckReport as ProtoDomainUpgradeCheckReport,
     DomainUpgradeCheckStatus as ProtoDomainUpgradeCheckStatus,
 };
+use kanidm_utils_users::get_current_uid;
+use serde::{Deserialize, Serialize};
+use std::error::Error;
+use std::io;
+use std::time::Duration;
+use tokio::net::{UnixListener, UnixStream};
+use tokio::sync::broadcast;
+use tokio::sync::mpsc;
+use tokio::sync::oneshot;
+use tokio::time::timeout;
+use tokio_util::codec::{Decoder, Encoder, Framed};
+use tracing::{span, Instrument, Level};
+use uuid::Uuid;
+
+/// Don't hang forever waiting for a response
+const REPL_CTRL_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum AdminTaskRequest {
     RecoverAccount { name: String },
     DisableAccount { name: String },
     ShowReplicationCertificate,
+    ShowReplicationCertificateMetadata,
     RenewReplicationCertificate,
     RefreshReplicationConsumer,
     DomainShow,
@@ -42,6 +47,12 @@ pub enum AdminTaskResponse {
     },
     ShowReplicationCertificate {
         cert: String,
+    },
+    ShowReplicationCertificateMetadata {
+        not_before: String,
+        not_after: String,
+        subject: String,
+        expired: bool,
     },
     DomainUpgradeCheck {
         report: ProtoDomainUpgradeCheckReport,
@@ -64,6 +75,14 @@ impl std::fmt::Debug for AdminTaskResponse {
             // the intent here is that we aren't sharing secret material in logs
             AdminTaskResponse::ShowReplicationCertificate { .. } => {
                 write!(f, "ShowReplicationCertificate {{ .. }}",)
+            }
+            AdminTaskResponse::ShowReplicationCertificateMetadata {
+                not_before,
+                not_after,
+                subject,
+                expired,
+            } => {
+                write!(f, "ShowReplicationCertificateMetadata {{ not_before: {:?}, not_after: {:?}, subject: {:?}, expired: {} }}", not_before, not_after, subject, expired)
             }
             AdminTaskResponse::DomainUpgradeCheck { report } => {
                 write!(f, "DomainUpgradeCheck {{ report: {:?} }}", report)
@@ -242,6 +261,45 @@ fn rm_if_exist(p: &str) {
     });
 }
 
+async fn show_replication_certificate_metadata(
+    ctrl_tx: &mut mpsc::Sender<ReplCtrl>,
+) -> AdminTaskResponse {
+    let (tx, rx) = oneshot::channel();
+
+    if ctrl_tx
+        .send(ReplCtrl::GetCertificate { respond: tx })
+        .await
+        .is_err()
+    {
+        error!("replication control channel has shutdown");
+        AdminTaskResponse::Error
+    } else {
+        match timeout(REPL_CTRL_TIMEOUT, rx).await {
+            Ok(Ok(cert)) => {
+                let cert_not_after = cert.tbs_certificate.validity.not_after;
+                let cert_not_before = cert.tbs_certificate.validity.not_before;
+                let subject = cert.tbs_certificate.subject.to_string();
+
+                let expired = cert_not_after.to_system_time() < std::time::SystemTime::now();
+                AdminTaskResponse::ShowReplicationCertificateMetadata {
+                    expired,
+                    not_before: cert_not_before.to_string(),
+                    not_after: cert_not_after.to_string(),
+                    subject,
+                }
+            }
+            Ok(Err(_)) => {
+                error!("replication control channel did not respond with certificate.");
+                AdminTaskResponse::Error
+            }
+            Err(_) => {
+                error!("timed out waiting for replication certificate metadata.");
+                AdminTaskResponse::Error
+            }
+        }
+    }
+}
+
 async fn show_replication_certificate(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> AdminTaskResponse {
     let (tx, rx) = oneshot::channel();
 
@@ -254,12 +312,16 @@ async fn show_replication_certificate(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> A
         return AdminTaskResponse::Error;
     }
 
-    match rx.await {
-        Ok(cert) => x509b64::cert_to_string(&cert)
+    match timeout(REPL_CTRL_TIMEOUT, rx).await {
+        Ok(Ok(cert)) => x509b64::cert_to_string(&cert)
             .map(|cert| AdminTaskResponse::ShowReplicationCertificate { cert })
             .unwrap_or(AdminTaskResponse::Error),
-        Err(_) => {
+        Ok(Err(_)) => {
             error!("replication control channel did not respond with certificate.");
+            AdminTaskResponse::Error
+        }
+        Err(_) => {
+            error!("timed out waiting for replication certificate response.");
             AdminTaskResponse::Error
         }
     }
@@ -277,8 +339,8 @@ async fn renew_replication_certificate(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> 
         return AdminTaskResponse::Error;
     }
 
-    match rx.await {
-        Ok(success) => {
+    match timeout(REPL_CTRL_TIMEOUT, rx).await {
+        Ok(Ok(success)) => {
             if success {
                 show_replication_certificate(ctrl_tx).await
             } else {
@@ -286,8 +348,12 @@ async fn renew_replication_certificate(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> 
                 AdminTaskResponse::Error
             }
         }
-        Err(_) => {
+        Ok(Err(_)) => {
             error!("replication control channel did not respond with renewal status.");
+            AdminTaskResponse::Error
+        }
+        Err(_) => {
+            error!("timed out waiting for replication renewal status.");
             AdminTaskResponse::Error
         }
     }
@@ -305,18 +371,27 @@ async fn replication_consumer_refresh(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> A
         return AdminTaskResponse::Error;
     }
 
-    match rx.await {
-        Ok(mut refresh_rx) => {
-            if let Some(()) = refresh_rx.recv().await {
+    match timeout(REPL_CTRL_TIMEOUT, rx).await {
+        Ok(Ok(mut refresh_rx)) => match timeout(REPL_CTRL_TIMEOUT, refresh_rx.recv()).await {
+            Ok(Some(())) => {
                 info!("Replication refresh success");
                 AdminTaskResponse::Success
-            } else {
+            }
+            Ok(None) => {
                 error!("Replication refresh failed. Please inspect the logs.");
                 AdminTaskResponse::Error
             }
+            Err(_) => {
+                error!("timed out waiting for replication refresh completion.");
+                AdminTaskResponse::Error
+            }
+        },
+        Ok(Err(_)) => {
+            error!("replication control channel did not respond with refresh status.");
+            AdminTaskResponse::Error
         }
         Err(_) => {
-            error!("replication control channel did not respond with refresh status.");
+            error!("timed out waiting for replication refresh status.");
             AdminTaskResponse::Error
         }
     }
@@ -363,6 +438,15 @@ async fn handle_client(
                     Some(ctrl_tx) => show_replication_certificate(ctrl_tx).await,
                     None => {
                         error!("replication not configured, unable to display certificate.");
+                        AdminTaskResponse::Error
+                    }
+                },
+                AdminTaskRequest::ShowReplicationCertificateMetadata => match repl_ctrl_tx.as_mut() {
+                    Some(ctrl_tx) => {
+                        show_replication_certificate_metadata(ctrl_tx).await
+                    }
+                    None => {
+                        error!("replication not configured, unable to display certificate metadata.");
                         AdminTaskResponse::Error
                     }
                 },

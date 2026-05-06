@@ -1,0 +1,23 @@
+[package]
+name = "nss_sparkle_common"
+description = "Sparkle Common NSS libraries"
+
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+
+[lib]
+name = "nss_sparkle_common"
+path = "src/lib.rs"
+
+[dependencies]
+sparkle_unix_common = { workspace = true }
+
+[target.'cfg(not(target_family = "windows"))'.dependencies]
+libnss = { workspace = true }
+libc = { workspace = true }
+

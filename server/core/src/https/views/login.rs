@@ -68,12 +68,14 @@ impl fmt::Display for ReauthPurpose {
 #[derive(Clone)]
 pub enum LoginError {
     InvalidUsername,
+    SessionExpired,
 }
 
 impl fmt::Display for LoginError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidUsername => write!(f, "Invalid username"),
+            Self::SessionExpired => write!(f, "Session Expired"),
         }
     }
 }
@@ -152,7 +154,7 @@ struct LoginWebauthnView {
     // Control if we are rendering in security key or passkey mode.
     passkey: bool,
     // chal: RequestChallengeResponse,
-    chal: String,
+    challenge: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -383,11 +385,17 @@ pub async fn view_index_get(
 
             let remember_me = !username.is_empty();
 
+            let error = if session_valid_result == Err(OperationError::SessionExpired) {
+                Some(LoginError::SessionExpired)
+            } else {
+                None
+            };
+
             let display_ctx = LoginDisplayCtx {
                 domain_info,
                 oauth2: None,
                 reauth: None,
-                error: None,
+                error,
             };
 
             (
@@ -948,7 +956,7 @@ async fn view_login_step(
                                 LoginWebauthnView {
                                     display_ctx,
                                     passkey: false,
-                                    chal: chal_json,
+                                    challenge: chal_json,
                                 }
                                 .into_response()
                             }
@@ -958,7 +966,7 @@ async fn view_login_step(
                                 LoginWebauthnView {
                                     display_ctx,
                                     passkey: true,
-                                    chal: chal_json,
+                                    challenge: chal_json,
                                 }
                                 .into_response()
                             }

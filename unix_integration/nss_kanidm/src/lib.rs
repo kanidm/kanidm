@@ -36,15 +36,7 @@ mod bsd_nss_compat {
     }
 }
 
-#[cfg(target_family = "unix")]
-#[macro_use]
-extern crate libnss;
+use nss_sparkle_common::{SparkleGroup, SparklePasswd};
 
-#[cfg(target_family = "unix")]
-mod hooks;
-
-#[cfg(target_family = "unix")]
-pub(crate) mod core;
-
-#[cfg(test)]
-mod tests;
+libnss::libnss_passwd_hooks!(kanidm, SparklePasswd);
+libnss::libnss_group_hooks!(kanidm, SparkleGroup);

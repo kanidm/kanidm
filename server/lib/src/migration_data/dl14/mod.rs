@@ -131,6 +131,8 @@ pub fn phase_1_schema_attrs() -> Vec<EntryInitNew> {
         SCHEMA_ATTR_ACCOUNT_SOFTLOCK_EXPIRE.clone().into(),
         // DL14
         SCHEMA_ATTR_PASSWORD_CHANGED_TIME.clone().into(),
+        SCHEMA_ATTR_OAUTH2_REFRESH_TOKEN_EXPIRY.clone().into(),
+        SCHEMA_ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY.clone().into(),
     ]
 }
 

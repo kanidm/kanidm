@@ -1,11 +1,9 @@
-use std::collections::BTreeMap;
-
+use crate::{ClientError, KanidmClient};
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::{CredentialStatus, IdentifyUserRequest, IdentifyUserResponse};
 use kanidm_proto::v1::{AccountUnixExtend, Entry, SingleStringRequest, UatStatus};
+use std::collections::BTreeMap;
 use uuid::Uuid;
-
-use crate::{ClientError, KanidmClient};
 
 impl KanidmClient {
     pub async fn idm_person_account_list(&self) -> Result<Vec<Entry>, ClientError> {
@@ -167,7 +165,8 @@ impl KanidmClient {
         tag: &str,
         pubkey: &str,
     ) -> Result<(), ClientError> {
-        let sk = (tag.to_string(), pubkey.to_string());
+        let tag = urlencoding::encode(tag);
+        let sk = (tag, pubkey.to_string());
         self.perform_post_request(format!("/v1/person/{id}/_ssh_pubkeys").as_str(), sk)
             .await
     }
@@ -177,6 +176,7 @@ impl KanidmClient {
         id: &str,
         tag: &str,
     ) -> Result<(), ClientError> {
+        let tag = urlencoding::encode(tag);
         self.perform_delete_request(format!("/v1/person/{id}/_ssh_pubkeys/{tag}").as_str())
             .await
     }

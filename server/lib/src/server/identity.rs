@@ -71,6 +71,13 @@ pub enum InternalRole {
     System,
     /// A migration operation being performed on the system.
     Migration,
+
+    /// An anonymous account action - this could be a credential reset
+    /// request, or a request to create a new account.
+    AccountRequest,
+
+    /// An internal role than can manage the outbound message queue.
+    MessageQueue,
 }
 
 impl std::fmt::Display for InternalRole {
@@ -78,6 +85,8 @@ impl std::fmt::Display for InternalRole {
         match self {
             Self::System => write!(f, "System"),
             Self::Migration => write!(f, "Migration"),
+            Self::AccountRequest => write!(f, "AccountRequest"),
+            Self::MessageQueue => write!(f, "MessageQueue"),
         }
     }
 }
@@ -87,6 +96,8 @@ impl InternalRole {
         match self {
             Self::System => UUID_SYSTEM,
             Self::Migration => UUID_INTERNAL_MIGRATION,
+            Self::AccountRequest => UUID_INTERNAL_ACCOUNT_REQUEST,
+            Self::MessageQueue => UUID_INTERNAL_MESSAGE_QUEUE,
         }
     }
 }
@@ -201,6 +212,26 @@ impl Identity {
         }
     }
 
+    pub(crate) fn account_request() -> Self {
+        Identity {
+            origin: IdentType::Internal(InternalRole::AccountRequest),
+            source: Source::Internal,
+            session_id: UUID_INTERNAL_SESSION_ID,
+            scope: AccessScope::ReadOnly,
+            limits: Limits::unlimited(),
+        }
+    }
+
+    pub(crate) fn message_queue() -> Self {
+        Identity {
+            origin: IdentType::Internal(InternalRole::MessageQueue),
+            source: Source::Internal,
+            session_id: UUID_INTERNAL_SESSION_ID,
+            scope: AccessScope::ReadWrite,
+            limits: Limits::unlimited(),
+        }
+    }
+
     pub(crate) fn from_internal() -> Self {
         Identity {
             origin: IdentType::Internal(InternalRole::System),
@@ -279,11 +310,11 @@ impl Identity {
         matches!(self.origin, IdentType::Internal(_))
     }
 
-    pub fn get_uuid(&self) -> Option<Uuid> {
+    pub fn get_uuid(&self) -> Uuid {
         match &self.origin {
-            IdentType::Internal(role) => Some(role.get_uuid()),
-            IdentType::User(u) => Some(u.entry.get_uuid()),
-            IdentType::Synch(u) => Some(*u),
+            IdentType::Internal(role) => role.get_uuid(),
+            IdentType::User(u) => u.entry.get_uuid(),
+            IdentType::Synch(u) => *u,
         }
     }
 

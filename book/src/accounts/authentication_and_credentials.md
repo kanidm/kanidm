@@ -38,7 +38,9 @@ is still possible to perform realtime phishing attacks.
 Members of the groups `idm_people_admins`, `idm_people_on_boarding` and `idm_service_desk` have the rights to initiate a
 credential reset for a person.
 
-> NOTE: If the person is a member of `idm_high_privilege` then these resets are not allowed. This is to prevent
+> [!NOTE]
+>
+> If the person is a member of `idm_high_privilege` then these resets are not allowed. This is to prevent
 > `idm_service_desk` and similar roles from privilege escalation by resetting the credentials of a higher privileged
 > account. If a person who is a member of `idm_high_privilege` requires a credential reset, this must be initiated by a
 > member of `idm_people_admins`.
@@ -87,6 +89,14 @@ kanidm person credential create-reset-token demo_user 86400 --name idm_admin
 If the user wishes you can direct them to `https://idm.mydomain.name/ui/reset` where they can manually enter their token
 value.
 
+If you have [configured outbound email](/email_setup.md) you can send the reset link directly to the user's email with:
+
+```bash
+kanidm person credential send-reset-token <account_id> [TTL] [ALTERNATE_EMAIL]
+kanidm person credential send-reset-token demo_user
+kanidm person credential send-reset-token demo_user 86400 secondary.address@example.com
+```
+
 Once the credential reset has been committed the token is immediately invalidated and can never be used again. By
 default the token is valid for 1 hour. You can request a longer token validity time when creating the token. Tokens are
 only allowed to be valid for a maximum of 24 hours.
@@ -124,6 +134,23 @@ kanidm login --name demo_user
 kanidm self whoami --name demo_user
 ```
 
+### Account Recovery
+
+You can allow users to perform account recovery without support. This is disabled by default.
+
+```
+kanidm system domain set-allow-account-recovery true
+```
+
+When enabled, users will be able to follow the account recovery link from the login page and have
+a credential reset link sent to their email. Users must prove knowledge of one of their account email addresses
+to proceed.
+
+> [!NOTE]
+>
+> The account recovery form requires a proof-of-work challenge to be completed by the clients browser
+> as a minimal anti-spam mechanism. Other anti-spam protections may be added in the future.
+
 ## Credential Deletion
 
 When a person deletes a credential, all sessions that were created by that credential are immediately logged out and
@@ -158,4 +185,4 @@ kanidm reauth -D william
 
 kanidm keeps track of the last time a password (relevant to logging in via LDAP/POSIX) was changed. This follows the [PrimaryCredFallback](../account_policy#setting-primary-credential-fallback) Policy, so if no Unix Credential is present, the last changed time of the Primary Credential will be used (if applicable).
 
-This is credential will also be provided through LDAP via the `pwdChangedTime` attribute and is required for external applications to be informed on when a user has changed their credentials and needs to be re-authenticated. 
+This is credential will also be provided through LDAP via the `pwdChangedTime` attribute and is required for external applications to be informed on when a user has changed their credentials and needs to be re-authenticated.

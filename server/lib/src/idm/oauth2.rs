@@ -16,7 +16,7 @@ use base64::{engine::general_purpose, Engine as _};
 pub use compact_jwt::{compact::JwkKeySet, OidcToken};
 use compact_jwt::{
     crypto::{JweA128GCMEncipher, JweA128KWEncipher},
-    jwe::Jwe,
+    jwe::JweBuilder,
     jws::JwsBuilder,
     JweCompact, JwsCompact, OidcClaims, OidcSubject,
 };
@@ -25,16 +25,16 @@ use crypto_glue::{s256::Sha256, traits::Digest};
 use hashbrown::HashMap;
 use hashbrown::HashSet;
 use kanidm_proto::constants::*;
-use kanidm_proto::oauth2::IssuedTokenType;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AccessTokenType, AuthorisationRequest, ClaimType, ClientAuth,
-    ClientPostAuth, CodeChallengeMethod, DeviceAuthorizationResponse, DisplayValue, ErrorResponse,
-    GrantType, GrantTypeReq, IdTokenSignAlg, OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions,
-    Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse,
-    PkceAlg, PkceRequest, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
-    TokenRevokeRequest, OAUTH2_TOKEN_TYPE_ACCESS_TOKEN,
+    ClientPostAuth, CodeChallengeMethod, DeviceAuthorizationResponse, DisplayValue,
+    EndpointAuthMethod, ErrorResponse, GrantType, GrantTypeReq, IdTokenSignAlg, OAuth2RFC9068Token,
+    OAuth2RFC9068TokenExtensions, Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse,
+    OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, PkceRequest, ResponseMode, ResponseType,
+    SubjectType, TokenRevokeRequest, OAUTH2_TOKEN_TYPE_ACCESS_TOKEN,
 };
+use kanidm_proto::oauth2::{IssuedTokenType, Prompt};
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
 use std::collections::btree_map::Entry as BTreeEntry;
@@ -43,6 +43,7 @@ use std::fmt;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+use subtle::ConstantTimeEq;
 use time::OffsetDateTime;
 use tracing::trace;
 use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
@@ -62,6 +63,8 @@ pub enum Oauth2Error {
     InvalidRequest,
     InvalidGrant,
     UnauthorizedClient,
+    LoginRequired,
+    InteractionRequired,
     AccessDenied,
     UnsupportedResponseType,
     InvalidScope,
@@ -103,6 +106,8 @@ impl std::fmt::Display for Oauth2Error {
             Oauth2Error::InvalidGrant => "invalid_grant",
             Oauth2Error::InvalidRequest => "invalid_request",
             Oauth2Error::UnauthorizedClient => "unauthorized_client",
+            Oauth2Error::LoginRequired => "login_required",
+            Oauth2Error::InteractionRequired => "interaction_required",
             Oauth2Error::AccessDenied => "access_denied",
             Oauth2Error::UnsupportedResponseType => "unsupported_response_type",
             Oauth2Error::InvalidScope => "invalid_scope",
@@ -367,9 +372,26 @@ impl AuthoriseReject {
 }
 
 #[derive(Clone)]
+struct CtSecret {
+    inner: String,
+}
+
+impl CtSecret {
+    fn ct_eq(&self, rhs: &str) -> bool {
+        self.inner.as_bytes().ct_eq(rhs.as_bytes()).unwrap_u8() == 1
+    }
+}
+
+impl From<String> for CtSecret {
+    fn from(inner: String) -> Self {
+        CtSecret { inner }
+    }
+}
+
+#[derive(Clone)]
 enum OauthRSType {
     Basic {
-        authz_secret: String,
+        authz_secret: CtSecret,
         enable_pkce: bool,
         enable_consent_prompt: bool,
     },
@@ -481,6 +503,8 @@ pub struct Oauth2RS {
     // Our internal exchange encryption material for this rs.
     sign_alg: SignatureAlgo,
     key_object: Arc<KeyObject>,
+
+    refresh_token_expiry: u32,
 
     // For oidc we also need our issuer url.
     iss: Url,
@@ -623,7 +647,6 @@ fn get_client_auth(
             client_secret: client_post_auth.client_secret.clone(),
         })
     } else {
-        admin_warn!("OAuth2 client authentication not provided");
         Err(Oauth2Error::AuthenticationRequired)
     }
 }
@@ -662,6 +685,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     let authz_secret = ent
                         .get_ava_single_secret(Attribute::OAuth2RsBasicSecret)
                         .map(str::to_string)
+                        .map(CtSecret::from)
                         .ok_or(OperationError::InvalidValueState)?;
 
                     let enable_pkce = ent
@@ -864,6 +888,10 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
 
                 let has_custom_image = ent.get_ava_single_image(Attribute::Image).is_some();
 
+                let refresh_token_expiry = ent
+                    .get_ava_single_uint32(Attribute::OAuth2RefreshTokenExpiry)
+                    .unwrap_or(OAUTH_REFRESH_TOKEN_EXPIRY);
+
                 let mut authorization_endpoint = self.inner.origin.clone();
                 authorization_endpoint.set_path("/ui/oauth2");
 
@@ -929,6 +957,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     claim_map,
                     sign_alg,
                     key_object,
+                    refresh_token_expiry,
                     iss,
                     authorization_endpoint,
                     token_endpoint,
@@ -964,46 +993,38 @@ impl IdmServerProxyWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn oauth2_token_revoke(
         &mut self,
-        client_auth_info: &ClientAuthInfo,
         revoke_req: &TokenRevokeRequest,
         ct: Duration,
     ) -> Result<(), Oauth2Error> {
-        let client_auth = get_client_auth(client_auth_info, &revoke_req.client_post_auth)?;
-
-        // Get the o2rs for the handle.
-        let o2rs = self
-            .oauth2rs
-            .inner
-            .rs_set_get(client_auth.client_id.as_str())
-            .ok_or_else(|| {
-                warn!("Invalid OAuth2 client_id");
-                Oauth2Error::AuthenticationRequired
-            })?;
-
-        // check the secret.
-        match &o2rs.type_ {
-            OauthRSType::Basic { authz_secret, .. } => {
-                if Some(authz_secret) != client_auth.client_secret.as_ref() {
-                    info!("Invalid OAuth2 client_id secret, this can happen if your RS is public but you configured a 'basic' type.");
-                    return Err(Oauth2Error::AuthenticationRequired);
-                }
-            }
-            // Relies on the token to be valid.
-            OauthRSType::Public { .. } => {}
-        };
-
-        // We are authenticated! Yay! Now we can actually check things ...
+        // We don't need to authenticate, since possession of the access token is already enough
+        // to prove identity, and we enforce it is cryptographically valid so it can't be bruteforced
+        // by a scanning attack.
 
         // Because this is the only path that deals with the tokens that
         // are either signed *or* encrypted, we need to check both options.
 
         let (session_id, expiry, uuid) = if let Ok(jwsc) = JwsCompact::from_str(&revoke_req.token) {
+            let unverified_client_id = jwsc.header().client_id.as_ref().ok_or_else(|| {
+                error!("Token does not contain the OAuth2 client id");
+                Oauth2Error::AuthenticationRequired
+            })?;
+
+            // Get the o2rs for the handle.
+            let o2rs = self
+                .oauth2rs
+                .inner
+                .rs_set_get(unverified_client_id)
+                .ok_or_else(|| {
+                    warn!("Invalid OAuth2 client_id");
+                    Oauth2Error::AuthenticationRequired
+                })?;
+
             let access_token = o2rs
                 .key_object
                 .jws_verify(&jwsc)
                 .map_err(|err| {
                     admin_error!(?err, "Unable to verify access token");
-                    Oauth2Error::InvalidRequest
+                    Oauth2Error::AuthenticationRequired
                 })
                 .and_then(|jws| {
                     jws.from_json().map_err(|err| {
@@ -1020,19 +1041,29 @@ impl IdmServerProxyWriteTransaction<'_> {
             } = access_token;
 
             (session_id, exp, uuid)
-        } else {
+        } else if let Ok(jwec) = JweCompact::from_str(&revoke_req.token) {
             // Assume it's encrypted.
-            let jwe_compact = JweCompact::from_str(&revoke_req.token).map_err(|_| {
-                error!("Failed to deserialise a valid JWE");
-                Oauth2Error::InvalidRequest
+            let unverified_client_id = jwec.header().client_id.as_ref().ok_or_else(|| {
+                error!("Token does not contain the OAuth2 client id");
+                Oauth2Error::AuthenticationRequired
             })?;
+
+            // Get the o2rs for the handle.
+            let o2rs = self
+                .oauth2rs
+                .inner
+                .rs_set_get(unverified_client_id)
+                .ok_or_else(|| {
+                    warn!("Invalid OAuth2 client_id");
+                    Oauth2Error::AuthenticationRequired
+                })?;
 
             let token: Oauth2TokenType = o2rs
                 .key_object
-                .jwe_decrypt(&jwe_compact)
+                .jwe_decrypt(&jwec)
                 .map_err(|_| {
                     error!("Failed to decrypt token revoke request");
-                    Oauth2Error::InvalidRequest
+                    Oauth2Error::AuthenticationRequired
                 })
                 .and_then(|jwe| {
                     jwe.from_json().map_err(|err| {
@@ -1055,6 +1086,9 @@ impl IdmServerProxyWriteTransaction<'_> {
                     ..
                 } => (session_id, exp, uuid),
             }
+        } else {
+            error!("Failed to deserialise a valid JWE or JWS");
+            return Err(Oauth2Error::AuthenticationRequired);
         };
 
         // Only submit a revocation if the token is not yet expired.
@@ -1095,7 +1129,10 @@ impl IdmServerProxyWriteTransaction<'_> {
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         // Public clients will send the client_id via the ATR, so we need to handle this case.
-        let client_auth = get_client_auth(client_auth_info, &token_req.client_post_auth)?;
+        let client_auth = get_client_auth(client_auth_info, &token_req.client_post_auth)
+            .inspect_err(|_| {
+                warn!("OAuth2 Client Authentcation Required");
+            })?;
 
         let o2rs = self.get_client(&client_auth.client_id)?;
         let is_token_exchange = matches!(token_req.grant_type, GrantTypeReq::TokenExchange { .. });
@@ -1114,7 +1151,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             (OauthRSType::Basic { authz_secret, .. }, false) => {
                 match client_auth.client_secret {
                     Some(secret) => {
-                        if authz_secret == &secret {
+                        if authz_secret.ct_eq(&secret) {
                             true
                         } else {
                             info!("Invalid OAuth2 client_id secret");
@@ -1278,10 +1315,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         consent_token: &str,
         ct: Duration,
     ) -> Result<AuthorisePermitSuccess, OperationError> {
-        let Some(account_uuid) = ident.get_uuid() else {
-            error!("consent request ident does not have a valid uuid, unable to proceed");
-            return Err(OperationError::InvalidSessionState);
-        };
+        let account_uuid = ident.get_uuid();
 
         let consent_token_jwe = JweCompact::from_str(consent_token).map_err(|err| {
             error!(?err, "Consent token is not a valid jwe compact");
@@ -1347,10 +1381,12 @@ impl IdmServerProxyWriteTransaction<'_> {
         };
 
         // Encrypt the exchange token
-        let code_data_jwe = Jwe::into_json(&xchg_code).map_err(|err| {
-            error!(?err, "Unable to encode xchg_code data");
-            OperationError::SerdeJsonError
-        })?;
+        let code_data_jwe = JweBuilder::into_json(&xchg_code)
+            .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+            .map_err(|err| {
+                error!(?err, "Unable to encode xchg_code data");
+                OperationError::SerdeJsonError
+            })?;
 
         let code = o2rs
             .key_object
@@ -1813,10 +1849,12 @@ impl IdmServerProxyWriteTransaction<'_> {
             nbf: iat,
         };
 
-        let access_token_data = Jwe::into_json(&access_token_raw).map_err(|err| {
-            error!(?err, "Unable to encode token data");
-            Oauth2Error::ServerError(OperationError::SerdeJsonError)
-        })?;
+        let access_token_data = JweBuilder::into_json(&access_token_raw)
+            .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+            .map_err(|err| {
+                error!(?err, "Unable to encode token data");
+                Oauth2Error::ServerError(OperationError::SerdeJsonError)
+            })?;
 
         let access_token = o2rs
             .key_object
@@ -1888,8 +1926,8 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         let expiry = odt_ct + Duration::from_secs(OAUTH2_ACCESS_TOKEN_EXPIRY as u64);
         let expires_in = OAUTH2_ACCESS_TOKEN_EXPIRY;
-        let refresh_expiry = iat + OAUTH_REFRESH_TOKEN_EXPIRY as i64;
-        let odt_refresh_expiry = odt_ct + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY);
+        let refresh_expiry = iat + o2rs.refresh_token_expiry as i64;
+        let odt_refresh_expiry = odt_ct + Duration::from_secs(o2rs.refresh_token_expiry as u64);
 
         let scope = scopes.clone();
 
@@ -1955,7 +1993,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 
             trace!(?oidc);
             let oidc = JwsBuilder::into_json(&oidc)
-                .map(|builder| builder.build())
+                .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
                 .map_err(|err| {
                     admin_error!(?err, "Unable to encode access token data");
                     Oauth2Error::ServerError(OperationError::InvalidState)
@@ -1998,7 +2036,12 @@ impl IdmServerProxyWriteTransaction<'_> {
         };
 
         let access_token_data = JwsBuilder::into_json(&access_token_data)
-            .map(|builder| builder.set_typ(Some("at+jwt")).build())
+            .map(|builder| {
+                builder
+                    .set_typ(Some("at+jwt"))
+                    .set_client_id(Some(&o2rs.name))
+                    .build()
+            })
             .map_err(|err| {
                 error!(?err, "Unable to encode access token data");
                 Oauth2Error::ServerError(OperationError::InvalidState)
@@ -2024,10 +2067,12 @@ impl IdmServerProxyWriteTransaction<'_> {
             nonce,
         };
 
-        let refresh_token_data = Jwe::into_json(&refresh_token_raw).map_err(|err| {
-            error!(?err, "Unable to encode token data");
-            Oauth2Error::ServerError(OperationError::SerdeJsonError)
-        })?;
+        let refresh_token_data = JweBuilder::into_json(&refresh_token_raw)
+            .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+            .map_err(|err| {
+                error!(?err, "Unable to encode token data");
+                Oauth2Error::ServerError(OperationError::SerdeJsonError)
+            })?;
 
         let refresh_token = o2rs
             .key_object
@@ -2080,57 +2125,36 @@ impl IdmServerProxyWriteTransaction<'_> {
     }
 
     #[cfg(test)]
-    fn reflect_oauth2_token(
-        &mut self,
-        client_auth_info: &ClientAuthInfo,
-        token: &str,
-    ) -> Result<Oauth2TokenType, OperationError> {
-        let Some(client_authz) = client_auth_info.basic_authz.as_ref() else {
-            warn!("OAuth2 client_id not provided by basic authz");
-            return Err(OperationError::InvalidSessionState);
-        };
-
-        let client_auth = parse_basic_authz(client_authz.as_str()).map_err(|_| {
-            warn!("Invalid client_authz base64");
+    fn reflect_oauth2_token(&mut self, token: &str) -> Result<Oauth2TokenType, OperationError> {
+        let jwec = JweCompact::from_str(token).map_err(|err| {
+            error!(?err, "Failed to deserialise a valid JWE");
             OperationError::InvalidSessionState
         })?;
 
-        // Get the o2rs for the handle.
+        let unverified_client_id = jwec.header().client_id.as_ref().ok_or_else(|| {
+            error!("Token does not contain the OAuth2 client id");
+            OperationError::InvalidSessionState
+        })?;
+
         let o2rs = self
             .oauth2rs
             .inner
-            .rs_set_get(&client_auth.client_id)
+            .rs_set_get(unverified_client_id)
             .ok_or_else(|| {
                 warn!("Invalid OAuth2 client_id");
                 OperationError::InvalidSessionState
             })?;
 
-        // check the secret.
-        if let OauthRSType::Basic { authz_secret, .. } = &o2rs.type_ {
-            if o2rs.is_basic() && Some(authz_secret) != client_auth.client_secret.as_ref() {
-                info!(
-                    "Invalid OAuth2 secret for client_id={}",
-                    client_auth.client_id
-                );
-                return Err(OperationError::InvalidSessionState);
-            }
-        }
-
-        let jwe_compact = JweCompact::from_str(token).map_err(|err| {
-            error!(?err, "Failed to deserialise a valid JWE");
-            OperationError::InvalidSessionState
-        })?;
-
         o2rs.key_object
-            .jwe_decrypt(&jwe_compact)
-            .map_err(|err| {
-                error!(?err, "Failed to decrypt token reflection request");
+            .jwe_decrypt(&jwec)
+            .map_err(|_| {
+                admin_error!("Failed to decrypt token introspection request");
                 OperationError::CryptographyError
             })
             .and_then(|jwe| {
                 jwe.from_json().map_err(|err| {
-                    error!(?err, "Failed to deserialise token for reflection");
-                    OperationError::SerdeJsonError
+                    error!(?err, "Failed to deserialise token");
+                    OperationError::InvalidSessionState
                 })
             })
     }
@@ -2177,6 +2201,33 @@ impl IdmServerProxyReadTransaction<'_> {
                 return Err(Oauth2Error::InvalidRequest);
             }
         };
+
+        if auth_req.prompt.len() > 4 {
+            warn!(
+                "Request contained too many prompt values. Max: 4, Provided: {}",
+                auth_req.prompt.len()
+            );
+            return Err(Oauth2Error::InvalidRequest);
+        }
+
+        let invalid_prompts: Vec<&str> = auth_req
+            .prompt
+            .iter()
+            .filter_map(|v| match v {
+                Prompt::Invalid(s) => Some(s.as_str()),
+                _ => None,
+            })
+            .collect();
+
+        if !invalid_prompts.is_empty() {
+            warn!("Invalid prompt value(s): {:?}", invalid_prompts);
+            return Err(Oauth2Error::InvalidRequest);
+        }
+
+        if auth_req.prompt.contains(&Prompt::None) && auth_req.prompt.len() > 1 {
+            warn!("Prompt cannot be none and contain other values at the same time");
+            return Err(Oauth2Error::InvalidRequest);
+        }
 
         /*
          * 4.1.2.1.  Error Response
@@ -2317,6 +2368,21 @@ impl IdmServerProxyReadTransaction<'_> {
         // prompt - if set to login, we need to force a re-auth. But we don't want to
         // if the user "only just" logged in, that's annoying. So we need a time window for
         // this, to detect when we should force it to the consent req.
+        //
+        // Idk man, Sure its a little awkward but with how few apps actually use `prompt=login`
+        // I think it is unlikely we will cause a significant amount of user friction by forcing
+        // Login on every request with this param.
+        // We can always add a login timestamp later on.
+
+        // OIDC Core 1.0 §3.1.2.1
+        // prompt=login - The Authorization Server MUST prompt the End-User to re-authenticate
+        if auth_req.prompt.contains(&Prompt::Login) {
+            debug!("prompt=login was requested, forcing re-authentication");
+            return Ok(AuthoriseResponse::AuthenticationRequired {
+                client_name: o2rs.displayname.clone(),
+                login_hint: auth_req.oidc_ext.login_hint.clone(),
+            });
+        }
 
         // TODO: display = popup vs touch vs wap etc.
 
@@ -2330,16 +2396,21 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let Some(ident) = maybe_ident else {
             debug!("No identity available, assume authentication required");
-            return Ok(AuthoriseResponse::AuthenticationRequired {
-                client_name: o2rs.displayname.clone(),
-                login_hint: auth_req.oidc_ext.login_hint.clone(),
-            });
+
+            // OIDC Core 1.0 §3.1.2.1
+            // prompt=none - The Authorization Server MUST NOT display any authentication or consent user interface pages
+            if auth_req.prompt.contains(&Prompt::None) {
+                debug!("prompt=none was requested, but no identity is available, returning error");
+                return Err(Oauth2Error::LoginRequired);
+            } else {
+                return Ok(AuthoriseResponse::AuthenticationRequired {
+                    client_name: o2rs.displayname.clone(),
+                    login_hint: auth_req.oidc_ext.login_hint.clone(),
+                });
+            }
         };
 
-        let Some(account_uuid) = ident.get_uuid() else {
-            error!("Consent request ident does not have a valid UUID, unable to proceed");
-            return Err(Oauth2Error::InvalidRequest);
-        };
+        let account_uuid = ident.get_uuid();
 
         // Deny anonymous access to oauth2
         if account_uuid == UUID_ANONYMOUS {
@@ -2395,10 +2466,12 @@ impl IdmServerProxyReadTransaction<'_> {
             };
 
             // Encrypt the exchange token with the key of the client
-            let code_data_jwe = Jwe::into_json(&xchg_code).map_err(|err| {
-                error!(?err, "Unable to encode xchg_code data");
-                Oauth2Error::ServerError(OperationError::SerdeJsonError)
-            })?;
+            let code_data_jwe = JweBuilder::into_json(&xchg_code)
+                .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+                .map_err(|err| {
+                    error!(?err, "Unable to encode xchg_code data");
+                    Oauth2Error::ServerError(OperationError::SerdeJsonError)
+                })?;
 
             let code = o2rs
                 .key_object
@@ -2416,6 +2489,14 @@ impl IdmServerProxyReadTransaction<'_> {
                 response_mode,
             }))
         } else {
+            // OIDC Core 1.0 §3.1.2.1:
+            // prompt=none - The Authorization Server MUST NOT display any authentication or
+            // consent user interface pages.
+            if auth_req.prompt.contains(&Prompt::None) {
+                debug!("prompt=none was requested, but consent is required, returning error");
+                return Err(Oauth2Error::InteractionRequired);
+            }
+
             //  Check that the scopes are the same as a previous consent (if any)
             // If oidc, what PII is visible?
             // TODO: Scopes map to claims:
@@ -2463,10 +2544,12 @@ impl IdmServerProxyReadTransaction<'_> {
                 response_mode,
             };
 
-            let consent_jwe = Jwe::into_json(&consent_req).map_err(|err| {
-                error!(?err, "Unable to encode consent data");
-                Oauth2Error::ServerError(OperationError::SerdeJsonError)
-            })?;
+            let consent_jwe = JweBuilder::into_json(&consent_req)
+                .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+                .map_err(|err| {
+                    error!(?err, "Unable to encode consent data");
+                    Oauth2Error::ServerError(OperationError::SerdeJsonError)
+                })?;
 
             let consent_token = self
                 .oauth2rs
@@ -2555,190 +2638,226 @@ impl IdmServerProxyReadTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_token_introspect(
         &mut self,
-        client_auth_info: &ClientAuthInfo,
         intr_req: &AccessTokenIntrospectRequest,
         ct: Duration,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
-        let client_auth = get_client_auth(client_auth_info, &intr_req.client_post_auth)?;
+        // We don't need to authenticate, since possession of the access token is already enough
+        // to prove identity, and we enforce it is cryptographically valid so it can't be bruteforced
+        // by a scanning attack.
 
-        // Get the o2rs for the handle.
+        if let Ok(jwsc) = JwsCompact::from_str(&intr_req.token) {
+            self.oauth2_token_introspect_jwt(&jwsc, ct)
+        } else if let Ok(jwec) = JweCompact::from_str(&intr_req.token) {
+            self.oauth2_token_introspect_jwe(&jwec, ct)
+        } else {
+            error!("Failed to deserialise a valid JWE");
+            Err(Oauth2Error::AuthenticationRequired)
+        }
+    }
+
+    #[instrument(level = "trace", skip_all)]
+    pub fn oauth2_token_introspect_jwt(
+        &mut self,
+        jwsc: &JwsCompact,
+        ct: Duration,
+    ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
+        let unverified_client_id = jwsc.header().client_id.as_ref().ok_or_else(|| {
+            error!("Token does not contain the OAuth2 client id");
+            Oauth2Error::AuthenticationRequired
+        })?;
+
         let o2rs = self
             .oauth2rs
             .inner
-            .rs_set_get(&client_auth.client_id)
+            .rs_set_get(unverified_client_id)
             .ok_or_else(|| {
                 warn!("Invalid OAuth2 client_id");
                 Oauth2Error::AuthenticationRequired
             })?;
 
-        // We don't need to authenticate, since possession of the access token is already enough
-        // to prove identity, and we enforce it is cryptographically valid so it can't be bruteforced
-        // by a scanning attack.
-        let prefer_short_username = o2rs.prefer_short_username;
-
-        if let Ok(jwsc) = JwsCompact::from_str(&intr_req.token) {
-            let access_token = o2rs
-                .key_object
-                .jws_verify(&jwsc)
-                .map_err(|err| {
-                    error!(?err, "Unable to verify access token");
+        let access_token = o2rs
+            .key_object
+            .jws_verify(jwsc)
+            .map_err(|err| {
+                error!(?err, "Unable to verify access token");
+                Oauth2Error::AuthenticationRequired
+            })
+            .and_then(|jws| {
+                jws.from_json().map_err(|err| {
+                    error!(?err, "Unable to deserialise access token");
                     Oauth2Error::InvalidRequest
                 })
-                .and_then(|jws| {
-                    jws.from_json().map_err(|err| {
-                        error!(?err, "Unable to deserialise access token");
-                        Oauth2Error::InvalidRequest
-                    })
-                })?;
-
-            let OAuth2RFC9068Token::<_> {
-                iss: _,
-                sub,
-                aud: _,
-                exp,
-                nbf,
-                iat,
-                jti,
-                client_id: _,
-                extensions:
-                    OAuth2RFC9068TokenExtensions {
-                        auth_time: _,
-                        acr: _,
-                        amr: _,
-                        scope: scopes,
-                        nonce: _,
-                        session_id,
-                        parent_session_id,
-                    },
-            } = access_token;
-
-            // Has this token expired?
-            if exp <= ct.as_secs() as i64 {
-                security_info!(?sub, "access token has expired, returning inactive");
-                return Ok(AccessTokenIntrospectResponse::inactive(jti));
-            }
-
-            // Is the user expired, or the OAuth2 session invalid?
-            let valid = self
-                .check_oauth2_account_uuid_valid(sub, session_id, parent_session_id, iat, ct)
-                .map_err(|_| admin_error!("Account is not valid"));
-
-            let Ok(Some(entry)) = valid else {
-                security_info!(
-                    ?sub,
-                    "access token account is not valid, returning inactive"
-                );
-                return Ok(AccessTokenIntrospectResponse::inactive(jti));
-            };
-
-            let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
-                Ok(account) => account,
-                Err(err) => return Err(Oauth2Error::ServerError(err)),
-            };
-
-            // ==== good to generate response ====
-
-            let scope = scopes.clone();
-
-            let preferred_username = if prefer_short_username {
-                Some(account.name().into())
-            } else {
-                Some(account.spn().into())
-            };
-
-            let token_type = Some(AccessTokenType::Bearer);
-            Ok(AccessTokenIntrospectResponse {
-                active: true,
-                scope,
-                client_id: Some(client_auth.client_id.clone()),
-                username: preferred_username,
-                token_type,
-                iat: Some(iat),
-                exp: Some(exp),
-                nbf: Some(nbf),
-                sub: Some(sub.to_string()),
-                aud: Some(client_auth.client_id),
-                iss: None,
-                jti,
-            })
-        } else {
-            let jwe_compact = JweCompact::from_str(&intr_req.token).map_err(|_| {
-                error!("Failed to deserialise a valid JWE");
-                Oauth2Error::InvalidRequest
             })?;
 
-            let token: Oauth2TokenType = o2rs
-                .key_object
-                .jwe_decrypt(&jwe_compact)
-                .map_err(|_| {
-                    admin_error!("Failed to decrypt token introspection request");
+        let OAuth2RFC9068Token::<_> {
+            iss: _,
+            sub,
+            aud: _,
+            exp,
+            nbf,
+            iat,
+            jti,
+            client_id: _,
+            extensions:
+                OAuth2RFC9068TokenExtensions {
+                    auth_time: _,
+                    acr: _,
+                    amr: _,
+                    scope: scopes,
+                    nonce: _,
+                    session_id,
+                    parent_session_id,
+                },
+        } = access_token;
+
+        // Has this token expired?
+        if exp <= ct.as_secs() as i64 {
+            security_info!(?sub, "access token has expired, returning inactive");
+            return Ok(AccessTokenIntrospectResponse::inactive(jti));
+        }
+
+        let prefer_short_username = o2rs.prefer_short_username;
+        let client_id = o2rs.name.clone();
+
+        // Is the user expired, or the OAuth2 session invalid?
+        let valid = self
+            .check_oauth2_account_uuid_valid(sub, session_id, parent_session_id, iat, ct)
+            .map_err(|_| admin_error!("Account is not valid"));
+
+        let Ok(Some(entry)) = valid else {
+            security_info!(
+                ?sub,
+                "access token account is not valid, returning inactive"
+            );
+            return Ok(AccessTokenIntrospectResponse::inactive(jti));
+        };
+
+        let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
+            Ok(account) => account,
+            Err(err) => return Err(Oauth2Error::ServerError(err)),
+        };
+
+        // ==== good to generate response ====
+
+        let scope = scopes.clone();
+
+        let preferred_username = if prefer_short_username {
+            Some(account.name().into())
+        } else {
+            Some(account.spn().into())
+        };
+
+        let token_type = Some(AccessTokenType::Bearer);
+        Ok(AccessTokenIntrospectResponse {
+            active: true,
+            scope,
+            client_id: Some(client_id.clone()),
+            username: preferred_username,
+            token_type,
+            iat: Some(iat),
+            exp: Some(exp),
+            nbf: Some(nbf),
+            sub: Some(sub.to_string()),
+            aud: Some(client_id),
+            iss: None,
+            jti,
+        })
+    }
+
+    #[instrument(level = "trace", skip_all)]
+    pub fn oauth2_token_introspect_jwe(
+        &mut self,
+        jwec: &JweCompact,
+        ct: Duration,
+    ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
+        let unverified_client_id = jwec.header().client_id.as_ref().ok_or_else(|| {
+            error!("Token does not contain the OAuth2 client id");
+            Oauth2Error::AuthenticationRequired
+        })?;
+
+        let o2rs = self
+            .oauth2rs
+            .inner
+            .rs_set_get(unverified_client_id)
+            .ok_or_else(|| {
+                warn!("Invalid OAuth2 client_id");
+                Oauth2Error::AuthenticationRequired
+            })?;
+
+        let token: Oauth2TokenType = o2rs
+            .key_object
+            .jwe_decrypt(jwec)
+            .map_err(|_| {
+                admin_error!("Failed to decrypt token introspection request");
+                Oauth2Error::AuthenticationRequired
+            })
+            .and_then(|jwe| {
+                jwe.from_json().map_err(|err| {
+                    error!(?err, "Failed to deserialise token");
                     Oauth2Error::InvalidRequest
                 })
-                .and_then(|jwe| {
-                    jwe.from_json().map_err(|err| {
-                        error!(?err, "Failed to deserialise token");
-                        Oauth2Error::InvalidRequest
-                    })
-                })?;
+            })?;
 
-            match token {
-                Oauth2TokenType::ClientAccess {
-                    scopes,
-                    session_id,
-                    uuid,
-                    exp,
-                    iat,
-                    nbf,
-                } => {
-                    // Has this token expired?
-                    if exp <= ct.as_secs() as i64 {
-                        security_info!(?uuid, "access token has expired, returning inactive");
-                        return Ok(AccessTokenIntrospectResponse::inactive(session_id));
-                    }
-
-                    // We can't do the same validity check for the client as we do with an account
-                    let valid = self
-                        .check_oauth2_account_uuid_valid(uuid, session_id, None, iat, ct)
-                        .map_err(|_| admin_error!("Account is not valid"));
-
-                    let Ok(Some(entry)) = valid else {
-                        security_info!(
-                            ?uuid,
-                            "access token account is not valid, returning inactive"
-                        );
-                        return Ok(AccessTokenIntrospectResponse::inactive(session_id));
-                    };
-
-                    let scope = scopes.clone();
-
-                    let token_type = Some(AccessTokenType::Bearer);
-
-                    let username = if prefer_short_username {
-                        entry
-                            .get_ava_single_iname(Attribute::Name)
-                            .map(|s| s.to_string())
-                    } else {
-                        entry.get_ava_single_proto_string(Attribute::Spn)
-                    };
-
-                    Ok(AccessTokenIntrospectResponse {
-                        active: true,
-                        scope,
-                        client_id: Some(client_auth.client_id.clone()),
-                        username,
-                        token_type,
-                        iat: Some(iat),
-                        exp: Some(exp),
-                        nbf: Some(nbf),
-                        sub: Some(uuid.to_string()),
-                        aud: Some(client_auth.client_id),
-                        iss: None,
-                        jti: session_id,
-                    })
+        match token {
+            Oauth2TokenType::ClientAccess {
+                scopes,
+                session_id,
+                uuid,
+                exp,
+                iat,
+                nbf,
+            } => {
+                // Has this token expired?
+                if exp <= ct.as_secs() as i64 {
+                    security_info!(?uuid, "access token has expired, returning inactive");
+                    return Ok(AccessTokenIntrospectResponse::inactive(session_id));
                 }
-                Oauth2TokenType::Refresh { session_id, .. } => {
-                    Ok(AccessTokenIntrospectResponse::inactive(session_id))
-                }
+
+                let prefer_short_username = o2rs.prefer_short_username;
+                let client_id = o2rs.name.clone();
+
+                // We can't do the same validity check for the client as we do with an account
+                let valid = self
+                    .check_oauth2_account_uuid_valid(uuid, session_id, None, iat, ct)
+                    .map_err(|_| admin_error!("Account is not valid"));
+
+                let Ok(Some(entry)) = valid else {
+                    security_info!(
+                        ?uuid,
+                        "access token account is not valid, returning inactive"
+                    );
+                    return Ok(AccessTokenIntrospectResponse::inactive(session_id));
+                };
+
+                let scope = scopes.clone();
+
+                let token_type = Some(AccessTokenType::Bearer);
+
+                let username = if prefer_short_username {
+                    entry
+                        .get_ava_single_iname(Attribute::Name)
+                        .map(|s| s.to_string())
+                } else {
+                    entry.get_ava_single_proto_string(Attribute::Spn)
+                };
+
+                Ok(AccessTokenIntrospectResponse {
+                    active: true,
+                    scope,
+                    client_id: Some(client_id.clone()),
+                    username,
+                    token_type,
+                    iat: Some(iat),
+                    exp: Some(exp),
+                    nbf: Some(nbf),
+                    sub: Some(uuid.to_string()),
+                    aud: Some(client_id),
+                    iss: None,
+                    jti: session_id,
+                })
+            }
+            Oauth2TokenType::Refresh { session_id, .. } => {
+                Ok(AccessTokenIntrospectResponse::inactive(session_id))
             }
         }
     }
@@ -2872,19 +2991,13 @@ impl IdmServerProxyReadTransaction<'_> {
         let grant_types_supported = vec![GrantType::AuthorisationCode, GrantType::TokenExchange];
 
         let token_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
+            EndpointAuthMethod::ClientSecretBasic,
+            EndpointAuthMethod::ClientSecretPost,
         ];
 
-        let revocation_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
-        ];
+        let revocation_endpoint_auth_methods_supported = vec![EndpointAuthMethod::None];
 
-        let introspection_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
-        ];
+        let introspection_endpoint_auth_methods_supported = vec![EndpointAuthMethod::None];
 
         let service_documentation = Some(URL_SERVICE_DOCUMENTATION.clone());
 
@@ -2952,8 +3065,8 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let userinfo_signing_alg_values_supported = None;
         let token_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
+            EndpointAuthMethod::ClientSecretBasic,
+            EndpointAuthMethod::ClientSecretPost,
         ];
         let display_values_supported = Some(vec![DisplayValue::Page]);
         let claim_types_supported = vec![ClaimType::Normal];
@@ -2970,16 +3083,10 @@ impl IdmServerProxyReadTransaction<'_> {
         // The following are extensions allowed by the oidc specification.
 
         let revocation_endpoint = Some(o2rs.revocation_endpoint.clone());
-        let revocation_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
-        ];
+        let revocation_endpoint_auth_methods_supported = vec![EndpointAuthMethod::None];
 
         let introspection_endpoint = Some(o2rs.introspection_endpoint.clone());
-        let introspection_endpoint_auth_methods_supported = vec![
-            TokenEndpointAuthMethod::ClientSecretBasic,
-            TokenEndpointAuthMethod::ClientSecretPost,
-        ];
+        let introspection_endpoint_auth_methods_supported = vec![EndpointAuthMethod::None];
 
         Ok(OidcDiscoveryResponse {
             issuer,
@@ -3396,7 +3503,9 @@ fn check_is_loopback(redirect_uri: &Url) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS};
+    use super::{
+        CtSecret, Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS,
+    };
     use crate::credential::Credential;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::oauth2::{
@@ -3406,7 +3515,7 @@ mod tests {
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
     use crate::prelude::*;
     use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
-    use crate::valueset::{ValueSetOauthScopeMap, ValueSetSshKey};
+    use crate::valueset::{ValueSetOauthScopeMap, ValueSetSshKey, ValueSetUint32};
     use base64::{engine::general_purpose, Engine as _};
     use compact_jwt::{
         compact::JwkUse, crypto::JwsRs256Verifier, dangernoverify::JwsDangerReleaseWithoutVerify,
@@ -3452,6 +3561,8 @@ mod tests {
                 nonce: Some("abcdef".to_string()),
                 oidc_ext: Default::default(),
                 max_age: None,
+                prompt: Default::default(),
+                ui_locales: Default::default(),
                 unknown_keys: Default::default(),
             };
 
@@ -4041,6 +4152,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4063,6 +4176,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4085,6 +4200,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4107,6 +4224,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            prompt: Default::default(),
+            ui_locales: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4129,6 +4248,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4151,6 +4272,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4172,6 +4295,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4193,6 +4318,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4215,6 +4342,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4239,6 +4368,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4261,6 +4392,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4283,6 +4416,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4580,6 +4715,8 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4662,6 +4799,8 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -4760,7 +4899,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
 
         eprintln!("👉  {intr_response:?}");
@@ -4799,7 +4938,7 @@ mod tests {
         // check again.
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
 
         assert!(!intr_response.active);
@@ -4861,29 +5000,14 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
         drop(idms_prox_read);
 
-        // First, the revoke needs basic auth. Provide incorrect auth, and we fail.
-        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
-
-        let bad_client_authz = ClientAuthInfo::encode_basic("test_resource_server", "12345");
-
-        let revoke_request = TokenRevokeRequest {
-            token: oauth2_token.access_token.clone(),
-            token_type_hint: None,
-            client_post_auth: ClientPostAuth::default(),
-        };
-        let e = idms_prox_write
-            .oauth2_token_revoke(&bad_client_authz, &revoke_request, ct)
-            .unwrap_err();
-        assert!(matches!(e, Oauth2Error::AuthenticationRequired));
-        assert!(idms_prox_write.commit().is_ok());
-
-        // Now submit a non-existent/invalid token. Does not affect our tokens validity.
+        // Now submit a non-existent/invalid token. Considered a failure to authenticate
+        // as the token wasn't valid.
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let revoke_request = TokenRevokeRequest {
             token: "this is an invalid token, nothing will happen!".to_string(),
@@ -4891,15 +5015,15 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let e = idms_prox_write
-            .oauth2_token_revoke(&client_authz, &revoke_request, ct)
+            .oauth2_token_revoke(&revoke_request, ct)
             .unwrap_err();
-        assert!(matches!(e, Oauth2Error::InvalidRequest));
+        assert!(matches!(e, Oauth2Error::AuthenticationRequired));
         assert!(idms_prox_write.commit().is_ok());
 
         // Check our token is still valid.
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
         assert!(intr_response.active);
         drop(idms_prox_read);
@@ -4912,14 +5036,14 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
-            .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
+            .oauth2_token_revoke(&revoke_request, ct,)
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
         // Assert it is now invalid.
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
 
         assert!(!intr_response.active);
@@ -4927,10 +5051,7 @@ mod tests {
 
         // Force trim the session and wait for the grace window to pass. The token will be invalidated
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
-        let filt = filter!(f_eq(
-            Attribute::Uuid,
-            PartialValue::Uuid(ident.get_uuid().unwrap())
-        ));
+        let filt = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(ident.get_uuid())));
         let mut work_set = idms_prox_write
             .qs_write
             .internal_search_writeable(&filt)
@@ -4948,14 +5069,14 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
         // Grace window in effect.
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
         assert!(intr_response.active);
 
         // Grace window passed, it will now be invalid.
         let ct = ct + AUTH_TOKEN_GRACE_WINDOW;
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
         assert!(!intr_response.active);
 
@@ -4969,7 +5090,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
-            .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
+            .oauth2_token_revoke(&revoke_request, ct,)
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -5232,8 +5353,8 @@ mod tests {
         assert!(
             discovery.token_endpoint_auth_methods_supported
                 == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
+                    EndpointAuthMethod::ClientSecretBasic,
+                    EndpointAuthMethod::ClientSecretPost
                 ]
         );
         assert!(discovery.service_documentation.is_some());
@@ -5252,11 +5373,7 @@ mod tests {
                 )
         );
         assert!(
-            discovery.revocation_endpoint_auth_methods_supported
-                == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
-                ]
+            discovery.revocation_endpoint_auth_methods_supported == vec![EndpointAuthMethod::None,]
         );
 
         assert!(
@@ -5271,10 +5388,7 @@ mod tests {
         );
         assert!(
             discovery.introspection_endpoint_auth_methods_supported
-                == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
-                ]
+                == vec![EndpointAuthMethod::None,]
         );
         assert!(discovery
             .introspection_endpoint_auth_signing_alg_values_supported
@@ -5398,8 +5512,8 @@ mod tests {
         assert!(
             discovery.token_endpoint_auth_methods_supported
                 == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
+                    EndpointAuthMethod::ClientSecretBasic,
+                    EndpointAuthMethod::ClientSecretPost
                 ]
         );
         assert_eq!(
@@ -5452,11 +5566,7 @@ mod tests {
                 )
         );
         assert!(
-            discovery.revocation_endpoint_auth_methods_supported
-                == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
-                ]
+            discovery.revocation_endpoint_auth_methods_supported == vec![EndpointAuthMethod::None,]
         );
 
         assert!(
@@ -5470,10 +5580,7 @@ mod tests {
         );
         assert!(
             discovery.introspection_endpoint_auth_methods_supported
-                == vec![
-                    TokenEndpointAuthMethod::ClientSecretBasic,
-                    TokenEndpointAuthMethod::ClientSecretPost
-                ]
+                == vec![EndpointAuthMethod::None,]
         );
         assert!(discovery
             .introspection_endpoint_auth_signing_alg_values_supported
@@ -6052,6 +6159,8 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -6301,6 +6410,8 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -6362,6 +6473,8 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -6501,6 +6614,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -6578,6 +6693,8 @@ mod tests {
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -6638,9 +6755,9 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
         ct: Duration,
-    ) -> (AccessTokenResponse, ClientAuthInfo) {
+    ) -> (AccessTokenResponse, ClientAuthInfo, Uuid) {
         // First, setup to get a token.
-        let (secret, _uat, ident, _) =
+        let (secret, _uat, ident, oauth2_rs_uuid) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
@@ -6683,7 +6800,7 @@ mod tests {
 
         trace!(?access_token_response_1);
 
-        (access_token_response_1, client_authz)
+        (access_token_response_1, client_authz, oauth2_rs_uuid)
     }
 
     #[idm_test]
@@ -6694,7 +6811,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
@@ -6742,7 +6859,7 @@ mod tests {
 
         // get the refresh token expiry now before we use it.
         let reflected_token = idms_prox_write
-            .reflect_oauth2_token(&client_authz, &refresh_token)
+            .reflect_oauth2_token(&refresh_token)
             .expect("Failed to access internals of the refresh token");
 
         let refresh_exp = match reflected_token {
@@ -6779,7 +6896,7 @@ mod tests {
             SessionState::ExpiresAt(
                 time::OffsetDateTime::UNIX_EPOCH
                     + ct
-                    + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY)
+                    + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY as u64)
             ),
             session.1.state
         );
@@ -6792,15 +6909,32 @@ mod tests {
         assert!(access_token_response_3.refresh_token != access_token_response_2.refresh_token);
         assert!(access_token_response_3.id_token != access_token_response_2.id_token);
 
-        // refresh after refresh has expired.
-        // Refresh tokens have a max time limit - the session time limit still bounds it though, but
-        // so does the refresh token limit. We check both, but the refresh time is checked first so
-        // we can guarantee this in this test.
+        // ========================================
+        // Check that a custom refresh time applies.
 
-        let ct = Duration::from_secs(
-            TEST_CURRENT_TIME + refresh_exp as u64 + access_token_response_3.expires_in as u64,
-        );
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
+        let custom_exp = OAUTH_REFRESH_TOKEN_EXPIRY + 1;
+
+        let modlist = ModifyList::new_list(vec![
+            // Member of a claim map.
+            Modify::Set(
+                Attribute::OAuth2RefreshTokenExpiry,
+                ValueSetUint32::new(custom_exp),
+            ),
+        ]);
+
+        assert!(idms_prox_write
+            .qs_write
+            .internal_modify(
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(oauth2_rs_uuid))),
+                &modlist,
+            )
+            .is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now check the new token has the updated refresh lifetime.
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_3
@@ -6816,9 +6950,57 @@ mod tests {
         .into();
         let access_token_response_4 = idms_prox_write
             .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .unwrap();
+
+        let entry = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_TESTPERSON_1)
+            .expect("failed");
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
+            .and_then(|sessions| sessions.first_key_value())
+            // If there is no map, then something is wrong.
+            .unwrap();
+
+        trace!(?session);
+        // The Oauth2 Session must be updated with a newer session time, this time it's
+        // the custom expiration.
+        assert_eq!(
+            SessionState::ExpiresAt(
+                time::OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(custom_exp as u64)
+            ),
+            session.1.state
+        );
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // refresh after refresh has expired.
+        // Refresh tokens have a max time limit - the session time limit still bounds it though, but
+        // so does the refresh token limit. We check both, but the refresh time is checked first so
+        // we can guarantee this in this test.
+
+        let ct = Duration::from_secs(
+            TEST_CURRENT_TIME + refresh_exp as u64 + access_token_response_4.expires_in as u64,
+        );
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let refresh_token = access_token_response_4
+            .refresh_token
+            .as_ref()
+            .expect("no refresh token was issued")
+            .clone();
+
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: None,
+        }
+        .into();
+        let access_token_response_5 = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
             .unwrap_err();
 
-        assert_eq!(access_token_response_4, Oauth2Error::InvalidGrant);
+        assert_eq!(access_token_response_5, Oauth2Error::InvalidGrant);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -6832,7 +7014,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
@@ -6845,7 +7027,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
-            .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
+            .oauth2_token_revoke(&revoke_request, ct,)
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
@@ -6883,7 +7065,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, _client_authz) =
+        let (access_token_response_1, _client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         let bad_client_authz = ClientAuthInfo::encode_basic("test_resource_server", "12345");
@@ -6922,7 +7104,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
@@ -6961,7 +7143,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
@@ -7039,7 +7221,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // ============================================
@@ -7100,7 +7282,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let (access_token_response_1, client_authz) =
+        let (access_token_response_1, client_authz, _oauth2_rs_uuid) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
         // https://www.rfc-editor.org/rfc/rfc6749#section-1.5
@@ -7506,7 +7688,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
 
         eprintln!("👉  {intr_response:?}");
@@ -7576,6 +7758,8 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
 
@@ -7737,7 +7921,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to introspect service account token");
 
         assert!(intr_response.active);
@@ -7759,7 +7943,6 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, _uat, _ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
-        let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
         // scope: Some(btreeset!["invalid_scope".to_string()]),
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
@@ -7791,7 +7974,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
 
         eprintln!("👉  {intr_response:?}");
@@ -7819,7 +8002,7 @@ mod tests {
             client_post_auth: ClientPostAuth::default(),
         };
         assert!(idms_prox_write
-            .oauth2_token_revoke(&client_authz, &revoke_request, ct,)
+            .oauth2_token_revoke(&revoke_request, ct,)
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
@@ -7834,7 +8017,7 @@ mod tests {
         };
 
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+            .check_oauth2_token_introspect(&intr_request, ct)
             .expect("Failed to inspect token");
         assert!(!intr_response.active);
 
@@ -8018,7 +8201,7 @@ mod tests {
             ),
             (
                 OauthRSType::Basic {
-                    authz_secret: "supersecret".to_string(),
+                    authz_secret: CtSecret::from("supersecret".to_string()),
                     enable_pkce: false,
                     enable_consent_prompt: true,
                 },
@@ -8063,6 +8246,8 @@ mod tests {
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
+            ui_locales: Default::default(),
+            prompt: Default::default(),
             unknown_keys: Default::default(),
         };
         println!("{auth_req:?}");
@@ -8121,4 +8306,292 @@ mod tests {
         // Assert that it still doesn't have any consent maps
         assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
     }
+
+    fn auth_req_with_prompt(
+        pkce_request: PkceRequest,
+        prompt: Vec<Prompt>,
+    ) -> AuthorisationRequest {
+        AuthorisationRequest {
+            response_type: ResponseType::Code,
+            response_mode: None,
+            client_id: "test_resource_server".to_string(),
+            state: Some("123".to_string()),
+            pkce_request: Some(pkce_request),
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            nonce: Some("abcdef".to_string()),
+            oidc_ext: Default::default(),
+            max_age: None,
+            ui_locales: Default::default(),
+            prompt,
+            unknown_keys: Default::default(),
+        }
+    }
+
+    async fn grant_consent_for_identity(
+        idms: &IdmServer,
+        ident: &Identity,
+        uat: &UserAuthToken,
+        ct: Duration,
+    ) -> Identity {
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let pkce_secret = PkceS256Secret::default();
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            ident,
+            ct,
+            pkce_secret.to_request(),
+            OAUTH2_SCOPE_OPENID.to_string()
+        );
+
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!("Expected ConsentRequested, got: {consent_request:?}");
+        };
+
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let _permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        let new_ident = idms_prox_write
+            .process_uat_to_identity(uat, ct, Source::Internal)
+            .expect("Unable to process uat");
+
+        assert!(idms_prox_write.commit().is_ok());
+        new_ident
+    }
+
+    /// When provided with too many arguments for the `prompt` key, we should return a InvalidRequest as we want to
+    /// protect ourselves from having to linearly search across hundreds or thousands of values
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_fails_for_too_many_values(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(
+            pkce_secret.to_request(),
+            Vec::from([
+                Prompt::Login,
+                Prompt::Consent,
+                Prompt::SelectAccount,
+                Prompt::None,
+                Prompt::Invalid("bagel".into()),
+                Prompt::Invalid("panko".into()),
+            ]),
+        );
+
+        // Too many prompt values should cause the request to be rejected with InvalidRequest
+        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+
+        assert_eq!(
+            result.unwrap_err(),
+            Oauth2Error::InvalidRequest,
+            "An invalid/unrecognised prompt value must return InvalidRequest"
+        );
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1:
+    /// > If an OP receives a prompt value outside the set defined above that it does not understand,
+    /// > it MAY return an error or it MAY ignore it
+    ///
+    /// We want to return error in case we do not recognize the prompt provided
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_invalid_returns_error(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let invalid_value = "bor-sirhc".to_string();
+
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(
+            pkce_secret.to_request(),
+            Vec::from([Prompt::Invalid(invalid_value)]),
+        );
+
+        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+
+        assert_eq!(
+            result.unwrap_err(),
+            Oauth2Error::InvalidRequest,
+            "An invalid/unrecognised prompt value must return InvalidRequest"
+        );
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1 prompt=none:
+    ///
+    /// > The Authorization Server MUST NOT display any authentication or consent
+    /// > user interface pages. An error is returned if an End-User is not already
+    /// > authenticated
+    ///
+    /// If the user isn't already logged in we return `login_required`
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_none_unauthenticated_returns_login_required(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, _ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
+
+        // No identity provided (None) - user is not authenticated.
+        let result = idms_prox_read.check_oauth2_authorisation(None, &auth_req, ct);
+
+        assert!(
+            result.unwrap_err() == Oauth2Error::LoginRequired,
+            "prompt=none without authentication must return login_required"
+        );
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1 prompt=none:
+    ///
+    /// > The Authorization Server MUST NOT display any authentication or consent
+    /// > user interface pages. An error is returned if an End-User is not already
+    /// > authenticated
+    ///
+    /// If the user is logged in, but hasn't given consent, we return `interaction_required`
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_none_no_consent_returns_interaction_required(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
+
+        // Ident is authenticated but has never granted consent.
+        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+
+        assert!(
+            result.unwrap_err() == Oauth2Error::InteractionRequired,
+            "prompt=none with authenticated user but no prior consent must return interaction_required"
+        );
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1 prompt=none:
+    ///
+    /// > The Authorization Server MUST NOT display any authentication or consent
+    /// > user interface pages. An error is returned if an End-User is not already
+    /// > authenticated
+    ///
+    /// If the user is logged in *and* has given consent, we return permitted.
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_none_with_prior_consent_succeeds(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        // First, grant consent via the normal flow.
+        let ident = grant_consent_for_identity(idms, &ident, &uat, ct).await;
+
+        // Now issue a prompt=none request - should succeed silently.
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
+
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .expect("prompt=none with prior consent should succeed");
+
+        assert!(
+            matches!(result, AuthoriseResponse::Permitted(_)),
+            "prompt=none with authenticated user and prior consent must return Permitted"
+        );
+    }
+
+    /// OIDC Core 1.0 §3.1.2.1 prompt=login:
+    ///
+    /// > The Authorization Server SHOULD prompt the End-User for reauthentication.
+    ///
+    /// If the user is already authenticated, we still prompt for re-authentication.
+    #[idm_test]
+    async fn test_idm_oauth2_prompt_login_forces_reauthentication(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+        let pkce_secret = PkceS256Secret::default();
+
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Login]));
+
+        // Even though the user is authenticated, prompt=login should force re-auth.
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .expect("prompt=login should not error");
+
+        assert!(
+            matches!(result, AuthoriseResponse::AuthenticationRequired { .. }),
+            "prompt=login must force re-authentication even when user is already authenticated"
+        );
+    }
+
+    //TODO: Implement prompt=consent. Requires supporting prompt=login%20consent which will require extra thinking
+
+    // /// OIDC Core 1.0 §3.1.2.1 prompt=consent:
+    // ///
+    // /// > The Authorization Server SHOULD prompt the End-User for consent before
+    // /// > returning information to the Client.
+    // ///
+    // /// If the user is logged in and has already given consent, we prompt for consent again
+    // #[idm_test]
+    // async fn test_idm_oauth2_prompt_consent_forces_reconsent(
+    //     idms: &IdmServer,
+    //     _idms_delayed: &mut IdmServerDelayed,
+    // ) {
+    //     let ct = Duration::from_secs(TEST_CURRENT_TIME);
+    //     let (_secret, uat, ident, _) =
+    //         setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+    //     // First, grant consent via the normal flow.
+    //     let ident = grant_consent_for_identity(idms, &ident, &uat, ct).await;
+
+    //     // Now issue prompt=consent - should force re-consent even though
+    //     // the user has previously consented.
+    //     let idms_prox_read = idms.proxy_read().await.unwrap();
+    //     let pkce_secret = PkceS256Secret::default();
+
+    //     let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Consent]));
+
+    //     let result = idms_prox_read
+    //         .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+    //         .expect("prompt=consent should not error");
+
+    //     assert!(
+    //         matches!(result, AuthoriseResponse::ConsentRequested { .. }),
+    //         "prompt=consent must force the consent screen even when consent was previously granted"
+    //     );
+    // }
 }

@@ -162,7 +162,7 @@ impl QueryServerWriteTransaction<'_> {
         self.supplier_generate_key_cert(domain_name).map(|_| ())
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub fn supplier_get_key_cert(
         &mut self,
         domain_name: &str,

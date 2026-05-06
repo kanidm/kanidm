@@ -536,6 +536,13 @@ impl InitCredentialUpdateIntentEvent {
     }
 }
 
+pub struct CredentialUpdateAccountRecovery {
+    // Who is it targeting?
+    pub email: String,
+    // How long is it valid for?
+    pub max_ttl: Option<Duration>,
+}
+
 pub struct InitCredentialUpdateIntentSendEvent {
     // Who initiated this?
     pub ident: Identity,
@@ -560,11 +567,7 @@ impl InitCredentialUpdateEvent {
     #[cfg(test)]
     pub fn new_impersonate_entry(e: std::sync::Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         let ident = Identity::from_impersonate_entry_readwrite(e);
-
-        let target = ident
-            .get_uuid()
-            .ok_or(OperationError::InvalidState)
-            .expect("Identity has no uuid associated");
+        let target = ident.get_uuid();
         InitCredentialUpdateEvent { ident, target }
     }
 }
@@ -977,6 +980,55 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok((CredentialUpdateSessionToken { token_enc }, status))
     }
 
+    pub fn credential_update_account_recovery(
+        &mut self,
+        event: CredentialUpdateAccountRecovery,
+        ct: Duration,
+    ) -> Result<(), OperationError> {
+        if !self.qs_write.domain_info().allow_account_recovery() {
+            error!("Account Recovery is Disabled, Rejecting Attempt");
+            return Err(OperationError::CU0010AccountRecoveryDisabled);
+        }
+
+        // This is an internal identity that can only process limited
+        // account requests.
+        let ident = Identity::account_request();
+
+        // Look up the account.
+        let filter = filter!(f_eq(
+            Attribute::Mail,
+            PartialValue::EmailAddress(event.email.clone())
+        ));
+
+        let mut entries = self
+            .qs_write
+            .impersonate_search(filter.clone(), filter, &ident)?;
+
+        let entry = entries
+            .pop()
+            .and_then(|entry| entries.is_empty().then_some(entry))
+            .ok_or(OperationError::CU0009AccountEmailNotFound)?;
+
+        let target = entry.get_uuid();
+
+        // Verify our internal service account has access to modify the target.
+        //
+        // IMPORTANT: We use the permissions of the *target* as this is effectively a "self-request"
+        // to change their credentials. If we were to use the AccountRequest identity, we MAY be allowing
+        // someone to modify credentials they are not allowed to!
+        //
+        // This shows a limitation of the current security system in how we currently focus permissions
+        // on attributes, not *actions*.
+        let target_ident = Identity::from_impersonate_entry_readwrite(entry);
+
+        let (account, _resolved_account_policy, perms) =
+            self.validate_init_credential_update(target, &target_ident)?;
+
+        // Setup and process the credential update transmission. We do this as the AccountRequest
+        // identity which needs to be able to create/modify the email object.
+        self.process_credential_update_send(&account, event.max_ttl, perms, event.email, ct)
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn init_credential_update_intent_send(
         &mut self,
@@ -1004,9 +1056,20 @@ impl IdmServerProxyWriteTransaction<'_> {
             })
         }?;
 
+        self.process_credential_update_send(&account, event.max_ttl, perms, to_email, ct)
+    }
+
+    fn process_credential_update_send(
+        &mut self,
+        account: &Account,
+        max_ttl: Option<Duration>,
+        perms: CredUpdateSessionPerms,
+        to_email: String,
+        ct: Duration,
+    ) -> Result<(), OperationError> {
         // ==== AUTHORISATION CHECKED ===
         let (intent_id, expiry_time) =
-            self.build_credential_update_intent(event.max_ttl, &account, perms, ct)?;
+            self.build_credential_update_intent(max_ttl, account, perms, ct)?;
 
         // Queue the message to be sent.
         let display_name = account.display_name().to_owned();
@@ -1017,12 +1080,12 @@ impl IdmServerProxyWriteTransaction<'_> {
             expiry_time,
         };
 
+        let ident = Identity::message_queue();
+
         self.qs_write.queue_message(
             // Should we actually impersonate here? We probably need an account for internal sending
             // that is disconnected from the act of creating the reset.
-            &event.ident,
-            message,
-            to_email,
+            &ident, message, to_email,
         )
     }
 
@@ -2786,8 +2849,9 @@ impl IdmServerCredUpdateTransaction<'_> {
 #[cfg(test)]
 mod tests {
     use super::{
-        CredentialState, CredentialUpdateSessionStatus, CredentialUpdateSessionStatusWarnings,
-        CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
+        CredentialState, CredentialUpdateAccountRecovery, CredentialUpdateSessionStatus,
+        CredentialUpdateSessionStatusWarnings, CredentialUpdateSessionToken,
+        InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
         InitCredentialUpdateIntentSendEvent, MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL,
         MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
@@ -2814,7 +2878,7 @@ mod tests {
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::softtoken::{self, SoftToken};
-    use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
     use webauthn_rs::prelude::AttestationCaListBuilder;
 
     const TEST_CURRENT_TIME: u64 = 6000;
@@ -3279,10 +3343,10 @@ mod tests {
         }
     }
 
-    async fn check_testperson_passkey<T: AuthenticatorBackend>(
+    async fn check_testperson_passkey<T: WebauthnAuthenticator>(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
-        wa: &mut WebauthnAuthenticator<T>,
+        wa: &mut T,
         origin: Url,
         ct: Duration,
     ) -> Option<JwsCompact> {
@@ -3482,6 +3546,134 @@ mod tests {
         idms_prox_write
             .init_credential_update_intent_send(event, ct)
             .expect("Should succeed!");
+
+        // Find the message in the queue.
+        let filter = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::OutboundMessage.into()),
+            f_eq(
+                Attribute::MailDestination,
+                PartialValue::EmailAddress(email_address)
+            )
+        ]));
+
+        let mut entries = idms_prox_write
+            .qs_write
+            .impersonate_search(filter.clone(), filter, &idm_admin_identity)
+            .expect("Unable to search message queue");
+
+        assert_eq!(entries.len(), 1);
+        let message_entry = entries.pop().unwrap();
+
+        let message = message_entry
+            .get_ava_set(Attribute::MessageTemplate)
+            .and_then(|vs| vs.as_message())
+            .unwrap();
+
+        match message {
+            OutboundMessage::CredentialResetV1 { display_name, .. } => {
+                assert_eq!(display_name, TESTPERSON_NAME);
+            }
+            _ => panic!("Wrong message type!"),
+        }
+        // Done!!! We quwued an email to send.
+    }
+
+    #[idm_test]
+    async fn account_recovery_basic(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let idm_admin_identity = idms_prox_write
+            .qs_write
+            .impersonate_uuid_as_readwrite_identity(UUID_IDM_ADMIN)
+            .expect("Failed to retrieve identity");
+
+        let email_address = format!("{}@example.com", TESTPERSON_NAME);
+
+        let test_entry = EntryInitNew::from_iter([
+            (
+                Attribute::Class,
+                ValueSetIutf8::from_iter([
+                    EntryClass::Object.into(),
+                    EntryClass::Account.into(),
+                    EntryClass::Person.into(),
+                ])
+                .unwrap() as ValueSet,
+            ),
+            (
+                Attribute::Name,
+                ValueSetIname::new(TESTPERSON_NAME) as ValueSet,
+            ),
+            (
+                Attribute::Uuid,
+                ValueSetUuid::new(TESTPERSON_UUID) as ValueSet,
+            ),
+            (
+                Attribute::DisplayName,
+                ValueSetUtf8::new(TESTPERSON_NAME.into()) as ValueSet,
+            ),
+            (
+                Attribute::Mail,
+                ValueSetEmailAddress::new(email_address.clone()) as ValueSet,
+            ),
+        ]);
+
+        let ce =
+            CreateEvent::new_impersonate_identity(idm_admin_identity.clone(), vec![test_entry]);
+        let cr = idms_prox_write.qs_write.create(&ce);
+        assert!(cr.is_ok());
+
+        // Test with the feature DISABLED. Must be rejected!
+        let event = CredentialUpdateAccountRecovery {
+            email: "invalid@example.com".into(),
+            max_ttl: None,
+        };
+
+        let result = idms_prox_write
+            .credential_update_account_recovery(event, ct)
+            .expect_err("Must not succeed!");
+
+        assert_eq!(result, OperationError::CU0010AccountRecoveryDisabled);
+
+        // Enable the feature
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_set(
+                    Attribute::DomainAllowAccountRecovery,
+                    ValueSetBool::new(true),
+                ),
+            )
+            .expect("Unable to activate credential reset feature.");
+
+        idms_prox_write
+            .qs_write
+            .reload()
+            .expect("Unable to reload domain info.");
+
+        // Use a non-existant email.
+        let event = CredentialUpdateAccountRecovery {
+            email: "invalid@example.com".into(),
+            max_ttl: None,
+        };
+
+        let result = idms_prox_write
+            .credential_update_account_recovery(event, ct)
+            .expect_err("Must not succeed!");
+
+        assert_eq!(result, OperationError::CU0009AccountEmailNotFound);
+
+        // Use a real email.
+        let event = CredentialUpdateAccountRecovery {
+            email: email_address.clone(),
+            max_ttl: None,
+        };
+
+        idms_prox_write
+            .credential_update_account_recovery(event, ct)
+            .expect("Must succeed!");
 
         // Find the message in the queue.
         let filter = filter!(f_and(vec![
@@ -4176,7 +4368,7 @@ mod tests {
         origin: &Url,
         cutxn: &IdmServerCredUpdateTransaction<'_>,
         cust: &CredentialUpdateSessionToken,
-        wa: &mut WebauthnAuthenticator<SoftPasskey>,
+        wa: &mut SoftPasskey,
     ) -> CredentialUpdateSessionStatus {
         // Start the registration
         let c_status = cutxn
@@ -4224,7 +4416,7 @@ mod tests {
         let origin = cutxn.get_origin().clone();
 
         // Create a soft passkey
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
@@ -4575,7 +4767,7 @@ mod tests {
         assert!(c_status.primary.is_none());
 
         let origin = cutxn.get_origin().clone();
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
@@ -4633,7 +4825,7 @@ mod tests {
         assert!(matches!(err, OperationError::AccessDenied));
 
         let origin = cutxn.get_origin().clone();
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
@@ -4656,11 +4848,11 @@ mod tests {
 
         // Create the attested soft token we will use in this test.
         let (soft_token_valid_a, ca_root_a) = SoftToken::new(true).unwrap();
-        let mut wa_token_valid = WebauthnAuthenticator::new(soft_token_valid_a);
+        let mut wa_token_valid = soft_token_valid_a;
 
         // We need a second for when we rotate the token.
         let (soft_token_valid_b, ca_root_b) = SoftToken::new(true).unwrap();
-        let mut wa_token_valid_b = WebauthnAuthenticator::new(soft_token_valid_b);
+        let mut wa_token_valid_b = soft_token_valid_b;
 
         // Create it's associated policy.
         let mut att_ca_builder = AttestationCaListBuilder::new();
@@ -4697,9 +4889,9 @@ mod tests {
 
         // Create the invalid tokens
         let (soft_token_invalid, _) = SoftToken::new(true).unwrap();
-        let mut wa_token_invalid = WebauthnAuthenticator::new(soft_token_invalid);
+        let mut wa_token_invalid = soft_token_invalid;
 
-        let mut wa_passkey_invalid = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa_passkey_invalid = SoftPasskey::new(true);
 
         // Setup the cred update session.
 
@@ -4898,10 +5090,10 @@ mod tests {
 
         // Setup the policy.
         let (soft_token_1, ca_root_1) = SoftToken::new(true).unwrap();
-        let mut wa_token_1 = WebauthnAuthenticator::new(soft_token_1);
+        let mut wa_token_1 = soft_token_1;
 
         let (soft_token_2, ca_root_2) = SoftToken::new(true).unwrap();
-        let mut wa_token_2 = WebauthnAuthenticator::new(soft_token_2);
+        let mut wa_token_2 = soft_token_2;
 
         // This is the original policy that we enroll.
         let mut att_ca_builder = AttestationCaListBuilder::new();
@@ -5084,7 +5276,7 @@ mod tests {
 
         // Setup the policy.
         let (soft_token_1, ca_root_1) = SoftToken::new(true).unwrap();
-        let mut wa_token_1 = WebauthnAuthenticator::new(soft_token_1);
+        let mut wa_token_1 = soft_token_1;
 
         let mut att_ca_builder = AttestationCaListBuilder::new();
         att_ca_builder
@@ -5590,7 +5782,7 @@ mod tests {
         // Setting Passkey with no Password Credentials causes EPOCH to be set
         let cutxn = idms.cred_update_transaction().await.unwrap();
         let origin = cutxn.get_origin().clone();
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
         assert!(c_status.can_commit);

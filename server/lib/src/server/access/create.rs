@@ -46,6 +46,19 @@ pub(super) fn apply_create_access<'a>(
         IResult::Grant | IResult::Ignore | IResult::Allow { .. } => {}
     }
 
+    match message_queue(ident, entry) {
+        IResult::Deny => denied = true,
+        IResult::Grant => grant = true,
+        IResult::Ignore => {}
+        IResult::Allow {
+            mut pres,
+            mut pres_cls,
+        } => {
+            allow_pres.append(&mut pres);
+            allow_pres_cls.append(&mut pres_cls);
+        }
+    }
+
     match migration_filter_entry(ident, entry) {
         IResult::Deny => denied = true,
         IResult::Grant => grant = true,
@@ -117,6 +130,14 @@ fn create_filter_entry<'a>(
         }
         IdentType::Internal(InternalRole::Migration) => {
             // Checked in a separate function.
+            return IResult::Ignore;
+        }
+        IdentType::Internal(InternalRole::AccountRequest) => {
+            // No current rules.
+            return IResult::Ignore;
+        }
+        IdentType::Internal(InternalRole::MessageQueue) => {
+            // No current rules.
             return IResult::Ignore;
         }
         IdentType::Synch(_) => {
@@ -234,7 +255,9 @@ fn create_filter_entry<'a>(
 
 fn protected_filter_entry<'a>(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IResult<'a> {
     match &ident.origin {
-        IdentType::Internal(InternalRole::System) => {
+        IdentType::Internal(InternalRole::System)
+        | IdentType::Internal(InternalRole::AccountRequest)
+        | IdentType::Internal(InternalRole::MessageQueue) => {
             trace!("Internal operation, protected rules do not apply.");
             IResult::Ignore
         }
@@ -288,6 +311,38 @@ fn migration_filter_entry<'a>(ident: &Identity, entry: &Entry<EntryInit, EntryNe
                             pres_cls: allow_cls,
                         };
                     }
+                }
+            }
+            IResult::Deny
+        }
+        _ => IResult::Ignore,
+    }
+}
+
+fn message_queue<'a>(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IResult<'a> {
+    match &ident.origin {
+        IdentType::Internal(InternalRole::MessageQueue) => {
+            trace!(uuid = ?entry.get_display_id(), "Internal Message Queue");
+
+            if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
+                if classes.contains(EntryClass::OutboundMessage.into()) {
+                    let allow_attrs = BTreeSet::from([
+                        Attribute::Class,
+                        Attribute::DeleteAfter,
+                        Attribute::MailDestination,
+                        Attribute::MessageTemplate,
+                        Attribute::SendAfter,
+                    ]);
+
+                    let allow_cls = BTreeSet::from([
+                        EntryClass::Object.into(),
+                        EntryClass::OutboundMessage.into(),
+                    ]);
+
+                    return IResult::Allow {
+                        pres: allow_attrs,
+                        pres_cls: allow_cls,
+                    };
                 }
             }
             IResult::Deny

@@ -47,3 +47,4 @@ pub mod internal;
 pub mod v1_read;
 pub mod v1_scim;
 pub mod v1_write;
+pub mod write_action;

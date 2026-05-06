@@ -35,7 +35,15 @@ impl ValueSetSshKey {
                     .map_err(|err| {
                         warn!(%tag, ?err, "discarding corrupted ssh public key");
                     })
-                    .map(|pk| (tag, pk))
+                    .map(|pk| {
+                        if tag.is_empty() {
+                            // No tag was known - use the hash of the key to guarantee it's unique.
+                            // New keys can't be created with empty strs
+                            (pk.fingerprint().hash, pk)
+                        } else {
+                            (tag, pk)
+                        }
+                    })
                     .ok()
             })
             .collect();
@@ -145,6 +153,7 @@ impl ValueSetT for ValueSetSshKey {
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
         self.map.iter().all(|(s, _key)| {
+            !s.is_empty() &&
             Value::validate_str_escapes(s)
                 // && Value::validate_iname(s)
                 && Value::validate_singleline(s)

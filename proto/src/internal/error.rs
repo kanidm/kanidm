@@ -176,6 +176,8 @@ pub enum OperationError {
     CU0006IntentTokenInvalidated,
     CU0007AccountEmailNotFound,
     CU0008AccountMissingEmail,
+    CU0009AccountEmailNotFound,
+    CU0010AccountRecoveryDisabled,
 
     // ValueSet errors
     VS0001IncomingReplSshPublicKey,
@@ -441,14 +443,14 @@ impl OperationError {
             Self::ReferenceLoop => Some("The change you have made would introduce an invalid reference loop. Unable to proceed.".into()),
             Self::SessionMayNotReauth => Some("The current session is not able to re-authenticate to elevate privileges to read-write.".into()),
 
-    Self::AU0001InvalidState => Some("Invalid authentication session state for request".into()),
-    Self::AU0002JwsSerialisation => Some("JWS serialisation failed".into()),
-    Self::AU0003JwsSignature => Some("JWS signature failed".into()),
-    Self::AU0004UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
-    Self::AU0005DelayedProcessFailure => Some("Delaying processing failure, unable to proceed".into()),
-    Self::AU0006CredentialMayNotReauthenticate => Some("Credential may not reauthenticate".into()),
-    Self::AU0007UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
-    Self::AU0008ClientAuthInfoPrevalidation => Some("Client Authentication Info prevalidation did not occur when expected".into()),
+            Self::AU0001InvalidState => Some("Invalid authentication session state for request".into()),
+            Self::AU0002JwsSerialisation => Some("JWS serialisation failed".into()),
+            Self::AU0003JwsSignature => Some("JWS signature failed".into()),
+            Self::AU0004UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
+            Self::AU0005DelayedProcessFailure => Some("Delaying processing failure, unable to proceed".into()),
+            Self::AU0006CredentialMayNotReauthenticate => Some("Credential may not reauthenticate".into()),
+            Self::AU0007UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
+            Self::AU0008ClientAuthInfoPrevalidation => Some("Client Authentication Info prevalidation did not occur when expected".into()),
 
             Self::CU0001WebauthnAttestationNotTrusted => None,
             Self::CU0002WebauthnRegistrationError => None,
@@ -457,8 +459,11 @@ impl OperationError {
             Self::CU0004SessionInconsistent => Some("The session is unable to be committed due to unresolved warnings.".into()),
             Self::CU0005IntentTokenConflict => Some("The intent token used to create this session has been reused in another browser/tab and may not proceed.".into()),
             Self::CU0006IntentTokenInvalidated => Some("The intent token has been invalidated/revoked before the commit could be accepted. Has it been used in another browser or tab?".into()),
-            Self::CU0007AccountEmailNotFound => Some("The requested email to send the credential update intent token to is not registered to the account.".into()),
+            Self::CU0007AccountEmailNotFound |
+            Self::CU0009AccountEmailNotFound
+            => Some("The target email for a credential update intent token send request is not registered to the account.".into()),
             Self::CU0008AccountMissingEmail => Some("The account has no email addresses and may not have a credential update intent token sent to it.".into()),
+            Self::CU0010AccountRecoveryDisabled => Some("The account recovery feature is disabled. See `kanidm system domain set-allow-account-recovery`".into()),
 
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,

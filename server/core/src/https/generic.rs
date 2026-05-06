@@ -4,6 +4,7 @@ use axum::response::{IntoResponse, Redirect};
 use axum::{Extension, Json};
 use kanidmd_lib::prelude::APPLICATION_JSON;
 use kanidmd_lib::status::StatusRequestEvent;
+use url::Url;
 
 use super::middleware::KOpId;
 use super::views::constants::Urls;
@@ -64,4 +65,24 @@ pub async fn robots_txt() -> impl IntoResponse {
 )]
 pub async fn redirect_to_update_credentials() -> impl IntoResponse {
     Redirect::to(Urls::UpdateCredentials.as_ref())
+}
+
+#[serde_with::skip_serializing_none]
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WellKnownPasskeyEndpoints {
+    enroll: Option<Url>,
+    manage: Option<Url>,
+    prf_usage_details: Option<Url>,
+}
+
+pub async fn passkey_endpoints(State(state): State<ServerState>) -> impl IntoResponse {
+    let mut manage = state.origin;
+    manage.set_path("/ui/update_credentials");
+
+    Json(WellKnownPasskeyEndpoints {
+        enroll: None,
+        manage: Some(manage),
+        prf_usage_details: None,
+    })
 }

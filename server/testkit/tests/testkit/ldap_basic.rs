@@ -7,6 +7,7 @@ use kanidmd_testkit::{
 };
 use ldap3_client::LdapClientBuilder;
 use tracing::debug;
+use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 const TEST_PERSON: &str = "user_mcuserton";
 const TEST_GROUP: &str = "group_mcgroupington";

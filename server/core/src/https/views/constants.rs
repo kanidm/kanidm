@@ -32,7 +32,9 @@ pub(crate) enum Urls {
     Login,
     Ui,
     WellKnownChangePassword,
+    WellKnownPasskeyEndpoints,
     Radius,
+    Recover,
     Admin,
 }
 
@@ -48,7 +50,9 @@ impl AsRef<str> for Urls {
             Self::Login => "/ui/login",
             Self::Ui => "/ui",
             Self::WellKnownChangePassword => "/.well-known/change-password",
+            Self::WellKnownPasskeyEndpoints => "/.well-known/passkey-endpoints",
             Self::Radius => "/ui/radius",
+            Self::Recover => "/ui/recover",
             Self::Admin => "/ui/admin/persons",
         }
     }

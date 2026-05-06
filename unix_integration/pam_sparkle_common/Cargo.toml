@@ -1,0 +1,19 @@
+[package]
+name = "pam_sparkle_common"
+description = "Sparkle Common PAM Library"
+
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+
+[dependencies]
+sparkle_unix_common = { workspace = true }
+libc = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing = { workspace = true }
+time = { workspace = true }
+

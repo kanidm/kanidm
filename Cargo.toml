@@ -1,5 +1,5 @@
 [workspace.package]
-version = "1.10.0-dev"
+version = "1.11.0-dev"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
@@ -20,9 +20,14 @@ members = [
     "tools/iam_migrations/ldap",
     "tools/orca",
     "unix_integration/common",
+    "unix_integration/nss_sparkle_common",
     "unix_integration/nss_kanidm",
+    "unix_integration/nss_sparkle",
+    "unix_integration/pam_sparkle_common",
     "unix_integration/pam_kanidm",
-    "unix_integration/resolver",
+    "unix_integration/pam_sparkle",
+    "unix_integration/resolver_common",
+    "unix_integration/resolver_kanidm",
     "server/daemon",
     "server/lib",
     "server/lib-macros",
@@ -121,26 +126,29 @@ codegen-units = 256
 # sshkey-attest = { path = "../webauthn-rs/sshkey-attest" }
 
 [workspace.dependencies]
-kanidmd_core = { path = "./server/core", version = "=1.10.0-dev" }
-kanidmd_lib = { path = "./server/lib", version = "=1.10.0-dev" }
-kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.10.0-dev" }
-kanidmd_testkit = { path = "./server/testkit", version = "=1.10.0-dev" }
-kanidm_build_profiles = { path = "./libs/profiles", version = "=1.10.0-dev" }
-kanidm_client = { path = "./libs/client", version = "=1.10.0-dev" }
-kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.10.0-dev" }
-kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.10.0-dev" }
-kanidm_proto = { path = "./proto", version = "=1.10.0-dev" }
-kanidm_unix_common = { path = "./unix_integration/common", version = "=1.10.0-dev" }
-kanidm_utils_users = { path = "./libs/users", version = "=1.10.0-dev" }
-scim_proto = { path = "./libs/scim_proto", version = "=1.10.0-dev" }
-sketching = { path = "./libs/sketching", version = "=1.10.0-dev" }
+kanidmd_core = { path = "./server/core", version = "=1.11.0-dev" }
+kanidmd_lib = { path = "./server/lib", version = "=1.11.0-dev" }
+kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.11.0-dev" }
+kanidmd_testkit = { path = "./server/testkit", version = "=1.11.0-dev" }
+kanidm_build_profiles = { path = "./libs/profiles", version = "=1.11.0-dev" }
+kanidm_client = { path = "./libs/client", version = "=1.11.0-dev" }
+kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.11.0-dev" }
+kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.11.0-dev" }
+kanidm_proto = { path = "./proto", version = "=1.11.0-dev" }
+kanidm_utils_users = { path = "./libs/users", version = "=1.11.0-dev" }
+nss_sparkle_common = { path = "./unix_integration/nss_sparkle_common", version = "=1.11.0-dev" }
+pam_sparkle_common = { path = "./unix_integration/pam_sparkle_common", version = "=1.11.0-dev" }
+sparkle_unix_common = { path = "./unix_integration/common", version = "=1.11.0-dev" }
+sparkle_resolver_common = { path = "./unix_integration/resolver_common", version = "=1.11.0-dev" }
+scim_proto = { path = "./libs/scim_proto", version = "=1.11.0-dev" }
+sketching = { path = "./libs/sketching", version = "=1.11.0-dev" }
 
 kanidm-hsm-crypto = { version = "^0.3.5" }
 
 anyhow = { version = "1.0.102" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
-askama = { version = "0.15.6" }
-askama_web = { version = "0.15.2", features = ["axum-0.8"] }
+askama = { version = "0.16.0" }
+askama_web = { version = "0.16.0", features = ["axum-0.8"] }
 async-trait = "^0.1.89"
 axum = { version = "0.8.8", features = [
     "form",
@@ -157,12 +165,12 @@ axum-macros = "0.5.0"
 axum-htmx = { version = "0.8.1", features = ["serde", "guards"] }
 base32 = "^0.5.1"
 base64 = "^0.22.1"
-base64urlsafedata = "0.6.0-dev"
+base64urlsafedata = "0.6.1-dev"
 bitflags = "^2.11.0"
 bytes = "^1.11.1"
 cidr = "0.3.2"
 clap = { version = "4.6.0", features = ["derive", "env"] }
-clap_complete = "^4.6.0"
+clap_complete = "^4.6.1"
 # Forced by saffron/cron
 chrono = "^0.4.44"
 compact_jwt = "^0.5.6"
@@ -177,13 +185,13 @@ dyn-clone = "^1.0.20"
 enum-iterator = "2.3.0"
 fantoccini = "0.22.0"
 filetime = "^0.2.27"
-fs4 = "^0.13.1"
+fs4 = "^1.0.2"
 futures = "^0.3.32"
 futures-util = { version = "^0.3.32", features = ["sink"] }
 gethostname = "1.1.0"
-gix = { version = "0.81.0", default-features = false, features = ["sha1"] }
+gix = { version = "0.83.0", default-features = false, features = ["sha1"] }
 haproxy-protocol = { version = "0.0.4" }
-hashbrown = { version = "0.16.1", features = ["serde", "inline-more"] }
+hashbrown = { version = "0.17.0", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
 http = "1.4.0"
 http-body-util = "0.1"
@@ -196,14 +204,14 @@ image = { version = "0.25.9", default-features = false, features = [
     "webp",
 ] }
 itertools = "0.14.0"
-jsonschema = "0.45.0"
-ldap3_client = "^0.7.0"
-ldap3_proto = { version = "^0.7.0", features = ["serde"] }
+jsonschema = "0.46.4"
+ldap3_client = "^0.7.1"
+ldap3_proto = { version = "^0.7.1", features = ["serde"] }
 lettre = { version = "0.11.21", default-features = false }
-libc = "0.2.184"
+libc = "0.2.186"
 libnss = "^0.9.0"
 lodepng = "3.12.2"
-lru = "0.16.3"
+lru = "0.18.0"
 mathru = "0.16.2"
 md4 = "0.10.2"
 md-5 = "0.10.6"
@@ -226,13 +234,13 @@ opentelemetry-semantic-conventions = "0.31.0"
 tracing-opentelemetry = "0.32.1"
 tracing-core = "0.1.36"
 peg = "0.8"
-pkg-config = "^0.3.32"
+pkg-config = "^0.3.33"
 prctl = "1.0.0"
 proc-macro2 = "1.0.106"
 procfs = "0.18.0"
 qrcode = "0.14.1"
 quote = "1"
-rand = "0.10.0"
+rand = "0.10.1"
 rand_chacha = "0.10.0"
 regex = "1.12.3"
 reqwest = { version = "0.13.2", default-features = false, features = [
@@ -251,26 +259,27 @@ rustls = { version = "0.23.37", default-features = false, features = [
     "aws_lc_rs",
 ] }
 sd-notify = "^0.5.0"
-selinux = "^0.6.0"
+selinux = "^0.6.1"
 serde = "^1.0.228"
 serde_cbor = { version = "0.13.0", package = "serde_cbor_2" }
 serde-hjson = "1.1.0"
 serde_json = "^1.0.149"
 serde_urlencoded = "^0.7.1"
-serde_with = "3.18.0"
+serde_with = "3.19.0"
 sha-crypt = "0.5.0"
 sha2 = "0.11.0-rc.5"
+subtle = "2.6"
 shellexpand = "3.1.2"
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
-sshkey-attest = "0.6.0-dev"
+sshkey-attest = "0.6.1-dev"
 sshkeys = "0.3.4"
 svg = "0.18.0"
 syn = { version = "2.0.117", features = ["full"] }
 tempfile = "3.26.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.47", features = ["formatting", "local-offset"] }
-tokio = { version = "^1.51.0", default-features = false }
+tokio = { version = "^1.51.1", default-features = false }
 tokio-rustls = { version = "0.26.4" }
 tokio-util = "^0.7.18"
 toml = "^1"
@@ -290,12 +299,12 @@ utoipa-swagger-ui = { version = "9.0.2", default-features = false, features = [
     "vendored",
 ] }
 uuid = "^1.23.0"
-webauthn-authenticator-rs = { version = "0.6.0-dev", default-features = false }
-webauthn-rs = { version = "0.6.0-dev", features = ["preview-features"] }
-webauthn-rs-core = "0.6.0-dev"
-webauthn-rs-proto = "0.6.0-dev"
+webauthn-authenticator-rs = { version = "0.6.1-dev", default-features = false }
+webauthn-rs = { version = "0.6.1-dev", features = ["preview-features"] }
+webauthn-rs-core = "0.6.1-dev"
+webauthn-rs-proto = "0.6.1-dev"
 whoami = "^2.1.1"
 walkdir = "2"
 x509-cert = "0.2.5"
 yescrypt = "0.1.0-rc.5"
-zxcvbn = "3.1.0"
+zxcvbn = "3.1.1"

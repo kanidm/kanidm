@@ -28,7 +28,7 @@ impl QueryServerReadV1 {
     ) -> Result<ProtoDomainInfo, OperationError> {
         let mut idms_prox_read = self.idms.proxy_read().await?;
 
-        idms_prox_read.qs_read.domain_info()
+        idms_prox_read.qs_read.public_domain_info()
     }
 
     #[instrument(

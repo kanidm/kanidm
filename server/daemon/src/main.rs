@@ -30,7 +30,6 @@ use whoami;
 use std::fs::{metadata, File};
 // This works on both unix and windows.
 use clap::{Args, Parser, Subcommand};
-use fs4::fs_std::FileExt;
 use futures::{SinkExt, StreamExt};
 use kanidmd_core::admin::{
     AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
@@ -192,6 +191,17 @@ async fn submit_admin_req_human(path: &str, req: AdminTaskRequest) -> ExitCode {
         Some(Ok(AdminTaskResponse::RecoverAccount { password })) => info!(new_password = ?password),
         Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => {
             info!(certificate = ?cert)
+        }
+        Some(Ok(AdminTaskResponse::ShowReplicationCertificateMetadata {
+            not_before,
+            not_after,
+            subject,
+            expired,
+        })) => {
+            info!("not_before : {}", not_before);
+            info!("not_after  : {}", not_after);
+            info!("subject    : {}", subject);
+            info!("expired    : {}", expired);
         }
         Some(Ok(AdminTaskResponse::DomainUpgradeCheck { report })) => {
             let ProtoDomainUpgradeCheckReport {
@@ -600,16 +610,8 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
                 }
             };
 
-            match flock.try_lock_exclusive() {
-                Ok(true) => debug!("Acquired kanidm exclusive lock"),
-                Ok(false) => {
-                    error!(
-                        "ERROR: Refusing to start - unable to lock kanidmd exclusive lock at {}",
-                        klock_path.display()
-                    );
-                    error!("Is another kanidmd process running?");
-                    return ExitCode::FAILURE;
-                }
+            match flock.try_lock() {
+                Ok(_) => debug!("Acquired kanidm exclusive lock"),
                 Err(err) => {
                     error!(
                         "ERROR: Refusing to start - unable to lock kanidmd exclusive lock at {}",
@@ -970,6 +972,15 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             )
             .await;
         }
+        KanidmdOpt::ShowReplicationCertificateMetadata => {
+            info!("Running show replication certificate metadata ...");
+            submit_admin_req_human(
+                config.adminbindpath.as_str(),
+                AdminTaskRequest::ShowReplicationCertificateMetadata,
+            )
+            .await;
+        }
+
         KanidmdOpt::RenewReplicationCertificate => {
             info!("Running renew replication certificate ...");
             submit_admin_req_human(

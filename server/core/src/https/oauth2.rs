@@ -614,13 +614,12 @@ pub async fn oauth2_openid_publickey_get(
 pub async fn oauth2_token_introspect_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Form(intr_req): Form<AccessTokenIntrospectRequest>,
 ) -> impl IntoResponse {
     request_trace!("Introspect Request - {:?}", intr_req);
     let res = state
         .qe_r_ref
-        .handle_oauth2_token_introspect(client_auth_info, intr_req, kopid.eventid)
+        .handle_oauth2_token_introspect(intr_req, kopid.eventid)
         .await;
 
     match res {
@@ -676,14 +675,13 @@ pub async fn oauth2_token_introspect_post(
 pub async fn oauth2_token_revoke_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    AuthorisationHeaders(client_auth_info): AuthorisationHeaders,
     Form(intr_req): Form<TokenRevokeRequest>,
 ) -> impl IntoResponse {
     request_trace!("Revoke Request - {:?}", intr_req);
 
     let res = state
         .qe_w_ref
-        .handle_oauth2_token_revoke(client_auth_info, intr_req, kopid.eventid)
+        .handle_oauth2_token_revoke(intr_req, kopid.eventid)
         .await;
 
     match res {
@@ -773,6 +771,14 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
             "/oauth2/openid/{client_id}/.well-known/webfinger",
             get(oauth2_openid_webfinger_get).options(oauth2_preflight_options),
         )
+        .route(
+            "/.well-known/openid-configuration/oauth2/openid/{client_id}",
+            get(oauth2_openid_discovery_get).options(oauth2_preflight_options),
+        )
+        .route(
+            "/.well-known/webfinger/oauth2/openid/{client_id}",
+            get(oauth2_openid_webfinger_get).options(oauth2_preflight_options),
+        )
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
@@ -791,6 +797,10 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OAUTH2 DISCOVERY URLS
         .route(
             "/oauth2/openid/{client_id}/.well-known/oauth-authorization-server",
+            get(oauth2_rfc8414_metadata_get).options(oauth2_preflight_options),
+        )
+        .route(
+            "/.well-known/oauth-authorization-server/oauth2/openid/{client_id}",
             get(oauth2_rfc8414_metadata_get).options(oauth2_preflight_options),
         )
         .with_state(state.clone());

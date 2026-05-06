@@ -1,10 +1,6 @@
 (% extends "login_base.html" %)
 
 (% block logincontainer %)
-<script id="data" type="application/json">
-(( chal|safe ))
-</script>
-
 <script
     src="/pkg/external/base64.js?v=((crate::https::cache_buster::get_cache_buster_key()))"
     async></script>
@@ -14,7 +10,12 @@
 
 <div class="justify-content-center">
     (% if passkey %)
-    <form id="cred-form" action="/ui/login/passkey" method="POST">
+    <form
+        id="cred-form"
+        action="/ui/login/passkey"
+        method="POST"
+        data-challenge="(( challenge ))"
+        >
         <input hidden="hidden" name="cred" id="cred">
         <button hx-disable type="button" autofocus class="btn btn-primary"
             id="start-passkey-button">Use Passkey</button>

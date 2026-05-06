@@ -412,7 +412,7 @@ pub trait IdmServerTransaction<'a> {
     /// The primary method of verification selection is the use of the KID parameter
     /// that we internally sign with. We can use this to select the appropriate token type
     /// and validation method.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn validate_client_auth_info_to_ident(
         &mut self,
         client_auth_info: ClientAuthInfo,
@@ -423,14 +423,25 @@ pub trait IdmServerTransaction<'a> {
             client_cert,
             bearer_token,
             basic_authz: _,
-            pre_validated_token: _,
+            pre_validated_token,
         } = client_auth_info;
 
-        // Future - if there is a pre-validated UAT, use that. For now I want to review
-        // all the auth and validation flows to ensure that the UAT path is security
-        // wise equivalent to the other paths. This pre-validation is an "optimisation"
+        // If there is a pre-validated UAT, use that. This pre-validation is an "optimisation"
         // for the web-ui where operations will make a number of api calls, and we don't
         // want to do redundant work.
+        match pre_validated_token {
+            PreValidatedTokenStatus::Valid(uat) => {
+                return self.process_uat_to_identity(&uat, ct, source)
+            }
+            PreValidatedTokenStatus::SessionExpired => return Err(OperationError::SessionExpired),
+            PreValidatedTokenStatus::NotAuthenticated | PreValidatedTokenStatus::None => {
+                // Fall through and verify the credential details.
+                //
+                // TODO: Currently pre-validation only applies to UAT, not certificate
+                // or api token flows. These will incorrectly set the pre-validation
+                // to NotAuthenticated. It's a larger refactor to correct that.
+            }
+        }
 
         match (client_cert, bearer_token) {
             (Some(client_cert_info), _) => {
@@ -456,7 +467,7 @@ pub trait IdmServerTransaction<'a> {
     /// info will not need to perform all the same checks (time, cryptography, etc).
     /// However, subsequent callers will still need to load the entry into the
     /// identity.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn pre_validate_client_auth_info(
         &mut self,
         client_auth_info: &mut ClientAuthInfo,
@@ -479,10 +490,10 @@ pub trait IdmServerTransaction<'a> {
         result
     }
 
-    /// This function is not using in authentication flows - it is a reflector of the
+    /// This function is not used in authentication flows - it is a reflector of the
     /// current session state to allow a user-auth-token to be presented to the
     /// user via the whoami call.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn validate_client_auth_info_to_uat(
         &mut self,
         client_auth_info: &ClientAuthInfo,
@@ -501,7 +512,7 @@ pub trait IdmServerTransaction<'a> {
                 match self.validate_and_parse_token_to_identity_token(token, ct)? {
                     Token::UserAuthToken(uat) => Ok(uat),
                     Token::ApiToken(_apit, _entry) => {
-                        warn!("Unable to process non user auth token");
+                        debug!("Unable to process non user auth token");
                         Err(OperationError::NotAuthenticated)
                     }
                 }
@@ -747,9 +758,15 @@ pub trait IdmServerTransaction<'a> {
         let entry = self
             .get_qs_txn()
             .internal_search_uuid(uat.uuid)
-            .map_err(|e| {
-                admin_error!(?e, "from_ro_uat failed");
-                e
+            .map_err(|err| {
+                error!(?err, "from_ro_uat failed");
+                // If the account was deleted, or has not yet been replicated to this instance,
+                // we need to inform the user that the session they are using isn't valid. So
+                // we pass up SessionExpired here.
+                match err {
+                    OperationError::NoMatchingEntries => OperationError::SessionExpired,
+                    err => err,
+                }
             })?;
 
         let valid = Account::check_user_auth_token_valid(ct, uat, &entry);
@@ -1185,7 +1202,7 @@ impl IdmServerAuthTransaction<'_> {
                 // Get the first / single entry we expect here ....
                 let entry = self.qs_read.internal_search_uuid(euuid)?;
 
-                security_info!(
+                info!(
                     username = %init.username,
                     issue = ?init.issue,
                     privileged = ?init.privileged,

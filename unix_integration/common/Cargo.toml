@@ -1,6 +1,6 @@
 [package]
-name = "kanidm_unix_common"
-description = "Kanidm Unix Resolver - Common Libraries"
+name = "sparkle_unix_common"
+description = "Sparkle Unix Resolver - Common Libraries"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
 version = { workspace = true }
@@ -19,7 +19,7 @@ selinux = ["dep:selinux", "dep:kanidm_utils_users"]
 tpm = []
 
 [lib]
-name = "kanidm_unix_common"
+name = "sparkle_unix_common"
 path = "src/lib.rs"
 test = true
 doctest = false

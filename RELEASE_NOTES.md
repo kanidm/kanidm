@@ -14,6 +14,58 @@ We value your feedback! First, please see our [code of conduct]. If you have que
 
 ## Release Notes
 
+### 2026-05-01 - Kanidm 1.10.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
+
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
+
+Before upgrading you should review [our upgrade documentation]
+
+#### 1.10.0 Important Changes
+
+- OpenSSL is no longer required as a dependency. All cryptographic paths have been replaced by RustCrypto or Rustls using aws-lc-rs.
+- Kanidm-unixd now supports bind mounts as an alternative to symlinks for home mapping.
+- Account recovery can be enabled as a feature allowing a user to prove knowledge of their own email, and then have a credential reset email sent to them.
+  - Administrators can also trigger account recovery emails to be sent to users.
+
+#### 1.10.0 Release Highlights
+
+- Security - High: SCIM Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur leading to Denial of Service by an unauthenticated user
+- Security - High: LDAP Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur leading to Denial of Service by an unauthenticated user
+- Security - Moderate: PNG Image validation did not correctly handle short images allowing a panic to occur in a worker thread. This may lead to system instability over time
+- Security - Low: HTML injection via user DisplayName in Passkey enrolment dialogs. This allows an admin to execute JS in the context of a users browser. Since the admin already can reset the users credentials, the impact of this is minimal.
+- Security - Low: non-constant time comparison of OAuth2 client secret may allow a remote attacker to remotely recovery the bytes of the secret. Due to the length of the secret (48 chars) this is infeasible practically.
+- Security - Low: incorrect handling of origin validation in Webauthn-RS allowed a malicious domain to collide with a valid one (badexample.com would match with example.com). This is mitigated by browsers detecting the forgery and preventing the authentication from proceeding.
+- 20260331 send account recovery emails (#4259)
+- Invert incorrect thread count logic (#4294)
+- Allow modification of OAuth2 Refresh Expiry (#4276)
+- Introspection token auth metadata (#4230)
+- Correctly handle deleted accounts during page visits (#4275)
+- don't fail auth when passed ui_locales (#4288)
+- Feat: Add OIDC Prompt Support (#4224)
+- Handle multivalue URLs in SCIM (#4271)
+- Correctly encode ssh tag values (#4272)
+- Add .well-known/passkey-endpoints (#4255)
+- show repl cert metadata and also handle socket timeouts (#4252)
+- add dependency data to released containers (#4239)
+- cli: allow clearing person's legalname attribute (#4228)
+- OpenSSL shall be vanquished (#4219)
+- add nsswitch config check to unixd (#4210)
+- Added PasswordChangedTime attribute and database field (#3999)
+- Improve FreeBSD building, fully drop ring as a dependency.
+- credential reset emails (authenticated only) (#4151)
+- feat: bind mount home strategy (#3997)
+- Don't revert admin changes in some groups during migrcation (#4176)
+- Alert on unsaved changes (#4155)
+- Warn about systemd-userdb (#4147)
+- Dont token introspection relies on token validity rather than basic auth (#4142)
+- Feature OIDC updated at (#4007)
+- Bye bye lazy static (#4134)
+- Allow LDAP CA verification to be disabled in sync (#4133)
+
 ### 2026-02-11 - Kanidm 1.9.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our

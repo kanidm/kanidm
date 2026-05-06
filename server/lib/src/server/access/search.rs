@@ -91,6 +91,25 @@ fn search_filter_entry(
             // No need to check ACS
             return AccessSrchResult::Grant;
         }
+        IdentType::Internal(InternalRole::AccountRequest) => {
+            trace!(uuid = ?entry.get_display_id(), "Account Request");
+
+            let valid_account_request_class = entry
+                .get_ava_as_iutf8(Attribute::Class)
+                .map(|classes| {
+                    trace!(?classes);
+                    classes.contains(&EntryClass::Account.to_string())
+                })
+                .unwrap_or(false);
+
+            if valid_account_request_class {
+                trace!("grant");
+                return AccessSrchResult::Grant;
+            } else {
+                trace!("deny");
+                return AccessSrchResult::Deny;
+            }
+        }
         IdentType::Internal(InternalRole::Migration) => {
             trace!(uuid = ?entry.get_display_id(), "Internal migration");
 
@@ -111,6 +130,10 @@ fn search_filter_entry(
                 trace!("deny");
                 return AccessSrchResult::Deny;
             }
+        }
+        IdentType::Internal(InternalRole::MessageQueue) => {
+            security_debug!(uuid = ?entry.get_display_id(), "Blocking message queue check");
+            return AccessSrchResult::Deny;
         }
         IdentType::Synch(_) => {
             security_debug!(uuid = ?entry.get_display_id(), "Blocking sync check");
@@ -158,9 +181,8 @@ fn search_filter_entry(
                             .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
                             .unwrap_or_default();
 
-                        let user_check = ident_uuid
-                            .map(|u| entry_manager_uuids.contains(&u))
-                            .unwrap_or_default();
+                        let user_check =
+                            entry_manager_uuids.contains(&ident_uuid);
 
                         if !(group_check || user_check) {
                             // Not the entry manager
@@ -298,7 +320,7 @@ fn search_sync_account_filter_entry(
                 .get_ava_as_iutf8(Attribute::Class)
                 .map(|set| {
                     trace!(?set);
-                    set.contains(&EntryClass::SyncObject.to_string())
+                    set.contains(EntryClass::SyncObject.into())
                         && set.contains(EntryClass::Account.into())
                 })
                 .unwrap_or(false);
