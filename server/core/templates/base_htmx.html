@@ -4,7 +4,14 @@
 		<meta charset="utf-8" />
 		<meta name="theme-color" content="white" />
 		<meta name="viewport" content="width=device-width" />
-		<meta name="htmx-config" content='{ "includeIndicatorStyles": false }' />
+		<!-- https://htmx.org/docs/#response-handling -->
+		<meta name="htmx-config" content='{
+	        "includeIndicatorStyles": false,
+			"responseHandling": [
+			    { "code": "403", "swap": true }
+			]
+		}'
+	    />
 
 		<title>(% block title %)(( title )) - Kanidm(% endblock %)</title>
 
