@@ -8,6 +8,7 @@ use crate::https::{
 };
 use askama::Template;
 use askama_web::WebTemplate;
+use base64::{engine::general_purpose, Engine as _};
 
 use axum::http::HeaderMap;
 use axum::{
@@ -951,7 +952,8 @@ async fn view_login_step(
                                 LoginBackupCodeView { display_ctx }.into_response()
                             }
                             AuthAllowed::SecurityKey(chal) => {
-                                let chal_json = serde_json::to_string(&chal)
+                                let chal_json = serde_json::to_vec(&chal)
+                                    .map(|data| general_purpose::STANDARD.encode(data))
                                     .map_err(|_| OperationError::SerdeJsonError)?;
                                 LoginWebauthnView {
                                     display_ctx,
@@ -961,7 +963,8 @@ async fn view_login_step(
                                 .into_response()
                             }
                             AuthAllowed::Passkey(chal) => {
-                                let chal_json = serde_json::to_string(&chal)
+                                let chal_json = serde_json::to_vec(&chal)
+                                    .map(|data| general_purpose::STANDARD.encode(data))
                                     .map_err(|_| OperationError::SerdeJsonError)?;
                                 LoginWebauthnView {
                                     display_ctx,

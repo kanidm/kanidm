@@ -24,6 +24,7 @@ use axum_htmx::{
     HxEvent, HxLocation, HxPushUrl, HxRequest, HxReselect, HxResponseTrigger, HxReswap, HxRetarget,
     SwapOption,
 };
+use base64::{engine::general_purpose, Engine as _};
 use futures_util::TryFutureExt;
 use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus,
@@ -505,7 +506,9 @@ pub(crate) async fn view_new_passkey(
 
     let response = match cu_status.mfaregstate {
         CURegState::Passkey(chal) | CURegState::AttestedPasskey(chal) => {
-            if let Ok(challenge) = serde_json::to_string(&chal) {
+            if let Ok(challenge) =
+                serde_json::to_vec(&chal).map(|data| general_purpose::STANDARD.encode(data))
+            {
                 AddPasskeyPartial {
                     challenge,
                     class: init_form.class,

@@ -57,12 +57,13 @@ function onPasskeyCreated(assertion) {
         let creationData = {};
 
         creationData.id = assertion.id;
-        creationData.rawId = Base64.fromUint8Array(new Uint8Array(assertion.rawId));
+        creationData.rawId = Base64.fromUint8Array(new Uint8Array(assertion.rawId), true);
         creationData.response = {};
         creationData.response.attestationObject = Base64.fromUint8Array(
             new Uint8Array(assertion.response.attestationObject),
+            true
         );
-        creationData.response.clientDataJSON = Base64.fromUint8Array(new Uint8Array(assertion.response.clientDataJSON));
+        creationData.response.clientDataJSON = Base64.fromUint8Array(new Uint8Array(assertion.response.clientDataJSON), true);
         creationData.type = assertion.type;
         creationData.extensions = assertion.getClientExtensionResults();
         creationData.extensions.uvm = undefined;
@@ -89,7 +90,7 @@ function onPasskeyCreated(assertion) {
 function startPasskeyEnrollment() {
     try {
         const form = document.getElementById("passkeyNamingForm");
-        const credentialRequestOptions = JSON.parse(decodeURIComponent(form.dataset.challenge));
+        const credentialRequestOptions = JSON.parse(atob(form.dataset.challenge));
         credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(
             credentialRequestOptions.publicKey.challenge,
         );
