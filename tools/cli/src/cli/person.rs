@@ -758,7 +758,7 @@ end (quit, exit, x, q) - End, without saving any changes
 commit (save) - Commit the changes to the credential
 -- Password and MFA
 password (passwd, pass, pw) - Set a new password
-totp - Generate a new totp, requires a password to be set
+totp - Generate a new TOTP, requires a password to be set
 totp remove (totp rm, trm) - Remove the TOTP of this account
 backup codes (bcg, bcode) - (Re)generate backup codes for this account
 remove (rm) - Remove only the password based credential
@@ -1590,17 +1590,17 @@ async fn credential_update_exec(
                             type_: CredentialDetailType::PasswordMfa(totp_labels, ..),
                         }) => {
                             if totp_labels.is_empty() {
-                                println!("No totps are configured for this user");
+                                println!("No TOTPs are configured for this user");
                                 return;
                             } else {
-                                println!("Current totps:");
+                                println!("Current TOTPs:");
                                 for totp_label in totp_labels {
                                     println!("  {totp_label}");
                                 }
                             }
                         }
                         _ => {
-                            println!("No totps are configured for this user");
+                            println!("No TOTPs are configured for this user");
                             return;
                         }
                     },
@@ -1610,7 +1610,7 @@ async fn credential_update_exec(
                 }
 
                 let label: String = Input::new()
-                    .with_prompt("\nEnter the label of the Passkey to remove (blank to stop) # ")
+                    .with_prompt("\nEnter the label of the TOTP to remove (blank to stop) # ")
                     .allow_empty(true)
                     .interact_text()
                     .expect("Failed to interact with interactive session");
@@ -1625,7 +1625,7 @@ async fn credential_update_exec(
                         println!("success");
                     }
                 } else {
-                    println!("Totp was NOT removed");
+                    println!("TOTP was NOT removed");
                 }
             }
             CUAction::BackupCodes => {
