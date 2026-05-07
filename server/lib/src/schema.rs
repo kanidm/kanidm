@@ -701,9 +701,9 @@ impl SchemaWriteTransaction<'_> {
         Ok(())
     }
 
-    pub fn update_attributes(
+    pub fn update_attributes<I: Iterator<Item = SchemaAttribute>>(
         &mut self,
-        attributetypes: Vec<SchemaAttribute>,
+        attributetypes: I,
     ) -> Result<(), OperationError> {
         // purge all old attributes.
         self.attributes.clear();
@@ -713,7 +713,7 @@ impl SchemaWriteTransaction<'_> {
         // Update with new ones.
         // Do we need to check for dups?
         // No, they'll over-write each other ... but we do need name uniqueness.
-        attributetypes.into_iter().for_each(|a| {
+        attributetypes.for_each(|a| {
             // Update the unique and ref caches.
             if a.syntax == SyntaxType::ReferenceUuid ||
                 a.syntax == SyntaxType::OauthScopeMap ||
@@ -737,7 +737,10 @@ impl SchemaWriteTransaction<'_> {
         Ok(())
     }
 
-    pub fn update_classes(&mut self, classtypes: Vec<SchemaClass>) -> Result<(), OperationError> {
+    pub fn update_classes<I: Iterator<Item = SchemaClass>>(
+        &mut self,
+        classtypes: I,
+    ) -> Result<(), OperationError> {
         // purge all old attributes.
         self.classes.clear();
         // Update with new ones.
@@ -792,28 +795,46 @@ impl SchemaWriteTransaction<'_> {
     /// Schema should otherwise be in our migration data - not here.
     #[instrument(level = "debug", name = "schema::generate_in_memory", skip_all)]
     pub fn generate_in_memory(&mut self) -> Result<(), OperationError> {
-        self.classes.clear();
-        self.attributes.clear();
         // Bootstrap in definitions of our own schema types
         // First, add all the needed core attributes for schema parsing
-
-        self.attributes.extend(
-            migration_data::system::attributes()
-                .into_iter()
-                .map(|attr| (attr.name.clone(), attr)),
-        );
-        self.classes.extend(
-            migration_data::system::classes()
-                .into_iter()
-                .map(|class| (class.name.clone(), class)),
-        );
+        self.update_attributes(migration_data::system::attributes().into_iter())?;
+        self.update_classes(migration_data::system::classes().into_iter())?;
 
         let r = self.validate();
         if r.is_empty() {
-            admin_debug!("schema validate -> passed");
+            debug!("schema validate -> passed");
             Ok(())
         } else {
-            admin_error!(err = ?r, "schema validate -> errors");
+            error!(err = ?r, "schema validate -> errors");
+            Err(OperationError::ConsistencyError(
+                r.into_iter().filter_map(|v| v.err()).collect(),
+            ))
+        }
+    }
+
+    #[instrument(level = "debug", name = "schema::extend_in_memory", skip_all)]
+    pub fn extend_in_memory(
+        &mut self,
+        extra_attrs: Vec<SchemaAttribute>,
+        extra_classes: Vec<SchemaClass>,
+    ) -> Result<(), OperationError> {
+        self.update_attributes(
+            migration_data::system::attributes()
+                .into_iter()
+                .chain(extra_attrs.into_iter()),
+        )?;
+        self.update_classes(
+            migration_data::system::classes()
+                .into_iter()
+                .chain(extra_classes.into_iter()),
+        )?;
+
+        let r = self.validate();
+        if r.is_empty() {
+            debug!("schema validate -> passed");
+            Ok(())
+        } else {
+            error!(err = ?r, "schema validate -> errors");
             Err(OperationError::ConsistencyError(
                 r.into_iter().filter_map(|v| v.err()).collect(),
             ))
@@ -1577,7 +1598,7 @@ mod tests {
             ..Default::default()
         };
 
-        assert!(schema.update_classes(vec![class]).is_ok());
+        assert!(schema.update_classes(std::iter::once(class)).is_ok());
 
         assert_eq!(schema.validate().len(), 1);
     }
@@ -1635,7 +1656,7 @@ mod tests {
         };
 
         assert!(schema
-            .update_classes(vec![class_account, class_person, class_service])
+            .update_classes([class_account, class_person, class_service].into_iter())
             .is_ok());
 
         // Missing person or service account.

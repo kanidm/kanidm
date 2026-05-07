@@ -2256,6 +2256,9 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
     drop(server_b_txn);
 }
 
+/*
+// NOTE: This is commented out so that when we add custom attributes we can modify and re-use this test
+
 // Test schema addition / change over incremental.
 #[qs_pair_test]
 async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &QueryServer) {
@@ -2328,6 +2331,7 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
 }
+*/
 
 // Test memberof over replication boundaries.
 #[qs_pair_test]

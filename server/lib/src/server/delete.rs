@@ -326,12 +326,18 @@ impl QueryServerWriteTransaction<'_> {
         self.delete(&de)
     }
 
-    #[instrument(level = "debug", skip(self))]
     pub fn internal_delete_uuid_if_exists(
         &mut self,
         target_uuid: Uuid,
     ) -> Result<(), OperationError> {
         let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
+        self.internal_delete_if_exists(&filter)
+    }
+
+    pub fn internal_delete_if_exists(
+        &mut self,
+        filter: &Filter<FilterInvalid>,
+    ) -> Result<(), OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;

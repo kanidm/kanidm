@@ -888,6 +888,13 @@ impl QueryServerWriteTransaction<'_> {
         Ok(())
     }
 
+    pub(crate) fn migrate_schema_1_11(&mut self) -> Result<(), OperationError> {
+        self.schema.extend_in_memory(
+            migration_data::dl15::phase_1_schema_attrs(),
+            migration_data::dl15::phase_2_schema_classes(),
+        )
+    }
+
     /// Migration domain level 14 to 15 (1.11.0)
     #[instrument(level = "info", skip_all)]
     pub(crate) fn migrate_domain_1_10_to_1_11(&mut self) -> Result<(), OperationError> {
@@ -900,18 +907,7 @@ impl QueryServerWriteTransaction<'_> {
         }
 
         // =========== Apply changes ==============
-
-        /*
-        self.internal_migrate_or_create_batch(
-            &format!("phase 1 - schema attrs target {}", DOMAIN_TGT_LEVEL),
-            migration_data::dl15::phase_1_schema_attrs(),
-        )?;
-
-        self.internal_migrate_or_create_batch(
-            "phase 2 - schema classes",
-            migration_data::dl15::phase_2_schema_classes(),
-        )?;
-        */
+        self.migrate_schema_1_11()?;
 
         // Reload for the new schema.
         self.reload()?;
@@ -919,6 +915,15 @@ impl QueryServerWriteTransaction<'_> {
         // Since we just loaded in a ton of schema, lets reindex it in case we added
         // new indexes, or this is a bootstrap and we have no indexes yet.
         self.reindex(false)?;
+
+        // Delete all existing DB contained schema.
+
+        let filter = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::ClassType.into()),
+            f_eq(Attribute::Class, EntryClass::AttributeType.into()),
+        ]));
+
+        self.internal_delete_if_exists(&filter)?;
 
         // Set Phase
         // Indicate the schema is now ready, which allows dyngroups to work when they
@@ -1584,6 +1589,17 @@ mod tests {
             .expect("Unable to set domain level to version 1_11");
 
         // post migration verification.
+
+        // Assert all lingering schema db entries are removed.
+
+        let filter = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::ClassType.into()),
+            f_eq(Attribute::Class, EntryClass::AttributeType.into()),
+        ]));
+
+        let entries_remain = write_txn.internal_exists(&filter).unwrap();
+        assert!(!entries_remain);
+
         write_txn.commit().expect("Unable to commit");
     }
 }
