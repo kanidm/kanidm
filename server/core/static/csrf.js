@@ -39,8 +39,6 @@ async function protectedSubmitHandler(event) {
     const timestamp = BigInt(Date.now());
     timestamp_view.setBigUint64(0, timestamp);
 
-    const timestamp_u64 = timestamp_view.getBigUint64();
-
     const timestamp_bytes = new Uint8Array(timestamp_buffer);
 
     var solution = new Uint32Array([0]);

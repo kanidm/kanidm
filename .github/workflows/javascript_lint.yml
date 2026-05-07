@@ -1,21 +1,17 @@
 ---
 name: Javascript Linting
 "on":
-    - push
-    - pull_request
+  - push
+  - pull_request
 jobs:
   javascript_lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
-    - name: Run ESLint to check Javascript files
-      run:
-        make eslint
-  javascript_fmt:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v6
-    - name: Run Prettier to check Javascript files
-      run:
-        make prettier
-
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - name: Run ESLint to check Javascript files
+        run: make eslint
+      - name: Run Prettier to check Javascript files
+        run: make prettier
