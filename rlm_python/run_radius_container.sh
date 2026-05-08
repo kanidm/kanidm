@@ -12,7 +12,7 @@ if [ ! -z "${IMAGE_ARCH}" ]; then
 fi
 
 if [ -z "${CONFIG_FILE}" ]; then
-    CONFIG_FILE="$(pwd)/../examples/kanidm"
+    CONFIG_FILE="$(pwd)/../examples/radius.toml"
 fi
 echo "Using config file: ${CONFIG_FILE}"
 
@@ -29,5 +29,5 @@ docker run --rm -it \
     -v /tmp/kanidm/:/data/ \
     -v /tmp/kanidm/:/tmp/kanidm/ \
     -v /tmp/kanidm/:/certs/ \
-    -v "${CONFIG_FILE}:/data/kanidm" \
+    -v "${CONFIG_FILE}:/data/radius.toml" \
     "${IMAGE}" $@
