@@ -2,11 +2,11 @@ use std::str::FromStr;
 
 peg::parser! {
     grammar template() for str {
-        pub rule parse<A: FromStr>() -> Vec<TemplateIntermediate<A>> =
+        pub rule parse<A: FromStr, C: FromStr, O: FromStr>() -> Vec<TemplateIntermediate<A>> =
             s:(element()*) { s }
 
         rule element<A: FromStr>() -> TemplateIntermediate<A> = precedence!{
-            start_template() o:operand::<A>() end_template()
+            start_template() o:operand::<A, C, O>() end_template()
                 { o }
             --
             s:(literal())
@@ -14,7 +14,7 @@ peg::parser! {
         }
 
         rule operand<A: FromStr>() -> TemplateIntermediate<A> =
-            separator()* a:attrname::<A>() separator()* c:condition()? separator()* o:option()? separator()*
+            separator()* a:attrname::<A>() separator()* c:condition::<C>()? separator()* o:option::<O>()? separator()*
                 { TemplateIntermediate::Operand {
                     attribute: a,
                     condition: c,
