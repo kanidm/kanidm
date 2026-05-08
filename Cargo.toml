@@ -68,7 +68,7 @@ debug = "limited"
 strip = "none"
 lto = "thin"
 opt-level = 3
-codegen-units = 32
+codegen-units = 1
 
 [profile.release.build-override]
 debug = false
