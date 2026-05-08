@@ -1,20 +1,22 @@
+use std::str::FromStr;
+
 peg::parser! {
     grammar template() for str {
-        pub rule parse() -> Vec<TemplateIntermediate> =
+        pub rule parse<A: FromStr>() -> Vec<TemplateIntermediate<A>> =
             s:(element()*) { s }
 
-        rule element() -> TemplateIntermediate = precedence!{
-            start_template() o:operand() end_template()
+        rule element<A: FromStr>() -> TemplateIntermediate<A> = precedence!{
+            start_template() o:operand::<A>() end_template()
                 { o }
             --
             s:(literal())
                 {  TemplateIntermediate::Literal (s) }
         }
 
-        rule operand() -> TemplateIntermediate =
-            separator()* a:attrname() separator()* c:condition()? separator()* o:option()? separator()*
+        rule operand<A: FromStr>() -> TemplateIntermediate<A> =
+            separator()* a:attrname::<A>() separator()* c:condition()? separator()* o:option()? separator()*
                 { TemplateIntermediate::Operand {
-                    attribute: a.to_string(),
+                    attribute: a,
                     condition: c,
                     options: o }
                 }
@@ -42,8 +44,8 @@ peg::parser! {
             s:$((!start_template()[_])+)
             { s.to_string() }
 
-        rule attrname() -> String =
-            s:$([ 'a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' ]*) { s.to_string() }
+        rule attrname<A: FromStr>() -> A =
+            s:$([ 'a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' ]*) {? A::from_str(s).or(Err("invalid attribute name")) }
 
         rule start_condition() =
             ['i']['f']
@@ -73,12 +75,12 @@ enum TemplateCondition {
 }
 
 #[derive(Debug)]
-enum TemplateIntermediate {
+enum TemplateIntermediate<A> {
     // None,
     Literal(String),
     // Join(Self, Self),
     Operand {
-        attribute: String,
+        attribute: A,
         condition: Option<TemplateCondition>,
         options: Option<TemplateOption>,
     },
@@ -86,13 +88,15 @@ enum TemplateIntermediate {
 
 #[cfg(test)]
 mod tests {
-    use super::template;
+    use super::{template, TemplateIntermediate};
+
+    type TemplateTest = Vec<TemplateIntermediate<String>>;
 
     #[test]
     fn single_literal() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let x = template::parse("foo");
+        let x: TemplateTest = template::parse("foo").unwrap();
 
         tracing::trace!(?x);
     }
@@ -101,7 +105,7 @@ mod tests {
     fn single_operand() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let x = template::parse("{{ ident }}");
+        let x: TemplateTest = template::parse("{{ ident }}").unwrap();
 
         tracing::trace!(?x);
     }
@@ -110,7 +114,7 @@ mod tests {
     fn literal_operand() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let x = template::parse("some_literal {{ ident }}");
+        let x: TemplateTest = template::parse("some_literal {{ ident }}").unwrap();
 
         tracing::trace!(?x);
     }
@@ -119,7 +123,7 @@ mod tests {
     fn literal_operand_literal() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let x = template::parse("some_literal {{ ident }} another_literal");
+        let x: TemplateTest = template::parse("some_literal {{ ident }} another_literal").unwrap();
 
         tracing::trace!(?x);
     }
@@ -128,7 +132,7 @@ mod tests {
     fn operand_literal() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let x = template::parse("{{ ident }} another_literal");
+        let x: TemplateTest = template::parse("{{ ident }} another_literal").unwrap();
 
         tracing::trace!(?x);
     }
@@ -137,7 +141,8 @@ mod tests {
     fn literal_operand_literal_operand() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let x = template::parse("some_literal {{ ident }} another_literal {{ ident }}");
+        let x: TemplateTest =
+            template::parse("some_literal {{ ident }} another_literal {{ ident }}").unwrap();
 
         tracing::trace!(?x);
     }
@@ -146,7 +151,7 @@ mod tests {
     fn operand_operand() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let x = template::parse("{{ ident }}{{ ident }}");
+        let x: TemplateTest = template::parse("{{ ident }}{{ ident }}").unwrap();
 
         tracing::trace!(?x);
     }
@@ -155,7 +160,7 @@ mod tests {
     fn operand_option_json() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let x = template::parse("{{ ident | json }}");
+        let x: TemplateTest = template::parse("{{ ident | json }}").unwrap();
 
         tracing::trace!(?x);
     }
