@@ -64,7 +64,7 @@ members = [
 # Single Largest Binary Maximum: 5GB
 # Time: ~6 minutes
 [profile.release]
-debug = true
+debug = "limited"
 strip = "none"
 lto = "thin"
 opt-level = 3
