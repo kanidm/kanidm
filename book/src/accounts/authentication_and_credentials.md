@@ -92,9 +92,9 @@ value.
 If you have [configured outbound email](/email_setup.md) you can send the reset link directly to the user's email with:
 
 ```bash
-kanidm person credential send-reset-token <account_id> [TTL] [ALTERNATE_EMAIL]
+kanidm person credential send-reset-token [OPTIONS] <account_id> [ALTERNATE_EMAIL]
 kanidm person credential send-reset-token demo_user
-kanidm person credential send-reset-token demo_user 86400 secondary.address@example.com
+kanidm person credential send-reset-token --ttl 86400 demo_user secondary.address@example.com
 ```
 
 Once the credential reset has been committed the token is immediately invalidated and can never be used again. By
