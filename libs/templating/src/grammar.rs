@@ -12,11 +12,24 @@ peg::parser! {
         }
 
         rule operand() -> TemplateIntermediate =
-            separator() a:attrname() separator() o:options()*
-                { TemplateIntermediate::Operand ( a.to_string(), o ) }
+            separator()* a:attrname() separator()* c:condition()? separator()* o:option()? separator()*
+                { TemplateIntermediate::Operand {
+                    attribute: a.to_string(),
+                    condition: c,
+                    options: o }
+                }
 
-        rule options() -> TemplateOption =
-            start_option() separator() os:option_str() separator()
+        rule condition() -> TemplateCondition =
+            start_condition() separator()+ c:condition_str()
+                { c }
+
+        rule condition_str() -> TemplateCondition = precedence!{
+            "A"
+            { TemplateCondition::A }
+        }
+
+        rule option() -> TemplateOption =
+            start_option() separator()+ os:option_str()
                 { os }
 
         rule option_str() -> TemplateOption = precedence!{
@@ -31,6 +44,9 @@ peg::parser! {
 
         rule attrname() -> String =
             s:$([ 'a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' ]*) { s.to_string() }
+
+        rule start_condition() =
+            ['i']['f']
 
         rule start_option() =
             ['|']
@@ -52,11 +68,20 @@ enum TemplateOption {
 }
 
 #[derive(Debug)]
+enum TemplateCondition {
+    A,
+}
+
+#[derive(Debug)]
 enum TemplateIntermediate {
     // None,
     Literal(String),
     // Join(Self, Self),
-    Operand(String, Vec<TemplateOption>),
+    Operand {
+        attribute: String,
+        condition: Option<TemplateCondition>,
+        options: Option<TemplateOption>,
+    },
 }
 
 #[cfg(test)]
