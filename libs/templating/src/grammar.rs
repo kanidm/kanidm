@@ -1,15 +1,36 @@
 use std::str::FromStr;
 
 pub trait TemplateAttribute: FromStr {}
-pub trait TemplateCondition: FromStr + Default {}
-pub trait TemplateOption: FromStr + Default {}
+
+pub trait TemplateCondition: FromStr + Default {
+    type Context;
+
+    fn evaluate(&self, ctx: &Self::Context) -> bool;
+}
+
+pub trait TemplateRenderer: FromStr + Default {
+    type Context;
+    type Attribute;
+    type Error;
+
+    fn render(
+        &self,
+        attribute: &Self::Attribute,
+        ctx: Self::Context,
+        buffer: &mut String,
+    ) -> Result<(), Self::Error>;
+}
 
 peg::parser! {
     grammar template() for str {
-        pub rule parse<A: TemplateAttribute, C: TemplateCondition, O: TemplateOption>() -> Vec<TemplateIntermediate<A, C, O>> =
+
+        pub rule parse<A: TemplateAttribute, C: TemplateCondition, O: TemplateRenderer>() -> Template<A, C, O> =
+            s:items() { Template { items: s } }
+
+        rule items<A: TemplateAttribute, C: TemplateCondition, O: TemplateRenderer>() -> Vec<TemplateIntermediate<A, C, O>> =
             s:(element()*) { s }
 
-        rule element<A: TemplateAttribute, C: TemplateCondition, O: TemplateOption>() -> TemplateIntermediate<A, C, O> = precedence!{
+        rule element<A: TemplateAttribute, C: TemplateCondition, O: TemplateRenderer>() -> TemplateIntermediate<A, C, O> = precedence!{
             start_template() o:operand::<A, C, O>() end_template()
                 { o }
             --
@@ -17,8 +38,8 @@ peg::parser! {
                 {  TemplateIntermediate::Literal (s) }
         }
 
-        rule operand<A: TemplateAttribute, C: TemplateCondition, O: TemplateOption>() -> TemplateIntermediate<A, C, O> =
-            separator()* a:attrname::<A>() c:condition::<C>() o:option::<O>()? separator()+
+        rule operand<A: TemplateAttribute, C: TemplateCondition, O: TemplateRenderer>() -> TemplateIntermediate<A, C, O> =
+            separator()* a:attrname::<A>() c:condition::<C>() o:option::<O>() separator()+
                 { TemplateIntermediate::Operand {
                     attribute: a,
                     condition: c,
@@ -37,15 +58,15 @@ peg::parser! {
             s:$(['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '(' | ')']+)
                 {? C::from_str(s).or(Err("invalid condition")) }
 
-        rule option<O: TemplateOption>() -> O =
+        rule option<O: TemplateRenderer>() -> O =
             separator()+ start_option() separator()+ os:option_str()
                 { os }
             / option_default()
 
-        rule option_default<O: TemplateOption>() -> O =
+        rule option_default<O: TemplateRenderer>() -> O =
             { O::default() }
 
-        rule option_str<O: TemplateOption>() -> O =
+        rule option_str<O: TemplateRenderer>() -> O =
             s:$(['a'..='z']+)
                 {? O::from_str(s).or(Err("invalid option")) }
 
@@ -80,34 +101,59 @@ enum TemplateIntermediate<A, C, O> {
     Operand {
         attribute: A,
         condition: C,
-        options: Option<O>,
+        options: O,
     },
 }
 
-
-impl <A, C, O> for TemplateIntermediate<A, C, O> {
-    pub fn render(&self) -> Result<String, ()> {
-        
-    }
+#[derive(Debug)]
+pub struct Template<A, C, O> {
+    items: Vec<TemplateIntermediate<A, C, O>>,
 }
 
+impl<A, C, O, X> Template<A, C, O>
+where
+    A: TemplateAttribute,
+    C: TemplateCondition<Context = X>,
+    O: TemplateRenderer,
+{
+    pub fn render(&self, ctx: &X) -> Result<String, ()> {
+        // Make the buffer.
+        let mut buffer = String::new();
 
+        for template_item in self.items.iter() {
+            match template_item {
+                TemplateIntermediate::Literal(data) => buffer.push_str(data.as_str()),
+                TemplateIntermediate::Operand {
+                    attribute,
+                    condition,
+                    options,
+                } if condition.evaluate(ctx) => {}
+                TemplateIntermediate::Operand { .. } => {
+                    // trace!("Skipping non-evaled condition");
+                }
+            }
+        }
+
+        Ok(buffer)
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::{
-        template, TemplateAttribute, TemplateCondition, TemplateIntermediate, TemplateOption,
+        template, Template, TemplateAttribute, TemplateCondition, TemplateIntermediate,
+        TemplateRenderer,
     };
     use std::str::FromStr;
 
     #[derive(Debug, Default)]
-    enum TestOption {
+    enum TestRenderer {
         #[default]
         None,
         FormatJson,
     }
 
-    impl FromStr for TestOption {
+    impl FromStr for TestRenderer {
         type Err = ();
 
         fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -118,7 +164,20 @@ mod tests {
         }
     }
 
-    impl TemplateOption for TestOption {}
+    impl TemplateRenderer for TestRenderer {
+        type Context = ();
+        type Attribute = TestAttribute;
+        type Error = ();
+
+        fn render(
+            &self,
+            attribute: &Self::Attribute,
+            ctx: Self::Context,
+            buffer: &mut String,
+        ) -> Result<(), Self::Error> {
+            todo!();
+        }
+    }
 
     #[derive(Debug, Default)]
     enum TestCondition {
@@ -138,7 +197,16 @@ mod tests {
         }
     }
 
-    impl TemplateCondition for TestCondition {}
+    impl TemplateCondition for TestCondition {
+        type Context = ();
+
+        fn evaluate(&self, _ctx: &Self::Context) -> bool {
+            match self {
+                Self::None => true,
+                Self::Abc => false,
+            }
+        }
+    }
 
     #[derive(Debug)]
     enum TestAttribute {
@@ -158,7 +226,7 @@ mod tests {
 
     impl TemplateAttribute for TestAttribute {}
 
-    type TemplateTest = Vec<TemplateIntermediate<TestAttribute, TestCondition, TestOption>>;
+    type TemplateTest = Template<TestAttribute, TestCondition, TestRenderer>;
 
     #[test]
     fn single_literal() {
@@ -167,6 +235,9 @@ mod tests {
         let x: TemplateTest = template::parse("foo").unwrap();
 
         tracing::trace!(?x);
+
+        let ctx = ();
+        let y = x.render(&ctx);
     }
 
     #[test]
