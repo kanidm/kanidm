@@ -12,10 +12,10 @@ repository = { workspace = true }
 
 [dependencies]
 serde = { workspace = true }
-serde_json = { workspace = true }
 peg = { workspace = true }
-uuid = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+serde_json = { workspace = true }
+# uuid = { workspace = true, features = ["serde"] }

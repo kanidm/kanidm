@@ -151,8 +151,8 @@ mod tests {
     #[derive(Debug, Default)]
     enum TestRenderer {
         #[default]
-        None,
-        FormatJson,
+        Direct,
+        Json,
     }
 
     impl FromStr for TestRenderer {
@@ -160,7 +160,7 @@ mod tests {
 
         fn from_str(s: &str) -> Result<Self, Self::Err> {
             match s {
-                "json" => Ok(Self::FormatJson),
+                "json" => Ok(Self::Json),
                 _ => Err(()),
             }
         }
@@ -177,7 +177,13 @@ mod tests {
             ctx: &Self::Context,
             buffer: &mut String,
         ) -> Result<(), Self::Error> {
-            todo!();
+            match self {
+                Self::Direct => buffer.push_str("direct ident"),
+                Self::Json => serde_json::to_string("json ident")
+                    .map(|out| buffer.push_str(&out))
+                    .map_err(|err| ())?,
+            }
+            Ok(())
         }
     }
 
