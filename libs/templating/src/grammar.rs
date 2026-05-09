@@ -16,7 +16,7 @@ pub trait TemplateRenderer: FromStr + Default {
     fn render(
         &self,
         attribute: &Self::Attribute,
-        ctx: Self::Context,
+        ctx: &Self::Context,
         buffer: &mut String,
     ) -> Result<(), Self::Error>;
 }
@@ -39,11 +39,11 @@ peg::parser! {
         }
 
         rule operand<A: TemplateAttribute, C: TemplateCondition, O: TemplateRenderer>() -> TemplateIntermediate<A, C, O> =
-            separator()* a:attrname::<A>() c:condition::<C>() o:option::<O>() separator()+
+            separator()* a:attrname::<A>() c:condition::<C>() o:renderer::<O>() separator()+
                 { TemplateIntermediate::Operand {
                     attribute: a,
                     condition: c,
-                    options: o }
+                    renderer: o }
                 }
 
         rule condition<C: TemplateCondition>() -> C =
@@ -58,17 +58,17 @@ peg::parser! {
             s:$(['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '(' | ')']+)
                 {? C::from_str(s).or(Err("invalid condition")) }
 
-        rule option<O: TemplateRenderer>() -> O =
-            separator()+ start_option() separator()+ os:option_str()
+        rule renderer<O: TemplateRenderer>() -> O =
+            separator()+ start_renderer() separator()+ os:renderer_str()
                 { os }
-            / option_default()
+            / renderer_default()
 
-        rule option_default<O: TemplateRenderer>() -> O =
+        rule renderer_default<O: TemplateRenderer>() -> O =
             { O::default() }
 
-        rule option_str<O: TemplateRenderer>() -> O =
+        rule renderer_str<O: TemplateRenderer>() -> O =
             s:$(['a'..='z']+)
-                {? O::from_str(s).or(Err("invalid option")) }
+                {? O::from_str(s).or(Err("invalid renderer")) }
 
         rule literal() -> String =
             s:$((!start_template()[_])+)
@@ -81,7 +81,7 @@ peg::parser! {
         rule start_condition() =
             ['i']['f']
 
-        rule start_option() =
+        rule start_renderer() =
             ['|']
 
         rule start_template() =
@@ -101,7 +101,7 @@ enum TemplateIntermediate<A, C, O> {
     Operand {
         attribute: A,
         condition: C,
-        options: O,
+        renderer: O,
     },
 }
 
@@ -110,13 +110,13 @@ pub struct Template<A, C, O> {
     items: Vec<TemplateIntermediate<A, C, O>>,
 }
 
-impl<A, C, O, X> Template<A, C, O>
+impl<A, C, O> Template<A, C, O>
 where
     A: TemplateAttribute,
-    C: TemplateCondition<Context = X>,
-    O: TemplateRenderer,
+    C: TemplateCondition,
+    O: TemplateRenderer<Context = C::Context, Attribute = A>,
 {
-    pub fn render(&self, ctx: &X) -> Result<String, ()> {
+    pub fn render(&self, ctx: &C::Context) -> Result<String, O::Error> {
         // Make the buffer.
         let mut buffer = String::new();
 
@@ -126,8 +126,10 @@ where
                 TemplateIntermediate::Operand {
                     attribute,
                     condition,
-                    options,
-                } if condition.evaluate(ctx) => {}
+                    renderer,
+                } if condition.evaluate(ctx) => {
+                    renderer.render(attribute, ctx, &mut buffer)?;
+                }
                 TemplateIntermediate::Operand { .. } => {
                     // trace!("Skipping non-evaled condition");
                 }
@@ -172,7 +174,7 @@ mod tests {
         fn render(
             &self,
             attribute: &Self::Attribute,
-            ctx: Self::Context,
+            ctx: &Self::Context,
             buffer: &mut String,
         ) -> Result<(), Self::Error> {
             todo!();
@@ -298,7 +300,7 @@ mod tests {
     }
 
     #[test]
-    fn operand_option_json() {
+    fn operand_renderer_json() {
         let _ = tracing_subscriber::fmt::try_init();
 
         let x: TemplateTest = template::parse("{{ ident | json }}").unwrap();
@@ -307,7 +309,7 @@ mod tests {
     }
 
     #[test]
-    fn operand_condition_option_json() {
+    fn operand_condition_renderer_json() {
         let _ = tracing_subscriber::fmt::try_init();
 
         let x: TemplateTest = template::parse("{{ ident if memberof(abc) | json }}").unwrap();
