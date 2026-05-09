@@ -1,11 +1,15 @@
 use std::str::FromStr;
 
+pub trait TemplateAttribute: FromStr {}
+pub trait TemplateCondition: FromStr + Default {}
+pub trait TemplateOption: FromStr + Default {}
+
 peg::parser! {
     grammar template() for str {
-        pub rule parse<A: FromStr, C: FromStr + Default, O: FromStr>() -> Vec<TemplateIntermediate<A, C, O>> =
+        pub rule parse<A: TemplateAttribute, C: TemplateCondition, O: TemplateOption>() -> Vec<TemplateIntermediate<A, C, O>> =
             s:(element()*) { s }
 
-        rule element<A: FromStr, C: FromStr + Default, O: FromStr>() -> TemplateIntermediate<A, C, O> = precedence!{
+        rule element<A: TemplateAttribute, C: TemplateCondition, O: TemplateOption>() -> TemplateIntermediate<A, C, O> = precedence!{
             start_template() o:operand::<A, C, O>() end_template()
                 { o }
             --
@@ -13,7 +17,7 @@ peg::parser! {
                 {  TemplateIntermediate::Literal (s) }
         }
 
-        rule operand<A: FromStr, C: FromStr + Default, O: FromStr>() -> TemplateIntermediate<A, C, O> =
+        rule operand<A: TemplateAttribute, C: TemplateCondition, O: TemplateOption>() -> TemplateIntermediate<A, C, O> =
             separator()* a:attrname::<A>() c:condition::<C>() o:option::<O>()? separator()+
                 { TemplateIntermediate::Operand {
                     attribute: a,
@@ -21,27 +25,27 @@ peg::parser! {
                     options: o }
                 }
 
-        rule condition<C: FromStr + Default>() -> C =
+        rule condition<C: TemplateCondition>() -> C =
             separator()+ start_condition() separator()+ c:condition_str()
                 { c }
             / condition_default()
 
-        rule condition_default<C: Default>() -> C =
+        rule condition_default<C: TemplateCondition>() -> C =
             { C::default() }
 
-        rule condition_str<C: FromStr>() -> C =
+        rule condition_str<C: TemplateCondition>() -> C =
             s:$(['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '(' | ')']+)
                 {? C::from_str(s).or(Err("invalid condition")) }
 
-        rule option<O: FromStr>() -> O =
+        rule option<O: TemplateOption>() -> O =
             separator()+ start_option() separator()+ os:option_str()
                 { os }
             / option_default()
 
-        rule option_default<O: Default>() -> O =
+        rule option_default<O: TemplateOption>() -> O =
             { O::default() }
 
-        rule option_str<O: FromStr>() -> O =
+        rule option_str<O: TemplateOption>() -> O =
             s:$(['a'..='z']+)
                 {? O::from_str(s).or(Err("invalid option")) }
 
@@ -49,7 +53,7 @@ peg::parser! {
             s:$((!start_template()[_])+)
             { s.to_string() }
 
-        rule attrname<A: FromStr>() -> A =
+        rule attrname<A: TemplateAttribute>() -> A =
             s:$([ 'a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_']*)
                 {? A::from_str(s).or(Err("invalid attribute name")) }
 
@@ -70,58 +74,6 @@ peg::parser! {
     }
 }
 
-#[derive(Debug, Default)]
-enum TemplateOption {
-    #[default]
-    None,
-    FormatJson,
-}
-
-impl FromStr for TemplateOption {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "json" => Ok(Self::FormatJson),
-            _ => Err(()),
-        }
-    }
-}
-
-#[derive(Debug, Default)]
-enum TemplateCondition {
-    #[default]
-    None,
-    Abc,
-}
-
-impl FromStr for TemplateCondition {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "memberof(abc)" => Ok(Self::Abc),
-            _ => Err(()),
-        }
-    }
-}
-
-#[derive(Debug)]
-enum TemplateAttribute {
-    Ident,
-}
-
-impl FromStr for TemplateAttribute {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "ident" => Ok(Self::Ident),
-            _ => Err(()),
-        }
-    }
-}
-
 #[derive(Debug)]
 enum TemplateIntermediate<A, C, O> {
     Literal(String),
@@ -134,9 +86,70 @@ enum TemplateIntermediate<A, C, O> {
 
 #[cfg(test)]
 mod tests {
-    use super::{template, TemplateAttribute, TemplateCondition, TemplateIntermediate};
+    use super::{
+        template, TemplateAttribute, TemplateCondition, TemplateIntermediate, TemplateOption,
+    };
+    use std::str::FromStr;
 
-    type TemplateTest = Vec<TemplateIntermediate<TemplateAttribute, TemplateCondition, String>>;
+    #[derive(Debug, Default)]
+    enum TestOption {
+        #[default]
+        None,
+        FormatJson,
+    }
+
+    impl FromStr for TestOption {
+        type Err = ();
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            match s {
+                "json" => Ok(Self::FormatJson),
+                _ => Err(()),
+            }
+        }
+    }
+
+    impl TemplateOption for TestOption {}
+
+    #[derive(Debug, Default)]
+    enum TestCondition {
+        #[default]
+        None,
+        Abc,
+    }
+
+    impl FromStr for TestCondition {
+        type Err = ();
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            match s {
+                "memberof(abc)" => Ok(Self::Abc),
+                _ => Err(()),
+            }
+        }
+    }
+
+    impl TemplateCondition for TestCondition {}
+
+    #[derive(Debug)]
+    enum TestAttribute {
+        Ident,
+    }
+
+    impl FromStr for TestAttribute {
+        type Err = ();
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            match s {
+                "ident" => Ok(Self::Ident),
+                _ => Err(()),
+            }
+        }
+    }
+
+    impl TemplateAttribute for TestAttribute {}
+
+    type TemplateTest = Vec<TemplateIntermediate<TestAttribute, TestCondition, TestOption>>;
 
     #[test]
     fn single_literal() {
