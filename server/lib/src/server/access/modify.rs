@@ -492,7 +492,7 @@ fn modify_migration_attrs<'a>(
         IdentType::Internal(InternalRole::Migration) => {
             if let Some(classes) = entry.get_ava_as_iutf8(Attribute::Class) {
                 let classes = classes.sub(&MIGRATION_IGNORE_CLASSES);
-                if classes.is_subset(&MIGRATION_ENTRY_CLASSES) {
+                if !classes.is_empty() && classes.is_subset(&MIGRATION_ENTRY_CLASSES) {
                     // Check what may be allowed
                     let (allow_attrs, allow_cls) = migration_entry_attrs(&classes);
 
