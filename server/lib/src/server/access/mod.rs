@@ -319,6 +319,12 @@ pub trait AccessControlsTransaction<'a> {
         // going to access check.
         let requested_attrs: BTreeSet<Attribute> = filter_orig.get_attr_set();
 
+        // NOTE: This is a safety barrier, but queries can't proceed if they have no attributes.
+        if requested_attrs.is_empty() {
+            security_access!("denied ❌ - no attributes were requested in search, denying all entries from release");
+            return Ok(Vec::with_capacity(0));
+        }
+
         // First get the set of acps that apply to this receiver
         let related_acp = self.search_related_acp(ident, None);
 
@@ -597,23 +603,24 @@ pub trait AccessControlsTransaction<'a> {
         let requested_pres: BTreeSet<Attribute> = modlist
             .iter()
             .filter_map(|m| match m {
-                Modify::Present(a, _) => Some(a.clone()),
-                _ => None,
+                Modify::Present(a, _) | Modify::Set(a, _) | Modify::Assert(a, _) => Some(a.clone()),
+                Modify::Removed(_, _) | Modify::Purged(_) => None,
             })
             .collect();
 
         let requested_rem: BTreeSet<Attribute> = modlist
             .iter()
             .filter_map(|m| match m {
-                Modify::Removed(a, _) => Some(a.clone()),
-                Modify::Purged(a) => Some(a.clone()),
-                _ => None,
+                Modify::Removed(a, _) | Modify::Purged(a) | Modify::Set(a, _) => Some(a.clone()),
+                Modify::Present(_, _) | Modify::Assert(_, _) => None,
             })
             .collect();
 
         let mut requested_pres_classes: BTreeSet<&str> = Default::default();
         let mut requested_rem_classes: BTreeSet<&str> = Default::default();
 
+        // This loop extracts what classes have been requested for modification so that we can
+        // apply our modify class rules.
         for modify in modlist.iter() {
             match modify {
                 Modify::Present(a, v) if a == Attribute::Class.as_ref() => {
@@ -655,7 +662,10 @@ pub trait AccessControlsTransaction<'a> {
                         return false;
                     }
                 }
-                _ => {}
+                // No attribute::class present.
+                Modify::Set(_, _) | Modify::Removed(_, _) | Modify::Present(_, _) => {}
+                // Actions don't relate to gathering of classes for modification checks
+                Modify::Purged(_) | Modify::Assert(_, _) => {}
             }
         }
 
@@ -664,6 +674,13 @@ pub trait AccessControlsTransaction<'a> {
         debug!(?requested_pres_classes, "Requested present class set");
         debug!(?requested_rem_classes, "Requested remove class set");
         debug!(entry_id = %entry.get_display_id());
+
+        // You must request *at least* one change. Note that in the case a class
+        // is being changed, it must also have at least one pres/rem state also.
+        if requested_pres.is_empty() && requested_rem.is_empty() {
+            security_error!("No modifications were requested");
+            return false;
+        };
 
         let sync_agmts = self.get_sync_agreements();
 
@@ -2183,7 +2200,8 @@ mod tests {
             )),
             modlist!([Modify::Set(
                 Attribute::Class,
-                EntryClass::Account.to_valueset()
+                ValueSetIutf8::from_iter([EntryClass::Account.into(), EntryClass::Object.into(),])
+                    .unwrap()
             )]),
         );
 
@@ -2202,10 +2220,10 @@ mod tests {
             "name class",
             // Allow rem name and class
             "name class",
-            // And the class allowed is account
+            // And the class present allowed is account
             EntryClass::Account.into(),
-            // And the class allowed is account
-            EntryClass::Account.into(),
+            // And the class removed allowed is person
+            "account person",
         );
         // Allow member, class is group. IE not account
         let acp_deny = AccessControlModify::from_raw(
@@ -3651,5 +3669,45 @@ mod tests {
         );
 
         test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r1_set, false);
+    }
+
+    #[test]
+    fn test_access_modify_set_bypass() {
+        sketching::test_init();
+
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
+        let r1_set = vec![Arc::new(ev1)];
+
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([Modify::Set(
+                Attribute::DisplayName,
+                ValueSetUtf8::new("value".to_string())
+            )]),
+        );
+
+        // Notice that there are no allowing access controls, and that the result must be a denial.
+        test_acp_modify!(&me_pres, vec![], &r1_set, false);
+
+        let me_empty = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([]),
+        );
+
+        // If there is no request changes, deny.
+        test_acp_modify!(&me_empty, vec![], &r1_set, false);
     }
 }
