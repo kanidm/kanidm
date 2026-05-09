@@ -524,144 +524,12 @@ pub trait AccessControlsTransaction<'a> {
         me: &ModifyEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
-        // Pre-check if the no-no purge class is present
-        let disallow = me
-            .modlist
-            .iter()
-            .any(|m| matches!(m, Modify::Purged(a) if a == Attribute::Class.as_ref()));
-
-        if disallow {
-            security_access!("Disallowing purge {} in modification", Attribute::Class);
-            return Ok(false);
-        }
-
         // Find the acps that relate to the caller, and compile their related
         // target filters.
         let related_acp: Vec<_> = self.modify_related_acp(&me.ident);
 
-        // build two sets of "requested pres" and "requested rem"
-        let requested_pres: BTreeSet<Attribute> = me
-            .modlist
-            .iter()
-            .filter_map(|m| match m {
-                Modify::Present(a, _) | Modify::Set(a, _) => Some(a.clone()),
-                Modify::Removed(..) | Modify::Assert(..) | Modify::Purged(_) => None,
-            })
-            .collect();
-
-        let requested_rem: BTreeSet<Attribute> = me
-            .modlist
-            .iter()
-            .filter_map(|m| match m {
-                Modify::Set(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a.clone()),
-                Modify::Present(..) | Modify::Assert(..) => None,
-            })
-            .collect();
-
-        // Build the set of classes that we to work on, only in terms of "addition". To remove
-        // I think we have no limit, but ... william of the future may find a problem with this
-        // policy.
-        let mut requested_pres_classes: BTreeSet<&str> = Default::default();
-        let mut requested_rem_classes: BTreeSet<&str> = Default::default();
-
-        for modify in me.modlist.iter() {
-            match modify {
-                Modify::Present(a, v) => {
-                    if a == Attribute::Class.as_ref() {
-                        // Here we have an option<&str> which could mean there is a risk of
-                        // a malicious entity attempting to trick us by masking class mods
-                        // in non-iutf8 types. However, the server first won't respect their
-                        // existence, and second, we would have failed the mod at schema checking
-                        // earlier in the process as these were not correctly type. As a result
-                        // we can trust these to be correct here and not to be "None".
-                        requested_pres_classes.extend(v.to_str())
-                    }
-                }
-                Modify::Removed(a, v) => {
-                    if a == Attribute::Class.as_ref() {
-                        requested_rem_classes.extend(v.to_str())
-                    }
-                }
-                Modify::Set(a, v) => {
-                    if a == Attribute::Class.as_ref() {
-                        // This is a reasonably complex case - we actually have to contemplate
-                        // the difference between what exists and what doesn't, but that's per-entry.
-                        //
-                        // for now, we treat this as both pres and rem, but I think that ultimately
-                        // to fix this we need to make all modifies apply in terms of "batch mod"
-                        requested_pres_classes.extend(v.as_iutf8_iter().into_iter().flatten());
-                        requested_rem_classes.extend(v.as_iutf8_iter().into_iter().flatten());
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        debug!(?requested_pres, "Requested present attribute set");
-        debug!(?requested_rem, "Requested remove attribute set");
-        debug!(?requested_pres_classes, "Requested present class set");
-        debug!(?requested_rem_classes, "Requested remove class set");
-
-        let sync_agmts = self.get_sync_agreements();
-
         let r = entries.iter().all(|e| {
-            debug!(entry_id = %e.get_display_id());
-
-            match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
-                ModifyResult::Deny => false,
-                ModifyResult::Grant => true,
-                ModifyResult::Allow {
-                    pres,
-                    rem,
-                    pres_cls,
-                    rem_cls,
-                } => {
-                    let mut decision = true;
-
-                    if !requested_pres.is_subset(&pres) {
-                        security_error!("requested_pres is not a subset of allowed");
-                        security_error!(
-                            "requested_pres: {:?} !⊆ allowed: {:?}",
-                            requested_pres,
-                            pres
-                        );
-                        decision = false
-                    };
-
-                    if !requested_rem.is_subset(&rem) {
-                        security_error!("requested_rem is not a subset of allowed");
-                        security_error!("requested_rem: {:?} !⊆ allowed: {:?}", requested_rem, rem);
-                        decision = false;
-                    };
-
-                    if !requested_pres_classes.is_subset(&pres_cls) {
-                        security_error!("requested_pres_classes is not a subset of allowed");
-                        security_error!(
-                            "requested_pres_classes: {:?} !⊆ allowed: {:?}",
-                            requested_pres_classes,
-                            pres_cls
-                        );
-                        decision = false;
-                    };
-
-                    if !requested_rem_classes.is_subset(&rem_cls) {
-                        security_error!("requested_rem_classes is not a subset of allowed");
-                        security_error!(
-                            "requested_rem_classes: {:?} !⊆ allowed: {:?}",
-                            requested_rem_classes,
-                            rem_cls
-                        );
-                        decision = false;
-                    }
-
-                    if decision {
-                        debug!("passed pres, rem, classes check.");
-                    }
-
-                    // Yield the result
-                    decision
-                }
-            }
+            self.modify_allow_operation_per_entry(&me.ident, &related_acp, e, &me.modlist)
         });
 
         if r {
@@ -698,142 +566,7 @@ pub trait AccessControlsTransaction<'a> {
                 return false;
             };
 
-            let disallow = modlist
-                .iter()
-                .any(|m| matches!(m, Modify::Purged(a) if a == Attribute::Class.as_ref()));
-
-            if disallow {
-                security_access!("Disallowing purge in modification");
-                return false;
-            }
-
-            // build two sets of "requested pres" and "requested rem"
-            let requested_pres: BTreeSet<Attribute> = modlist
-                .iter()
-                .filter_map(|m| match m {
-                    Modify::Present(a, _) => Some(a.clone()),
-                    _ => None,
-                })
-                .collect();
-
-            let requested_rem: BTreeSet<Attribute> = modlist
-                .iter()
-                .filter_map(|m| match m {
-                    Modify::Removed(a, _) => Some(a.clone()),
-                    Modify::Purged(a) => Some(a.clone()),
-                    _ => None,
-                })
-                .collect();
-
-            let mut requested_pres_classes: BTreeSet<&str> = Default::default();
-            let mut requested_rem_classes: BTreeSet<&str> = Default::default();
-
-            for modify in modlist.iter() {
-                match modify {
-                    Modify::Present(a, v) => {
-                        if a == Attribute::Class.as_ref() {
-                            requested_pres_classes.extend(v.to_str())
-                        }
-                    }
-                    Modify::Removed(a, v) => {
-                        if a == Attribute::Class.as_ref() {
-                            requested_rem_classes.extend(v.to_str())
-                        }
-                    }
-                    Modify::Set(a, v) => {
-                        if a == Attribute::Class.as_ref() {
-                            // When we apply the set of classes, we base the access control decision
-                            // only on what CHANGED, rather than the full set that is present.
-                            if let Some(current_classes) = e.get_ava_as_iutf8(Attribute::Class) {
-                                if let Some(requested_classes) = v.as_iutf8_set() {
-                                    // Diff the classes to determine what changed. We only perform access
-                                    // checks on what is different, rather than everything in the set. This
-                                    // is what allow's SCIM PUT to operate since you have to "set" every
-                                    // value in the set, even if it's not one you have access too.
-                                    requested_pres_classes.extend( requested_classes.difference(current_classes).map(|s| s.as_str()) );
-                                    requested_rem_classes.extend( current_classes.difference(requested_classes).map(|s| s.as_str()) );
-                                } else {
-                                    // This should be an impossible case - to have made it to this
-                                    // point, then the modify should have passed schema validation
-                                    // an must be a valid iutf8 set, and return a Some(). However
-                                    // in the interest of completeness, we defend from this and
-                                    // and deny the operation.
-                                    error!("invalid valueset state - requested class set is not valid");
-                                    return false;
-                                }
-                            } else {
-                                error!("invalid entry state - entry does not have attribute class and is not valid");
-                                return false;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            debug!(?requested_pres, "Requested present set");
-            debug!(?requested_rem, "Requested remove set");
-            debug!(?requested_pres_classes, "Requested present class set");
-            debug!(?requested_rem_classes, "Requested remove class set");
-            debug!(entry_id = %e.get_display_id());
-
-            let sync_agmts = self.get_sync_agreements();
-
-            match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
-                ModifyResult::Deny => false,
-                ModifyResult::Grant => true,
-                ModifyResult::Allow {
-                    pres,
-                    rem,
-                    pres_cls,
-                    rem_cls,
-                } => {
-                    let mut decision = true;
-
-                    if !requested_pres.is_subset(&pres) {
-                        security_error!("requested_pres is not a subset of allowed");
-                        security_error!(
-                            "requested_pres: {:?} !⊆ allowed: {:?}",
-                            requested_pres,
-                            pres
-                        );
-                        decision = false
-                    };
-
-                    if !requested_rem.is_subset(&rem) {
-                        security_error!("requested_rem is not a subset of allowed");
-                        security_error!("requested_rem: {:?} !⊆ allowed: {:?}", requested_rem, rem);
-                        decision = false;
-                    };
-
-                    if !requested_pres_classes.is_subset(&pres_cls) {
-                        security_error!("requested_pres_classes is not a subset of allowed");
-                        security_error!(
-                            "requested_classes: {:?} !⊆ allowed: {:?}",
-                            requested_pres_classes,
-                            pres_cls
-                        );
-                        decision = false;
-                    };
-
-                    if !requested_rem_classes.is_subset(&rem_cls) {
-                        security_error!("requested_rem_classes is not a subset of allowed");
-                        security_error!(
-                            "requested_classes: {:?} !⊆ allowed: {:?}",
-                            requested_rem_classes,
-                            rem_cls
-                        );
-                        decision = false;
-                    }
-
-                    if decision {
-                        debug!("passed pres, rem, classes check.");
-                    }
-
-                    // Yield the result
-                    decision
-                }
-            }
+            self.modify_allow_operation_per_entry(&me.ident, &related_acp, e, modlist)
         });
 
         if r {
@@ -842,6 +575,153 @@ pub trait AccessControlsTransaction<'a> {
             security_access!("denied ❌ - modifications may not proceed");
         }
         Ok(r)
+    }
+
+    fn modify_allow_operation_per_entry(
+        &self,
+        ident: &Identity,
+        related_acp: &[AccessControlModifyResolved<'_>],
+        entry: &Arc<EntrySealedCommitted>,
+        modlist: &ModifyList<ModifyValid>,
+    ) -> bool {
+        let disallow = modlist
+            .iter()
+            .any(|m| matches!(m, Modify::Purged(a) if a == Attribute::Class.as_ref()));
+
+        if disallow {
+            security_access!("Disallowing purge in modification");
+            return false;
+        }
+
+        // build two sets of "requested pres" and "requested rem"
+        let requested_pres: BTreeSet<Attribute> = modlist
+            .iter()
+            .filter_map(|m| match m {
+                Modify::Present(a, _) => Some(a.clone()),
+                _ => None,
+            })
+            .collect();
+
+        let requested_rem: BTreeSet<Attribute> = modlist
+            .iter()
+            .filter_map(|m| match m {
+                Modify::Removed(a, _) => Some(a.clone()),
+                Modify::Purged(a) => Some(a.clone()),
+                _ => None,
+            })
+            .collect();
+
+        let mut requested_pres_classes: BTreeSet<&str> = Default::default();
+        let mut requested_rem_classes: BTreeSet<&str> = Default::default();
+
+        for modify in modlist.iter() {
+            match modify {
+                Modify::Present(a, v) if a == Attribute::Class.as_ref() => {
+                    requested_pres_classes.extend(v.to_str())
+                }
+                Modify::Removed(a, v) if a == Attribute::Class.as_ref() => {
+                    requested_rem_classes.extend(v.to_str())
+                }
+                Modify::Set(a, v) if a == Attribute::Class.as_ref() => {
+                    // When we apply the set of classes, we base the access control decision
+                    // only on what CHANGED, rather than the full set that is present.
+                    if let Some(current_classes) = entry.get_ava_as_iutf8(Attribute::Class) {
+                        if let Some(requested_classes) = v.as_iutf8_set() {
+                            // Diff the classes to determine what changed. We only perform access
+                            // checks on what is different, rather than everything in the set. This
+                            // is what allow's SCIM PUT to operate since you have to "set" every
+                            // value in the set, even if it's not one you have access too.
+                            requested_pres_classes.extend(
+                                requested_classes
+                                    .difference(current_classes)
+                                    .map(|s| s.as_str()),
+                            );
+                            requested_rem_classes.extend(
+                                current_classes
+                                    .difference(requested_classes)
+                                    .map(|s| s.as_str()),
+                            );
+                        } else {
+                            // This should be an impossible case - to have made it to this
+                            // point, then the modify should have passed schema validation
+                            // an must be a valid iutf8 set, and return a Some(). However
+                            // in the interest of completeness, we defend from this and
+                            // and deny the operation.
+                            error!("invalid valueset state - requested class set is not valid");
+                            return false;
+                        }
+                    } else {
+                        error!("invalid entry state - entry does not have attribute class and is not valid");
+                        return false;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        debug!(?requested_pres, "Requested present set");
+        debug!(?requested_rem, "Requested remove set");
+        debug!(?requested_pres_classes, "Requested present class set");
+        debug!(?requested_rem_classes, "Requested remove class set");
+        debug!(entry_id = %entry.get_display_id());
+
+        let sync_agmts = self.get_sync_agreements();
+
+        match apply_modify_access(ident, related_acp, sync_agmts, entry) {
+            ModifyResult::Deny => false,
+            ModifyResult::Grant => true,
+            ModifyResult::Allow {
+                pres,
+                rem,
+                pres_cls,
+                rem_cls,
+            } => {
+                let mut decision = true;
+
+                if !requested_pres.is_subset(&pres) {
+                    security_error!("requested_pres is not a subset of allowed");
+                    security_error!(
+                        "requested_pres: {:?} !⊆ allowed: {:?}",
+                        requested_pres,
+                        pres
+                    );
+                    decision = false
+                };
+
+                if !requested_rem.is_subset(&rem) {
+                    security_error!("requested_rem is not a subset of allowed");
+                    security_error!("requested_rem: {:?} !⊆ allowed: {:?}", requested_rem, rem);
+                    decision = false;
+                };
+
+                if !requested_pres_classes.is_subset(&pres_cls) {
+                    security_error!("requested_pres_classes is not a subset of allowed");
+                    security_error!(
+                        "requested_classes: {:?} !⊆ allowed: {:?}",
+                        requested_pres_classes,
+                        pres_cls
+                    );
+                    decision = false;
+                };
+
+                if !requested_rem_classes.is_subset(&rem_cls) {
+                    security_error!("requested_rem_classes is not a subset of allowed");
+                    security_error!(
+                        "requested_classes: {:?} !⊆ allowed: {:?}",
+                        requested_rem_classes,
+                        rem_cls
+                    );
+                    decision = false;
+                }
+
+                if decision {
+                    debug!("passed pres, rem, classes check.");
+                }
+
+                // Yield the result
+                decision
+            }
+        }
     }
 
     #[instrument(level = "debug", name = "access::create_allow_operation", skip_all)]
