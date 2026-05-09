@@ -251,6 +251,11 @@ mod tests {
         let x: TemplateTest = template::parse("{{ ident }}").unwrap();
 
         tracing::trace!(?x);
+
+        let ctx = ();
+        let y = x.render(&ctx);
+
+        tracing::trace!(?y, "rendered");
     }
 
     #[test]
