@@ -2,10 +2,10 @@ use std::str::FromStr;
 
 peg::parser! {
     grammar template() for str {
-        pub rule parse<A: FromStr, C: FromStr, O: FromStr>() -> Vec<TemplateIntermediate<A, C, O>> =
+        pub rule parse<A: FromStr, C: FromStr + Default, O: FromStr>() -> Vec<TemplateIntermediate<A, C, O>> =
             s:(element()*) { s }
 
-        rule element<A: FromStr, C: FromStr, O: FromStr>() -> TemplateIntermediate<A, C, O> = precedence!{
+        rule element<A: FromStr, C: FromStr + Default, O: FromStr>() -> TemplateIntermediate<A, C, O> = precedence!{
             start_template() o:operand::<A, C, O>() end_template()
                 { o }
             --
@@ -13,17 +13,21 @@ peg::parser! {
                 {  TemplateIntermediate::Literal (s) }
         }
 
-        rule operand<A: FromStr, C: FromStr, O: FromStr>() -> TemplateIntermediate<A, C, O> =
-            separator()* a:attrname::<A>() separator()* c:condition::<C>()? separator()* o:option::<O>()? separator()*
+        rule operand<A: FromStr, C: FromStr + Default, O: FromStr>() -> TemplateIntermediate<A, C, O> =
+            separator()* a:attrname::<A>() c:condition::<C>() separator()* o:option::<O>()? separator()*
                 { TemplateIntermediate::Operand {
                     attribute: a,
                     condition: c,
                     options: o }
                 }
 
-        rule condition<C: FromStr>() -> C =
-            start_condition() separator()+ c:condition_str()
+        rule condition<C: FromStr + Default>() -> C =
+            separator()+ start_condition() separator()+ c:condition_str()
                 { c }
+            / condition_default()
+
+        rule condition_default<C: Default>() -> C =
+            { C::default() }
 
         rule condition_str<C: FromStr>() -> C =
             s:$(['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '(' | ')']+)
@@ -67,9 +71,33 @@ enum TemplateOption {
     FormatJson,
 }
 
-#[derive(Debug)]
+impl FromStr for TemplateOption {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "json" => Ok(Self::FormatJson),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 enum TemplateCondition {
-    A,
+    #[default]
+    None,
+    Abc,
+}
+
+impl FromStr for TemplateCondition {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "memberof(abc)" => Ok(Self::Abc),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -93,16 +121,16 @@ enum TemplateIntermediate<A, C, O> {
     Literal(String),
     Operand {
         attribute: A,
-        condition: Option<C>,
+        condition: C,
         options: Option<O>,
     },
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{template, TemplateAttribute, TemplateIntermediate};
+    use super::{template, TemplateAttribute, TemplateCondition, TemplateIntermediate};
 
-    type TemplateTest = Vec<TemplateIntermediate<TemplateAttribute, String, String>>;
+    type TemplateTest = Vec<TemplateIntermediate<TemplateAttribute, TemplateCondition, String>>;
 
     #[test]
     fn single_literal() {
