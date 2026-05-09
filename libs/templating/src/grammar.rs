@@ -14,7 +14,7 @@ peg::parser! {
         }
 
         rule operand<A: FromStr, C: FromStr + Default, O: FromStr>() -> TemplateIntermediate<A, C, O> =
-            separator()* a:attrname::<A>() c:condition::<C>() separator()* o:option::<O>()? separator()*
+            separator()* a:attrname::<A>() c:condition::<C>() o:option::<O>()? separator()+
                 { TemplateIntermediate::Operand {
                     attribute: a,
                     condition: c,
@@ -34,8 +34,12 @@ peg::parser! {
                 {? C::from_str(s).or(Err("invalid condition")) }
 
         rule option<O: FromStr>() -> O =
-            start_option() separator()+ os:option_str()
+            separator()+ start_option() separator()+ os:option_str()
                 { os }
+            / option_default()
+
+        rule option_default<O: Default>() -> O =
+            { O::default() }
 
         rule option_str<O: FromStr>() -> O =
             s:$(['a'..='z']+)
@@ -66,8 +70,10 @@ peg::parser! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 enum TemplateOption {
+    #[default]
+    None,
     FormatJson,
 }
 
