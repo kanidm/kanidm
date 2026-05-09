@@ -84,6 +84,15 @@ enum TemplateIntermediate<A, C, O> {
     },
 }
 
+
+impl <A, C, O> for TemplateIntermediate<A, C, O> {
+    pub fn render(&self) -> Result<String, ()> {
+        
+    }
+}
+
+
+
 #[cfg(test)]
 mod tests {
     use super::{
