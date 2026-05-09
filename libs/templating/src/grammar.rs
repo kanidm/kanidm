@@ -102,7 +102,7 @@ enum TemplateIntermediate<A, C, O> {
 mod tests {
     use super::{template, TemplateAttribute, TemplateIntermediate};
 
-    type TemplateTest = Vec<TemplateIntermediate<String, String, String>>;
+    type TemplateTest = Vec<TemplateIntermediate<TemplateAttribute, String, String>>;
 
     #[test]
     fn single_literal() {
