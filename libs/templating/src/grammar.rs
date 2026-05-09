@@ -179,7 +179,7 @@ mod tests {
         ) -> Result<(), Self::Error> {
             match self {
                 Self::Direct => buffer.push_str("direct ident"),
-                Self::Json => serde_json::to_string("json ident")
+                Self::Json => serde_json::to_string(&["json", "ident"])
                     .map(|out| buffer.push_str(&out))
                     .map_err(|err| ())?,
             }
@@ -245,9 +245,11 @@ mod tests {
         tracing::trace!(?x);
 
         let ctx = ();
-        let y = x.render(&ctx);
+        let y = x.render(&ctx).unwrap();
 
         tracing::trace!(?y, "rendered");
+
+        assert_eq!(y, "foo");
     }
 
     #[test]
@@ -259,9 +261,11 @@ mod tests {
         tracing::trace!(?x);
 
         let ctx = ();
-        let y = x.render(&ctx);
+        let y = x.render(&ctx).unwrap();
 
         tracing::trace!(?y, "rendered");
+
+        assert_eq!(y, "direct ident");
     }
 
     #[test]
@@ -271,6 +275,13 @@ mod tests {
         let x: TemplateTest = template::parse("some_literal {{ ident }}").unwrap();
 
         tracing::trace!(?x);
+
+        let ctx = ();
+        let y = x.render(&ctx).unwrap();
+
+        tracing::trace!(?y, "rendered");
+
+        assert_eq!(y, "some_literal direct ident");
     }
 
     #[test]
@@ -280,6 +291,13 @@ mod tests {
         let x: TemplateTest = template::parse("some_literal {{ ident }} another_literal").unwrap();
 
         tracing::trace!(?x);
+
+        let ctx = ();
+        let y = x.render(&ctx).unwrap();
+
+        tracing::trace!(?y, "rendered");
+
+        assert_eq!(y, "some_literal direct ident another_literal");
     }
 
     #[test]
@@ -289,6 +307,13 @@ mod tests {
         let x: TemplateTest = template::parse("{{ ident }} another_literal").unwrap();
 
         tracing::trace!(?x);
+
+        let ctx = ();
+        let y = x.render(&ctx).unwrap();
+
+        tracing::trace!(?y, "rendered");
+
+        assert_eq!(y, "direct ident another_literal");
     }
 
     #[test]
@@ -299,6 +324,13 @@ mod tests {
             template::parse("some_literal {{ ident }} another_literal {{ ident }}").unwrap();
 
         tracing::trace!(?x);
+
+        let ctx = ();
+        let y = x.render(&ctx).unwrap();
+
+        tracing::trace!(?y, "rendered");
+
+        assert_eq!(y, "some_literal direct ident another_literal direct ident");
     }
 
     #[test]
@@ -308,6 +340,13 @@ mod tests {
         let x: TemplateTest = template::parse("{{ ident }}{{ ident }}").unwrap();
 
         tracing::trace!(?x);
+
+        let ctx = ();
+        let y = x.render(&ctx).unwrap();
+
+        tracing::trace!(?y, "rendered");
+
+        assert_eq!(y, "direct identdirect ident");
     }
 
     #[test]
@@ -317,6 +356,13 @@ mod tests {
         let x: TemplateTest = template::parse("{{ ident | json }}").unwrap();
 
         tracing::trace!(?x);
+
+        let ctx = ();
+        let y = x.render(&ctx).unwrap();
+
+        tracing::trace!(?y, "rendered");
+
+        assert_eq!(y, "[\"json\",\"ident\"]");
     }
 
     #[test]
@@ -326,6 +372,13 @@ mod tests {
         let x: TemplateTest = template::parse("{{ ident if memberof(abc) | json }}").unwrap();
 
         tracing::trace!(?x);
+
+        let ctx = ();
+        let y = x.render(&ctx).unwrap();
+
+        tracing::trace!(?y, "rendered");
+
+        assert_eq!(y, "");
     }
 
     #[test]
@@ -335,5 +388,12 @@ mod tests {
         let x: TemplateTest = template::parse("{{ ident if memberof(abc) }}").unwrap();
 
         tracing::trace!(?x);
+
+        let ctx = ();
+        let y = x.render(&ctx).unwrap();
+
+        tracing::trace!(?y, "rendered");
+
+        assert_eq!(y, "");
     }
 }
