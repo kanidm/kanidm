@@ -238,6 +238,8 @@ mod tests {
 
         let ctx = ();
         let y = x.render(&ctx);
+
+        tracing::trace!(?y, "rendered");
     }
 
     #[test]
