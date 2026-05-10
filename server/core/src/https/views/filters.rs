@@ -78,7 +78,7 @@ macro_rules! fl_args {
 /// (( "translation-key" | with_arg("arg1", arg1_var) | with_arg("arg2", obj.arg2) | trans ))
 /// ```
 #[askama::filter_fn]
-pub fn trans(input: impl MsgId, env: &dyn askama::Values) -> askama::Result<String> {
+pub fn trans_with(input: impl MsgId, env: &dyn askama::Values) -> askama::Result<String> {
     let lang = env.get_value("lang").ok_or(askama::Error::ValueMissing)?;
     let lang: &LanguageIdentifier = lang.downcast_ref().ok_or(askama::Error::ValueType)?;
 
@@ -148,3 +148,20 @@ where
     );
     Ok(MsgIdWithArgs { msg_id, args })
 }
+
+/// Option 3: no macro, no with_arg, no having to reassign variables
+/// Code is generated in build.rs, but it's a huge mess since I just wanted to get something
+/// working. It could also potentially be made to make clippy error out for unused translations.
+///
+/// Since askama has no way of calling `.into` on filter arguments I had to use `&dyn ToString` to
+/// avoid having to call `.into` manually in templates, or wrapping every used value in `Some()`.
+///
+/// One funny thing I could also try is making most of this compile-time - instead of generating the
+/// functions that use a static FluentBundle reference just use the AST to make them output strings.
+/// The formatters would have to stay as statics.
+mod option_3 {
+    use super::*;
+    include!(concat!(env!("OUT_DIR"), "/gen_fluent_i18n.rs"));
+}
+
+pub use option_3::trans;

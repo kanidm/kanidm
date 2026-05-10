@@ -104,6 +104,8 @@ kanidmd_lib = { workspace = true, features = ["test"] }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }
+fluent = { workspace = true }
+fluent-syntax = { version = "0.12" }
 
 
 [package.metadata.cargo-machete]

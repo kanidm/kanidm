@@ -4085,6 +4085,7 @@ dependencies = [
  "crypto-glue",
  "filetime",
  "fluent",
+ "fluent-syntax",
  "futures",
  "futures-util",
  "haproxy-protocol",
