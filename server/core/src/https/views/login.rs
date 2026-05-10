@@ -1,9 +1,11 @@
 use super::constants::Urls;
 use super::{cookies, empty_string_as_none, UnrecoverableErrorView};
+use crate::https::i18n::IntoResponseWithI18n as _;
 use crate::https::views::errors::HtmxError;
+use crate::https::views::filters;
 use crate::https::{
     extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
-    middleware::KOpId,
+    middleware::{i18n::I18nCtx, KOpId},
     ServerState,
 };
 use askama::Template;
@@ -99,7 +101,7 @@ pub struct LoginDisplayCtx {
     pub error: Option<LoginError>,
 }
 
-#[derive(Template, WebTemplate)]
+#[derive(Template)]
 #[template(path = "login.html")]
 struct LoginView {
     display_ctx: LoginDisplayCtx,
@@ -202,6 +204,7 @@ pub async fn view_reauth_to_referer_get(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     Extension(kopid): Extension<KOpId>,
+    Extension(i18n_ctx): Extension<I18nCtx>,
     headers: HeaderMap,
     jar: CookieJar,
 ) -> Result<Response, HtmxError> {
@@ -227,7 +230,16 @@ pub async fn view_reauth_to_referer_get(
         error: None,
     };
 
-    Ok(view_reauth_get(state, client_auth_info, kopid, jar, redirect, display_ctx).await)
+    Ok(view_reauth_get(
+        state,
+        client_auth_info,
+        kopid,
+        jar,
+        redirect,
+        display_ctx,
+        i18n_ctx,
+    )
+    .await)
 }
 
 pub async fn view_reauth_get(
@@ -237,6 +249,7 @@ pub async fn view_reauth_get(
     jar: CookieJar,
     return_location: &str,
     display_ctx: LoginDisplayCtx,
+    i18n_ctx: I18nCtx,
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
@@ -315,7 +328,8 @@ pub async fn view_reauth_get(
                     display_ctx,
                     username,
                     remember_me,
-                },
+                }
+                .into_response_with_i18n(i18n_ctx),
             )
                 .into_response()
         }
@@ -332,6 +346,7 @@ pub fn view_oauth2_get(
     jar: CookieJar,
     display_ctx: LoginDisplayCtx,
     login_hint: Option<String>,
+    i18n_ctx: I18nCtx,
 ) -> Response {
     let (username, remember_me) = if let Some(login_hint) = login_hint {
         (login_hint, false)
@@ -350,7 +365,8 @@ pub fn view_oauth2_get(
             display_ctx,
             username,
             remember_me,
-        },
+        }
+        .into_response_with_i18n(i18n_ctx),
     )
         .into_response()
 }
@@ -360,6 +376,7 @@ pub async fn view_index_get(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     Extension(kopid): Extension<KOpId>,
+    Extension(i18n_ctx): Extension<I18nCtx>,
     jar: CookieJar,
 ) -> Response {
     // If we are authenticated, redirect to the landing.
@@ -405,7 +422,8 @@ pub async fn view_index_get(
                     display_ctx,
                     username,
                     remember_me,
-                },
+                }
+                .into_response_with_i18n(i18n_ctx),
             )
                 .into_response()
         }
@@ -432,6 +450,7 @@ pub struct LoginBeginForm {
 pub async fn view_login_begin_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    Extension(i18n_ctx): Extension<I18nCtx>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
@@ -512,7 +531,7 @@ pub async fn view_login_begin_post(
                     username,
                     remember_me,
                 }
-                .into_response()
+                .into_response_with_i18n(i18n_ctx)
             }
             _ => UnrecoverableErrorView {
                 err_code,

@@ -1,7 +1,7 @@
 use super::constants::{ProfileMenuItems, Urls};
 use super::navbar::NavbarCtx;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
+use crate::https::middleware::{i18n::I18nCtx, KOpId};
 use crate::https::views::errors::HtmxError;
 use crate::https::views::login::ReauthPurpose;
 use crate::https::views::reauth::{
@@ -33,6 +33,7 @@ pub(crate) struct RadiusPartialView {
 pub(crate) async fn view_radius_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    Extension(i18n_ctx): Extension<I18nCtx>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
@@ -52,6 +53,7 @@ pub(crate) async fn view_radius_get(
                 kopid,
                 ReauthPurpose::ProfileSettings,
                 Urls::Radius,
+                i18n_ctx,
             )
             .await
         }

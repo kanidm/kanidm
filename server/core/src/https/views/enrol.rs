@@ -1,7 +1,7 @@
 use super::constants::Urls;
 use super::navbar::NavbarCtx;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
+use crate::https::middleware::{i18n::I18nCtx, KOpId};
 use crate::https::views::constants::ProfileMenuItems;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::login::ReauthPurpose;
@@ -40,6 +40,7 @@ pub(crate) struct EnrolDeviceView {
 pub(crate) async fn view_enrol_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    Extension(i18n_ctx): Extension<I18nCtx>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
@@ -59,6 +60,7 @@ pub(crate) async fn view_enrol_get(
                 kopid,
                 ReauthPurpose::ProfileSettings,
                 Urls::EnrolDevice,
+                i18n_ctx,
             )
             .await
         }

@@ -15,6 +15,9 @@ pub use kanidmd_lib::idm::server::DomainInfoRead;
 
 pub struct VerifiedClientInformation(pub ClientAuthInfo);
 
+mod i18n;
+pub(crate) use i18n::AcceptLanguage;
+
 impl FromRequestParts<ServerState> for VerifiedClientInformation {
     type Rejection = (StatusCode, &'static str);
 

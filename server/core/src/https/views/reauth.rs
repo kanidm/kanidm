@@ -1,4 +1,4 @@
-use crate::https::middleware::KOpId;
+use crate::https::middleware::{i18n::I18nCtx, KOpId};
 use crate::https::views::errors::HtmxError;
 use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 use crate::https::views::Urls;
@@ -77,6 +77,7 @@ pub(crate) async fn render_reauth(
     kopid: KOpId,
     reauth_purpose: ReauthPurpose,
     return_to: Urls,
+    i18n_ctx: I18nCtx,
 ) -> axum::response::Result<Response> {
     let uat: &UserAuthToken = client_auth_info
         .pre_validated_uat()
@@ -99,6 +100,7 @@ pub(crate) async fn render_reauth(
         jar,
         return_to.as_ref(),
         display_ctx,
+        i18n_ctx,
     )
     .await)
 }
