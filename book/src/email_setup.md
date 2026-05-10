@@ -53,6 +53,7 @@ You should test the mail sender configuration by sending an email with:
 
 ```bash
 docker run .... kanidm/tools:latest \
+    /sbin/kanidm-mail-sender \
     -c /data/kanidm/config \
     -m /data/kanidm/mail-sender \
     -t test@example.com
@@ -62,6 +63,7 @@ If successful, you can run `kanidm-mail-sender` with:
 
 ```bash
 docker create .... -n kanidm-mail-sender kanidm/tools:latest \
+    /sbin/kanidm-mail-sender \
     -c /data/kanidm/config \
     -m /data/kanidm/mail-sender
 docker start kanidm-mail-sender
@@ -105,5 +107,3 @@ delete_after: 2026-02-25 2:49:43.163072 +00:00:00
 template:     test_message_v1
 to:           ellie@blackhats.net.au
 ```
-
-
