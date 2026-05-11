@@ -2168,6 +2168,27 @@ impl IdmServerProxyReadTransaction<'_> {
         auth_req: &AuthorisationRequest,
         ct: Duration,
     ) -> Result<AuthoriseResponse, Oauth2Error> {
+        self.check_oauth2_authorisation_inner(maybe_ident, auth_req, ct, false)
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn check_oauth2_authorisation_resume(
+        &self,
+        maybe_ident: Option<&Identity>,
+        auth_req: &AuthorisationRequest,
+        ct: Duration,
+    ) -> Result<AuthoriseResponse, Oauth2Error> {
+        self.check_oauth2_authorisation_inner(maybe_ident, auth_req, ct, true)
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn check_oauth2_authorisation_inner(
+        &self,
+        maybe_ident: Option<&Identity>,
+        auth_req: &AuthorisationRequest,
+        ct: Duration,
+        resume_after_auth: bool,
+    ) -> Result<AuthoriseResponse, Oauth2Error> {
         // due to identity processing we already know that:
         // * the session must be authenticated, and valid
         // * is within it's valid time window.
@@ -2376,7 +2397,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         // OIDC Core 1.0 §3.1.2.1
         // prompt=login - The Authorization Server MUST prompt the End-User to re-authenticate
-        if auth_req.prompt.contains(&Prompt::Login) {
+        if auth_req.prompt.contains(&Prompt::Login) && !resume_after_auth {
             debug!("prompt=login was requested, forcing re-authentication");
             return Ok(AuthoriseResponse::AuthenticationRequired {
                 client_name: o2rs.displayname.clone(),

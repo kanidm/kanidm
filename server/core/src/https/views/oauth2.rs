@@ -73,7 +73,7 @@ pub async fn view_resume_get(
     let maybe_auth_req =
         cookies::get_signed::<AuthorisationRequest>(&state, &jar, COOKIE_OAUTH2_REQ);
 
-    oauth2_auth_req(
+    oauth2_auth_req_resume(
         state,
         kopid,
         client_auth_info,
@@ -91,6 +91,47 @@ async fn oauth2_auth_req(
     domain_info: DomainInfoRead,
     jar: CookieJar,
     maybe_auth_req: Option<AuthorisationRequest>,
+) -> Response {
+    oauth2_auth_req_inner(
+        state,
+        kopid,
+        client_auth_info,
+        domain_info,
+        jar,
+        maybe_auth_req,
+        false,
+    )
+    .await
+}
+
+async fn oauth2_auth_req_resume(
+    state: ServerState,
+    kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
+    domain_info: DomainInfoRead,
+    jar: CookieJar,
+    maybe_auth_req: Option<AuthorisationRequest>,
+) -> Response {
+    oauth2_auth_req_inner(
+        state,
+        kopid,
+        client_auth_info,
+        domain_info,
+        jar,
+        maybe_auth_req,
+        true,
+    )
+    .await
+}
+
+async fn oauth2_auth_req_inner(
+    state: ServerState,
+    kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
+    domain_info: DomainInfoRead,
+    jar: CookieJar,
+    maybe_auth_req: Option<AuthorisationRequest>,
+    resume_after_auth: bool,
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
@@ -111,10 +152,17 @@ async fn oauth2_auth_req(
             .into_response();
     };
 
-    let res: Result<AuthoriseResponse, Oauth2Error> = state
-        .qe_r_ref
-        .handle_oauth2_authorise(client_auth_info, auth_req.clone(), kopid.eventid)
-        .await;
+    let res = if resume_after_auth {
+        state
+            .qe_r_ref
+            .handle_oauth2_authorise_resume(client_auth_info, auth_req.clone(), kopid.eventid)
+            .await
+    } else {
+        state
+            .qe_r_ref
+            .handle_oauth2_authorise(client_auth_info, auth_req.clone(), kopid.eventid)
+            .await
+    };
 
     match res {
         Ok(AuthoriseResponse::Permitted(success)) => {

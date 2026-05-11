@@ -1353,6 +1353,37 @@ impl QueryServerReadV1 {
         auth_req: AuthorisationRequest,
         eventid: Uuid,
     ) -> Result<AuthoriseResponse, Oauth2Error> {
+        self.handle_oauth2_authorise_inner(client_auth_info, auth_req, eventid, false)
+            .await
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_authorise_resume(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        auth_req: AuthorisationRequest,
+        eventid: Uuid,
+    ) -> Result<AuthoriseResponse, Oauth2Error> {
+        self.handle_oauth2_authorise_inner(client_auth_info, auth_req, eventid, true)
+            .await
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    async fn handle_oauth2_authorise_inner(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        auth_req: AuthorisationRequest,
+        eventid: Uuid,
+        resume_after_auth: bool,
+    ) -> Result<AuthoriseResponse, Oauth2Error> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self
             .idms
@@ -1367,7 +1398,11 @@ impl QueryServerReadV1 {
             .ok();
 
         // Now we can send to the idm server for authorisation checking.
-        idms_prox_read.check_oauth2_authorisation(ident.as_ref(), &auth_req, ct)
+        if resume_after_auth {
+            idms_prox_read.check_oauth2_authorisation_resume(ident.as_ref(), &auth_req, ct)
+        } else {
+            idms_prox_read.check_oauth2_authorisation(ident.as_ref(), &auth_req, ct)
+        }
     }
 
     #[instrument(
