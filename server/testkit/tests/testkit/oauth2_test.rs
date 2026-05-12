@@ -25,7 +25,7 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
-use url::{form_urlencoded::parse as query_parse, Url};
+use url::{form_urlencoded, Url};
 
 enum AuthMethod {
     Basic,
@@ -344,7 +344,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     let pairs: BTreeMap<_, _> = if response_in_fragment {
         assert!(redir_url.query().is_none());
         let fragment = redir_url.fragment().expect("missing URL fragment");
-        query_parse(fragment.as_bytes()).collect()
+        form_urlencoded::parse(fragment.as_bytes()).collect()
     } else {
         // response_mode = query is default for response_type = code
         assert!(redir_url.fragment().is_none());
@@ -967,7 +967,7 @@ async fn test_oauth2_openid_public_flow_impl(
     let pairs: BTreeMap<_, _> = if response_in_fragment {
         assert!(redir_url.query().is_none());
         let fragment = redir_url.fragment().expect("Missing URL fragment");
-        query_parse(fragment.as_bytes()).collect()
+        form_urlencoded::parse(fragment.as_bytes()).collect()
     } else {
         // response_mode = query is default for response_type = code
         assert!(redir_url.fragment().is_none());

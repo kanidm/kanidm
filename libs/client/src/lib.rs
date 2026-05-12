@@ -13,7 +13,7 @@
 #[macro_use]
 extern crate tracing;
 
-use std::collections::{BTreeMap, BTreeSet as Set};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 #[cfg(target_family = "unix")] // not needed for windows builds
@@ -1082,7 +1082,7 @@ impl KanidmClient {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
+    pub async fn auth_step_init(&self, ident: &str) -> Result<BTreeSet<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
             step: AuthStep::Init2 {
                 username: ident.to_string(),

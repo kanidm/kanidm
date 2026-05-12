@@ -46,9 +46,7 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 use std::time::Duration;
 use time::OffsetDateTime;
-use tokio::sync::mpsc::{
-    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
-};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::{Mutex, Semaphore};
 use tracing::trace;
 use url::Url;
@@ -77,8 +75,8 @@ pub struct IdmServer {
     qs: QueryServer,
     /// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
     crypto_policy: CryptoPolicy,
-    async_tx: Sender<DelayedAction>,
-    audit_tx: Sender<AuditEvent>,
+    async_tx: UnboundedSender<DelayedAction>,
+    audit_tx: UnboundedSender<AuditEvent>,
     /// [Webauthn] verifier/config
     webauthn: Webauthn,
     oauth2rs: Arc<Oauth2ResourceServers>,
@@ -100,8 +98,8 @@ pub struct IdmServerAuthTransaction<'a> {
     /// Thread/Server ID
     pub(crate) sid: Sid,
     // For flagging eventual actions.
-    pub(crate) async_tx: Sender<DelayedAction>,
-    pub(crate) audit_tx: Sender<AuditEvent>,
+    pub(crate) async_tx: UnboundedSender<DelayedAction>,
+    pub(crate) audit_tx: UnboundedSender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) applications: LdapApplicationsReadTransaction,
 }
@@ -137,11 +135,11 @@ pub struct IdmServerProxyWriteTransaction<'a> {
 }
 
 pub struct IdmServerDelayed {
-    pub(crate) async_rx: Receiver<DelayedAction>,
+    pub(crate) async_rx: UnboundedReceiver<DelayedAction>,
 }
 
 pub struct IdmServerAudit {
-    pub(crate) audit_rx: Receiver<AuditEvent>,
+    pub(crate) audit_rx: UnboundedReceiver<AuditEvent>,
 }
 
 impl IdmServer {
@@ -159,8 +157,8 @@ impl IdmServer {
             CryptoPolicy::time_target(Duration::from_millis(10))
         };
 
-        let (async_tx, async_rx) = unbounded();
-        let (audit_tx, audit_rx) = unbounded();
+        let (async_tx, async_rx) = unbounded_channel();
+        let (audit_tx, audit_rx) = unbounded_channel();
 
         // Get the domain name, as the relying party id.
         let (rp_id, rp_name, application_set) = {
@@ -350,7 +348,7 @@ impl IdmServerAudit {
         }
     }
 
-    pub fn audit_rx(&mut self) -> &mut Receiver<AuditEvent> {
+    pub fn audit_rx(&mut self) -> &mut UnboundedReceiver<AuditEvent> {
         &mut self.audit_rx
     }
 }
@@ -376,9 +374,8 @@ impl IdmServerDelayed {
     #[cfg(test)]
     pub(crate) fn try_recv(&mut self) -> Result<DelayedAction, OperationError> {
         use core::task::{Context, Poll};
-        use futures::task as futures_task;
 
-        let waker = futures_task::noop_waker();
+        let waker = futures::task::noop_waker();
         let mut cx = Context::from_waker(&waker);
         match self.async_rx.poll_recv(&mut cx) {
             Poll::Pending => Err(OperationError::InvalidState),
