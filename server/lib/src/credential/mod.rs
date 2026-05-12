@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use hashbrown::{HashMap as Map, HashSet};
+use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::{CredentialDetail, CredentialDetailType, OperationError};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -102,11 +102,11 @@ pub enum CredentialType {
     GeneratedPassword(Password),
     PasswordMfa(
         Password,
-        Map<String, Totp>,
-        Map<String, SecurityKey>,
+        HashMap<String, Totp>,
+        HashMap<String, SecurityKey>,
         Option<BackupCodes>,
     ),
-    Webauthn(Map<String, Passkey>),
+    Webauthn(HashMap<String, Passkey>),
 }
 
 impl From<&Credential> for CredentialDetail {
@@ -211,9 +211,9 @@ impl TryFrom<DbCred> for Credential {
                     Some(dbt) => {
                         let l = "totp".to_string();
                         let t = Totp::try_from(dbt)?;
-                        Map::from([(l, t)])
+                        HashMap::from([(l, t)])
                     }
-                    None => Map::default(),
+                    None => HashMap::default(),
                 };
 
                 let v_webauthn = match maybe_db_webauthn {
@@ -319,9 +319,9 @@ impl TryFrom<DbCred> for Credential {
                     Some(dbt) => {
                         let l = "totp".to_string();
                         let t = Totp::try_from(dbt)?;
-                        Map::from([(l, t)])
+                        HashMap::from([(l, t)])
                     }
-                    None => Map::default(),
+                    None => HashMap::default(),
                 };
 
                 let v_backup_code = match backup_code {
@@ -357,7 +357,7 @@ impl TryFrom<DbCred> for Credential {
                 let v_totp = db_totp
                     .into_iter()
                     .map(|(l, dbt)| Totp::try_from(dbt).map(|t| (l, t)))
-                    .collect::<Result<Map<_, _>, _>>()?;
+                    .collect::<Result<HashMap<_, _>, _>>()?;
 
                 let v_backup_code = match backup_code {
                     Some(dbb) => Some(BackupCodes::try_from(dbb)?),
@@ -480,9 +480,9 @@ impl Credential {
     ) -> Result<Self, OperationError> {
         let type_ = match &self.type_ {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
-                let mut wan = Map::new();
+                let mut wan = HashMap::new();
                 wan.insert(label, cred);
-                CredentialType::PasswordMfa(pw.clone(), Map::default(), wan, None)
+                CredentialType::PasswordMfa(pw.clone(), HashMap::default(), wan, None)
             }
             CredentialType::PasswordMfa(pw, totp, map, backup_code) => {
                 let mut nmap = map.clone();
@@ -603,7 +603,7 @@ impl Credential {
     }
 
     /// Get a reference to the contained webuthn credentials, if any.
-    pub fn securitykey_ref(&self) -> Result<&Map<String, SecurityKey>, OperationError> {
+    pub fn securitykey_ref(&self) -> Result<&HashMap<String, SecurityKey>, OperationError> {
         match &self.type_ {
             CredentialType::Webauthn(_)
             | CredentialType::Password(_)
@@ -614,7 +614,7 @@ impl Credential {
         }
     }
 
-    pub fn passkey_ref(&self) -> Result<&Map<String, Passkey>, OperationError> {
+    pub fn passkey_ref(&self) -> Result<&HashMap<String, Passkey>, OperationError> {
         match &self.type_ {
             CredentialType::PasswordMfa(_, _, _, _)
             | CredentialType::Password(_)
@@ -712,8 +712,8 @@ impl Credential {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
                 CredentialType::PasswordMfa(
                     pw.clone(),
-                    Map::from([(label, totp)]),
-                    Map::new(),
+                    HashMap::from([(label, totp)]),
+                    HashMap::new(),
                     None,
                 )
             }
