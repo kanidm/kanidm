@@ -7,8 +7,7 @@ use crate::{
 };
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password, Select};
-use kanidm_client::ClientError::Http as ClientErrorHttp;
-use kanidm_client::KanidmClient;
+use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::constants::{
     ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_SOFTLOCK_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER,
@@ -598,7 +597,7 @@ impl AccountCredential {
                     }
                     Err(e) => {
                         match e {
-                            ClientErrorHttp(status_code, error, _kopid) => {
+                            ClientError::Http(status_code, error, _kopid) => {
                                 eprintln!(
                                     "Error completing command: HTTP{status_code} - {error:?}"
                                 );
@@ -1234,15 +1233,15 @@ async fn sshkey_add_prompt(session_token: &CUSessionToken, client: &KanidmClient
             .await
         {
             match err {
-                ClientErrorHttp(_, Some(InvalidLabel), _) => {
+                ClientError::Http(_, Some(InvalidLabel), _) => {
                     eprintln!("Invalid SSH Public Key label - must only contain letters, numbers, and the characters '@' or '.'");
                     continue;
                 }
-                ClientErrorHttp(_, Some(DuplicateLabel), _) => {
+                ClientError::Http(_, Some(DuplicateLabel), _) => {
                     eprintln!("SSH Public Key label already exists - choose another");
                     continue;
                 }
-                ClientErrorHttp(_, Some(DuplicateKey), _) => {
+                ClientError::Http(_, Some(DuplicateKey), _) => {
                     eprintln!("SSH Public Key already exists in this account");
                 }
                 _ => eprintln!("An error occurred -> {err:?}"),
@@ -1272,7 +1271,7 @@ async fn sshkey_remove_prompt(session_token: &CUSessionToken, client: &KanidmCli
         .await
     {
         match err {
-            ClientErrorHttp(_, Some(NoMatchingEntries), _) => {
+            ClientError::Http(_, Some(NoMatchingEntries), _) => {
                 eprintln!("SSH Public Key does not exist. Keys were NOT removed.");
             }
             _ => eprintln!("An error occurred -> {err:?}"),
@@ -1566,7 +1565,7 @@ async fn credential_update_exec(
                     .await
                 {
                     match e {
-                        ClientErrorHttp(_, Some(PasswordQuality(feedback)), _) => {
+                        ClientError::Http(_, Some(PasswordQuality(feedback)), _) => {
                             eprintln!("Password was not secure enough, please consider the following suggestions:");
                             for fb_item in feedback.iter() {
                                 eprintln!(" - {fb_item}")
@@ -1700,7 +1699,7 @@ async fn credential_update_exec(
                     .await
                 {
                     match e {
-                        ClientErrorHttp(_, Some(PasswordQuality(feedback)), _) => {
+                        ClientError::Http(_, Some(PasswordQuality(feedback)), _) => {
                             eprintln!("Password was not secure enough, please consider the following suggestions:");
                             for fb_item in feedback.iter() {
                                 eprintln!(" - {fb_item}")

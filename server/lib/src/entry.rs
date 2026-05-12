@@ -54,7 +54,6 @@ use kanidm_proto::scim_v1::server::ScimEffectiveAccess;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use std::cmp::Ordering;
-pub use std::collections::BTreeSet as Set;
 use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -178,7 +177,7 @@ impl Committed for EntryReduced {}
 pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
     // We can't shortcut based on len because cid mod may not be present.
     // Build the set of all keys between both.
-    let allkeys: Set<&Attribute> = left
+    let allkeys: BTreeSet<&Attribute> = left
         .keys()
         .chain(right.keys())
         .filter(|k| *k != &Attribute::LastModifiedCid && *k != &Attribute::CreatedAtCid)
@@ -1421,7 +1420,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     #[inline]
     /// Given this entry, extract the set of strings that can uniquely identify this for authentication
     /// purposes. These strings are then indexed.
-    fn get_name2uuid_cands(&self) -> Set<String> {
+    fn get_name2uuid_cands(&self) -> BTreeSet<String> {
         // The cands are:
         // * spn
         // * name
@@ -1486,9 +1485,9 @@ impl Entry<EntrySealed, EntryCommitted> {
         post: Option<&Self>,
     ) -> (
         // Add
-        Option<Set<String>>,
+        Option<BTreeSet<String>>,
         // Remove
-        Option<Set<String>>,
+        Option<BTreeSet<String>>,
     ) {
         // needs to return gid for posix conversion
         match (pre, post) {
@@ -1510,9 +1509,9 @@ impl Entry<EntrySealed, EntryCommitted> {
                 let post_set = b.get_name2uuid_cands();
 
                 // what is in post, but not pre (added)
-                let add_set: Set<_> = post_set.difference(&pre_set).cloned().collect();
+                let add_set: BTreeSet<_> = post_set.difference(&pre_set).cloned().collect();
                 // what is in pre, but not post (removed)
-                let rem_set: Set<_> = pre_set.difference(&post_set).cloned().collect();
+                let rem_set: BTreeSet<_> = pre_set.difference(&post_set).cloned().collect();
                 (Some(add_set), Some(rem_set))
             }
         }
