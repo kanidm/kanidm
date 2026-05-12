@@ -281,6 +281,10 @@ impl KeyObjectInternalJweA128GCM {
         Ok(())
     }
 
+    fn to_kid_iter(&self) -> impl Iterator<Item = &KeyId> {
+        self.all.keys()
+    }
+
     fn to_key_iter(&self) -> impl Iterator<Item = (KeyId, KeyInternalData)> + '_ {
         self.all.iter().map(|(key_id, internal_jwe)| {
             let usage = KeyUsage::JweA128GCM;
@@ -677,6 +681,10 @@ impl KeyObjectInternalJwtEs256 {
         Ok(())
     }
 
+    fn to_kid_iter(&self) -> impl Iterator<Item = &KeyId> {
+        self.all.keys()
+    }
+
     fn to_key_iter(&self) -> impl Iterator<Item = (KeyId, KeyInternalData)> + '_ {
         self.all.iter().map(|(key_id, internal_jwt)| {
             let usage = KeyUsage::JwsEs256;
@@ -1063,6 +1071,10 @@ impl KeyObjectInternalJwtRs256 {
         Ok(())
     }
 
+    fn to_kid_iter(&self) -> impl Iterator<Item = &KeyId> {
+        self.all.keys()
+    }
+
     fn to_key_iter(&self) -> impl Iterator<Item = (KeyId, KeyInternalData)> + '_ {
         self.all.iter().map(|(key_id, internal_jwt)| {
             let usage = KeyUsage::JwsRs256;
@@ -1351,6 +1363,13 @@ impl KeyObjectT for KeyObjectInternal {
         }
     }
 
+    fn jws_es256_kid(&self) -> Vec<&KeyId> {
+        self.jws_es256
+            .as_ref()
+            .map(|jws_es256_object| jws_es256_object.to_kid_iter().collect())
+            .unwrap_or_default()
+    }
+
     fn jws_es256_jwks(&self) -> Option<JwkKeySet> {
         self.jws_es256
             .as_ref()
@@ -1461,6 +1480,13 @@ impl KeyObjectT for KeyObjectInternal {
         }
     }
 
+    fn jwe_a128gcm_kid(&self) -> Vec<&KeyId> {
+        self.jwe_a128gcm
+            .as_ref()
+            .map(|jwe_object| jwe_object.to_kid_iter().collect())
+            .unwrap_or_default()
+    }
+
     #[cfg(test)]
     fn kid_status(&self, key_id: &KeyId) -> Result<Option<KeyStatus>, OperationError> {
         if let Some(jws_es256_object) = &self.jws_es256 {
@@ -1557,6 +1583,13 @@ impl KeyObjectT for KeyObjectInternal {
         self.jws_rs256
             .as_ref()
             .map(|jws_rs256_object| jws_rs256_object.public_jwks())
+    }
+
+    fn jws_rs256_kid(&self) -> Vec<&KeyId> {
+        self.jws_rs256
+            .as_ref()
+            .map(|jws_rs256_object| jws_rs256_object.to_kid_iter().collect())
+            .unwrap_or_default()
     }
 
     fn hkdf_s256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
