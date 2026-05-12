@@ -140,6 +140,9 @@ pub(crate) struct CredentialUpdateSession {
     // Is there an extertal credential portal?
     ext_cred_portal: CUExtPortal,
 
+    // Has anything changed?
+    dirty: bool,
+
     // The pw credential as they are being updated
     primary_state: CredentialState,
     primary: Option<Credential>,
@@ -361,6 +364,9 @@ pub struct CredentialUpdateSessionStatus {
     can_commit: bool,
     // If can_commit is false, this will have warnings populated.
     warnings: Vec<CredentialUpdateSessionStatusWarnings>,
+    // If anything has changed, this will be true.
+    dirty: bool,
+
     primary: Option<CredentialDetail>,
     primary_state: CredentialState,
     passkeys: Vec<PasskeyDetail>,
@@ -416,6 +422,7 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
             },
             can_commit: self.can_commit,
             warnings: self.warnings.into_iter().map(|w| w.into()).collect(),
+            dirty: self.dirty,
             primary: self.primary,
             primary_state: self.primary_state.into(),
             passkeys: self.passkeys,
@@ -454,6 +461,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
             ext_cred_portal: session.ext_cred_portal.clone(),
             can_commit,
             warnings,
+            dirty: session.dirty,
             primary: session.primary.as_ref().map(|c| c.into()),
             primary_state: session.primary_state,
             passkeys: session
@@ -945,6 +953,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             attested_passkeys,
             attested_passkeys_state,
             mfaregstate: MfaRegState::None,
+            dirty: false,
         };
 
         let max_ttl = ct + MAXIMUM_CRED_UPDATE_TTL;
@@ -2115,6 +2124,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             None => Credential::new_password_only(self.crypto_policy, pw, timestamp)?,
         };
 
+        session.dirty = true;
         session.primary = Some(ncred);
         Ok(session.deref().into())
     }
@@ -2203,6 +2213,7 @@ impl IdmServerCredUpdateTransaction<'_> {
                             OperationError::InvalidState
                         })?;
 
+                    session.dirty = true;
                     session.primary = Some(ncred);
 
                     // Set the state to None.
@@ -2268,6 +2279,7 @@ impl IdmServerCredUpdateTransaction<'_> {
 
                 security_info!("A SHA1 TOTP credential was accepted");
 
+                session.dirty = true;
                 session.primary = Some(ncred);
 
                 // Set the state to None.
@@ -2312,6 +2324,7 @@ impl IdmServerCredUpdateTransaction<'_> {
                 OperationError::InvalidState
             })?;
 
+        session.dirty = true;
         session.primary = Some(ncred);
 
         // Set the state to None.
@@ -2358,6 +2371,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             )
             ?;
 
+        session.dirty = true;
         session.primary = Some(ncred);
 
         Ok(session.deref().into()).map(|mut status: CredentialUpdateSessionStatus| {
@@ -2401,6 +2415,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             )
             ?;
 
+        session.dirty = true;
         session.primary = Some(ncred);
 
         Ok(session.deref().into())
@@ -2425,6 +2440,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        session.dirty = true;
         session.primary = None;
         Ok(session.deref().into())
     }
@@ -2497,6 +2513,8 @@ impl IdmServerCredUpdateTransaction<'_> {
                 match reg_result {
                     Ok(passkey) => {
                         let pk_id = Uuid::new_v4();
+
+                        session.dirty = true;
                         session.passkeys.insert(pk_id, (label, passkey));
 
                         let cu_status: CredentialUpdateSessionStatus = session.deref().into();
@@ -2543,6 +2561,7 @@ impl IdmServerCredUpdateTransaction<'_> {
         };
 
         // No-op if not present
+        session.dirty = true;
         session.passkeys.remove(&uuid);
 
         Ok(session.deref().into())
@@ -2645,6 +2664,8 @@ impl IdmServerCredUpdateTransaction<'_> {
                 let passkey = result?;
                 trace!(?passkey);
 
+                session.dirty = true;
+
                 let pk_id = Uuid::new_v4();
                 session.attested_passkeys.insert(pk_id, (label, passkey));
 
@@ -2677,6 +2698,7 @@ impl IdmServerCredUpdateTransaction<'_> {
         };
 
         // No-op if not present
+        session.dirty = true;
         session.attested_passkeys.remove(&uuid);
 
         Ok(session.deref().into())
@@ -2730,6 +2752,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             None => Credential::new_password_only(self.crypto_policy, pw, timestamp)?,
         };
 
+        session.dirty = true;
         session.unixcred = Some(ncred);
         Ok(session.deref().into())
     }
@@ -2753,6 +2776,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        session.dirty = true;
         session.unixcred = None;
         Ok(session.deref().into())
     }
@@ -2793,6 +2817,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::DuplicateKey);
         }
 
+        session.dirty = true;
         session.sshkeys.insert(label, sshpubkey);
 
         Ok(session.deref().into())
@@ -2818,6 +2843,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        session.dirty = true;
         session.sshkeys.remove(label).ok_or_else(|| {
             error!("No such key for label");
             OperationError::NoMatchingEntries
@@ -3735,6 +3761,7 @@ mod tests {
             .expect("Failed to update the primary cred password");
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -3764,6 +3791,7 @@ mod tests {
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         // Can't delete, would be the last credential!
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
     }
@@ -3862,6 +3890,7 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(!c_status.dirty);
 
         drop(cutxn);
     }
@@ -3932,6 +3961,7 @@ mod tests {
             .expect("Failed to update the primary cred password");
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -3960,6 +3990,7 @@ mod tests {
 
         // Since it's pw only.
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         //
         let c_status = cutxn
@@ -4117,6 +4148,7 @@ mod tests {
 
         // Since it's pw only.
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         //
         let c_status = cutxn
@@ -4328,6 +4360,7 @@ mod tests {
 
         // Since it's pw only.
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         //
         let c_status = cutxn
@@ -4336,6 +4369,7 @@ mod tests {
 
         // Check the status has the token.
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(matches!(
             c_status.mfaregstate,
             MfaRegStateStatus::TotpCheck(_)
@@ -4347,6 +4381,7 @@ mod tests {
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -4454,6 +4489,7 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
 
         // For now, set a password to allow saving.
         let c_status = cutxn
@@ -4462,6 +4498,7 @@ mod tests {
 
         // Could proceed now!
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(!c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -4543,6 +4580,7 @@ mod tests {
             ext_cred_portal,
             mfaregstate: _,
             can_commit: _,
+            dirty: _,
             warnings: _,
             primary: _,
             primary_state,
@@ -4651,6 +4689,8 @@ mod tests {
 
         // Since there are no credentials we can't proceed anyway.
         assert!(!c_status.can_commit);
+        // All changes were denied, so we can't be dirty.
+        assert!(!c_status.dirty);
         assert!(c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -4701,6 +4741,7 @@ mod tests {
             .expect("Failed to update the primary cred password");
 
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::MfaRequired));
@@ -4735,6 +4776,7 @@ mod tests {
 
         // Done, can now commit.
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status.warnings.is_empty());
 
         drop(cutxn);
@@ -4756,6 +4798,7 @@ mod tests {
 
         // Delete of the totp forces us back here.
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::MfaRequired));
@@ -4772,6 +4815,7 @@ mod tests {
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status.warnings.is_empty());
         assert_eq!(c_status.passkeys.len(), 1);
 
@@ -4830,6 +4874,7 @@ mod tests {
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status.warnings.is_empty());
         assert_eq!(c_status.passkeys.len(), 1);
 
@@ -5038,6 +5083,7 @@ mod tests {
 
         // Removed every passkey, you can't proceed!!!!
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -5216,8 +5262,10 @@ mod tests {
         trace!(?c_status);
         assert!(c_status.attested_passkeys.is_empty());
 
-        // But we can't commit:
+        // But we can't commit, there are no valid credentials.
         assert!(!c_status.can_commit);
+        // Session isn't dirty, we haven't changed anything.
+        assert!(!c_status.dirty);
         assert!(c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -5378,6 +5426,7 @@ mod tests {
             c_status.attested_passkeys_state,
             CredentialState::DeleteOnly
         ));
+        assert!(!c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -5410,11 +5459,13 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(!c_status.dirty);
         // User needs at least one credential else they can't save.
         let c_status = cutxn
             .credential_primary_set_password(&cust, ct, test_pw)
             .expect("Failed to update the primary cred password");
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(!c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -5426,6 +5477,7 @@ mod tests {
             .expect("Failed to update the unix cred password");
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -5483,6 +5535,7 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(!c_status.dirty);
         // User needs at least one credential else they can't save.
         let c_status = cutxn
             .credential_primary_set_password(&cust, ct, test_pw)
@@ -5577,6 +5630,7 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(!c_status.dirty);
 
         // Test initially creating a credential.
         let c_status = cutxn
@@ -5585,6 +5639,7 @@ mod tests {
 
         // Could proceed now!
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(!c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -5599,6 +5654,7 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
     }
 
     async fn get_testperson_password_changed_time(idms: &IdmServer) -> Option<OffsetDateTime> {
@@ -5628,6 +5684,7 @@ mod tests {
             .credential_primary_set_password(&cust, ct, TESTPERSON_PASSWORD)
             .expect("Failed to update the primary cred password");
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
@@ -5643,6 +5700,7 @@ mod tests {
             .credential_unix_set_password(&cust, ct, TESTPERSON_PASSWORD)
             .expect("Failed to set unix password");
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
@@ -5704,6 +5762,7 @@ mod tests {
             .expect("Failed to delete unix credential");
         assert!(c_status.unixcred.is_none());
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
@@ -5732,6 +5791,7 @@ mod tests {
             .credential_primary_set_password(&cust, ct, TESTPERSON_PASSWORD)
             .expect("Failed to set primary password");
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
@@ -5786,6 +5846,7 @@ mod tests {
 
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert_eq!(c_status.passkeys.len(), 1);
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -5825,6 +5886,7 @@ mod tests {
         let (cust, c_status) = renew_test_session(idms, ct2).await;
         assert!(c_status.primary.is_some());
         assert!(c_status.can_commit);
+        assert!(!c_status.dirty);
         commit_session(idms, ct2, cust).await;
 
         let pwd_changed_2 = get_testperson_password_changed_time(idms)
@@ -5891,6 +5953,7 @@ mod tests {
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -5910,6 +5973,7 @@ mod tests {
             .expect("Failed to delete unix credential");
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         drop(cutxn);
         commit_session(idms, ct2, cust).await;
 
