@@ -2403,16 +2403,6 @@ impl IdmServerProxyReadTransaction<'_> {
         // Login on every request with this param.
         // We can always add a login timestamp later on.
 
-        // OIDC Core 1.0 §3.1.2.1
-        // prompt=login - The Authorization Server MUST prompt the End-User to re-authenticate
-        if auth_req.prompt.contains(&Prompt::Login) {
-            debug!("prompt=login was requested, forcing re-authentication");
-            return Ok(AuthoriseResponse::AuthenticationRequired {
-                client_name: o2rs.displayname.clone(),
-                login_hint: auth_req.oidc_ext.login_hint.clone(),
-            });
-        }
-
         // TODO: display = popup vs touch vs wap etc.
 
         // TODO: max_age, pass through with consent req. If 0, force login.
@@ -2438,6 +2428,31 @@ impl IdmServerProxyReadTransaction<'_> {
                 });
             }
         };
+
+        // OIDC Core 1.0 §3.1.2.1
+        // prompt=login - The Authorization Server MUST prompt the End-User to re-authenticate
+        if auth_req.prompt.contains(&Prompt::Login) {
+            // Was the session recently validated?
+            // This calculates current time minus grace. This way if the session was issued *after*
+            // this deadline, then it must be valid.
+            let odt_prompt_deadline =
+                (OffsetDateTime::UNIX_EPOCH + ct) - OAUTH2_OIDC_PROMPT_LOGIN_GRACE;
+
+            let session_recently_validated = ident
+                .get_session()
+                .map(|session| session.issued_at > odt_prompt_deadline)
+                .unwrap_or_default();
+
+            if session_recently_validated {
+                debug!("prompt=login was requested, session is fresh enough to proceed");
+            } else {
+                debug!("prompt=login was requested, forcing re-authentication");
+                return Ok(AuthoriseResponse::AuthenticationRequired {
+                    client_name: o2rs.displayname.clone(),
+                    login_hint: auth_req.oidc_ext.login_hint.clone(),
+                });
+            }
+        }
 
         let account_uuid = ident.get_uuid();
 
@@ -8576,7 +8591,20 @@ mod tests {
 
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Login]));
 
-        // Even though the user is authenticated, prompt=login should force re-auth.
+        // We are within the grace time, no prompt forced.
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .expect("prompt=login should not error");
+
+        assert!(
+            matches!(result, AuthoriseResponse::ConsentRequested { .. }),
+            "prompt=login should not have been forced"
+        );
+
+        // Even though the user is authenticated, prompt=login should force re-auth as the session
+        // is outside of the grace period.
+        let ct = ct + OAUTH2_OIDC_PROMPT_LOGIN_GRACE;
+
         let result = idms_prox_read
             .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("prompt=login should not error");
