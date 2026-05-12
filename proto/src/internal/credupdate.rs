@@ -187,6 +187,7 @@ pub struct CUStatus {
     // Display hints + The credential details.
     pub can_commit: bool,
     pub warnings: Vec<CURegWarning>,
+    pub dirty: bool,
     pub primary: Option<CredentialDetail>,
     pub primary_state: CUCredState,
     pub passkeys: Vec<PasskeyDetail>,

@@ -133,6 +133,14 @@ function updateSubmitButtonVisibility(event) {
 
 function beforeUnloadHandler(event) {
     console.debug("credupdate: beforeUnloadHandler");
+
+    try {
+        const form = document.getElementById("credentialUpdateStatusForm");
+        if (form.dataset.dirty == "false") {
+            return
+        }
+    } catch (e) { };
+
     const confirmationMessage = "Unsaved changes will be lost.";
 
     (event || window.event).returnValue = confirmationMessage;
