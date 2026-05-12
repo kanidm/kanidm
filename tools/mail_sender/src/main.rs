@@ -363,16 +363,14 @@ fn config_security_checks(cfg_path: &Path) -> bool {
 
 /// Build the mailer object, tests to ensure that the server doesn't include a scheme
 fn build_mailer(
-    mail_relay: &str,
+    mail_relay: &Url,
     creds: Credentials,
     timeout: u64,
 ) -> Result<AsyncSmtpTransport<Tokio1Executor>, ()> {
-    if mail_relay.contains("://") {
-        error!("Mail relay should not contain a scheme (e.g. 'smtp://'), just the hostname or hostname:port");
-        return Err(());
-    }
+    let mut url_secure = mail_relay.clone();
+    url_secure.set_query(Some("tls=required"));
 
-    match AsyncSmtpTransport::<Tokio1Executor>::relay(mail_relay) {
+    match AsyncSmtpTransport::<Tokio1Executor>::from_url(url_secure.as_str()) {
         Ok(mailer_builder) => Ok(mailer_builder
             .timeout(Some(Duration::from_secs(timeout)))
             .credentials(creds)
@@ -458,7 +456,7 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
     );
 
     let mailer = build_mailer(
-        mail_config.mail_relay.as_str(),
+        &mail_config.mail_relay,
         creds,
         mail_config.mail_connect_timeout_seconds,
     )?;
@@ -659,14 +657,25 @@ fn main() {
     };
 }
 
-#[tokio::test]
-async fn test_build_mailer() {
-    let creds = Credentials::new("username".to_owned(), "password".to_owned());
+#[cfg(test)]
+mod tests {
+    use super::build_mailer;
+    use lettre::transport::smtp::authentication::Credentials;
+    use url::Url;
 
-    build_mailer("example.com", creds.clone(), 1).expect("Failed to build mailer");
-    build_mailer("example.com:12345", creds.clone(), 1).expect("Failed to build mailer with port");
-    build_mailer("examplehost", creds.clone(), 1).expect("Failed to build mailer with short name");
+    #[tokio::test]
+    async fn test_build_mailer() {
+        let creds = Credentials::new("username".to_owned(), "password".to_owned());
 
-    // no scheme allowed
-    build_mailer("smtp://example.com", creds, 1).expect_err("Should fail with invalid host format");
+        build_mailer(&Url::parse("smtp://example.com").unwrap(), creds.clone(), 1)
+            .expect("Failed to build mailer");
+        build_mailer(
+            &Url::parse("smtp://example.com:12345").unwrap(),
+            creds.clone(),
+            1,
+        )
+        .expect("Failed to build mailer with port");
+        build_mailer(&Url::parse("smtp://examplehost").unwrap(), creds.clone(), 1)
+            .expect("Failed to build mailer with short name");
+    }
 }

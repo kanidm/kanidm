@@ -12,7 +12,7 @@ pub struct Config {
 
     pub mail_from_address: Address,
     pub mail_reply_to_address: Address,
-    pub mail_relay: String,
+    pub mail_relay: Url,
     pub mail_username: String,
     pub mail_password: String,
     /// Defaults to 15 seconds if not specified
