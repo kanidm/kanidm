@@ -574,8 +574,8 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
                 warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
             }
             #[cfg(not(target_os = "windows"))]
-            if i_meta.mode() & 0o007 != 0 {
-                warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+            if i_meta.mode() & 0o002 != 0 {
+                warn!("WARNING: DB folder {} has 'everyone' write permission in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
             }
         }
     } else {
@@ -844,8 +844,8 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                         warn!("WARNING: TLS Client CA folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", ca_dir.display());
                     }
                     #[cfg(not(target_os = "windows"))]
-                    if i_meta.mode() & 0o007 != 0 {
-                        warn!("WARNING: TLS Client CA folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", ca_dir.display());
+                    if i_meta.mode() & 0o002 != 0 {
+                        warn!("WARNING: TLS Client CA folder {} has 'everyone' write permission in the mode. This could be a security risk ...", ca_dir.display());
                     }
                 }
             }

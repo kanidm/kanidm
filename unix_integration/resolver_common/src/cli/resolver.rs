@@ -702,8 +702,8 @@ async fn main_inner<F: SparkleFlavour>(clap_args: clap::ArgMatches, flavour: F) 
                         );
             }
 
-            if i_meta.mode() & 0o007 != 0 {
-                warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
+            if i_meta.mode() & 0o002 != 0 {
+                warn!("WARNING: DB folder {} has 'everyone' write permission in the mode. This could be a security risk ...", db_par_path_buf.to_str()
                         .unwrap_or("<db_par_path_buf invalid>")
                         );
             }
