@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::fmt;
+use std::hash::Hash;
 
 mod internal;
 mod object;
@@ -18,7 +19,7 @@ pub(crate) use self::provider::{
 // not a security property of the key
 static KID_LEN: usize = 12;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeyId {
     id: String,
 }

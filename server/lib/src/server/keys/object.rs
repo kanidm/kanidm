@@ -1,3 +1,4 @@
+use super::KeyId;
 use crate::prelude::*;
 use compact_jwt::{compact::JweCompact, jwe::Jwe};
 use compact_jwt::{Jwk, JwkKeySet, Jws, JwsCompact};
@@ -31,6 +32,8 @@ pub trait KeyObjectT {
 
     fn jws_es256_jwks(&self) -> Option<JwkKeySet>;
 
+    fn jws_es256_kid(&self) -> Vec<&KeyId>;
+
     fn jws_rs256_import(
         &mut self,
         import_keys: &SmolSet<[Vec<u8>; 1]>,
@@ -47,6 +50,8 @@ pub trait KeyObjectT {
     ) -> Result<JwsCompact, OperationError>;
 
     fn jws_rs256_jwks(&self) -> Option<JwkKeySet>;
+
+    fn jws_rs256_kid(&self) -> Vec<&KeyId>;
 
     fn jws_hs256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError>;
 
@@ -68,6 +73,8 @@ pub trait KeyObjectT {
         jwe: &Jwe,
         current_time: Duration,
     ) -> Result<JweCompact, OperationError>;
+
+    fn jwe_a128gcm_kid(&self) -> Vec<&KeyId>;
 
     fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError>;
 
