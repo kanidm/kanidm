@@ -191,9 +191,9 @@ pub const OAUTH_REFRESH_TOKEN_EXPIRY: u32 = 3600 * 16;
 /// of the refresh token, which is bound to the issuing session.
 pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 15 * 60;
 
-/// The grace window for prompt=login. If the user has authenticated
-/// within this window, we assume their authentication is fresh enough.
-pub const OAUTH2_OIDC_PROMPT_LOGIN_GRACE: Duration = Duration::from_secs(300);
+
+/// The absolute maximum that can be requested for max-age requests in OIDC.
+pub const OAUTH2_OIDC_MAX_AGE_CLAMP: i64 = 86400;
 
 /// The amount of time a suppliers clock can be "ahead" before
 /// we warn about possible clock synchronisation issues.
