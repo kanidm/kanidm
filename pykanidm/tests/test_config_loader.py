@@ -27,7 +27,7 @@ async def client() -> KanidmClient:
 def test_load_config_file() -> None:
     """tests that the file loads"""
     if not Path(EXAMPLE_CONFIG_FILE).expanduser().resolve().exists():
-        pytest.skip(f"Can't find client config file {EXAMPLE_CONFIG_FILE}")  # type: ignore[call-non-callable]
+        pytest.skip(f"Can't find client config file {EXAMPLE_CONFIG_FILE}")
     print("Loading config file")
     config = load_config(EXAMPLE_CONFIG_FILE)
     assert config.get("uri") == "https://localhost:8443"
