@@ -27,8 +27,8 @@ use kanidmd_lib::{
     idm::ldap::{LdapBoundToken, LdapResponseState},
     idm::oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
-        AuthoriseReject, AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
-        OidcDiscoveryResponse, OidcToken,
+        AuthorisationRequestContext, AuthoriseReject, AuthoriseResponse, JwkKeySet, Oauth2Error,
+        Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, OidcToken,
     },
     idm::server::{DomainInfoRead, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
@@ -1351,6 +1351,7 @@ impl QueryServerReadV1 {
         &self,
         client_auth_info: ClientAuthInfo,
         auth_req: AuthorisationRequest,
+        auth_req_ctx: AuthorisationRequestContext,
         eventid: Uuid,
     ) -> Result<AuthoriseResponse, Oauth2Error> {
         let ct = duration_from_epoch_now();
@@ -1367,7 +1368,7 @@ impl QueryServerReadV1 {
             .ok();
 
         // Now we can send to the idm server for authorisation checking.
-        idms_prox_read.check_oauth2_authorisation(ident.as_ref(), &auth_req, ct)
+        idms_prox_read.check_oauth2_authorisation(ident.as_ref(), &auth_req, &auth_req_ctx, ct)
     }
 
     #[instrument(

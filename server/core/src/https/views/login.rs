@@ -57,12 +57,14 @@ struct SessionContext {
 #[derive(Clone)]
 pub enum ReauthPurpose {
     ProfileSettings,
+    OAuth2 { client_name: String },
 }
 
 impl fmt::Display for ReauthPurpose {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ProfileSettings => write!(f, "Profile and Settings"),
+            Self::OAuth2 { client_name } => write!(f, "OAuth2 - {}", client_name),
         }
     }
 }
@@ -238,10 +240,6 @@ pub async fn view_reauth_get(
     return_location: &str,
     display_ctx: LoginDisplayCtx,
 ) -> Response {
-    // No matter what, we always clear the stored oauth2 cookie to prevent
-    // ui loops
-    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &state);
-
     let session_valid_result = state
         .qe_r_ref
         .handle_auth_valid(client_auth_info.clone(), kopid.eventid)
@@ -353,6 +351,24 @@ pub fn view_oauth2_get(
         },
     )
         .into_response()
+}
+
+pub async fn view_oauth2_reauth_get(
+    state: ServerState,
+    client_auth_info: ClientAuthInfo,
+    kopid: KOpId,
+    jar: CookieJar,
+    display_ctx: LoginDisplayCtx,
+) -> Response {
+    view_reauth_get(
+        state,
+        client_auth_info,
+        kopid,
+        jar,
+        Urls::Oauth2Resume.as_ref(),
+        display_ctx,
+    )
+    .await
 }
 
 pub async fn view_index_get(
