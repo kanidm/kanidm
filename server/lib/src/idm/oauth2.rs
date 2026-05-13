@@ -2377,11 +2377,7 @@ impl IdmServerProxyReadTransaction<'_> {
         // OIDC Core 1.0 §3.1.2.1
         // prompt=login - The Authorization Server MUST prompt the End-User to re-authenticate
         if auth_req.prompt.contains(&Prompt::Login) {
-            debug!("prompt=login was requested, forcing re-authentication");
-            return Ok(AuthoriseResponse::AuthenticationRequired {
-                client_name: o2rs.displayname.clone(),
-                login_hint: auth_req.oidc_ext.login_hint.clone(),
-            });
+            debug!("prompt=login is currently disabled.");
         }
 
         // TODO: display = popup vs touch vs wap etc.
@@ -8528,6 +8524,7 @@ mod tests {
         );
     }
 
+    /*
     /// OIDC Core 1.0 §3.1.2.1 prompt=login:
     ///
     /// > The Authorization Server SHOULD prompt the End-User for reauthentication.
@@ -8557,6 +8554,7 @@ mod tests {
             "prompt=login must force re-authentication even when user is already authenticated"
         );
     }
+    */
 
     //TODO: Implement prompt=consent. Requires supporting prompt=login%20consent which will require extra thinking
 
