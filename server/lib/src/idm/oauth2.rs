@@ -184,6 +184,12 @@ impl AuthorisationRequestContext {
     }
 }
 
+struct OAuth2SessionContext {
+    pub(crate) auth_time: Option<OffsetDateTime>,
+    pub(crate) nonce: Option<String>,
+    pub(crate) account_uuid: Uuid,
+}
+
 // == internal state formats that we encrypt and send.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum SupportedResponseMode {
@@ -239,6 +245,7 @@ struct TokenExchangeCode {
     pub scopes: BTreeSet<String>,
     // We stash some details here for oidc.
     pub nonce: Option<String>,
+    pub auth_time: Option<OffsetDateTime>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -254,6 +261,7 @@ pub(crate) enum Oauth2TokenType {
         nbf: i64,
         // We stash some details here for oidc.
         nonce: Option<String>,
+        auth_time: Option<OffsetDateTime>,
     },
     ClientAccess {
         scopes: BTreeSet<String>,
@@ -1427,6 +1435,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             redirect_uri: consent_req.redirect_uri.clone(),
             scopes: consent_req.scopes.clone(),
             nonce: consent_req.nonce,
+            auth_time: ident.last_verified_at(),
         };
 
         // Encrypt the exchange token
@@ -1569,17 +1578,19 @@ impl IdmServerProxyWriteTransaction<'_> {
         let session_id = Uuid::new_v4();
 
         let scopes = code_xchg.scopes;
-        let account_uuid = code_xchg.account_uuid;
-        let nonce = code_xchg.nonce;
+        let session_ctx = OAuth2SessionContext {
+            auth_time: code_xchg.auth_time,
+            nonce: code_xchg.nonce,
+            account_uuid: code_xchg.account_uuid,
+        };
 
         self.generate_access_token_response(
             o2rs,
             ct,
             scopes,
-            account_uuid,
             parent_session_id,
             session_id,
-            nonce,
+            session_ctx,
         )
     }
 
@@ -1626,6 +1637,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                 iat,
                 nbf: _,
                 nonce,
+                auth_time,
             } => {
                 if exp <= ct.as_secs() as i64 {
                     security_info!(?uuid, "refresh token has expired, ");
@@ -1706,17 +1718,16 @@ impl IdmServerProxyWriteTransaction<'_> {
 
                 // ----------
                 // good to go
-
                 let account_uuid = uuid;
+                let session_ctx = OAuth2SessionContext { auth_time, nonce, account_uuid };
 
                 self.generate_access_token_response(
                     o2rs,
                     ct,
                     update_scopes,
-                    account_uuid,
                     parent_session_id,
                     session_id,
-                    nonce,
+                    session_ctx,
                 )
             }
         }
@@ -1824,16 +1835,20 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         let session_id = Uuid::new_v4();
         let parent_session_id = None;
-        let account_uuid = apit.account_id;
+        let session_ctx = OAuth2SessionContext {
+            // Service accounts don't have an auth time
+            auth_time: None,
+            account_uuid: apit.account_id,
+            nonce: None,
+        };
 
         self.generate_access_token_response(
             o2rs,
             ct,
             granted_scopes,
-            account_uuid,
             parent_session_id,
             session_id,
-            None,
+            session_ctx,
         )
     }
 
@@ -1948,12 +1963,10 @@ impl IdmServerProxyWriteTransaction<'_> {
         &mut self,
         o2rs: &Oauth2RS,
         ct: Duration,
-        //
         scopes: BTreeSet<String>,
-        account_uuid: Uuid,
         parent_session_id: Option<Uuid>,
         session_id: Uuid,
-        nonce: Option<String>,
+        session_ctx: OAuth2SessionContext,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
         let iat = ct.as_secs() as i64;
@@ -1984,27 +1997,12 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         let client_id = o2rs.name.clone();
 
-        let entry = match self.qs_write.internal_search_uuid(account_uuid) {
+        let entry = match self.qs_write.internal_search_uuid(session_ctx.account_uuid) {
             Ok(entry) => entry,
             Err(err) => return Err(Oauth2Error::ServerError(err)),
         };
 
-        // TODO: Should probably pass from the ident OR the refresh token which will
-        // retain a copy!
-        let auth_time = if let Some(parent_session_id) = parent_session_id {
-            let parent_session = entry
-                .get_ava_as_session_map(Attribute::UserAuthTokenSession)
-                .and_then(|sessions| sessions.get(&parent_session_id))
-                .ok_or_else(|| {
-                    error!(?parent_session_id, id = %entry.get_display_id(), "Unable to locate parent session");
-                    Oauth2Error::ServerError(OperationError::InvalidState)
-                })?;
-
-            // Should be based on last-auth-time!!!
-            Some(parent_session.issued_at.unix_timestamp())
-        } else {
-            None
-        };
+        let auth_time = session_ctx.auth_time;
 
         let id_token = if scopes.contains(OAUTH2_SCOPE_OPENID) {
             // TODO: Scopes map to claims:
@@ -2034,13 +2032,13 @@ impl IdmServerProxyWriteTransaction<'_> {
 
             let oidc = OidcToken {
                 iss: iss.clone(),
-                sub: OidcSubject::U(account_uuid),
+                sub: OidcSubject::U(session_ctx.account_uuid),
                 aud: aud.clone(),
                 iat,
                 nbf: Some(iat),
                 exp,
-                auth_time,
-                nonce: nonce.clone(),
+                auth_time: auth_time.map(|at| at.unix_timestamp()),
+                nonce: session_ctx.nonce.clone(),
                 at_hash: None,
                 acr: None,
                 amr,
@@ -2076,7 +2074,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         // We need to record this into the record? Delayed action?
         let access_token_data = OAuth2RFC9068Token {
             iss: iss.to_string(),
-            sub: account_uuid,
+            sub: session_ctx.account_uuid,
             aud,
             exp,
             nbf: iat,
@@ -2084,11 +2082,11 @@ impl IdmServerProxyWriteTransaction<'_> {
             jti: session_id,
             client_id,
             extensions: OAuth2RFC9068TokenExtensions {
-                auth_time,
+                auth_time: auth_time.map(|at| at.unix_timestamp()),
                 acr: None,
                 amr: None,
                 scope: scopes.clone(),
-                nonce: nonce.clone(),
+                nonce: session_ctx.nonce.clone(),
                 session_id,
                 parent_session_id,
             },
@@ -2115,10 +2113,11 @@ impl IdmServerProxyWriteTransaction<'_> {
             parent_session_id,
             session_id,
             exp: refresh_expiry,
-            uuid: account_uuid,
+            uuid: session_ctx.account_uuid,
             iat,
             nbf: iat,
-            nonce,
+            nonce: session_ctx.nonce,
+            auth_time,
         };
 
         let refresh_token_data = JweBuilder::into_json(&refresh_token_raw)
@@ -2159,7 +2158,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(account_uuid))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(session_ctx.account_uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -2458,6 +2457,8 @@ impl IdmServerProxyReadTransaction<'_> {
                 .map(|m| m.clamp(0, OAUTH2_OIDC_MAX_AGE_CLAMP))
         };
 
+        let auth_time = ident.last_verified_at();
+
         if let Some(max_age) = max_age {
             let session_recently_validated = if max_age <= 0 {
                 // Reauth will be forced.
@@ -2467,14 +2468,9 @@ impl IdmServerProxyReadTransaction<'_> {
                     (OffsetDateTime::UNIX_EPOCH + ct) - Duration::from_secs(max_age as u64);
 
                 // Was the session recently validated?
-                // This calculates current time minus grace. This way if the session was issued *after*
-                // this deadline, then it must be valid.
-                let session_recently_validated = ident
-                    .get_session()
-                    .map(|session| session.issued_at > odt_prompt_deadline)
-                    .unwrap_or_default();
-
-                session_recently_validated
+                auth_time
+                    .map(|at| at > odt_prompt_deadline)
+                    .unwrap_or_default()
             };
 
             if auth_req_ctx.resumed {
@@ -2544,6 +2540,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 redirect_uri: auth_req.redirect_uri.clone(),
                 scopes: granted_scopes.into_iter().collect(),
                 nonce: auth_req.nonce.clone(),
+                auth_time,
             };
 
             // Encrypt the exchange token with the key of the client
