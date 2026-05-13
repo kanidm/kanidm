@@ -423,6 +423,7 @@ impl Account {
         session_id: Uuid,
         session_expiry: Option<OffsetDateTime>,
         scope: SessionScope,
+        read_write: bool,
         ct: Duration,
         account_policy: &ResolvedAccountPolicy,
     ) -> Option<UserAuthToken> {
@@ -439,21 +440,21 @@ impl Account {
                 );
                 return None;
             }
-            SessionScope::PrivilegeCapable =>
-            // Return a ReadWrite session with an inner expiry for the privileges
-            {
+            SessionScope::PrivilegeCapable if read_write => {
+                // Return a ReadWrite session with an inner expiry for the privileges
                 let expiry = Some(
                     OffsetDateTime::UNIX_EPOCH
                         + ct
                         + Duration::from_secs(account_policy.privilege_expiry().into()),
                 );
-                (
-                    UatPurpose::ReadWrite { expiry },
-                    // Needs to come from the actual original session. If we don't do this we have
-                    // to re-update the expiry in the DB. We don't want a re-auth to extend a time
-                    // bound session.
-                    session_expiry,
-                )
+                // session_expiry needs to come from the actual original session. If we don't do this we have
+                // to re-update the expiry in the DB. We don't want a re-auth to extend a time
+                // bound session.
+                (UatPurpose::ReadWrite { expiry }, session_expiry)
+            }
+            SessionScope::PrivilegeCapable => {
+                // The user is not requesting privileges, just proof of presence. Reissue as priv capable.
+                (UatPurpose::ReadWrite { expiry: None }, session_expiry)
             }
         };
 

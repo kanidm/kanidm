@@ -18,7 +18,7 @@ use kanidmd_lib::{
     event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
     idm::account::ListUserAuthTokenEvent,
-    idm::authentication::AuthStep,
+    idm::authentication::{AuthStep, ReauthRequest},
     idm::credupdatesession::CredentialUpdateSessionToken,
     idm::event::{
         AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, UnixGroupTokenEvent,
@@ -152,6 +152,7 @@ impl QueryServerReadV1 {
         &self,
         client_auth_info: ClientAuthInfo,
         issue: AuthIssueSession,
+        reauth_req: ReauthRequest,
         eventid: Uuid,
     ) -> Result<AuthResult, OperationError> {
         let ct = duration_from_epoch_now();
@@ -173,7 +174,7 @@ impl QueryServerReadV1 {
         // Generally things like auth denied are in Ok() msgs
         // so true errors should always trigger a rollback.
         let res = idm_auth
-            .reauth_init(ident, issue, ct, client_auth_info)
+            .reauth_init(ident, issue, ct, client_auth_info, reauth_req)
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 

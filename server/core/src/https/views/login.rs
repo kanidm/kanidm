@@ -8,8 +8,6 @@ use crate::https::{
 };
 use askama::Template;
 use askama_web::WebTemplate;
-use base64::{engine::general_purpose, Engine as _};
-
 use axum::http::HeaderMap;
 use axum::{
     extract::{Query, State},
@@ -17,6 +15,7 @@ use axum::{
     Extension, Form, Json,
 };
 use axum_extra::extract::cookie::{CookieJar, SameSite};
+use base64::{engine::general_purpose, Engine as _};
 use hyper::Uri;
 use kanidm_proto::internal::{
     UserAuthToken, COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN,
@@ -26,7 +25,9 @@ use kanidm_proto::{
     oauth2::{AccessTokenRequest, AccessTokenResponse},
     v1::{AuthAllowed, AuthIssueSession, AuthMech},
 };
-use kanidmd_lib::idm::authentication::{AuthCredential, AuthExternal, AuthState, AuthStep};
+use kanidmd_lib::idm::authentication::{
+    AuthCredential, AuthExternal, AuthState, AuthStep, ReauthRequest,
+};
 use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::prelude::OperationError;
 use kanidmd_lib::prelude::*;
@@ -229,7 +230,16 @@ pub async fn view_reauth_to_referer_get(
         error: None,
     };
 
-    Ok(view_reauth_get(state, client_auth_info, kopid, jar, redirect, display_ctx).await)
+    Ok(view_reauth_get(
+        state,
+        client_auth_info,
+        kopid,
+        jar,
+        redirect,
+        display_ctx,
+        ReauthRequest::GrantReadWrite,
+    )
+    .await)
 }
 
 pub async fn view_reauth_get(
@@ -239,6 +249,7 @@ pub async fn view_reauth_get(
     jar: CookieJar,
     return_location: &str,
     display_ctx: LoginDisplayCtx,
+    reauth_req: ReauthRequest,
 ) -> Response {
     let session_valid_result = state
         .qe_r_ref
@@ -252,6 +263,7 @@ pub async fn view_reauth_get(
                 .handle_reauth(
                     client_auth_info.clone(),
                     AuthIssueSession::Cookie,
+                    reauth_req,
                     kopid.eventid,
                 )
                 .await;
@@ -367,6 +379,7 @@ pub async fn view_oauth2_reauth_get(
         jar,
         Urls::Oauth2Resume.as_ref(),
         display_ctx,
+        ReauthRequest::VerifyCredentials,
     )
     .await
 }
