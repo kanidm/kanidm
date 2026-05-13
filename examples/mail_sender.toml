@@ -29,9 +29,11 @@ mail_reply_to_address = "tobias@example.com"
 
 # The hostname/address of the outgoing SMTP relay. This must support TLS.
 # You can specify the port as well if it is not the default (465). For example:
-# mail_relay = "smtp.example.com:12345"
+# mail_relay = "smtps://smtp.example.com" // SMTPS relay
+# mail_relay = "smtp://smtp.example.com" // SMTP with StartTLS
+# mail_relay = "smtps://smtp.example.com:12345" // SMTPS with alternate port
 
-mail_relay = "smtp.example.com"
+mail_relay = "smtps://smtp.example.com"
 
 # The username to authenticate to the SMTP relay as.
 mail_username = "kanidm@example.com"
