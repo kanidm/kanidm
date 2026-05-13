@@ -1177,7 +1177,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             .inner
             .rs_set_get(&client_auth.client_id)
             .ok_or_else(|| {
-                warn!("Invalid OAuth2 client_id {}", &client_auth.client_id);
+                debug!("Invalid OAuth2 client_id {}", &client_auth.client_id);
                 Oauth2Error::AuthenticationRequired
             })?
             .clone();
@@ -2170,7 +2170,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             .inner
             .rs_from_kid(unverified_kid)
             .ok_or_else(|| {
-                warn!("Invalid OAuth2 key id");
+                debug!("Invalid OAuth2 key id");
                 OperationError::InvalidSessionState
             })?;
 
