@@ -59,7 +59,6 @@ buildx/kanidmd:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull $(CONTAINER_BUILDX_ACTION) --platform $(CONTAINER_IMAGE_ARCH) \
 		-f server/Dockerfile \
-		-t $(CONTAINER_IMAGE_BASE)/server:$(CONTAINER_IMAGE_VERSION) \
 		-t $(CONTAINER_IMAGE_BASE)/server:$(CONTAINER_IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
@@ -75,7 +74,6 @@ buildx/kanidm_tools:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull $(CONTAINER_BUILDX_ACTION) --platform $(CONTAINER_IMAGE_ARCH) \
 		-f tools/Dockerfile \
-		-t $(CONTAINER_IMAGE_BASE)/tools:$(CONTAINER_IMAGE_VERSION) \
 		-t $(CONTAINER_IMAGE_BASE)/tools:$(CONTAINER_IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
@@ -93,7 +91,6 @@ buildx/radiusd:
 		--progress $(BUILDKIT_PROGRESS) \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
 		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
-		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) \
 		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_EXT_VERSION) .
 
 .PHONY: buildx
@@ -103,7 +100,6 @@ buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
 build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
-		-t $(CONTAINER_IMAGE_BASE)/server:$(CONTAINER_IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
@@ -114,7 +110,6 @@ build/kanidmd:
 build/orca:	## Build the orca docker image locally
 build/orca:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f tools/orca/Dockerfile \
-		-t $(CONTAINER_IMAGE_BASE)/orca:$(CONTAINER_IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=$(KANIDM_FEATURES)" \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
@@ -128,7 +123,6 @@ build/radiusd:
 		-f rlm_python/Dockerfile \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
 		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
-		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) .
 
 .PHONY: build
 build: build/kanidmd build/radiusd
