@@ -2476,7 +2476,12 @@ impl IdmServerProxyReadTransaction<'_> {
 
                 // Was the session recently validated?
                 auth_time
-                    .map(|at| at > odt_prompt_deadline)
+                    .map(|at| {
+                        // We need to limit this to whole seconds.
+                        let at = at.truncate_to_second();
+                        let odt_prompt_deadline = odt_prompt_deadline.truncate_to_second();
+                        at > odt_prompt_deadline
+                    })
                     .unwrap_or_default()
             };
 
