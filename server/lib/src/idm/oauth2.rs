@@ -1719,7 +1719,11 @@ impl IdmServerProxyWriteTransaction<'_> {
                 // ----------
                 // good to go
                 let account_uuid = uuid;
-                let session_ctx = OAuth2SessionContext { auth_time, nonce, account_uuid };
+                let session_ctx = OAuth2SessionContext {
+                    auth_time,
+                    nonce,
+                    account_uuid,
+                };
 
                 self.generate_access_token_response(
                     o2rs,
@@ -2158,7 +2162,10 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(session_ctx.account_uuid))),
+                &filter!(f_eq(
+                    Attribute::Uuid,
+                    PartialValue::Uuid(session_ctx.account_uuid)
+                )),
                 &modlist,
             )
             .map_err(|e| {
