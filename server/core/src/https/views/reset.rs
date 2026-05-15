@@ -2,7 +2,7 @@ use super::constants::Urls;
 use super::navbar::NavbarCtx;
 use super::UnrecoverableErrorView;
 use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
+use crate::https::middleware::{i18n::I18nCtx, KOpId};
 use crate::https::views::constants::ProfileMenuItems;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::login::ReauthPurpose;
@@ -760,6 +760,7 @@ pub(crate) async fn view_new_pwd(
 pub(crate) async fn view_self_reset_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    Extension(i18n_ctx): Extension<I18nCtx>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
@@ -780,6 +781,7 @@ pub(crate) async fn view_self_reset_get(
                 kopid,
                 ReauthPurpose::ProfileSettings,
                 Urls::UpdateCredentials,
+                i18n_ctx,
             )
             .await
         }

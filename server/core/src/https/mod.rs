@@ -54,6 +54,7 @@ pub(crate) mod cache_buster;
 pub(crate) mod errors;
 mod extractors;
 mod generic;
+pub(crate) mod i18n;
 mod javascript;
 mod manifest;
 pub(crate) mod middleware;

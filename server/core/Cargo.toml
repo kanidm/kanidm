@@ -36,6 +36,7 @@ crypto-glue = { workspace = true }
 filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
+fluent = { workspace = true }
 haproxy-protocol = { workspace = true, features = ["tokio"] }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
@@ -51,6 +52,7 @@ qrcode = { workspace = true, features = ["svg"] }
 regex = { workspace = true }
 reqwest = { workspace = true }
 rustls = { workspace = true }
+rust-embed = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde-hjson = { workspace = true }
 serde_json = { workspace = true }
@@ -76,6 +78,7 @@ tower-http = { workspace = true, features = [
 ] }
 tracing = { workspace = true, features = ["attributes"] }
 tracing-opentelemetry = { workspace = true }
+unic-langid = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 utoipa = { workspace = true, features = [
@@ -101,6 +104,8 @@ kanidmd_lib = { workspace = true, features = ["test"] }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }
+fluent = { workspace = true }
+fluent-syntax = { version = "0.12" }
 
 
 [package.metadata.cargo-machete]

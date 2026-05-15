@@ -1,8 +1,10 @@
+use crate::https::middleware::i18n::i18n_layer;
 use crate::https::views::admin::{admin_api_router, admin_router};
 use crate::https::{middleware, ServerState};
 use askama::Template;
 use askama_web::WebTemplate;
 
+use axum::middleware::map_request;
 use axum::{
     middleware::from_fn_with_state,
     response::Redirect,
@@ -23,6 +25,8 @@ mod cookies;
 mod csrf;
 mod enrol;
 mod errors;
+#[macro_use]
+pub(crate) mod filters;
 mod login;
 mod navbar;
 mod oauth2;
@@ -175,6 +179,7 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
         .merge(guarded_router)
         .nest("/admin", admin_router)
         .nest("/api/admin", admin_api_router)
+        .route_layer(map_request(i18n_layer))
 }
 
 /// Serde deserialization decorator to map empty Strings to None,

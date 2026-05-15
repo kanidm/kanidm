@@ -8,7 +8,7 @@
 (% endif %)
 
 
-<label for="username" class="form-label">Username</label>
+<label for="username" class="form-label">(( "login-username" | trans ))</label>
 <form id="login" action="/ui/login/begin" method="post">
 	<div class="input-group mb-3">
 		<input
@@ -53,7 +53,7 @@
 			value="1"
 			(% if remember_me %)checked(% endif %)
 		/>
-		<label class="form-check-label" for="remember_me_check">Remember My Username</label>
+		<label class="form-check-label" for="remember_me_check">(( "login.remember-me" | trans ))</label>
 	</div>
 	<div class="input-group mb-3 justify-content-md-center">
 		<button

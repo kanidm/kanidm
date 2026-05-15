@@ -18,11 +18,15 @@
 	<h3>(( display_ctx.domain_info.display_name() ))</h3>
 	(% if let Some(reauth) = display_ctx.reauth %)
 	<div class="alert alert-info" role="alert">
-		Reauthenticating as (( reauth.username )) to access (( reauth.purpose ))
+		(% set username = reauth.username %)
+		(% set purpose = reauth.purpose %)
+		(( "login.reauth" | trans_args(fl_args!("username" => username, "purpose" => purpose)) ))
+		(( "login.reauth" | trans(username = reauth.username, purpose = reauth.purpose) ))
 	</div>
 	(% else if let Some(oauth2) = display_ctx.oauth2 %)
 	<div class="alert alert-info" role="alert">
-		Authenticate to access (( oauth2.client_name ))
+		(( "login.authenticate" | with_arg("purpose", oauth2.client_name) | trans_with ))
+		(( "login.authenticate" | trans(purpose = oauth2.client_name) ))
 	</div>
 	(% endif %)
 	<div>

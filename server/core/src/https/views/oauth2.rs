@@ -1,6 +1,6 @@
 use crate::https::{
     extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
-    middleware::KOpId,
+    middleware::{i18n::I18nCtx, KOpId},
     ServerState,
 };
 use kanidmd_lib::idm::oauth2::{AuthorisationRequest, AuthoriseResponse, Oauth2Error};
@@ -47,6 +47,7 @@ struct AccessDeniedView {
 pub async fn view_index_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    Extension(i18n_ctx): Extension<I18nCtx>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
@@ -59,6 +60,7 @@ pub async fn view_index_get(
         domain_info,
         jar,
         Some(auth_req),
+        i18n_ctx,
     )
     .await
 }
@@ -66,6 +68,7 @@ pub async fn view_index_get(
 pub async fn view_resume_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    Extension(i18n_ctx): Extension<I18nCtx>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
@@ -80,6 +83,7 @@ pub async fn view_resume_get(
         domain_info,
         jar,
         maybe_auth_req,
+        i18n_ctx,
     )
     .await
 }
@@ -91,6 +95,7 @@ async fn oauth2_auth_req(
     domain_info: DomainInfoRead,
     jar: CookieJar,
     maybe_auth_req: Option<AuthorisationRequest>,
+    i18n_ctx: I18nCtx,
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
@@ -179,7 +184,7 @@ async fn oauth2_auth_req(
                         error: None,
                     };
 
-                    super::login::view_oauth2_get(new_jar, display_ctx, login_hint)
+                    super::login::view_oauth2_get(new_jar, display_ctx, login_hint, i18n_ctx)
                 }
                 Err(err_code) => (
                     jar,
