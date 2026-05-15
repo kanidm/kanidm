@@ -324,7 +324,8 @@ impl QueryServerWriteTransaction<'_> {
             .map(|uuid| f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)))
             .collect();
 
-        let filter = filter_all!(f_or(filter));
+        // Don't attempt to delete already removed entries that are in the recycle bin.
+        let filter = filter!(f_or(filter));
 
         let result = self.internal_delete(&filter);
 
