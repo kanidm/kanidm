@@ -152,6 +152,11 @@ pub(crate) struct NewPassword {
 }
 
 #[derive(Deserialize, Debug)]
+pub(crate) struct PasswordStrengthCheck {
+    new_password: String,
+}
+
+#[derive(Deserialize, Debug)]
 pub(crate) struct NewPublicKey {
     title: String,
     key: String,
@@ -744,6 +749,76 @@ pub(crate) async fn view_new_pwd(
 
     let check_res = PwdCheckResult::Failure {
         pwd_equal,
+        warnings,
+    };
+
+    Ok((
+        status,
+        swapped_handler_trigger,
+        HxPushUrl("/ui/reset/change_password".to_string()),
+        AddPasswordPartial { check_res },
+    )
+        .into_response())
+}
+
+#[axum::debug_handler]
+pub(crate) async fn check_pwd_strength(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
+    jar: CookieJar,
+    RawForm(raw_form_bytes): RawForm,
+) -> axum::response::Result<Response> {
+    let opt_form: Option<PasswordStrengthCheck> = raw_form_opt(&raw_form_bytes)?;
+
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
+    let swapped_handler_trigger =
+        HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddPasswordSwapped)]);
+
+    let password_to_check = match opt_form {
+        None => {
+            return Ok((
+                swapped_handler_trigger,
+                AddPasswordPartial {
+                    check_res: PwdCheckResult::Init,
+                },
+            )
+                .into_response());
+        }
+        Some(new_passwords) => new_passwords,
+    };
+
+    let (warnings, status) = match state
+        .qe_r_ref
+        .handle_idmcredentialupdate(
+            cu_session_token,
+            CURequest::PasswordQualityCheck(password_to_check.new_password),
+            kopid.eventid,
+        )
+        .await
+    {
+        Ok(_) => (vec![], StatusCode::OK),
+        Err(OperationError::PasswordQuality(password_feedback)) => {
+            (password_feedback, StatusCode::UNPROCESSABLE_ENTITY)
+        }
+        Err(operr) => {
+            return Err(ErrorResponse::from(HtmxError::new(
+                &kopid,
+                operr,
+                domain_info,
+            )))
+        }
+    };
+
+    let check_res = PwdCheckResult::Failure {
+        // I don't believe users are interested in knowing their password fields differ from the server.
+        // These live password checks are ran on the first password field so the second one is likely empty.
+        //
+        // A live "passwords differing" feedback is already provided via js when they are typing in the password confirmation field.
+        // But the template requires this field so I set it to true.
+        pwd_equal: true,
         warnings,
     };
 
