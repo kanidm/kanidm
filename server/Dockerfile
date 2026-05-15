@@ -53,6 +53,7 @@ RUN --mount=type=cache,id=cargo,target=/cargo \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release; \
+    ls -alh /usr/src/kanidm/target/release; \
     sccache -s
 
 # Find and copy dynamically linked libraries using ldd

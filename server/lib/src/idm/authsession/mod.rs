@@ -25,7 +25,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 use time::OffsetDateTime;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
     AttestationCaList, AttestedPasskey as AttestedPasskeyV4, AttestedPasskeyAuthentication,
@@ -404,7 +404,7 @@ impl CredHandler {
         pw: &Password,
         who: Uuid,
         cleartext: &str,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
     ) {
         if pw.requires_upgrade() {
             if let Err(_e) = async_tx.send(DelayedAction::PwUpgrade(PasswordUpgrade {
@@ -444,7 +444,7 @@ impl CredHandler {
         pw: &mut Password,
         generated: bool,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match cred {
@@ -494,7 +494,7 @@ impl CredHandler {
         ts: Duration,
         pw_mfa: &mut CredTotp,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
@@ -589,7 +589,7 @@ impl CredHandler {
         pw_mfa: &mut CredSecurityKey,
         webauthn: &Webauthn,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
@@ -690,7 +690,7 @@ impl CredHandler {
         cred_id: Uuid,
         pw_mfa: &mut CredBackupCode,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
@@ -779,7 +779,7 @@ impl CredHandler {
         wan_cred: &mut CredPasskey,
         webauthn: &Webauthn,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
     ) -> CredState {
         if wan_cred.state != CredVerifyState::Init {
             security_error!("Handler::Webauthn -> Result::Denied - Internal State Already Fail");
@@ -845,7 +845,7 @@ impl CredHandler {
         wan_cred: &mut CredAttestedPasskey,
         webauthn: &Webauthn,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         att_ca_list: &AttestationCaList,
     ) -> CredState {
         if wan_cred.state != CredVerifyState::Init {
@@ -922,7 +922,7 @@ impl CredHandler {
         cred: &AuthCredential,
         ts: Duration,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         webauthn: &Webauthn,
         pw_badlist_set: &HashSet<String>,
     ) -> CredState {
@@ -1510,8 +1510,8 @@ impl AuthSession {
         &mut self,
         cred: &AuthCredential,
         time: Duration,
-        async_tx: &Sender<DelayedAction>,
-        audit_tx: &Sender<AuditEvent>,
+        async_tx: &UnboundedSender<DelayedAction>,
+        audit_tx: &UnboundedSender<AuditEvent>,
         webauthn: &Webauthn,
         pw_badlist: &HashSet<String>,
     ) -> Result<AuthState, OperationError> {
@@ -1613,7 +1613,7 @@ impl AuthSession {
         &mut self,
         auth_type: AuthType,
         time: Duration,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         cred_id: Uuid,
         ext_metadata: SessionExtMetadata,
     ) -> Result<UserAuthToken, OperationError> {

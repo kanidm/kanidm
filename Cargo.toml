@@ -28,6 +28,9 @@ members = [
     "unix_integration/pam_sparkle",
     "unix_integration/resolver_common",
     "unix_integration/resolver_kanidm",
+    "rlm_kanidm/entrypoint",
+    "rlm_kanidm/module",
+    "rlm_kanidm/shared",
     "server/daemon",
     "server/lib",
     "server/lib-macros",
@@ -61,11 +64,11 @@ members = [
 # Single Largest Binary Maximum: 5GB
 # Time: ~6 minutes
 [profile.release]
-debug = true
+debug = "limited"
 strip = "none"
 lto = "thin"
 opt-level = 3
-codegen-units = 32
+codegen-units = 1
 
 [profile.release.build-override]
 debug = false
@@ -138,6 +141,7 @@ kanidm_proto = { path = "./proto", version = "=1.11.0-dev" }
 kanidm_utils_users = { path = "./libs/users", version = "=1.11.0-dev" }
 nss_sparkle_common = { path = "./unix_integration/nss_sparkle_common", version = "=1.11.0-dev" }
 pam_sparkle_common = { path = "./unix_integration/pam_sparkle_common", version = "=1.11.0-dev" }
+rlm_kanidm_shared = { path = "./rlm_kanidm/shared", version = "=1.11.0-dev" }
 sparkle_unix_common = { path = "./unix_integration/common", version = "=1.11.0-dev" }
 sparkle_resolver_common = { path = "./unix_integration/resolver_common", version = "=1.11.0-dev" }
 scim_proto = { path = "./libs/scim_proto", version = "=1.11.0-dev" }

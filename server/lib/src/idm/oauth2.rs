@@ -9,7 +9,9 @@ use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction, Token,
 };
 use crate::prelude::*;
-use crate::server::keys::{KeyObject, KeyProvidersTransaction, KeyProvidersWriteTransaction};
+use crate::server::keys::{
+    KeyId, KeyObject, KeyProvidersTransaction, KeyProvidersWriteTransaction,
+};
 use crate::utils;
 use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 use base64::{engine::general_purpose, Engine as _};
@@ -587,11 +589,18 @@ struct Oauth2RSInner {
     origin: Url,
     consent_key: JweA128KWEncipher,
     private_rs_set: HashMap<String, Oauth2RS>,
+    private_key_map: HashMap<KeyId, String>,
 }
 
 impl Oauth2RSInner {
     fn rs_set_get(&self, client_id: &str) -> Option<&Oauth2RS> {
         self.private_rs_set.get(client_id.to_lowercase().as_str())
+    }
+
+    fn rs_from_kid(&self, kid: &str) -> Option<&Oauth2RS> {
+        self.private_key_map
+            .get(kid)
+            .and_then(|client_id| self.private_rs_set.get(client_id))
     }
 }
 
@@ -617,6 +626,7 @@ impl Oauth2ResourceServers {
                 origin,
                 consent_key,
                 private_rs_set: HashMap::new(),
+                private_key_map: HashMap::new(),
             }),
         })
     }
@@ -659,11 +669,15 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
         key_providers: &KeyProvidersWriteTransaction,
         domain_level: DomainVersion,
     ) -> Result<(), OperationError> {
+        let mut kid_map: HashMap<KeyId, String> = Default::default();
+
         let rs_set: Result<HashMap<_, _>, _> = value
             .into_iter()
             .map(|ent| {
                 let uuid = ent.get_uuid();
+
                 trace!(?uuid, "Checking OAuth2 configuration");
+
                 // From each entry, attempt to make an OAuth2 configuration.
                 if !ent
                     .attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
@@ -719,7 +733,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                 };
 
                 // Now we know we can load the shared attrs.
-                let name = ent
+                let client_id = ent
                     .get_ava_single_iname(Attribute::Name)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
@@ -877,10 +891,34 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     .get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable)
                     .unwrap_or(false)
                 {
+                    // Add the relevant KID's to the lookup map.
+                    kid_map.extend(
+                        key_object
+                            .jws_rs256_kid()
+                            .into_iter()
+                            .map(|kid| (kid.clone(), client_id.clone())),
+                    );
+
                     SignatureAlgo::Rs256
                 } else {
+                    // Add the relevant KID's to the lookup map.
+                    kid_map.extend(
+                        key_object
+                            .jws_es256_kid()
+                            .into_iter()
+                            .map(|kid| (kid.clone(), client_id.clone())),
+                    );
+
                     SignatureAlgo::Es256
                 };
+
+                // We also need the encryption keyids
+                kid_map.extend(
+                    key_object
+                        .jwe_a128gcm_kid()
+                        .into_iter()
+                        .map(|kid| (kid.clone(), client_id.clone())),
+                );
 
                 let prefer_short_username = ent
                     .get_ava_single_bool(Attribute::OAuth2PreferShortUsername)
@@ -905,13 +943,13 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                 introspection_endpoint.set_path(OAUTH2_TOKEN_INTROSPECT_ENDPOINT);
 
                 let mut userinfo_endpoint = self.inner.origin.clone();
-                userinfo_endpoint.set_path(&format!("/oauth2/openid/{name}/userinfo"));
+                userinfo_endpoint.set_path(&format!("/oauth2/openid/{client_id}/userinfo"));
 
                 let mut jwks_uri = self.inner.origin.clone();
-                jwks_uri.set_path(&format!("/oauth2/openid/{name}/public_key.jwk"));
+                jwks_uri.set_path(&format!("/oauth2/openid/{client_id}/public_key.jwk"));
 
                 let mut iss = self.inner.origin.clone();
-                iss.set_path(&format!("/oauth2/openid/{name}"));
+                iss.set_path(&format!("/oauth2/openid/{client_id}"));
 
                 let scopes_supported: BTreeSet<String> = scope_maps
                     .values()
@@ -940,9 +978,8 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                         false => None,
                     };
 
-                let client_id = name.clone();
                 let rscfg = Oauth2RS {
-                    name,
+                    name: client_id.clone(),
                     displayname,
                     uuid,
                     origins,
@@ -981,6 +1018,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
             let inner_ref = self.inner.get_mut();
             // Swap them if we are ok
             std::mem::swap(&mut inner_ref.private_rs_set, &mut rs_set);
+            std::mem::swap(&mut inner_ref.private_key_map, &mut kid_map);
         })
     }
 
@@ -1004,8 +1042,8 @@ impl IdmServerProxyWriteTransaction<'_> {
         // are either signed *or* encrypted, we need to check both options.
 
         let (session_id, expiry, uuid) = if let Ok(jwsc) = JwsCompact::from_str(&revoke_req.token) {
-            let unverified_client_id = jwsc.header().client_id.as_ref().ok_or_else(|| {
-                error!("Token does not contain the OAuth2 client id");
+            let unverified_kid = jwsc.header().kid.as_ref().ok_or_else(|| {
+                error!("Token does not contain signature key id");
                 Oauth2Error::AuthenticationRequired
             })?;
 
@@ -1013,9 +1051,9 @@ impl IdmServerProxyWriteTransaction<'_> {
             let o2rs = self
                 .oauth2rs
                 .inner
-                .rs_set_get(unverified_client_id)
+                .rs_from_kid(unverified_kid)
                 .ok_or_else(|| {
-                    warn!("Invalid OAuth2 client_id");
+                    warn!("Invalid OAuth2 key id");
                     Oauth2Error::AuthenticationRequired
                 })?;
 
@@ -1043,8 +1081,8 @@ impl IdmServerProxyWriteTransaction<'_> {
             (session_id, exp, uuid)
         } else if let Ok(jwec) = JweCompact::from_str(&revoke_req.token) {
             // Assume it's encrypted.
-            let unverified_client_id = jwec.header().client_id.as_ref().ok_or_else(|| {
-                error!("Token does not contain the OAuth2 client id");
+            let unverified_kid = jwec.header().kid.as_ref().ok_or_else(|| {
+                error!("Token does not contain encryption key id");
                 Oauth2Error::AuthenticationRequired
             })?;
 
@@ -1052,9 +1090,9 @@ impl IdmServerProxyWriteTransaction<'_> {
             let o2rs = self
                 .oauth2rs
                 .inner
-                .rs_set_get(unverified_client_id)
+                .rs_from_kid(unverified_kid)
                 .ok_or_else(|| {
-                    warn!("Invalid OAuth2 client_id");
+                    warn!("Invalid OAuth2 key id");
                     Oauth2Error::AuthenticationRequired
                 })?;
 
@@ -1134,7 +1172,16 @@ impl IdmServerProxyWriteTransaction<'_> {
                 warn!("OAuth2 Client Authentcation Required");
             })?;
 
-        let o2rs = self.get_client(&client_auth.client_id)?;
+        let o2rs = self
+            .oauth2rs
+            .inner
+            .rs_set_get(&client_auth.client_id)
+            .ok_or_else(|| {
+                debug!("Invalid OAuth2 client_id {}", &client_auth.client_id);
+                Oauth2Error::AuthenticationRequired
+            })?
+            .clone();
+
         let is_token_exchange = matches!(token_req.grant_type, GrantTypeReq::TokenExchange { .. });
 
         // check the secret.
@@ -1228,19 +1275,6 @@ impl IdmServerProxyWriteTransaction<'_> {
                 self.check_oauth2_device_code_status(device_code, scope)
             }
         }
-    }
-
-    fn get_client(&self, client_id: &str) -> Result<Oauth2RS, Oauth2Error> {
-        let s = self
-            .oauth2rs
-            .inner
-            .rs_set_get(client_id)
-            .ok_or_else(|| {
-                warn!("Invalid OAuth2 client_id {}", client_id);
-                Oauth2Error::AuthenticationRequired
-            })?
-            .clone();
-        Ok(s)
     }
 
     #[instrument(level = "info", skip(self))]
@@ -1382,7 +1416,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         // Encrypt the exchange token
         let code_data_jwe = JweBuilder::into_json(&xchg_code)
-            .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+            .map(|builder| builder.build())
             .map_err(|err| {
                 error!(?err, "Unable to encode xchg_code data");
                 OperationError::SerdeJsonError
@@ -1850,7 +1884,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         };
 
         let access_token_data = JweBuilder::into_json(&access_token_raw)
-            .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+            .map(|builder| builder.build())
             .map_err(|err| {
                 error!(?err, "Unable to encode token data");
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
@@ -1993,7 +2027,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 
             trace!(?oidc);
             let oidc = JwsBuilder::into_json(&oidc)
-                .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+                .map(|builder| builder.build())
                 .map_err(|err| {
                     admin_error!(?err, "Unable to encode access token data");
                     Oauth2Error::ServerError(OperationError::InvalidState)
@@ -2036,12 +2070,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         };
 
         let access_token_data = JwsBuilder::into_json(&access_token_data)
-            .map(|builder| {
-                builder
-                    .set_typ(Some("at+jwt"))
-                    .set_client_id(Some(&o2rs.name))
-                    .build()
-            })
+            .map(|builder| builder.set_typ(Some("at+jwt")).build())
             .map_err(|err| {
                 error!(?err, "Unable to encode access token data");
                 Oauth2Error::ServerError(OperationError::InvalidState)
@@ -2068,7 +2097,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         };
 
         let refresh_token_data = JweBuilder::into_json(&refresh_token_raw)
-            .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+            .map(|builder| builder.build())
             .map_err(|err| {
                 error!(?err, "Unable to encode token data");
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
@@ -2131,17 +2160,17 @@ impl IdmServerProxyWriteTransaction<'_> {
             OperationError::InvalidSessionState
         })?;
 
-        let unverified_client_id = jwec.header().client_id.as_ref().ok_or_else(|| {
-            error!("Token does not contain the OAuth2 client id");
+        let unverified_kid = jwec.header().kid.as_ref().ok_or_else(|| {
+            error!("Token does not contain encryption key id");
             OperationError::InvalidSessionState
         })?;
 
         let o2rs = self
             .oauth2rs
             .inner
-            .rs_set_get(unverified_client_id)
+            .rs_from_kid(unverified_kid)
             .ok_or_else(|| {
-                warn!("Invalid OAuth2 client_id");
+                debug!("Invalid OAuth2 key id");
                 OperationError::InvalidSessionState
             })?;
 
@@ -2467,7 +2496,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
             // Encrypt the exchange token with the key of the client
             let code_data_jwe = JweBuilder::into_json(&xchg_code)
-                .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+                .map(|builder| builder.build())
                 .map_err(|err| {
                     error!(?err, "Unable to encode xchg_code data");
                     Oauth2Error::ServerError(OperationError::SerdeJsonError)
@@ -2545,7 +2574,7 @@ impl IdmServerProxyReadTransaction<'_> {
             };
 
             let consent_jwe = JweBuilder::into_json(&consent_req)
-                .map(|builder| builder.set_client_id(Some(&o2rs.name)).build())
+                .map(|builder| builder.build())
                 .map_err(|err| {
                     error!(?err, "Unable to encode consent data");
                     Oauth2Error::ServerError(OperationError::SerdeJsonError)
@@ -2661,17 +2690,17 @@ impl IdmServerProxyReadTransaction<'_> {
         jwsc: &JwsCompact,
         ct: Duration,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
-        let unverified_client_id = jwsc.header().client_id.as_ref().ok_or_else(|| {
-            error!("Token does not contain the OAuth2 client id");
+        let unverified_kid = jwsc.header().kid.as_ref().ok_or_else(|| {
+            error!("Token does not contain signature key id");
             Oauth2Error::AuthenticationRequired
         })?;
 
         let o2rs = self
             .oauth2rs
             .inner
-            .rs_set_get(unverified_client_id)
+            .rs_from_kid(unverified_kid)
             .ok_or_else(|| {
-                warn!("Invalid OAuth2 client_id");
+                warn!("Invalid OAuth2 key id");
                 Oauth2Error::AuthenticationRequired
             })?;
 
@@ -2770,17 +2799,17 @@ impl IdmServerProxyReadTransaction<'_> {
         jwec: &JweCompact,
         ct: Duration,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
-        let unverified_client_id = jwec.header().client_id.as_ref().ok_or_else(|| {
-            error!("Token does not contain the OAuth2 client id");
+        let unverified_kid = jwec.header().kid.as_ref().ok_or_else(|| {
+            error!("Token does not contain signature key id");
             Oauth2Error::AuthenticationRequired
         })?;
 
         let o2rs = self
             .oauth2rs
             .inner
-            .rs_set_get(unverified_client_id)
+            .rs_from_kid(unverified_kid)
             .ok_or_else(|| {
-                warn!("Invalid OAuth2 client_id");
+                warn!("Invalid OAuth2 key id");
                 Oauth2Error::AuthenticationRequired
             })?;
 

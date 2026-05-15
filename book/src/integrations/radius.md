@@ -79,16 +79,16 @@ kanidm group add-members --name idm_admin radius_access_allowed william
 ## RADIUS Server Service Account
 
 To read these secrets, the RADIUS server requires an account with the correct privileges. This can be created and
-assigned through the group "idm_radius_servers", which is provided by default.
+assigned through the group `idm_radius_servers`, which is provided by default.
 
-First, create the service account and add it to the group:
+First, create the RADIUS server service account and add it to the group:
 
 ```bash
 kanidm service-account create --name idm_admin radius_service_account "Radius Service Account" idm_admin
 kanidm group add-members --name idm_admin idm_radius_servers radius_service_account
 ```
 
-Now reset the account password, using the `admin` account:
+Now generate an api token using the `idm_admin` account:
 
 ```bash
 kanidm service-account api-token generate --name idm_admin radius_service_account radius1
@@ -141,7 +141,7 @@ docker run --name radiusd \
     -p 1812:1812 \
     -p 1812:1812/udp \
     --interactive --tty \
-    --mount "type=bind,src=$(pwd)/examples/radius.toml,target=/data/kanidm" \
+    --mount "type=bind,src=$(pwd)/examples/radius.toml,target=/data/radius.toml" \
     --mount "type=bind,src=/tmp/kanidm,target=/data" \
     kanidm/radius:latest
 ```

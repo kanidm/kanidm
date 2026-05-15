@@ -1,7 +1,8 @@
 use kanidm_client::http::header;
 use kanidm_client::KanidmClient;
+use kanidmd_core::config::ServerRole;
 
-#[kanidmd_testkit::test]
+#[kanidmd_testkit::test(role = ServerRole::WriteReplica)]
 async fn test_https_middleware_headers(rsclient: &KanidmClient) {
     // We need to do manual reqwests here.
     let client = rsclient.client();

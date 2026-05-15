@@ -23,9 +23,6 @@ pub struct KanidmdCli {
     #[clap(env = "KANIDM_ORIGIN", global = true, help = "Specify the origin URL")]
     pub origin: Option<url::Url>,
 
-    #[clap(env = "KANIDM_ROLE", global = true, help = "Specify the server role")]
-    pub role: Option<crate::config::ServerRole>,
-
     #[clap(
         env = "KANIDM_DB_PATH",
         global = true,

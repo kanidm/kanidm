@@ -3945,6 +3945,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm_radiusd"
+version = "1.11.0-dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rlm_kanidm_shared",
+ "toml",
+]
+
+[[package]]
 name = "kanidm_tools"
 version = "1.11.0-dev"
 dependencies = [
@@ -6004,6 +6014,32 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rlm_kanidm"
+version = "1.11.0-dev"
+dependencies = [
+ "anyhow",
+ "bindgen",
+ "cc",
+ "kanidm_client",
+ "kanidm_proto",
+ "kanidmd_core",
+ "kanidmd_testkit",
+ "libc",
+ "rlm_kanidm_shared",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "rlm_kanidm_shared"
+version = "1.11.0-dev"
+dependencies = [
+ "serde",
+ "toml",
 ]
 
 [[package]]
