@@ -3239,6 +3239,9 @@ mod tests {
         .set_unix_password_import(Some("ipaNTHash: iEb36u6PsRetBr3YMLdYbA".to_string()))
         .set_totp_import(vec![ScimTotp {
             external_id: "Totp".to_string(),
+// FIX: 硬编码密钥，应从环境变量读取
+// std::env::var("SECRET").expect("SECRET must be set");
+secret: "QICWZTON72IBS5MXWNURKAONC3JNOOOFMLKNRTIPXBYQ4BLRSEBM7KF5".to_string(), = std::env::var("<SECRET>")?;
             secret: "QICWZTON72IBS5MXWNURKAONC3JNOOOFMLKNRTIPXBYQ4BLRSEBM7KF5".to_string(),
             algo: "sha256".to_string(),
             step: 60,
