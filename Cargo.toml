@@ -18,6 +18,8 @@ members = [
     "tools/device_flow",
     "tools/iam_migrations/freeipa",
     "tools/iam_migrations/ldap",
+    "tools/mail_sender",
+    "tools/oauth2-tester",
     "tools/orca",
     "unix_integration/common",
     "unix_integration/nss_sparkle_common",
@@ -44,7 +46,6 @@ members = [
     "libs/scim_proto",
     "libs/sketching",
     "libs/users",
-    "tools/mail_sender",
 ]
 
 # Below follows some guides/estimates to system resources consumed during a build.
