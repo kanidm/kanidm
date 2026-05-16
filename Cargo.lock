@@ -1328,7 +1328,7 @@ dependencies = [
  "kanidm_utils_users",
  "kanidmd_core",
  "prctl",
- "reqwest 0.13.4",
+ "reqwest",
  "sd-notify",
  "serde",
  "serde_json",
@@ -3464,7 +3464,7 @@ dependencies = [
  "percent-encoding",
  "referencing",
  "regex",
- "reqwest 0.13.4",
+ "reqwest",
  "rustls",
  "serde",
  "serde_json",
@@ -3591,7 +3591,7 @@ dependencies = [
  "hyper",
  "kanidm_lib_file_permissions",
  "kanidm_proto",
- "reqwest 0.13.4",
+ "reqwest",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -3603,19 +3603,6 @@ dependencies = [
  "urlencoding",
  "uuid",
  "webauthn-rs-proto",
-]
-
-[[package]]
-name = "kanidm_device_flow"
-version = "1.11.0-dev"
-dependencies = [
- "anyhow",
- "kanidm_proto",
- "oauth2",
- "reqwest 0.13.4",
- "sketching",
- "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -3765,7 +3752,7 @@ dependencies = [
  "opentelemetry",
  "qrcode",
  "regex",
- "reqwest 0.13.4",
+ "reqwest",
  "rustls",
  "serde",
  "serde-hjson",
@@ -3860,6 +3847,7 @@ dependencies = [
 name = "kanidmd_testkit"
 version = "1.11.0-dev"
 dependencies = [
+ "base64 0.22.1",
  "cidr",
  "compact_jwt",
  "escargot",
@@ -3876,8 +3864,7 @@ dependencies = [
  "kanidmd_core",
  "kanidmd_lib",
  "ldap3_client",
- "oauth2",
- "reqwest 0.13.4",
+ "reqwest",
  "serde",
  "serde_json",
  "sketching",
@@ -4636,26 +4623,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "oauth2"
-version = "5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51e219e79014df21a225b1860a479e2dcd7cbd9130f4defd4bd0e191ea31d67d"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "getrandom 0.2.17",
- "http",
- "rand 0.8.7",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "serde_path_to_error",
- "sha2 0.10.9",
- "thiserror 1.0.69",
- "url",
 ]
 
 [[package]]
@@ -5612,38 +5579,6 @@ name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
-
-[[package]]
-name = "reqwest"
-version = "0.12.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eddd3ca559203180a307f12d114c268abf583f59b03cb906fd0b3ff8646c1147"
-dependencies = [
- "base64 0.22.1",
- "bytes",
- "futures-core",
- "http",
- "http-body",
- "http-body-util",
- "hyper",
- "hyper-util",
- "js-sys",
- "log",
- "percent-encoding",
- "pin-project-lite",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "sync_wrapper",
- "tokio",
- "tower",
- "tower-http",
- "tower-service",
- "url",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
 
 [[package]]
 name = "reqwest"
