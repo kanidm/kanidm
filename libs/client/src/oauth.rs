@@ -1,11 +1,12 @@
 use crate::{ClientError, KanidmClient};
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::constants::{
-    ATTR_DISPLAYNAME, ATTR_KEY_ACTION_REVOKE, ATTR_KEY_ACTION_ROTATE, ATTR_NAME,
+    ATTR_CLASS, ATTR_DISPLAYNAME, ATTR_KEY_ACTION_REVOKE, ATTR_KEY_ACTION_ROTATE, ATTR_NAME,
     ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE, ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
     ATTR_OAUTH2_CONSENT_PROMPT_ENABLE, ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
     ATTR_OAUTH2_PREFER_SHORT_USERNAME, ATTR_OAUTH2_RS_BASIC_SECRET, ATTR_OAUTH2_RS_ORIGIN,
     ATTR_OAUTH2_RS_ORIGIN_LANDING, ATTR_OAUTH2_STRICT_REDIRECT_URI,
+    OAUTH2_RESOURCE_SERVER_PUBLIC,
 };
 use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin};
 use kanidm_proto::v1::Entry;
@@ -14,6 +15,9 @@ use std::collections::BTreeMap;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use url::Url;
+
+const OAUTH2_PUBLIC_CLIENT_CONSENT_PROMPT_ERROR: &str =
+    "OAuth2 public clients must always prompt for consent; disable-consent-prompt can only be used with basic clients.";
 
 impl KanidmClient {
     // ==== Oauth2 resource server configuration
@@ -530,6 +534,9 @@ impl KanidmClient {
     }
 
     pub async fn idm_oauth2_rs_disable_consent_prompt(&self, id: &str) -> Result<(), ClientError> {
+        self.idm_oauth2_rs_assert_consent_prompt_configurable(id)
+            .await?;
+
         let mut update_oauth2_rs = Entry {
             attrs: BTreeMap::new(),
         };
@@ -539,5 +546,28 @@ impl KanidmClient {
         );
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await
+    }
+
+    async fn idm_oauth2_rs_assert_consent_prompt_configurable(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        let entry = self.idm_oauth2_rs_get(id).await?;
+
+        if entry
+            .as_ref()
+            .and_then(|entry| entry.attrs.get(ATTR_CLASS))
+            .is_some_and(|classes| {
+                classes
+                    .iter()
+                    .any(|class| class == OAUTH2_RESOURCE_SERVER_PUBLIC)
+            })
+        {
+            Err(ClientError::InvalidRequest(
+                OAUTH2_PUBLIC_CLIENT_CONSENT_PROMPT_ERROR.to_string(),
+            ))
+        } else {
+            Ok(())
+        }
     }
 }

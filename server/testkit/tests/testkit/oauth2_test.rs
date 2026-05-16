@@ -1293,8 +1293,8 @@ async fn test_oauth2_openid_public_consent_cant_be_disabled(rsclient: &KanidmCli
         .await
         .expect_err("Disabled consent prompt on a public RS!");
 
-    assert!(matches!(
-        error,
-        ClientError::Http(StatusCode::FORBIDDEN, _, _)
-    ));
+    assert!(
+        matches!(error, ClientError::InvalidRequest(message) if message
+            .contains("public clients must always prompt for consent"))
+    );
 }
