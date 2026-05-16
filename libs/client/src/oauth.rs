@@ -10,7 +10,7 @@ use kanidm_proto::constants::{
 };
 use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin};
 use kanidm_proto::v1::Entry;
-use reqwest::multipart;
+use reqwest::{multipart, StatusCode};
 use std::collections::BTreeMap;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
@@ -534,9 +534,6 @@ impl KanidmClient {
     }
 
     pub async fn idm_oauth2_rs_disable_consent_prompt(&self, id: &str) -> Result<(), ClientError> {
-        self.idm_oauth2_rs_assert_consent_prompt_configurable(id)
-            .await?;
-
         let mut update_oauth2_rs = Entry {
             attrs: BTreeMap::new(),
         };
@@ -544,30 +541,34 @@ impl KanidmClient {
             ATTR_OAUTH2_CONSENT_PROMPT_ENABLE.to_string(),
             vec!["false".to_string()],
         );
-        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+
+        match self
+            .perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await
+        {
+            Err(err @ ClientError::Http(StatusCode::FORBIDDEN, _, _)) => {
+                if self.idm_oauth2_rs_is_public_client(id).await? {
+                    Err(ClientError::InvalidRequest(
+                        OAUTH2_PUBLIC_CLIENT_CONSENT_PROMPT_ERROR.to_string(),
+                    ))
+                } else {
+                    Err(err)
+                }
+            }
+            result => result,
+        }
     }
 
-    async fn idm_oauth2_rs_assert_consent_prompt_configurable(
-        &self,
-        id: &str,
-    ) -> Result<(), ClientError> {
+    async fn idm_oauth2_rs_is_public_client(&self, id: &str) -> Result<bool, ClientError> {
         let entry = self.idm_oauth2_rs_get(id).await?;
 
-        if entry
+        Ok(entry
             .as_ref()
             .and_then(|entry| entry.attrs.get(ATTR_CLASS))
             .is_some_and(|classes| {
                 classes
                     .iter()
                     .any(|class| class == OAUTH2_RESOURCE_SERVER_PUBLIC)
-            })
-        {
-            Err(ClientError::InvalidRequest(
-                OAUTH2_PUBLIC_CLIENT_CONSENT_PROMPT_ERROR.to_string(),
-            ))
-        } else {
-            Ok(())
-        }
+            }))
     }
 }

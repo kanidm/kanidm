@@ -1298,3 +1298,39 @@ async fn test_oauth2_openid_public_consent_cant_be_disabled(rsclient: &KanidmCli
             .contains("public clients must always prompt for consent"))
     );
 }
+
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_public_consent_raw_patch_is_rejected(rsclient: &KanidmClient) {
+    let res = rsclient
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    rsclient
+        .idm_oauth2_rs_public_create(
+            TEST_INTEGRATION_RS_ID,
+            TEST_INTEGRATION_RS_DISPLAY,
+            TEST_INTEGRATION_RS_URL,
+        )
+        .await
+        .expect("Failed to create oauth2 config");
+
+    let patch_body =
+        serde_json::json!({"attrs": { ATTR_OAUTH2_CONSENT_PROMPT_ENABLE : ["false"]}});
+
+    let error: ClientError = match rsclient
+        .perform_patch_request::<serde_json::Value, String>(
+            format!("/v1/oauth2/{TEST_INTEGRATION_RS_ID}").as_str(),
+            patch_body,
+        )
+        .await
+    {
+        Ok(val) => panic!("Expected failure to patch public OAuth2 consent prompt: {val:?}"),
+        Err(err) => err,
+    };
+
+    assert!(matches!(
+        error,
+        ClientError::Http(StatusCode::FORBIDDEN, _, _)
+    ));
+}
