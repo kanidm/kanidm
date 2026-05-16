@@ -51,3 +51,32 @@ async fn test_v1_person_id_ssh_pubkeys_post(rsclient: &KanidmClient) {
         ClientError::Http(StatusCode::BAD_REQUEST, _, _)
     ));
 }
+
+#[kanidmd_testkit::test]
+async fn test_v1_person_ssh_pubkey_space_tag_lifecycle(rsclient: &KanidmClient) {
+    let res = rsclient
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    create_user(rsclient, "foo", "foogroup").await;
+
+    let tag = "Yk 5 Nfc";
+    let key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst";
+
+    let add = rsclient
+        .idm_person_account_post_ssh_pubkey("foo", tag, key)
+        .await;
+    assert!(add.is_ok(), "add failed: {add:?}");
+
+    let got = rsclient.idm_account_get_ssh_pubkey("foo", tag).await.unwrap();
+    assert_eq!(got, Some(key.to_string()));
+
+    let del = rsclient
+        .idm_person_account_delete_ssh_pubkey("foo", tag)
+        .await;
+    assert!(del.is_ok(), "delete failed: {del:?}");
+
+    let got_after_delete = rsclient.idm_account_get_ssh_pubkey("foo", tag).await.unwrap();
+    assert_eq!(got_after_delete, None);
+}

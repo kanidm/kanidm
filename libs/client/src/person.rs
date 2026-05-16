@@ -165,8 +165,7 @@ impl KanidmClient {
         tag: &str,
         pubkey: &str,
     ) -> Result<(), ClientError> {
-        let tag = urlencoding::encode(tag);
-        let sk = (tag, pubkey.to_string());
+        let sk = (tag.to_string(), pubkey.to_string());
         self.perform_post_request(format!("/v1/person/{id}/_ssh_pubkeys").as_str(), sk)
             .await
     }
