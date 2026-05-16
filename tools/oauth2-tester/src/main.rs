@@ -1,37 +1,31 @@
-use clap::Parser;
-use sketching::tracing_subscriber::layer::SubscriberExt;
-use sketching::tracing_subscriber::util::SubscriberInitExt;
-use sketching::tracing_subscriber::{fmt, EnvFilter};
-use std::net::SocketAddr;
-use std::sync::Arc;
-use tracing::{debug, error, info};
-use axum::middleware;
-use axum::response::Html;
-use axum::routing::get;
-use axum::response::{IntoResponse, Response};
-use axum::Router;
 use askama::Template;
 use askama_web::WebTemplate;
+use axum::middleware;
+use axum::response::Html;
+use axum::response::{IntoResponse, Response};
+use axum::routing::get;
+use axum::Router;
+use clap::Parser;
+use openidconnect::reqwest;
+use std::net::SocketAddr;
+use std::sync::Arc;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_sessions::cookie::{Key, SameSite};
 use tower_sessions::{Expiry, MemoryStore, SessionManagerLayer};
+use tracing::{debug, error, info};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{fmt, EnvFilter};
 use url::Url;
-use openidconnect::{
-    reqwest,
-};
 
 mod auth_oidc;
 
-
 #[derive(Template, WebTemplate)]
 #[template(path = "index.html")]
-struct IndexView {
-    
-}
+struct IndexView {}
 
 async fn index_view() -> Response {
-    IndexView { }
-        .into_response()
+    IndexView {}.into_response()
 }
 
 async fn status_view() -> Html<&'static str> {
@@ -87,7 +81,7 @@ async fn main() {
         .or_else(|_| EnvFilter::try_new("info"))
         .unwrap();
 
-    sketching::tracing_subscriber::registry()
+    tracing_subscriber::registry()
         .with(filter_layer)
         .with(fmt_layer)
         .init();
@@ -97,13 +91,16 @@ async fn main() {
 
     debug!(?env_config);
 
-    rustls::crypto::aws_lc_rs::default_provider().install_default()
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
         .unwrap();
 
     let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
-        env_config.tls_pem_chain, env_config.tls_pem_key)
-        .await
-        .expect("Failed to process pem files");
+        env_config.tls_pem_chain,
+        env_config.tls_pem_key,
+    )
+    .await
+    .expect("Failed to process pem files");
 
     // TODO: In future the oauth2/openidconnect crates will detach their
     // reqwest versions, but until then we have to use what they bundle.
@@ -124,7 +121,8 @@ async fn main() {
         &format!("https://{}", env_config.tls_bind_addr),
         &env_config.kanidm_url,
         &async_http_client,
-    ).await;
+    )
+    .await;
 
     let app_state = Arc::new(AppState {
         oidc,
@@ -144,11 +142,14 @@ async fn main() {
         .route("/oidc/whoami", get(auth_oidc::whoami_view))
         .layer(middleware::from_fn_with_state(
             app_state.clone(),
-            auth_oidc::middleware
+            auth_oidc::middleware,
         ));
 
     let with_oidc_unauth = Router::new()
-        .route("/oidc/start_login", get(auth_oidc::login_view))
+        .route(
+            "/oidc/login",
+            get(auth_oidc::login_view).post(auth_oidc::login_post),
+        )
         .route("/oidc/response", get(auth_oidc::response_view));
 
     let with_unauth = Router::new()

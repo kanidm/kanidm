@@ -1,50 +1,37 @@
-use chrono::{DateTime, Utc};
-use tracing::{debug, error, info, trace};
+use crate::AppState;
+use askama::Template;
+use askama_web::WebTemplate;
 use axum::body::Body;
-use serde::{Deserialize, Serialize};
 use axum::{
     extract::{Query, State},
     http::Request,
     http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
-    Json,
+    Form, Json,
 };
-use tower_sessions::Session;
-use crate::AppState;
-use std::sync::Arc;
-use url::Url;
+use chrono::{DateTime, Utc};
 use openidconnect::{
-    Client,
     core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata},
-    reqwest,
-    AccessToken,
-    AuthorizationCode,
-    ClientId,
-    ClientSecret,
-    CsrfToken,
-    IssuerUrl,
-    Nonce,
-    OAuth2TokenResponse,
-    PkceCodeChallenge,
-    PkceCodeVerifier,
-    RedirectUrl,
-    RefreshToken,
-    Scope,
-    TokenResponse,
-    EndpointSet,
-    EndpointNotSet,
-    EndpointMaybeSet,
+    reqwest, AccessToken, AuthorizationCode, Client, ClientId, ClientSecret, CsrfToken,
+    EndpointMaybeSet, EndpointNotSet, EndpointSet, IssuerUrl, Nonce, OAuth2TokenResponse,
+    PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, TokenResponse,
 };
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+use std::sync::Arc;
+use tower_sessions::Session;
+use tracing::{debug, error, info, trace};
+use url::Url;
 
 // This is disgusting. Thanks openidconnect.
 pub type ConfiguredClient = CoreClient<
-EndpointSet,
-EndpointNotSet,
-EndpointNotSet,
-EndpointNotSet,
-EndpointMaybeSet,
-EndpointMaybeSet,
+    EndpointSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointMaybeSet,
+    EndpointMaybeSet,
 >;
 
 pub(crate) async fn middleware(
@@ -152,7 +139,8 @@ pub(crate) async fn middleware(
             error!(?e, "Failed to setup request session");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         } else {
-            Redirect::to("/").into_response()
+            // New token valid, run the request.
+            next.run(request).await
         }
     } else {
         info!("no refresh token, reauthenticate pls");
@@ -160,27 +148,53 @@ pub(crate) async fn middleware(
     }
 }
 
+#[derive(Template, WebTemplate)]
+#[template(path = "oidc.html")]
+struct LoginView {}
+
+pub async fn login_view(State(state): State<Arc<AppState>>, session: Session) -> Response {
+    LoginView {}.into_response()
+}
+
+#[derive(Deserialize, Debug)]
+pub struct FormLoginOptions {
+    scopes: String,
+    max_age: String,
+}
+
 #[axum::debug_handler]
-pub(crate) async fn login_view(
+pub(crate) async fn login_post(
     State(state): State<Arc<AppState>>,
     session: Session,
+    Form(form_data): Form<FormLoginOptions>,
 ) -> Result<Response, StatusCode> {
     let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
     trace!(?session);
+    debug!(?form_data);
     debug!("challenge -> {:?}", pkce_code_challenge.as_str());
     debug!("secret -> {:?}", pkce_code_verifier.secret());
 
-    let (auth_url, csrf_token, nonce) = state
-        .oidc
-        .authorize_url(
-            CoreAuthenticationFlow::AuthorizationCode,
-            CsrfToken::new_random,
-            Nonce::new_random,
-        )
-        // .add_scope(Scope::new("access".to_string()))
-        .set_pkce_challenge(pkce_code_challenge)
-        .url();
+    let oidc = state.oidc.authorize_url(
+        CoreAuthenticationFlow::AuthorizationCode,
+        CsrfToken::new_random,
+        Nonce::new_random,
+    );
+
+    let max_age = u64::from_str(&form_data.max_age).ok();
+
+    let oidc = max_age.into_iter().fold(oidc, |oidc, max_age| {
+        oidc.set_max_age(std::time::Duration::from_secs(max_age))
+    });
+
+    let oidc = form_data
+        .scopes
+        .split_ascii_whitespace()
+        .fold(oidc, |oidc, scope| {
+            oidc.add_scope(Scope::new(scope.to_string()))
+        });
+
+    let (auth_url, csrf_token, nonce) = oidc.set_pkce_challenge(pkce_code_challenge).url();
 
     // We can stash the verifier in the session.
     session
@@ -311,7 +325,7 @@ pub(crate) async fn response_view(
     if let Some(uwu_senpai) = maybe_uwu_senpai {
         Ok(Redirect::to(&uwu_senpai).into_response())
     } else {
-        Ok(Redirect::to("/").into_response())
+        Ok(Redirect::to("/oidc/whoami").into_response())
     }
 }
 
@@ -324,17 +338,22 @@ pub(crate) async fn whoami_view(
     let current_user = if let Some(current_user) = maybe_user_token {
         current_user
     } else {
-        return Redirect::to("/").into_response();
+        return Redirect::to("/oidc/login").into_response();
     };
 
     Json(current_user.username).into_response()
 }
 
-pub async fn configure(client_id: &str, client_secret: Option<&str>, client_url: &str, kanidm_url: &Url,
+pub async fn configure(
+    client_id: &str,
+    client_secret: Option<&str>,
+    client_url: &str,
+    kanidm_url: &Url,
     async_http_client: &reqwest::Client,
 ) -> ConfiguredClient {
     let mut discovery_url = kanidm_url.clone();
-    discovery_url.path_segments_mut()
+    discovery_url
+        .path_segments_mut()
         .unwrap()
         .extend(["oauth2", "openid", client_id]);
 
@@ -356,7 +375,6 @@ pub async fn configure(client_id: &str, client_secret: Option<&str>, client_url:
         ClientId::new(client_id.to_string()),
         client_secret.map(|s| ClientSecret::new(s.to_string())),
     )
-        // Set the URL the user will be redirected to after the authorization process.
-        .set_redirect_uri(redir_url)
+    // Set the URL the user will be redirected to after the authorization process.
+    .set_redirect_uri(redir_url)
 }
-

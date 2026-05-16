@@ -1,39 +1,39 @@
 [package]
 name = "kanidm_oauth2_tester"
 description = "Kanidm OAuth2 Client Tester"
-documentation = "https://kanidm.github.io/kanidm/stable/"
-version = { workspace = true }
-authors = { workspace = true }
-rust-version = { workspace = true }
-edition = { workspace = true }
-license = { workspace = true }
-homepage = { workspace = true }
-repository = { workspace = true }
+version = "0.0.1"
+rust-version = "1.93"
+edition = "2021"
 
 
 [features]
 
 [dependencies]
-askama = { workspace = true }
-askama_web = { workspace = true, features = ["axum-0.8"] }
-axum = { workspace = true }
-clap = { workspace = true }
-chrono = { workspace = true }
+askama = { version = "0.16.0" }
+askama_web = { version = "0.16.0", features = ["axum-0.8"] }
+axum = { version = "0.8.8", features = [
+    "form",
+    "json",
+    "macros",
+    "query",
+    "tokio",
+    "tracing",
+] }
+clap = { version = "4.6.0", features = ["derive", "env"] }
+chrono = "^0.4.44"
 
 axum-server = { version = "0.7.1", features = ["tls-rustls-no-provider"] }
 tower-sessions = { version = "0.14.0", features = ["signed"] }
 tower-http = { version = "0.6.2", default-features = false, features = ["fs"] }
 
-kanidm_proto = { workspace = true }
-oauth2_ext = { workspace = true }
 openidconnect = { version = "4.0.1", default-features = false, features = ["reqwest", "rustls-tls"] }
 
-reqwest = { workspace = true }
-rustls = { workspace = true }
-serde = { workspace = true }
-sketching = { workspace = true }
-tokio = { workspace = true, default-features = false, features = ["rt", "macros", "time"] }
-tracing = { workspace = true }
-time  = { workspace = true }
-url = { workspace = true }
+rustls = "*"
+serde = "1"
+tokio = { version = "1.51.1", default-features = false, features = ["rt", "macros", "time"] }
+time = { version = "^0.3.47", features = ["formatting", "local-offset"] }
+url = "^2.5.8"
 
+
+tracing = "^0.1.44"
+tracing-subscriber = { version = "^0.3.23", features = ["env-filter"] }

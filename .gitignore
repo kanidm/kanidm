@@ -3,6 +3,7 @@ altnames.cnf
 .backup*_test.json
 .backup_test.db
 **/target/**
+tools/oauth2-tester/Cargo.lock
 /insecure
 **/*.rs.bk
 test.db

@@ -23,7 +23,7 @@ use compact_jwt::{
     JweCompact, JwsCompact, OidcClaims, OidcSubject,
 };
 use concread::cowcell::*;
-use crypto_glue::{s256::Sha256, traits::Digest};
+use crypto_glue::{s256::{Sha256, Sha256Output}, traits::Digest};
 use hashbrown::HashMap;
 use hashbrown::HashSet;
 use kanidm_proto::constants::*;
@@ -145,10 +145,14 @@ impl From<String> for PkceS256Secret {
 }
 
 impl PkceS256Secret {
-    pub fn to_request(&self) -> PkceRequest {
+    pub fn to_challenge(&self) -> Sha256Output {
         let mut hasher = Sha256::new();
         hasher.update(self.secret.as_bytes());
-        let code_challenge = hasher.finalize();
+        hasher.finalize()
+    }
+
+    pub fn to_request(&self) -> PkceRequest {
+        let code_challenge = self.to_challenge();
 
         PkceRequest {
             code_challenge: code_challenge.to_vec(),
@@ -165,10 +169,7 @@ impl PkceS256Secret {
     }
 
     pub fn verify<V: AsRef<[u8]>>(&self, challenge: V) -> bool {
-        let mut hasher = Sha256::new();
-        hasher.update(self.secret.as_bytes());
-        let code_challenge = hasher.finalize();
-
+        let code_challenge = self.to_challenge();
         challenge.as_ref() == code_challenge.as_slice()
     }
 }
