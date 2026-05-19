@@ -22,7 +22,7 @@ async def client() -> Optional[KanidmClient]:
 
         return KanidmClient(uri="https://idm.example.com")
     except FileNotFoundError:
-        pytest.skip("Couldn't find config file...")  # type: ignore[call-non-callable]
+        pytest.skip("Couldn't find config file...")
 
 
 @pytest.fixture(scope="function")
@@ -31,7 +31,7 @@ async def client_configfile() -> Optional[KanidmClient]:
     try:
         return KanidmClient(config_file=Path("~/.config/kanidm").expanduser())
     except FileNotFoundError:
-        pytest.skip("Couldn't find config file...")  # type: ignore[call-non-callable]
+        pytest.skip("Couldn't find config file...")
 
 
 @pytest.fixture(scope="session")
@@ -60,7 +60,7 @@ def openapi_verify_tls(openapi_ca_path: Optional[str]) -> bool:
 def openapi_admin_credentials() -> Tuple[str, str]:
     password = os.getenv("IDM_ADMIN_PASS")
     if not password:
-        raise pytest.skip("No IDM_ADMIN_PASS env var set for openapi tests")  # type: ignore[call-non-callable]
+        raise pytest.skip("No IDM_ADMIN_PASS env var set for openapi tests")
     return (KANIDM_IDM_ADMIN, password)
 
 
@@ -97,7 +97,7 @@ async def openapi_api_client(openapi_client: KanidmClient) -> AsyncIterator["Api
     try:
         yield api_client
     finally:
-        await api_client.close()  # type: ignore[no-untyped-call]
+        await api_client.close()
 
 
 @pytest.fixture(scope="function")
@@ -106,7 +106,7 @@ async def openapi_api_client_authed(openapi_authed_client: KanidmClient) -> Asyn
     try:
         yield api_client
     finally:
-        await api_client.close()  # type: ignore[no-untyped-call]
+        await api_client.close()
 
 
 class MockResponse:
