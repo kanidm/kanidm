@@ -103,7 +103,6 @@ async fn oauth2_auth_req(
     client_auth_info: ClientAuthInfo,
     domain_info: DomainInfoRead,
     jar: CookieJar,
-    // maybe_auth_req: Option<AuthorisationRequest>,
     auth_req: AuthReqState,
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
