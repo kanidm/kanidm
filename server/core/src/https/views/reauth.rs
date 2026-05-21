@@ -9,6 +9,7 @@ use axum::response::IntoResponse;
 use axum::response::Response;
 use axum_extra::extract::cookie::CookieJar;
 use kanidm_proto::internal::{PrivilegesActive, UserAuthToken};
+use kanidmd_lib::idm::authentication::ReauthRequest;
 use kanidmd_lib::idm::server::DomainInfoRead;
 use kanidmd_lib::prelude::ClientAuthInfo;
 use uuid::Uuid;
@@ -99,6 +100,7 @@ pub(crate) async fn render_reauth(
         jar,
         return_to.as_ref(),
         display_ctx,
+        ReauthRequest::GrantReadWrite,
     )
     .await)
 }

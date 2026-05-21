@@ -18,7 +18,7 @@ use kanidmd_lib::{
     event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
     idm::account::ListUserAuthTokenEvent,
-    idm::authentication::AuthStep,
+    idm::authentication::{AuthStep, ReauthRequest},
     idm::credupdatesession::CredentialUpdateSessionToken,
     idm::event::{
         AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, UnixGroupTokenEvent,
@@ -27,8 +27,8 @@ use kanidmd_lib::{
     idm::ldap::{LdapBoundToken, LdapResponseState},
     idm::oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
-        AuthoriseReject, AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
-        OidcDiscoveryResponse, OidcToken,
+        AuthorisationRequestContext, AuthoriseReject, AuthoriseResponse, JwkKeySet, Oauth2Error,
+        Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, OidcToken,
     },
     idm::server::{DomainInfoRead, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
@@ -152,6 +152,7 @@ impl QueryServerReadV1 {
         &self,
         client_auth_info: ClientAuthInfo,
         issue: AuthIssueSession,
+        reauth_req: ReauthRequest,
         eventid: Uuid,
     ) -> Result<AuthResult, OperationError> {
         let ct = duration_from_epoch_now();
@@ -173,7 +174,7 @@ impl QueryServerReadV1 {
         // Generally things like auth denied are in Ok() msgs
         // so true errors should always trigger a rollback.
         let res = idm_auth
-            .reauth_init(ident, issue, ct, client_auth_info)
+            .reauth_init(ident, issue, ct, client_auth_info, reauth_req)
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 
@@ -1351,6 +1352,7 @@ impl QueryServerReadV1 {
         &self,
         client_auth_info: ClientAuthInfo,
         auth_req: AuthorisationRequest,
+        auth_req_ctx: AuthorisationRequestContext,
         eventid: Uuid,
     ) -> Result<AuthoriseResponse, Oauth2Error> {
         let ct = duration_from_epoch_now();
@@ -1367,7 +1369,7 @@ impl QueryServerReadV1 {
             .ok();
 
         // Now we can send to the idm server for authorisation checking.
-        idms_prox_read.check_oauth2_authorisation(ident.as_ref(), &auth_req, ct)
+        idms_prox_read.check_oauth2_authorisation(ident.as_ref(), &auth_req, &auth_req_ctx, ct)
     }
 
     #[instrument(

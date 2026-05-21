@@ -276,7 +276,7 @@ async fn test_oauth2_openid_basic_flow_impl(
         ("code_challenge_method", "S256"),
         ("redirect_uri", TEST_INTEGRATION_RS_REDIRECT_URL),
         ("scope", "email read openid"),
-        ("max_age", "1"),
+        ("max_age", "15"),
     ];
 
     if let Some(response_mode) = response_mode {

@@ -173,6 +173,23 @@ impl PkceS256Secret {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct AuthorisationRequestContext {
+    resumed: bool,
+}
+
+impl AuthorisationRequestContext {
+    pub fn resumed_session() -> Self {
+        Self { resumed: true }
+    }
+}
+
+struct OAuth2SessionContext {
+    pub(crate) auth_time: Option<OffsetDateTime>,
+    pub(crate) nonce: Option<String>,
+    pub(crate) account_uuid: Uuid,
+}
+
 // == internal state formats that we encrypt and send.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum SupportedResponseMode {
@@ -228,13 +245,14 @@ struct TokenExchangeCode {
     pub scopes: BTreeSet<String>,
     // We stash some details here for oidc.
     pub nonce: Option<String>,
+    pub auth_time: Option<OffsetDateTime>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) enum Oauth2TokenType {
     Refresh {
         scopes: BTreeSet<String>,
-        parent_session_id: Uuid,
+        parent_session_id: Option<Uuid>,
         session_id: Uuid,
         exp: i64,
         uuid: Uuid,
@@ -243,6 +261,7 @@ pub(crate) enum Oauth2TokenType {
         nbf: i64,
         // We stash some details here for oidc.
         nonce: Option<String>,
+        auth_time: Option<OffsetDateTime>,
     },
     ClientAccess {
         scopes: BTreeSet<String>,
@@ -274,6 +293,10 @@ pub enum AuthoriseResponse {
         client_name: String,
         // A username hint, if any
         login_hint: Option<String>,
+    },
+    ReauthenticationRequired {
+        // A pretty-name of the client
+        client_name: String,
     },
     ConsentRequested {
         // A pretty-name of the client
@@ -1412,6 +1435,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             redirect_uri: consent_req.redirect_uri.clone(),
             scopes: consent_req.scopes.clone(),
             nonce: consent_req.nonce,
+            auth_time: ident.last_verified_at(),
         };
 
         // Encrypt the exchange token
@@ -1550,21 +1574,23 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         // ==== We are now GOOD TO GO! ====
         // Grant the access token response.
-        let parent_session_id = code_xchg.session_id;
+        let parent_session_id = Some(code_xchg.session_id);
         let session_id = Uuid::new_v4();
 
         let scopes = code_xchg.scopes;
-        let account_uuid = code_xchg.account_uuid;
-        let nonce = code_xchg.nonce;
+        let session_ctx = OAuth2SessionContext {
+            auth_time: code_xchg.auth_time,
+            nonce: code_xchg.nonce,
+            account_uuid: code_xchg.account_uuid,
+        };
 
         self.generate_access_token_response(
             o2rs,
             ct,
             scopes,
-            account_uuid,
             parent_session_id,
             session_id,
-            nonce,
+            session_ctx,
         )
     }
 
@@ -1611,6 +1637,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                 iat,
                 nbf: _,
                 nonce,
+                auth_time,
             } => {
                 if exp <= ct.as_secs() as i64 {
                     security_info!(?uuid, "refresh token has expired, ");
@@ -1620,13 +1647,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                 // Check the session is still valid. This call checks the parent session
                 // and the OAuth2 session.
                 let valid = self
-                    .check_oauth2_account_uuid_valid(
-                        uuid,
-                        session_id,
-                        Some(parent_session_id),
-                        iat,
-                        ct,
-                    )
+                    .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
                 let Ok(Some(entry)) = valid else {
@@ -1697,17 +1718,20 @@ impl IdmServerProxyWriteTransaction<'_> {
 
                 // ----------
                 // good to go
-
                 let account_uuid = uuid;
+                let session_ctx = OAuth2SessionContext {
+                    auth_time,
+                    nonce,
+                    account_uuid,
+                };
 
                 self.generate_access_token_response(
                     o2rs,
                     ct,
                     update_scopes,
-                    account_uuid,
                     parent_session_id,
                     session_id,
-                    nonce,
+                    session_ctx,
                 )
             }
         }
@@ -1814,17 +1838,21 @@ impl IdmServerProxyWriteTransaction<'_> {
             process_requested_scopes_for_identity(o2rs, &ident, req_scopes)?;
 
         let session_id = Uuid::new_v4();
-        let parent_session_id = apit.token_id;
-        let account_uuid = apit.account_id;
+        let parent_session_id = None;
+        let session_ctx = OAuth2SessionContext {
+            // Service accounts don't have an auth time
+            auth_time: None,
+            account_uuid: apit.account_id,
+            nonce: None,
+        };
 
         self.generate_access_token_response(
             o2rs,
             ct,
             granted_scopes,
-            account_uuid,
             parent_session_id,
             session_id,
-            None,
+            session_ctx,
         )
     }
 
@@ -1939,17 +1967,13 @@ impl IdmServerProxyWriteTransaction<'_> {
         &mut self,
         o2rs: &Oauth2RS,
         ct: Duration,
-        //
         scopes: BTreeSet<String>,
-        account_uuid: Uuid,
-        parent_session_id: Uuid,
+        parent_session_id: Option<Uuid>,
         session_id: Uuid,
-        nonce: Option<String>,
+        session_ctx: OAuth2SessionContext,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
         let iat = ct.as_secs() as i64;
-
-        // TODO: Configurable from the oauth2rs configuration?
 
         // Disclaimer: It may seem odd here that we are ignoring our session when it comes to expiry
         // times. However, this actually is valid because when we take the initial code exchange
@@ -1958,6 +1982,9 @@ impl IdmServerProxyWriteTransaction<'_> {
         // expiries are *purely* for the tokens we issue and are *not related* to the expiries of the
         // the session - these are enforced as above!
 
+        // Refresh tokens can be configured, but access token expiry can not. This is because
+        // OAuth2 has no *revocation* mechanism, so we need to be validating and re-issuing
+        // access tokens frequently.
         let expiry = odt_ct + Duration::from_secs(OAUTH2_ACCESS_TOKEN_EXPIRY as u64);
         let expires_in = OAUTH2_ACCESS_TOKEN_EXPIRY;
         let refresh_expiry = iat + o2rs.refresh_token_expiry as i64;
@@ -1974,6 +2001,13 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         let client_id = o2rs.name.clone();
 
+        let entry = match self.qs_write.internal_search_uuid(session_ctx.account_uuid) {
+            Ok(entry) => entry,
+            Err(err) => return Err(Oauth2Error::ServerError(err)),
+        };
+
+        let auth_time = session_ctx.auth_time;
+
         let id_token = if scopes.contains(OAUTH2_SCOPE_OPENID) {
             // TODO: Scopes map to claims:
             //
@@ -1987,17 +2021,10 @@ impl IdmServerProxyWriteTransaction<'_> {
             // TODO: Can the user consent to which claims are released? Today as we don't support most
             // of them anyway, no, but in the future, we can stash these to the consent req.
 
-            // TODO: If max_age was requested in the request, we MUST provide auth_time.
-
             // amr == auth method
             // We removed this from uat, and I think that it's okay here. AMR is a bit useless anyway
             // since there is no standard for what it should look like wrt to cred strength.
             let amr = None;
-
-            let entry = match self.qs_write.internal_search_uuid(account_uuid) {
-                Ok(entry) => entry,
-                Err(err) => return Err(Oauth2Error::ServerError(err)),
-            };
 
             let account = match Account::try_from_entry_rw(&entry, &mut self.qs_write) {
                 Ok(account) => account,
@@ -2009,13 +2036,13 @@ impl IdmServerProxyWriteTransaction<'_> {
 
             let oidc = OidcToken {
                 iss: iss.clone(),
-                sub: OidcSubject::U(account_uuid),
+                sub: OidcSubject::U(session_ctx.account_uuid),
                 aud: aud.clone(),
                 iat,
                 nbf: Some(iat),
                 exp,
-                auth_time: None,
-                nonce: nonce.clone(),
+                auth_time: auth_time.map(|at| at.unix_timestamp()),
+                nonce: session_ctx.nonce.clone(),
                 at_hash: None,
                 acr: None,
                 amr,
@@ -2051,7 +2078,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         // We need to record this into the record? Delayed action?
         let access_token_data = OAuth2RFC9068Token {
             iss: iss.to_string(),
-            sub: account_uuid,
+            sub: session_ctx.account_uuid,
             aud,
             exp,
             nbf: iat,
@@ -2059,13 +2086,13 @@ impl IdmServerProxyWriteTransaction<'_> {
             jti: session_id,
             client_id,
             extensions: OAuth2RFC9068TokenExtensions {
-                auth_time: None,
+                auth_time: auth_time.map(|at| at.unix_timestamp()),
                 acr: None,
                 amr: None,
                 scope: scopes.clone(),
-                nonce: nonce.clone(),
+                nonce: session_ctx.nonce.clone(),
                 session_id,
-                parent_session_id: Some(parent_session_id),
+                parent_session_id,
             },
         };
 
@@ -2090,10 +2117,11 @@ impl IdmServerProxyWriteTransaction<'_> {
             parent_session_id,
             session_id,
             exp: refresh_expiry,
-            uuid: account_uuid,
+            uuid: session_ctx.account_uuid,
             iat,
             nbf: iat,
-            nonce,
+            nonce: session_ctx.nonce,
+            auth_time,
         };
 
         let refresh_token_data = JweBuilder::into_json(&refresh_token_raw)
@@ -2117,7 +2145,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         let session = Value::Oauth2Session(
             session_id,
             Oauth2Session {
-                parent: Some(parent_session_id),
+                parent: parent_session_id,
                 state: SessionState::ExpiresAt(odt_refresh_expiry),
                 issued_at: odt_ct,
                 rs_uuid: o2rs.uuid,
@@ -2134,7 +2162,10 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(account_uuid))),
+                &filter!(f_eq(
+                    Attribute::Uuid,
+                    PartialValue::Uuid(session_ctx.account_uuid)
+                )),
                 &modlist,
             )
             .map_err(|e| {
@@ -2195,12 +2226,13 @@ impl IdmServerProxyReadTransaction<'_> {
         &self,
         maybe_ident: Option<&Identity>,
         auth_req: &AuthorisationRequest,
+        auth_req_ctx: &AuthorisationRequestContext,
         ct: Duration,
     ) -> Result<AuthoriseResponse, Oauth2Error> {
         // due to identity processing we already know that:
         // * the session must be authenticated, and valid
         // * is within it's valid time window.
-        trace!(?auth_req);
+        trace!(?auth_req, ?auth_req_ctx);
 
         if auth_req.response_type != ResponseType::Code {
             admin_warn!("Unsupported OAuth2 response_type (should be 'code')");
@@ -2397,26 +2429,8 @@ impl IdmServerProxyReadTransaction<'_> {
         // prompt - if set to login, we need to force a re-auth. But we don't want to
         // if the user "only just" logged in, that's annoying. So we need a time window for
         // this, to detect when we should force it to the consent req.
-        //
-        // Idk man, Sure its a little awkward but with how few apps actually use `prompt=login`
-        // I think it is unlikely we will cause a significant amount of user friction by forcing
-        // Login on every request with this param.
-        // We can always add a login timestamp later on.
-
-        // OIDC Core 1.0 §3.1.2.1
-        // prompt=login - The Authorization Server MUST prompt the End-User to re-authenticate
-        if auth_req.prompt.contains(&Prompt::Login) {
-            debug!("prompt=login was requested, forcing re-authentication");
-            return Ok(AuthoriseResponse::AuthenticationRequired {
-                client_name: o2rs.displayname.clone(),
-                login_hint: auth_req.oidc_ext.login_hint.clone(),
-            });
-        }
 
         // TODO: display = popup vs touch vs wap etc.
-
-        // TODO: max_age, pass through with consent req. If 0, force login.
-        // Otherwise force a login re the uat timeout.
 
         // TODO: ui_locales / claims_locales for the ui. Only if we don't have a Uat that
         // would provide this.
@@ -2438,6 +2452,52 @@ impl IdmServerProxyReadTransaction<'_> {
                 });
             }
         };
+
+        // OIDC Core 1.0 §3.1.2.1
+        // prompt=login - The Authorization Server MUST prompt the End-User to re-authenticate.
+        // This is equivalent to max_age=0;
+        let max_age = if auth_req.prompt.contains(&Prompt::Login) {
+            Some(0)
+        } else {
+            auth_req
+                .max_age
+                .map(|m| m.clamp(0, OAUTH2_OIDC_MAX_AGE_CLAMP))
+        };
+
+        let auth_time = ident.last_verified_at();
+
+        if let Some(max_age) = max_age {
+            let session_recently_validated = if max_age <= 0 {
+                // Reauth will be forced.
+                false
+            } else {
+                let odt_prompt_deadline =
+                    (OffsetDateTime::UNIX_EPOCH + ct) - Duration::from_secs(max_age as u64);
+
+                // Was the session recently validated?
+                auth_time
+                    .map(|at| {
+                        // We need to limit this to whole seconds.
+                        let at = at.truncate_to_second();
+                        let odt_prompt_deadline = odt_prompt_deadline.truncate_to_second();
+                        at > odt_prompt_deadline
+                    })
+                    .unwrap_or_default()
+            };
+
+            if auth_req_ctx.resumed {
+                // We must have just arrived here after an authentication or reauthentication - as
+                // a result the session is fresh, and we can continue.
+                debug!("auth_request_context indicates that the session was just authenticated - proceeding.");
+            } else if session_recently_validated {
+                debug!("prompt=login was requested, session is fresh enough to proceed");
+            } else {
+                debug!("prompt=login was requested, forcing re-authentication");
+                return Ok(AuthoriseResponse::ReauthenticationRequired {
+                    client_name: o2rs.displayname.clone(),
+                });
+            }
+        }
 
         let account_uuid = ident.get_uuid();
 
@@ -2492,6 +2552,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 redirect_uri: auth_req.redirect_uri.clone(),
                 scopes: granted_scopes.into_iter().collect(),
                 nonce: auth_req.nonce.clone(),
+                auth_time,
             };
 
             // Encrypt the exchange token with the key of the client
@@ -2937,7 +2998,7 @@ impl IdmServerProxyReadTransaction<'_> {
             client_id: _,
             extensions:
                 OAuth2RFC9068TokenExtensions {
-                    auth_time: _,
+                    auth_time,
                     acr: _,
                     amr: _,
                     scope: scopes,
@@ -2986,7 +3047,7 @@ impl IdmServerProxyReadTransaction<'_> {
             iat,
             nbf: Some(nbf),
             exp,
-            auth_time: None,
+            auth_time,
             nonce,
             at_hash: None,
             acr: None,
@@ -3533,7 +3594,8 @@ fn check_is_loopback(redirect_uri: &Url) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        CtSecret, Oauth2TokenType, PkceS256Secret, TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS,
+        AuthorisationRequestContext, CtSecret, Oauth2TokenType, PkceS256Secret,
+        TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS,
     };
     use crate::credential::Credential;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
@@ -3595,8 +3657,10 @@ mod tests {
                 unknown_keys: Default::default(),
             };
 
+            let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
             $idms_prox_read
-                .check_oauth2_authorisation(Some($ident), &auth_req, $ct)
+                .check_oauth2_authorisation(Some($ident), &auth_req, &auth_req_ctx, $ct)
                 .expect("OAuth2 authorisation failed")
         }};
     }
@@ -4168,6 +4232,8 @@ mod tests {
 
         let pkce_request = pkce_secret.to_request();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         //  * response type != code.
         let auth_req = AuthorisationRequest {
             // We're unlikely to support Implicit Grant
@@ -4188,7 +4254,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::UnsupportedResponseType
         );
@@ -4212,7 +4278,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidRequest
         );
@@ -4236,7 +4302,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidClientId
         );
@@ -4260,7 +4326,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidOrigin
         );
@@ -4284,7 +4350,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidOrigin
         );
@@ -4308,7 +4374,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidOrigin
         );
@@ -4331,7 +4397,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidOrigin
         );
@@ -4354,7 +4420,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidOrigin
         );
@@ -4377,7 +4443,7 @@ mod tests {
         };
 
         let req = idms_prox_read
-            .check_oauth2_authorisation(None, &auth_req, ct)
+            .check_oauth2_authorisation(None, &auth_req, &auth_req_ctx, ct)
             .unwrap();
 
         assert!(matches!(
@@ -4404,7 +4470,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::AccessDenied
         );
@@ -4428,7 +4494,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&idm_admin_ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&idm_admin_ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::AccessDenied
         );
@@ -4452,7 +4518,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&anon_ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&anon_ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::AccessDenied
         );
@@ -4733,6 +4799,8 @@ mod tests {
 
         let redirect_uri = Url::parse("https://portal.example.com/?custom=foo").unwrap();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
             response_mode: None,
@@ -4750,7 +4818,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .expect("OAuth2 authorisation failed");
 
         trace!(?consent_request);
@@ -4834,7 +4902,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .expect("OAuth2 authorisation failed");
 
         trace!(?consent_request);
@@ -5713,7 +5781,7 @@ mod tests {
         assert_eq!(oidc.nbf, Some(iat));
         // Previously this was the auth session but it's now inline with the access token expiry.
         assert_eq!(oidc.exp, iat + (OAUTH2_ACCESS_TOKEN_EXPIRY as i64));
-        assert!(oidc.auth_time.is_none());
+        assert!(oidc.auth_time.is_some());
         // Is nonce correctly passed through?
         assert_eq!(oidc.nonce, Some("abcdef".to_string()));
         assert!(oidc.at_hash.is_none());
@@ -5750,7 +5818,7 @@ mod tests {
         assert_eq!(oidc.iat, userinfo.iat);
         assert_eq!(oidc.nbf, userinfo.nbf);
         assert_eq!(oidc.exp, userinfo.exp);
-        assert!(userinfo.auth_time.is_none());
+        assert_eq!(oidc.auth_time, userinfo.auth_time);
         assert_eq!(userinfo.nonce, Some("abcdef".to_string()));
         assert!(userinfo.at_hash.is_none());
         assert!(userinfo.acr.is_none());
@@ -5798,7 +5866,7 @@ mod tests {
         assert_eq!(oidc.iat, userinfo.iat);
         assert_eq!(oidc.nbf, userinfo.nbf);
         assert_eq!(oidc.exp, userinfo.exp);
-        assert!(userinfo.auth_time.is_none());
+        assert_eq!(oidc.auth_time, userinfo.auth_time);
         assert_eq!(userinfo.nonce, Some("abcdef".to_string()));
         assert!(userinfo.at_hash.is_none());
         assert!(userinfo.acr.is_none());
@@ -6176,6 +6244,8 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         // Check we allow none.
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
@@ -6194,7 +6264,7 @@ mod tests {
         };
 
         idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .expect("Oauth2 authorisation failed");
     }
 
@@ -6424,6 +6494,8 @@ mod tests {
 
         let pkce_secret = PkceS256Secret::default();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
             response_mode: None,
@@ -6445,7 +6517,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .expect("Oauth2 authorisation failed");
 
         // Should be in the consent phase;
@@ -6508,7 +6580,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .expect("Oauth2 authorisation failed");
 
         // Should be present in the consent phase however!
@@ -6631,6 +6703,8 @@ mod tests {
         // We attempt pkce even though the rs is set to not support pkce.
         let pkce_secret = PkceS256Secret::default();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         // First, the user does not request pkce in their exchange.
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
@@ -6649,7 +6723,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .expect("Failed to perform OAuth2 authorisation request.");
 
         // Should be in the consent phase;
@@ -6710,6 +6784,8 @@ mod tests {
         // We attempt pkce even though the rs is set to not support pkce.
         let pkce_secret = PkceS256Secret::default();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         // First, NOTE the lack of https on the redir uri.
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
@@ -6729,7 +6805,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidOrigin
         );
@@ -7646,7 +7722,7 @@ mod tests {
         assert_eq!(oidc.nbf, Some(iat));
         // Previously this was the auth session but it's now inline with the access token expiry.
         assert_eq!(oidc.exp, iat + (OAUTH2_ACCESS_TOKEN_EXPIRY as i64));
-        assert!(oidc.auth_time.is_none());
+        assert!(oidc.auth_time.is_some());
         // Is nonce correctly passed through?
         assert_eq!(oidc.nonce, Some("abcdef".to_string()));
         assert!(oidc.at_hash.is_none());
@@ -7694,7 +7770,7 @@ mod tests {
         assert_eq!(oidc.iat, userinfo.iat);
         assert_eq!(oidc.nbf, userinfo.nbf);
         assert_eq!(oidc.exp, userinfo.exp);
-        assert!(userinfo.auth_time.is_none());
+        assert_eq!(oidc.auth_time, userinfo.auth_time);
         assert_eq!(userinfo.nonce, Some("abcdef".to_string()));
         assert!(userinfo.at_hash.is_none());
         assert!(userinfo.jti.is_some());
@@ -7776,6 +7852,8 @@ mod tests {
         // == Setup the authorisation request
         let pkce_secret = PkceS256Secret::default();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
             response_mode: None,
@@ -7793,7 +7871,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .expect("OAuth2 authorisation failed");
 
         // Should be in the consent phase;
@@ -8264,6 +8342,8 @@ mod tests {
             .map(|s| s.to_string())
             .collect();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
             response_mode: None,
@@ -8282,7 +8362,7 @@ mod tests {
         println!("{auth_req:?}");
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .expect("OAuth2 authorisation failed");
 
         // Should be in the consent phase;
@@ -8407,6 +8487,8 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         let auth_req = auth_req_with_prompt(
             pkce_secret.to_request(),
             Vec::from([
@@ -8420,7 +8502,8 @@ mod tests {
         );
 
         // Too many prompt values should cause the request to be rejected with InvalidRequest
-        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+        let result =
+            idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct);
 
         assert_eq!(
             result.unwrap_err(),
@@ -8448,12 +8531,15 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         let auth_req = auth_req_with_prompt(
             pkce_secret.to_request(),
             Vec::from([Prompt::Invalid(invalid_value)]),
         );
 
-        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+        let result =
+            idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct);
 
         assert_eq!(
             result.unwrap_err(),
@@ -8481,10 +8567,12 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // No identity provided (None) - user is not authenticated.
-        let result = idms_prox_read.check_oauth2_authorisation(None, &auth_req, ct);
+        let result = idms_prox_read.check_oauth2_authorisation(None, &auth_req, &auth_req_ctx, ct);
 
         assert!(
             result.unwrap_err() == Oauth2Error::LoginRequired,
@@ -8511,10 +8599,13 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // Ident is authenticated but has never granted consent.
-        let result = idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, ct);
+        let result =
+            idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct);
 
         assert!(
             result.unwrap_err() == Oauth2Error::InteractionRequired,
@@ -8545,10 +8636,12 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
+
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         let result = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .expect("prompt=none with prior consent should succeed");
 
         assert!(
@@ -8567,6 +8660,8 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
+        const OAUTH2_OIDC_PROMPT_LOGIN_GRACE: i64 = 300;
+
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, _uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
@@ -8574,16 +8669,57 @@ mod tests {
         let idms_prox_read = idms.proxy_read().await.unwrap();
         let pkce_secret = PkceS256Secret::default();
 
-        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Login]));
+        let auth_req_ctx = AuthorisationRequestContext { resumed: false };
 
-        // Even though the user is authenticated, prompt=login should force re-auth.
+        let mut auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([]));
+        auth_req.max_age = Some(OAUTH2_OIDC_PROMPT_LOGIN_GRACE);
+
+        // We are within the grace time, no prompt forced.
         let result = idms_prox_read
-            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .expect("prompt=login should not error");
 
         assert!(
-            matches!(result, AuthoriseResponse::AuthenticationRequired { .. }),
+            matches!(result, AuthoriseResponse::ConsentRequested { .. }),
+            "prompt=login should not have been forced"
+        );
+
+        // Even though the user is authenticated, max_age now will force re-auth as the session
+        // is outside of the max_age period.
+        let ct = ct + Duration::from_secs(OAUTH2_OIDC_PROMPT_LOGIN_GRACE as u64);
+
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
+            .expect("prompt=login should not error");
+
+        assert!(
+            matches!(result, AuthoriseResponse::ReauthenticationRequired { .. }),
+            "max_age must force re-authentication even when user is already authenticated"
+        );
+
+        // Prompt login always forces reauth.
+        let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Login]));
+
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
+            .expect("prompt=login should not error");
+
+        assert!(
+            matches!(result, AuthoriseResponse::ReauthenticationRequired { .. }),
             "prompt=login must force re-authentication even when user is already authenticated"
+        );
+
+        // However, if the server indicates that our context is directly after a session resumption
+        // aka we just logged in - we can proceed.
+        let auth_req_ctx = AuthorisationRequestContext { resumed: true };
+
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
+            .expect("prompt=login should not error");
+
+        assert!(
+            matches!(result, AuthoriseResponse::ConsentRequested { .. }),
+            "prompt=login should not have been forced"
         );
     }
 
@@ -8615,7 +8751,7 @@ mod tests {
     //     let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::Consent]));
 
     //     let result = idms_prox_read
-    //         .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+    //         .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
     //         .expect("prompt=consent should not error");
 
     //     assert!(

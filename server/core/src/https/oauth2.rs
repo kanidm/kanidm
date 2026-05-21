@@ -25,12 +25,9 @@ use kanidm_proto::constants::uri::{
 };
 use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::oauth2::AuthorisationResponse;
-
-#[cfg(feature = "dev-oauth2-device-flow")]
-use kanidm_proto::oauth2::DeviceAuthorizationResponse;
 use kanidmd_lib::idm::oauth2::{
-    AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthoriseResponse,
-    ErrorResponse, Oauth2Error, TokenRevokeRequest,
+    AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest,
+    AuthorisationRequestContext, AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
 };
 use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
@@ -38,6 +35,9 @@ use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
 use serde_with::formats::CommaSeparator;
 use serde_with::{serde_as, StringWithSeparator};
+
+#[cfg(feature = "dev-oauth2-device-flow")]
+use kanidm_proto::oauth2::DeviceAuthorizationResponse;
 
 #[cfg(feature = "dev-oauth2-device-flow")]
 use uri::OAUTH2_AUTHORISE_DEVICE;
@@ -188,9 +188,11 @@ async fn oauth2_authorise(
     kopid: KOpId,
     client_auth_info: ClientAuthInfo,
 ) -> impl IntoResponse {
+    let auth_req_ctx = AuthorisationRequestContext::default();
+
     let res: Result<AuthoriseResponse, Oauth2Error> = state
         .qe_r_ref
-        .handle_oauth2_authorise(client_auth_info, auth_req, kopid.eventid)
+        .handle_oauth2_authorise(client_auth_info, auth_req, auth_req_ctx, kopid.eventid)
         .await;
 
     match res {
@@ -240,9 +242,10 @@ async fn oauth2_authorise(
                 .body(body)
                 .unwrap()
         }
-        Ok(AuthoriseResponse::AuthenticationRequired { .. })
-        | Err(Oauth2Error::AuthenticationRequired) => {
-            // This will trigger our ui to auth and retry.
+        Ok(AuthoriseResponse::ReauthenticationRequired { .. })
+        | Ok(AuthoriseResponse::AuthenticationRequired { .. })
+        | Err(Oauth2Error::AuthenticationRequired) =>
+        {
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::UNAUTHORIZED)

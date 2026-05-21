@@ -822,6 +822,9 @@ pub trait IdmServerTransaction<'a> {
             uat.session_id,
             scope,
             limits,
+            // This strictly is the "last_verified_at" time but due to the current
+            // design of uat, issued_at is the same as last verification.
+            Some(uat.issued_at),
         ))
     }
 
@@ -841,14 +844,19 @@ pub trait IdmServerTransaction<'a> {
         }
 
         let scope = (&apit.purpose).into();
+        // While we did just verify the token, that's different to an interactive
+        // proof of presence like a human would provide.
+        let last_verified_at = None;
 
         let limits = Limits::api_token();
+
         Ok(Identity::new(
             IdentType::User(IdentUser { entry }),
             source,
             apit.token_id,
             scope,
             limits,
+            last_verified_at,
         ))
     }
 
@@ -934,6 +942,11 @@ pub trait IdmServerTransaction<'a> {
         }
 
         let certificate_uuid = cert_entry.get_uuid();
+        // The certificate is still valid, so we mark the session as always
+        // valid/issued at now. Because of how mTLS works, this means the
+        // certificate MUST have been JUST verified for the ongoing connection.
+        let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
+        let last_verified_at = Some(odt_ct);
 
         Ok(Identity::new(
             IdentType::User(IdentUser { entry }),
@@ -942,6 +955,7 @@ pub trait IdmServerTransaction<'a> {
             certificate_uuid,
             scope,
             limits,
+            last_verified_at,
         ))
     }
 
@@ -1031,6 +1045,9 @@ pub trait IdmServerTransaction<'a> {
             limits.search_max_filter_test = max_filter as usize;
         }
 
+        // Ldap sessions don't provide strong proof of presence.
+        let last_verified_at = None;
+
         // Users via LDAP are always only granted anonymous rights unless
         // they auth with an api-token
         Ok(Identity::new(
@@ -1039,6 +1056,7 @@ pub trait IdmServerTransaction<'a> {
             session_id,
             AccessScope::ReadOnly,
             limits,
+            last_verified_at,
         ))
     }
 
@@ -1121,6 +1139,7 @@ pub trait IdmServerTransaction<'a> {
 
         // If scope is not Synchronise, then fail.
         let scope = (&sync_token.purpose).into();
+        let last_verified_at = None;
 
         let limits = Limits::unlimited();
         Ok(Identity::new(
@@ -1129,6 +1148,7 @@ pub trait IdmServerTransaction<'a> {
             sync_token.token_id,
             scope,
             limits,
+            last_verified_at,
         ))
     }
 }

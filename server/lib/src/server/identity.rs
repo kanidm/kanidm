@@ -12,6 +12,7 @@ use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::net::IpAddr;
 use std::sync::Arc;
+use time::OffsetDateTime;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Source {
@@ -149,6 +150,7 @@ pub struct Identity {
     pub(crate) session_id: Uuid,
     pub(crate) scope: AccessScope,
     limits: Limits,
+    last_verified_at: Option<OffsetDateTime>,
 }
 
 impl std::fmt::Display for Identity {
@@ -178,6 +180,7 @@ impl Identity {
         session_id: Uuid,
         scope: AccessScope,
         limits: Limits,
+        last_verified_at: Option<OffsetDateTime>,
     ) -> Self {
         Self {
             origin,
@@ -185,6 +188,7 @@ impl Identity {
             session_id,
             scope,
             limits,
+            last_verified_at,
         }
     }
 
@@ -202,6 +206,12 @@ impl Identity {
         &mut self.limits
     }
 
+    /// This is the time at which the session associated with this identity last
+    /// had it's credentials postively verified at.
+    pub(crate) fn last_verified_at(&self) -> Option<OffsetDateTime> {
+        self.last_verified_at
+    }
+
     pub(crate) fn migration() -> Self {
         Identity {
             origin: IdentType::Internal(InternalRole::Migration),
@@ -209,6 +219,7 @@ impl Identity {
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
+            last_verified_at: None,
         }
     }
 
@@ -219,6 +230,7 @@ impl Identity {
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadOnly,
             limits: Limits::unlimited(),
+            last_verified_at: None,
         }
     }
 
@@ -229,6 +241,7 @@ impl Identity {
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
+            last_verified_at: None,
         }
     }
 
@@ -239,6 +252,7 @@ impl Identity {
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
+            last_verified_at: None,
         }
     }
 
@@ -252,6 +266,7 @@ impl Identity {
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadOnly,
             limits: Limits::unlimited(),
+            last_verified_at: None,
         }
     }
 
@@ -264,6 +279,7 @@ impl Identity {
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
+            last_verified_at: None,
         }
     }
 
