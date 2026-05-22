@@ -23,7 +23,7 @@ libnss = { workspace = true }
 libc = { workspace = true }
 
 [target."cfg(target_os = \"freebsd\")".build-dependencies]
-cc = "^1.2.60"
+cc = "^1.2.62"
 
 ## Debian packaging
 [package.metadata.deb]

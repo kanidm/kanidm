@@ -541,11 +541,12 @@ impl DbTxn<'_> {
             error!("Invalid state, SQL transaction was already committed!");
             return Err(CacheError::TransactionInvalidState);
         }
-        self.committed = true;
 
         self.conn
             .execute("COMMIT TRANSACTION", [])
-            .map(|_| ())
+            .map(|_| {
+                self.committed = true;
+            })
             .map_err(|e| self.sqlite_error("commit", &e))
     }
 

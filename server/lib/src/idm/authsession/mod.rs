@@ -8,7 +8,7 @@ use crate::credential::{BackupCodes, Credential, CredentialType, Password};
 use crate::idm::account::Account;
 use crate::idm::accountpolicy::ResolvedAccountPolicy;
 use crate::idm::audit::AuditEvent;
-use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState};
+use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState, ReauthRequest};
 use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
 };
@@ -57,6 +57,7 @@ enum AuthIntent {
         privileged: bool,
     },
     Reauth {
+        read_write: bool,
         session_id: Uuid,
         session_expiry: Option<OffsetDateTime>,
     },
@@ -1274,6 +1275,7 @@ impl AuthSession {
         session: &Session,
         cred_id: Uuid,
         key_object: Arc<KeyObject>,
+        reauth_req: &ReauthRequest,
     ) -> (Option<Self>, AuthState) {
         #[allow(clippy::large_enum_variant)]
         /// An inner enum to allow us to more easily define state within this fn
@@ -1395,12 +1397,18 @@ impl AuthSession {
         match state {
             State::Proceed(handler) => {
                 let next_auth_state = handler.next_auth_state();
+                let read_write = match reauth_req {
+                    ReauthRequest::GrantReadWrite => true,
+                    ReauthRequest::VerifyCredentials => false,
+                };
+
                 let auth_session = AuthSession {
                     account: asd.account,
                     account_policy: asd.account_policy,
                     state: AuthSessionState::InProgress(handler),
                     issue: asd.issue,
                     intent: AuthIntent::Reauth {
+                        read_write,
                         session_id,
                         session_expiry,
                     },
@@ -1695,6 +1703,7 @@ impl AuthSession {
                 Ok(uat)
             }
             AuthIntent::Reauth {
+                read_write,
                 session_id,
                 session_expiry,
             } => {
@@ -1719,6 +1728,7 @@ impl AuthSession {
                         session_id,
                         session_expiry,
                         scope,
+                        read_write,
                         time,
                         &self.account_policy,
                     )

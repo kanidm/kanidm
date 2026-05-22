@@ -141,6 +141,13 @@ impl fmt::Debug for AuthCredential {
     }
 }
 
+#[derive(Default)]
+pub enum ReauthRequest {
+    #[default]
+    VerifyCredentials,
+    GrantReadWrite,
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) enum PreValidatedTokenStatus {
     #[default]

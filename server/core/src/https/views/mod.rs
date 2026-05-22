@@ -2,7 +2,6 @@ use crate::https::views::admin::{admin_api_router, admin_router};
 use crate::https::{middleware, ServerState};
 use askama::Template;
 use askama_web::WebTemplate;
-
 use axum::{
     middleware::from_fn_with_state,
     response::Redirect,

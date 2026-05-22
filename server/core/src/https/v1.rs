@@ -26,7 +26,7 @@ use kanidm_proto::v1::{
     AuthState as ProtoAuthState, Entry as ProtoEntry, GroupUnixExtend, SingleStringRequest,
     UatStatus, UnixGroupToken, UnixUserToken, WhoamiResponse,
 };
-use kanidmd_lib::idm::authentication::{AuthState, AuthStep};
+use kanidmd_lib::idm::authentication::{AuthState, AuthStep, ReauthRequest};
 use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
@@ -2858,7 +2858,12 @@ pub async fn reauth(
     // This may change in the future ...
     let inter = state
         .qe_r_ref
-        .handle_reauth(client_auth_info, obj, kopid.eventid)
+        .handle_reauth(
+            client_auth_info,
+            obj,
+            ReauthRequest::GrantReadWrite,
+            kopid.eventid,
+        )
         .await;
     debug!("ReAuth result: {:?}", inter);
     auth_session_state_management(&state, jar, inter)

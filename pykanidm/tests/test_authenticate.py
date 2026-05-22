@@ -44,7 +44,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
     username = client_configfile.config.username
 
     if username is None:
-        raise pytest.skip("Can't run auth test without a username/password")  # type: ignore[call-non-callable]
+        raise pytest.skip("Can't run auth test without a username/password")
     result = await client_configfile.auth_init(username)
     print(f"{result=}")
     print("Result dict:")
@@ -64,7 +64,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
     retval = begin_result.data
 
     if retval is None:
-        raise pytest.fail("Failed to do begin_result")  # type: ignore[call-non-callable]
+        raise pytest.fail("Failed to do begin_result")
 
     retval["response"] = begin_result.model_dump()
 
@@ -76,7 +76,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
 async def test_authenticate_flow(client_configfile: KanidmClient) -> None:
     """tests the authenticate() flow"""
     if client_configfile.config.username is None or client_configfile.config.password is None:
-        pytest.skip("Can't run this without a username and password set in the config file")  # type: ignore[call-non-callable]
+        pytest.skip("Can't run this without a username and password set in the config file")
 
     client_configfile.config.auth_token = None
     print(f"Doing client.authenticate for {client_configfile.config.username}")
@@ -100,10 +100,10 @@ async def test_authenticate_anonymous(client_configfile: KanidmClient) -> None:
 async def test_authenticate_flow_fail(client_configfile: KanidmClient) -> None:
     """tests the authenticate() flow with a valid (hopefully) username and invalid password"""
     if not bool(os.getenv("RUN_SCARY_TESTS", None)):
-        pytest.skip("Skipping because env var RUN_SCARY_TESTS isn't set")  # type: ignore[call-non-callable]
+        pytest.skip("Skipping because env var RUN_SCARY_TESTS isn't set")
     print("Starting client...")
     if client_configfile.config.uri is None or client_configfile.config.username is None or client_configfile.config.password is None:
-        pytest.skip("Please ensure you have a username, password and uri in the config")  # type: ignore[call-non-callable]
+        pytest.skip("Please ensure you have a username, password and uri in the config")
     print(f"Doing client.authenticate for {client_configfile.config.username}")
 
     client_configfile.config.auth_token = None

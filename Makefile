@@ -229,16 +229,15 @@ test/pykanidm/lint: ## python library linting
 	cd pykanidm && \
 	uv run ruff check tests kanidm
 
-.PHONY: test/pykanidm/mypy
-test/pykanidm/mypy: ## python library type checking
+.PHONY: test/pykanidm/typecheck
+test/pykanidm/typecheck: ## python library type checking
 	cd pykanidm && \
-	uv run mypy --strict tests kanidm && \
 	uv run ty check tests kanidm \
 		--ignore unused-type-ignore-comment
 
 .PHONY: test/pykanidm
-test/pykanidm: ## run the kanidm python module test suite (mypy/lint/pytest)
-test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/lint
+test/pykanidm: ## run the kanidm python module test suite (typecheck/lint/pytest)
+test/pykanidm: test/pykanidm/pytest test/pykanidm/typecheck test/pykanidm/lint
 
 .PHONY: test/pykanidm/coverage
 test/pykanidm/coverage: ## run the Kanidm Python module test suite with coverage

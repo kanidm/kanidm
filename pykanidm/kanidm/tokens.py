@@ -9,7 +9,6 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from authlib.jose import JsonWebSignature  # type: ignore
 from pydantic import ConfigDict, BaseModel, Field
 
 from . import TOKEN_PATH
@@ -74,6 +73,11 @@ class JWS:
         self.signature = data[2]
 
     @classmethod
+    def _pad_base64url_segment(cls, segment: str) -> str:
+        """Pad a base64url segment to a decodable length."""
+        return segment + "=" * (-len(segment) % 4)
+
+    @classmethod
     def parse(cls, raw: str) -> Tuple[JWSHeader, JWSPayload, bytes]:
         """parse a raw JWS"""
         if "." not in raw:
@@ -84,7 +88,7 @@ class JWS:
 
         raw_header = split_raw[0]
         logging.debug("Parsing header: %s", raw_header)
-        padded_header = raw_header + "=" * divmod(len(raw_header), 4)[0]
+        padded_header = cls._pad_base64url_segment(raw_header)
         decoded_header = base64.urlsafe_b64decode(padded_header)
         logging.debug("decoded_header=%s", decoded_header)
         header = JWSHeader.model_validate(json.loads(decoded_header.decode("utf-8")))
@@ -92,12 +96,12 @@ class JWS:
 
         raw_payload = split_raw[1]
         logging.debug("Parsing payload: %s", raw_payload)
-        padded_payload = raw_payload + "=" * divmod(len(raw_payload), 4)[1]
+        padded_payload = cls._pad_base64url_segment(raw_payload)
         payload = JWSPayload.model_validate_json(base64.urlsafe_b64decode(padded_payload))
 
         raw_signature = split_raw[2]
         logging.debug("Parsing signature: %s", raw_signature)
-        padded_signature = raw_signature + "=" * divmod(len(raw_signature), 4)[1]
+        padded_signature = cls._pad_base64url_segment(raw_signature)
         signature = base64.urlsafe_b64decode(padded_signature)
 
         return header, payload, signature
@@ -150,8 +154,7 @@ class TokenStore(BaseModel):
         for instance_name, instance in self.instances.items():
             for username, token in instance.tokens.items():
                 logging.debug("Parsing instance=%s username=%s", instance_name, username)
-                # TODO: Work out how to get the validation working. We probably shouldn't be worried about this since we're using it for auth...
-                logging.debug(JsonWebSignature().deserialize_compact(s=token, key=None))
+                logging.debug(JWS(token))
 
     def token_info(self, username: str, instance: Optional[str] = None) -> Optional[JWSPayload]:
         """grabs a token and returns a complex object object"""
@@ -170,6 +173,6 @@ class TokenStore(BaseModel):
         if token is None:
             logging.debug("No token found for %s", username)
             return None
-        parsed_object = JsonWebSignature().deserialize_compact(s=token, key=None)
+        parsed_object = JWS(token)
         logging.debug(parsed_object)
-        return JWSPayload.model_validate_json(parsed_object.payload)
+        return parsed_object.payload

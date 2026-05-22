@@ -152,7 +152,7 @@ mod tests {
             }
         }
         // Worst case, no solution found.
-        unreachable!();
+        panic!("No solution found for input: {:?}", input);
     }
 
     #[test]

@@ -191,6 +191,9 @@ pub const OAUTH_REFRESH_TOKEN_EXPIRY: u32 = 3600 * 16;
 /// of the refresh token, which is bound to the issuing session.
 pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 15 * 60;
 
+/// The absolute maximum that can be requested for max-age requests in OIDC.
+pub const OAUTH2_OIDC_MAX_AGE_CLAMP: i64 = 86400;
+
 /// The amount of time a suppliers clock can be "ahead" before
 /// we warn about possible clock synchronisation issues.
 pub const REPL_SUPPLIER_ADVANCE_WINDOW: Duration = Duration::from_secs(600);
