@@ -276,39 +276,6 @@ async fn test_server_rest_account_read(rsclient: &KanidmClient) {
     println!("{a:?}");
 }
 
-#[kanidmd_testkit::test]
-async fn test_server_rest_schema_read(rsclient: &KanidmClient) {
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-
-    // List the schema
-    let s_list = rsclient.idm_schema_list().await.unwrap();
-    assert!(!s_list.is_empty());
-
-    let a_list = rsclient.idm_schema_attributetype_list().await.unwrap();
-    assert!(!a_list.is_empty());
-
-    let c_list = rsclient.idm_schema_classtype_list().await.unwrap();
-    assert!(!c_list.is_empty());
-
-    // Get an attr/class
-    let a = rsclient
-        .idm_schema_attributetype_get(Attribute::Name.as_ref())
-        .await
-        .unwrap();
-    assert!(a.is_some());
-    println!("{a:?}");
-
-    let c = rsclient
-        .idm_schema_classtype_get(Attribute::Account.as_ref())
-        .await
-        .unwrap();
-    assert!(c.is_some());
-    println!("{c:?}");
-}
-
 // Test resetting a radius cred, and then checking/viewing it.
 #[kanidmd_testkit::test]
 async fn test_server_radius_credential_lifecycle(rsclient: &KanidmClient) {

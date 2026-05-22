@@ -420,16 +420,24 @@ impl QueryServerWriteTransaction<'_> {
 
         debug!(?ctx_ranges);
 
-        debug!("Applying {} schema entries", ctx_schema_entries.len());
-        // Apply the schema entries first.
-        let schema_changed = self
-            .consumer_incremental_apply_entries(ctx_schema_entries)
-            .inspect_err(|err| {
-                error!(?err, "Failed to apply incremental schema entries");
-            })?;
+        if ctx_domain_version < DOMAIN_LEVEL_1_11 {
+            // Schema is an in memory property attached to domain level from 1_11, and so the meta entries
+            // will trigger the schema to reload if required.
+            debug!("Applying {} schema entries", ctx_schema_entries.len());
+            // Apply the schema entries first.
+            let schema_changed = self
+                .consumer_incremental_apply_entries(ctx_schema_entries)
+                .inspect_err(|err| {
+                    error!(?err, "Failed to apply incremental schema entries");
+                })?;
 
-        if schema_changed {
-            // We need to reload schema now!
+            if schema_changed {
+                // We need to reload schema now!
+                self.reload_schema().inspect_err(|err| {
+                    error!(?err, "Failed to reload schema");
+                })?;
+            }
+        } else {
             self.reload_schema().inspect_err(|err| {
                 error!(?err, "Failed to reload schema");
             })?;
@@ -624,24 +632,29 @@ impl QueryServerWriteTransaction<'_> {
             })?;
 
         // Reset this transactions schema to a completely clean slate.
-        self.schema.generate_in_memory().inspect_err(|err| {
-            error!(?err, "Failed to reset in memory schema to clean state");
-        })?;
 
-        // Reindex now to force some basic indexes to exist as we consume the schema
-        // from our replica.
-        self.reindex(false).inspect_err(|err| {
-            error!(?err, "Failed to reload schema");
-        })?;
-
-        // Apply the schema entries first. This is the foundation that everything
-        // else will build upon!
-        self.consumer_refresh_create_entries(ctx_schema_entries)
-            .inspect_err(|err| {
-                error!(?err, "Failed to refresh schema entries");
+        // Schema is an in memory property attached to domain level from 1_11, and so we don't actually
+        // need to apply these meta entries.
+        if ctx_domain_version < DOMAIN_LEVEL_1_11 {
+            self.schema.generate_in_memory().inspect_err(|err| {
+                error!(?err, "Failed to reset in memory schema to clean state");
             })?;
 
-        // We need to reload schema now!
+            // Reindex now to force some basic indexes to exist
+            self.reindex(false).inspect_err(|err| {
+                error!(?err, "Failed to reload schema");
+            })?;
+
+            // Apply the schema entries first. This is the foundation that everything
+            // else will build upon!
+            self.consumer_refresh_create_entries(ctx_schema_entries)
+                .inspect_err(|err| {
+                    error!(?err, "Failed to refresh schema entries");
+                })?;
+        }
+
+        // We need to reload schema now! From 1.11 and above, this is what actually
+        // generates the in memory schema.
         self.reload_schema().inspect_err(|err| {
             error!(?err, "Failed to reload schema");
         })?;
@@ -690,7 +703,7 @@ impl QueryServerWriteTransaction<'_> {
         // Create all the entries. Note we don't hit plugins here beside post repl plugs.
         self.consumer_refresh_create_entries(ctx_entries)
             .inspect_err(|err| {
-                error!(?err, "Failed to refresh schema entries");
+                error!(?err, "Failed to refresh main db entries");
             })?;
 
         // Finally, confirm that the ranges that we have recreated match the ranges from our

@@ -34,9 +34,12 @@ impl QueryServer {
         // the schema to tell us what's indexed), but because we have the in
         // mem schema that defines how schema is structured, and this is all
         // marked "system", then we won't have an issue here.
-        write_txn
-            .initialise_schema_core()
-            .and_then(|_| write_txn.reload())?;
+        if domain_target_level < DOMAIN_LEVEL_1_11 {
+            // We don't create these in the DB after 1_11
+            write_txn
+                .initialise_schema_core()
+                .and_then(|_| write_txn.reload())?;
+        }
 
         // This is what tells us if the domain entry existed before or not. This
         // is now the primary method of migrations and version detection.
@@ -48,7 +51,7 @@ impl QueryServer {
 
         debug!(?db_domain_version, "Before setting internal domain info");
 
-        if db_domain_version == 0 {
+        if db_domain_version == DOMAIN_LEVEL_0 {
             // This is here to catch when we increase domain levels but didn't create the migration
             // hooks. If this fails it probably means you need to add another migration hook
             // in the above.
@@ -66,8 +69,8 @@ impl QueryServer {
                 DOMAIN_LEVEL_12 => write_txn.migrate_domain_11_to_12()?,
                 DOMAIN_LEVEL_13 => write_txn.migrate_domain_12_to_13()?,
                 DOMAIN_LEVEL_14 => write_txn.migrate_domain_13_to_14()?,
-                DOMAIN_LEVEL_15 => write_txn.migrate_domain_14_to_15()?,
-                DOMAIN_LEVEL_16 => write_txn.migrate_domain_15_to_16()?,
+                DOMAIN_LEVEL_1_11 => write_txn.migrate_domain_1_10_to_1_11()?,
+                DOMAIN_LEVEL_1_12 => write_txn.migrate_domain_1_11_to_1_12()?,
                 _ => {
                     error!("Invalid requested domain target level for server bootstrap");
                     debug_assert!(false);
@@ -99,6 +102,8 @@ impl QueryServer {
         write_txn.force_domain_reload();
 
         write_txn.reload()?;
+
+        assert!(write_txn.get_domain_version() > DOMAIN_LEVEL_0);
 
         // Indicate the schema is now ready, which allows dyngroups to work when they
         // are created in the next phase of migrations.
@@ -173,7 +178,7 @@ impl QueryServer {
             // then we don't need the extra reload since we are already at the correct
             // version of the server, and this call to set the target level is just for persistence
             // of the value.
-            if domain_info_version != 0 {
+            if domain_info_version != DOMAIN_LEVEL_0 {
                 reload_required = true;
             }
         } else if domain_info_version > domain_target_level {
@@ -884,24 +889,26 @@ impl QueryServerWriteTransaction<'_> {
         Ok(())
     }
 
+    pub(crate) fn migrate_schema_1_11(&mut self) -> Result<(), OperationError> {
+        self.schema.extend_in_memory(
+            migration_data::dl15::phase_1_schema_attrs(),
+            migration_data::dl15::phase_2_schema_classes(),
+        )
+    }
+
     /// Migration domain level 14 to 15 (1.11.0)
     #[instrument(level = "info", skip_all)]
-    pub(crate) fn migrate_domain_14_to_15(&mut self) -> Result<(), OperationError> {
+    pub(crate) fn migrate_domain_1_10_to_1_11(&mut self) -> Result<(), OperationError> {
         if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_14 {
-            error!("Unable to raise domain level from 14 to 15.");
+            error!(
+                "Unable to raise domain level from {} to {}.",
+                DOMAIN_LEVEL_14, DOMAIN_LEVEL_1_11
+            );
             return Err(OperationError::MG0004DomainLevelInDevelopment);
         }
 
         // =========== Apply changes ==============
-        self.internal_migrate_or_create_batch(
-            &format!("phase 1 - schema attrs target {}", DOMAIN_TGT_LEVEL),
-            migration_data::dl15::phase_1_schema_attrs(),
-        )?;
-
-        self.internal_migrate_or_create_batch(
-            "phase 2 - schema classes",
-            migration_data::dl15::phase_2_schema_classes(),
-        )?;
+        self.migrate_schema_1_11()?;
 
         // Reload for the new schema.
         self.reload()?;
@@ -909,6 +916,15 @@ impl QueryServerWriteTransaction<'_> {
         // Since we just loaded in a ton of schema, lets reindex it in case we added
         // new indexes, or this is a bootstrap and we have no indexes yet.
         self.reindex(false)?;
+
+        // Delete all existing DB contained schema.
+
+        let filter = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::ClassType.into()),
+            f_eq(Attribute::Class, EntryClass::AttributeType.into()),
+        ]));
+
+        self.internal_delete_if_exists(&filter)?;
 
         // Set Phase
         // Indicate the schema is now ready, which allows dyngroups to work when they
@@ -971,10 +987,10 @@ impl QueryServerWriteTransaction<'_> {
         Ok(())
     }
 
-    /// Migration domain level 15 to 16 (1.11.0)
+    /// Migration domain level 1.11 to 1.12
     #[instrument(level = "info", skip_all)]
-    pub(crate) fn migrate_domain_15_to_16(&mut self) -> Result<(), OperationError> {
-        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_15 {
+    pub(crate) fn migrate_domain_1_11_to_1_12(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_1_11 {
             error!("Unable to raise domain level from 15 to 16.");
             return Err(OperationError::MG0004DomainLevelInDevelopment);
         }
@@ -984,7 +1000,7 @@ impl QueryServerWriteTransaction<'_> {
 
     #[instrument(level = "info", skip_all)]
     pub(crate) fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
-        admin_debug!("initialise_schema_core -> start ...");
+        debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
         let entries = self.schema.to_entries();
 
@@ -996,9 +1012,9 @@ impl QueryServerWriteTransaction<'_> {
             self.internal_migrate_or_create(e)
         });
         if r.is_ok() {
-            admin_debug!("initialise_schema_core -> Ok!");
+            debug!("initialise_schema_core -> Ok!");
         } else {
-            admin_error!(?r, "initialise_schema_core -> Error");
+            error!(?r, "initialise_schema_core -> Error");
         }
         // why do we have error handling if it's always supposed to be `Ok`?
         debug_assert!(r.is_ok());
@@ -1545,7 +1561,7 @@ mod tests {
     }
 
     #[qs_test(domain_level=DOMAIN_LEVEL_14)]
-    async fn test_migrations_dl14_dl15(server: &QueryServer) {
+    async fn test_migrations_dl14_dl1_11(server: &QueryServer) {
         let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let db_domain_version = write_txn
@@ -1570,10 +1586,21 @@ mod tests {
 
         // == Increase the version ==
         write_txn
-            .internal_apply_domain_migration(DOMAIN_LEVEL_15)
-            .expect("Unable to set domain level to version 15");
+            .internal_apply_domain_migration(DOMAIN_LEVEL_1_11)
+            .expect("Unable to set domain level to version 1_11");
 
         // post migration verification.
+
+        // Assert all lingering schema db entries are removed.
+
+        let filter = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::ClassType.into()),
+            f_eq(Attribute::Class, EntryClass::AttributeType.into()),
+        ]));
+
+        let entries_remain = write_txn.internal_exists(&filter).unwrap();
+        assert!(!entries_remain);
+
         write_txn.commit().expect("Unable to commit");
     }
 }
