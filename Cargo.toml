@@ -15,9 +15,9 @@ resolver = "2"
 members = [
     "proto",
     "tools/cli",
-    "tools/device_flow",
     "tools/iam_migrations/freeipa",
     "tools/iam_migrations/ldap",
+    "tools/mail_sender",
     "tools/orca",
     "unix_integration/common",
     "unix_integration/nss_sparkle_common",
@@ -44,7 +44,11 @@ members = [
     "libs/scim_proto",
     "libs/sketching",
     "libs/users",
-    "tools/mail_sender",
+]
+
+exclude = [
+    "tools/device_flow",
+    "tools/oauth2-tester",
 ]
 
 # Below follows some guides/estimates to system resources consumed during a build.
@@ -224,7 +228,6 @@ nix = { version = "0.31.3", features = ["mount"] }
 nonempty = "0.12.0"
 notify-debouncer-full = { version = "0.7" }
 num_enum = "0.7.6"
-oauth2_ext = { version = "^5.0.0", package = "oauth2", default-features = false }
 opentelemetry = { version = "0.31.0" }
 opentelemetry-otlp = { version = "0.31.0", default-features = false, features = [
     "serde",
