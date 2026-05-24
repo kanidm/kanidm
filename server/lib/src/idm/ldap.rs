@@ -331,8 +331,8 @@ impl LdapServer {
                 (Some(mapped_attrs), req_attrs)
             };
 
-            admin_info!(attr = ?l_attrs, "LDAP Search Request LDAP Attrs");
-            admin_info!(attr = ?k_attrs, "LDAP Search Request Mapped Attrs");
+            debug!(attr = ?l_attrs, "LDAP Search Request LDAP Attrs");
+            debug!(attr = ?k_attrs, "LDAP Search Request Mapped Attrs");
 
             let ct = duration_from_epoch_now();
             let mut idm_read = idms.proxy_read().await?;
@@ -371,7 +371,7 @@ impl LdapServer {
                 ]),
             };
 
-            admin_info!(filter = ?lfilter, "LDAP Search Filter");
+            debug!(filter = ?lfilter, "LDAP Search Filter");
 
             // Build the event, with the permissions from effective_session
             //
