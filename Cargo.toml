@@ -219,23 +219,23 @@ lru = "0.18.0"
 mathru = "0.16.2"
 md4 = "0.10.2"
 md-5 = "0.10.6"
-mimalloc = "0.1.48"
+mimalloc = "0.1.52"
 nix = { version = "0.31.3", features = ["mount"] }
 nonempty = "0.12.0"
 notify-debouncer-full = { version = "0.7" }
 num_enum = "0.7.6"
 oauth2_ext = { version = "^5.0.0", package = "oauth2", default-features = false }
-opentelemetry = { version = "0.31.0" }
-opentelemetry-otlp = { version = "0.31.0", default-features = false, features = [
+opentelemetry = { version = "0.32.0" }
+opentelemetry-otlp = { version = "0.32.0", default-features = false, features = [
     "serde",
     "logs",
     "metrics",
     "http-proto",
     "grpc-tonic",
 ] }
-opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
-opentelemetry-semantic-conventions = "0.31.0"
-tracing-opentelemetry = "0.32.1"
+opentelemetry_sdk = { version = "0.32.0", features = ["rt-tokio"] }
+opentelemetry-semantic-conventions = "0.32.0"
+tracing-opentelemetry = "0.33.0"
 tracing-core = "0.1.36"
 peg = "0.8"
 pkg-config = "^0.3.33"
@@ -267,7 +267,7 @@ selinux = "^0.6.1"
 serde = "^1.0.228"
 serde_cbor = { version = "0.13.0", package = "serde_cbor_2" }
 serde-hjson = "1.1.0"
-serde_json = "^1.0.149"
+serde_json = "^1.0.150"
 serde_urlencoded = "^0.7.1"
 serde_with = "3.20.0"
 sha-crypt = "0.5.0"
@@ -289,7 +289,7 @@ tokio-util = "^0.7.18"
 toml = "^1"
 tonic = { version = "0.14.6", default-features = false }
 tower = { version = "0.5.3" }
-tower-http = { version = "0.6.10" }
+tower-http = { version = "0.6.11" }
 tracing = { version = "^0.1.44", features = [
     "max_level_trace",
     "release_max_level_debug",
