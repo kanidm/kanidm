@@ -2527,51 +2527,57 @@ impl Entry<EntryReduced, EntryCommitted> {
                 .collect()
         };
 
+        // Doing this to avoid duplicate attribute values per the LDAP spec
+        let mut attributes: BTreeMap<_, _> = BTreeMap::new();
         // Stage 3 - given our map, generate the final result.
-        let attributes: Vec<_> = attr_names
-            .into_iter()
-            .filter_map(|(ldap_a, kani_a)| {
-                // In some special cases, we may need to transform or rewrite the values.
-                match ldap_a {
-                    LDAP_ATTR_DN => Some(LdapPartialAttribute {
-                        atype: LDAP_ATTR_DN.to_string(),
-                        vals: vec![dn.as_bytes().to_vec()],
-                    }),
-                    LDAP_ATTR_ENTRYDN => Some(LdapPartialAttribute {
-                        atype: LDAP_ATTR_ENTRYDN.to_string(),
-                        vals: vec![dn.as_bytes().to_vec()],
-                    }),
-                    LDAP_ATTR_MAIL_PRIMARY | LDAP_ATTR_EMAIL_PRIMARY => {
-                        attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
-                            atype: ldap_a.to_string(),
-                            vals: pvs
-                                .first()
-                                .map(|first| vec![first.clone()])
-                                .unwrap_or_default(),
-                        })
-                    }
-                    LDAP_ATTR_MAIL_ALTERNATIVE | LDAP_ATTR_EMAIL_ALTERNATIVE => {
-                        attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
-                            atype: ldap_a.to_string(),
-                            vals: pvs
-                                .split_first()
-                                .map(|(_, rest)| rest.to_vec())
-                                .unwrap_or_default(),
-                        })
-                    }
-                    ATTR_HOME_DIRECTORY => Some(LdapPartialAttribute {
-                        atype: ATTR_HOME_DIRECTORY.to_string(),
-                        vals: vec![format!("/home/{}", self.get_uuid()).into_bytes()],
-                    }),
-                    _ => attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
+        attr_names.into_iter().for_each(|(ldap_a, kani_a)| {
+            // In some special cases, we may need to transform or rewrite the values.
+            if let Some(attr) = match ldap_a {
+                LDAP_ATTR_DN => Some(LdapPartialAttribute {
+                    atype: LDAP_ATTR_DN.to_string(),
+                    vals: vec![dn.as_bytes().to_vec()],
+                }),
+                LDAP_ATTR_ENTRYDN => Some(LdapPartialAttribute {
+                    atype: LDAP_ATTR_ENTRYDN.to_string(),
+                    vals: vec![dn.as_bytes().to_vec()],
+                }),
+                LDAP_ATTR_MAIL_PRIMARY | LDAP_ATTR_EMAIL_PRIMARY => {
+                    attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                         atype: ldap_a.to_string(),
-                        vals: pvs.clone(),
-                    }),
+                        vals: pvs
+                            .first()
+                            .map(|first| vec![first.clone()])
+                            .unwrap_or_default(),
+                    })
                 }
-            })
-            .collect();
-
-        Ok(LdapSearchResultEntry { dn, attributes })
+                LDAP_ATTR_MAIL_ALTERNATIVE | LDAP_ATTR_EMAIL_ALTERNATIVE => {
+                    attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
+                        atype: ldap_a.to_string(),
+                        vals: pvs
+                            .split_first()
+                            .map(|(_, rest)| rest.to_vec())
+                            .unwrap_or_default(),
+                    })
+                }
+                ATTR_HOME_DIRECTORY => Some(LdapPartialAttribute {
+                    atype: ATTR_HOME_DIRECTORY.to_string(),
+                    vals: vec![format!("/home/{}", self.get_uuid()).into_bytes()],
+                }),
+                _ => attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
+                    atype: ldap_a.to_string(),
+                    vals: pvs.clone(),
+                }),
+            } {
+                // add it to the response
+                if let Some(replaced) = attributes.insert(ldap_a, attr) {
+                    debug!("Duplicate attribute {ldap_a}, original value: {replaced:?}");
+                };
+            }
+        });
+        Ok(LdapSearchResultEntry {
+            dn,
+            attributes: attributes.into_iter().map(|(_, attr)| attr).collect(),
+        })
     }
 }
 
