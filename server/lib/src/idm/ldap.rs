@@ -2835,4 +2835,43 @@ mod tests {
         assert_eq!(invalid_res, Err(OperationError::ResourceLimit));
         assert!(valid_res.is_ok());
     }
+
+    #[idm_test]
+    /// Ensures that we only get a single attribute back even if we request it multiple times
+    async fn test_ldap_distinct_attributes(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        // Setup the anonymous login
+        let anon_t = ldaps
+            .do_bind(idms, "", "")
+            .await
+            .expect("failed to connect to ldap")
+            .expect("Failed to get token");
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
+
+        let valid_search = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
+            attrs: vec![
+                "objectClass: person".to_string(),
+                "uuid".to_string(),
+                "uuid".to_string(),
+            ],
+        };
+
+        let valid_res = ldaps
+            .do_search(idms, &valid_search, &anon_t, Source::Internal)
+            .await
+            .expect("Search failed");
+        let response_zero = valid_res.into_iter().next().expect("No results");
+        let LdapOp::SearchResultEntry(searchresult) = response_zero.op else {
+            panic!("invalid result!");
+        };
+        assert!(searchresult.attributes.len() == 1)
+    }
 }
