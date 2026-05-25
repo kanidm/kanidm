@@ -2576,7 +2576,7 @@ impl Entry<EntryReduced, EntryCommitted> {
         });
         Ok(LdapSearchResultEntry {
             dn,
-            attributes: attributes.into_iter().map(|(_, attr)| attr).collect(),
+            attributes: attributes.into_values().collect(),
         })
     }
 }
