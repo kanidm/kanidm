@@ -6,6 +6,7 @@ use std::iter;
 use std::str::FromStr;
 
 use compact_jwt::JwsCompact;
+use itertools::Itertools;
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::{ApiToken, UserAuthToken};
 use ldap3_proto::simple::*;
@@ -330,6 +331,9 @@ impl LdapServer {
 
                 (Some(mapped_attrs), req_attrs)
             };
+            //
+            let k_attrs = k_attrs.map(|ka| ka.into_iter().sorted().dedup().collect());
+            let l_attrs = l_attrs.into_iter().sorted().dedup().collect::<Vec<_>>();
 
             debug!(attr = ?l_attrs, "LDAP Search Request LDAP Attrs");
             debug!(attr = ?k_attrs, "LDAP Search Request Mapped Attrs");
