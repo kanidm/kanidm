@@ -2527,7 +2527,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                 .collect()
         };
 
-        // Stage 3 - given our map, generate the final result.
+        // Doing this to avoid duplicate attribute values per the LDAP spec
         let attributes: Vec<_> = attr_names
             .into_iter()
             .filter_map(|(ldap_a, kani_a)| {

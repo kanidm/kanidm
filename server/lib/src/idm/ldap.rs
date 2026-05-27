@@ -6,6 +6,7 @@ use std::iter;
 use std::str::FromStr;
 
 use compact_jwt::JwsCompact;
+use itertools::Itertools;
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::{ApiToken, UserAuthToken};
 use ldap3_proto::simple::*;
@@ -330,9 +331,12 @@ impl LdapServer {
 
                 (Some(mapped_attrs), req_attrs)
             };
+            //
+            let k_attrs = k_attrs.map(|ka| ka.into_iter().sorted().dedup().collect());
+            let l_attrs = l_attrs.into_iter().sorted().dedup().collect::<Vec<_>>();
 
-            admin_info!(attr = ?l_attrs, "LDAP Search Request LDAP Attrs");
-            admin_info!(attr = ?k_attrs, "LDAP Search Request Mapped Attrs");
+            debug!(attr = ?l_attrs, "LDAP Search Request LDAP Attrs");
+            debug!(attr = ?k_attrs, "LDAP Search Request Mapped Attrs");
 
             let ct = duration_from_epoch_now();
             let mut idm_read = idms.proxy_read().await?;
@@ -371,7 +375,7 @@ impl LdapServer {
                 ]),
             };
 
-            admin_info!(filter = ?lfilter, "LDAP Search Filter");
+            debug!(filter = ?lfilter, "LDAP Search Filter");
 
             // Build the event, with the permissions from effective_session
             //
@@ -2834,5 +2838,44 @@ mod tests {
 
         assert_eq!(invalid_res, Err(OperationError::ResourceLimit));
         assert!(valid_res.is_ok());
+    }
+
+    #[idm_test]
+    /// Ensures that we only get a single attribute back even if we request it multiple times
+    async fn test_ldap_distinct_attributes(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        // Setup the anonymous login
+        let anon_t = ldaps
+            .do_bind(idms, "", "")
+            .await
+            .expect("failed to connect to ldap")
+            .expect("Failed to get token");
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
+
+        let valid_search = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
+            attrs: vec![
+                "objectClass: person".to_string(),
+                "uuid".to_string(),
+                "uuid".to_string(),
+            ],
+        };
+
+        let valid_res = ldaps
+            .do_search(idms, &valid_search, &anon_t, Source::Internal)
+            .await
+            .expect("Search failed");
+        let response_zero = valid_res.into_iter().next().expect("No results");
+        let LdapOp::SearchResultEntry(searchresult) = response_zero.op else {
+            panic!("invalid result!");
+        };
+        assert!(searchresult.attributes.len() == 1)
     }
 }
