@@ -234,7 +234,7 @@ impl Module {
         for group in user_groups {
             if let Some(group_config) = self.group_configs.get(&group.spn) {
                 vlan = group_config.vlan;
-                reply_attributes.extend(group_config.reply_attributes.iter().cloned());
+                reply_attributes.extend(group_config.reply_attributes.clone());
             }
         }
 
