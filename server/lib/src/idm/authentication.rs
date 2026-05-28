@@ -4,7 +4,10 @@ use compact_jwt::JwsCompact;
 use crypto_glue::{s256::Sha256Output, x509::Certificate};
 use kanidm_proto::{
     internal::UserAuthToken,
-    oauth2::{AccessTokenRequest, AccessTokenResponse, AuthorisationRequest},
+    oauth2::{
+        AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
+        AccessTokenResponse, AuthorisationRequest,
+    },
     v1::{
         AuthAllowed, AuthCredential as ProtoAuthCredential, AuthIssueSession, AuthMech,
         AuthStep as ProtoAuthStep,
@@ -55,6 +58,12 @@ pub enum AuthExternal {
         client_secret: String,
         request: AccessTokenRequest,
     },
+    OAuth2AccessTokenIntrospectionRequest {
+        introspection_url: Url,
+        client_id: String,
+        client_secret: String,
+        request: AccessTokenIntrospectRequest,
+    },
 }
 
 impl fmt::Debug for AuthExternal {
@@ -62,6 +71,9 @@ impl fmt::Debug for AuthExternal {
         match self {
             Self::OAuth2AuthorisationRequest { .. } => write!(f, "OAuth2AuthorisationRequest"),
             Self::OAuth2AccessTokenRequest { .. } => write!(f, "OAuth2AccessTokenRequest"),
+            Self::OAuth2AccessTokenIntrospectionRequest { .. } => {
+                write!(f, "OAuth2AccessTokenIntrospectionRequest")
+            }
         }
     }
 }
@@ -105,8 +117,16 @@ pub enum AuthCredential {
     Passkey(Box<PublicKeyCredential>),
 
     // Internal Credential Types
-    OAuth2AuthorisationResponse { code: String, state: Option<String> },
-    OAuth2AccessTokenResponse { response: AccessTokenResponse },
+    OAuth2AuthorisationResponse {
+        code: String,
+        state: Option<String>,
+    },
+    OAuth2AccessTokenResponse {
+        response: AccessTokenResponse,
+    },
+    OAuth2AccessTokenIntrospectResponse {
+        response: AccessTokenIntrospectResponse,
+    },
 }
 
 impl From<ProtoAuthCredential> for AuthCredential {
@@ -136,6 +156,9 @@ impl fmt::Debug for AuthCredential {
             }
             AuthCredential::OAuth2AccessTokenResponse { .. } => {
                 write!(fmt, "OAuth2AccessTokenResponse{{..}}")
+            }
+            AuthCredential::OAuth2AccessTokenIntrospectResponse { .. } => {
+                write!(fmt, "OAuth2AccessTokenIntrospectResponse{{..}}")
             }
         }
     }
