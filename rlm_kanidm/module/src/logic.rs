@@ -35,6 +35,7 @@ pub struct ResponseReplyAttributes {
     pub tunnel_type: &'static str,
     pub tunnel_medium_type: &'static str,
     pub tunnel_private_group_id: String,
+    pub reply_attributes: BTreeMap<String, String>,
 }
 
 pub struct ResponseControlAttributes {
@@ -98,10 +99,15 @@ impl<'a> AuthRequest<'a> {
     }
 }
 
+struct GroupConfig {
+    vlan: u32,
+    reply_attributes: BTreeMap<String, String>,
+}
+
 pub struct Module {
     cfg: KanidmRadiusConfig,
     required_groups: BTreeSet<String>,
-    vlan_by_spn: BTreeMap<String, u32>,
+    group_configs: BTreeMap<String, GroupConfig>,
     client: KanidmClient,
 }
 
@@ -145,16 +151,23 @@ impl Module {
 
         let required_groups: BTreeSet<String> =
             cfg.radius_required_groups.iter().cloned().collect();
-        let vlan_by_spn = cfg
+
+        let group_configs = cfg
             .radius_groups
             .iter()
-            .map(|g| (g.spn.clone(), g.vlan))
+            .map(|g| {
+                let config = GroupConfig {
+                    vlan: g.vlan,
+                    reply_attributes: g.reply_attributes.clone(),
+                };
+                (g.spn.clone(), config)
+            })
             .collect::<BTreeMap<_, _>>();
 
         Ok(Self {
             cfg,
             required_groups,
-            vlan_by_spn,
+            group_configs,
             client,
         })
     }
@@ -185,14 +198,18 @@ impl Module {
             return Err(AuthError::Reject);
         }
 
-        let selected_vlan = self.resolve_vlan(&token.groups);
+        let GroupConfig {
+            vlan,
+            reply_attributes,
+        } = self.resolve_group_configs(&token.groups);
 
         let reply = ResponseReplyAttributes {
             user_name: token.name.clone(),
             message: format!("Kanidm-Uuid: {}", token.uuid),
             tunnel_type: TUNNEL_TYPE_VLAN,
             tunnel_medium_type: TUNNEL_MEDIUM_TYPE_IEEE_802,
-            tunnel_private_group_id: selected_vlan.to_string(),
+            tunnel_private_group_id: vlan.to_string(),
+            reply_attributes,
         };
 
         let control = ResponseControlAttributes {
@@ -210,14 +227,21 @@ impl Module {
         })
     }
 
-    fn resolve_vlan(&self, user_groups: &[Group]) -> u32 {
+    fn resolve_group_configs(&self, user_groups: &[Group]) -> GroupConfig {
         let mut vlan = self.cfg.radius_default_vlan;
+        let mut reply_attributes = BTreeMap::default();
+
         for group in user_groups {
-            if let Some(mapped_vlan) = self.vlan_by_spn.get(&group.spn) {
-                vlan = *mapped_vlan;
+            if let Some(group_config) = self.group_configs.get(&group.spn) {
+                vlan = group_config.vlan;
+                reply_attributes.extend(group_config.reply_attributes.iter().cloned());
             }
         }
-        vlan
+
+        GroupConfig {
+            vlan,
+            reply_attributes,
+        }
     }
 
     async fn fetch_token(&self, user_id: &str) -> Result<Option<RadiusAuthToken>, ModuleError> {
@@ -264,10 +288,16 @@ mod tests {
                 RadiusGroupConfig {
                     spn: "g1".to_string(),
                     vlan: 10,
+                    reply_attributes: BTreeMap::from_iter([
+                        "group": "1",
+                    ]),
                 },
                 RadiusGroupConfig {
                     spn: "g2".to_string(),
                     vlan: 20,
+                    reply_attributes: BTreeMap::from_iter([
+                        "group": "2",
+                    ]),
                 },
             ],
             radius_clients: Vec::new(),
@@ -285,7 +315,18 @@ mod tests {
                 uuid: "uuid-2".to_string(),
             },
         ];
-        assert_eq!(module.resolve_vlan(&groups), 20);
+
+        let GroupConfig {
+            vlan,
+            reply_attributes,
+        } = module.resolve_group_configs(&groups);
+
+        assert_eq!(vlan, 20);
+        assert_eq!(reply_attributes,
+                    BTreeMap::from_iter([
+                        "group": "2",
+                    ]),
+        );
     }
 
     #[tokio::test]
