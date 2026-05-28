@@ -22,7 +22,10 @@ use kanidm_proto::internal::{
     COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
 };
 use kanidm_proto::{
-    oauth2::{AccessTokenRequest, AccessTokenResponse},
+    oauth2::{
+        AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
+        AccessTokenResponse,
+    },
     v1::{AuthAllowed, AuthIssueSession, AuthMech},
 };
 use kanidmd_lib::idm::authentication::{
@@ -1065,6 +1068,38 @@ async fn view_login_step(
                         auth_state = inter.state;
                         continue;
                     }
+                    AuthExternal::OAuth2AccessTokenIntrospectionRequest {
+                        introspection_url,
+                        client_id,
+                        client_secret,
+                        request,
+                    } => {
+                        let response = submit_access_token_introspect_request(
+                            introspection_url,
+                            client_id,
+                            client_secret,
+                            request,
+                        )
+                        .await?;
+
+                        let auth_cred =
+                            AuthCredential::OAuth2AccessTokenIntrospectResponse { response };
+
+                        // submit the choice and then loop updating our auth_state.
+                        let inter = state // This may change in the future ...
+                            .qe_r_ref
+                            .handle_auth(
+                                Some(sessionid),
+                                AuthStep::Cred(auth_cred),
+                                kopid.eventid,
+                                client_auth_info.clone(),
+                            )
+                            .await?;
+
+                        // Set the state now for the next loop.
+                        auth_state = inter.state;
+                        continue;
+                    }
                 }
             }
             AuthState::Success(token, issue) => {
@@ -1177,6 +1212,50 @@ async fn submit_access_token_request(
         })
     } else {
         error!(status = ?res.status(), "access token request failed");
+        Err(OperationError::InvalidState)
+    }
+}
+
+async fn submit_access_token_introspect_request(
+    introspection_url: Url,
+    client_id: String,
+    client_secret: String,
+    request: AccessTokenIntrospectRequest,
+) -> Result<AccessTokenIntrospectResponse, OperationError> {
+    let client = reqwest::ClientBuilder::new().build().map_err(|err| {
+        error!(?err, "Invalid oauth2 http client builder parameters");
+        OperationError::InvalidState
+    })?;
+
+    let res = client
+        .post(introspection_url.as_str())
+        .basic_auth(&client_id, Some(client_secret))
+        .form(&request)
+        .send()
+        .await
+        .map_err(|err| {
+            error!(
+                ?err,
+                ?introspection_url,
+                ?client_id,
+                "Unable to submit access token introspect request"
+            );
+            OperationError::InvalidState
+        })?;
+
+    // Now depending on the result we have to choose how to proceed.
+    if res.status() == reqwest::StatusCode::OK {
+        res.json::<AccessTokenIntrospectResponse>()
+            .await
+            .map_err(|err| {
+                error!(
+                    ?err,
+                    "response was not a valid JSON access token introspect response"
+                );
+                OperationError::InvalidState
+            })
+    } else {
+        error!(status = ?res.status(), "access token introspect request failed");
         Err(OperationError::InvalidState)
     }
 }

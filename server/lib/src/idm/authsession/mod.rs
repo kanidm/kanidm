@@ -3570,7 +3570,6 @@ mod tests {
             )
             .expect("Failed to perform credential validation step.");
 
-        // Now we do a "verification" of the token.
         let AuthState::External(AuthExternal::OAuth2AccessTokenIntrospectionRequest {
             introspection_url: _,
             client_id: _,
@@ -3580,6 +3579,76 @@ mod tests {
         else {
             unreachable!()
         };
+
+        // Store the session state so we can come back to it.
+        let valid_session_state = session;
+
+        // Send back an invalid token.
+        // Roll back to the good state
+        let mut session = valid_session_state.clone();
+
+        let response = AccessTokenIntrospectResponse {
+            active: false,
+            ..Default::default()
+        };
+
+        let state = session
+            .validate_creds(
+                &AuthCredential::OAuth2AccessTokenIntrospectResponse { response },
+                current_time,
+                &async_tx,
+                &audit_tx,
+                &webauthn,
+                &pw_badlist_cache,
+            )
+            .expect("Failed to perform credential validation step.");
+
+        // At this point the authentication is denied!!!
+        match state {
+            AuthState::Denied(_) => {}
+            _ => unreachable!(),
+        }
+
+        match audit_rx.try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => panic!("Oh no"),
+        }
+
+        // Send back an invalid subject
+        // Roll back to the good state
+        let mut session = valid_session_state.clone();
+
+        let response = AccessTokenIntrospectResponse {
+            active: true,
+            sub: Some("tobias the hacker".to_string()),
+            ..Default::default()
+        };
+
+        let state = session
+            .validate_creds(
+                &AuthCredential::OAuth2AccessTokenIntrospectResponse { response },
+                current_time,
+                &async_tx,
+                &audit_tx,
+                &webauthn,
+                &pw_badlist_cache,
+            )
+            .expect("Failed to perform credential validation step.");
+
+        // At this point the authentication is denied!!!
+        match state {
+            AuthState::Denied(_) => {}
+            _ => unreachable!(),
+        }
+
+        match audit_rx.try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => panic!("Oh no"),
+        }
+
+        // Now we do a "verification" of the token.
+        // Roll back to the good state
+        let mut session = valid_session_state.clone();
 
         let response = AccessTokenIntrospectResponse {
             active: true,
