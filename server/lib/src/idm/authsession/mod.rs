@@ -50,6 +50,8 @@ const BAD_CREDENTIALS: &str = "invalid credential message";
 const ACCOUNT_EXPIRED: &str = "account expired";
 const PW_BADLIST_MSG: &str = "password is in badlist";
 const BAD_OAUTH2_CSRF_STATE_MSG: &str = "invalid oauth2 csrf state";
+const BAD_OAUTH2_SUBJECT_MSG: &str = "invalid oauth2 token subject";
+const BAD_OAUTH2_SESSION_MSG: &str = "oauth2 session expired";
 
 #[derive(Debug, Clone)]
 enum AuthIntent {
@@ -994,7 +996,7 @@ impl CredHandler {
                 async_tx,
                 att_ca_list,
             ),
-            CredHandler::OAuth2Trust { handler } => handler.validate(cred, ts),
+            CredHandler::OAuth2Trust { handler } => Arc::make_mut(handler).validate(cred, ts),
         }
     }
 
@@ -1782,7 +1784,9 @@ mod tests {
     use hashbrown::HashSet;
     use kanidm_lib_crypto::CryptoPolicy;
     use kanidm_proto::internal::{UatPurpose, UserAuthToken};
-    use kanidm_proto::oauth2::{AccessTokenResponse, AccessTokenType, IssuedTokenType};
+    use kanidm_proto::oauth2::{
+        AccessTokenIntrospectResponse, AccessTokenResponse, AccessTokenType, IssuedTokenType,
+    };
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
     use std::time::Duration;
     use time::OffsetDateTime;
@@ -3457,12 +3461,18 @@ mod tests {
         let privileged = false;
 
         // create the trust provider
-        let oauth2_client_provider =
-            OAuth2ClientProvider::new_test("test_trust_client", "https://localhost", ["openid"]);
+        let oauth2_client_provider = OAuth2ClientProvider::new_test(
+            "test_trust_client",
+            "https://localhost",
+            ["openid"],
+            "https://localhost",
+        );
 
         // Configure the account to use it.
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
         account.setup_oauth2_client_provider(&oauth2_client_provider);
+
+        let account_subject = account.uuid().to_string();
 
         // Start an auth session.
         let asd = AuthSessionData {
@@ -3552,6 +3562,34 @@ mod tests {
         let state = session
             .validate_creds(
                 &AuthCredential::OAuth2AccessTokenResponse { response },
+                current_time,
+                &async_tx,
+                &audit_tx,
+                &webauthn,
+                &pw_badlist_cache,
+            )
+            .expect("Failed to perform credential validation step.");
+
+        // Now we do a "verification" of the token.
+        let AuthState::External(AuthExternal::OAuth2AccessTokenIntrospectionRequest {
+            introspection_url: _,
+            client_id: _,
+            client_secret: _,
+            request: _token_request,
+        }) = state
+        else {
+            unreachable!()
+        };
+
+        let response = AccessTokenIntrospectResponse {
+            active: true,
+            sub: Some(account_subject),
+            ..Default::default()
+        };
+
+        let state = session
+            .validate_creds(
+                &AuthCredential::OAuth2AccessTokenIntrospectResponse { response },
                 current_time,
                 &async_tx,
                 &audit_tx,

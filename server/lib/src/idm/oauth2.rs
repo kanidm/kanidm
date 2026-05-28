@@ -126,6 +126,7 @@ impl std::fmt::Display for Oauth2Error {
     }
 }
 
+#[derive(Clone)]
 pub struct PkceS256Secret {
     secret: String,
 }
