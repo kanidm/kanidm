@@ -340,24 +340,73 @@ impl AuthResponse {
 
         // Add user attrs first before our defined ones.
         for (key, value) in reply_attributes {
-            vp_add_pair(talloc_ctx, reply_vp, &key, &value)?;
+            // Custom attribute errors are ignored, because the specified key may not be valid for
+            // freeradius.
+            let _ = vp_add_pair(talloc_ctx, reply_vp, &key, &value)?.inspect_err(|_| {
+                rerror(
+                    format!("populate_request: failed to add reply_attribute: {}", key),
+                    request,
+                );
+            });
         }
 
-        vp_add_pair(talloc_ctx, reply_vp, REPLY_USER_NAME, user_name.as_str())?;
-        vp_add_pair(talloc_ctx, reply_vp, REPLY_MESSAGE, message.as_str())?;
-        vp_add_pair(talloc_ctx, reply_vp, REPLY_TUNNEL_TYPE, tunnel_type)?;
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_USER_NAME, user_name.as_str()).inspect_err(|_| {
+            rerror(
+                format!(
+                    "populate_request: failed to add reply_attribute: {}",
+                    REPLY_USER_NAME
+                ),
+                request,
+            );
+        });
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_MESSAGE, message.as_str()).inspect_err(|_| {
+            rerror(
+                format!(
+                    "populate_request: failed to add reply_attribute: {}",
+                    REPLY_MESSAGE
+                ),
+                request,
+            );
+        });
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_TUNNEL_TYPE, tunnel_type).inspect_err(|_| {
+            rerror(
+                format!(
+                    "populate_request: failed to add reply_attribute: {}",
+                    REPLY_TUNNEL_TYPE
+                ),
+                request,
+            );
+        });
         vp_add_pair(
             talloc_ctx,
             reply_vp,
             REPLY_TUNNEL_MEDIUM_TYPE,
             tunnel_medium_type,
-        )?;
+        )
+        .inspect_err(|_| {
+            rerror(
+                format!(
+                    "populate_request: failed to add reply_attribute: {}",
+                    REPLY_TUNNEL_MEDIUM_TYPE
+                ),
+                request,
+            );
+        });
         vp_add_pair(
             talloc_ctx,
             reply_vp,
             REPLY_TUNNEL_PRIVATE_GROUP_ID,
             tunnel_private_group_id.as_str(),
-        )?;
+        )
+        .inspect_err(|_| {
+            rerror(
+                format!(
+                    "populate_request: failed to add reply_attribute: {}",
+                    REPLY_TUNNEL_PRIVATE_GROUP_ID
+                ),
+                request,
+            );
+        });
 
         Ok(())
     }
