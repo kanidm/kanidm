@@ -378,11 +378,21 @@ pub struct AccessTokenIntrospectRequest {
     pub client_post_auth: ClientPostAuth,
 }
 
+impl From<String> for AccessTokenIntrospectRequest {
+    fn from(token: String) -> Self {
+        Self {
+            token,
+            token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
+        }
+    }
+}
+
 /// Response to an introspection request. If the token is inactive or revoked, only
 /// `active` will be set to the value of `false`.
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct AccessTokenIntrospectResponse {
     pub active: bool,
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
