@@ -29,6 +29,7 @@ pub struct AuthResponse {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct ResponseReplyAttributes {
     pub user_name: String,
     pub message: String,
@@ -288,16 +289,12 @@ mod tests {
                 RadiusGroupConfig {
                     spn: "g1".to_string(),
                     vlan: 10,
-                    reply_attributes: BTreeMap::from_iter([
-                        "group": "1",
-                    ]),
+                    reply_attributes: BTreeMap::from_iter([("group".to_string(), "1".to_string())]),
                 },
                 RadiusGroupConfig {
                     spn: "g2".to_string(),
                     vlan: 20,
-                    reply_attributes: BTreeMap::from_iter([
-                        "group": "2",
-                    ]),
+                    reply_attributes: BTreeMap::from_iter([("group".to_string(), "2".to_string())]),
                 },
             ],
             radius_clients: Vec::new(),
@@ -322,10 +319,9 @@ mod tests {
         } = module.resolve_group_configs(&groups);
 
         assert_eq!(vlan, 20);
-        assert_eq!(reply_attributes,
-                    BTreeMap::from_iter([
-                        "group": "2",
-                    ]),
+        assert_eq!(
+            reply_attributes,
+            BTreeMap::from_iter([("group".to_string(), "2".to_string())]),
         );
     }
 
