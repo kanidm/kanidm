@@ -7,6 +7,7 @@ use std::path::Path;
 pub struct RadiusGroupConfig {
     pub spn: String,
     pub vlan: u32,
+    #[serde(default)]
     pub reply_attributes: BTreeMap<String, String>,
 }
 

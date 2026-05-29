@@ -342,41 +342,46 @@ impl AuthResponse {
         for (key, value) in reply_attributes {
             // Custom attribute errors are ignored, because the specified key may not be valid for
             // freeradius.
-            let _ = vp_add_pair(talloc_ctx, reply_vp, &key, &value)?.inspect_err(|_| {
+            let _ = vp_add_pair(talloc_ctx, reply_vp, &key, &value).inspect_err(|_| {
                 rerror(
-                    format!("populate_request: failed to add reply_attribute: {}", key),
+                    format!("populate_request: failed to add reply_attribute: {}", key).as_str(),
                     request,
                 );
             });
         }
 
-        vp_add_pair(talloc_ctx, reply_vp, REPLY_USER_NAME, user_name.as_str()).inspect_err(|_| {
-            rerror(
-                format!(
-                    "populate_request: failed to add reply_attribute: {}",
-                    REPLY_USER_NAME
-                ),
-                request,
-            );
-        });
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_USER_NAME, user_name.as_str()).inspect_err(
+            |_| {
+                rerror(
+                    format!(
+                        "populate_request: failed to add reply_attribute: {}",
+                        REPLY_USER_NAME
+                    )
+                    .as_str(),
+                    request,
+                );
+            },
+        )?;
         vp_add_pair(talloc_ctx, reply_vp, REPLY_MESSAGE, message.as_str()).inspect_err(|_| {
             rerror(
                 format!(
                     "populate_request: failed to add reply_attribute: {}",
                     REPLY_MESSAGE
-                ),
+                )
+                .as_str(),
                 request,
             );
-        });
+        })?;
         vp_add_pair(talloc_ctx, reply_vp, REPLY_TUNNEL_TYPE, tunnel_type).inspect_err(|_| {
             rerror(
                 format!(
                     "populate_request: failed to add reply_attribute: {}",
                     REPLY_TUNNEL_TYPE
-                ),
+                )
+                .as_str(),
                 request,
             );
-        });
+        })?;
         vp_add_pair(
             talloc_ctx,
             reply_vp,
@@ -388,10 +393,11 @@ impl AuthResponse {
                 format!(
                     "populate_request: failed to add reply_attribute: {}",
                     REPLY_TUNNEL_MEDIUM_TYPE
-                ),
+                )
+                .as_str(),
                 request,
             );
-        });
+        })?;
         vp_add_pair(
             talloc_ctx,
             reply_vp,
@@ -403,10 +409,11 @@ impl AuthResponse {
                 format!(
                     "populate_request: failed to add reply_attribute: {}",
                     REPLY_TUNNEL_PRIVATE_GROUP_ID
-                ),
+                )
+                .as_str(),
                 request,
             );
-        });
+        })?;
 
         Ok(())
     }
