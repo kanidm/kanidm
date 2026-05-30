@@ -123,7 +123,7 @@ pub fn apply_profile() {
     match profile_cfg.cpu_flags {
         CpuOptLevel::apple_m1 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=apple_m1"),
         CpuOptLevel::armv8_a => {
-            println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=generic -Ctarget-feature=-lse")
+            println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-feature=-lse")
         }
         CpuOptLevel::none => {}
         CpuOptLevel::native => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=native"),

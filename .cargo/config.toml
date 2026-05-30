@@ -8,16 +8,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "force-frame-pointers=yes"]
 
 [target.aarch64-unknown-linux-gnu]
 linker = "clang"
-rustflags = [
-    "-C",
-    "link-arg=-fuse-ld=lld",
-    "-C",
-    "force-frame-pointers=yes",
-    "-C",
-    "target-cpu=generic",
-    "-C",
-    "target-feature=-lse",
-]
+rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "force-frame-pointers=yes"]
 
 [env]
 # Keep Linux arm64 release builds compatible with ARMv8.0-A systems such as
