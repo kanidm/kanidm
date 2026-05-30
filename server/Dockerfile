@@ -8,7 +8,6 @@ RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
 
 # ======================
 FROM repos AS builder
-ARG TARGETARCH
 ARG KANIDM_FEATURES
 ARG KANIDM_BUILD_PROFILE="container_generic"
 ARG KANIDM_BUILD_OPTIONS=""
@@ -44,18 +43,12 @@ COPY . /usr/src/kanidm
 WORKDIR /usr/src/kanidm/kanidmd/daemon
 
 # Exports don't persist through RUN statements.
-# Keep arm64 container builds compatible with ARMv8.0-A systems such as Raspberry Pi 4.
 RUN --mount=type=cache,id=cargo,target=/cargo \
     --mount=type=cache,id=sccache,target=/sccache \
     export CARGO_HOME=/cargo && \
     export SCCACHE_DIR=/sccache && \
     export RUSTC_WRAPPER=/usr/bin/sccache && \
     export CC="/usr/bin/clang" && \
-    if [ "${TARGETARCH}" = "arm64" ]; then \
-        export RUSTFLAGS="${RUSTFLAGS} -Ctarget-cpu=generic -Ctarget-feature=-lse"; \
-        export CFLAGS="${CFLAGS:+$CFLAGS }-march=armv8-a"; \
-        export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }-march=armv8-a"; \
-    fi && \
     cargo auditable build --locked -p daemon ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
