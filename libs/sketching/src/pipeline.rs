@@ -1,7 +1,5 @@
 use opentelemetry::{global, trace::TracerProvider as _, KeyValue};
-use opentelemetry_otlp::{
-    tonic_types::metadata::MetadataMap, Protocol, WithExportConfig, WithTonicConfig,
-};
+use opentelemetry_otlp::{tonic_types::metadata::MetadataMap, WithExportConfig, WithTonicConfig};
 use opentelemetry_sdk::{
     trace::{Sampler, SdkTracerProvider},
     Resource,
@@ -14,6 +12,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use tracing::Subscriber;
 use tracing_core::Level;
+use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{filter::Directive, prelude::*, EnvFilter, Registry};
 
 const MAX_EVENTS_PER_SPAN: u32 = 64 * 1024;
@@ -70,7 +69,10 @@ pub fn start_logging_pipeline(
 
     // TODO: work out how to do metrics things
     if let Some(endpoint) = otlp_endpoint {
-        eprintln!("Starting OTLP logging pipeline endpoint={}", endpoint);
+        eprintln!(
+            "Attempting to start OTLP logging pipeline endpoint={}",
+            endpoint
+        );
 
         // setup metadata so we can auth to third-party services
         let mut tonic_metadata = MetadataMap::new();
@@ -95,7 +97,6 @@ pub fn start_logging_pipeline(
             .with_tonic()
             .with_endpoint(endpoint)
             .with_metadata(tonic_metadata)
-            .with_protocol(Protocol::HttpBinary)
             .with_timeout(Duration::from_secs(5))
             .build()
             .map_err(|err| err.to_string())?;
@@ -139,7 +140,6 @@ pub fn start_logging_pipeline(
 
         global::set_tracer_provider(provider.clone());
         provider.tracer("tracing-otel-subscriber");
-        use tracing_opentelemetry::OpenTelemetryLayer;
 
         let registry = tracing_subscriber::registry()
             .with(

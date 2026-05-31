@@ -11,11 +11,11 @@ pub struct KanidmdCli {
     pub log_level: Option<sketching::LogLevel>,
 
     #[clap(
-        env = "KANIDM_OTEL_GRPC_URL",
+        env = "KANIDM_OTEL_GRPC_ENDPOINT",
         global = true,
-        help = "Specify the OpenTelemetry gRPC URL"
+        help = "Specify the OpenTelemetry gRPC endpoint (ip/hostname:port)"
     )]
-    pub otel_grpc_url: Option<String>,
+    pub otel_grpc_endpoint: Option<String>,
 
     #[clap(env = "KANIDM_DOMAIN", global = true, help = "Specify the domain")]
     pub domain: Option<String>,
