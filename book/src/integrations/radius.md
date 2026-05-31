@@ -22,7 +22,7 @@ improves the situation by isolating the RADIUS credential from the primary or ap
 This solves many common security concerns around credential loss or disclosure, and prevents rogue devices from locking
 out accounts as they attempt to authenticate to Wi-Fi with expired credentials.
 
-Alternatelly, Kanidm supports mapping users with special configuration of certificates allowing some systems to use
+Alternately, Kanidm supports mapping users with special configuration of certificates allowing some systems to use
 EAP-TLS for RADIUS authentication. This returns to the "per device" credential model.
 
 ### Cleartext Credential Storage
