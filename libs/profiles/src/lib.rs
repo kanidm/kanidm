@@ -11,6 +11,7 @@ use std::env;
 #[allow(non_camel_case_types)]
 enum CpuOptLevel {
     apple_m1,
+    armv8_a,
     none,
     native,
     neon_v8,
@@ -25,6 +26,10 @@ impl Default for CpuOptLevel {
             CpuOptLevel::x86_64_v2
         } else if cfg!(target_arch = "aarch64") && cfg!(target_os = "macos") {
             CpuOptLevel::apple_m1
+        } else if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
+            // Keep native arm64 Linux release builds on the ARMv8.0-A baseline.
+            // Dependency C/C++ flags for cross builds are enforced in .cargo/config.toml.
+            CpuOptLevel::armv8_a
         /*
         } else if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
             // Disable neon_v8 on linux - this has issues on non-apple hardware and on
@@ -41,6 +46,7 @@ impl std::fmt::Display for CpuOptLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             CpuOptLevel::apple_m1 => write!(f, "apple_m1"),
+            CpuOptLevel::armv8_a => write!(f, "armv8_a"),
             CpuOptLevel::none => write!(f, "none"),
             CpuOptLevel::native => write!(f, "native"),
             CpuOptLevel::neon_v8 => write!(f, "neon_v8"),
@@ -116,6 +122,9 @@ pub fn apply_profile() {
 
     match profile_cfg.cpu_flags {
         CpuOptLevel::apple_m1 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=apple_m1"),
+        CpuOptLevel::armv8_a => {
+            println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-feature=-lse")
+        }
         CpuOptLevel::none => {}
         CpuOptLevel::native => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=native"),
         CpuOptLevel::neon_v8 => {
