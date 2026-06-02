@@ -20,6 +20,7 @@ use sparkle_unix_common::constants::{
 };
 use sparkle_unix_common::unix_config::{GroupMap, KanidmConfig};
 use sparkle_unix_common::unix_passwd::{CryptPw, EtcGroup, EtcShadow, EtcUser};
+use sparkle_unix_common::unix_proto::PamServiceInfo;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::Ordering;
@@ -610,9 +611,11 @@ async fn test_cache_account_pam_allowed() {
     let (cachelayer, async_refresh_rx, adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
 
+    let pam_info = PamServiceInfo::default();
+
     // Should fail
     let a1 = cachelayer
-        .pam_account_allowed("testaccount1")
+        .pam_account_allowed("testaccount1", &pam_info)
         .await
         .expect("failed to authenticate");
     assert_eq!(a1, Some(false));
@@ -631,7 +634,7 @@ async fn test_cache_account_pam_allowed() {
 
     // Should pass
     let a2 = cachelayer
-        .pam_account_allowed("testaccount1")
+        .pam_account_allowed("testaccount1", &pam_info)
         .await
         .expect("failed to authenticate");
     assert_eq!(a2, Some(true));
@@ -646,8 +649,10 @@ async fn test_cache_account_pam_nonexist() {
     let (cachelayer, async_refresh_rx, _adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
 
+    let pam_info = PamServiceInfo::default();
+
     let a1 = cachelayer
-        .pam_account_allowed("NO_SUCH_ACCOUNT")
+        .pam_account_allowed("NO_SUCH_ACCOUNT", &pam_info)
         .await
         .expect("failed to authenticate");
     assert!(a1.is_none());
@@ -661,7 +666,7 @@ async fn test_cache_account_pam_nonexist() {
     cachelayer.mark_offline().await;
 
     let a1 = cachelayer
-        .pam_account_allowed("NO_SUCH_ACCOUNT")
+        .pam_account_allowed("NO_SUCH_ACCOUNT", &pam_info)
         .await
         .expect("failed to authenticate");
     assert!(a1.is_none());
@@ -682,6 +687,8 @@ async fn test_cache_account_expiry() {
     let (cachelayer, async_refresh_rx, adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
+
+    let pam_info = PamServiceInfo::default();
 
     // We need one good auth first to prime the cache with a hash.
     let a1 = cachelayer
@@ -717,7 +724,7 @@ async fn test_cache_account_expiry() {
 
     // Pam account allowed should be denied.
     let a3 = cachelayer
-        .pam_account_allowed("testaccount1")
+        .pam_account_allowed("testaccount1", &pam_info)
         .await
         .expect("failed to authenticate");
     assert_eq!(a3, Some(false));
@@ -742,7 +749,7 @@ async fn test_cache_account_expiry() {
 
     // Pam account allowed should be denied.
     let a5 = cachelayer
-        .pam_account_allowed("testaccount1")
+        .pam_account_allowed("testaccount1", &pam_info)
         .await
         .expect("failed to authenticate");
     assert_eq!(a5, Some(false));
@@ -987,6 +994,8 @@ async fn test_cache_authenticate_system_account() {
 
     let yescrypted_username = "yescrypted_account".to_string();
 
+    let pam_info = PamServiceInfo::default();
+
     // Important! This is what sets up that testaccount1 won't be resolved
     // because it's in the "local" user set.
     cachelayer
@@ -1143,32 +1152,32 @@ async fn test_cache_authenticate_system_account() {
     // due to how posix auth works, session and authorisation are simpler, and should
     // always just return "true".
     let a1 = cachelayer
-        .pam_account_allowed("testaccount1")
+        .pam_account_allowed("testaccount1", &pam_info)
         .await
         .expect("failed to authorise");
     assert_eq!(a1, Some(true));
 
     let a1 = cachelayer
-        .pam_account_allowed("testaccount2")
+        .pam_account_allowed("testaccount2", &pam_info)
         .await
         .expect("failed to authorise");
     assert_eq!(a1, Some(true));
 
     let a1 = cachelayer
-        .pam_account_allowed(&yescrypted_username)
+        .pam_account_allowed(&yescrypted_username, &pam_info)
         .await
         .expect("failed to authorise");
     assert_eq!(a1, Some(true));
 
     // Should we make home dirs?
     let a1 = cachelayer
-        .pam_account_beginsession("testaccount1")
+        .pam_account_beginsession("testaccount1", &pam_info)
         .await
         .expect("failed to begin session");
     assert_eq!(a1, None);
 
     let a1 = cachelayer
-        .pam_account_beginsession("testaccount2")
+        .pam_account_beginsession("testaccount2", &pam_info)
         .await
         .expect("failed to begin session");
     assert_eq!(a1, None);
