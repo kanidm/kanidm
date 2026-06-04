@@ -635,15 +635,18 @@ To set up OPKSSH to authenticate with Kanidm:
    kanidm system oauth2 enable-localhost-redirects opkssh
 
    # Map the group created earlier to the required OIDC scopes
-   kanidm system oauth2 update-scope-map opkssh opkssh_users email openid profile groups
+   # Use groups instead of groups_name if the group's name shall be specified via uuid or spn instead of name
+   kanidm system oauth2 update-scope-map opkssh opkssh_users email openid profile groups_name
    ```
 
 4. On the SSH server side, [install opkssh](https://github.com/openpubkey/opkssh#installing-on-a-server) and allow your
    user to connect via:
 
    ```sh
-   # where 'user' is the linux user
+   # where 'user' is the linux user and 'alice@example.com' is the primary email address
    sudo opkssh add user alice@example.com https://idm.example.com/oauth2/openid/opkssh
+   # where 'user' is the linux user and 'group-name' is the name of the group in kanidm that shall be able to log in
+   sudo opkssh add user oidc:groups:group-name https://idm.example.com/oauth2/openid/opkssh
    ```
 
 5. On the SSH client side, [install opkssh](https://github.com/openpubkey/opkssh#getting-started) and login via Kanidm:
