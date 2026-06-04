@@ -48,10 +48,7 @@ pub async fn security_headers_layer(
     // Ref:
     // https://scotthelme.co.uk/a-new-security-header-referrer-policy/
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy
-    headers.insert(
-        header::REFERRER_POLICY,
-        HeaderValue::from_static("no-referrer-when-downgrade"),
-    );
+    headers.insert(header::REFERRER_POLICY, HeaderValue::from_static("origin"));
 
     response
 }
