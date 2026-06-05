@@ -115,12 +115,14 @@ pub fn migration_entry_attrs(
     if classes.contains(EntryClass::OAuth2ResourceServer.into()) {
         allow_cls.clear();
         allow_cls.extend([
+            EntryClass::Account.as_ref(),
             EntryClass::OAuth2ResourceServer.as_ref(),
             EntryClass::OAuth2ResourceServerBasic.as_ref(),
             EntryClass::OAuth2ResourceServerPublic.as_ref(),
         ]);
         allow_attrs.extend([
             Attribute::Name,
+            Attribute::DisplayName,
             Attribute::Description,
             Attribute::OAuth2RsScopeMap,
             Attribute::OAuth2RsSupScopeMap,
@@ -128,6 +130,7 @@ pub fn migration_entry_attrs(
             Attribute::OAuth2PreferShortUsername,
             Attribute::OAuth2RsClaimMap,
             Attribute::OAuth2RsOrigin,
+            Attribute::OAuth2RsOriginLanding,
             Attribute::OAuth2ConsentPromptEnable,
         ])
     }
