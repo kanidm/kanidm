@@ -64,7 +64,13 @@ pub fn migration_entry_attrs(
             EntryClass::AccountPolicy.as_ref(),
             EntryClass::PosixGroup.as_ref(),
         ]);
-        allow_attrs.extend([Attribute::Member, Attribute::Name, Attribute::Description])
+        allow_attrs.extend([
+            Attribute::Member,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::EntryManagedBy,
+            Attribute::GidNumber,
+        ])
     }
 
     if classes.contains(EntryClass::Person.into()) {
@@ -81,6 +87,8 @@ pub fn migration_entry_attrs(
             Attribute::Mail,
             Attribute::SshPublicKey,
             Attribute::Description,
+            Attribute::LoginShell,
+            Attribute::GidNumber,
         ])
     }
 
@@ -96,6 +104,7 @@ pub fn migration_entry_attrs(
             Attribute::Mail,
             Attribute::SshPublicKey,
             Attribute::Description,
+            Attribute::EntryManagedBy,
         ])
     }
 
@@ -132,6 +141,7 @@ pub fn migration_entry_attrs(
             Attribute::OAuth2RsOrigin,
             Attribute::OAuth2RsOriginLanding,
             Attribute::OAuth2ConsentPromptEnable,
+            Attribute::EntryManagedBy,
         ])
     }
 
