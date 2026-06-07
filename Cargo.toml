@@ -170,13 +170,13 @@ axum-htmx = { version = "0.8.1", features = ["serde", "guards"] }
 base32 = "^0.5.1"
 base64 = "^0.22.1"
 base64urlsafedata = "0.6.1-dev"
-bitflags = "^2.11.0"
+bitflags = "^2.13.0"
 bytes = "^1.11.1"
 cidr = "0.3.2"
 clap = { version = "4.6.0", features = ["derive", "env"] }
 clap_complete = "^4.6.5"
 # Forced by saffron/cron
-chrono = "^0.4.44"
+chrono = "^0.4.45"
 compact_jwt = "^0.5.6"
 concread = "^0.5.10"
 cron = "0.16.0"
@@ -193,13 +193,13 @@ fs4 = "^1.0.2"
 futures = "^0.3.32"
 futures-util = { version = "^0.3.32", features = ["sink"] }
 gethostname = "1.1.0"
-gix = { version = "0.83.0", default-features = false, features = ["sha1"] }
+gix = { version = "0.84.0", default-features = false, features = ["sha1"] }
 haproxy-protocol = { version = "0.0.4" }
 hashbrown = { version = "0.17.1", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
-http = "1.4.0"
+http = "1.4.1"
 http-body-util = "0.1"
-hyper = { version = "1.9.0" }
+hyper = { version = "1.10.1" }
 hyper-util = { version = "0.1.20", features = ["server", "tokio"] }
 idlset = "^0.2.5"
 image = { version = "0.25.9", default-features = false, features = [
@@ -233,7 +233,7 @@ opentelemetry-otlp = { version = "0.32.0", default-features = false, features = 
     "http-proto",
     "grpc-tonic",
 ] }
-opentelemetry_sdk = { version = "0.32.0", features = ["rt-tokio"] }
+opentelemetry_sdk = { version = "0.32.1", features = ["rt-tokio"] }
 opentelemetry-semantic-conventions = "0.32.0"
 tracing-opentelemetry = "0.33.0"
 tracing-core = "0.1.36"
@@ -247,7 +247,7 @@ quote = "1"
 rand = "0.10.1"
 rand_chacha = "0.10.0"
 regex = "1.12.3"
-reqwest = { version = "0.13.2", default-features = false, features = [
+reqwest = { version = "0.13.4", default-features = false, features = [
     "cookies",
     "gzip",
     "http2",
@@ -257,7 +257,7 @@ reqwest = { version = "0.13.2", default-features = false, features = [
     "rustls",
     "query",
 ] }
-rusqlite = { version = "0.39.0", features = ["array", "bundled"] }
+rusqlite = { version = "0.40.1", features = ["array", "bundled"] }
 rustls = { version = "0.23.37", default-features = false, features = [
     "std",
     "aws_lc_rs",
@@ -269,7 +269,7 @@ serde_cbor = { version = "0.13.0", package = "serde_cbor_2" }
 serde-hjson = "1.1.0"
 serde_json = "^1.0.150"
 serde_urlencoded = "^0.7.1"
-serde_with = "3.20.0"
+serde_with = "3.21.0"
 sha-crypt = "0.5.0"
 sha2 = "0.11.0-rc.5"
 subtle = "2.6"
@@ -302,7 +302,7 @@ utoipa = { version = "5.5.0", features = ["url", "uuid"] }
 utoipa-swagger-ui = { version = "9.0.2", default-features = false, features = [
     "vendored",
 ] }
-uuid = "^1.23.0"
+uuid = "^1.23.2"
 webauthn-authenticator-rs = { version = "0.6.1-dev", default-features = false }
 webauthn-rs = { version = "0.6.1-dev", features = ["preview-features"] }
 webauthn-rs-core = "0.6.1-dev"

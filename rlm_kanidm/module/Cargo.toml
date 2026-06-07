@@ -37,4 +37,4 @@ tracing = { workspace = true }
 
 [build-dependencies]
 bindgen = "0.72.1"
-cc = "^1.2.62"
+cc = "^1.2.63"
