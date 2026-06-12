@@ -102,6 +102,7 @@ enum ConfigVersion {
 enum HomeStrategyV2 {
     #[default]
     Symlink,
+    #[serde(alias = "bind_mount")]
     BindMount,
 }
 
