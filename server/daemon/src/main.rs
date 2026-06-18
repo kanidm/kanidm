@@ -504,7 +504,7 @@ async fn start_daemon(opt: KanidmdParser, config: Configuration) -> ExitCode {
 
     // TODO: only send to stderr when we're not in a TTY
     let (provider, logging_subscriber) = match sketching::pipeline::start_logging_pipeline(
-        &config.otel_grpc_url,
+        &config.otel_grpc_endpoint,
         config.log_level,
     ) {
         Err(err) => {
