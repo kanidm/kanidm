@@ -36,7 +36,7 @@ jobs:
     needs: set_tag_values
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Set up Docker Buildx
