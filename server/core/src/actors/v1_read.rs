@@ -1572,12 +1572,12 @@ impl QueryServerReadV1 {
                 .await
                 .unwrap_or_else(|e| {
                     error!("do_op failed -> {:?}", e);
-                    LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                    LdapResponseState::Disconnect(DisconnectionNotice::gen_response(
                         LdapResultCode::Other,
                         format!("Internal Server Error {:?}", &eventid).as_str(),
                     ))
                 }),
-            Err(_) => LdapResponseState::Disconnect(DisconnectionNotice::gen(
+            Err(_) => LdapResponseState::Disconnect(DisconnectionNotice::gen_response(
                 LdapResultCode::ProtocolError,
                 format!("Invalid Request {:?}", &eventid).as_str(),
             )),
