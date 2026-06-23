@@ -205,8 +205,8 @@ image = { version = "0.25.9", default-features = false, features = [
 ] }
 itertools = "0.14.0"
 jsonschema = "0.46.0"
-ldap3_client = "^0.7.1"
-ldap3_proto = { version = "^0.7.1", features = ["serde"] }
+ldap3_client = "^0.8.0"
+ldap3_proto = { version = "^0.8.0", features = ["serde"] }
 lettre = { version = "0.11.21", default-features = false }
 libc = "0.2.186"
 libnss = "^0.9.0"
