@@ -493,13 +493,6 @@ pub fn acct_mgmt<P: PamHandler>(
         }
     };
 
-    /*
-    // We can access values here within the calling context
-    for (key, value) in std::env::vars() {
-        debug!("{key}: {value}");
-    }
-    */
-
     let account_id = match pamh.account_id() {
         Ok(acc) => acc,
         Err(err) => return err,
@@ -628,12 +621,6 @@ pub fn sm_chauthtok<P: PamHandler>(_pamh: &P, _opts: &ModuleOptions) -> PamResul
 }
 
 pub fn sm_setcred<P: PamHandler>(pamh: &P, _opts: &ModuleOptions) -> PamResultCode {
-    // We can set values here into the users session.
-    /*
-    if let Err(err) = pamh.set_env("KANIDM_TEST_VAR=test") {
-        error!(?err, "set_env");
-    };
-    */
 
     match pamh.envlist() {
         Ok(envlist) => debug!(?envlist),
