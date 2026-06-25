@@ -71,10 +71,10 @@ impl ValueSetScimPut for ValueSetOauthScope {
 
         if !errors.is_empty() {
             error!(
-                "SCIM Oauth2ClaimMap claim value(s) invalid in set: {}",
+                "SCIM Oauth2Scope value(s) invalid in set: {}",
                 errors.into_iter().join(",")
             );
-            return Err(OperationError::SC0035Oauth2ClaimMapClaimValueInvalid);
+            return Err(OperationError::SC0036Oauth2ClaimMapScopeNameInvalid);
         }
 
         Ok(ValueSetResolveStatus::Resolved(Box::new(
@@ -293,7 +293,7 @@ impl ValueSetScimPut for ValueSetOauthScopeMap {
                     "SCIM Oauth2ScopeMap scope value(s) invalid: {}",
                     scope_errors.join(",")
                 );
-                return Err(OperationError::SC0035Oauth2ClaimMapClaimValueInvalid);
+                return Err(OperationError::SC0036Oauth2ClaimMapScopeNameInvalid);
             }
 
             match (group_uuid, group) {
