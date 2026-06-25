@@ -85,6 +85,7 @@ image = { workspace = true, default-features = false, features = [
 ] }
 svg = { workspace = true }
 flate2 = "1.1.9"
+zeroize = { workspace = true }
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]

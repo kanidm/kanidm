@@ -4,7 +4,7 @@ use crate::prelude::*;
 use crate::server::identity::Identity;
 use crate::server::keys::KeyProvidersTransaction;
 use crate::server::QueryServerTransaction;
-use crypto_glue::hmac_s256::HmacSha256Key;
+use crypto_glue::traits::Zeroizing;
 use kanidm_proto::internal::IdentifyUserResponse;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -196,15 +196,10 @@ impl IdmServerProxyReadTransaction<'_> {
         info_bytes[..16].copy_from_slice(initiating_uuid.as_bytes());
         info_bytes[16..].copy_from_slice(receiving_uuid.as_bytes());
 
-        let mut shared_key = HmacSha256Key::default();
+        let mut shared_key = Zeroizing::new(vec![0u8; 32]);
         key_object.hkdf_s256_expand(&info_bytes, shared_key.as_mut_slice(), current_time)?;
 
-        let totp = Totp::new(
-            shared_key.as_slice().to_vec(),
-            TOTP_STEP,
-            TotpAlgo::Sha256,
-            TotpDigits::Six,
-        );
+        let totp = Totp::new(shared_key, TOTP_STEP, TotpAlgo::Sha256, TotpDigits::Six);
         Ok(totp)
     }
 }

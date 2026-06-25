@@ -8,6 +8,7 @@ use base64::{
     engine::general_purpose::{STANDARD, URL_SAFE},
     Engine as _,
 };
+use crypto_glue::traits::Zeroizing;
 use compact_jwt::{Jws, JwsCompact};
 use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
 use kanidm_proto::scim_v1::*;
@@ -1035,7 +1036,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                             }
                         })?;
 
-                    let totp = Totp::new(secret, step, algo, digits);
+                    let totp = Totp::new(Zeroizing::new(secret), step, algo, digits);
                     vs.push(Value::TotpSecret(external_id, totp))
                 }
                 Ok(vs)

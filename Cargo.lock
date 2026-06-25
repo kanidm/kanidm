@@ -3833,6 +3833,7 @@ dependencies = [
  "webauthn-rs",
  "webauthn-rs-core",
  "whoami",
+ "zeroize",
  "zxcvbn",
 ]
 

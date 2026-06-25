@@ -2,12 +2,13 @@ use crypto_glue::{
     hmac_s1::{HmacSha1, HmacSha1Key},
     hmac_s256::{HmacSha256, HmacSha256Key},
     hmac_s512::{HmacSha512, HmacSha512Key},
-    traits::Mac,
+    traits::{Mac, Zeroizing},
 };
 use kanidm_proto::internal::{TotpAlgo as ProtoTotpAlgo, TotpSecret as ProtoTotp};
 use rand::RngExt;
 use std::convert::{TryFrom, TryInto};
 use std::time::{Duration, SystemTime};
+use zeroize::Zeroize;
 
 use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
 
@@ -115,10 +116,17 @@ impl TotpAlgo {
 /// <https://tools.ietf.org/html/rfc6238> which relies on <https://tools.ietf.org/html/rfc4226>
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Totp {
-    secret: Vec<u8>,
+    secret: Zeroizing<Vec<u8>>,
     pub(crate) step: u64,
     algo: TotpAlgo,
     digits: TotpDigits,
+}
+
+impl Drop for Totp {
+    fn drop(&mut self) {
+        // Ensure the secret is zeroed out in memory when the struct is dropped.
+        Zeroize::zeroize(&mut self.secret);
+    }
 }
 
 impl TryFrom<DbTotpV1> for Totp {
@@ -134,7 +142,7 @@ impl TryFrom<DbTotpV1> for Totp {
         let digits = TotpDigits::try_from(value.digits.unwrap_or(6))?;
 
         Ok(Totp {
-            secret: value.key,
+            secret: Zeroizing::new(value.key),
             step: value.step,
             algo,
             digits,
@@ -147,7 +155,7 @@ impl TryFrom<ProtoTotp> for Totp {
 
     fn try_from(value: ProtoTotp) -> Result<Self, Self::Error> {
         Ok(Totp {
-            secret: value.secret,
+            secret: Zeroizing::new(value.secret),
             algo: match value.algo {
                 ProtoTotpAlgo::Sha1 => TotpAlgo::Sha1,
                 ProtoTotpAlgo::Sha256 => TotpAlgo::Sha256,
@@ -160,7 +168,7 @@ impl TryFrom<ProtoTotp> for Totp {
 }
 
 impl Totp {
-    pub fn new(secret: Vec<u8>, step: u64, algo: TotpAlgo, digits: TotpDigits) -> Self {
+    pub fn new(secret: Zeroizing<Vec<u8>>, step: u64, algo: TotpAlgo, digits: TotpDigits) -> Self {
         Totp {
             secret,
             step,
@@ -176,7 +184,7 @@ impl Totp {
         let algo = TotpAlgo::Sha256;
         let digits = TotpDigits::Six;
         Totp {
-            secret,
+            secret: Zeroizing::new(secret),
             step,
             algo,
             digits,
@@ -186,7 +194,7 @@ impl Totp {
     pub(crate) fn to_dbtotpv1(&self) -> DbTotpV1 {
         DbTotpV1 {
             label: "totp".to_string(),
-            key: self.secret.clone(),
+            key: self.secret.to_vec(),
             step: self.step,
             algo: match self.algo {
                 TotpAlgo::Sha1 => DbTotpAlgoV1::S1,
@@ -256,7 +264,7 @@ impl Totp {
         ProtoTotp {
             accountname: accountname.to_string(),
             issuer: issuer.to_string(),
-            secret: self.secret.clone(),
+            secret: self.secret.to_vec(),
             step: self.step,
             algo: match self.algo {
                 TotpAlgo::Sha1 => ProtoTotpAlgo::Sha1,
@@ -272,11 +280,12 @@ impl Totp {
     }
 
     pub fn downgrade_to_legacy(self) -> Self {
+        let mut this = std::mem::ManuallyDrop::new(self);
         Totp {
-            secret: self.secret,
-            step: self.step,
             algo: TotpAlgo::Sha1,
-            digits: self.digits,
+            secret: std::mem::replace(&mut this.secret, Zeroizing::new(Vec::new())),
+            step: this.step,
+            digits: this.digits,
         }
     }
 }
@@ -286,14 +295,25 @@ mod tests {
     use std::time::Duration;
 
     use crate::credential::totp::{Totp, TotpAlgo, TotpDigits, TotpError, TOTP_DEFAULT_STEP};
+    use crypto_glue::traits::Zeroizing;
 
     #[test]
     fn hotp_basic() {
-        let otp_sha1 = Totp::new(vec![0], 30, TotpAlgo::Sha1, TotpDigits::Six);
+        let otp_sha1 = Totp::new(Zeroizing::new(vec![0]), 30, TotpAlgo::Sha1, TotpDigits::Six);
         assert_eq!(otp_sha1.digest(0), Ok(328482));
-        let otp_sha256 = Totp::new(vec![0], 30, TotpAlgo::Sha256, TotpDigits::Six);
+        let otp_sha256 = Totp::new(
+            Zeroizing::new(vec![0]),
+            30,
+            TotpAlgo::Sha256,
+            TotpDigits::Six,
+        );
         assert_eq!(otp_sha256.digest(0), Ok(356306));
-        let otp_sha512 = Totp::new(vec![0], 30, TotpAlgo::Sha512, TotpDigits::Six);
+        let otp_sha512 = Totp::new(
+            Zeroizing::new(vec![0]),
+            30,
+            TotpAlgo::Sha512,
+            TotpDigits::Six,
+        );
         assert_eq!(otp_sha512.digest(0), Ok(674061));
     }
 
@@ -305,7 +325,7 @@ mod tests {
         digits: TotpDigits,
         expect: &Result<u32, TotpError>,
     ) {
-        let otp = Totp::new(key.to_vec(), step, algo, digits);
+        let otp = Totp::new(Zeroizing::new(key.to_vec()), step, algo, digits);
         let d = Duration::from_secs(secs);
         let r = otp.do_totp_duration_from_epoch(&d);
         debug!(
@@ -403,7 +423,12 @@ mod tests {
     fn totp_allow_one_previous() {
         let key = vec![0x00, 0xaa, 0xbb, 0xcc];
         let secs = 1585369780;
-        let otp = Totp::new(key, TOTP_DEFAULT_STEP, TotpAlgo::Sha512, TotpDigits::Six);
+        let otp = Totp::new(
+            Zeroizing::new(key),
+            TOTP_DEFAULT_STEP,
+            TotpAlgo::Sha512,
+            TotpDigits::Six,
+        );
         let d = Duration::from_secs(secs);
         // Step
         assert!(otp.verify(952181, d));

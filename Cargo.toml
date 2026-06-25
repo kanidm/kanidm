@@ -312,3 +312,4 @@ walkdir = "2"
 x509-cert = "0.2.5"
 yescrypt = "0.1.0-rc.5"
 zxcvbn = "3.1.1"
+zeroize = { version = "1.9", features = ["derive"] }
