@@ -366,15 +366,6 @@ pub(crate) trait IdlSqliteTransaction {
                 |row| row.get(0),
             )
             .optional()
-            // this whole map call is useless
-            .map(|e_opt| {
-                // If we have a row, we try to make it a sid
-                e_opt.map(|e| {
-                    let y: Vec<u8> = e;
-                    y
-                })
-                // If no sid, we return none.
-            })
             .map_err(|_| OperationError::SqliteError)?;
 
         Ok(match data {
@@ -404,15 +395,6 @@ pub(crate) trait IdlSqliteTransaction {
                 |row| row.get(0),
             )
             .optional()
-            // this whole map call is useless
-            .map(|e_opt| {
-                // If we have a row, we try to make it a sid
-                e_opt.map(|e| {
-                    let y: Vec<u8> = e;
-                    y
-                })
-                // If no sid, we return none.
-            })
             .map_err(|_| OperationError::SqliteError)?;
 
         Ok(match data {
@@ -442,14 +424,6 @@ pub(crate) trait IdlSqliteTransaction {
                 |row| row.get(0),
             )
             .optional()
-            .map(|e_opt| {
-                // If we have a row, we try to make it a sid
-                e_opt.map(|e| {
-                    let y: Vec<u8> = e;
-                    y
-                })
-                // If no sid, we return none.
-            })
             .map_err(sqlite_error)?;
 
         Ok(match data {

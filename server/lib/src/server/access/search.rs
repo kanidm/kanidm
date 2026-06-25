@@ -239,7 +239,7 @@ fn search_oauth2_filter_entry(
 
             let contains_o2_scope_member = entry
                 .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap)
-                .and_then(|maps| ident.get_memberof().map(|mo| (maps, mo)))
+                .zip(ident.get_memberof())
                 .map(|(maps, mo)| maps.keys().any(|k| mo.contains(k)))
                 .unwrap_or(false);
 

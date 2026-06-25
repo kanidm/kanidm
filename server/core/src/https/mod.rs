@@ -65,22 +65,6 @@ mod v1_oauth2;
 mod v1_scim;
 mod views;
 
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
-pub(crate) enum LoggerType {
-    TracingForest,
-    OpenTelemetry,
-}
-
-impl LoggerType {
-    #[inline]
-    pub(crate) fn status_code_field(self) -> &'static str {
-        match self {
-            LoggerType::TracingForest => "status_code",
-            LoggerType::OpenTelemetry => "http.response.status_code",
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct ServerState {
     pub(crate) status_ref: &'static StatusActor,
@@ -237,6 +221,8 @@ pub async fn create_https_server(
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
             "script-src 'self' 'unsafe-eval'{};",
+            // https://datatracker.ietf.org/doc/html/rfc9700#name-clickjacking
+            "frame-ancestors 'none'; ",
         ),
         js_checksums
     );
@@ -260,6 +246,8 @@ pub async fn create_https_server(
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
             "script-src 'self' 'unsafe-eval'{};",
+            // https://datatracker.ietf.org/doc/html/rfc9700#name-clickjacking
+            "frame-ancestors 'none'; ",
         ),
         js_checksums
     );
@@ -279,7 +267,7 @@ pub async fn create_https_server(
 
     let trusted_tcp_info_ips = config.http_client_address_info.trusted_tcp_info();
 
-    let logging_pipeline = if config.otel_grpc_url.is_some() {
+    let logging_pipeline = if config.otel_grpc_endpoint.is_some() {
         LoggerType::OpenTelemetry
     } else {
         LoggerType::TracingForest

@@ -10,6 +10,13 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "force-frame-pointers=yes"]
 linker = "clang"
 rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "force-frame-pointers=yes"]
 
+[env]
+# Keep Linux arm64 release builds compatible with ARMv8.0-A systems such as
+# Raspberry Pi 4. libmimalloc-sys otherwise requests -march=armv8.1-a, which
+# can emit LSE atomics that SIGILL on older arm64 hardware.
+CFLAGS_aarch64_unknown_linux_gnu = { value = "-march=armv8-a", force = false }
+CXXFLAGS_aarch64_unknown_linux_gnu = { value = "-march=armv8-a", force = false }
+
 [target.powerpc64le-unknown-linux-gnu]
 linker = "clang"
 rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "force-frame-pointers=yes"]

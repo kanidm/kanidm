@@ -75,6 +75,10 @@ path that is correct for all users unless no other options are possible.
 All configuration items, must be constrained to fit within our principles so that every Kanidm deployment, will aim to
 provide a positive experience to all people.
 
+### AI Usage
+
+We do not allow AI generated content in this project.
+
 ## Setup the Server
 
 It's important before you start trying to write code and contribute that you understand what Kanidm does and its goals.
