@@ -601,9 +601,15 @@ impl LdapServer {
             return Ok(vec![cr.gen_compare_false()]);
         }
 
-        Ok(vec![
-            cr.gen_error(LdapResultCode::NoSuchObject, "".to_string())
-        ])
+        if matches!(uat.effective_session, LdapSession::UnixBind(UUID_ANONYMOUS)) {
+            admin_info!("LDAP Compare -> entry does not exist, normalising to CompareFalse for anonymous bind");
+            Ok(vec![cr.gen_compare_false()])
+        } else {
+            admin_info!("LDAP Compare -> NoSuchObject");
+            Ok(vec![
+                cr.gen_error(LdapResultCode::NoSuchObject, "".to_string())
+            ])
+        }
     }
 
     pub async fn do_op(
@@ -2707,7 +2713,7 @@ mod tests {
                 .do_compare(idms, &cr, &anon_t, Source::Internal)
                 .await
                 .unwrap(),
-            &LdapResultCode::NoSuchObject,
+            &LdapResultCode::CompareFalse,
         );
 
         let cr = CompareRequest {
