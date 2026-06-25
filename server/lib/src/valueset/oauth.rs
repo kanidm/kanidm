@@ -13,6 +13,7 @@ use crate::valueset::{
     UnresolvedValueSetOauth2ScopeMap, ValueSet, ValueSetIntermediate, ValueSetResolveStatus,
     ValueSetScimPut,
 };
+use itertools::Itertools;
 use kanidm_proto::scim_v1::client::ScimOAuth2ClaimMap as ClientScimOAuth2ClaimMap;
 use kanidm_proto::scim_v1::client::ScimOAuth2ScopeMap as ClientScimOAuth2ScopeMap;
 use kanidm_proto::scim_v1::JsonValue;
@@ -56,6 +57,25 @@ impl ValueSetScimPut for ValueSetOauthScope {
             error!(?err, "SCIM Oauth2Scope syntax invalid");
             OperationError::SC0019Oauth2ScopeSyntaxInvalid
         })?;
+
+        let errors = set
+            .iter()
+            .filter_map(|s| {
+                if !OAUTHSCOPE_RE.is_match(s) {
+                    Some(s.clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if !errors.is_empty() {
+            error!(
+                "SCIM Oauth2ClaimMap claim value(s) invalid in set: {}",
+                errors.into_iter().join(",")
+            );
+            return Err(OperationError::SC0035Oauth2ClaimMapClaimValueInvalid);
+        }
 
         Ok(ValueSetResolveStatus::Resolved(Box::new(
             ValueSetOauthScope { set },
@@ -251,6 +271,20 @@ impl ValueSetScimPut for ValueSetOauthScopeMap {
             scopes,
         } in scope_maps.into_iter()
         {
+            let scope_errors: Vec<String> = scopes
+                .iter()
+                .filter(|s| !OAUTHSCOPE_RE.is_match(s))
+                .cloned()
+                .collect();
+
+            if !scope_errors.is_empty() {
+                error!(
+                    "SCIM Oauth2ScopeMap scope value(s) invalid: {}",
+                    scope_errors.join(",")
+                );
+                return Err(OperationError::SC0035Oauth2ClaimMapClaimValueInvalid);
+            }
+
             match (group_uuid, group) {
                 (None, None) => {
                     error!("SCIM Oauth2ScopeMap a group name or uuid must be present");
@@ -568,8 +602,18 @@ impl ValueSetScimPut for ValueSetOauthClaimMap {
             values: claim_values,
         } in claim_maps.into_iter()
         {
+            if !OAUTH_CLAIMNAME_RE.is_match(&claim) {
+                error!("SCIM Oauth2ClaimMap claim name '{}' invalid", claim);
+                return Err(OperationError::SC0034Oauth2ClaimMapClaimNameInvalid);
+            }
+            if claim_values.iter().any(|s| !OAUTH_CLAIMNAME_RE.is_match(s)) {
+                error!(
+                    "SCIM Oauth2ClaimMap claim value '{:?}' invalid",
+                    claim_values
+                );
+                return Err(OperationError::SC0035Oauth2ClaimMapClaimValueInvalid);
+            }
             let join_char = OauthClaimMapJoin::from(join_char);
-
             match (group_uuid, group) {
                 (None, None) => {
                     error!("SCIM Oauth2ClaimMap a group name or uuid must be present");
@@ -877,6 +921,7 @@ impl ValueSetT for ValueSetOauthClaimMap {
 mod tests {
     use super::{ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap};
     use crate::prelude::*;
+    use crate::valueset::ValueSetScimPut;
     use std::collections::BTreeSet;
 
     #[test]
@@ -980,5 +1025,124 @@ mod tests {
         );
 
         assert!(write_txn.commit().is_ok());
+    }
+
+    #[test]
+    fn test_scim_oauth2_claim_map_rejects_invalid_claim_name() {
+        let invalid = serde_json::json!([
+            {
+                "claim": "invalid claim with spaces!",
+                "groupUuid": "4d21d04a-dc0e-42eb-b850-34dd180b107f",
+                "joinChar": ";",
+                "values": ["read", "write"]
+            }
+        ]);
+
+        let result = ValueSetOauthClaimMap::from_scim_json_put(invalid);
+        assert!(
+            result.is_err(),
+            "SCIM PUT should reject claim names with characters not matching OAUTH_CLAIMNAME_RE"
+        );
+    }
+
+    #[test]
+    fn test_scim_oauth2_claim_map_rejects_invalid_claim_value() {
+        let invalid = serde_json::json!([
+            {
+                "claim": "claim",
+                "groupUuid": "4d21d04a-dc0e-42eb-b850-34dd180b107f",
+                "joinChar": ";",
+                "values": ["read", "value with spaces!"]
+            }
+        ]);
+
+        let result = ValueSetOauthClaimMap::from_scim_json_put(invalid);
+        assert!(
+            result.is_err(),
+            "SCIM PUT should reject claim values with characters not matching OAUTH_CLAIMNAME_RE"
+        );
+    }
+
+    #[test]
+    fn test_scim_oauth2_claim_map_accepts_valid_input() {
+        let valid = serde_json::json!([
+            {
+                "claim": "valid_claim_name",
+                "groupUuid": "4d21d04a-dc0e-42eb-b850-34dd180b107f",
+                "joinChar": ";",
+                "values": ["read", "write"]
+            }
+        ]);
+
+        let result = ValueSetOauthClaimMap::from_scim_json_put(valid);
+        assert!(
+            result.is_ok(),
+            "SCIM PUT should accept valid claim names and values"
+        );
+    }
+
+    #[test]
+    fn test_scim_oauth2_scope_rejects_invalid_scope_string() {
+        let invalid = serde_json::json!(["scope with spaces"]);
+
+        let result = ValueSetOauthScope::from_scim_json_put(invalid);
+        assert!(
+            result.is_err(),
+            "SCIM PUT should reject scope strings with characters not matching OAUTHSCOPE_RE"
+        );
+    }
+
+    #[test]
+    fn test_scim_oauth2_scope_rejects_colon_in_scope() {
+        let invalid = serde_json::json!(["scope:with:colons"]);
+
+        let result = ValueSetOauthScope::from_scim_json_put(invalid);
+        assert!(
+            result.is_err(),
+            "SCIM PUT should reject scope strings with colons that pass OAUTH_CLAIMNAME_RE but fail OAUTHSCOPE_RE"
+        );
+    }
+
+    #[test]
+    fn test_scim_oauth2_scope_accepts_valid_input() {
+        let valid = serde_json::json!(["read", "write"]);
+
+        let result = ValueSetOauthScope::from_scim_json_put(valid);
+        assert!(
+            result.is_ok(),
+            "SCIM PUT should accept valid scope strings"
+        );
+    }
+
+    #[test]
+    fn test_scim_oauth2_scope_map_rejects_invalid_scopes() {
+        let invalid = serde_json::json!([
+            {
+                "scopes": ["valid", "invalid scope"],
+                "groupUuid": "4d21d04a-dc0e-42eb-b850-34dd180b107f"
+            }
+        ]);
+
+        let result = ValueSetOauthScopeMap::from_scim_json_put(invalid);
+        assert!(
+            result.is_err(),
+            "SCIM PUT should reject scope maps containing invalid scope strings"
+        );
+    }
+
+    #[test]
+    fn test_scim_oauth2_scope_map_accepts_valid_input() {
+        let valid = serde_json::json!([
+            {
+                "scopes": ["read", "write"],
+                "groupUuid": "4d21d04a-dc0e-42eb-b850-34dd180b107f"
+            }
+        ]);
+
+        let result = ValueSetOauthScopeMap::from_scim_json_put(valid);
+        assert!(
+            result.is_ok(),
+            "SCIM PUT should accept scope maps with valid scope strings"
+        );
     }
 }
