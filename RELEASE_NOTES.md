@@ -36,7 +36,7 @@ Before upgrading you should review [our upgrade documentation]
 - Security - High: SCIM Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur leading to Denial of Service by an unauthenticated user
 - Security - High: LDAP Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur leading to Denial of Service by an unauthenticated user
 - Security - Moderate: PNG Image validation did not correctly handle short images allowing a panic to occur in a worker thread. This may lead to system instability over time
-- Security - Low: HTML injection via user DisplayName in Passkey enrolment dialogs. This allows an admin to execute JS in the context of a users browser. Since the admin already can reset the users credentials, the impact of this is minimal.
+- Security - Low: HTML injection via user DisplayName in Passkey enrollment dialogs. This allows an admin to execute JS in the context of a users browser. Since the admin already can reset the users credentials, the impact of this is minimal.
 - Security - Low: non-constant time comparison of OAuth2 client secret may allow a remote attacker to remotely recovery the bytes of the secret. Due to the length of the secret (48 chars) this is infeasible practically.
 - Security - Low: incorrect handling of origin validation in Webauthn-RS allowed a malicious domain to collide with a valid one (badexample.com would match with example.com). This is mitigated by browsers detecting the forgery and preventing the authentication from proceeding.
 - 20260331 send account recovery emails (#4259)

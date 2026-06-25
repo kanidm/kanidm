@@ -306,6 +306,6 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         IDM_ACP_MESSAGE_MANAGE.clone().into(),
         IDM_ACP_MESSAGE_SENDER.clone().into(),
         IDM_ACP_OAUTH2_CLIENT_ADMIN.clone().into(),
-        IDM_ACP_OAUTH2_ACCOUNT_ENROL.clone().into(),
+        IDM_ACP_OAUTH2_ACCOUNT_ENROLL.clone().into(),
     ]
 }

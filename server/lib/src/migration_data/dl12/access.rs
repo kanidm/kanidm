@@ -2037,17 +2037,17 @@ pub static IDM_ACP_OAUTH2_CLIENT_ADMIN: LazyLock<BuiltinAcp> = LazyLock::new(|| 
     ..Default::default()
 });
 
-pub static IDM_ACP_OAUTH2_ACCOUNT_ENROL: LazyLock<BuiltinAcp> = LazyLock::new(|| BuiltinAcp {
+pub static IDM_ACP_OAUTH2_ACCOUNT_ENROLL: LazyLock<BuiltinAcp> = LazyLock::new(|| BuiltinAcp {
     classes: vec![
         EntryClass::Object,
         EntryClass::AccessControlProfile,
         EntryClass::AccessControlModify,
         EntryClass::AccessControlSearch,
     ],
-    name: "idm_acp_oauth2_account_enrol",
-    uuid: UUID_IDM_ACP_OAUTH2_ACCOUNT_ENROL,
+    name: "idm_acp_oauth2_account_enroll",
+    uuid: UUID_IDM_ACP_OAUTH2_ACCOUNT_ENROLL,
     description:
-        "Builtin IDM Control for enroling other accounts as oauth2 authentication consumers.",
+        "Builtin IDM Control for enrolling other accounts as oauth2 authentication consumers.",
     receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ACCOUNT_ADMINS]),
     target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
         match_class_filter!(EntryClass::Person),

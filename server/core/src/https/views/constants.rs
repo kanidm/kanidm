@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) enum ProfileMenuItems {
     UserProfile,
     Credentials,
-    EnrolDevice,
+    EnrollDevice,
     UnixPassword,
     Radius,
 }
@@ -25,7 +25,7 @@ pub(crate) enum ProfileMenuItems {
 pub(crate) enum Urls {
     Apps,
     CredReset,
-    EnrolDevice,
+    EnrollDevice,
     Profile,
     UpdateCredentials,
     Oauth2Resume,
@@ -43,7 +43,7 @@ impl AsRef<str> for Urls {
         match self {
             Self::Apps => "/ui/apps",
             Self::CredReset => "/ui/reset",
-            Self::EnrolDevice => "/ui/enrol",
+            Self::EnrollDevice => "/ui/enroll",
             Self::Profile => "/ui/profile",
             Self::UpdateCredentials => "/ui/update_credentials",
             Self::Oauth2Resume => "/ui/oauth2/resume",

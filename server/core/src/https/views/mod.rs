@@ -20,7 +20,7 @@ mod apps;
 pub(crate) mod constants;
 mod cookies;
 mod csrf;
-mod enrol;
+mod enroll;
 mod errors;
 mod login;
 mod navbar;
@@ -102,7 +102,7 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
             get(|| async { Redirect::permanent(Urls::Login.as_ref()) }),
         )
         .route("/apps", get(apps::view_apps_get))
-        .route("/enrol", get(enrol::view_enrol_get))
+        .route("/enroll", get(enroll::view_enroll_get))
         .route("/reset", get(reset::view_reset_get))
         .route(
             "/recover",

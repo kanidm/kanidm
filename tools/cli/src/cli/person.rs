@@ -810,7 +810,7 @@ impl FromStr for CUAction {
     }
 }
 
-async fn totp_enrol_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
+async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
     // First, submit the server side gen.
     let totp_secret: TotpSecret = match client
         .idm_account_credential_update_init_totp(session_token)
@@ -1008,16 +1008,16 @@ impl fmt::Display for PasskeyClass {
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-async fn passkey_enrol_prompt(
+async fn passkey_enroll_prompt(
     _session_token: &CUSessionToken,
     _client: &KanidmClient,
     _pk_class: PasskeyClass,
 ) {
-    eprintln!("Passkey enrolment is not supported on this platform");
+    eprintln!("Passkey enrollment is not supported on this platform");
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
-async fn passkey_enrol_prompt(
+async fn passkey_enroll_prompt(
     session_token: &CUSessionToken,
     client: &KanidmClient,
     pk_class: PasskeyClass,
@@ -1577,7 +1577,7 @@ async fn credential_update_exec(
                     println!("Successfully reset password.");
                 }
             }
-            CUAction::Totp => totp_enrol_prompt(&session_token, &client).await,
+            CUAction::Totp => totp_enroll_prompt(&session_token, &client).await,
             CUAction::TotpRemove => {
                 match client
                     .idm_account_credential_update_status(&session_token)
@@ -1670,13 +1670,13 @@ async fn credential_update_exec(
                 }
             }
             CUAction::Passkey => {
-                passkey_enrol_prompt(&session_token, &client, PasskeyClass::Any).await
+                passkey_enroll_prompt(&session_token, &client, PasskeyClass::Any).await
             }
             CUAction::PasskeyRemove => {
                 passkey_remove_prompt(&session_token, &client, PasskeyClass::Any).await
             }
             CUAction::AttestedPasskey => {
-                passkey_enrol_prompt(&session_token, &client, PasskeyClass::Attested).await
+                passkey_enroll_prompt(&session_token, &client, PasskeyClass::Attested).await
             }
             CUAction::AttestedPasskeyRemove => {
                 passkey_remove_prompt(&session_token, &client, PasskeyClass::Attested).await
