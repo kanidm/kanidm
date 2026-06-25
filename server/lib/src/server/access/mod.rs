@@ -490,6 +490,14 @@ pub trait AccessControlsTransaction<'a> {
         Ok(allowed_entries)
     }
 
+    /// Resolve ACPs relevant to the given identity.
+    ///
+    /// This performs identity-level resolution only:
+    /// - Receiver: group membership check, EntryManager flag
+    /// - Target: SelfUuid resolution, filter compilation (no index metadata)
+    ///
+    /// Per-entry target scope filtering is NOT done here — it happens in
+    /// `apply_modify_access` via `entry_match_no_index`.
     #[instrument(level = "trace", name = "access::modify_related_acp", skip_all)]
     fn modify_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlModifyResolved<'b>> {
         // Some useful references we'll use for the remainder of the operation
@@ -545,6 +553,16 @@ pub trait AccessControlsTransaction<'a> {
         Ok(r)
     }
 
+    /// Check if a batch modification is allowed by ACP.
+    ///
+    /// Security model:
+    /// - `modify_related_acp` resolves ACPs at the *identity* level (SelfUuid, group membership)
+    /// - Per-entry target scope filtering happens inside `apply_modify_access` (modify.rs)
+    ///   via `entry_match_no_index` on each entry's resolved target condition
+    /// - Per-entry receiver conditions (EntryManager) are also re-checked in `apply_modify_access`
+    ///
+    /// Both `modify_allow_operation` and this function rely on the same per-entry
+    /// scope validation — do not refactor one without the other.
     #[instrument(
         level = "debug",
         name = "access::batch_modify_allow_operation",
@@ -3691,5 +3709,107 @@ mod tests {
 
         // If there is no request changes, deny.
         test_acp_modify!(&me_empty, vec![], &r1_set, false);
+    }
+
+    /// Regression test for batch_modify target scope enforcement.
+    ///
+    /// Verifies that when a batch_modify targets multiple entries, ACP target
+    /// scope filters are applied per-entry. An ACP scoped to "testperson1" must
+    /// not grant modify access to "testperson2" within the same batch.
+    #[test]
+    fn test_batch_modify_target_scope_per_entry() {
+        let entry_in_scope = Arc::new(
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("Test Person 1")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1))
+            )
+            .into_sealed_committed(),
+        );
+
+        let entry_out_of_scope = Arc::new(
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson2")),
+                (Attribute::DisplayName, Value::new_utf8s("Test Person 2")),
+                (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_2)),
+                (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1))
+            )
+            .into_sealed_committed(),
+        );
+
+        let entries = vec![entry_in_scope.clone(), entry_out_of_scope.clone()];
+
+        let acp = AccessControlModify::from_raw(
+            "test_batch_modify_scope",
+            Uuid::new_v4(),
+            // Apply to testperson1's group
+            UUID_TEST_GROUP_1,
+            // Scope: only testperson1
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            // Allow pres/rem name
+            "name",
+            "name",
+            "",
+            "",
+        );
+
+        let ident = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
+
+        // Build a batch_modify modset targeting both entries
+        let mut modset = crate::server::batch_modify::ModSetValid::default();
+        modset.insert(
+            UUID_TEST_ACCOUNT_1,
+            ModifyList::new_valid_list(vec![Modify::Present(Attribute::Name, Value::new_iname("modified"))]),
+        );
+        modset.insert(
+            UUID_TEST_ACCOUNT_2,
+            ModifyList::new_valid_list(vec![Modify::Present(Attribute::Name, Value::new_iname("modified"))]),
+        );
+
+        let batch_event = crate::server::batch_modify::BatchModifyEvent {
+            ident,
+            modset,
+        };
+
+        let ac = AccessControls::default();
+        let mut acw = ac.write();
+        acw.update_modify(vec![acp]).expect("Failed to update");
+
+        // The batch must be DENIED because entry_out_of_scope (testperson2)
+        // does not match the ACP's target scope (testperson1).
+        let res = acw
+            .batch_modify_allow_operation(&batch_event, &entries)
+            .expect("op failed");
+
+        assert!(!res, "batch_modify must deny when any entry is out of ACP target scope");
+
+        // Sanity: single-entry batch for in-scope entry should succeed
+        let mut modset_single = crate::server::batch_modify::ModSetValid::default();
+        modset_single.insert(
+            UUID_TEST_ACCOUNT_1,
+            ModifyList::new_valid_list(vec![Modify::Present(Attribute::Name, Value::new_iname("modified"))]),
+        );
+
+        let batch_single = crate::server::batch_modify::BatchModifyEvent {
+            ident: batch_event.ident.clone(),
+            modset: modset_single,
+        };
+
+        let single_entry = vec![entry_in_scope];
+        let res_single = acw
+            .batch_modify_allow_operation(&batch_single, &single_entry)
+            .expect("op failed");
+
+        assert!(res_single, "batch_modify must allow when all entries are in ACP target scope");
     }
 }

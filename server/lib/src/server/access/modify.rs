@@ -25,6 +25,15 @@ pub(super) enum ModifyResult<'a> {
     },
 }
 
+/// Apply modify access checks for a single entry.
+///
+/// This is the single entry-point for per-entry ACP filtering in modify operations.
+/// It performs TWO security-critical checks per-entry:
+/// 1. Receiver condition re-validation (EntryManager checks against target entry)
+/// 2. Target scope filtering via `entry_match_no_index`
+///
+/// Both `modify_allow_operation` and `batch_modify_allow_operation` depend on this
+/// function for per-entry scope enforcement. Any changes here affect all modify paths.
 pub(super) fn apply_modify_access<'a>(
     ident: &Identity,
     related_acp: &'a [AccessControlModifyResolved],
@@ -158,6 +167,10 @@ pub(super) fn apply_modify_access<'a>(
                     }
                 };
 
+                // SECURITY: Per-entry target scope enforcement.
+                // The resolved filter from [kanidmd_lib::server::access::modify_related_acp] is tested against each entry here.
+                // This ensures ACPs only apply to entries matching their intended scope,
+                // even when related_acp was resolved once at identity level.
                 match &acm.target_condition {
                     AccessControlTargetCondition::Scope(f_res) => {
                         if !entry.entry_match_no_index(f_res) {
