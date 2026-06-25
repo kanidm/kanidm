@@ -72,6 +72,7 @@ impl IdmServerProxyReadTransaction<'_> {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
+    use crate::server::access::profiles::AccessControlSearch;
     use kanidm_proto::internal::AppLink;
 
     #[idm_test]
@@ -137,6 +138,24 @@ mod tests {
 
         let ce = CreateEvent::new_internal(vec![e_rs, e_grp, e_usr]);
         assert!(idms_prox_write.qs_write.create(&ce).is_ok());
+
+        // Add a search ACP that grants the group visibility to OAuth2 RS entries
+        let acp = AccessControlSearch::from_raw(
+            "test_applinks_acp",
+            Uuid::new_v4(),
+            grp_uuid,
+            filter_valid!(f_eq(
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServer.into()
+            )),
+            Attribute::Name.as_ref(),
+        );
+        idms_prox_write
+            .qs_write
+            .accesscontrols
+            .update_search(vec![acp])
+            .expect("Failed to update search ACP");
+
         assert!(idms_prox_write.commit().is_ok());
 
         // Now do an applink query, they will not be there.

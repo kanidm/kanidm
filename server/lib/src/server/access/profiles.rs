@@ -57,7 +57,7 @@ impl AccessControlSearch {
     /// ⚠️  - Manually create a search access profile from values.
     /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub(super) fn from_raw(
+    pub(crate) fn from_raw(
         name: &str,
         uuid: Uuid,
         receiver: Uuid,

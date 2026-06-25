@@ -3106,18 +3106,32 @@ mod tests {
 
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
 
+        // ACP that grants test group 1 visibility to the specific OAuth2 RS entry
+        let acp = AccessControlSearch::from_raw(
+            "test_oauth2_rs_acp",
+            Uuid::new_v4(),
+            UUID_TEST_GROUP_1,
+            filter_valid!(f_and(vec![
+                f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
+                f_eq(Attribute::Uuid, PartialValue::Uuid(rs_uuid))
+            ])),
+            Attribute::Name.as_ref(),
+        );
+
         // Check the authorisation search event, and that it reduces correctly.
         let se_a = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
             filter_all!(f_pres(Attribute::Name)),
         );
-        let ex_a = vec![Arc::new(ev1)];
+        let ex_a = vec![Arc::new(ev1.clone())];
         let ex_a_reduced = vec![ev1_reduced];
 
-        test_acp_search!(&se_a, vec![], r_set.clone(), ex_a);
-        test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
+        test_acp_search!(&se_a, vec![acp.clone()], r_set.clone(), ex_a);
+        test_acp_search_reduce!(&se_a, vec![acp.clone()], r_set.clone(), ex_a_reduced);
 
         // Check that anonymous is denied even though it's a member of the group.
+        // The oauth2 filter returns Deny for anonymous on RS entries, which blocks
+        // the ACP path from granting access.
         let anon: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS.clone().into();
         let mut anon = anon.into_invalid_new();
         anon.set_ava_set(&Attribute::MemberOf, ValueSetRefer::new(UUID_TEST_GROUP_1));
@@ -3126,8 +3140,8 @@ mod tests {
 
         let se_anon =
             SearchEvent::new_impersonate_entry(anon, filter_all!(f_pres(Attribute::Name)));
-        let ex_anon = vec![];
-        test_acp_search!(&se_anon, vec![], r_set.clone(), ex_anon);
+        let ex_anon: Vec<Arc<EntrySealedCommitted>> = vec![];
+        test_acp_search!(&se_anon, vec![acp.clone()], r_set.clone(), ex_anon);
 
         // Check the deny case.
         let se_b = SearchEvent::new_impersonate_entry(
@@ -3136,7 +3150,63 @@ mod tests {
         );
         let ex_b = vec![];
 
-        test_acp_search!(&se_b, vec![], r_set, ex_b);
+        test_acp_search!(&se_b, vec![acp], r_set, ex_b);
+    }
+
+    #[test]
+    fn test_access_oauth2_no_acp_denied() {
+        sketching::test_init();
+        // Test that group membership alone is NOT sufficient to see an OAuth2 RS entry
+        // when no search ACP targets the RS class. This validates the fix for Finding 10.
+        let rs_uuid = Uuid::new_v4();
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServerBasic.to_value()
+            ),
+            (Attribute::Uuid, Value::Uuid(rs_uuid)),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
+            (
+                Attribute::DisplayName,
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOriginLanding,
+                Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            (
+                Attribute::OAuth2RsScopeMap,
+                Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["groups".to_string()])
+                    .expect("invalid oauthscope")
+            ),
+            (
+                Attribute::OAuth2AllowInsecureClientDisablePkce,
+                Value::new_bool(true)
+            ),
+            (
+                Attribute::OAuth2JwtLegacyCryptoEnable,
+                Value::new_bool(false)
+            ),
+            (Attribute::OAuth2PreferShortUsername, Value::new_bool(false))
+        )
+        .into_sealed_committed();
+
+        let r_set = vec![Arc::new(ev1)];
+
+        // E_TEST_ACCOUNT_1 is a member of UUID_TEST_GROUP_1, but no ACP is provided.
+        // The entry must NOT be visible.
+        let se = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_pres(Attribute::Name)),
+        );
+        let ex: Vec<Arc<EntrySealedCommitted>> = vec![];
+
+        test_acp_search!(&se, vec![], r_set, ex);
     }
 
     #[test]
@@ -3669,6 +3739,190 @@ mod tests {
         );
 
         test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r1_set, false);
+    }
+
+    #[test]
+    fn test_access_modify_set_class_removal_bypass() {
+        sketching::test_init();
+
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
+        let r_set = vec![Arc::new(ev1)];
+
+        let acp_limited = AccessControlModify::from_raw(
+            "test_modify_limited_class",
+            Uuid::new_v4(),
+            UUID_TEST_GROUP_1,
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            "name class",
+            "name class",
+            EntryClass::Account.into(),
+            EntryClass::Account.into(),
+        );
+
+        let me_remove_posixaccount = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([Modify::Set(
+                Attribute::Class,
+                ValueSetIutf8::from_iter([
+                    EntryClass::Object.into(),
+                    EntryClass::Account.into(),
+                    EntryClass::Person.into(),
+                ])
+                .unwrap()
+            )]),
+        );
+        test_acp_modify!(&me_remove_posixaccount, vec![acp_limited.clone()], &r_set, false);
+
+        let me_remove_person_posixaccount = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([Modify::Set(
+                Attribute::Class,
+                ValueSetIutf8::from_iter([
+                    EntryClass::Object.into(),
+                    EntryClass::Account.into(),
+                ])
+                .unwrap()
+            )]),
+        );
+        test_acp_modify!(&me_remove_person_posixaccount, vec![acp_limited.clone()], &r_set, false);
+
+        let me_add_posixgroup = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([Modify::Set(
+                Attribute::Class,
+                ValueSetIutf8::from_iter([
+                    EntryClass::Object.into(),
+                    EntryClass::Account.into(),
+                    EntryClass::Person.into(),
+                    EntryClass::PosixAccount.into(),
+                    EntryClass::PosixGroup.into(),
+                ])
+                .unwrap()
+            )]),
+        );
+        test_acp_modify!(&me_add_posixgroup, vec![acp_limited.clone()], &r_set, false);
+
+        let me_no_change = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([Modify::Set(
+                Attribute::Class,
+                ValueSetIutf8::from_iter([
+                    EntryClass::Object.into(),
+                    EntryClass::Account.into(),
+                    EntryClass::Person.into(),
+                    EntryClass::PosixAccount.into(),
+                ])
+                .unwrap()
+            )]),
+        );
+        test_acp_modify!(&me_no_change, vec![acp_limited.clone()], &r_set, true);
+
+        let me_remove_account = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([Modify::Set(
+                Attribute::Class,
+                ValueSetIutf8::from_iter([
+                    EntryClass::Object.into(),
+                    EntryClass::Person.into(),
+                    EntryClass::PosixAccount.into(),
+                ])
+                .unwrap()
+            )]),
+        );
+        test_acp_modify!(&me_remove_account, vec![acp_limited.clone()], &r_set, true);
+
+        let me_remove_account_posixaccount = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([Modify::Set(
+                Attribute::Class,
+                ValueSetIutf8::from_iter([
+                    EntryClass::Object.into(),
+                    EntryClass::Person.into(),
+                ])
+                .unwrap()
+            )]),
+        );
+        test_acp_modify!(&me_remove_account_posixaccount, vec![acp_limited.clone()], &r_set, false);
+
+        let acp_broad_rem = AccessControlModify::from_raw(
+            "test_modify_broad_rem",
+            Uuid::new_v4(),
+            UUID_TEST_GROUP_1,
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            "name class",
+            "name class",
+            EntryClass::Account.into(),
+            "account person",
+        );
+        test_acp_modify!(&me_remove_posixaccount, vec![acp_broad_rem.clone()], &r_set, false);
+
+        let acp_allow_posixaccount_rem = AccessControlModify::from_raw(
+            "test_modify_allow_posixaccount_rem",
+            Uuid::new_v4(),
+            UUID_TEST_GROUP_1,
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            "name class",
+            "name class",
+            EntryClass::Account.into(),
+            "account posixaccount",
+        );
+        test_acp_modify!(&me_remove_posixaccount, vec![acp_allow_posixaccount_rem.clone()], &r_set, true);
+
+        let acp_all_classes = AccessControlModify::from_raw(
+            "test_modify_all_classes",
+            Uuid::new_v4(),
+            UUID_TEST_GROUP_1,
+            filter_valid!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            "name class",
+            "name class",
+            EntryClass::Account.into(),
+            "account person posixaccount posixgroup",
+        );
+        test_acp_modify!(&me_remove_posixaccount, vec![acp_all_classes.clone()], &r_set, true);
     }
 
     #[test]

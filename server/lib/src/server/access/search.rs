@@ -3,6 +3,7 @@ use super::profiles::{
     AccessControlReceiverCondition, AccessControlSearchResolved, AccessControlTargetCondition,
 };
 use super::AccessSrchResult;
+
 use crate::prelude::*;
 use std::collections::BTreeSet;
 use std::ops::Sub;
@@ -36,7 +37,7 @@ pub(super) fn apply_search_access(
         AccessSrchResult::Allow { mut attr } => allow.append(&mut attr),
     };
 
-    match search_oauth2_filter_entry(ident, entry) {
+    match search_oauth2_filter_entry(ident, related_acp, entry) {
         AccessSrchResult::Deny => denied = true,
         AccessSrchResult::Grant => grant = true,
         AccessSrchResult::Ignore => {}
@@ -44,7 +45,7 @@ pub(super) fn apply_search_access(
         AccessSrchResult::Allow { mut attr } => allow.append(&mut attr),
     };
 
-    match search_applications_filter_entry(ident, entry) {
+    match search_applications_filter_entry(ident, related_acp, entry) {
         AccessSrchResult::Deny => denied = true,
         AccessSrchResult::Grant => grant = true,
         AccessSrchResult::Ignore => {}
@@ -219,6 +220,7 @@ fn search_filter_entry(
 
 fn search_oauth2_filter_entry(
     ident: &Identity,
+    related_acp: &[AccessControlSearchResolved],
     entry: &Arc<EntrySealedCommitted>,
 ) -> AccessSrchResult {
     match &ident.origin {
@@ -244,6 +246,15 @@ fn search_oauth2_filter_entry(
                 .unwrap_or(false);
 
             if contains_o2_rs && contains_o2_scope_member {
+                let acp_match = related_acp.iter().any(|acs| match &acs.target_condition {
+                    AccessControlTargetCondition::Scope(f_res) => entry.entry_match_no_index(f_res),
+                });
+
+                if !acp_match {
+                    trace!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry, but no search ACP matches");
+                    return AccessSrchResult::Ignore;
+                }
+
                 security_debug!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
 
                 return AccessSrchResult::Allow {
@@ -264,6 +275,7 @@ fn search_oauth2_filter_entry(
 
 fn search_applications_filter_entry(
     ident: &Identity,
+    related_acp: &[AccessControlSearchResolved],
     entry: &Arc<EntrySealedCommitted>,
 ) -> AccessSrchResult {
     match &ident.origin {
@@ -290,6 +302,15 @@ fn search_applications_filter_entry(
             trace!(?entry);
 
             if contains_application && contains_application_linked_group {
+                let acp_match = related_acp.iter().any(|acs| match &acs.target_condition {
+                    AccessControlTargetCondition::Scope(f_res) => entry.entry_match_no_index(f_res),
+                });
+
+                if !acp_match {
+                    trace!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted application access for this entry, but no search ACP matches");
+                    return AccessSrchResult::Ignore;
+                }
+
                 security_debug!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted application access for this entry");
 
                 return AccessSrchResult::Allow {
