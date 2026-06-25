@@ -26,6 +26,7 @@ use kanidm_hsm_crypto::{provider::TpmHmacS256, structures::HmacS256Key};
 use md4::Md4;
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
+use subtle::ConstantTimeEq;
 use std::fmt;
 use std::fmt::Display;
 use std::num::ParseIntError;
@@ -965,8 +966,7 @@ impl Password {
                         })
                     })
                     .map(|hmac_key| {
-                        // Actually compare the outputs.
-                        hmac_key.into_bytes().as_slice() == key
+                        hmac_key.into_bytes().as_slice().ct_eq(key).into()
                     })
             }
             (Kdf::TPM_ARGON2ID { .. }, None) => {
@@ -1011,8 +1011,7 @@ impl Password {
                         CryptoError::Argon2
                     })
                     .map(|()| {
-                        // Actually compare the outputs.
-                        &check_key == key
+                        check_key.ct_eq(key).into()
                     })
             }
             (Kdf::PBKDF2(cost, salt, key), _) => {
@@ -1029,8 +1028,7 @@ impl Password {
                     chal_key.as_mut_slice(),
                 );
 
-                // Actually compare the outputs.
-                Ok(&chal_key == key)
+                Ok(chal_key.ct_eq(key).into())
             }
             (Kdf::PBKDF2_SHA1(cost, salt, key), _) => {
                 let key_len = key.len();
@@ -1044,8 +1042,7 @@ impl Password {
                     chal_key.as_mut_slice(),
                 );
 
-                // Actually compare the outputs.
-                Ok(&chal_key == key)
+                Ok(chal_key.ct_eq(key).into())
             }
             (Kdf::PBKDF2_SHA512(cost, salt, key), _) => {
                 let key_len = key.len();
@@ -1059,50 +1056,48 @@ impl Password {
                     chal_key.as_mut_slice(),
                 );
 
-                // Actually compare the outputs.
-                Ok(&chal_key == key)
+                Ok(chal_key.ct_eq(key).into())
             }
             (Kdf::SHA1(key), _) => {
                 let mut hasher = Sha1::new();
                 hasher.update(cleartext.as_bytes());
                 let r = hasher.finalize();
-                Ok(key == &(r.to_vec()))
+                Ok(key.ct_eq(&r.to_vec()).into())
             }
             (Kdf::SSHA1(salt, key), _) => {
                 let mut hasher = Sha1::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(salt);
                 let r = hasher.finalize();
-                Ok(key == &(r.to_vec()))
+                Ok(key.ct_eq(&r.to_vec()).into())
             }
             (Kdf::SHA256(key), _) => {
                 let mut hasher = Sha256::new();
                 hasher.update(cleartext.as_bytes());
                 let r = hasher.finalize();
-                Ok(key == &(r.to_vec()))
+                Ok(key.ct_eq(&r.to_vec()).into())
             }
             (Kdf::SSHA256(salt, key), _) => {
                 let mut hasher = Sha256::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(salt);
                 let r = hasher.finalize();
-                Ok(key == &(r.to_vec()))
+                Ok(key.ct_eq(&r.to_vec()).into())
             }
             (Kdf::SHA512(key), _) => {
                 let mut hasher = Sha512::new();
                 hasher.update(cleartext.as_bytes());
                 let r = hasher.finalize();
-                Ok(key == &(r.to_vec()))
+                Ok(key.ct_eq(&r.to_vec()).into())
             }
             (Kdf::SSHA512(salt, key), _) => {
                 let mut hasher = Sha512::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(salt);
                 let r = hasher.finalize();
-                Ok(key == &(r.to_vec()))
+                Ok(key.ct_eq(&r.to_vec()).into())
             }
             (Kdf::NT_MD4(key), _) => {
-                // We need to get the cleartext to utf16le for reasons.
                 let clear_utf16le: Vec<u8> = cleartext
                     .encode_utf16()
                     .map(|c| c.to_le_bytes())
@@ -1113,11 +1108,11 @@ impl Password {
                 hasher.update(&clear_utf16le);
                 let chal_key = hasher.finalize();
 
-                Ok(chal_key.as_slice() == key)
+                Ok(chal_key.ct_eq(key).into())
             }
             (Kdf::CRYPT_MD5 { s, h }, _) => {
                 let chal_key = crypt_md5::do_md5_crypt(cleartext.as_bytes(), s);
-                Ok(chal_key == *h)
+                Ok(chal_key.ct_eq(h).into())
             }
             (Kdf::CRYPT_SHA256 { h }, _) => {
                 let is_valid = sha_crypt::sha256_check(cleartext, h.as_str()).is_ok();

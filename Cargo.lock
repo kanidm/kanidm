@@ -3623,6 +3623,7 @@ dependencies = [
  "sha-crypt",
  "sha2 0.11.0-rc.5",
  "sketching",
+ "subtle",
  "tracing",
 ]
 

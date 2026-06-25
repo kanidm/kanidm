@@ -21,6 +21,7 @@ crypto-glue = { workspace = true }
 hex = { workspace = true }
 kanidm-hsm-crypto = { workspace = true }
 rand = { workspace = true }
+subtle = { workspace = true }
 md4 = { workspace = true }
 sha2 = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
