@@ -241,13 +241,24 @@ impl ValueSetOauthScopeMap {
         Some(Box::new(ValueSetOauthScopeMap { map }))
     }
 
-    pub(crate) fn from_set(resolved: Vec<ResolvedValueSetOauth2ScopeMap>) -> ValueSet {
+    pub(crate) fn from_set(
+        resolved: Vec<ResolvedValueSetOauth2ScopeMap>,
+    ) -> Result<ValueSet, OperationError> {
+        for scopemap in resolved.iter() {
+            for scope in &scopemap.scopes {
+                if !OAUTHSCOPE_RE.is_match(scope) {
+                    warn!("Oauth2ScopeMap scope value '{}' invalid", scope);
+                    return Err(OperationError::SC0035Oauth2ClaimMapClaimValueInvalid);
+                }
+            }
+        }
+
         let map = resolved
             .into_iter()
             .map(|ResolvedValueSetOauth2ScopeMap { group_uuid, scopes }| (group_uuid, scopes))
             .collect();
 
-        Box::new(ValueSetOauthScopeMap { map })
+        Ok(Box::new(ValueSetOauthScopeMap { map }))
     }
 }
 
@@ -532,7 +543,9 @@ impl ValueSetOauthClaimMap {
         Ok(Box::new(ValueSetOauthClaimMap { map }))
     }
 
-    pub(crate) fn from_set(resolved: Vec<ResolvedValueSetOauth2ClaimMap>) -> ValueSet {
+    pub(crate) fn from_set(
+        resolved: Vec<ResolvedValueSetOauth2ClaimMap>,
+    ) -> Result<ValueSet, OperationError> {
         let mut map = BTreeMap::new();
 
         for ResolvedValueSetOauth2ClaimMap {
@@ -542,6 +555,11 @@ impl ValueSetOauthClaimMap {
             claim_values,
         } in resolved.into_iter()
         {
+            if !OAUTH_CLAIMNAME_RE.is_match(&claim) {
+                warn!("Oauth2ClaimMap claim name '{}' invalid", claim);
+                return Err(OperationError::SC0034Oauth2ClaimMapClaimNameInvalid);
+            }
+
             match map.entry(claim) {
                 BTreeEntry::Vacant(e) => {
                     let mut values = BTreeMap::default();
@@ -554,7 +572,6 @@ impl ValueSetOauthClaimMap {
                     e.insert(claim_map);
                 }
                 BTreeEntry::Occupied(mut e) => {
-                    // Just add the uuid/value, this claim name already exists.
                     let mapping_mut = e.get_mut();
                     match mapping_mut.values.entry(group_uuid) {
                         BTreeEntry::Vacant(e) => {
@@ -568,7 +585,7 @@ impl ValueSetOauthClaimMap {
             }
         }
 
-        Box::new(ValueSetOauthClaimMap { map })
+        Ok(Box::new(ValueSetOauthClaimMap { map }))
     }
 
     fn trim(&mut self) {
@@ -1108,10 +1125,7 @@ mod tests {
         let valid = serde_json::json!(["read", "write"]);
 
         let result = ValueSetOauthScope::from_scim_json_put(valid);
-        assert!(
-            result.is_ok(),
-            "SCIM PUT should accept valid scope strings"
-        );
+        assert!(result.is_ok(), "SCIM PUT should accept valid scope strings");
     }
 
     #[test]

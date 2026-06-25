@@ -1163,7 +1163,7 @@ pub trait QueryServerTransaction<'a> {
                     },
                 ));
 
-                let vs = ValueSetOauthClaimMap::from_set(resolved);
+                let vs = ValueSetOauthClaimMap::from_set(resolved)?;
                 Ok(vs)
             }
 
@@ -1186,7 +1186,7 @@ pub trait QueryServerTransaction<'a> {
                     },
                 ));
 
-                let vs = ValueSetOauthScopeMap::from_set(resolved);
+                let vs = ValueSetOauthScopeMap::from_set(resolved)?;
                 Ok(vs)
             }
         }
