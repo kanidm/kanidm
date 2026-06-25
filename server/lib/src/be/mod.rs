@@ -55,6 +55,7 @@ use kanidm_proto::internal::FsType;
 const FILTER_SEARCH_TEST_THRESHOLD: usize = 0;
 const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
 const FILTER_SUBSTR_TEST_THRESHOLD: usize = 4;
+const FILTER_SUBSTR_TEST_MAX_TRIGRAPHS: usize = 256;
 
 #[derive(Debug, Clone)]
 /// Limits on the resources a single event can consume. These are defined per-event
@@ -633,7 +634,18 @@ pub trait BackendTransaction {
         };
 
         if idl.len() > FILTER_SUBSTR_TEST_THRESHOLD {
+            let mut trigraph_count = 1;
             for idx_key in grapheme_iter {
+                trigraph_count += 1;
+                if trigraph_count > FILTER_SUBSTR_TEST_MAX_TRIGRAPHS {
+                    debug!(
+                        "substring filter trigraph limit ({}) reached for attribute {:?}, truncating index lookups",
+                        FILTER_SUBSTR_TEST_MAX_TRIGRAPHS,
+                        attr
+                    );
+                    break;
+                }
+
                 // Get the idl for this
                 match self
                     .get_idlayer()
