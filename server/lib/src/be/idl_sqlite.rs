@@ -557,8 +557,9 @@ pub(crate) trait IdlSqliteTransaction {
         &self,
         index_name: &str,
     ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
-        // TODO: Once we have slopes we can add .exists_table, and assert
-        // it's an idx table.
+        if !self.list_idxs()?.contains(&index_name.to_string()) {
+            return Err(OperationError::InvalidAttributeName(index_name.to_string()));
+        }
 
         let query = format!("SELECT key, idl FROM {}.{}", self.get_db_name(), index_name);
         let mut stmt = self
