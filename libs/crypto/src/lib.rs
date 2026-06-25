@@ -26,11 +26,11 @@ use kanidm_hsm_crypto::{provider::TpmHmacS256, structures::HmacS256Key};
 use md4::Md4;
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
-use subtle::ConstantTimeEq;
 use std::fmt;
 use std::fmt::Display;
 use std::num::ParseIntError;
 use std::time::{Duration, Instant};
+use subtle::ConstantTimeEq;
 use tracing::{debug, error, warn};
 
 mod crypt_md5;
@@ -965,9 +965,7 @@ impl Password {
                             CryptoError::Hsm
                         })
                     })
-                    .map(|hmac_key| {
-                        hmac_key.into_bytes().as_slice().ct_eq(key).into()
-                    })
+                    .map(|hmac_key| hmac_key.into_bytes().as_slice().ct_eq(key).into())
             }
             (Kdf::TPM_ARGON2ID { .. }, None) => {
                 error!("Unable to validate password - not hsm context available");
@@ -1010,9 +1008,7 @@ impl Password {
                         error!(err = ?e, "unable to perform argon2id hash");
                         CryptoError::Argon2
                     })
-                    .map(|()| {
-                        check_key.ct_eq(key).into()
-                    })
+                    .map(|()| check_key.ct_eq(key).into())
             }
             (Kdf::PBKDF2(cost, salt, key), _) => {
                 // We have to get the number of bits to derive from our stored hash

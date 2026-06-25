@@ -3786,7 +3786,12 @@ mod tests {
                 .unwrap()
             )]),
         );
-        test_acp_modify!(&me_remove_posixaccount, vec![acp_limited.clone()], &r_set, false);
+        test_acp_modify!(
+            &me_remove_posixaccount,
+            vec![acp_limited.clone()],
+            &r_set,
+            false
+        );
 
         let me_remove_person_posixaccount = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
@@ -3796,14 +3801,16 @@ mod tests {
             )),
             modlist!([Modify::Set(
                 Attribute::Class,
-                ValueSetIutf8::from_iter([
-                    EntryClass::Object.into(),
-                    EntryClass::Account.into(),
-                ])
-                .unwrap()
+                ValueSetIutf8::from_iter([EntryClass::Object.into(), EntryClass::Account.into(),])
+                    .unwrap()
             )]),
         );
-        test_acp_modify!(&me_remove_person_posixaccount, vec![acp_limited.clone()], &r_set, false);
+        test_acp_modify!(
+            &me_remove_person_posixaccount,
+            vec![acp_limited.clone()],
+            &r_set,
+            false
+        );
 
         let me_add_posixgroup = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
@@ -3870,14 +3877,16 @@ mod tests {
             )),
             modlist!([Modify::Set(
                 Attribute::Class,
-                ValueSetIutf8::from_iter([
-                    EntryClass::Object.into(),
-                    EntryClass::Person.into(),
-                ])
-                .unwrap()
+                ValueSetIutf8::from_iter([EntryClass::Object.into(), EntryClass::Person.into(),])
+                    .unwrap()
             )]),
         );
-        test_acp_modify!(&me_remove_account_posixaccount, vec![acp_limited.clone()], &r_set, false);
+        test_acp_modify!(
+            &me_remove_account_posixaccount,
+            vec![acp_limited.clone()],
+            &r_set,
+            false
+        );
 
         let acp_broad_rem = AccessControlModify::from_raw(
             "test_modify_broad_rem",
@@ -3892,7 +3901,12 @@ mod tests {
             EntryClass::Account.into(),
             "account person",
         );
-        test_acp_modify!(&me_remove_posixaccount, vec![acp_broad_rem.clone()], &r_set, false);
+        test_acp_modify!(
+            &me_remove_posixaccount,
+            vec![acp_broad_rem.clone()],
+            &r_set,
+            false
+        );
 
         let acp_allow_posixaccount_rem = AccessControlModify::from_raw(
             "test_modify_allow_posixaccount_rem",
@@ -3907,7 +3921,12 @@ mod tests {
             EntryClass::Account.into(),
             "account posixaccount",
         );
-        test_acp_modify!(&me_remove_posixaccount, vec![acp_allow_posixaccount_rem.clone()], &r_set, true);
+        test_acp_modify!(
+            &me_remove_posixaccount,
+            vec![acp_allow_posixaccount_rem.clone()],
+            &r_set,
+            true
+        );
 
         let acp_all_classes = AccessControlModify::from_raw(
             "test_modify_all_classes",
@@ -3922,7 +3941,12 @@ mod tests {
             EntryClass::Account.into(),
             "account person posixaccount posixgroup",
         );
-        test_acp_modify!(&me_remove_posixaccount, vec![acp_all_classes.clone()], &r_set, true);
+        test_acp_modify!(
+            &me_remove_posixaccount,
+            vec![acp_all_classes.clone()],
+            &r_set,
+            true
+        );
     }
 
     #[test]
@@ -4023,17 +4047,20 @@ mod tests {
         let mut modset = crate::server::batch_modify::ModSetValid::default();
         modset.insert(
             UUID_TEST_ACCOUNT_1,
-            ModifyList::new_valid_list(vec![Modify::Present(Attribute::Name, Value::new_iname("modified"))]),
+            ModifyList::new_valid_list(vec![Modify::Present(
+                Attribute::Name,
+                Value::new_iname("modified"),
+            )]),
         );
         modset.insert(
             UUID_TEST_ACCOUNT_2,
-            ModifyList::new_valid_list(vec![Modify::Present(Attribute::Name, Value::new_iname("modified"))]),
+            ModifyList::new_valid_list(vec![Modify::Present(
+                Attribute::Name,
+                Value::new_iname("modified"),
+            )]),
         );
 
-        let batch_event = crate::server::batch_modify::BatchModifyEvent {
-            ident,
-            modset,
-        };
+        let batch_event = crate::server::batch_modify::BatchModifyEvent { ident, modset };
 
         let ac = AccessControls::default();
         let mut acw = ac.write();
@@ -4045,13 +4072,19 @@ mod tests {
             .batch_modify_allow_operation(&batch_event, &entries)
             .expect("op failed");
 
-        assert!(!res, "batch_modify must deny when any entry is out of ACP target scope");
+        assert!(
+            !res,
+            "batch_modify must deny when any entry is out of ACP target scope"
+        );
 
         // Sanity: single-entry batch for in-scope entry should succeed
         let mut modset_single = crate::server::batch_modify::ModSetValid::default();
         modset_single.insert(
             UUID_TEST_ACCOUNT_1,
-            ModifyList::new_valid_list(vec![Modify::Present(Attribute::Name, Value::new_iname("modified"))]),
+            ModifyList::new_valid_list(vec![Modify::Present(
+                Attribute::Name,
+                Value::new_iname("modified"),
+            )]),
         );
 
         let batch_single = crate::server::batch_modify::BatchModifyEvent {
@@ -4064,6 +4097,9 @@ mod tests {
             .batch_modify_allow_operation(&batch_single, &single_entry)
             .expect("op failed");
 
-        assert!(res_single, "batch_modify must allow when all entries are in ACP target scope");
+        assert!(
+            res_single,
+            "batch_modify must allow when all entries are in ACP target scope"
+        );
     }
 }

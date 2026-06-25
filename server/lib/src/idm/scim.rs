@@ -8,8 +8,8 @@ use base64::{
     engine::general_purpose::{STANDARD, URL_SAFE},
     Engine as _,
 };
-use crypto_glue::traits::Zeroizing;
 use compact_jwt::{Jws, JwsCompact};
+use crypto_glue::traits::Zeroizing;
 use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
 use kanidm_proto::scim_v1::*;
 use kanidm_proto::v1::OutboundMessage;
