@@ -227,8 +227,8 @@ fn search_oauth2_filter_entry(
         IdentType::Internal(_) | IdentType::Synch(_) => AccessSrchResult::Ignore,
         IdentType::User(iuser) => {
             if iuser.entry.get_uuid() == UUID_ANONYMOUS {
-                debug!("Anonymous can't access OAuth2 entries, ignoring");
-                return AccessSrchResult::Ignore;
+                debug!("Anonymous can't access OAuth2 entries, denying");
+                return AccessSrchResult::Deny;
             }
 
             let contains_o2_rs = entry
@@ -282,8 +282,8 @@ fn search_applications_filter_entry(
         IdentType::Internal(_) | IdentType::Synch(_) => AccessSrchResult::Ignore,
         IdentType::User(iuser) => {
             if iuser.entry.get_uuid() == UUID_ANONYMOUS {
-                debug!("Anonymous can't access application entries, ignoring");
-                return AccessSrchResult::Ignore;
+                debug!("Anonymous can't access application entries, denying");
+                return AccessSrchResult::Deny;
             }
 
             let contains_application = entry
