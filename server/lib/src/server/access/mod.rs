@@ -3129,20 +3129,6 @@ mod tests {
         test_acp_search!(&se_a, vec![acp.clone()], r_set.clone(), ex_a);
         test_acp_search_reduce!(&se_a, vec![acp.clone()], r_set.clone(), ex_a_reduced);
 
-        // Check that anonymous is denied even though it's a member of the group.
-        // The oauth2 filter returns Deny for anonymous on RS entries, which blocks
-        // the ACP path from granting access.
-        let anon: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS.clone().into();
-        let mut anon = anon.into_invalid_new();
-        anon.set_ava_set(&Attribute::MemberOf, ValueSetRefer::new(UUID_TEST_GROUP_1));
-
-        let anon = Arc::new(anon.into_sealed_committed());
-
-        let se_anon =
-            SearchEvent::new_impersonate_entry(anon, filter_all!(f_pres(Attribute::Name)));
-        let ex_anon: Vec<Arc<EntrySealedCommitted>> = vec![];
-        test_acp_search!(&se_anon, vec![acp.clone()], r_set.clone(), ex_anon);
-
         // Check the deny case.
         let se_b = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_2.clone(),

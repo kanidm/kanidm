@@ -1097,7 +1097,6 @@ mod tests {
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
-            // (Attribute::Class, EntryClass::OAuth2ResourceServerBasic.into()),
             (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
