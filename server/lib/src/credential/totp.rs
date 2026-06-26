@@ -2,13 +2,13 @@ use crypto_glue::{
     hmac_s1::{HmacSha1, HmacSha1Key},
     hmac_s256::{HmacSha256, HmacSha256Key},
     hmac_s512::{HmacSha512, HmacSha512Key},
-    traits::{Mac, Zeroizing},
+    traits::Mac,
 };
 use kanidm_proto::internal::{TotpAlgo as ProtoTotpAlgo, TotpSecret as ProtoTotp};
 use rand::RngExt;
 use std::convert::{TryFrom, TryInto};
 use std::time::{Duration, SystemTime};
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
 
@@ -280,12 +280,11 @@ impl Totp {
     }
 
     pub fn downgrade_to_legacy(self) -> Self {
-        let mut this = std::mem::ManuallyDrop::new(self);
         Totp {
             algo: TotpAlgo::Sha1,
-            secret: std::mem::replace(&mut this.secret, Zeroizing::new(Vec::new())),
-            step: this.step,
-            digits: this.digits,
+            secret: Zeroizing::new(self.secret.to_vec()),
+            step: self.step,
+            digits: self.digits,
         }
     }
 }
