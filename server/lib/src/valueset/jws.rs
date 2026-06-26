@@ -4,8 +4,8 @@ use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
 use base64urlsafedata::Base64UrlSafeData;
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer, JwsSigner};
-use crypto_glue::traits::Zeroizing;
 use hashbrown::HashSet;
+use zeroize::Zeroizing;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetJwsKeyEs256 {

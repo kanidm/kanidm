@@ -4,10 +4,10 @@ use crate::prelude::*;
 use crate::server::identity::Identity;
 use crate::server::keys::KeyProvidersTransaction;
 use crate::server::QueryServerTransaction;
-use crypto_glue::traits::Zeroizing;
 use kanidm_proto::internal::IdentifyUserResponse;
 use std::sync::Arc;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 // This is longer than a normal TOTP step as we expect users to be talking
 // to each other, so it could take a few minutes.

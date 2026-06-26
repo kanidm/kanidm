@@ -9,13 +9,13 @@ use base64::{
     Engine as _,
 };
 use compact_jwt::{Jws, JwsCompact};
-use crypto_glue::traits::Zeroizing;
 use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
 use kanidm_proto::scim_v1::*;
 use kanidm_proto::v1::OutboundMessage;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
+use zeroize::Zeroizing;
 
 // Internals of a Scim Sync token
 

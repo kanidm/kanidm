@@ -291,10 +291,7 @@ impl Totp {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
-    use crate::credential::totp::{Totp, TotpAlgo, TotpDigits, TotpError, TOTP_DEFAULT_STEP};
-    use crypto_glue::traits::Zeroizing;
+    use super::*;
 
     #[test]
     fn hotp_basic() {

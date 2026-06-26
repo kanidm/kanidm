@@ -4,11 +4,11 @@ use crate::server::keys::KeyId;
 use crate::value::{KeyStatus, KeyUsage};
 use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
-use crypto_glue::traits::Zeroizing;
 use kanidm_proto::scim_v1::server::ScimKeyInternal;
 use std::collections::BTreeMap;
 use std::fmt;
 use time::OffsetDateTime;
+use zeroize::Zeroizing;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct KeyInternalData {
@@ -409,11 +409,11 @@ impl ValueSetT for ValueSetKeyInternal {
 
 #[cfg(test)]
 mod tests {
-    use super::{KeyInternalData, ValueSetKeyInternal};
-    use crate::prelude::*;
-    use crate::server::keys::KeyId;
-    use crate::value::*;
-    use crypto_glue::traits::Zeroizing;
+    use super::*;
+    // use super::{KeyInternalData, ValueSetKeyInternal};
+    // use crate::prelude::*;
+    // use crate::server::keys::KeyId;
+    // use crate::value::*;
 
     #[test]
     fn test_valueset_key_internal_purge_trim() {
