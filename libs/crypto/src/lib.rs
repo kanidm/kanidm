@@ -1054,44 +1054,29 @@ impl Password {
 
                 Ok(chal_key.ct_eq(key).into())
             }
-            (Kdf::SHA1(key), _) => {
-                let mut hasher = Sha1::new();
-                hasher.update(cleartext.as_bytes());
-                let r = hasher.finalize();
-                Ok(key.ct_eq(&r.to_vec()).into())
-            }
+            (Kdf::SHA1(key), _) => Ok(key.ct_eq(&Sha1::digest(cleartext.as_bytes())).into()),
             (Kdf::SSHA1(salt, key), _) => {
                 let mut hasher = Sha1::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(salt);
                 let r = hasher.finalize();
-                Ok(key.ct_eq(&r.to_vec()).into())
+                Ok(key.ct_eq(&r).into())
             }
-            (Kdf::SHA256(key), _) => {
-                let mut hasher = Sha256::new();
-                hasher.update(cleartext.as_bytes());
-                let r = hasher.finalize();
-                Ok(key.ct_eq(&r.to_vec()).into())
-            }
+            (Kdf::SHA256(key), _) => Ok(key.ct_eq(&Sha256::digest(cleartext.as_bytes())).into()),
             (Kdf::SSHA256(salt, key), _) => {
                 let mut hasher = Sha256::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(salt);
                 let r = hasher.finalize();
-                Ok(key.ct_eq(&r.to_vec()).into())
+                Ok(key.ct_eq(&r).into())
             }
-            (Kdf::SHA512(key), _) => {
-                let mut hasher = Sha512::new();
-                hasher.update(cleartext.as_bytes());
-                let r = hasher.finalize();
-                Ok(key.ct_eq(&r.to_vec()).into())
-            }
+            (Kdf::SHA512(key), _) => Ok(key.ct_eq(&Sha512::digest(cleartext.as_bytes())).into()),
             (Kdf::SSHA512(salt, key), _) => {
                 let mut hasher = Sha512::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(salt);
                 let r = hasher.finalize();
-                Ok(key.ct_eq(&r.to_vec()).into())
+                Ok(key.ct_eq(&r).into())
             }
             (Kdf::NT_MD4(key), _) => {
                 let clear_utf16le: Vec<u8> = cleartext
@@ -1100,9 +1085,7 @@ impl Password {
                     .flat_map(|i| i.into_iter())
                     .collect();
 
-                let mut hasher = Md4::new();
-                hasher.update(&clear_utf16le);
-                let chal_key = hasher.finalize();
+                let chal_key = Md4::digest(&clear_utf16le);
 
                 Ok(chal_key.ct_eq(key).into())
             }
