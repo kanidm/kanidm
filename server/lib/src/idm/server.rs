@@ -1586,17 +1586,16 @@ impl IdmServerAuthTransaction<'_> {
                 return Ok(None);
             }
 
-            let session_id = Uuid::new_v4();
             security_info!(
                 "Starting session {} for {} {}",
-                session_id,
+                lae.eventid,
                 account.spn(),
                 account.uuid
             );
 
             // Account must be anon, so we can gen the uat.
             Ok(Some(LdapBoundToken {
-                session_id,
+                session_id: lae.eventid,
                 spn: account.spn().into(),
                 effective_session: LdapSession::UnixBind(UUID_ANONYMOUS),
             }))
@@ -1612,17 +1611,16 @@ impl IdmServerAuthTransaction<'_> {
 
             match auth {
                 Some(account) => {
-                    let session_id = Uuid::new_v4();
                     security_info!(
                         "Starting session {} for {} {}",
-                        session_id,
+                        lae.eventid,
                         account.spn(),
                         account.uuid
                     );
 
                     Ok(Some(LdapBoundToken {
                         spn: account.spn().into(),
-                        session_id,
+                        session_id: lae.eventid,
                         effective_session: LdapSession::UnixBind(account.uuid),
                     }))
                 }
@@ -4375,7 +4373,7 @@ mod tests {
                     Value::Cred(
                         "primary".to_string(),
                         Credential::new_password_only(&p, "banana", OffsetDateTime::UNIX_EPOCH)
-                            .unwrap()
+                            .expect("Failed to create credential")
                     )
                 )
             );
@@ -4386,7 +4384,7 @@ mod tests {
                     Value::Cred(
                         "unix".to_string(),
                         Credential::new_password_only(&p, "kampai", OffsetDateTime::UNIX_EPOCH)
-                            .unwrap(),
+                            .expect("Failed to create credential"),
                     ),
                 );
             }
@@ -4403,6 +4401,7 @@ mod tests {
             .unwrap()
             .auth_ldap(
                 &LdapAuthEvent {
+                    eventid: Uuid::new_v4(),
                     target: target_uuid,
                     cleartext: if has_posix_password {
                         "kampai".to_string()
