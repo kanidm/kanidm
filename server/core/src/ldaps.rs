@@ -36,7 +36,8 @@ async fn client_process_msg(
     qe_r_ref: &'static QueryServerReadV1,
     logging_pipeline: LoggerType,
 ) -> Option<LdapResponseState> {
-    let message_id = match logging_pipeline {
+    // The ID of the message/request
+    let request_id = match logging_pipeline {
         LoggerType::TracingForest => sketching::tracing_forest::id(),
         LoggerType::OpenTelemetry => {
             // try to the current span ID and fail back to generating a Uuid
@@ -52,7 +53,7 @@ async fn client_process_msg(
         "LDAP client"
     );
     qe_r_ref
-        .handle_ldaprequest(message_id, protomsg, uat, client_address.ip())
+        .handle_ldaprequest(request_id, protomsg, uat, client_address.ip())
         .await
 }
 

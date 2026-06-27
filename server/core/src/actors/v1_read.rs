@@ -1556,11 +1556,11 @@ impl QueryServerReadV1 {
     #[instrument(
         level = "info",
         skip_all,
-        fields(uuid = ?message_id)
+        fields(uuid = ?request_id)
     )]
     pub async fn handle_ldaprequest(
         &self,
-        message_id: Uuid,
+        request_id: Uuid,
         protomsg: LdapMsg,
         uat: Option<LdapBoundToken>,
         ip_addr: IpAddr,
@@ -1568,18 +1568,18 @@ impl QueryServerReadV1 {
         let res = match ServerOps::try_from(protomsg) {
             Ok(server_op) => self
                 .ldap
-                .do_op(&self.idms, server_op, uat, ip_addr, message_id)
+                .do_op(&self.idms, server_op, uat, ip_addr, request_id)
                 .await
                 .unwrap_or_else(|e| {
                     error!("do_op failed -> {:?}", e);
                     LdapResponseState::Disconnect(DisconnectionNotice::gen_response(
                         LdapResultCode::Other,
-                        format!("Internal Server Error {:?}", &message_id).as_str(),
+                        "Internal Server Error",
                     ))
                 }),
             Err(_) => LdapResponseState::Disconnect(DisconnectionNotice::gen_response(
                 LdapResultCode::ProtocolError,
-                format!("Invalid Request {:?}", &message_id).as_str(),
+                "Invalid Request",
             )),
         };
         Some(res)
