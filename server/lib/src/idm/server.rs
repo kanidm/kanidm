@@ -1079,9 +1079,8 @@ pub trait IdmServerTransaction<'a> {
                 let entry = self
                     .get_qs_txn()
                     .internal_search_uuid(apit.account_id)
-                    .map_err(|e| {
+                    .inspect_err(|e| {
                         admin_error!("Failed to validate ldap session -> {:?}", e);
-                        e
                     })?;
 
                 self.process_apit_to_identity(&apit, source, entry, ct)
