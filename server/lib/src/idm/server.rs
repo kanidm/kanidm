@@ -1067,10 +1067,10 @@ pub trait IdmServerTransaction<'a> {
         source: Source,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
-        match ldap_bound.effective_session.clone() {
+        match &ldap_bound.effective_session {
             LdapSession::UnixBind(user_id)
             | LdapSession::ApplicationPasswordBind { user_id, .. } => {
-                self.process_ldap_uuid_to_identity(user_id, ct, source, ldap_bound.session_id)
+                self.process_ldap_uuid_to_identity(*user_id, ct, source, ldap_bound.session_id)
             }
             LdapSession::UserAuthToken(uat_inner) => {
                 self.process_uat_to_identity(&uat_inner, ct, source)
