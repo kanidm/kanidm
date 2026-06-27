@@ -2961,19 +2961,15 @@ impl IdmServerProxyReadTransaction<'_> {
         token: &JwsCompact,
         ct: Duration,
     ) -> Result<OidcToken, Oauth2Error> {
-        // DANGER: Why do we have to do this? During the use of qs for internal search
-        // and other operations we need qs to be mut. But when we borrow oauth2rs here we
-        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
-        // safe however because no element of the search or write process calls the oauth2rs
-        // excepting for this idm layer within a single thread, meaning that stripping the
-        // lifetime here is safe since we are the sole accessor.
-        let o2rs: &Oauth2RS = unsafe {
-            let s = self.oauth2rs.inner.rs_set_get(client_id).ok_or_else(|| {
-                warn!("Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)");
+        let o2rs: Oauth2RS = self
+            .oauth2rs
+            .inner
+            .rs_set_get(client_id)
+            .ok_or_else(|| {
+                warn!("Invalid OAuth2 client_id");
                 Oauth2Error::InvalidClientId
-            })?;
-            &*(s as *const _)
-        };
+            })?
+            .clone();
 
         let access_token = o2rs
             .key_object
@@ -3037,7 +3033,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let iss = o2rs.iss.clone();
 
-        let s_claims = s_claims_for_account(o2rs, &account, &scopes);
+        let s_claims = s_claims_for_account(&o2rs, &account, &scopes);
         let extra_claims = extra_claims_for_account(&account, &o2rs.claim_map, &scopes);
 
         // ==== good to generate response ====
