@@ -827,6 +827,7 @@ impl Account {
 
     pub(crate) fn verify_application_password(
         &self,
+        session_id: Uuid,
         application: &Application,
         cleartext: &str,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
@@ -838,25 +839,32 @@ impl Account {
                 })?;
 
                 if password_verified {
-                    let session_id = uuid::Uuid::new_v4();
                     security_info!(
-                        "Starting session {} for {} {}",
+                        "Starting session {} for {} ({}) with application {}:{}",
                         session_id,
-                        self.spn,
-                        self.uuid
+                        self.spn(),
+                        self.uuid.hyphenated(),
+                        application.name,
+                        application.uuid.hyphenated(),
                     );
 
                     return Ok(Some(LdapBoundToken {
                         spn: self.spn.clone(),
                         session_id,
-                        effective_session: LdapSession::ApplicationPasswordBind(
-                            application.uuid,
-                            self.uuid,
-                        ),
+                        effective_session: LdapSession::ApplicationPasswordBind {
+                            application_id: application.uuid,
+                            user_id: self.uuid,
+                        },
                     }));
                 }
             }
         }
+
+        security_info!(
+            "Account {} ({}) does not have a configured application password.",
+            self.spn(),
+            self.uuid.hyphenated()
+        );
         Ok(None)
     }
 

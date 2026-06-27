@@ -39,7 +39,8 @@ pub enum LdapSession {
     UnixBind(Uuid),
     UserAuthToken(UserAuthToken),
     ApiToken(ApiToken),
-    ApplicationPasswordBind(Uuid, Uuid),
+    // Application working on behalf of a user
+    ApplicationPasswordBind { application_id: Uuid, user_id: Uuid },
 }
 
 #[derive(Debug, Clone)]
@@ -52,7 +53,7 @@ pub struct LdapBoundToken {
     // * A valid unix pw bind
     // * A valid ApiToken
     // In a way, this is a stepping stone to an "ident" but allows us to check
-    // the session is still "valid" depending on it's origin.
+    // the session is still "valid" depending on its origin.
     pub effective_session: LdapSession,
 }
 
@@ -381,7 +382,7 @@ impl LdapServer {
             //
             // ! Remember, searchEvent wraps to ignore hidden for us.
             let ident = idm_read
-                .validate_ldap_session(&uat.effective_session, source, ct)
+                .validate_ldap_session(uat, source, ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -439,6 +440,7 @@ impl LdapServer {
         idms: &IdmServer,
         dn: &str,
         pw: &str,
+        eventid: Uuid,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         security_info!(
             "Attempt LDAP Bind for {}",
@@ -464,8 +466,7 @@ impl LdapServer {
                 idm_auth.token_auth_ldap(&lae, ct).await?
             }
             LdapBindTarget::Application(ref app_name, usr_uuid) => {
-                let lae =
-                    LdapApplicationAuthEvent::new(app_name.as_str(), usr_uuid, pw.to_string())?;
+                let lae = LdapApplicationAuthEvent::new(eventid, app_name, usr_uuid, pw);
                 idm_auth.application_auth_ldap(&lae, ct).await?
             }
         };
@@ -540,7 +541,7 @@ impl LdapServer {
 
         // Build the event, with the permissions from effective_session
         let ident = idm_read
-            .validate_ldap_session(&uat.effective_session, source, ct)
+            .validate_ldap_session(uat, source, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -618,7 +619,7 @@ impl LdapServer {
 
         match server_op {
             ServerOps::SimpleBind(sbr) => self
-                .do_bind(idms, sbr.dn.as_str(), sbr.pw.as_str())
+                .do_bind(idms, sbr.dn.as_str(), sbr.pw.as_str(), eventid)
                 .await
                 .map(|r| match r {
                     Some(lbt) => LdapResponseState::Bind(lbt, sbr.gen_success()),
@@ -640,7 +641,7 @@ impl LdapServer {
                 None => {
                     // Search can occur without a bind, so bind first.
                     // This is per section 4 of RFC 4513 (https://www.rfc-editor.org/rfc/rfc4513#section-4).
-                    let lbt = match self.do_bind(idms, "", "").await {
+                    let lbt = match self.do_bind(idms, "", "", eventid).await {
                         Ok(Some(lbt)) => lbt,
                         Ok(None) => {
                             return Ok(LdapResponseState::Respond(
@@ -678,7 +679,7 @@ impl LdapServer {
                 None => {
                     // Compare can occur without a bind, so bind first.
                     // This is per section 4 of RFC 4513 (https://www.rfc-editor.org/rfc/rfc4513#section-4).
-                    let lbt = match self.do_bind(idms, "", "").await {
+                    let lbt = match self.do_bind(idms, "", "", eventid).await {
                         Ok(Some(lbt)) => lbt,
                         Ok(None) => {
                             return Ok(LdapResponseState::Respond(
@@ -903,13 +904,13 @@ mod tests {
         // default UNIX_PW bind (default is set to true)
         // Hence allows all unix binds
         let admin_t = ldaps
-            .do_bind(idms, "admin", TEST_PASSWORD)
+            .do_bind(idms, "admin", TEST_PASSWORD, Uuid::new_v4())
             .await
             .unwrap()
             .unwrap();
         assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
-            .do_bind(idms, "admin@example.com", TEST_PASSWORD)
+            .do_bind(idms, "admin@example.com", TEST_PASSWORD, Uuid::new_v4())
             .await
             .unwrap()
             .unwrap();
@@ -927,15 +928,26 @@ mod tests {
             .modify(&disallow_unix_pw_flag)
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
         );
         assert!(
-            ldaps.do_bind(idms, "", "test").await.unwrap_err() == OperationError::NotAuthenticated
+            ldaps
+                .do_bind(idms, "", "test", Uuid::new_v4())
+                .await
+                .unwrap_err()
+                == OperationError::NotAuthenticated
         );
-        let admin_t = ldaps.do_bind(idms, "admin", TEST_PASSWORD).await.unwrap();
+        let admin_t = ldaps
+            .do_bind(idms, "admin", TEST_PASSWORD, Uuid::new_v4())
+            .await
+            .unwrap();
         assert!(admin_t.is_none());
 
         // Setting UNIX_PW_BIND flag to true :
@@ -949,25 +961,30 @@ mod tests {
 
         // Now test the admin and various DN's
         let admin_t = ldaps
-            .do_bind(idms, "admin", TEST_PASSWORD)
+            .do_bind(idms, "admin", TEST_PASSWORD, Uuid::new_v4())
             .await
             .unwrap()
             .unwrap();
         assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
-            .do_bind(idms, "admin@example.com", TEST_PASSWORD)
+            .do_bind(idms, "admin@example.com", TEST_PASSWORD, Uuid::new_v4())
             .await
             .unwrap()
             .unwrap();
         assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
-            .do_bind(idms, STR_UUID_ADMIN, TEST_PASSWORD)
+            .do_bind(idms, STR_UUID_ADMIN, TEST_PASSWORD, Uuid::new_v4())
             .await
             .unwrap()
             .unwrap();
         assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
-            .do_bind(idms, "name=admin,dc=example,dc=com", TEST_PASSWORD)
+            .do_bind(
+                idms,
+                "name=admin,dc=example,dc=com",
+                TEST_PASSWORD,
+                Uuid::new_v4(),
+            )
             .await
             .unwrap()
             .unwrap();
@@ -977,6 +994,7 @@ mod tests {
                 idms,
                 "spn=admin@example.com,dc=example,dc=com",
                 TEST_PASSWORD,
+                Uuid::new_v4(),
             )
             .await
             .unwrap()
@@ -987,6 +1005,7 @@ mod tests {
                 idms,
                 format!("uuid={STR_UUID_ADMIN},dc=example,dc=com").as_str(),
                 TEST_PASSWORD,
+                Uuid::new_v4(),
             )
             .await
             .unwrap()
@@ -994,13 +1013,13 @@ mod tests {
         assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
 
         let admin_t = ldaps
-            .do_bind(idms, "name=admin", TEST_PASSWORD)
+            .do_bind(idms, "name=admin", TEST_PASSWORD, Uuid::new_v4())
             .await
             .unwrap()
             .unwrap();
         assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
-            .do_bind(idms, "spn=admin@example.com", TEST_PASSWORD)
+            .do_bind(idms, "spn=admin@example.com", TEST_PASSWORD, Uuid::new_v4())
             .await
             .unwrap()
             .unwrap();
@@ -1010,6 +1029,7 @@ mod tests {
                 idms,
                 format!("uuid={STR_UUID_ADMIN}").as_str(),
                 TEST_PASSWORD,
+                Uuid::new_v4(),
             )
             .await
             .unwrap()
@@ -1017,13 +1037,23 @@ mod tests {
         assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
 
         let admin_t = ldaps
-            .do_bind(idms, "admin,dc=example,dc=com", TEST_PASSWORD)
+            .do_bind(
+                idms,
+                "admin,dc=example,dc=com",
+                TEST_PASSWORD,
+                Uuid::new_v4(),
+            )
             .await
             .unwrap()
             .unwrap();
         assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
-            .do_bind(idms, "admin@example.com,dc=example,dc=com", TEST_PASSWORD)
+            .do_bind(
+                idms,
+                "admin@example.com,dc=example,dc=com",
+                TEST_PASSWORD,
+                Uuid::new_v4(),
+            )
             .await
             .unwrap()
             .unwrap();
@@ -1033,6 +1063,7 @@ mod tests {
                 idms,
                 format!("{STR_UUID_ADMIN},dc=example,dc=com").as_str(),
                 TEST_PASSWORD,
+                Uuid::new_v4(),
             )
             .await
             .unwrap()
@@ -1041,7 +1072,7 @@ mod tests {
 
         // Bad password, check last to prevent softlocking of the admin account.
         assert!(ldaps
-            .do_bind(idms, "admin", "test")
+            .do_bind(idms, "admin", "test", Uuid::new_v4())
             .await
             .unwrap()
             .is_none());
@@ -1051,7 +1082,8 @@ mod tests {
             .do_bind(
                 idms,
                 "spn=admin@example.com,dc=clownshoes,dc=example,dc=com",
-                TEST_PASSWORD
+                TEST_PASSWORD,
+                Uuid::new_v4()
             )
             .await
             .is_err());
@@ -1059,20 +1091,24 @@ mod tests {
             .do_bind(
                 idms,
                 "spn=claire@example.com,dc=example,dc=com",
-                TEST_PASSWORD
+                TEST_PASSWORD,
+                Uuid::new_v4()
             )
             .await
             .is_err());
         assert!(ldaps
-            .do_bind(idms, ",dc=example,dc=com", TEST_PASSWORD)
+            .do_bind(idms, ",dc=example,dc=com", TEST_PASSWORD, Uuid::new_v4())
             .await
             .is_err());
         assert!(ldaps
-            .do_bind(idms, "dc=example,dc=com", TEST_PASSWORD)
+            .do_bind(idms, "dc=example,dc=com", TEST_PASSWORD, Uuid::new_v4())
             .await
             .is_err());
 
-        assert!(ldaps.do_bind(idms, "claire", "test").await.is_err());
+        assert!(ldaps
+            .do_bind(idms, "claire", "test", Uuid::new_v4())
+            .await
+            .is_err());
     }
 
     #[idm_test]
@@ -1147,7 +1183,11 @@ mod tests {
         }
 
         // Setup the anonymous login
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -1222,7 +1262,11 @@ mod tests {
         }
 
         // Setup the anonymous login
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -1325,7 +1369,12 @@ mod tests {
 
         // No session, user not member of linked group
         let res = ldaps
-            .do_bind(idms, "spn=testperson1,app=testapp1,dc=example,dc=com", "")
+            .do_bind(
+                idms,
+                "spn=testperson1,app=testapp1,dc=example,dc=com",
+                "",
+                Uuid::new_v4(),
+            )
             .await;
         assert!(res.is_ok());
         assert!(res.unwrap().is_none());
@@ -1342,7 +1391,12 @@ mod tests {
 
         // No session, user does not have app password for testapp1
         let res = ldaps
-            .do_bind(idms, "spn=testperson1,app=testapp1,dc=example,dc=com", "")
+            .do_bind(
+                idms,
+                "spn=testperson1,app=testapp1,dc=example,dc=com",
+                "",
+                Uuid::new_v4(),
+            )
             .await;
         assert!(res.is_ok());
         assert!(res.unwrap().is_none());
@@ -1392,6 +1446,7 @@ mod tests {
                 idms,
                 "spn=testperson1,app=testapp1,dc=example,dc=com",
                 pass1.as_str(),
+                Uuid::new_v4(),
             )
             .await;
         assert!(res.is_ok());
@@ -1403,6 +1458,7 @@ mod tests {
                 idms,
                 "spn=testperson1,app=testapp1,dc=example,dc=com",
                 pass2.as_str(),
+                Uuid::new_v4(),
             )
             .await;
         assert!(res.is_ok());
@@ -1414,6 +1470,7 @@ mod tests {
                 idms,
                 "spn=testperson1,app=testapp1,dc=example,dc=com",
                 pass3.as_str(),
+                Uuid::new_v4(),
             )
             .await;
         assert!(res.is_ok());
@@ -1425,6 +1482,7 @@ mod tests {
                 idms,
                 "spn=testperson1,app=testapp1,dc=example,dc=com",
                 "FOO",
+                Uuid::new_v4(),
             )
             .await;
         assert!(res.is_ok());
@@ -1543,6 +1601,7 @@ mod tests {
                 idms,
                 format!("spn={usr_name},app={app1_name},dc=example,dc=com").as_str(),
                 pass_app1.as_str(),
+                Uuid::new_v4(),
             )
             .await;
         assert!(res.is_ok());
@@ -1554,6 +1613,7 @@ mod tests {
                 idms,
                 format!("spn={usr_name},app={app2_name},dc=example,dc=com").as_str(),
                 pass_app2.as_str(),
+                Uuid::new_v4(),
             )
             .await;
         assert!(res.is_ok());
@@ -1576,6 +1636,7 @@ mod tests {
                 idms,
                 format!("spn={usr_name},app={app2_name},dc=example,dc=com").as_str(),
                 pass_app2.as_str(),
+                Uuid::new_v4(),
             )
             .await;
         assert!(res.is_ok());
@@ -1587,6 +1648,7 @@ mod tests {
                 idms,
                 format!("spn={usr_name},app={app1_name},dc=example,dc=com").as_str(),
                 pass_app2.as_str(),
+                Uuid::new_v4(),
             )
             .await;
         assert!(res.is_ok());
@@ -1608,6 +1670,7 @@ mod tests {
                 idms,
                 format!("spn={usr_name},app={app2_name},dc=example,dc=com").as_str(),
                 pass_app2.as_str(),
+                Uuid::new_v4(),
             )
             .await;
         assert!(res.is_err());
@@ -1716,6 +1779,7 @@ mod tests {
                 idms,
                 format!("spn={usr_name},app={app1_name},dc=example,dc=com").as_str(),
                 pass_app1.as_str(),
+                Uuid::new_v4(),
             )
             .await;
         assert!(res.is_ok());
@@ -1731,8 +1795,7 @@ mod tests {
         let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
 
         let mut idms_auth = idms.auth().await.unwrap();
-        let lae = LdapApplicationAuthEvent::new(app1_name, usr_uuid, pass_app1)
-            .expect("Failed to build auth event");
+        let lae = LdapApplicationAuthEvent::new(Uuid::new_v4(), app1_name, usr_uuid, &pass_app1);
 
         let r1 = idms_auth
             .application_auth_ldap(&lae, time_low)
@@ -1829,7 +1892,11 @@ mod tests {
         }
 
         // Setup the anonymous login.
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -2064,7 +2131,11 @@ mod tests {
         // we don't have purpose so this isn't tested.
 
         // Bind with anonymous, search and show mail attr isn't accessible.
-        let anon_lbt = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_lbt = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_lbt.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -2097,7 +2168,7 @@ mod tests {
 
         // Bind using the token as a DN
         let sa_lbt = ldaps
-            .do_bind(idms, "dn=token", &apitoken.to_string())
+            .do_bind(idms, "dn=token", &apitoken.to_string(), Uuid::new_v4())
             .await
             .unwrap()
             .unwrap();
@@ -2108,7 +2179,7 @@ mod tests {
 
         // Bind using the token as a pw
         let sa_lbt = ldaps
-            .do_bind(idms, "", &apitoken.to_string())
+            .do_bind(idms, "", &apitoken.to_string(), Uuid::new_v4())
             .await
             .unwrap()
             .unwrap();
@@ -2239,7 +2310,11 @@ mod tests {
         }
 
         // Setup the anonymous login.
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -2319,7 +2394,11 @@ mod tests {
         }
 
         // Setup the anonymous login.
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -2386,7 +2465,11 @@ mod tests {
     async fn test_ldap_rootdse_basedn_change(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -2442,7 +2525,11 @@ mod tests {
         // Now re-test
         let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -2517,7 +2604,11 @@ mod tests {
         }
 
         // Setup the anonymous login.
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -2635,7 +2726,11 @@ mod tests {
         }
 
         // Setup the anonymous login.
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -2802,7 +2897,11 @@ mod tests {
         }
 
         // Setup the anonymous login
-        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        let anon_t = ldaps
+            .do_bind(idms, "", "", Uuid::new_v4())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             anon_t.effective_session,
             LdapSession::UnixBind(UUID_ANONYMOUS)
@@ -2847,7 +2946,7 @@ mod tests {
 
         // Setup the anonymous login
         let anon_t = ldaps
-            .do_bind(idms, "", "")
+            .do_bind(idms, "", "", Uuid::new_v4())
             .await
             .expect("failed to connect to ldap")
             .expect("Failed to get token");

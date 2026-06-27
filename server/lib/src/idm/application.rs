@@ -1,4 +1,4 @@
-use super::ldap::{LdapBoundToken, LdapSession};
+use super::ldap::LdapBoundToken;
 use crate::credential::apppwd::ApplicationPassword;
 use crate::idm::account::Account;
 use crate::idm::event::LdapApplicationAuthEvent;
@@ -165,7 +165,7 @@ impl IdmServerAuthTransaction<'_> {
             .applications
             .inner
             .set
-            .get(&lae.application)
+            .get(&lae.application.to_string())
             .ok_or_else(|| {
                 info!("Application {:?} not found", lae.application);
                 OperationError::NoMatchingEntries
@@ -185,29 +185,7 @@ impl IdmServerAuthTransaction<'_> {
             return Ok(None);
         }
 
-        match account.verify_application_password(application, lae.cleartext.as_str())? {
-            Some(_) => {
-                let session_id = Uuid::new_v4();
-                security_info!(
-                    "Starting session {} for {} {} with application {}:{:?}",
-                    session_id,
-                    account.spn(),
-                    account.uuid,
-                    application.name,
-                    application.uuid,
-                );
-
-                Ok(Some(LdapBoundToken {
-                    spn: account.spn().into(),
-                    session_id,
-                    effective_session: LdapSession::UnixBind(account.uuid),
-                }))
-            }
-            None => {
-                security_info!("Account does not have a configured application password.");
-                Ok(None)
-            }
-        }
+        account.verify_application_password(lae.eventid, application, &lae.cleartext)
     }
 }
 
