@@ -1073,7 +1073,7 @@ pub trait IdmServerTransaction<'a> {
                 self.process_ldap_uuid_to_identity(*user_id, ct, source, ldap_bound.session_id)
             }
             LdapSession::UserAuthToken(uat_inner) => {
-                self.process_uat_to_identity(&uat_inner, ct, source)
+                self.process_uat_to_identity(uat_inner, ct, source)
             }
             LdapSession::ApiToken(apit) => {
                 let entry = self
@@ -1083,7 +1083,7 @@ pub trait IdmServerTransaction<'a> {
                         admin_error!("Failed to validate ldap session -> {:?}", e);
                     })?;
 
-                self.process_apit_to_identity(&apit, source, entry, ct)
+                self.process_apit_to_identity(apit, source, entry, ct)
             }
         }
     }
