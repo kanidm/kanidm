@@ -453,17 +453,22 @@ impl LdapServer {
 
         let result = match target {
             LdapBindTarget::Account(uuid) => {
-                let lae = LdapAuthEvent::from_parts(uuid, pw.to_string())?;
+                let lae = LdapAuthEvent {
+                    eventid,
+                    target: uuid,
+                    cleartext: pw.to_string(),
+                };
                 idm_auth.auth_ldap(&lae, ct).await?
             }
             LdapBindTarget::ApiToken => {
-                let jwsc = JwsCompact::from_str(pw).map_err(|err| {
+                let token = JwsCompact::from_str(pw).map_err(|err| {
                     error!(?err, "Invalid JwsCompact supplied as authentication token.");
                     OperationError::NotAuthenticated
                 })?;
 
-                let lae = LdapTokenAuthEvent::from_parts(jwsc)?;
-                idm_auth.token_auth_ldap(&lae, ct).await?
+                idm_auth
+                    .token_auth_ldap(&LdapTokenAuthEvent { token }, ct)
+                    .await?
             }
             LdapBindTarget::Application(ref app_name, usr_uuid) => {
                 let lae = LdapApplicationAuthEvent::new(eventid, app_name, usr_uuid, pw);
