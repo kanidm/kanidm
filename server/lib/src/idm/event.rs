@@ -254,18 +254,20 @@ impl LdapTokenAuthEvent {
 }
 
 pub struct LdapApplicationAuthEvent {
+    pub eventid: Uuid,
     pub application: String,
     pub target: Uuid,
     pub cleartext: String,
 }
 
 impl LdapApplicationAuthEvent {
-    pub fn new(app_name: &str, usr_uuid: Uuid, cleartext: String) -> Result<Self, OperationError> {
-        Ok(LdapApplicationAuthEvent {
-            application: app_name.to_string(),
-            target: usr_uuid,
-            cleartext,
-        })
+    pub fn new(eventid: Uuid, application: &str, target: Uuid, cleartext: &str) -> Self {
+        LdapApplicationAuthEvent {
+            eventid,
+            application: application.to_string(),
+            target,
+            cleartext: cleartext.to_string(),
+        }
     }
 }
 
