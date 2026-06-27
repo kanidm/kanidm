@@ -24,7 +24,7 @@ const LDAP_CLIENT_CONN_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Lifetime of the LDAP client connection, including the authentication token if authenticated.
 #[derive(Default)]
-struct LdapClientConnection {
+struct LdapSession {
     uat: Option<LdapBoundToken>,
 }
 
@@ -70,7 +70,7 @@ async fn client_process<STREAM>(
     let mut r = FramedRead::new(r, LdapCodec::default());
     let mut w = FramedWrite::new(w, LdapCodec::default());
 
-    let mut session = LdapClientConnection::default();
+    let mut session = LdapSession::default();
     // Now that we have the session we begin an event loop to process input OR we return.
     loop {
         let protomsg = match timeout(LDAP_CLIENT_IO_TIMEOUT, r.next()).await {
