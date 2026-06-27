@@ -64,7 +64,13 @@ pub fn migration_entry_attrs(
             EntryClass::AccountPolicy.as_ref(),
             EntryClass::PosixGroup.as_ref(),
         ]);
-        allow_attrs.extend([Attribute::Member, Attribute::Name, Attribute::Description])
+        allow_attrs.extend([
+            Attribute::Member,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::EntryManagedBy,
+            Attribute::GidNumber,
+        ])
     }
 
     if classes.contains(EntryClass::Person.into()) {
@@ -76,10 +82,13 @@ pub fn migration_entry_attrs(
         ]);
         allow_attrs.extend([
             Attribute::Name,
+            Attribute::DisplayName,
             Attribute::LegalName,
             Attribute::Mail,
             Attribute::SshPublicKey,
             Attribute::Description,
+            Attribute::LoginShell,
+            Attribute::GidNumber,
         ])
     }
 
@@ -91,9 +100,11 @@ pub fn migration_entry_attrs(
         ]);
         allow_attrs.extend([
             Attribute::Name,
+            Attribute::DisplayName,
             Attribute::Mail,
             Attribute::SshPublicKey,
             Attribute::Description,
+            Attribute::EntryManagedBy,
         ])
     }
 
@@ -113,12 +124,14 @@ pub fn migration_entry_attrs(
     if classes.contains(EntryClass::OAuth2ResourceServer.into()) {
         allow_cls.clear();
         allow_cls.extend([
+            EntryClass::Account.as_ref(),
             EntryClass::OAuth2ResourceServer.as_ref(),
             EntryClass::OAuth2ResourceServerBasic.as_ref(),
             EntryClass::OAuth2ResourceServerPublic.as_ref(),
         ]);
         allow_attrs.extend([
             Attribute::Name,
+            Attribute::DisplayName,
             Attribute::Description,
             Attribute::OAuth2RsScopeMap,
             Attribute::OAuth2RsSupScopeMap,
@@ -126,7 +139,9 @@ pub fn migration_entry_attrs(
             Attribute::OAuth2PreferShortUsername,
             Attribute::OAuth2RsClaimMap,
             Attribute::OAuth2RsOrigin,
+            Attribute::OAuth2RsOriginLanding,
             Attribute::OAuth2ConsentPromptEnable,
+            Attribute::EntryManagedBy,
         ])
     }
 
