@@ -22,17 +22,10 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 const LDAP_CLIENT_IO_TIMEOUT: Duration = Duration::from_secs(300);
 const LDAP_CLIENT_CONN_TIMEOUT: Duration = Duration::from_secs(30);
 
-struct LdapSession {
+/// Lifetime of the LDAP client connection, including the authentication token if authenticated.
+#[derive(Default)]
+struct LdapClientConnection {
     uat: Option<LdapBoundToken>,
-}
-
-impl LdapSession {
-    fn new() -> Self {
-        LdapSession {
-            // We start un-authenticated
-            uat: None,
-        }
-    }
 }
 
 #[instrument(name = "ldap-request", skip(client_address, qe_r_ref))]
@@ -43,7 +36,7 @@ async fn client_process_msg(
     qe_r_ref: &'static QueryServerReadV1,
     logging_pipeline: LoggerType,
 ) -> Option<LdapResponseState> {
-    let eventid = match logging_pipeline {
+    let message_id = match logging_pipeline {
         LoggerType::TracingForest => sketching::tracing_forest::id(),
         LoggerType::OpenTelemetry => {
             // try to the current span ID and fail back to generating a Uuid
@@ -59,7 +52,7 @@ async fn client_process_msg(
         "LDAP client"
     );
     qe_r_ref
-        .handle_ldaprequest(eventid, protomsg, uat, client_address.ip())
+        .handle_ldaprequest(message_id, protomsg, uat, client_address.ip())
         .await
 }
 
@@ -76,8 +69,7 @@ async fn client_process<STREAM>(
     let mut r = FramedRead::new(r, LdapCodec::default());
     let mut w = FramedWrite::new(w, LdapCodec::default());
 
-    // This is a connected client session. we need to associate some state to the session
-    let mut session = LdapSession::new();
+    let mut session = LdapClientConnection::default();
     // Now that we have the session we begin an event loop to process input OR we return.
     loop {
         let protomsg = match timeout(LDAP_CLIENT_IO_TIMEOUT, r.next()).await {
@@ -97,12 +89,17 @@ async fn client_process<STREAM>(
         };
 
         // Start the event
-        let uat = session.uat.clone();
-        let caddr = client_address;
-
         debug!(?client_address, ?connection_address);
 
-        match client_process_msg(uat, caddr, protomsg, qe_r_ref, logging_pipeline).await {
+        match client_process_msg(
+            session.uat.clone(),
+            client_address,
+            protomsg,
+            qe_r_ref,
+            logging_pipeline,
+        )
+        .await
+        {
             // I'd really have liked to have put this near the [LdapResponseState::Bind] but due
             // to the handing of `audit` it isn't possible due to borrows, etc.
             Some(LdapResponseState::Unbind) => break,

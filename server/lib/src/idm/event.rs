@@ -226,8 +226,6 @@ impl CredentialStatusEvent {
 }
 
 pub struct LdapAuthEvent {
-    // pub ident: Identity,
-    pub eventid: Uuid,
     pub target: Uuid,
     pub cleartext: String,
 }
@@ -237,16 +235,14 @@ pub struct LdapTokenAuthEvent {
 }
 
 pub struct LdapApplicationAuthEvent {
-    pub eventid: Uuid,
     pub application: String,
     pub target: Uuid,
     pub cleartext: String,
 }
 
 impl LdapApplicationAuthEvent {
-    pub fn new(eventid: Uuid, application: &str, target: Uuid, cleartext: &str) -> Self {
+    pub fn new(application: &str, target: Uuid, cleartext: &str) -> Self {
         LdapApplicationAuthEvent {
-            eventid,
             application: application.to_string(),
             target,
             cleartext: cleartext.to_string(),

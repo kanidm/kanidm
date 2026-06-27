@@ -1586,16 +1586,17 @@ impl IdmServerAuthTransaction<'_> {
                 return Ok(None);
             }
 
+            let session_id = Uuid::new_v4();
             security_info!(
                 "Starting session {} for {} {}",
-                lae.eventid,
+                session_id,
                 account.spn(),
                 account.uuid
             );
 
             // Account must be anon, so we can gen the uat.
             Ok(Some(LdapBoundToken {
-                session_id: lae.eventid,
+                session_id,
                 spn: account.spn().into(),
                 effective_session: LdapSession::UnixBind(UUID_ANONYMOUS),
             }))
@@ -1605,26 +1606,26 @@ impl IdmServerAuthTransaction<'_> {
                 return Ok(None);
             }
 
-            let auth = self
+            if let Some(account) = self
                 .auth_with_unix_pass(lae.target, &lae.cleartext, ct)
-                .await?;
+                .await?
+            {
+                // New session id for this ldap bind, which is not the same as the session id of the uat.
+                let session_id = Uuid::new_v4();
+                security_info!(
+                    "Starting session {} for {} {}",
+                    session_id,
+                    account.spn(),
+                    account.uuid
+                );
 
-            match auth {
-                Some(account) => {
-                    security_info!(
-                        "Starting session {} for {} {}",
-                        lae.eventid,
-                        account.spn(),
-                        account.uuid
-                    );
-
-                    Ok(Some(LdapBoundToken {
-                        spn: account.spn().into(),
-                        session_id: lae.eventid,
-                        effective_session: LdapSession::UnixBind(account.uuid),
-                    }))
-                }
-                None => Ok(None),
+                Ok(Some(LdapBoundToken {
+                    spn: account.spn().into(),
+                    session_id,
+                    effective_session: LdapSession::UnixBind(account.uuid),
+                }))
+            } else {
+                Ok(None)
             }
         }
     }
@@ -4401,7 +4402,6 @@ mod tests {
             .unwrap()
             .auth_ldap(
                 &LdapAuthEvent {
-                    eventid: Uuid::new_v4(),
                     target: target_uuid,
                     cleartext: if has_posix_password {
                         "kampai".to_string()

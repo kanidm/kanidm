@@ -827,7 +827,6 @@ impl Account {
 
     pub(crate) fn verify_application_password(
         &self,
-        session_id: Uuid,
         application: &Application,
         cleartext: &str,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
@@ -839,6 +838,8 @@ impl Account {
                 })?;
 
                 if password_verified {
+                    // New authenticated session has started, they get a new session ID
+                    let session_id = Uuid::new_v4();
                     security_info!(
                         "Starting session {} for {} ({}) with application {}:{}",
                         session_id,

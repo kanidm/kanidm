@@ -165,7 +165,7 @@ impl IdmServerAuthTransaction<'_> {
             .applications
             .inner
             .set
-            .get(&lae.application.to_string())
+            .get(&lae.application)
             .ok_or_else(|| {
                 info!("Application {:?} not found", lae.application);
                 OperationError::NoMatchingEntries
@@ -185,7 +185,7 @@ impl IdmServerAuthTransaction<'_> {
             return Ok(None);
         }
 
-        account.verify_application_password(lae.eventid, application, &lae.cleartext)
+        account.verify_application_password(application, &lae.cleartext)
     }
 }
 
