@@ -226,31 +226,12 @@ impl CredentialStatusEvent {
 }
 
 pub struct LdapAuthEvent {
-    // pub ident: Identity,
     pub target: Uuid,
     pub cleartext: String,
 }
 
-impl LdapAuthEvent {
-    pub fn from_parts(target: Uuid, cleartext: String) -> Result<Self, OperationError> {
-        // let e = Event::from_ro_uat(audit, qs, uat)?;
-
-        Ok(LdapAuthEvent {
-            // event: e,
-            target,
-            cleartext,
-        })
-    }
-}
-
 pub struct LdapTokenAuthEvent {
     pub token: JwsCompact,
-}
-
-impl LdapTokenAuthEvent {
-    pub fn from_parts(token: JwsCompact) -> Result<Self, OperationError> {
-        Ok(LdapTokenAuthEvent { token })
-    }
 }
 
 pub struct LdapApplicationAuthEvent {
@@ -260,12 +241,12 @@ pub struct LdapApplicationAuthEvent {
 }
 
 impl LdapApplicationAuthEvent {
-    pub fn new(app_name: &str, usr_uuid: Uuid, cleartext: String) -> Result<Self, OperationError> {
-        Ok(LdapApplicationAuthEvent {
-            application: app_name.to_string(),
-            target: usr_uuid,
-            cleartext,
-        })
+    pub fn new(application: &str, target: Uuid, cleartext: &str) -> Self {
+        LdapApplicationAuthEvent {
+            application: application.to_string(),
+            target,
+            cleartext: cleartext.to_string(),
+        }
     }
 }
 

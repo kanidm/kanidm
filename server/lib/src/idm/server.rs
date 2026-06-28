@@ -997,13 +997,14 @@ pub trait IdmServerTransaction<'a> {
 
     fn process_ldap_uuid_to_identity(
         &mut self,
-        uuid: &Uuid,
+        uuid: Uuid,
         ct: Duration,
         source: Source,
+        session_id: Uuid,
     ) -> Result<Identity, OperationError> {
         let entry = self
             .get_qs_txn()
-            .internal_search_uuid(*uuid)
+            .internal_search_uuid(uuid)
             .map_err(|err| {
                 error!(?err, ?uuid, "Failed to search user by uuid");
                 err
@@ -1018,7 +1019,7 @@ pub trait IdmServerTransaction<'a> {
         }
 
         // Good to go
-        let anon_entry = if *uuid == UUID_ANONYMOUS {
+        let anon_entry = if uuid == UUID_ANONYMOUS {
             // We already have it.
             entry
         } else {
@@ -1035,7 +1036,6 @@ pub trait IdmServerTransaction<'a> {
         };
 
         let mut limits = Limits::default();
-        let session_id = Uuid::new_v4();
 
         // Update limits from account policy
         if let Some(max_results) = account_policy.limit_search_max_results() {
@@ -1063,22 +1063,24 @@ pub trait IdmServerTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     fn validate_ldap_session(
         &mut self,
-        session: &LdapSession,
+        ldap_bound: &LdapBoundToken,
         source: Source,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
-        match session {
-            LdapSession::UnixBind(uuid) | LdapSession::ApplicationPasswordBind(_, uuid) => {
-                self.process_ldap_uuid_to_identity(uuid, ct, source)
+        match &ldap_bound.effective_session {
+            LdapSession::UnixBind(user_id)
+            | LdapSession::ApplicationPasswordBind { user_id, .. } => {
+                self.process_ldap_uuid_to_identity(*user_id, ct, source, ldap_bound.session_id)
             }
-            LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(uat, ct, source),
+            LdapSession::UserAuthToken(uat_inner) => {
+                self.process_uat_to_identity(uat_inner, ct, source)
+            }
             LdapSession::ApiToken(apit) => {
                 let entry = self
                     .get_qs_txn()
                     .internal_search_uuid(apit.account_id)
-                    .map_err(|e| {
+                    .inspect_err(|e| {
                         admin_error!("Failed to validate ldap session -> {:?}", e);
-                        e
                     })?;
 
                 self.process_apit_to_identity(apit, source, entry, ct)
@@ -1603,27 +1605,26 @@ impl IdmServerAuthTransaction<'_> {
                 return Ok(None);
             }
 
-            let auth = self
+            if let Some(account) = self
                 .auth_with_unix_pass(lae.target, &lae.cleartext, ct)
-                .await?;
+                .await?
+            {
+                // New session id for this ldap bind, which is not the same as the session id of the uat.
+                let session_id = Uuid::new_v4();
+                security_info!(
+                    "Starting session {} for {} {}",
+                    session_id,
+                    account.spn(),
+                    account.uuid
+                );
 
-            match auth {
-                Some(account) => {
-                    let session_id = Uuid::new_v4();
-                    security_info!(
-                        "Starting session {} for {} {}",
-                        session_id,
-                        account.spn(),
-                        account.uuid
-                    );
-
-                    Ok(Some(LdapBoundToken {
-                        spn: account.spn().into(),
-                        session_id,
-                        effective_session: LdapSession::UnixBind(account.uuid),
-                    }))
-                }
-                None => Ok(None),
+                Ok(Some(LdapBoundToken {
+                    spn: account.spn().into(),
+                    session_id,
+                    effective_session: LdapSession::UnixBind(account.uuid),
+                }))
+            } else {
+                Ok(None)
             }
         }
     }
@@ -4372,7 +4373,7 @@ mod tests {
                     Value::Cred(
                         "primary".to_string(),
                         Credential::new_password_only(&p, "banana", OffsetDateTime::UNIX_EPOCH)
-                            .unwrap()
+                            .expect("Failed to create credential")
                     )
                 )
             );
@@ -4383,7 +4384,7 @@ mod tests {
                     Value::Cred(
                         "unix".to_string(),
                         Credential::new_password_only(&p, "kampai", OffsetDateTime::UNIX_EPOCH)
-                            .unwrap(),
+                            .expect("Failed to create credential"),
                     ),
                 );
             }
