@@ -103,6 +103,11 @@ pub trait PamHandler {
 
     fn service_info(&self) -> PamResult<PamServiceInfo>;
 
+    fn envlist(&self) -> PamResult<Vec<String>>;
+
+    #[allow(dead_code)]
+    fn set_env(&self, value: &str) -> PamResult<()>;
+
     fn authtok(&self) -> PamResult<Option<String>>;
 
     /// Display a message to the user.
@@ -132,6 +137,11 @@ pub fn sm_authenticate_connected<P: PamHandler>(
             return e;
         }
     };
+
+    // We can use the env vars here to direct our authentication.
+    for (key, value) in std::env::vars() {
+        debug!("{key}: {value}");
+    }
 
     let account_id = match pamh.account_id() {
         Ok(acc) => acc,
@@ -475,6 +485,14 @@ pub fn acct_mgmt<P: PamHandler>(
     req_opt: RequestOptions,
     current_time: OffsetDateTime,
 ) -> PamResultCode {
+    let info = match pamh.service_info() {
+        Ok(info) => info,
+        Err(e) => {
+            error!(err = ?e, "get_pam_info");
+            return e;
+        }
+    };
+
     let account_id = match pamh.account_id() {
         Ok(acc) => acc,
         Err(err) => return err,
@@ -482,7 +500,7 @@ pub fn acct_mgmt<P: PamHandler>(
 
     match req_opt.connect_to_daemon() {
         Source::Daemon(daemon_client) => {
-            let req = ClientRequest::PamAccountAllowed(account_id);
+            let req = ClientRequest::PamAccountAllowed { account_id, info };
             match daemon_client.call_and_wait(req, None) {
                 Ok(r) => match r {
                     ClientResponse::PamStatus(Some(true)) => {
@@ -556,6 +574,14 @@ pub fn sm_open_session<P: PamHandler>(
     _opts: &ModuleOptions,
     req_opt: RequestOptions,
 ) -> PamResultCode {
+    let info = match pamh.service_info() {
+        Ok(info) => info,
+        Err(e) => {
+            error!(err = ?e, "get_pam_info");
+            return e;
+        }
+    };
+
     let account_id = match pamh.account_id() {
         Ok(acc) => acc,
         Err(err) => return err,
@@ -563,7 +589,7 @@ pub fn sm_open_session<P: PamHandler>(
 
     match req_opt.connect_to_daemon() {
         Source::Daemon(daemon_client) => {
-            let req = ClientRequest::PamAccountBeginSession(account_id);
+            let req = ClientRequest::PamAccountBeginSession { account_id, info };
 
             match daemon_client.call_and_wait(req, None) {
                 Ok(ClientResponse::Ok) => {
@@ -594,6 +620,14 @@ pub fn sm_chauthtok<P: PamHandler>(_pamh: &P, _opts: &ModuleOptions) -> PamResul
     PamResultCode::PAM_IGNORE
 }
 
-pub fn sm_setcred<P: PamHandler>(_pamh: &P, _opts: &ModuleOptions) -> PamResultCode {
+pub fn sm_setcred<P: PamHandler>(pamh: &P, _opts: &ModuleOptions) -> PamResultCode {
+
+    match pamh.envlist() {
+        Ok(envlist) => debug!(?envlist),
+        Err(err) => {
+            error!(?err, "get_envlist");
+        }
+    };
+
     PamResultCode::PAM_SUCCESS
 }
