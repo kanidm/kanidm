@@ -5,41 +5,85 @@ function setupInteractivePwdFormListeners() {
     const new_pwd = document.getElementById("new-password");
     const new_pwd_check = document.getElementById("new-password-check");
     const pwd_submit = document.getElementById("password-submit");
+    const clientside_feedback = document.getElementById("clientside-feedback");
+    const serverside_feedback = document.getElementById("serverside-feedback");
+    let pwd_valid = false;
+    let pwd_check_valid = false;
 
-    function markPwdCheckValid() {
-        new_pwd_check.classList.remove("is-invalid");
-        new_pwd_check.classList.add("is-valid");
-        pwd_submit.disabled = false;
+    function validatePasswordClientside() {
+        let result = window.zxcvbn(
+            new_pwd.value,
+            ['kanidm'] // context-specific words - TODO: add username, email & org name?
+        );
+        console.debug("zxcvbn result:", result);
+        if (result.feedback.warning) {
+            clientside_feedback.innerText = result.feedback.warning;
+        } else if (result.feedback.suggestions.length) {
+            clientside_feedback.innerText = result.feedback.suggestions.join("\n");
+        } else if (result.score < 4){
+            clientside_feedback.innerText = `Password is not strong enough`; //? add: (score: ${Math.ceil(result.guesses_log10-1)}/10)`; 
+        } else {
+            clientside_feedback.innerText = '';
+        }
+        if (result.score < 4) {
+            new_pwd.classList.remove("is-valid");
+            new_pwd.classList.add("is-invalid");
+            pwd_valid = false;
+        } else {
+            new_pwd.classList.remove("is-invalid");
+            new_pwd.classList.add("is-valid");
+            pwd_valid = true;
+        }
     }
 
-    function markPwdCheckInvalid() {
-        new_pwd_check.classList.add("is-invalid");
-        new_pwd_check.classList.remove("is-valid");
-        pwd_submit.disabled = true;
-    }
-
-    new_pwd.addEventListener("input", () => {
+    /** @return {bool} true if it's valid */
+    function validatePwdCheck() {
         // Don't mark invalid if user didn't fill in the confirmation box yet
         // Also KeepassXC with autocomplete likes to fire off input events when
         // both inputs are empty.
-        if (new_pwd_check.value !== "") {
-            if (new_pwd.value === new_pwd_check.value) {
-                markPwdCheckValid();
-            } else {
-                markPwdCheckInvalid();
-            }
+        if (new_pwd_check.value === "") {
+            // if the field is empty, it's not explicitly invalid, but also not valid
+            new_pwd_check.classList.remove("is-invalid");
+            new_pwd_check.classList.remove("is-valid");
+            pwd_check_valid = false;
+        } else if (new_pwd.value !== new_pwd_check.value) {
+            new_pwd_check.classList.add("is-invalid");
+            new_pwd_check.classList.remove("is-valid");
+            pwd_check_valid = false;
+        } else {
+            new_pwd_check.classList.remove("is-invalid");
+            new_pwd_check.classList.add("is-valid");
+            pwd_check_valid = true;
         }
+    }
+
+    function updateSubmitButtonState() {
+        console.log('submit?', pwd_valid, pwd_check_valid)
+        pwd_submit.disabled = !(pwd_valid && pwd_check_valid);
+    }
+
+    new_pwd.addEventListener("input", () => {
+        let disable_submit = false;
+        
+        // remove feedback from serverside render when user tries new password
         new_pwd.classList.remove("is-invalid");
+        serverside_feedback.innerText = '';
+
+        // zxcvbn clientside check (if async load completed, from credential_update_add_password_partial.html)
+        if (window.zxcvbn) {
+            validatePasswordClientside()
+        } else {
+            pwd_valid = true;
+        }
+
+        validatePwdCheck();
+        updateSubmitButtonState();
     });
 
     new_pwd_check.addEventListener("input", () => {
-        // No point in updating the status if confirmation box is empty
-        if (new_pwd_check.value === "") return;
-        if (new_pwd_check.value === new_pwd.value) {
-            markPwdCheckValid();
-        } else {
-            markPwdCheckInvalid();
-        }
+        // we don't revalidate the password, just check if it's the same
+        validatePwdCheck();
+        updateSubmitButtonState();
     });
 }
 
