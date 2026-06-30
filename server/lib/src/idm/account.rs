@@ -43,6 +43,7 @@ pub struct OAuth2AccountCredential {
     pub(crate) provider: Uuid,
     pub(crate) cred_id: Uuid,
     pub(crate) user_id: String,
+    pub(crate) user_sub: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -217,19 +218,26 @@ macro_rules! try_from_entry {
         let maybe_account_unique_user_id =
             $value.get_ava_single_utf8(Attribute::OAuth2AccountUniqueUserId);
 
+        let maybe_account_unique_user_sub =
+            $value.get_ava_single_utf8(Attribute::OAuth2AccountUniqueUserSub);
+
         let maybe_account_credential_id =
             $value.get_ava_single_uuid(Attribute::OAuth2AccountCredentialUuid);
 
         let oauth2_client_provider = match (
             maybe_account_provider,
             maybe_account_unique_user_id,
+            maybe_account_unique_user_sub,
             maybe_account_credential_id,
         ) {
-            (Some(provider), Some(user_id), Some(cred_id)) => Some(OAuth2AccountCredential {
-                provider,
-                cred_id,
-                user_id: user_id.to_string(),
-            }),
+            (Some(provider), Some(user_id), Some(user_sub), Some(cred_id)) => {
+                Some(OAuth2AccountCredential {
+                    provider,
+                    cred_id,
+                    user_id: user_id.to_string(),
+                    user_sub: user_sub.to_string(),
+                })
+            }
             _ => None,
         };
 
@@ -276,6 +284,10 @@ impl Account {
 
     pub(crate) fn sshkeys(&self) -> &BTreeMap<String, SshPublicKey> {
         &self.sshkeys
+    }
+
+    pub(crate) fn uuid(&self) -> Uuid {
+        self.uuid
     }
 
     pub(crate) fn spn(&self) -> &str {
@@ -901,6 +913,7 @@ impl Account {
             provider: client_provider.uuid,
             cred_id: Uuid::new_v4(),
             user_id: self.spn.clone(),
+            user_sub: self.uuid.to_string(),
         });
     }
 }

@@ -1588,7 +1588,7 @@ impl IdmServerAuthTransaction<'_> {
                 "Starting session {} for {} {}",
                 session_id,
                 account.spn(),
-                account.uuid
+                account.uuid()
             );
 
             // Account must be anon, so we can gen the uat.
