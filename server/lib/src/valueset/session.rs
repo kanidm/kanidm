@@ -1038,15 +1038,15 @@ impl ValueSetT for ValueSetOauth2Session {
 }
 
 #[derive(Debug, Clone)]
-pub struct ValueSetApiToken {
+pub struct ValueSetApiTokenSet {
     map: BTreeMap<Uuid, ApiToken>,
 }
 
-impl ValueSetApiToken {
+impl ValueSetApiTokenSet {
     pub fn new(u: Uuid, m: ApiToken) -> Box<Self> {
         let mut map = BTreeMap::new();
         map.insert(u, m);
-        Box::new(ValueSetApiToken { map })
+        Box::new(Self { map })
     }
 
     pub fn push(&mut self, u: Uuid, m: ApiToken) -> bool {
@@ -1128,7 +1128,7 @@ impl ValueSetApiToken {
                 }
             })
             .collect();
-        Ok(Box::new(ValueSetApiToken { map }))
+        Ok(Box::new(Self { map }))
     }
 
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
@@ -1139,11 +1139,11 @@ impl ValueSetApiToken {
         T: IntoIterator<Item = (Uuid, ApiToken)>,
     {
         let map = iter.into_iter().collect();
-        Some(Box::new(ValueSetApiToken { map }))
+        Some(Box::new(Self { map }))
     }
 }
 
-impl ValueSetT for ValueSetApiToken {
+impl ValueSetT for ValueSetApiTokenSet {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::ApiToken(u, m) => {
@@ -1243,7 +1243,7 @@ impl ValueSetT for ValueSetApiToken {
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
-        DbValueSetV2::ApiToken(
+        DbValueSetV2::ApiTokenSet(
             self.map
                 .iter()
                 .map(|(u, m)| DbValueApiToken::V1 {
