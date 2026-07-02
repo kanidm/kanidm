@@ -265,22 +265,22 @@ fn home_alias_update_bind_mount(alias_path: &Path, hd_mount_path: &Path) -> Resu
         .map_err(|e| format!("While updating home directory bind mount, could not get mount info: {e}"))?;
 
     // Remove conflicting mount if it exists:
-    let mismatching_mount = current_mounts.iter().find(|m| {
+    let mismatching_mounts = current_mounts.iter().filter(|m| {
         m.mount_point == alias_path && m.mount_source.as_ref().map(Path::new) != Some(hd_mount_path)
     });
 
-    if let Some(m) = mismatching_mount {
-        nix::mount::umount(&m.mount_point).map_err(|e| {
+    for mismatching_mount in mismatching_mounts {
+        nix::mount::umount(&mismatching_mount.mount_point).map_err(|e| {
             format!(
                 "Unable to remove conflicting mount at {:?}: {e}",
-                &m.mount_point
+                &mismatching_mount.mount_point
             )
         })?;
     }
 
     // If mount point exists and is already correctly mounted, we are done
     if current_mounts.iter().any(|m| {
-        m.mount_point == alias_path && m.mount_source.as_ref().map(Path::new) != Some(hd_mount_path)
+        m.mount_point == alias_path && m.mount_source.as_ref().map(Path::new) == Some(hd_mount_path)
     }) {
         return Ok(());
     }
