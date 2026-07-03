@@ -907,6 +907,12 @@ pub enum ApplicationOpt {
         linked_group: String,
     },
 
+    #[clap(name = "delete")]
+    /// Delete an existing application.
+    Delete {
+        #[clap(name = "name")]
+        name: String,
+    },
 
 
 }

@@ -44,6 +44,15 @@ impl ApplicationOpt {
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
+
+            Self::Delete { name } => {
+                let client = opt.to_client(OpType::Write).await;
+
+                match client.idm_application_delete(name).await {
+                    Ok(_) => opt.output_mode.print_message("Success"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
         }
     }
 }
