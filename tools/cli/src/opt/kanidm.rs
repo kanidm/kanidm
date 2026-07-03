@@ -889,6 +889,29 @@ impl ValueEnum for Oauth2ClaimMapJoin {
 }
 
 #[derive(Debug, Subcommand, Clone)]
+pub enum ApplicationOpt {
+    #[clap(name = "list")]
+    /// List all configured applications
+    List,
+
+    #[clap(name = "create")]
+    /// Create a new application.
+    Create {
+        #[clap(name = "name")]
+        name: String,
+
+        #[clap(name = "displayname")]
+        displayname: String,
+
+        #[clap(name = "linked_group")]
+        linked_group: String,
+    },
+
+
+
+}
+
+#[derive(Debug, Subcommand, Clone)]
 pub enum Oauth2Opt {
     #[clap(name = "list")]
     /// List all configured oauth2 clients
@@ -1415,6 +1438,14 @@ pub enum SystemOpt {
         #[clap(subcommand)]
         commands: Oauth2Opt,
     },
+
+    #[clap(name = "application")]
+    /// Configure and display client application configurations
+    Application {
+        #[clap(subcommand)]
+        commands: ApplicationOpt,
+    },
+
     #[clap(name = "domain")]
     /// Configure and display domain configuration
     Domain {
