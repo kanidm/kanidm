@@ -894,6 +894,13 @@ pub enum ApplicationOpt {
     /// List all configured applications
     List,
 
+    #[clap(name = "get")]
+    /// Display a configured application
+    Get {
+        #[clap(name = "name")]
+        name: String,
+    },
+
     #[clap(name = "create")]
     /// Create a new application.
     Create {
@@ -913,8 +920,6 @@ pub enum ApplicationOpt {
         #[clap(name = "name")]
         name: String,
     },
-
-
 }
 
 #[derive(Debug, Subcommand, Clone)]

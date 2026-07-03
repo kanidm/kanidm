@@ -45,6 +45,24 @@ impl ApplicationOpt {
                 }
             }
 
+            Self::Get { name } => {
+                let client = opt.to_client(OpType::Read).await;
+
+                match client.idm_application_get(name, None).await {
+                    Ok(application) => match opt.output_mode {
+                        OutputMode::Json => {
+                            println!(
+                                "{}",
+                                serde_json::to_string(&application)
+                                    .expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => println!("{application:?}"),
+                    },
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
+
             Self::Delete { name } => {
                 let client = opt.to_client(OpType::Write).await;
 
