@@ -3,7 +3,7 @@ use crate::OpType;
 use crate::{
     handle_client_error, password_prompt, AccountCertificate, AccountCredential, AccountRadius,
     AccountSsh, AccountUserAuthToken, AccountValidity, KanidmClientParser, OutputMode, PersonOpt,
-    PersonPosix,
+    PersonPosix, PersonApplicationOpt
 };
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password, Select};
@@ -40,6 +40,7 @@ impl PersonOpt {
         match self {
             // id/cred/primary/set
             PersonOpt::Credential { commands } => commands.exec(opt).await,
+            PersonOpt::Application { commands } => commands.exec(opt).await,
             PersonOpt::Radius { commands } => match commands {
                 AccountRadius::Show(aopt) => {
                     let client = opt.to_client(OpType::Read).await;
@@ -720,6 +721,33 @@ impl AccountCredential {
                     Err(e) => handle_client_error(e, opt.output_mode),
                     _ => println!("Success"),
                 };
+            }
+        }
+    }
+}
+
+impl PersonApplicationOpt {
+    pub async fn exec(&self, opt: KanidmClientParser) {
+        match self {
+            Self::List {
+                name
+            } => {
+                let client = opt.to_client(OpType::Read).await;
+                match client.idm_person_application_list(&name, None).await {
+                    Ok(response) => match opt.output_mode {
+                        OutputMode::Json => {
+                            println!(
+                                "{}",
+                                serde_json::to_string(&response).expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => response
+                            .resources
+                            .iter()
+                            .for_each(|application| println!("{application:?}")),
+                    },
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
             }
         }
     }

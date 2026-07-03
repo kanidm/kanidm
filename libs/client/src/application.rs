@@ -41,19 +41,17 @@ impl KanidmClient {
         .await
     }
 
-    /*
     pub async fn idm_person_application_list(
         &self,
         name_or_uuid: &str,
         query: Option<ScimEntryGetQuery>,
-    ) -> Result<Vec<()>, ClientError> {
-        self.perform_get_request(
+    ) -> Result<ScimListApplication, ClientError> {
+        self.perform_get_request_query(
             format!("/scim/v1/Person/{}/Application", name_or_uuid).as_str(),
             query
         )
             .await
     }
-    */
 
     pub async fn idm_application_password_create(
         &self,

@@ -467,6 +467,16 @@ pub enum PersonPosix {
 }
 
 #[derive(Debug, Subcommand, Clone)]
+pub enum PersonApplicationOpt {
+    #[clap(name = "list")]
+    /// List all applications this person can access.
+    List {
+        name: String
+    },
+
+}
+
+#[derive(Debug, Subcommand, Clone)]
 pub enum ServiceAccountPosix {
     #[clap(name = "show")]
     Show(AccountNamedOpt),
@@ -606,6 +616,14 @@ pub enum PersonOpt {
         #[clap(subcommand)]
         commands: AccountValidity,
     },
+
+    /// Manage applications this person can access
+    #[clap(name = "applications")]
+    Application {
+        #[clap(subcommand)]
+        commands: PersonApplicationOpt,
+    },
+
     #[clap(name = "certificate", hide = true)]
     Certificate {
         #[clap(subcommand)]
