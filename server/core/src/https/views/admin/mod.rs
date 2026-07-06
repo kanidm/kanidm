@@ -23,6 +23,8 @@ pub fn admin_router() -> Router<ServerState> {
 
 pub fn admin_api_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
+        .route("/person/create", post(persons::create_person))
+        .route("/person/{person_uuid}/remove", get(persons::remove_person))
         .route("/group/{group_uuid}", post(groups::edit_group))
         .route("/group/{group_uuid}/add_member", post(groups::add_member))
         .route(
