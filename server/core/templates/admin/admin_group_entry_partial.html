@@ -1,0 +1,11 @@
+<tr hx-target="this">
+    <td><a href="/ui/admin/group/(( group_uuid ))/view" hx-target="#main">(( group_name ))</a></td>
+    <td>(( group_uuid ))</td>
+    <td>
+        <form hx-swap="delete"
+                hx-get="/ui/api/admin/group/(( group_uuid ))/remove"
+                hx-confirm="Are you sure you wish to delete the group &quot;((group_name))&quot;?">
+            <button class="btn btn-secondary float-end" id="delete-group-button">Delete</button>
+        </form>
+    </td>
+</tr>

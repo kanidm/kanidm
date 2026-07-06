@@ -9,19 +9,37 @@
     </ol>
 </nav>
 
+<h2>Create new group</h2>
+
+<form hx-boost="true"
+        hx-post="/ui/api/admin/group/create"
+        hx-target="#groups"
+        hx-swap="afterbegin">
+    <div class="col-12 col-md-11 col-lg-8">
+        <div class="input-group">
+            <input type="text" class="form-control" id="add-group-input" name="name"
+                aria-label="Name of group to add" placeholder="group name"
+                aria-describedby="add-group-button">
+            <button class="btn btn-primary float-end" id="add-person-button">Add group</button>
+        </div>
+    </div>
+</form>
+
+<h2 class="mt-5">Manage existing groups</h2>
+
 <table class="table table-striped">
     <thead>
         <tr>
             <th scope="col">Name</th>
             <th scope="col">Uuid</th>
+            <th scope="col">Actions</th>
         </tr>
     </thead>
-    <tbody>
+    <tbody id="groups">
     (% for (group, _) in groups %)
-        <tr>
-            <td><a href="/ui/admin/group/(( group.uuid ))/view" hx-target="#main">(( group.name ))</a></td>
-            <td>(( group.uuid ))</td>
-        </tr>
+        (% let group_name = group.name %)
+        (% let group_uuid = group.uuid %)
+        (% include "admin_group_entry_partial.html" %)
     (% endfor %)
     </tbody>
 </table>
