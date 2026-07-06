@@ -353,6 +353,9 @@ pub enum OperationError {
     UI0006MissingDisplayName,
     UI0007DuplicateEmail,
     UI0008InvalidUserName,
+    UI0009GroupAlreadyExists,
+    UI0010MissingGroupName,
+    UI0011InvalidGroupName,
 
     // Unixd Things
     KU001InitWhileSessionActive,
@@ -644,6 +647,9 @@ impl OperationError {
             Self::UI0006MissingDisplayName => Some("A display name is required for every user.".into()),
             Self::UI0007DuplicateEmail => Some("Another user with the same email address already exists.".into()),
             Self::UI0008InvalidUserName => Some("Invalid username.".into()),
+            Self::UI0009GroupAlreadyExists => Some("A group with this name already exists.".into()),
+            Self::UI0010MissingGroupName => Some("A name is required for every group.".into()),
+            Self::UI0011InvalidGroupName => Some("Invalid group name.".into()),
             Self::VL0001ValueSshPublicKeyString => None,
             Self::VS0001IncomingReplSshPublicKey => None,
             Self::VS0002CertificatePublicKeyDigest |
