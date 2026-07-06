@@ -323,6 +323,16 @@ pub struct ScimPerson {
     pub groups: Vec<ScimReference>,
 }
 
+impl ScimPerson {
+    pub fn get_primary_mail(&self) -> Option<String> {
+        if let Some(primary_mail) = self.mails.iter().find(|m| m.primary) {
+            return Some(primary_mail.value.clone());
+        } else {
+            return None;
+        }
+    }
+}
+
 impl TryFrom<ScimEntryKanidm> for ScimPerson {
     type Error = ();
 
