@@ -1879,9 +1879,17 @@ impl IdmServerCredUpdateTransaction<'_> {
         let pw_min_length = resolved_account_policy.pw_min_length();
         let pw_max_length = resolved_account_policy.pw_max_length();
 
-        if cleartext.len() < pw_min_length as usize {
+        let pw_graphemes = (0..cleartext.len()).fold(0, |acc, idx| {
+            if cleartext.is_char_boundary(idx) {
+                acc + 1
+            } else {
+                acc
+            }
+        });
+
+        if pw_graphemes < pw_min_length as usize {
             return Err(PasswordQuality::TooShort(pw_min_length));
-        } else if cleartext.len() > pw_max_length as usize {
+        } else if pw_graphemes > pw_max_length as usize {
             return Err(PasswordQuality::TooLong(pw_max_length));
         };
 

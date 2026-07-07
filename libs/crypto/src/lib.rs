@@ -36,7 +36,8 @@ mod crypt_md5;
 
 pub use sha2;
 
-// Per https://pages.nist.gov/800-63-4/sp800-63b.html max length should be 64.
+// Per https://pages.nist.gov/800-63-4/sp800-63b.html max length should be 64. This is
+// measured in GRAPHEMES, not bytes.
 pub const PW_MAX_LENGTH_NIST: u32 = 64;
 
 // Single factor passwords have a greater minimum length requirement per nist.
@@ -46,8 +47,8 @@ pub const PW_SFA_MIN_LENGTH_NIST: u32 = 15;
 pub const PW_MFA_MIN_LENGTH: u32 = 10;
 
 // Since we added a max length constraint later, we should continue to allow long
-// passwords to be validated.
-pub const PW_MAX_LENGTH_CHECK: usize = PW_MAX_LENGTH_NIST as usize * 2;
+// passwords to be validated. NOTE this is BYTES not GRAPHEMES.
+pub const PW_MAX_LENGTH_CHECK: usize = PW_MAX_LENGTH_NIST as usize * 4;
 
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 const PBKDF2_SALT_LEN: usize = 24;
