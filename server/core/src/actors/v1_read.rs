@@ -1540,13 +1540,13 @@ impl QueryServerReadV1 {
     #[instrument(
         level = "info",
         skip_all,
-        fields(uuid = ?request_id)
+        fields(uuid = ?eventid)
     )]
     /// Retrieve a public jwk
     pub async fn handle_public_jwk_get(
         &self,
         key_id: String,
-        request_id: Uuid,
+        eventid: Uuid,
     ) -> Result<Jwk, OperationError> {
         let mut idms_prox_read = self.idms.proxy_read().await?;
 
