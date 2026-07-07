@@ -749,6 +749,27 @@ impl PersonApplicationOpt {
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
+
+            Self::Create {
+                name,
+                application_uuid,
+                label,
+            } => {
+
+                
+
+            }
+
+            Self::Delete {
+                name,
+                password_id,
+            } => {
+
+                
+
+            }
+
+
         }
     }
 }
