@@ -5,7 +5,9 @@ use crate::idm::account::Account;
 use crate::idm::server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
 use crate::server::access::Access;
-use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
+use crate::utils::{
+    backup_code_from_random, readable_password_from_random, utf8_len, uuid_from_duration,
+};
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState, LABEL_RE};
 use compact_jwt::compact::JweCompact;
 use compact_jwt::jwe::JweBuilder;
@@ -1879,13 +1881,7 @@ impl IdmServerCredUpdateTransaction<'_> {
         let pw_min_length = resolved_account_policy.pw_min_length();
         let pw_max_length = resolved_account_policy.pw_max_length();
 
-        let pw_graphemes = (0..cleartext.len()).fold(0, |acc, idx| {
-            if cleartext.is_char_boundary(idx) {
-                acc + 1
-            } else {
-                acc
-            }
-        });
+        let pw_graphemes = utf8_len(cleartext);
 
         if pw_graphemes < pw_min_length as usize {
             return Err(PasswordQuality::TooShort(pw_min_length));
