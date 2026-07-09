@@ -1,4 +1,4 @@
-use crate::{handle_client_error, ApplicationOpt, KanidmClientParser, OpType, OutputMode};
+use crate::{handle_client_error, ApplicationOpt, KanidmClientParser, OpType};
 
 use kanidm_proto::scim_v1::client::{ScimEntryApplicationPost, ScimReference};
 
@@ -8,18 +8,7 @@ impl ApplicationOpt {
             Self::List => {
                 let client = opt.to_client(OpType::Read).await;
                 match client.idm_application_list(None).await {
-                    Ok(response) => match opt.output_mode {
-                        OutputMode::Json => {
-                            println!(
-                                "{}",
-                                serde_json::to_string(&response).expect("Failed to serialise json")
-                            );
-                        }
-                        OutputMode::Text => response
-                            .resources
-                            .iter()
-                            .for_each(|application| println!("{application:?}")),
-                    },
+                    Ok(response) => opt.output_mode.print_struct(&response),
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
@@ -49,16 +38,7 @@ impl ApplicationOpt {
                 let client = opt.to_client(OpType::Read).await;
 
                 match client.idm_application_get(name, None).await {
-                    Ok(application) => match opt.output_mode {
-                        OutputMode::Json => {
-                            println!(
-                                "{}",
-                                serde_json::to_string(&application)
-                                    .expect("Failed to serialise json")
-                            );
-                        }
-                        OutputMode::Text => println!("{application:?}"),
-                    },
+                    Ok(response) => opt.output_mode.print_struct(&response),
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }

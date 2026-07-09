@@ -48,12 +48,12 @@ impl KanidmClient {
     ) -> Result<ScimListApplication, ClientError> {
         self.perform_get_request_query(
             format!("/scim/v1/Person/{}/Application", name_or_uuid).as_str(),
-            query
+            query,
         )
-            .await
+        .await
     }
 
-    pub async fn idm_application_password_create(
+    pub async fn idm_person_application_password_create(
         &self,
         name_or_uuid: &str,
         request: &ScimApplicationPasswordCreate,
@@ -65,7 +65,7 @@ impl KanidmClient {
         .await
     }
 
-    pub async fn idm_application_password_delete(
+    pub async fn idm_person_application_password_delete(
         &self,
         name_or_uuid: &str,
         password_id: Uuid,

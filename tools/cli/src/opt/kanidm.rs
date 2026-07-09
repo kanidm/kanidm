@@ -73,6 +73,26 @@ impl OutputMode {
             }
         }
     }
+
+    pub fn print_struct<T>(self, input: T)
+    where
+        T: serde::Serialize + fmt::Debug,
+    {
+        match self {
+            OutputMode::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string(&input).unwrap_or(format!("{input:?}"))
+                );
+            }
+            OutputMode::Text => {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&input).unwrap_or(format!("{input:?}"))
+                );
+            }
+        }
+    }
 }
 
 #[derive(Debug, Args, Clone)]
@@ -468,12 +488,15 @@ pub enum PersonPosix {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum PersonApplicationOpt {
-    #[clap(name = "list")]
-    /// List all applications this person can access.
-    List {
-        name: String
+    Create {
+        name: String,
+        application_uuid: Uuid,
+        label: String,
     },
-
+    Delete {
+        name: String,
+        password_id: Uuid,
+    }
 }
 
 #[derive(Debug, Subcommand, Clone)]

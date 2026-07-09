@@ -2,8 +2,8 @@ use crate::common::try_expire_at_from_string;
 use crate::OpType;
 use crate::{
     handle_client_error, password_prompt, AccountCertificate, AccountCredential, AccountRadius,
-    AccountSsh, AccountUserAuthToken, AccountValidity, KanidmClientParser, OutputMode, PersonOpt,
-    PersonPosix, PersonApplicationOpt
+    AccountSsh, AccountUserAuthToken, AccountValidity, KanidmClientParser, OutputMode,
+    PersonApplicationOpt, PersonOpt, PersonPosix,
 };
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password, Select};
@@ -21,7 +21,9 @@ use kanidm_proto::internal::{
 };
 use kanidm_proto::internal::{CredentialDetail, CredentialDetailType};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
-use kanidm_proto::scim_v1::{client::ScimSshPublicKeys, ScimEntryGetQuery};
+use kanidm_proto::scim_v1::{
+    client::ScimSshPublicKeys, ScimApplicationPasswordCreate, ScimEntryGetQuery,
+};
 use qrcode::render::unicode;
 use qrcode::QrCode;
 use std::fmt::{self, Debug};
@@ -729,47 +731,51 @@ impl AccountCredential {
 impl PersonApplicationOpt {
     pub async fn exec(&self, opt: KanidmClientParser) {
         match self {
-            Self::List {
-                name
-            } => {
-                let client = opt.to_client(OpType::Read).await;
-                match client.idm_person_application_list(&name, None).await {
-                    Ok(response) => match opt.output_mode {
-                        OutputMode::Json => {
-                            println!(
-                                "{}",
-                                serde_json::to_string(&response).expect("Failed to serialise json")
-                            );
-                        }
-                        OutputMode::Text => response
-                            .resources
-                            .iter()
-                            .for_each(|application| println!("{application:?}")),
-                    },
-                    Err(e) => handle_client_error(e, opt.output_mode),
-                }
-            }
-
             Self::Create {
                 name,
                 application_uuid,
                 label,
             } => {
+                let client = opt.to_client(OpType::Write).await;
 
-                
+                let request = ScimApplicationPasswordCreate {
+                    application_uuid: *application_uuid,
+                    label: label.clone(),
+                };
 
+                match client
+                    .idm_person_application_password_create(name, &request)
+                    .await
+                {
+                    Ok(app_password) => match opt.output_mode {
+                        OutputMode::Json => {
+                            println!(
+                                "{}",
+                                serde_json::to_string(&app_password)
+                                    .expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => {
+                            println!("id:     {}", app_password.uuid);
+                            println!("label:  {}", app_password.label);
+                            println!("secret: {}", app_password.secret);
+                            println!("This secret will only be shown ONCE!");
+                        }
+                    },
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
             }
+            Self::Delete { name, password_id } => {
+                let client = opt.to_client(OpType::Write).await;
 
-            Self::Delete {
-                name,
-                password_id,
-            } => {
-
-                
-
+                match client
+                    .idm_person_application_password_delete(name, *password_id)
+                    .await
+                {
+                    Ok(_) => opt.output_mode.print_message("Success"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
             }
-
-
         }
     }
 }
