@@ -38,7 +38,7 @@ pub use sha2;
 
 // Per https://pages.nist.gov/800-63-4/sp800-63b.html max length should be 64. This is
 // measured in GRAPHEMES, not bytes.
-pub const PW_MAX_LENGTH_NIST: u32 = 64;
+pub const PW_MAX_LENGTH_NIST: u32 = 128;
 
 // Single factor passwords have a greater minimum length requirement per nist.
 pub const PW_SFA_MIN_LENGTH_NIST: u32 = 15;
