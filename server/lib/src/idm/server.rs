@@ -35,7 +35,7 @@ use compact_jwt::{Jwk, JwsCompact};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
 use concread::cowcell::CowCellReadTxn;
 use concread::hashmap::{HashMap, HashMapReadTxn, HashMapWriteTxn};
-use kanidm_lib_crypto::CryptoPolicy;
+use kanidm_lib_crypto::{CryptoPolicy, PW_MAX_LENGTH_NIST, PW_SFA_MIN_LENGTH_NIST};
 use kanidm_proto::internal::{
     ApiToken, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken, UatPurpose,
     UserAuthToken,
@@ -1805,14 +1805,15 @@ impl IdmServerProxyWriteTransaction<'_> {
     ) -> Result<(), OperationError> {
         // password strength and badlisting is always global, rather than per-pw-policy.
         // pw-policy as check on the account is about requirements for mfa for example.
-        //
-
-        // is the password at least 10 char?
-        if cleartext.len() < PW_MIN_LENGTH as usize {
+        if cleartext.len() < PW_SFA_MIN_LENGTH_NIST as usize {
             return Err(OperationError::PasswordQuality(vec![
-                PasswordFeedback::TooShort(PW_MIN_LENGTH),
+                PasswordFeedback::TooShort(PW_SFA_MIN_LENGTH_NIST),
             ]));
-        }
+        } else if cleartext.len() > PW_MAX_LENGTH_NIST as usize {
+            return Err(OperationError::PasswordQuality(vec![
+                PasswordFeedback::TooLong(PW_MAX_LENGTH_NIST),
+            ]));
+        };
 
         // does the password pass zxcvbn?
 
