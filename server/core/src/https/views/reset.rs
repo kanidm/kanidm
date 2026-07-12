@@ -117,13 +117,39 @@ pub(crate) struct ResetTokenParam {
 #[derive(Template, WebTemplate)]
 #[template(path = "credential_update_add_password_partial.html")]
 struct AddPasswordPartial {
-    check_res: PwdCheckResult,
+    warnings: Vec<PasswordFeedback>,
+    pwd_equal: bool,
+}
+
+impl From<PwdCheckResult> for AddPasswordPartial {
+    fn from(value: PwdCheckResult) -> Self {
+        let warnings = value.warnings().to_vec();
+        let pwd_equal = value.pwd_equal();
+
+        AddPasswordPartial {
+            warnings,
+            pwd_equal,
+        }
+    }
 }
 
 #[derive(Template, WebTemplate)]
 #[template(path = "credential_update_set_unixcred_partial.html")]
 struct SetUnixCredPartial {
-    check_res: PwdCheckResult,
+    warnings: Vec<PasswordFeedback>,
+    pwd_equal: bool,
+}
+
+impl From<PwdCheckResult> for SetUnixCredPartial {
+    fn from(value: PwdCheckResult) -> Self {
+        let warnings = value.warnings().to_vec();
+        let pwd_equal = value.pwd_equal();
+
+        SetUnixCredPartial {
+            warnings,
+            pwd_equal,
+        }
+    }
 }
 
 #[derive(Template, WebTemplate)]
@@ -137,12 +163,35 @@ struct AddSshPublicKeyPartial {
 
 #[derive(Serialize, Deserialize, Debug)]
 enum PwdCheckResult {
-    Success,
-    Init,
+    // Init or success state
+    Ok,
+    // Used on password creation.
     Failure {
         pwd_equal: bool,
         warnings: Vec<PasswordFeedback>,
     },
+    // Used for live password strength checks.
+    Warnings {
+        warnings: Vec<PasswordFeedback>,
+    },
+}
+
+impl PwdCheckResult {
+    fn pwd_equal(&self) -> bool {
+        match self {
+            PwdCheckResult::Ok => true,
+            PwdCheckResult::Failure { pwd_equal, .. } => *pwd_equal,
+            PwdCheckResult::Warnings { .. } => true,
+        }
+    }
+
+    fn warnings(&self) -> &[PasswordFeedback] {
+        match self {
+            PwdCheckResult::Ok => &[],
+            PwdCheckResult::Failure { warnings, .. } => &warnings,
+            PwdCheckResult::Warnings { warnings } => &warnings,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -711,9 +760,7 @@ pub(crate) async fn view_new_pwd(
         None => {
             return Ok((
                 swapped_handler_trigger,
-                AddPasswordPartial {
-                    check_res: PwdCheckResult::Init,
-                },
+                AddPasswordPartial::from(PwdCheckResult::Ok),
             )
                 .into_response());
         }
@@ -756,12 +803,11 @@ pub(crate) async fn view_new_pwd(
         status,
         swapped_handler_trigger,
         HxPushUrl("/ui/reset/change_password".to_string()),
-        AddPasswordPartial { check_res },
+        AddPasswordPartial::from(check_res),
     )
         .into_response())
 }
 
-#[axum::debug_handler]
 pub(crate) async fn check_pwd_strength(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -781,9 +827,7 @@ pub(crate) async fn check_pwd_strength(
         None => {
             return Ok((
                 swapped_handler_trigger,
-                AddPasswordPartial {
-                    check_res: PwdCheckResult::Init,
-                },
+                AddPasswordPartial::from(PwdCheckResult::Ok),
             )
                 .into_response());
         }
@@ -812,21 +856,13 @@ pub(crate) async fn check_pwd_strength(
         }
     };
 
-    let check_res = PwdCheckResult::Failure {
-        // I don't believe users are interested in knowing their password fields differ from the server.
-        // These live password checks are ran on the first password field so the second one is likely empty.
-        //
-        // A live "passwords differing" feedback is already provided via js when they are typing in the password confirmation field.
-        // But the template requires this field so I set it to true.
-        pwd_equal: true,
-        warnings,
-    };
+    let check_res = PwdCheckResult::Warnings { warnings };
 
     Ok((
         status,
         swapped_handler_trigger,
         HxPushUrl("/ui/reset/change_password".to_string()),
-        AddPasswordPartial { check_res },
+        AddPasswordPartial::from(check_res),
     )
         .into_response())
 }
@@ -908,9 +944,7 @@ pub(crate) async fn view_set_unixcred(
         None => {
             return Ok((
                 swapped_handler_trigger,
-                SetUnixCredPartial {
-                    check_res: PwdCheckResult::Init,
-                },
+                SetUnixCredPartial::from(PwdCheckResult::Ok),
             )
                 .into_response());
         }
@@ -953,7 +987,7 @@ pub(crate) async fn view_set_unixcred(
         status,
         swapped_handler_trigger,
         HxPushUrl("/ui/reset/set_unixcred".to_string()),
-        SetUnixCredPartial { check_res },
+        SetUnixCredPartial::from(check_res),
     )
         .into_response())
 }
