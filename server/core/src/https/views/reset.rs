@@ -24,6 +24,7 @@ use axum_htmx::{
     HxEvent, HxLocation, HxPushUrl, HxRequest, HxReselect, HxResponseTrigger, HxReswap, HxRetarget,
     SwapOption,
 };
+use base64::{engine::general_purpose, Engine as _};
 use futures_util::TryFutureExt;
 use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus,
@@ -64,6 +65,13 @@ struct CredResetView {
     domain_info: DomainInfoRead,
     names: String,
     credentials_update_partial: CredResetPartialView,
+}
+
+#[derive(Template, WebTemplate)]
+#[template(path = "credentials_revoke_form.html")]
+struct RevokeCredFormView {
+    domain_info: DomainInfoRead,
+    token: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -498,7 +506,9 @@ pub(crate) async fn view_new_passkey(
 
     let response = match cu_status.mfaregstate {
         CURegState::Passkey(chal) | CURegState::AttestedPasskey(chal) => {
-            if let Ok(challenge) = serde_json::to_string(&chal) {
+            if let Ok(challenge) =
+                serde_json::to_vec(&chal).map(|data| general_purpose::STANDARD.encode(data))
+            {
                 AddPasskeyPartial {
                     challenge,
                     class: init_form.class,
@@ -1061,6 +1071,51 @@ pub(crate) async fn view_reset_get(
             },
         )
             .into_response())
+    }
+}
+
+pub(crate) async fn view_revoke_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
+    Query(params): Query<ResetTokenParam>,
+    jar: CookieJar,
+) -> axum::response::Result<Response> {
+    if let Some(token) = params.token {
+        let view = RevokeCredFormView { domain_info, token };
+
+        Ok(view.into_response())
+    } else {
+        // No token, trigger the end of session response (aka login or profile)
+        end_session_response(state, kopid, client_auth_info, jar).await
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RevokeForm {
+    token: String,
+}
+
+pub(crate) async fn view_revoke_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
+    jar: CookieJar,
+    Form(revoke_form): Form<RevokeForm>,
+) -> axum::response::Result<Response> {
+    match state
+        .qe_w_ref
+        .handle_idm_credential_revoke_intent(revoke_form.token, kopid.eventid)
+        .await
+    {
+        Ok(()) => end_session_response(state, kopid, client_auth_info, jar).await,
+        Err(op_err) => Err(ErrorResponse::from(
+            HtmxError::new(&kopid, op_err, domain_info).into_response(),
+        )),
     }
 }
 

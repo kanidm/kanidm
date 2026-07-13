@@ -122,6 +122,7 @@ impl Modify for SecurityAddon {
         super::v1::person_get_id_credential_status,
         super::v1::person_id_credential_update_get,
         super::v1::person_id_credential_update_intent_get,
+        super::v1::person_id_credential_update_intent_send_post,
         super::v1::person_id_credential_update_intent_ttl_get,
 
         super::v1::service_account_id_ssh_pubkeys_get,

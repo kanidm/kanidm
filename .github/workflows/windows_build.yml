@@ -20,7 +20,7 @@ jobs:
   windows_build_kanidm:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install OpenSSL
         run: |
           vcpkg integrate install
@@ -31,7 +31,7 @@ jobs:
           toolchain: stable
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
       - run: cargo build --locked -p kanidm_client -p kanidm_tools --bin kanidm
       # yamllint disable-line rule:line-length
       - run: cargo test -p kanidm_client -p kanidm_tools

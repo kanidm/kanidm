@@ -6,7 +6,6 @@
 
 use cidr::IpCidr;
 use kanidm_proto::backup::BackupCompression;
-use kanidm_proto::config::ServerRole;
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use serde::Deserialize;
@@ -249,6 +248,37 @@ impl Display for HttpAddressInfo {
     }
 }
 
+#[derive(Debug, Deserialize, Clone, Copy, Default, Eq, PartialEq)]
+pub enum ServerRole {
+    #[default]
+    WriteReplica,
+    WriteReplicaNoUI,
+    ReadOnlyReplica,
+}
+
+impl Display for ServerRole {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ServerRole::WriteReplica => f.write_str("write replica"),
+            ServerRole::WriteReplicaNoUI => f.write_str("write replica (no ui)"),
+            ServerRole::ReadOnlyReplica => f.write_str("read only replica"),
+        }
+    }
+}
+
+impl FromStr for ServerRole {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "write_replica" => Ok(ServerRole::WriteReplica),
+            "write_replica_no_ui" => Ok(ServerRole::WriteReplicaNoUI),
+            "read_only_replica" => Ok(ServerRole::ReadOnlyReplica),
+            _ => Err("Must be one of write_replica, write_replica_no_ui, read_only_replica"),
+        }
+    }
+}
+
 /// This is the Server Configuration as read from `server.toml` or environment variables.
 ///
 /// Fields noted as "REQUIRED" are required for the server to start, even if they show as optional due to how file parsing works.
@@ -315,8 +345,8 @@ pub struct ServerConfig {
     #[serde(rename = "replication")]
     /// Replication configuration, this is a development feature and not yet ready for production use.
     repl_config: Option<ReplicationConfiguration>,
-    /// An optional OpenTelemetry collector (GRPC) url to send trace and log data to, eg `http://localhost:4317`. If not set, disables the feature.
-    otel_grpc_url: Option<String>,
+    /// An optional OpenTelemetry collector (GRPC) url to send trace and log data to, eg `localhost:4317`. If not set, disables the feature.
+    otel_grpc_endpoint: Option<String>,
 }
 
 impl ServerConfigUntagged {
@@ -403,7 +433,7 @@ pub struct ServerConfigV2 {
     #[serde(default)]
     #[serde(rename = "replication")]
     repl_config: Option<ReplicationConfiguration>,
-    otel_grpc_url: Option<String>,
+    otel_grpc_endpoint: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -452,7 +482,7 @@ pub struct Configuration {
     pub repl_config: Option<ReplicationConfiguration>,
     /// This allows internally setting some unsafe options for replication.
     pub integration_repl_config: Option<Box<IntegrationReplConfig>>,
-    pub otel_grpc_url: Option<String>,
+    pub otel_grpc_endpoint: Option<String>,
 }
 
 impl Configuration {
@@ -484,7 +514,7 @@ impl Configuration {
             log_level: None,
             role: None,
             repl_config: None,
-            otel_grpc_url: None,
+            otel_grpc_endpoint: None,
         }
     }
 
@@ -509,10 +539,10 @@ impl Configuration {
             origin: Url::from_str("https://idm.example.com")
                 .expect("Failed to parse built-in string as URL"),
             log_level: LogLevel::default(),
-            role: ServerRole::WriteReplica,
+            role: ServerRole::WriteReplicaNoUI,
             repl_config: None,
             integration_repl_config: None,
-            otel_grpc_url: None,
+            otel_grpc_endpoint: None,
         }
     }
 }
@@ -595,7 +625,7 @@ impl fmt::Display for Configuration {
                 write!(f, "replication: disabled, ")?;
             }
         }
-        write!(f, "otel_grpc_url: {:?}", self.otel_grpc_url)?;
+        write!(f, "otel_grpc_endpoint: {:?}", self.otel_grpc_endpoint)?;
         Ok(())
     }
 }
@@ -623,7 +653,7 @@ pub struct ConfigurationBuilder {
     role: Option<ServerRole>,
     log_level: Option<LogLevel>,
     repl_config: Option<ReplicationConfiguration>,
-    otel_grpc_url: Option<String>,
+    otel_grpc_endpoint: Option<String>,
 }
 
 impl ConfigurationBuilder {
@@ -634,8 +664,8 @@ impl ConfigurationBuilder {
             self.log_level = Some(*log_level);
         }
 
-        if let Some(otel_grpc_url) = &cli_config.otel_grpc_url {
-            self.otel_grpc_url = Some(otel_grpc_url.clone());
+        if let Some(otel_grpc_endpoint) = &cli_config.otel_grpc_endpoint {
+            self.otel_grpc_endpoint = Some(otel_grpc_endpoint.clone());
         }
 
         // core domainy things
@@ -645,10 +675,6 @@ impl ConfigurationBuilder {
 
         if let Some(origin) = &cli_config.origin {
             self.origin = Some(origin.clone());
-        }
-
-        if let Some(role) = &cli_config.role {
-            self.role = Some(*role);
         }
 
         // networking
@@ -862,8 +888,8 @@ impl ConfigurationBuilder {
             self.repl_config = config.repl_config;
         }
 
-        if config.otel_grpc_url.is_some() {
-            self.otel_grpc_url = config.otel_grpc_url;
+        if config.otel_grpc_endpoint.is_some() {
+            self.otel_grpc_endpoint = config.otel_grpc_endpoint;
         }
 
         self
@@ -950,8 +976,8 @@ impl ConfigurationBuilder {
             self.repl_config = config.repl_config;
         }
 
-        if config.otel_grpc_url.is_some() {
-            self.otel_grpc_url = config.otel_grpc_url;
+        if config.otel_grpc_endpoint.is_some() {
+            self.otel_grpc_endpoint = config.otel_grpc_endpoint;
         }
 
         self
@@ -959,7 +985,7 @@ impl ConfigurationBuilder {
 
     // We always set threads to 1 unless it's the main server.
     pub fn is_server_mode(mut self, is_server: bool) -> Self {
-        if is_server {
+        if !is_server {
             self.threads = 1;
         }
         self
@@ -987,7 +1013,7 @@ impl ConfigurationBuilder {
             role,
             log_level,
             repl_config,
-            otel_grpc_url,
+            otel_grpc_endpoint,
         } = self;
 
         let tls_config = match (tls_key, tls_chain, tls_client_ca) {
@@ -1052,7 +1078,7 @@ impl ConfigurationBuilder {
             role,
             log_level,
             repl_config,
-            otel_grpc_url,
+            otel_grpc_endpoint,
             integration_repl_config: None,
             integration_test_config: None,
         })

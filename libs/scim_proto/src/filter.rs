@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::str::FromStr;
 
+const SCIM_FILTER_MAX_DEPTH: usize = 128;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AttrPath {
     // Uri: Option<String>,
@@ -112,7 +114,15 @@ impl ToString for ScimComplexFilter {
 peg::parser! {
     grammar scimfilter() for str {
 
-        pub rule parse() -> ScimFilter = precedence!{
+        pub rule parse() -> ScimFilter =
+            f:parse_depth(SCIM_FILTER_MAX_DEPTH) { f }
+
+        pub(crate) rule parse_depth(max_depth: usize) -> ScimFilter =
+            a:parse_inner(max_depth.saturating_sub(1)) {?
+                if max_depth == 0 { Err("too deeply nested") } else { Ok(a) }
+            }
+
+        rule parse_inner(max_depth: usize) -> ScimFilter = precedence!{
             a:(@) separator()+ "or" separator()+ b:@ {
                 ScimFilter::Or(
                     Box::new(a),
@@ -127,7 +137,7 @@ peg::parser! {
                 )
             }
             --
-            "not" separator()+ "(" e:parse() ")" {
+            "not" separator()+ "(" e:parse_depth(max_depth) ")" {
                 ScimFilter::Not(Box::new(e))
             }
             --
@@ -139,10 +149,18 @@ peg::parser! {
             }
             --
             a:attrexp() { a }
-            "(" e:parse() ")" { e }
+            "(" e:parse_depth(max_depth) ")" { e }
         }
 
-        pub rule parse_complex() -> ScimComplexFilter = precedence!{
+        pub rule parse_complex() -> ScimComplexFilter =
+            f:parse_complex_depth(SCIM_FILTER_MAX_DEPTH) { f }
+
+        pub(crate) rule parse_complex_depth(max_depth: usize) -> ScimComplexFilter =
+            a:parse_complex_inner(max_depth.saturating_sub(1)) {?
+                if max_depth == 0 { Err("too deeply nested") } else { Ok(a) }
+            }
+
+        rule parse_complex_inner(max_depth: usize) -> ScimComplexFilter = precedence!{
             a:(@) separator()+ "or" separator()+ b:@ {
                 ScimComplexFilter::Or(
                     Box::new(a),
@@ -157,12 +175,12 @@ peg::parser! {
                 )
             }
             --
-            "not" separator()+ "(" e:parse_complex() ")" {
+            "not" separator()+ "(" e:parse_complex_depth(max_depth) ")" {
                 ScimComplexFilter::Not(Box::new(e))
             }
             --
             a:complex_attrexp() { a }
-            "(" e:parse_complex() ")" { e }
+            "(" e:parse_complex_depth(max_depth) ")" { e }
         }
 
         pub(crate) rule attrexp() -> ScimFilter =
@@ -750,5 +768,16 @@ mod test {
                 Value::String("".to_string())
             ))
         );
+    }
+
+    #[test]
+    fn test_scimfilter_recursion_limit() {
+        scimfilter::parse_depth("a pr and (b pr and (c pr and d pr))", 0).expect_err("Must fail");
+
+        scimfilter::parse_depth("a pr and (b pr and (c pr and d pr))", 1).expect_err("Must fail");
+
+        scimfilter::parse_depth("a pr and (b pr and (c pr and d pr))", 2).expect_err("Must fail");
+
+        scimfilter::parse_depth("a pr and (b pr and (c pr and d pr))", 3).expect("Must pass");
     }
 }

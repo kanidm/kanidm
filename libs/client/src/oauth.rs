@@ -489,6 +489,34 @@ impl KanidmClient {
         }
     }
 
+    pub async fn idm_oauth2_rs_set_refresh_token_expiry(
+        &self,
+        id: &str,
+        expiry: Option<u32>,
+    ) -> Result<(), ClientError> {
+        match expiry {
+            Some(exp) => {
+                let mut update_oauth2_rs = Entry {
+                    attrs: BTreeMap::new(),
+                };
+                update_oauth2_rs.attrs.insert(
+                    Attribute::OAuth2RefreshTokenExpiry.into(),
+                    vec![exp.to_string()],
+                );
+                self.perform_patch_request(format!("/v1/oauth2/{id}").as_str(), update_oauth2_rs)
+                    .await
+            }
+            None => {
+                self.perform_delete_request(&format!(
+                    "/v1/oauth2/{}/_attr/{}",
+                    id,
+                    Attribute::OAuth2RefreshTokenExpiry.as_str()
+                ))
+                .await
+            }
+        }
+    }
+
     pub async fn idm_oauth2_rs_enable_consent_prompt(&self, id: &str) -> Result<(), ClientError> {
         let mut update_oauth2_rs = Entry {
             attrs: BTreeMap::new(),

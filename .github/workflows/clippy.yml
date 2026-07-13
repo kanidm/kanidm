@@ -17,9 +17,9 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
       - name: Install dependencies
         run: |
           sudo apt-get update && \
@@ -31,17 +31,18 @@ jobs:
             libtss2-dev \
             libudev-dev \
             pkg-config \
+            libtalloc-dev \
             tpm-udev
       - name: "Run clippy"
         run: |
           rustup component add clippy
-          cargo clippy --lib --bins --examples --all-features
+          cargo clippy --quiet --lib --bins --examples
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
       - name: "Run cargo fmt"
         run: |
           rustup component add rustfmt

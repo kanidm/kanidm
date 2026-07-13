@@ -16,17 +16,17 @@ use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use compact_jwt::{Jwk, Jws, JwsSigner};
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::internal::{
-    ApiToken, AppLink, CUIntentToken, CURequest, CUSessionToken, CUStatus, CreateRequest,
-    CredentialStatus, DeleteRequest, IdentifyUserRequest, IdentifyUserResponse, ModifyRequest,
-    RadiusAuthToken, SearchRequest, SearchResponse, UserAuthToken, COOKIE_AUTH_SESSION_ID,
-    COOKIE_BEARER_TOKEN,
+    ApiToken, AppLink, CUIntentSend, CUIntentToken, CURequest, CUSessionToken, CUStatus,
+    CreateRequest, CredentialStatus, DeleteRequest, IdentifyUserRequest, IdentifyUserResponse,
+    ModifyRequest, RadiusAuthToken, SearchRequest, SearchResponse, UserAuthToken,
+    COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN,
 };
 use kanidm_proto::v1::{
     AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
     AuthState as ProtoAuthState, Entry as ProtoEntry, GroupUnixExtend, SingleStringRequest,
     UatStatus, UnixGroupToken, UnixUserToken, WhoamiResponse,
 };
-use kanidmd_lib::idm::authentication::{AuthState, AuthStep};
+use kanidmd_lib::idm::authentication::{AuthState, AuthStep, ReauthRequest};
 use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
@@ -1224,13 +1224,14 @@ pub async fn person_id_credential_update_get(
         ("ttl" = u64, description="The new TTL for the credential?")
     ),
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=CUIntentToken),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "person/credential",
 )]
 // TODO: this shouldn't be a get, we're making changes!
+// fy: Ahhh yes, APIs - where regrets become enshrined in code.
 #[instrument(level = "trace", skip(state, kopid))]
 pub async fn person_id_credential_update_intent_ttl_get(
     State(state): State<ServerState>,
@@ -1271,6 +1272,38 @@ pub async fn person_id_credential_update_intent_get(
     state
         .qe_w_ref
         .handle_idmcredentialupdateintent(client_auth_info, id, None, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_credential/_update_intent_send",
+    responses(
+        (status=200),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "person/credential",
+)]
+#[instrument(level = "trace", skip(state, kopid))]
+pub async fn person_id_credential_update_intent_send_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(id): Path<String>,
+    Json(cu_intent_send): Json<CUIntentSend>,
+) -> Result<Json<()>, WebError> {
+    state
+        .qe_w_ref
+        .handle_idm_credential_update_intent_send(
+            client_auth_info,
+            id,
+            cu_intent_send.ttl.map(Duration::from_secs),
+            cu_intent_send.email,
+            kopid.eventid,
+        )
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -2825,7 +2858,12 @@ pub async fn reauth(
     // This may change in the future ...
     let inter = state
         .qe_r_ref
-        .handle_reauth(client_auth_info, obj, kopid.eventid)
+        .handle_reauth(
+            client_auth_info,
+            obj,
+            ReauthRequest::GrantReadWrite,
+            kopid.eventid,
+        )
         .await;
     debug!("ReAuth result: {:?}", inter);
     auth_session_state_management(&state, jar, inter)
@@ -3091,7 +3129,7 @@ fn cacheable_routes(state: ServerState) -> Router<ServerState> {
         .with_state(state)
 }
 
-#[instrument(skip(state), name = "https_v1_route_setup")]
+#[instrument(skip(state), name = "https_v1_route_setup" level="debug"   )]
 pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
     Router::new()
         .route("/v1/oauth2", get(super::v1_oauth2::oauth2_get))
@@ -3219,6 +3257,10 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route(
             "/v1/person/{id}/_credential/_update_intent",
             get(person_id_credential_update_intent_get),
+        )
+        .route(
+            "/v1/person/{id}/_credential/_update_intent_send",
+            post(person_id_credential_update_intent_send_post),
         )
         .route(
             "/v1/person/{id}/_ssh_pubkeys",

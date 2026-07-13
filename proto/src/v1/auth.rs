@@ -141,6 +141,15 @@ pub enum AuthIssueSession {
     Cookie,
 }
 
+impl std::fmt::Display for AuthIssueSession {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AuthIssueSession::Token => write!(f, "Token"),
+            AuthIssueSession::Cookie => write!(f, "Cookie"),
+        }
+    }
+}
+
 /// A request for the next step of an authentication.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuthRequest {

@@ -18,7 +18,7 @@ use kanidmd_lib::{
     event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
     idm::account::ListUserAuthTokenEvent,
-    idm::authentication::AuthStep,
+    idm::authentication::{AuthStep, ReauthRequest},
     idm::credupdatesession::CredentialUpdateSessionToken,
     idm::event::{
         AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, UnixGroupTokenEvent,
@@ -27,8 +27,8 @@ use kanidmd_lib::{
     idm::ldap::{LdapBoundToken, LdapResponseState},
     idm::oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
-        AuthoriseReject, AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
-        OidcDiscoveryResponse, OidcToken,
+        AuthorisationRequestContext, AuthoriseReject, AuthoriseResponse, JwkKeySet, Oauth2Error,
+        Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, OidcToken,
     },
     idm::server::{DomainInfoRead, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
@@ -112,7 +112,7 @@ impl QueryServerReadV1 {
         // "authenticated" or not.
         let ct = duration_from_epoch_now();
         let mut idm_auth = self.idms.auth().await?;
-        security_info!(?sessionid, ?req, "Begin auth event");
+        debug!(?sessionid, ?req, "Begin auth event");
 
         // Destructure it.
         // Convert the AuthRequest to an AuthEvent that the idm server
@@ -134,7 +134,10 @@ impl QueryServerReadV1 {
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 
-        security_info!(?res, "Sending auth result");
+        match &res {
+            Ok(r) => security_info!("Auth result: {}", r),
+            Err(e) => security_error!("Auth result: {:?}", e),
+        }
 
         res
     }
@@ -149,6 +152,7 @@ impl QueryServerReadV1 {
         &self,
         client_auth_info: ClientAuthInfo,
         issue: AuthIssueSession,
+        reauth_req: ReauthRequest,
         eventid: Uuid,
     ) -> Result<AuthResult, OperationError> {
         let ct = duration_from_epoch_now();
@@ -170,11 +174,14 @@ impl QueryServerReadV1 {
         // Generally things like auth denied are in Ok() msgs
         // so true errors should always trigger a rollback.
         let res = idm_auth
-            .reauth_init(ident, issue, ct, client_auth_info)
+            .reauth_init(ident, issue, ct, client_auth_info, reauth_req)
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 
-        security_info!(?res, "Sending reauth result");
+        match &res {
+            Ok(r) => security_info!("Reauth result: {}", r),
+            Err(e) => security_error!("Reauth result: {:?}", e),
+        }
 
         res
     }
@@ -725,7 +732,7 @@ impl QueryServerReadV1 {
                     true => "<empty uuid_or_name>",
                     false => &uuid_or_name,
                 };
-                admin_info!(
+                debug!(
                     err = ?e,
                     "Error resolving {} as gidnumber continuing ...",
                     uuid_or_name_val
@@ -748,7 +755,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "info",
+        level = "debug",
         skip_all,
         fields(uuid = ?eventid)
     )]
@@ -794,7 +801,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "info",
+        level = "debug",
         skip_all,
         fields(uuid = ?eventid)
     )]
@@ -1345,6 +1352,7 @@ impl QueryServerReadV1 {
         &self,
         client_auth_info: ClientAuthInfo,
         auth_req: AuthorisationRequest,
+        auth_req_ctx: AuthorisationRequestContext,
         eventid: Uuid,
     ) -> Result<AuthoriseResponse, Oauth2Error> {
         let ct = duration_from_epoch_now();
@@ -1361,7 +1369,7 @@ impl QueryServerReadV1 {
             .ok();
 
         // Now we can send to the idm server for authorisation checking.
-        idms_prox_read.check_oauth2_authorisation(ident.as_ref(), &auth_req, ct)
+        idms_prox_read.check_oauth2_authorisation(ident.as_ref(), &auth_req, &auth_req_ctx, ct)
     }
 
     #[instrument(
@@ -1394,7 +1402,6 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_oauth2_token_introspect(
         &self,
-        client_auth_info: ClientAuthInfo,
         intr_req: AccessTokenIntrospectRequest,
         eventid: Uuid,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
@@ -1405,7 +1412,7 @@ impl QueryServerReadV1 {
             .await
             .map_err(Oauth2Error::ServerError)?;
         // Now we can send to the idm server for introspection checking.
-        idms_prox_read.check_oauth2_token_introspect(&client_auth_info, &intr_req, ct)
+        idms_prox_read.check_oauth2_token_introspect(&intr_req, ct)
     }
 
     #[instrument(
@@ -1565,12 +1572,12 @@ impl QueryServerReadV1 {
                 .await
                 .unwrap_or_else(|e| {
                     error!("do_op failed -> {:?}", e);
-                    LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                    LdapResponseState::Disconnect(DisconnectionNotice::gen_response(
                         LdapResultCode::Other,
                         format!("Internal Server Error {:?}", &eventid).as_str(),
                     ))
                 }),
-            Err(_) => LdapResponseState::Disconnect(DisconnectionNotice::gen(
+            Err(_) => LdapResponseState::Disconnect(DisconnectionNotice::gen_response(
                 LdapResultCode::ProtocolError,
                 format!("Invalid Request {:?}", &eventid).as_str(),
             )),

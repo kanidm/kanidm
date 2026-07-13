@@ -42,10 +42,6 @@ kanidm_lib_crypto = { workspace = true }
 ldap3_proto = { workspace = true }
 # libsqlite3-sys = { workspace = true }
 num_enum = { workspace = true }
-# We need to explicitly ask for openssl-sys so that we get the version propagated
-# into the build.rs for legacy feature checks.
-openssl-sys = { workspace = true }
-openssl = { workspace = true }
 rand = { workspace = true }
 regex = { workspace = true, features = [
     "std",
@@ -54,6 +50,7 @@ regex = { workspace = true, features = [
     "unicode",
     "unicode-gencat",
 ] }
+rustls = { workspace = true }
 rusqlite = { workspace = true, features = ["array", "bundled"] }
 
 serde = { workspace = true, features = ["derive"] }
@@ -62,11 +59,13 @@ serde_json = { workspace = true }
 sketching = { workspace = true }
 smolset = { workspace = true }
 sshkey-attest = { workspace = true }
+subtle = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
+unicode-segmentation = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 utoipa = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
@@ -86,7 +85,7 @@ image = { workspace = true, default-features = false, features = [
     "webp",
 ] }
 svg = { workspace = true }
-flate2 = "1.1.8"
+flate2 = "1.1.9"
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]

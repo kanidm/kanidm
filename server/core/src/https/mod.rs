@@ -1,7 +1,7 @@
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use crate::config::{AddressSet, Configuration, TcpAddressInfo};
+use crate::config::{AddressSet, Configuration, ServerRole, TcpAddressInfo};
 use crate::tcp::process_client_addr;
 use crate::CoreAction;
 use axum::{
@@ -15,11 +15,14 @@ use axum::{
 };
 use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
+use crypto_glue::{
+    traits::DecodeDer,
+    x509::{x509_digest_public_key_sha256, Certificate},
+};
 use futures::pin_mut;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
-use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
-use kanidm_proto::{config::ServerRole, constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
+use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::authentication::ClientCertInfo, status::StatusActor};
 use serde::de::DeserializeOwned;
 use sketching::*;
@@ -61,22 +64,6 @@ mod v1_domain;
 mod v1_oauth2;
 mod v1_scim;
 mod views;
-
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
-pub(crate) enum LoggerType {
-    TracingForest,
-    OpenTelemetry,
-}
-
-impl LoggerType {
-    #[inline]
-    pub(crate) fn status_code_field(self) -> &'static str {
-        match self {
-            LoggerType::TracingForest => "status_code",
-            LoggerType::OpenTelemetry => "http.response.status_code",
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -159,6 +146,7 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
             "external/confetti.js",
             "external/base64.js",
             "modules/cred_update.mjs",
+            "csrf.js",
             "pkhtml.js",
             "style.js",
         ];
@@ -198,23 +186,31 @@ pub async fn create_https_server(
     maybe_tls_acceptor: Option<TlsAcceptor>,
     tls_acceptor_reload_tx: &broadcast::Sender<TlsAcceptor>,
 ) -> Result<Vec<task::JoinHandle<()>>, ()> {
-    let all_js_files = get_js_files(config.role)?;
-    // set up the CSP headers
-    // script-src 'self'
-    //      'sha384-Zao7ExRXVZOJobzS/uMp0P1jtJz3TTqJU4nYXkdmsjpiVD+/wcwCyX7FGqRIqvIz'
-    //      'sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM';
+    let js_checksums = match config.role {
+        ServerRole::WriteReplicaNoUI => String::new(),
+        ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
+            let all_js_files = get_js_files(config.role)?;
+            // set up the CSP headers
+            // script-src 'self'
+            //      'sha384-Zao7ExRXVZOJobzS/uMp0P1jtJz3TTqJU4nYXkdmsjpiVD+/wcwCyX7FGqRIqvIz'
+            //      'sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM';
 
-    let js_directives = all_js_files
-        .into_iter()
-        .map(|f| f.hash)
-        .collect::<Vec<String>>();
+            let js_directives = all_js_files
+                .into_iter()
+                .map(|f| f.hash)
+                .collect::<Vec<String>>();
 
-    let js_checksums: String = js_directives
-        .iter()
-        .fold(String::new(), |mut output, value| {
-            let _ = write!(output, " 'sha384-{value}'");
-            output
-        });
+            let js_checksums: String =
+                js_directives
+                    .iter()
+                    .fold(String::new(), |mut output, value| {
+                        let _ = write!(output, " 'sha384-{value}'");
+                        output
+                    });
+
+            js_checksums
+        }
+    };
 
     let csp_header = format!(
         concat!(
@@ -225,6 +221,8 @@ pub async fn create_https_server(
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
             "script-src 'self' 'unsafe-eval'{};",
+            // https://datatracker.ietf.org/doc/html/rfc9700#name-clickjacking
+            "frame-ancestors 'none'; ",
         ),
         js_checksums
     );
@@ -248,6 +246,8 @@ pub async fn create_https_server(
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
             "script-src 'self' 'unsafe-eval'{};",
+            // https://datatracker.ietf.org/doc/html/rfc9700#name-clickjacking
+            "frame-ancestors 'none'; ",
         ),
         js_checksums
     );
@@ -267,7 +267,7 @@ pub async fn create_https_server(
 
     let trusted_tcp_info_ips = config.http_client_address_info.trusted_tcp_info();
 
-    let logging_pipeline = if config.otel_grpc_url.is_some() {
+    let logging_pipeline = if config.otel_grpc_endpoint.is_some() {
         LoggerType::OpenTelemetry
     } else {
         LoggerType::TracingForest
@@ -311,6 +311,10 @@ pub async fn create_https_server(
         .route(
             views::constants::Urls::WellKnownChangePassword.as_ref(),
             get(generic::redirect_to_update_credentials),
+        )
+        .route(
+            views::constants::Urls::WellKnownPasskeyEndpoints.as_ref(),
+            get(generic::passkey_endpoints),
         );
 
     let app = match config.role {
@@ -619,7 +623,7 @@ pub(crate) async fn handle_tls_conn(
             std::io::Error::from(ErrorKind::ConnectionAborted)
         })?;
 
-        let public_key_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
+        let public_key_s256 = x509_digest_public_key_sha256(&certificate).ok_or_else(|| {
             error!("subject public key bitstring is not octet aligned");
             std::io::Error::from(ErrorKind::ConnectionAborted)
         })?;

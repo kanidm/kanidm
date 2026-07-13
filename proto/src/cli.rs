@@ -11,20 +11,17 @@ pub struct KanidmdCli {
     pub log_level: Option<sketching::LogLevel>,
 
     #[clap(
-        env = "KANIDM_OTEL_GRPC_URL",
+        env = "KANIDM_OTEL_GRPC_ENDPOINT",
         global = true,
-        help = "Specify the OpenTelemetry gRPC URL"
+        help = "Specify the OpenTelemetry gRPC endpoint (ip/hostname:port)"
     )]
-    pub otel_grpc_url: Option<String>,
+    pub otel_grpc_endpoint: Option<String>,
 
     #[clap(env = "KANIDM_DOMAIN", global = true, help = "Specify the domain")]
     pub domain: Option<String>,
 
     #[clap(env = "KANIDM_ORIGIN", global = true, help = "Specify the origin URL")]
     pub origin: Option<url::Url>,
-
-    #[clap(env = "KANIDM_ROLE", global = true, help = "Specify the server role")]
-    pub role: Option<crate::config::ServerRole>,
 
     #[clap(
         env = "KANIDM_DB_PATH",
@@ -48,7 +45,7 @@ pub struct KanidmdCli {
     pub db_arc_size: Option<usize>,
 
     #[clap(
-        env = "KANIDM_SERVER_ADMIN_BIND_PATH",
+        env = "KANIDM_ADMIN_BIND_PATH",
         global = true,
         help = "Specify the admin bind path"
     )]

@@ -1,0 +1,84 @@
+[package]
+name = "sparkle_resolver_common"
+description = "Sparkle Resolver Common Libraries"
+documentation = "https://docs.rs/sparkle_resolver_common/latest/sparkle_resolver_common/"
+
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+
+[features]
+default = ["unix"]
+unix = []
+selinux = ["sparkle_unix_common/selinux"]
+tpm = ["kanidm-hsm-crypto/tpm", "sparkle_unix_common/tpm"]
+dhat-heap = ["dep:dhat"]
+dhat-ad-hoc = ["dep:dhat"]
+
+[lib]
+name = "sparkle_resolver_common"
+path = "src/lib.rs"
+test = true
+doctest = false
+
+[dependencies]
+async-trait = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+dialoguer = { workspace = true }
+dhat = { workspace = true, optional = true }
+futures = { workspace = true }
+hashbrown = { workspace = true }
+libc = { workspace = true }
+lru = { workspace = true }
+kanidm_client = { workspace = true }
+kanidm_proto = { workspace = true }
+kanidm-hsm-crypto = { workspace = true }
+kanidm_lib_crypto = { workspace = true }
+kanidm_lib_file_permissions = { workspace = true }
+sparkle_unix_common = { workspace = true }
+notify-debouncer-full = { workspace = true }
+rand = { workspace = true }
+rusqlite = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sketching = { workspace = true }
+time = { workspace = true, features = ["std"] }
+tokio = { workspace = true, features = [
+    "rt",
+    "rt-multi-thread",
+    "fs",
+    "macros",
+    "sync",
+    "time",
+    "net",
+    "io-util",
+] }
+tokio-util = { workspace = true, features = ["codec"] }
+tracing = { workspace = true }
+uuid = { workspace = true }
+walkdir = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { workspace = true }
+sd-notify = { workspace = true }
+prctl = { workspace = true }
+procfs = { workspace = true }
+
+[target.'cfg(not(target_family = "windows"))'.dependencies]
+kanidm_utils_users = { workspace = true }
+
+[dev-dependencies]
+kanidmd_core = { workspace = true }
+kanidmd_testkit = { workspace = true }
+tempfile = { workspace = true }
+
+[build-dependencies]
+clap = { workspace = true, features = ["derive"] }
+kanidm_build_profiles = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = ["kanidm_build_profiles", "clap_complete"]

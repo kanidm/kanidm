@@ -1,5 +1,5 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::constants::ATTR_DOMAIN_ALLOW_EASTER_EGGS;
+use kanidm_proto::constants::{ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY, ATTR_DOMAIN_ALLOW_EASTER_EGGS};
 use kanidm_proto::internal::ImageValue;
 use reqwest::multipart;
 
@@ -11,7 +11,18 @@ impl KanidmClient {
 
     pub async fn idm_set_domain_allow_easter_eggs(&self, enable: bool) -> Result<(), ClientError> {
         self.perform_put_request(
-            &format!("{}{}", "/v1/domain/_attr/", ATTR_DOMAIN_ALLOW_EASTER_EGGS),
+            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_ALLOW_EASTER_EGGS),
+            vec![enable.to_string()],
+        )
+        .await
+    }
+
+    pub async fn idm_set_domain_allow_account_recovery(
+        &self,
+        enable: bool,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY),
             vec![enable.to_string()],
         )
         .await

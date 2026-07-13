@@ -7,4 +7,6 @@ pub enum SyncError {
     SyncStatus,
     SyncUpdate,
     Preprocess,
+    TlsInvalidCertificate,
+    TlsInvalidCaStore,
 }

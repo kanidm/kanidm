@@ -1,32 +1,34 @@
-use std::str::FromStr;
-
 use kanidm_proto::constants::uri::{
     OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_DEVICE, OAUTH2_TOKEN_ENDPOINT,
 };
-use oauth2::basic::BasicClient;
-
-use oauth2::http::StatusCode;
-use oauth2::{
+use oauth2_ext::basic::BasicClient;
+use oauth2_ext::http::StatusCode;
+use oauth2_ext::{
     AuthUrl, ClientId, DeviceAuthorizationUrl, HttpRequest, HttpResponse, Scope,
     StandardDeviceAuthorizationResponse, TokenUrl,
 };
-use reqwest::Client;
 use sketching::tracing_subscriber::layer::SubscriberExt;
 use sketching::tracing_subscriber::util::SubscriberInitExt;
 use sketching::tracing_subscriber::{fmt, EnvFilter};
+use std::str::FromStr;
 use tracing::level_filters::LevelFilter;
 use tracing::{debug, error, info};
 
-async fn http_client(request: HttpRequest) -> Result<HttpResponse, oauth2::reqwest::Error> {
-    let client = Client::builder()
-        .danger_accept_invalid_certs(true)
-        // Following redirects opens the client up to SSRF vulnerabilities.
+pub(crate) fn get_reqwest_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .tls_danger_accept_invalid_certs(true)
+        .tls_danger_accept_invalid_hostnames(true)
         .redirect(reqwest::redirect::Policy::none())
-        .build()?;
+        .no_proxy()
+        .build()
+        .expect("Failed to create client.")
+}
 
+async fn http_client(request: HttpRequest) -> Result<HttpResponse, reqwest::Error> {
     let method = reqwest::Method::from_str(request.method().as_str())
         .expect("this is definitely a bug but OK in an example!");
 
+    let client = get_reqwest_client();
     let mut request_builder = client
         .request(method, request.uri().to_string())
         .body(request.body().to_vec());
@@ -44,14 +46,14 @@ async fn http_client(request: HttpRequest) -> Result<HttpResponse, oauth2::reqwe
 
     let status_code =
         StatusCode::from_u16(response.status().as_u16()).expect("This'll work, for an example");
-    let headers: Vec<(oauth2::http::HeaderName, oauth2::http::HeaderValue)> = response
+    let headers: Vec<(oauth2_ext::http::HeaderName, oauth2_ext::http::HeaderValue)> = response
         .headers()
         .into_iter()
         .map(|(k, v)| {
             debug!("header key={:?} value={:?}", k, v);
             (
-                oauth2::http::HeaderName::from_str(k.as_str()).expect("Failed to parse header"),
-                oauth2::http::HeaderValue::from_str(
+                oauth2_ext::http::HeaderName::from_str(k.as_str()).expect("Failed to parse header"),
+                oauth2_ext::http::HeaderValue::from_str(
                     v.to_str().expect("Failed to parse header value"),
                 )
                 .expect("Failed to parse header value"),
@@ -72,7 +74,7 @@ async fn http_client(request: HttpRequest) -> Result<HttpResponse, oauth2::reqwe
     Ok(response)
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
 
@@ -87,7 +89,7 @@ async fn main() -> anyhow::Result<()> {
 
     info!("building client...");
 
-    // kanidm system oauth2 create-public device_flow device_flow 'https://deviceauth'
+    // kanidm system oauth2_ext create-public device_flow device_flow 'https://deviceauth'
     let client = BasicClient::new(ClientId::new("device_code".to_string()))
         .set_token_uri(TokenUrl::from_url(
             format!("https://localhost:8443{OAUTH2_TOKEN_ENDPOINT}").parse()?,

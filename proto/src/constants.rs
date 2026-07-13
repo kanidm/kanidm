@@ -98,6 +98,7 @@ pub const ATTR_DIRECTMEMBEROF: &str = "directmemberof";
 pub const ATTR_DISPLAYNAME: &str = "displayname";
 pub const ATTR_DN: &str = "dn";
 pub const ATTR_DOMAIN_ALLOW_EASTER_EGGS: &str = "domain_allow_easter_eggs";
+pub const ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY: &str = "domain_allow_account_recovery";
 pub const ATTR_DOMAIN_DEVELOPMENT_TAINT: &str = "domain_development_taint";
 pub const ATTR_DOMAIN_DISPLAY_NAME: &str = "domain_display_name";
 pub const ATTR_DOMAIN_LDAP_BASEDN: &str = "domain_ldap_basedn";
@@ -163,6 +164,7 @@ pub const ATTR_NAME: &str = "name";
 pub const ATTR_NO_INDEX: &str = "no-index";
 pub const ATTR_NSACCOUNTLOCK: &str = "nsaccountlock";
 pub const ATTR_NSUNIQUEID: &str = "nsuniqueid";
+pub const ATTR_PWD_CHANGED_TIME: &str = "pwd_changed_time";
 
 pub const ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str =
     "oauth2_allow_insecure_client_disable_pkce";
@@ -174,6 +176,7 @@ pub const ATTR_OAUTH2_CONSENT_SCOPE_MAP: &str = "oauth2_consent_scope_map";
 pub const ATTR_OAUTH2_DEVICE_FLOW_ENABLE: &str = "oauth2_device_flow_enable";
 pub const ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: &str = "oauth2_jwt_legacy_crypto_enable";
 pub const ATTR_OAUTH2_PREFER_SHORT_USERNAME: &str = "oauth2_prefer_short_username";
+pub const ATTR_OAUTH2_REFRESH_TOKEN_EXPIRY: &str = "oauth2_refresh_token_expiry";
 pub const ATTR_OAUTH2_REQUEST_SCOPES: &str = "oauth2_request_scopes";
 pub const ATTR_OAUTH2_RS_BASIC_SECRET: &str = "oauth2_rs_basic_secret";
 pub const ATTR_OAUTH2_RS_CLAIM_MAP: &str = "oauth2_rs_claim_map";
@@ -281,6 +284,7 @@ pub const LDAP_ATTR_OBJECTCLASS: &str = "objectclass";
 pub const LDAP_ATTR_OU: &str = "ou";
 pub const LDAP_ATTR_UID: &str = "uid";
 pub const LDAP_CLASS_GROUPOFNAMES: &str = "groupofnames";
+pub const LDAP_ATTR_PWD_CHANGED_TIME: &str = "pwdChangedTime";
 
 // Rust can't deal with this being compiled out, don't try and #[cfg()] them
 pub const TEST_ATTR_NON_EXIST: &str = "non-exist";

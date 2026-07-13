@@ -40,7 +40,7 @@ mod utils;
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::admin::AdminActor;
-use crate::config::Configuration;
+use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
 use crate::utils::touch_file_or_quit;
 use compact_jwt::{JwsHs256Signer, JwsSigner};
@@ -49,7 +49,6 @@ use crypto_glue::{
     traits::Digest,
 };
 use kanidm_proto::backup::BackupCompression;
-use kanidm_proto::config::ServerRole;
 use kanidm_proto::internal::OperationError;
 use kanidm_proto::scim_v1::client::ScimAssertGeneric;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
@@ -59,6 +58,7 @@ use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
 use kanidmd_lib::value::CredentialType;
 use regex::Regex;
+use sketching::LoggerType;
 use std::collections::BTreeSet;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
@@ -723,7 +723,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
     let ca_handle = if !ca_cert.exists() || !ca_key.exists() {
         // Generate the CA again.
-        let ca_handle = match crypto::build_ca(None) {
+        let ca_handle = match crypto::build_ca() {
             Ok(ca_handle) => ca_handle,
             Err(e) => {
                 error!(err = ?e, "Failed to build CA");
@@ -749,7 +749,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
     if !tls_key_path.exists() || !tls_chain_path.exists() || !tls_cert_path.exists() {
         // Generate the cert from the ca.
-        let cert_handle = match crypto::build_cert(origin_domain, &ca_handle, None, None) {
+        let cert_handle = match crypto::build_cert(origin_domain, &ca_handle) {
             Ok(cert_handle) => cert_handle,
             Err(e) => {
                 error!(err = ?e, "Failed to build certificate");
@@ -1312,6 +1312,10 @@ pub async fn create_server_core(
     // If we have been requested to init LDAP, configure it now.
     let maybe_ldap_acceptor_handles = match &config.ldapbindaddress {
         Some(la) => {
+            let logging_pipeline = match config.otel_grpc_endpoint {
+                Some(_) => LoggerType::OpenTelemetry,
+                None => LoggerType::TracingForest,
+            };
             let opt_ldap_ssl_acceptor = maybe_tls_acceptor.clone();
 
             let h = ldaps::create_ldap_server(
@@ -1321,6 +1325,7 @@ pub async fn create_server_core(
                 &broadcast_tx,
                 &tls_acceptor_reload_tx,
                 config.ldap_client_address_info.trusted_tcp_info(),
+                logging_pipeline,
             )
             .await?;
             Some(h)

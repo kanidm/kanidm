@@ -17,6 +17,11 @@ bindaddress = "127.0.0.1:8444"
 
 Once configured, deploy this config to your servers and restart the nodes.
 
+> [!NOTE]
+>
+> The example uses localhost as the bindaddress. You need to change it accordingly if you want to have it reachable over the network.
+> If you want to test replication locally, use different ports on each server.toml config file.
+
 ## Manual Node Configurations
 
 > [!NOTE]

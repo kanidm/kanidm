@@ -60,6 +60,7 @@ struct GroupView {
 struct GroupViewPartial {
     group: ScimGroup,
     can_rw: bool,
+    can_modify_any_attr: bool,
     scim_effective_access: ScimEffectiveAccess,
 }
 
@@ -97,10 +98,14 @@ pub(crate) async fn view_group_view_get(
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let can_rw = uat_privileges_active(uat);
+    let can_modify_any_attr = scim_effective_access
+        .modify_present
+        .check_any(&std::collections::BTreeSet::from(GROUP_ATTRIBUTES));
 
     let group_partial = GroupViewPartial {
         group,
         can_rw,
+        can_modify_any_attr,
         scim_effective_access,
     };
 
@@ -276,7 +281,7 @@ pub(crate) async fn add_member(
 ) -> axum::response::Result<Response> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
 
-    let get_query = ScimEntryGetQuery {
+    let get_group_members_query = ScimEntryGetQuery {
         attributes: Some(vec![Attribute::Member]),
         ext_access_check: false,
         sort_by: None,
@@ -295,17 +300,19 @@ pub(crate) async fn add_member(
         filter: None,
     };
     let group_uuid_str = String::from(group_uuid);
-    let before = state
+    let group_before = state
         .qe_r_ref
         .scim_entry_id_get(
             client_auth_info.clone(),
             kopid.eventid,
             group_uuid_str.clone(),
             EntryClass::Group,
-            get_query.clone(),
+            get_group_members_query.clone(),
         )
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
+
+    // Try adding the target_member into the group.
     state
         .qe_w_ref
         .handle_appendattribute(
@@ -319,34 +326,34 @@ pub(crate) async fn add_member(
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
-    let after = state
+    let group_after = state
         .qe_r_ref
         .scim_entry_id_get(
             client_auth_info.clone(),
             kopid.eventid,
             group_uuid_str.clone(),
             EntryClass::Group,
-            get_query,
+            get_group_members_query,
         )
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
-    let before_len = if let Some(ScimValueKanidm::EntryReferences(members_before)) =
-        before.attrs.get(&Attribute::Member)
+    let old_members_count = if let Some(ScimValueKanidm::EntryReferences(members_before)) =
+        group_before.attrs.get(&Attribute::Member)
     {
         members_before.len()
     } else {
         0
     };
-    let after_len = if let Some(ScimValueKanidm::EntryReferences(members_after)) =
-        after.attrs.get(&Attribute::Member)
+    let new_members_count = if let Some(ScimValueKanidm::EntryReferences(members_after)) =
+        group_after.attrs.get(&Attribute::Member)
     {
         members_after.len()
     } else {
         0
     };
 
-    if before_len + 1 == after_len {
+    if old_members_count + 1 == new_members_count {
         let added_member_scim = state
             .qe_r_ref
             .scim_entry_id_get(
@@ -368,6 +375,7 @@ pub(crate) async fn add_member(
             })
             .into_response());
         };
+
         // New entry + saved toast.
         Ok((GroupMemberEntryResponse {
             group_uuid,

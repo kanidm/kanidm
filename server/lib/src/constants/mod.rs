@@ -79,20 +79,24 @@ pub const DOMAIN_LEVEL_14: DomainVersion = 14;
 
 /// Domain Level introduced with 1.11.0.
 /// Deprecated as of 1.13.0
-pub const DOMAIN_LEVEL_15: DomainVersion = 15;
+pub const DOMAIN_LEVEL_1_11: DomainVersion = 15;
+
+/// Domain Level introduced with 1.12.0.
+/// Deprecated as of 1.14.0
+pub const DOMAIN_LEVEL_1_12: DomainVersion = 16;
 
 // The target supported domain functional level. During development this is
 // the NEXT level that users will upgrade too. In other words if we are
 // developing 1.6.0-dev, then we need to set TGT_LEVEL to 10 which is
 // the corresponding level.
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_14;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_1_11;
 // The current patch level if any out of band fixes are required.
 pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_2;
 
 // The maximum supported domain functional level. This generally
 // represents a *future* version of the server which doesn't exist
 // yet.
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_15;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_1_12;
 
 // This is the LOWEST level of database we can recreate. This is important for testing,
 // but we don't actually expect it to be used.
@@ -168,7 +172,6 @@ pub const RECYCLEBIN_MAX_AGE: u64 = 7 * 86400;
 pub const AUTH_SESSION_TIMEOUT: u64 = 300;
 // 5 minute mfa reg window
 pub const MFAREG_SESSION_TIMEOUT: u64 = 300;
-pub const PW_MIN_LENGTH: u32 = 10;
 
 // Maximum - Sessions have no upper bound.
 pub const MAXIMUM_AUTH_SESSION_EXPIRY: u32 = u32::MAX;
@@ -181,11 +184,14 @@ pub const DEFAULT_AUTH_PRIVILEGE_EXPIRY: u32 = 600;
 // Default - directly privileged sessions only last 1 hour.
 pub const DEFAULT_AUTH_SESSION_LIMITED_EXPIRY: u32 = 3600;
 // Default - oauth refresh tokens last for 16 hours.
-pub const OAUTH_REFRESH_TOKEN_EXPIRY: u64 = 3600 * 16;
+pub const OAUTH_REFRESH_TOKEN_EXPIRY: u32 = 3600 * 16;
 
 /// How long access tokens should last. This is NOT the length
 /// of the refresh token, which is bound to the issuing session.
 pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 15 * 60;
+
+/// The absolute maximum that can be requested for max-age requests in OIDC.
+pub const OAUTH2_OIDC_MAX_AGE_CLAMP: i64 = 86400;
 
 /// The amount of time a suppliers clock can be "ahead" before
 /// we warn about possible clock synchronisation issues.
@@ -193,7 +199,7 @@ pub const REPL_SUPPLIER_ADVANCE_WINDOW: Duration = Duration::from_secs(600);
 
 /// The number of days that the default replication MTLS cert lasts for when
 /// configured manually. Defaults to 4 years (including 1 day for the leap year).
-pub const REPL_MTLS_CERTIFICATE_DAYS: u32 = 1461;
+pub const REPL_MTLS_CERTIFICATE_EXPIRY: u64 = 1461 * 86400;
 
 /// The default number of entries that a user may retrieve in a search
 pub const DEFAULT_LIMIT_SEARCH_MAX_RESULTS: u64 = 1024;

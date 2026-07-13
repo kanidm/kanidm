@@ -13,6 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZeroU64;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -270,6 +271,10 @@ pub struct ScimEntryPutKanidm {
 #[serde_as]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ScimStrings(#[serde_as(as = "OneOrMany<_, PreferMany>")] pub Vec<String>);
+
+#[serde_as]
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ScimUrls(#[serde_as(as = "OneOrMany<_, PreferMany>")] pub Vec<Url>);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
 pub struct ScimEntryPostGeneric {

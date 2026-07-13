@@ -20,12 +20,12 @@ RUN \
     zypper install -y --no-recommends \
         sccache \
         cargo \
+        cargo-auditable \
         clang \
         gcc \
         make \
         automake \
         autoconf \
-        libopenssl-3-devel \
         pam-devel \
         libudev-devel \
         sqlite3-devel \
@@ -43,21 +43,25 @@ RUN \
     export SCCACHE_DIR=/sccache; \
     export RUSTC_WRAPPER=/usr/bin/sccache; \
     export CC="/usr/bin/clang"; \
-    cargo build --locked -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
+    cargo auditable build --locked -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release && \
-    cargo build --locked -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
+    cargo auditable build --locked -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release && \
-    cargo build --locked -p kanidm-ldap-sync ${KANIDM_BUILD_OPTIONS} \
+    cargo auditable build --locked -p kanidm-ldap-sync ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release && \
-    cargo install \
+    cargo auditable build --locked -p kanidm-mail-sender ${KANIDM_BUILD_OPTIONS} \
+        --target-dir="/usr/src/kanidm/target/" \
+        --features="${KANIDM_FEATURES}" \
+        --release && \
+    cargo auditable install \
         --git https://github.com/kanidm/webauthn-rs.git \
-        --rev 66a3d9903b31fa5a67fc00dd65ba8f55695df183 \
+        --rev 2ac5ff0e20f323cd904856a38a15899adf13fa5b \
         --force fido-mds-tool \
         --target-dir="/usr/src/kanidm/target/" && \
     sccache -s
@@ -76,10 +80,12 @@ RUN \
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ipa-sync /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ldap-sync /sbin/
+COPY --from=builder /usr/src/kanidm/target/release/kanidm-mail-sender /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/fido-mds-tool /sbin/
 RUN chmod +x /sbin/kanidm
 RUN chmod +x /sbin/kanidm-ipa-sync
 RUN chmod +x /sbin/kanidm-ldap-sync
+RUN chmod +x /sbin/kanidm-mail-sender
 RUN chmod +x /sbin/fido-mds-tool
 
 RUN mkdir /etc/kanidm && \

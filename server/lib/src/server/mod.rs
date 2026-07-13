@@ -60,6 +60,7 @@ pub(crate) mod migrations;
 pub mod modify;
 pub(crate) mod recycle;
 pub mod scim;
+pub(crate) mod utils;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 256;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 8;
@@ -84,6 +85,7 @@ pub struct DomainInfo {
     pub(crate) d_devel_taint: bool,
     pub(crate) d_ldap_allow_unix_pw_bind: bool,
     pub(crate) d_allow_easter_eggs: bool,
+    pub(crate) d_allow_account_recovery: bool,
     // In future this should be image reference instead of the image itself.
     d_image: Option<ImageValue>,
 }
@@ -113,6 +115,10 @@ impl DomainInfo {
         self.d_allow_easter_eggs
     }
 
+    pub fn allow_account_recovery(&self) -> bool {
+        self.d_allow_account_recovery
+    }
+
     #[cfg(feature = "test")]
     pub fn new_test() -> CowCell<Self> {
         concread::cowcell::CowCell::new(Self {
@@ -124,6 +130,7 @@ impl DomainInfo {
             d_devel_taint: false,
             d_ldap_allow_unix_pw_bind: false,
             d_allow_easter_eggs: false,
+            d_allow_account_recovery: false,
             d_image: None,
         })
     }
@@ -273,6 +280,8 @@ pub trait QueryServerTransaction<'a> {
     fn pw_badlist(&self) -> &HashSet<String>;
 
     fn denied_names(&self) -> &HashSet<String>;
+
+    fn domain_info(&self) -> &DomainInfo;
 
     fn get_domain_version(&self) -> DomainVersion;
 
@@ -687,6 +696,18 @@ pub trait QueryServerTransaction<'a> {
             Some(entry) if vs.is_empty() => Ok(entry),
             _ => Err(OperationError::NoMatchingEntries),
         }
+    }
+
+    /// Given an entries UUID, return an impersonation session for that account. This
+    /// should be used with care, as it allows you to perform actions internally on
+    /// behalf of a another user, without checking the permissions of the original
+    /// user.
+    fn impersonate_uuid_as_readwrite_identity(
+        &mut self,
+        uuid: Uuid,
+    ) -> Result<Identity, OperationError> {
+        self.internal_search_uuid(uuid)
+            .map(Identity::from_impersonate_entry_readwrite)
     }
 
     /// Do a schema aware conversion from a String:String to String:Value for modification
@@ -1433,6 +1454,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.system_config.denied_names
     }
 
+    fn domain_info(&self) -> &DomainInfo {
+        &self.d_info
+    }
+
     fn get_domain_version(&self) -> DomainVersion {
         self.d_info.d_vers
     }
@@ -1468,7 +1493,7 @@ impl QueryServerReadTransaction<'_> {
     }
 
     /// Retrieve the domain info of this server
-    pub fn domain_info(&mut self) -> Result<ProtoDomainInfo, OperationError> {
+    pub fn public_domain_info(&mut self) -> Result<ProtoDomainInfo, OperationError> {
         let d_info = &self.d_info;
 
         Ok(ProtoDomainInfo {
@@ -1782,6 +1807,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         &self.system_config.denied_names
     }
 
+    fn domain_info(&self) -> &DomainInfo {
+        &self.d_info
+    }
+
     fn get_domain_version(&self) -> DomainVersion {
         self.d_info.d_vers
     }
@@ -1848,6 +1877,7 @@ impl QueryServer {
             d_devel_taint: option_env!("KANIDM_PRE_RELEASE").is_some(),
             d_ldap_allow_unix_pw_bind: false,
             d_allow_easter_eggs: false,
+            d_allow_account_recovery: false,
             d_image: None,
         }));
 
@@ -2207,65 +2237,79 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_schema(&mut self) -> Result<(), OperationError> {
-        // supply entries to the writable schema to reload from.
-        // find all attributes.
-        let filt = filter!(f_eq(Attribute::Class, EntryClass::AttributeType.into()));
-        let res = self.internal_search(filt).map_err(|e| {
-            admin_error!("reload schema internal search failed {:?}", e);
-            e
-        })?;
-        // load them.
-        let attributetypes: Result<Vec<_>, _> =
-            res.iter().map(|e| SchemaAttribute::try_from(e)).collect();
+        if self.get_domain_version() < DOMAIN_LEVEL_1_11 {
+            // supply entries to the writable schema to reload from.
+            // find all attributes.
+            let filt = filter!(f_eq(Attribute::Class, EntryClass::AttributeType.into()));
+            let res = self.internal_search(filt).map_err(|e| {
+                error!("reload schema internal search failed {:?}", e);
+                e
+            })?;
+            // load them.
+            let attributetypes: Result<Vec<_>, _> =
+                res.iter().map(|e| SchemaAttribute::try_from(e)).collect();
 
-        let attributetypes = attributetypes.map_err(|e| {
-            admin_error!("reload schema attributetypes {:?}", e);
-            e
-        })?;
+            let attributetypes = attributetypes.map_err(|e| {
+                error!("reload schema attributetypes {:?}", e);
+                e
+            })?;
 
-        self.schema.update_attributes(attributetypes).map_err(|e| {
-            admin_error!("reload schema update attributetypes {:?}", e);
-            e
-        })?;
-
-        // find all classes
-        let filt = filter!(f_eq(Attribute::Class, EntryClass::ClassType.into()));
-        let res = self.internal_search(filt).map_err(|e| {
-            admin_error!("reload schema internal search failed {:?}", e);
-            e
-        })?;
-        // load them.
-        let classtypes: Result<Vec<_>, _> = res.iter().map(|e| SchemaClass::try_from(e)).collect();
-        let classtypes = classtypes.map_err(|e| {
-            admin_error!("reload schema classtypes {:?}", e);
-            e
-        })?;
-
-        self.schema.update_classes(classtypes).map_err(|e| {
-            admin_error!("reload schema update classtypes {:?}", e);
-            e
-        })?;
-
-        // validate.
-        let valid_r = self.schema.validate();
-
-        // Translate the result.
-        if valid_r.is_empty() {
-            // Now use this to reload the backend idxmeta
-            trace!("Reloading idxmeta ...");
-            self.be_txn
-                .update_idxmeta(self.schema.reload_idxmeta())
+            self.schema
+                .update_attributes(attributetypes.into_iter())
                 .map_err(|e| {
-                    admin_error!("reload schema update idxmeta {:?}", e);
+                    error!("reload schema update attributetypes {:?}", e);
                     e
-                })
+                })?;
+
+            // find all classes
+            let filt = filter!(f_eq(Attribute::Class, EntryClass::ClassType.into()));
+            let res = self.internal_search(filt).map_err(|e| {
+                error!("reload schema internal search failed {:?}", e);
+                e
+            })?;
+            // load them.
+            let classtypes: Result<Vec<_>, _> =
+                res.iter().map(|e| SchemaClass::try_from(e)).collect();
+            let classtypes = classtypes.map_err(|e| {
+                error!("reload schema classtypes {:?}", e);
+                e
+            })?;
+
+            self.schema
+                .update_classes(classtypes.into_iter())
+                .map_err(|e| {
+                    error!("reload schema update classtypes {:?}", e);
+                    e
+                })?;
+
+            // validate.
+            let valid_r = self.schema.validate();
+
+            // Translate the result.
+            if !valid_r.is_empty() {
+                // Log the failures
+                error!("Schema reload failed -> {:?}", valid_r);
+                return Err(OperationError::ConsistencyError(
+                    valid_r.into_iter().filter_map(|v| v.err()).collect(),
+                ));
+            };
         } else {
-            // Log the failures?
-            admin_error!("Schema reload failed -> {:?}", valid_r);
-            Err(OperationError::ConsistencyError(
-                valid_r.into_iter().filter_map(|v| v.err()).collect(),
-            ))
-        }?;
+            match self.get_domain_version() {
+                DOMAIN_LEVEL_1_11 => self.migrate_schema_1_11()?,
+                _ => {
+                    debug_assert!(false, "domain level was not configured in reload_schema");
+                    return Err(OperationError::MG0001InvalidReMigrationLevel);
+                }
+            }
+        }
+
+        // Now use this to reload the backend idxmeta
+        trace!("Reloading idxmeta ...");
+        self.be_txn
+            .update_idxmeta(self.schema.reload_idxmeta())
+            .inspect_err(|err| {
+                error!(?err, "reload schema update idxmeta");
+            })?;
 
         // Since we reloaded the schema, we need to reload the filter cache since it
         // may have incorrect or outdated information about indexes now.
@@ -2509,6 +2553,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // This defaults to false for release versions, and true in development
             .unwrap_or(option_env!("KANIDM_PRE_RELEASE").is_some());
 
+        let domain_allow_account_recovery = domain_info
+            .get_ava_single_bool(Attribute::DomainAllowAccountRecovery)
+            .unwrap_or_default();
+
         // We have to set the domain version here so that features which check for it
         // will now see it's been increased. This also prevents recursion during reloads
         // inside of a domain migration.
@@ -2521,6 +2569,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         mut_d_info.d_patch_level = domain_info_patch_level;
         mut_d_info.d_devel_taint = domain_info_devel_taint;
         mut_d_info.d_allow_easter_eggs = domain_allow_easter_eggs;
+        mut_d_info.d_allow_account_recovery = domain_allow_account_recovery;
 
         debug!(?mut_d_info);
 
@@ -2600,15 +2649,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.migrate_domain_13_to_14()?;
         }
 
-        if previous_version <= DOMAIN_LEVEL_14 && domain_info_version >= DOMAIN_LEVEL_15 {
+        if previous_version <= DOMAIN_LEVEL_14 && domain_info_version >= DOMAIN_LEVEL_1_11 {
             // 1.10 -> 1.11
-            self.migrate_domain_14_to_15()?;
+            self.migrate_domain_1_10_to_1_11()?;
+        }
+
+        if previous_version <= DOMAIN_LEVEL_1_11 && domain_info_version >= DOMAIN_LEVEL_1_12 {
+            // 1.11 -> 1.12
+            self.migrate_domain_1_11_to_1_12()?;
         }
 
         // This is here to catch when we increase domain levels but didn't create the migration
         // hooks. If this fails it probably means you need to add another migration hook
         // in the above.
-        const { assert!(DOMAIN_MAX_LEVEL == DOMAIN_LEVEL_15) };
+        const { assert!(DOMAIN_MAX_LEVEL == DOMAIN_LEVEL_1_12) };
         debug_assert!(domain_info_version <= DOMAIN_MAX_LEVEL);
 
         Ok(())
@@ -3176,7 +3230,7 @@ mod tests {
         );
     }
 
-    #[qs_test]
+    #[qs_test(domain_level=DOMAIN_LEVEL_13)]
     async fn test_dynamic_schema_class(server: &QueryServer) {
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
@@ -3248,7 +3302,7 @@ mod tests {
         // Commit.
     }
 
-    #[qs_test]
+    #[qs_test(domain_level=DOMAIN_LEVEL_13)]
     async fn test_dynamic_schema_attr(server: &QueryServer) {
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),

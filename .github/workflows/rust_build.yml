@@ -23,11 +23,11 @@ jobs:
       CARGO_INCREMENTAL: 0
       CARGO_TERM_COLOR: always
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
       - name: Install dependencies
         run: |
           sudo apt-get update && \
@@ -65,13 +65,13 @@ jobs:
       matrix:
         rust_version: ["beta", "nightly"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.rust_version }}
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
       - name: Install dependencies
         run: |
           sudo apt-get update && \
@@ -106,11 +106,11 @@ jobs:
       CARGO_TERM_COLOR: always
       MALLOC_CONF: "thp:always,metadata_thp:always"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.10
       - name: Install dependencies
         run: |
           sudo apt-get update && \

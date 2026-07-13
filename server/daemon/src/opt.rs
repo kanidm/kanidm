@@ -132,7 +132,7 @@ enum ScriptingCommand {
     /// Backup
     Backup {
         /// The path to backup to. If not set, defaults to stdout.
-        path: Option<PathBuf>
+        path: Option<PathBuf>,
     },
     /// Initiate a server reload.
     Reload,
@@ -145,7 +145,7 @@ enum ScriptingCommand {
         /// Check the 'origin' URL from the server configuration file, instead of the 'address'
         #[clap(short = 'O', long, action)]
         check_origin: bool,
-    }
+    },
 }
 
 // The main command parser for kanidmd
@@ -178,6 +178,8 @@ enum KanidmdOpt {
     },
     /// Display this server's replication certificate
     ShowReplicationCertificate,
+    /// Display this server's replication certificate metadata
+    ShowReplicationCertificateMetadata,
     /// Renew this server's replication certificate
     RenewReplicationCertificate,
     /// Refresh this servers database content with the content from a supplier. This means
@@ -216,6 +218,6 @@ enum KanidmdOpt {
     #[clap(name = "scripting")]
     Scripting {
         #[clap(subcommand)]
-        command: ScriptingCommand
-    }
+        command: ScriptingCommand,
+    },
 }

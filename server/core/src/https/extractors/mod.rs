@@ -1,7 +1,7 @@
 use crate::https::ServerState;
 use axum::{
     extract::{connect_info::Connected, FromRequestParts},
-    http::{header::AUTHORIZATION as AUTHORISATION, request::Parts, StatusCode},
+    http::{header::AUTHORIZATION, request::Parts, StatusCode},
 };
 use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::JwsCompact;
@@ -33,7 +33,7 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
             "request info contains invalid data",
         ))?;
 
-        let (basic_authz, bearer_token) = if let Some(header) = parts.headers.get(AUTHORISATION) {
+        let (basic_authz, bearer_token) = if let Some(header) = parts.headers.get(AUTHORIZATION) {
             if let Some((authz_type, authz_data)) = header
                 .to_str()
                 .map_err(|err| {
@@ -110,7 +110,7 @@ impl FromRequestParts<ServerState> for AuthorisationHeaders {
             "request info contains invalid data",
         ))?;
 
-        let (basic_authz, bearer_token) = if let Some(header) = parts.headers.get(AUTHORISATION) {
+        let (basic_authz, bearer_token) = if let Some(header) = parts.headers.get(AUTHORIZATION) {
             if let Some((authz_type, authz_data)) = header
                 .to_str()
                 .map_err(|err| {

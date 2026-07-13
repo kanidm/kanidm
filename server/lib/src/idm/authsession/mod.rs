@@ -8,7 +8,7 @@ use crate::credential::{BackupCodes, Credential, CredentialType, Password};
 use crate::idm::account::Account;
 use crate::idm::accountpolicy::ResolvedAccountPolicy;
 use crate::idm::audit::AuditEvent;
-use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState};
+use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState, ReauthRequest};
 use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
 };
@@ -25,7 +25,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 use time::OffsetDateTime;
-use tokio::sync::mpsc::UnboundedSender as Sender;
+use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
     AttestationCaList, AttestedPasskey as AttestedPasskeyV4, AttestedPasskeyAuthentication,
@@ -57,6 +57,7 @@ enum AuthIntent {
         privileged: bool,
     },
     Reauth {
+        read_write: bool,
         session_id: Uuid,
         session_expiry: Option<OffsetDateTime>,
     },
@@ -404,7 +405,7 @@ impl CredHandler {
         pw: &Password,
         who: Uuid,
         cleartext: &str,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
     ) {
         if pw.requires_upgrade() {
             if let Err(_e) = async_tx.send(DelayedAction::PwUpgrade(PasswordUpgrade {
@@ -444,7 +445,7 @@ impl CredHandler {
         pw: &mut Password,
         generated: bool,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match cred {
@@ -494,7 +495,7 @@ impl CredHandler {
         ts: Duration,
         pw_mfa: &mut CredTotp,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
@@ -589,7 +590,7 @@ impl CredHandler {
         pw_mfa: &mut CredSecurityKey,
         webauthn: &Webauthn,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
@@ -690,7 +691,7 @@ impl CredHandler {
         cred_id: Uuid,
         pw_mfa: &mut CredBackupCode,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         pw_badlist_set: &HashSet<String>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
@@ -779,7 +780,7 @@ impl CredHandler {
         wan_cred: &mut CredPasskey,
         webauthn: &Webauthn,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
     ) -> CredState {
         if wan_cred.state != CredVerifyState::Init {
             security_error!("Handler::Webauthn -> Result::Denied - Internal State Already Fail");
@@ -845,7 +846,7 @@ impl CredHandler {
         wan_cred: &mut CredAttestedPasskey,
         webauthn: &Webauthn,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         att_ca_list: &AttestationCaList,
     ) -> CredState {
         if wan_cred.state != CredVerifyState::Init {
@@ -922,7 +923,7 @@ impl CredHandler {
         cred: &AuthCredential,
         ts: Duration,
         who: Uuid,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         webauthn: &Webauthn,
         pw_badlist_set: &HashSet<String>,
     ) -> CredState {
@@ -1274,6 +1275,7 @@ impl AuthSession {
         session: &Session,
         cred_id: Uuid,
         key_object: Arc<KeyObject>,
+        reauth_req: &ReauthRequest,
     ) -> (Option<Self>, AuthState) {
         #[allow(clippy::large_enum_variant)]
         /// An inner enum to allow us to more easily define state within this fn
@@ -1395,12 +1397,18 @@ impl AuthSession {
         match state {
             State::Proceed(handler) => {
                 let next_auth_state = handler.next_auth_state();
+                let read_write = match reauth_req {
+                    ReauthRequest::GrantReadWrite => true,
+                    ReauthRequest::VerifyCredentials => false,
+                };
+
                 let auth_session = AuthSession {
                     account: asd.account,
                     account_policy: asd.account_policy,
                     state: AuthSessionState::InProgress(handler),
                     issue: asd.issue,
                     intent: AuthIntent::Reauth {
+                        read_write,
                         session_id,
                         session_expiry,
                     },
@@ -1510,8 +1518,8 @@ impl AuthSession {
         &mut self,
         cred: &AuthCredential,
         time: Duration,
-        async_tx: &Sender<DelayedAction>,
-        audit_tx: &Sender<AuditEvent>,
+        async_tx: &UnboundedSender<DelayedAction>,
+        audit_tx: &UnboundedSender<AuditEvent>,
         webauthn: &Webauthn,
         pw_badlist: &HashSet<String>,
     ) -> Result<AuthState, OperationError> {
@@ -1613,7 +1621,7 @@ impl AuthSession {
         &mut self,
         auth_type: AuthType,
         time: Duration,
-        async_tx: &Sender<DelayedAction>,
+        async_tx: &UnboundedSender<DelayedAction>,
         cred_id: Uuid,
         ext_metadata: SessionExtMetadata,
     ) -> Result<UserAuthToken, OperationError> {
@@ -1641,7 +1649,7 @@ impl AuthSession {
                 };
 
                 security_info!(
-                    "Issuing {:?} session ({:?}) {} for {} {}",
+                    "Issuing {} session ({}) {} for {} {}",
                     self.issue,
                     scope,
                     session_id,
@@ -1695,6 +1703,7 @@ impl AuthSession {
                 Ok(uat)
             }
             AuthIntent::Reauth {
+                read_write,
                 session_id,
                 session_expiry,
             } => {
@@ -1719,6 +1728,7 @@ impl AuthSession {
                         session_id,
                         session_expiry,
                         scope,
+                        read_write,
                         time,
                         &self.account_policy,
                     )
@@ -1775,6 +1785,7 @@ mod tests {
     use kanidm_proto::oauth2::{AccessTokenResponse, AccessTokenType, IssuedTokenType};
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
     use std::time::Duration;
+    use time::OffsetDateTime;
     use tokio::sync::mpsc::unbounded_channel as unbounded;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
@@ -1883,7 +1894,8 @@ mod tests {
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
         // manually load in a cred
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred =
+            Credential::new_password_only(&p, "test_password", OffsetDateTime::UNIX_EPOCH).unwrap();
         account.primary = Some(cred);
 
         let (async_tx, mut async_rx) = unbounded();
@@ -1984,7 +1996,9 @@ mod tests {
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
         // manually load in a cred
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "list@no3IBTyqHu$bad").unwrap();
+        let cred =
+            Credential::new_password_only(&p, "list@no3IBTyqHu$bad", OffsetDateTime::UNIX_EPOCH)
+                .unwrap();
         account.primary = Some(cred);
 
         let (async_tx, mut async_rx) = unbounded();
@@ -2171,9 +2185,9 @@ mod tests {
         let pw_bad = "bad_password";
 
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, pw_good)
+        let cred = Credential::new_password_only(&p, pw_good, OffsetDateTime::UNIX_EPOCH)
             .unwrap()
-            .append_totp("totp".to_string(), totp);
+            .append_totp("totp".to_string(), totp, OffsetDateTime::UNIX_EPOCH);
         // add totp also
         account.primary = Some(cred);
 
@@ -2343,9 +2357,9 @@ mod tests {
         let pw_badlist = "list@no3IBTyqHu$bad";
 
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, pw_badlist)
+        let cred = Credential::new_password_only(&p, pw_badlist, OffsetDateTime::UNIX_EPOCH)
             .unwrap()
-            .append_totp("totp".to_string(), totp);
+            .append_totp("totp".to_string(), totp, OffsetDateTime::UNIX_EPOCH);
         // add totp also
         account.primary = Some(cred);
 
@@ -2446,12 +2460,12 @@ mod tests {
         name: &str,
     ) -> (
         webauthn_rs::prelude::Webauthn,
-        webauthn_authenticator_rs::WebauthnAuthenticator<SoftPasskey>,
+        SoftPasskey,
         webauthn_rs::prelude::Passkey,
     ) {
         let webauthn = create_webauthn();
         // Setup a soft token
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let uuid = Uuid::new_v4();
 
@@ -2474,12 +2488,12 @@ mod tests {
         spn: &str,
     ) -> (
         webauthn_rs::prelude::Webauthn,
-        webauthn_authenticator_rs::WebauthnAuthenticator<SoftPasskey>,
+        SoftPasskey,
         webauthn_rs::prelude::SecurityKey,
     ) {
         let webauthn = create_webauthn();
         // Setup a soft token
-        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+        let mut wa = SoftPasskey::new(true);
 
         let uuid = Uuid::new_v4();
 
@@ -2600,7 +2614,7 @@ mod tests {
 
         // Use an incorrect softtoken.
         {
-            let mut inv_wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+            let mut inv_wa = SoftPasskey::new(true);
             let (chal, reg_state) = webauthn
                 .start_passkey_registration(account.uuid, account.spn(), &account.displayname, None)
                 .expect("Failed to setup webauthn rego challenge");
@@ -2667,7 +2681,7 @@ mod tests {
 
         // Now create the credential for the account.
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, pw_good)
+        let cred = Credential::new_password_only(&p, pw_good, OffsetDateTime::UNIX_EPOCH)
             .unwrap()
             .append_securitykey("soft".to_string(), wan_cred)
             .unwrap();
@@ -2870,11 +2884,11 @@ mod tests {
 
         // Now create the credential for the account.
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, pw_good)
+        let cred = Credential::new_password_only(&p, pw_good, OffsetDateTime::UNIX_EPOCH)
             .unwrap()
             .append_securitykey("soft".to_string(), wan_cred)
             .unwrap()
-            .append_totp("totp".to_string(), totp);
+            .append_totp("totp".to_string(), totp, OffsetDateTime::UNIX_EPOCH);
 
         account.primary = Some(cred);
 
@@ -3143,10 +3157,10 @@ mod tests {
 
         // add totp and backup codes also
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, pw_good)
+        let cred = Credential::new_password_only(&p, pw_good, OffsetDateTime::UNIX_EPOCH)
             .unwrap()
-            .append_totp("totp".to_string(), totp)
-            .update_backup_code(backup_codes)
+            .append_totp("totp".to_string(), totp, OffsetDateTime::UNIX_EPOCH)
+            .update_backup_code(backup_codes, OffsetDateTime::UNIX_EPOCH)
             .unwrap();
 
         account.primary = Some(cred);
@@ -3349,10 +3363,10 @@ mod tests {
         let pw_good = "test_password";
 
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, pw_good)
+        let cred = Credential::new_password_only(&p, pw_good, OffsetDateTime::UNIX_EPOCH)
             .unwrap()
-            .append_totp("totp_a".to_string(), totp_a)
-            .append_totp("totp_b".to_string(), totp_b);
+            .append_totp("totp_a".to_string(), totp_a, OffsetDateTime::UNIX_EPOCH)
+            .append_totp("totp_b".to_string(), totp_b, OffsetDateTime::UNIX_EPOCH);
         // add totp also
         account.primary = Some(cred);
 

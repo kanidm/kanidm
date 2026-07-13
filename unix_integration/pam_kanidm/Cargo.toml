@@ -1,7 +1,6 @@
 [package]
 name = "pam_kanidm"
 description = "Kanidm PAM module"
-links = "pam"
 
 version = { workspace = true }
 authors = { workspace = true }
@@ -17,11 +16,7 @@ crate-type = ["cdylib"]
 path = "src/lib.rs"
 
 [dependencies]
-kanidm_unix_common = { workspace = true }
-libc = { workspace = true }
-tracing-subscriber = { workspace = true }
-tracing = { workspace = true }
-time = { workspace = true }
+pam_sparkle_common = { workspace = true }
 
 [build-dependencies]
 pkg-config = { workspace = true }

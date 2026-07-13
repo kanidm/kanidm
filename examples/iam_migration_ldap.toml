@@ -1,7 +1,6 @@
 debug = false
 dry_run = true
 schedule = "* * * * *"
-skip_root_check = false
 sync_token="cheesemonkey"
 ldap_uri="ldaps://example.com:636"
 ldap_ca=""

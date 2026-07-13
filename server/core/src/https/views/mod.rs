@@ -2,7 +2,6 @@ use crate::https::views::admin::{admin_api_router, admin_router};
 use crate::https::{middleware, ServerState};
 use askama::Template;
 use askama_web::WebTemplate;
-
 use axum::{
     middleware::from_fn_with_state,
     response::Redirect,
@@ -20,6 +19,7 @@ mod admin;
 mod apps;
 pub(crate) mod constants;
 mod cookies;
+mod csrf;
 mod enrol;
 mod errors;
 mod login;
@@ -28,6 +28,7 @@ mod oauth2;
 mod profile;
 mod radius;
 mod reauth;
+mod recover;
 mod reset;
 
 #[derive(Template, WebTemplate)]
@@ -103,6 +104,14 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
         .route("/apps", get(apps::view_apps_get))
         .route("/enrol", get(enrol::view_enrol_get))
         .route("/reset", get(reset::view_reset_get))
+        .route(
+            "/recover",
+            get(recover::view_recover_get).post(recover::view_recover_post),
+        )
+        .route(
+            "/revoke",
+            get(reset::view_revoke_get).post(reset::view_revoke_post),
+        )
         .route("/update_credentials", get(reset::view_self_reset_get))
         .route("/profile", get(profile::view_profile_get))
         .route("/profile/diff", get(profile::view_profile_get))

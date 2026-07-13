@@ -48,6 +48,14 @@
       "name": "remove-all-members",
       // Setting a value to null will cause its content to be removed.
       "member": null
-    }
+    },
+    {
+      "state": "present",
+      "id": "ffc56e18-6d84-4997-b111-3f997ee158eb",
+      "class": [
+        "group"
+      ],
+      "name": "lion_admins"
+    },
   ]
 }

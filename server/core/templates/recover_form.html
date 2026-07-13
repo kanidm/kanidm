@@ -1,0 +1,44 @@
+(% extends "recover_base.html" %)
+
+(% block head %)
+<script
+    src="/pkg/csrf.js?v=((crate::https::cache_buster::get_cache_buster_key()))"
+    defer></script>
+(% endblock %)
+
+(% block content %)
+		<p>Enter your email to recover your account</p>
+
+		<form
+			id="protected_form"
+			action="#"
+			method="post"
+			data-nonce-hex="(( csrf.nonce_hex ))"
+			data-mask-hex="(( csrf.mask_hex ))"
+			data-related-input-id="(( csrf.related_input_id ))"
+			>
+			<input type="hidden" id="protected_form_solution_hex" name="solution_hex" type="text" />
+			<input
+				type="hidden"
+				id="protected_form_timestamp_hex"
+				name="timestamp_hex"
+				type="text"
+			/>
+			<div class="input-group mb-3">
+				<input
+					autofocus=true
+					class="autofocus form-control"
+					id="email"
+					name="email"
+					type="email"
+					autocomplete="email"
+					required="true"
+				/>
+			</div>
+			<div class="input-group mb-3 justify-content-md-center">
+				<button id="protected_form_submit" 
+					class="btn btn-primary"
+					type="submit">Submit</button>
+			</div>
+		</form>
+(% endblock %)

@@ -2,7 +2,7 @@
 
 ## Renew Replication Identity Certificate
 
-The replication identity certificate defaults to an expiry of 180 days.
+The replication identity certificate defaults to an expiry of 4 years (1460 days).
 
 To renew this run the command:
 

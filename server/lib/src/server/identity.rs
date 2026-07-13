@@ -12,6 +12,7 @@ use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::net::IpAddr;
 use std::sync::Arc;
+use time::OffsetDateTime;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Source {
@@ -71,6 +72,13 @@ pub enum InternalRole {
     System,
     /// A migration operation being performed on the system.
     Migration,
+
+    /// An anonymous account action - this could be a credential reset
+    /// request, or a request to create a new account.
+    AccountRequest,
+
+    /// An internal role than can manage the outbound message queue.
+    MessageQueue,
 }
 
 impl std::fmt::Display for InternalRole {
@@ -78,6 +86,8 @@ impl std::fmt::Display for InternalRole {
         match self {
             Self::System => write!(f, "System"),
             Self::Migration => write!(f, "Migration"),
+            Self::AccountRequest => write!(f, "AccountRequest"),
+            Self::MessageQueue => write!(f, "MessageQueue"),
         }
     }
 }
@@ -87,6 +97,8 @@ impl InternalRole {
         match self {
             Self::System => UUID_SYSTEM,
             Self::Migration => UUID_INTERNAL_MIGRATION,
+            Self::AccountRequest => UUID_INTERNAL_ACCOUNT_REQUEST,
+            Self::MessageQueue => UUID_INTERNAL_MESSAGE_QUEUE,
         }
     }
 }
@@ -138,6 +150,7 @@ pub struct Identity {
     pub(crate) session_id: Uuid,
     pub(crate) scope: AccessScope,
     limits: Limits,
+    last_verified_at: Option<OffsetDateTime>,
 }
 
 impl std::fmt::Display for Identity {
@@ -167,6 +180,7 @@ impl Identity {
         session_id: Uuid,
         scope: AccessScope,
         limits: Limits,
+        last_verified_at: Option<OffsetDateTime>,
     ) -> Self {
         Self {
             origin,
@@ -174,6 +188,7 @@ impl Identity {
             session_id,
             scope,
             limits,
+            last_verified_at,
         }
     }
 
@@ -191,6 +206,12 @@ impl Identity {
         &mut self.limits
     }
 
+    /// This is the time at which the session associated with this identity last
+    /// had it's credentials postively verified at.
+    pub(crate) fn last_verified_at(&self) -> Option<OffsetDateTime> {
+        self.last_verified_at
+    }
+
     pub(crate) fn migration() -> Self {
         Identity {
             origin: IdentType::Internal(InternalRole::Migration),
@@ -198,6 +219,29 @@ impl Identity {
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
+            last_verified_at: None,
+        }
+    }
+
+    pub(crate) fn account_request() -> Self {
+        Identity {
+            origin: IdentType::Internal(InternalRole::AccountRequest),
+            source: Source::Internal,
+            session_id: UUID_INTERNAL_SESSION_ID,
+            scope: AccessScope::ReadOnly,
+            limits: Limits::unlimited(),
+            last_verified_at: None,
+        }
+    }
+
+    pub(crate) fn message_queue() -> Self {
+        Identity {
+            origin: IdentType::Internal(InternalRole::MessageQueue),
+            source: Source::Internal,
+            session_id: UUID_INTERNAL_SESSION_ID,
+            scope: AccessScope::ReadWrite,
+            limits: Limits::unlimited(),
+            last_verified_at: None,
         }
     }
 
@@ -208,6 +252,7 @@ impl Identity {
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
+            last_verified_at: None,
         }
     }
 
@@ -221,10 +266,10 @@ impl Identity {
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadOnly,
             limits: Limits::unlimited(),
+            last_verified_at: None,
         }
     }
 
-    #[cfg(test)]
     pub fn from_impersonate_entry_readwrite(
         entry: Arc<Entry<EntrySealed, EntryCommitted>>,
     ) -> Self {
@@ -234,6 +279,7 @@ impl Identity {
             session_id: UUID_INTERNAL_SESSION_ID,
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
+            last_verified_at: None,
         }
     }
 
@@ -280,11 +326,11 @@ impl Identity {
         matches!(self.origin, IdentType::Internal(_))
     }
 
-    pub fn get_uuid(&self) -> Option<Uuid> {
+    pub fn get_uuid(&self) -> Uuid {
         match &self.origin {
-            IdentType::Internal(role) => Some(role.get_uuid()),
-            IdentType::User(u) => Some(u.entry.get_uuid()),
-            IdentType::Synch(u) => Some(*u),
+            IdentType::Internal(role) => role.get_uuid(),
+            IdentType::User(u) => u.entry.get_uuid(),
+            IdentType::Synch(u) => *u,
         }
     }
 

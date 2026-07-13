@@ -18,7 +18,7 @@ use crate::repl::ruv::{
 use crate::utils::trigraph_iter;
 use crate::value::{IndexType, Value};
 use concread::cowcell::*;
-use hashbrown::{HashMap as Map, HashSet};
+use hashbrown::{HashMap, HashSet};
 use idlset::v2::IDLBitRange;
 use idlset::AndNot;
 use kanidm_proto::backup::BackupCompression;
@@ -124,11 +124,11 @@ pub struct IdRawEntry {
 
 #[derive(Debug, Clone)]
 pub struct IdxMeta {
-    pub idxkeys: Map<IdxKey, IdxSlope>,
+    pub idxkeys: HashMap<IdxKey, IdxSlope>,
 }
 
 impl IdxMeta {
-    pub fn new(idxkeys: Map<IdxKey, IdxSlope>) -> Self {
+    pub fn new(idxkeys: HashMap<IdxKey, IdxSlope>) -> Self {
         IdxMeta { idxkeys }
     }
 }
@@ -1491,7 +1491,7 @@ impl<'a> BackendWriteTransaction<'a> {
         let mut idxkeys = idxkeys
             .into_iter()
             .map(|k| self.get_idx_slope(&k).map(|slope| (k, slope)))
-            .collect::<Result<Map<_, _>, _>>()?;
+            .collect::<Result<HashMap<_, _>, _>>()?;
 
         std::mem::swap(&mut self.idxmeta_wr.deref_mut().idxkeys, &mut idxkeys);
         Ok(())
@@ -2195,7 +2195,7 @@ impl Backend {
         //
         // During startup this will be "fixed" as the schema core will call reload_idxmeta
         // which will trigger a reload of the analysis data (if present).
-        let idxkeys: Map<_, _> = idxkeys
+        let idxkeys: HashMap<_, _> = idxkeys
             .into_iter()
             .map(|ikey| {
                 let slope = get_idx_slope_default(&ikey);
@@ -2291,7 +2291,7 @@ mod tests {
     use std::sync::{Arc, LazyLock};
     use std::time::Duration;
 
-    static CID_ZERO: LazyLock<Cid> = LazyLock::new(|| Cid::new_zero());
+    static CID_ZERO: LazyLock<Cid> = LazyLock::new(Cid::new_zero);
     static CID_ONE: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(1));
     static CID_TWO: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(2));
     static CID_THREE: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(3));

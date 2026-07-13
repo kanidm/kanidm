@@ -85,8 +85,8 @@ buildx/kanidm_tools:
 		$(CONTAINER_BUILD_ARGS) .
 
 .PHONY: buildx/radiusd
-buildx/radiusd: ## Build multi-arch radius docker images and push to docker hub
-buildx/radiusd:
+buildx/radiusd_py: ## Build multi-arch radius docker images and push to docker hub
+buildx/radiusd_py:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull $(CONTAINER_BUILDX_ACTION) --platform $(CONTAINER_IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
@@ -96,8 +96,20 @@ buildx/radiusd:
 		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) \
 		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_EXT_VERSION) .
 
+.PHONY: buildx/radiusd_rust
+buildx/radiusd_rust: ## Build multi-arch radius docker images and push to docker hub
+buildx/radiusd_rust:
+	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
+		--pull $(CONTAINER_BUILDX_ACTION) --platform $(CONTAINER_IMAGE_ARCH) \
+		-f rlm_kanidm/Dockerfile \
+		--progress $(BUILDKIT_PROGRESS) \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
+		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) \
+		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_EXT_VERSION) .
+
 .PHONY: buildx
-buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
+buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd_rust
 
 .PHONY: build/kanidmd
 build/kanidmd:	## Build the kanidmd docker image locally
@@ -121,11 +133,23 @@ build/orca:
 		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
+
+# TODO remove this once the rust module's confirmed as working
 .PHONY: build/radiusd
-build/radiusd:	## Build the radiusd docker image locally
+build/radiusd:	## Build the radiusd docker image locally - deprecated
 build/radiusd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
 		-f rlm_python/Dockerfile \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
+		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) .
+
+
+.PHONY: build/radiusd_rust
+build/radiusd_rust:	## Build the radiusd docker image locally
+build/radiusd_rust:
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
+		-f rlm_kanidm/Dockerfile \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
 		--label "com.kanidm.version=$(CONTAINER_IMAGE_EXT_VERSION)" \
 		-t $(CONTAINER_IMAGE_BASE)/radius:$(CONTAINER_IMAGE_VERSION) .
@@ -150,6 +174,11 @@ test/radiusd: ## Run a test radius server
 test/radiusd: build/radiusd
 	cd rlm_python && \
 	./run_radius_container.sh
+
+.PHONY: test/radius/e2e
+test/radius/e2e: ## Run end-to-end RADIUS integration tests
+test/radius/e2e:
+	./scripts/test_radius.sh
 
 .PHONY: test
 test:
@@ -200,16 +229,15 @@ test/pykanidm/lint: ## python library linting
 	cd pykanidm && \
 	uv run ruff check tests kanidm
 
-.PHONY: test/pykanidm/mypy
-test/pykanidm/mypy: ## python library type checking
+.PHONY: test/pykanidm/typecheck
+test/pykanidm/typecheck: ## python library type checking
 	cd pykanidm && \
-	uv run mypy --strict tests kanidm && \
 	uv run ty check tests kanidm \
 		--ignore unused-type-ignore-comment
 
 .PHONY: test/pykanidm
-test/pykanidm: ## run the kanidm python module test suite (mypy/lint/pytest)
-test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/lint
+test/pykanidm: ## run the kanidm python module test suite (typecheck/lint/pytest)
+test/pykanidm: test/pykanidm/pytest test/pykanidm/typecheck test/pykanidm/lint
 
 .PHONY: test/pykanidm/coverage
 test/pykanidm/coverage: ## run the Kanidm Python module test suite with coverage
@@ -342,30 +370,19 @@ coveralls:
 
 .PHONY: eslint
 eslint: ## Run eslint on the UI javascript things
-eslint: eslint/setup
+eslint:
 	@echo "################################"
 	@echo "   Running eslint..."
 	@echo "################################"
-	cd server/core && find ./static -name '*js' -not -path '*/external/*' -exec eslint "{}" \;
+	cd server/core && find ./static -name '*js' -not -path '*/external/*' -exec pnpm exec eslint "{}" \;
 	@echo "################################"
 	@echo "Done!"
 
-.PHONY: eslint/setup
-eslint/setup: ## Install eslint for the UI javascript things
-	cd server/core && npm ci
-
 .PHONY: prettier
-prettier: ## Run prettier on the UI javascript things
-prettier: eslint/setup
+prettier: ## Run prettier on the UI javascript things and write back changes
+prettier:
 	@echo "   Running prettier..."
-	cd server/core && npm run prettier
-	@echo "Done!"
-
-.PHONY: prettier/fix
-prettier/fix: ## Run prettier on the UI javascript things and write back changes
-prettier/fix: eslint/setup
-	@echo "   Running prettier..."
-	cd server/core && npm run prettier:fix
+	cd server/core && pnpm run prettier:fix
 	@echo "Done!"
 
 .PHONY: publish

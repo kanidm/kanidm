@@ -15,15 +15,15 @@ jobs:
     env:
       UV_LINK_MODE: "copy"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up Python 3.12
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install uv
         run: pip install --root-user-action=ignore  uv
-      - name: Running mypy
-        run: make test/pykanidm/mypy
+      - name: Running type checks
+        run: make test/pykanidm/typecheck
       - name: Running Linting
         run: make test/pykanidm/lint
       - name: Running pytest

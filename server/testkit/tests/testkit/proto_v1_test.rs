@@ -11,6 +11,7 @@ use kanidm_proto::v1::{
     AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
     Entry,
 };
+use kanidmd_core::config::ServerRole;
 use kanidmd_lib::constants::{NAME_IDM_ADMINS, NAME_SYSTEM_ADMINS};
 use kanidmd_lib::credential::totp::Totp;
 use kanidmd_lib::prelude::{Attribute, APPLICATION_JSON};
@@ -273,39 +274,6 @@ async fn test_server_rest_account_read(rsclient: &KanidmClient) {
     let a = rsclient.idm_service_account_get("admin").await.unwrap();
     assert!(a.is_some());
     println!("{a:?}");
-}
-
-#[kanidmd_testkit::test]
-async fn test_server_rest_schema_read(rsclient: &KanidmClient) {
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-
-    // List the schema
-    let s_list = rsclient.idm_schema_list().await.unwrap();
-    assert!(!s_list.is_empty());
-
-    let a_list = rsclient.idm_schema_attributetype_list().await.unwrap();
-    assert!(!a_list.is_empty());
-
-    let c_list = rsclient.idm_schema_classtype_list().await.unwrap();
-    assert!(!c_list.is_empty());
-
-    // Get an attr/class
-    let a = rsclient
-        .idm_schema_attributetype_get(Attribute::Name.as_ref())
-        .await
-        .unwrap();
-    assert!(a.is_some());
-    println!("{a:?}");
-
-    let c = rsclient
-        .idm_schema_classtype_get(Attribute::Account.as_ref())
-        .await
-        .unwrap();
-    assert!(c.is_some());
-    println!("{c:?}");
 }
 
 // Test resetting a radius cred, and then checking/viewing it.
@@ -817,7 +785,7 @@ async fn test_server_rest_recycle_lifecycle(rsclient: &KanidmClient) {
     assert!(acc.is_some());
 }
 
-#[kanidmd_testkit::test]
+#[kanidmd_testkit::test(role = ServerRole::WriteReplica)]
 async fn test_server_rest_oauth2_basic_lifecycle(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
@@ -882,7 +850,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: &KanidmClient) {
         )
         .await
         .expect("Failed to update config");
-
+    #[allow(clippy::disallowed_methods)]
     rsclient
         .idm_oauth2_rs_rotate_keys("test_integration", OffsetDateTime::now_utc())
         .await
@@ -1233,7 +1201,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: &KanidmClient) 
     assert!(res.is_ok());
 }
 
-async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenticator<SoftPasskey> {
+async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> SoftPasskey {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -1271,7 +1239,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
         .unwrap();
 
     // Setup and update the passkey
-    let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
+    let mut wa = SoftPasskey::new(true);
 
     let status = rsclient
         .idm_account_credential_update_passkey_init(&session_token)
@@ -1426,7 +1394,7 @@ async fn test_server_api_token_lifecycle(rsclient: &KanidmClient) {
 
     let token = jws_verifier
         .verify(&token_unverified)
-        .map(|j| j.from_json::<ApiToken>().expect("invalid token json"))
+        .map(|j: compact_jwt::Jws| j.from_json::<ApiToken>().expect("invalid token json"))
         .expect("Failed to verify token");
 
     let tokens = rsclient
@@ -1757,6 +1725,7 @@ async fn test_server_user_auth_reauthentication(rsclient: &KanidmClient) {
         .map(|jws| jws.from_json::<UserAuthToken>().expect("Invalid json"))
         .expect("Unable extract uat");
 
+    #[allow(clippy::disallowed_methods)]
     let now = time::OffsetDateTime::now_utc();
     eprintln!("{:?} {:?}", now, uat.purpose);
     assert!(matches!(uat.purpose, UatPurpose::ReadWrite { .. }));

@@ -18,10 +18,7 @@ doctest = false
 [dependencies]
 compact_jwt = { workspace = true }
 tracing = { workspace = true }
-reqwest = { workspace = true, default-features = false, features = [
-    "cookies",
-    "multipart",
-] }
+reqwest = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 http = { workspace = true }
@@ -41,4 +38,5 @@ tokio = { workspace = true, features = [
 toml = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 url = { workspace = true, features = ["serde"] }
+urlencoding = { workspace = true }
 webauthn-rs-proto = { workspace = true }

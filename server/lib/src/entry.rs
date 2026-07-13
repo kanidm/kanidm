@@ -53,10 +53,7 @@ use kanidm_proto::internal::{
 use kanidm_proto::scim_v1::server::ScimEffectiveAccess;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
-use openssl::ec::EcKey;
-use openssl::pkey::{Private, Public};
 use std::cmp::Ordering;
-pub use std::collections::BTreeSet as Set;
 use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -180,7 +177,7 @@ impl Committed for EntryReduced {}
 pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
     // We can't shortcut based on len because cid mod may not be present.
     // Build the set of all keys between both.
-    let allkeys: Set<&Attribute> = left
+    let allkeys: BTreeSet<&Attribute> = left
         .keys()
         .chain(right.keys())
         .filter(|k| *k != &Attribute::LastModifiedCid && *k != &Attribute::CreatedAtCid)
@@ -1423,7 +1420,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     #[inline]
     /// Given this entry, extract the set of strings that can uniquely identify this for authentication
     /// purposes. These strings are then indexed.
-    fn get_name2uuid_cands(&self) -> Set<String> {
+    fn get_name2uuid_cands(&self) -> BTreeSet<String> {
         // The cands are:
         // * spn
         // * name
@@ -1488,9 +1485,9 @@ impl Entry<EntrySealed, EntryCommitted> {
         post: Option<&Self>,
     ) -> (
         // Add
-        Option<Set<String>>,
+        Option<BTreeSet<String>>,
         // Remove
-        Option<Set<String>>,
+        Option<BTreeSet<String>>,
     ) {
         // needs to return gid for posix conversion
         match (pre, post) {
@@ -1512,9 +1509,9 @@ impl Entry<EntrySealed, EntryCommitted> {
                 let post_set = b.get_name2uuid_cands();
 
                 // what is in post, but not pre (added)
-                let add_set: Set<_> = post_set.difference(&pre_set).cloned().collect();
+                let add_set: BTreeSet<_> = post_set.difference(&pre_set).cloned().collect();
                 // what is in pre, but not post (removed)
-                let rem_set: Set<_> = pre_set.difference(&post_set).cloned().collect();
+                let rem_set: BTreeSet<_> = pre_set.difference(&post_set).cloned().collect();
                 (Some(add_set), Some(rem_set))
             }
         }
@@ -2530,7 +2527,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                 .collect()
         };
 
-        // Stage 3 - given our map, generate the final result.
+        // Doing this to avoid duplicate attribute values per the LDAP spec
         let attributes: Vec<_> = attr_names
             .into_iter()
             .filter_map(|(ldap_a, kani_a)| {
@@ -2631,18 +2628,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub(crate) fn get_display_id(&self) -> String {
         self.attrs
             .get(&Attribute::Spn)
-            .and_then(|vs| vs.to_value_single())
-            .or_else(|| {
-                self.attrs
-                    .get(&Attribute::Name)
-                    .and_then(|vs| vs.to_value_single())
-            })
+            .map(|vs| vs.to_proto_string_clone_iter())
             .or_else(|| {
                 self.attrs
                     .get(&Attribute::Uuid)
-                    .and_then(|vs| vs.to_value_single())
+                    .map(|vs| vs.to_proto_string_clone_iter())
             })
-            .map(|value| value.to_proto_string_clone())
+            // Take the first value
+            .and_then(|mut string_iter| string_iter.next())
             .unwrap_or_else(|| "no entry id available".to_string())
     }
 
@@ -2924,22 +2917,6 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     ) -> Option<&JwsEs256Signer> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.to_jws_key_es256_single())
-    }
-
-    pub fn get_ava_single_eckey_private<A: AsRef<Attribute>>(
-        &self,
-        attr: A,
-    ) -> Option<&EcKey<Private>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_eckey_private_single())
-    }
-
-    pub fn get_ava_single_eckey_public<A: AsRef<Attribute>>(
-        &self,
-        attr: A,
-    ) -> Option<&EcKey<Public>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_eckey_public_single())
     }
 
     pub fn get_ava_webauthn_attestation_ca_list<A: AsRef<Attribute>>(

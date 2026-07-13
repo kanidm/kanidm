@@ -28,7 +28,6 @@ kanidm_proto = { workspace = true }
 kanidmd_core = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 sketching = { workspace = true }
-fs4 = { workspace = true }
 futures = { workspace = true }
 
 dhat = { workspace = true, optional = true }
@@ -62,11 +61,9 @@ sketching = { workspace = true }
 [package.metadata.deb]
 name = "kanidmd"
 maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
-# Can't use $auto depends because the name of libssl3 varies by distro and version
 depends = [
 	"libc6",
-	"tpm-udev",
-	"libssl3 | libssl3t64",
+	"tpm-udev"
 ]
 section = "network"
 priority = "optional"

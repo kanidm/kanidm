@@ -29,11 +29,10 @@ use lettre::{
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
+use time::format_description::well_known::Rfc2822;
 use tokio::runtime;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
@@ -41,7 +40,11 @@ use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
+use url::Url;
 use uuid::Uuid;
+
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::MetadataExt;
 
 mod config;
 include!("./opt.rs");
@@ -66,19 +69,66 @@ struct MessageStatus {
     status: Result<(), SendError>,
 }
 
-fn to_email_content(msg: &OutboundMessage, message_id: Uuid) -> (String, String) {
+struct TemplateContext<'a> {
+    message_id: Uuid,
+    instance_display_name: &'a str,
+    instance_url: &'a Url,
+}
+
+fn to_email_content(msg: &OutboundMessage, ctx: &TemplateContext<'_>) -> (String, String) {
     match msg {
         OutboundMessage::TestMessageV1 { display_name } => (
-            "Kanidm Test Message".into(),
+            format!("{0}: Test Message", ctx.instance_display_name),
             format!(
                 r#"Hi {display_name},
 
-This is a test message sent by Kanidm to ensure that we are able to email you.
+This is a test message sent to ensure that we are able to email you. If you're reading this, it worked!
 
 msg_id: {message_id}
-            "#
+            "#,
+                message_id = ctx.message_id,
             ),
         ),
+        OutboundMessage::CredentialResetV1 {
+            display_name,
+            intent_id,
+            expiry_time,
+        } => {
+            let mut reset_url = ctx.instance_url.clone();
+            reset_url.set_path("/ui/reset");
+            reset_url.query_pairs_mut().append_pair("token", intent_id);
+
+            let mut revoke_url = ctx.instance_url.clone();
+            revoke_url.set_path("/ui/revoke");
+            revoke_url.query_pairs_mut().append_pair("token", intent_id);
+
+            // TODO - local users timezone preference.
+            let pretty_expiry_time = expiry_time
+                .format(&Rfc2822)
+                .unwrap_or("ERROR - invalid expiration time".into());
+
+            (
+                format!("{0}: Credential Reset Link", ctx.instance_display_name),
+                format!(
+                    r#"Hi {display_name},
+
+This is your credential reset link:
+
+{reset_url}
+
+This link will expire at {pretty_expiry_time}
+
+If you did not request this message, please revoke the reset using the following link:
+
+{revoke_url}
+
+
+msg_id: {message_id}
+            "#,
+                    message_id = ctx.message_id,
+                ),
+            )
+        }
     }
 }
 
@@ -96,16 +146,22 @@ async fn send_message(
     let to = Mailbox::new(None, to_addr.clone());
 
     let from = Mailbox::new(
-        Some(config.mail_from_display_name.clone()),
+        Some(config.instance_display_name.clone()),
         config.mail_from_address.clone(),
     );
 
     let reply_to = Mailbox::new(
-        Some(config.mail_from_display_name.clone()),
+        Some(config.instance_display_name.clone()),
         config.mail_reply_to_address.clone(),
     );
 
-    let (subject, body) = to_email_content(&ob_msg_template, message_id);
+    let template_ctx = TemplateContext {
+        message_id,
+        instance_display_name: config.instance_display_name.as_str(),
+        instance_url: &config.instance_url,
+    };
+
+    let (subject, body) = to_email_content(&ob_msg_template, &template_ctx);
 
     let email = Message::builder()
         .from(from)
@@ -174,6 +230,7 @@ async fn mail_driver(
 }
 
 async fn mail_checker(
+    broadcast_tx: broadcast::Sender<()>,
     mut broadcast_rx: broadcast::Receiver<()>,
     outbound_tx: mpsc::Sender<QueuedMessage>,
     mut response_rx: mpsc::Receiver<MessageStatus>,
@@ -211,7 +268,10 @@ async fn mail_checker(
                 // process the response, normally by marking it as done in Kanidm.
                 if status.is_ok() {
                     if let Err(client_error) = rsclient.idm_message_mark_sent(message_id).await {
-                        error!(?client_error, ?message_id, "Unable to mark message as sent.")
+                        error!(?client_error, ?message_id, "Unable to mark message as sent. Exiting to prevent potential spam!");
+                        broadcast_tx
+                            .send(())
+                            .expect("Failed to trigger a clean shutdown!");
                     }
                 }
             }
@@ -301,6 +361,27 @@ fn config_security_checks(cfg_path: &Path) -> bool {
     }
 }
 
+/// Build the mailer object, tests to ensure that the server doesn't include a scheme
+fn build_mailer(
+    mail_relay: &Url,
+    creds: Credentials,
+    timeout: u64,
+) -> Result<AsyncSmtpTransport<Tokio1Executor>, ()> {
+    let mut url_secure = mail_relay.clone();
+    url_secure.set_query(Some("tls=required"));
+
+    match AsyncSmtpTransport::<Tokio1Executor>::from_url(url_secure.as_str()) {
+        Ok(mailer_builder) => Ok(mailer_builder
+            .timeout(Some(Duration::from_secs(timeout)))
+            .credentials(creds)
+            .build()),
+        Err(err) => {
+            error!(?err, "Unable to build mail transport");
+            Err(())
+        }
+    }
+}
+
 async fn driver_main(opt: Opt) -> Result<(), ()> {
     let mut f = match File::open(&opt.mail_sender_config) {
         Ok(f) => f,
@@ -374,14 +455,11 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
         mail_config.mail_password.clone(),
     );
 
-    let mailer: AsyncSmtpTransport<Tokio1Executor> =
-        match AsyncSmtpTransport::<Tokio1Executor>::relay(mail_config.mail_relay.as_str()) {
-            Ok(mailer_builder) => mailer_builder.credentials(creds).build(),
-            Err(err) => {
-                error!(?err, "Unable to build mail transport");
-                return Err(());
-            }
-        };
+    let mailer = build_mailer(
+        &mail_config.mail_relay,
+        creds,
+        mail_config.mail_connect_timeout_seconds,
+    )?;
 
     // Channel for submission of mails that need to be sent
     let (outbound_tx, outbound_rx) = mpsc::channel(CHANNEL_CAPACITY);
@@ -391,7 +469,7 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
 
     // Control channel to signal when we need to shutdown. Only ever needs to queue 1 message
     // on shutdown.
-    let (broadcast_tx, broadcast_rx) = broadcast::channel(1);
+    let (broadcast_tx, mut broadcast_rx) = broadcast::channel(1);
 
     let broadcast_rx_c = broadcast_tx.subscribe();
 
@@ -438,14 +516,28 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
             .send(())
             .expect("Failed to trigger a clean shutdown!");
     } else {
+        let checker_broadcast_tx = broadcast_tx.clone();
+        let checker_broadcast_rx = broadcast_tx.subscribe();
         let checker_handle = tokio::spawn(async move {
-            mail_checker(broadcast_rx, outbound_tx, response_rx, schedule, rsclient).await
+            mail_checker(
+                checker_broadcast_tx,
+                checker_broadcast_rx,
+                outbound_tx,
+                response_rx,
+                schedule,
+                rsclient,
+            )
+            .await
         });
 
         loop {
             #[cfg(target_family = "unix")]
             {
                 tokio::select! {
+                    _ = broadcast_rx.recv() => {
+                        // stop the event loop!
+                        break;
+                    }
                     Ok(()) = tokio::signal::ctrl_c() => {
                         break
                     }
@@ -563,4 +655,27 @@ fn main() {
     if rt.block_on(async move { driver_main(opt).await }).is_err() {
         std::process::exit(1);
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_mailer;
+    use lettre::transport::smtp::authentication::Credentials;
+    use url::Url;
+
+    #[tokio::test]
+    async fn test_build_mailer() {
+        let creds = Credentials::new("username".to_owned(), "password".to_owned());
+
+        build_mailer(&Url::parse("smtp://example.com").unwrap(), creds.clone(), 1)
+            .expect("Failed to build mailer");
+        build_mailer(
+            &Url::parse("smtp://example.com:12345").unwrap(),
+            creds.clone(),
+            1,
+        )
+        .expect("Failed to build mailer with port");
+        build_mailer(&Url::parse("smtp://examplehost").unwrap(), creds.clone(), 1)
+            .expect("Failed to build mailer with short name");
+    }
 }

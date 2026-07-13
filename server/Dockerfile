@@ -21,6 +21,7 @@ RUN \
     zypper install -y --no-recommends \
         sccache \
         cargo \
+        cargo-auditable \
         clang \
         gcc \
         cmake \
@@ -28,7 +29,6 @@ RUN \
         make \
         automake \
         autoconf \
-        libopenssl-3-devel \
         pam-devel \
         sqlite3-devel \
         systemd-devel \
@@ -49,10 +49,11 @@ RUN --mount=type=cache,id=cargo,target=/cargo \
     export SCCACHE_DIR=/sccache && \
     export RUSTC_WRAPPER=/usr/bin/sccache && \
     export CC="/usr/bin/clang" && \
-    cargo build --locked -p daemon ${KANIDM_BUILD_OPTIONS} \
+    cargo auditable build --locked -p daemon ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release; \
+    ls -alh /usr/src/kanidm/target/release; \
     sccache -s
 
 # Find and copy dynamically linked libraries using ldd

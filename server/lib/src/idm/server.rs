@@ -35,7 +35,7 @@ use compact_jwt::{Jwk, JwsCompact};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
 use concread::cowcell::CowCellReadTxn;
 use concread::hashmap::{HashMap, HashMapReadTxn, HashMapWriteTxn};
-use kanidm_lib_crypto::CryptoPolicy;
+use kanidm_lib_crypto::{CryptoPolicy, PW_MAX_LENGTH_NIST, PW_SFA_MIN_LENGTH_NIST};
 use kanidm_proto::internal::{
     ApiToken, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken, UatPurpose,
     UserAuthToken,
@@ -45,9 +45,8 @@ use rand::prelude::*;
 use std::convert::TryFrom;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc::{
-    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
-};
+use time::OffsetDateTime;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::{Mutex, Semaphore};
 use tracing::trace;
 use url::Url;
@@ -76,8 +75,8 @@ pub struct IdmServer {
     qs: QueryServer,
     /// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
     crypto_policy: CryptoPolicy,
-    async_tx: Sender<DelayedAction>,
-    audit_tx: Sender<AuditEvent>,
+    async_tx: UnboundedSender<DelayedAction>,
+    audit_tx: UnboundedSender<AuditEvent>,
     /// [Webauthn] verifier/config
     webauthn: Webauthn,
     oauth2rs: Arc<Oauth2ResourceServers>,
@@ -99,8 +98,8 @@ pub struct IdmServerAuthTransaction<'a> {
     /// Thread/Server ID
     pub(crate) sid: Sid,
     // For flagging eventual actions.
-    pub(crate) async_tx: Sender<DelayedAction>,
-    pub(crate) audit_tx: Sender<AuditEvent>,
+    pub(crate) async_tx: UnboundedSender<DelayedAction>,
+    pub(crate) audit_tx: UnboundedSender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) applications: LdapApplicationsReadTransaction,
 }
@@ -136,11 +135,11 @@ pub struct IdmServerProxyWriteTransaction<'a> {
 }
 
 pub struct IdmServerDelayed {
-    pub(crate) async_rx: Receiver<DelayedAction>,
+    pub(crate) async_rx: UnboundedReceiver<DelayedAction>,
 }
 
 pub struct IdmServerAudit {
-    pub(crate) audit_rx: Receiver<AuditEvent>,
+    pub(crate) audit_rx: UnboundedReceiver<AuditEvent>,
 }
 
 impl IdmServer {
@@ -158,8 +157,8 @@ impl IdmServer {
             CryptoPolicy::time_target(Duration::from_millis(10))
         };
 
-        let (async_tx, async_rx) = unbounded();
-        let (audit_tx, audit_rx) = unbounded();
+        let (async_tx, async_rx) = unbounded_channel();
+        let (audit_tx, audit_rx) = unbounded_channel();
 
         // Get the domain name, as the relying party id.
         let (rp_id, rp_name, application_set) = {
@@ -349,7 +348,7 @@ impl IdmServerAudit {
         }
     }
 
-    pub fn audit_rx(&mut self) -> &mut Receiver<AuditEvent> {
+    pub fn audit_rx(&mut self) -> &mut UnboundedReceiver<AuditEvent> {
         &mut self.audit_rx
     }
 }
@@ -375,9 +374,8 @@ impl IdmServerDelayed {
     #[cfg(test)]
     pub(crate) fn try_recv(&mut self) -> Result<DelayedAction, OperationError> {
         use core::task::{Context, Poll};
-        use futures::task as futures_task;
 
-        let waker = futures_task::noop_waker();
+        let waker = futures::task::noop_waker();
         let mut cx = Context::from_waker(&waker);
         match self.async_rx.poll_recv(&mut cx) {
             Poll::Pending => Err(OperationError::InvalidState),
@@ -411,7 +409,7 @@ pub trait IdmServerTransaction<'a> {
     /// The primary method of verification selection is the use of the KID parameter
     /// that we internally sign with. We can use this to select the appropriate token type
     /// and validation method.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn validate_client_auth_info_to_ident(
         &mut self,
         client_auth_info: ClientAuthInfo,
@@ -422,14 +420,25 @@ pub trait IdmServerTransaction<'a> {
             client_cert,
             bearer_token,
             basic_authz: _,
-            pre_validated_token: _,
+            pre_validated_token,
         } = client_auth_info;
 
-        // Future - if there is a pre-validated UAT, use that. For now I want to review
-        // all the auth and validation flows to ensure that the UAT path is security
-        // wise equivalent to the other paths. This pre-validation is an "optimisation"
+        // If there is a pre-validated UAT, use that. This pre-validation is an "optimisation"
         // for the web-ui where operations will make a number of api calls, and we don't
         // want to do redundant work.
+        match pre_validated_token {
+            PreValidatedTokenStatus::Valid(uat) => {
+                return self.process_uat_to_identity(&uat, ct, source)
+            }
+            PreValidatedTokenStatus::SessionExpired => return Err(OperationError::SessionExpired),
+            PreValidatedTokenStatus::NotAuthenticated | PreValidatedTokenStatus::None => {
+                // Fall through and verify the credential details.
+                //
+                // TODO: Currently pre-validation only applies to UAT, not certificate
+                // or api token flows. These will incorrectly set the pre-validation
+                // to NotAuthenticated. It's a larger refactor to correct that.
+            }
+        }
 
         match (client_cert, bearer_token) {
             (Some(client_cert_info), _) => {
@@ -455,7 +464,7 @@ pub trait IdmServerTransaction<'a> {
     /// info will not need to perform all the same checks (time, cryptography, etc).
     /// However, subsequent callers will still need to load the entry into the
     /// identity.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn pre_validate_client_auth_info(
         &mut self,
         client_auth_info: &mut ClientAuthInfo,
@@ -478,10 +487,10 @@ pub trait IdmServerTransaction<'a> {
         result
     }
 
-    /// This function is not using in authentication flows - it is a reflector of the
+    /// This function is not used in authentication flows - it is a reflector of the
     /// current session state to allow a user-auth-token to be presented to the
     /// user via the whoami call.
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     fn validate_client_auth_info_to_uat(
         &mut self,
         client_auth_info: &ClientAuthInfo,
@@ -500,7 +509,7 @@ pub trait IdmServerTransaction<'a> {
                 match self.validate_and_parse_token_to_identity_token(token, ct)? {
                     Token::UserAuthToken(uat) => Ok(uat),
                     Token::ApiToken(_apit, _entry) => {
-                        warn!("Unable to process non user auth token");
+                        debug!("Unable to process non user auth token");
                         Err(OperationError::NotAuthenticated)
                     }
                 }
@@ -746,9 +755,15 @@ pub trait IdmServerTransaction<'a> {
         let entry = self
             .get_qs_txn()
             .internal_search_uuid(uat.uuid)
-            .map_err(|e| {
-                admin_error!(?e, "from_ro_uat failed");
-                e
+            .map_err(|err| {
+                error!(?err, "from_ro_uat failed");
+                // If the account was deleted, or has not yet been replicated to this instance,
+                // we need to inform the user that the session they are using isn't valid. So
+                // we pass up SessionExpired here.
+                match err {
+                    OperationError::NoMatchingEntries => OperationError::SessionExpired,
+                    err => err,
+                }
             })?;
 
         let valid = Account::check_user_auth_token_valid(ct, uat, &entry);
@@ -807,6 +822,9 @@ pub trait IdmServerTransaction<'a> {
             uat.session_id,
             scope,
             limits,
+            // This strictly is the "last_verified_at" time but due to the current
+            // design of uat, issued_at is the same as last verification.
+            Some(uat.issued_at),
         ))
     }
 
@@ -826,14 +844,19 @@ pub trait IdmServerTransaction<'a> {
         }
 
         let scope = (&apit.purpose).into();
+        // While we did just verify the token, that's different to an interactive
+        // proof of presence like a human would provide.
+        let last_verified_at = None;
 
         let limits = Limits::api_token();
+
         Ok(Identity::new(
             IdentType::User(IdentUser { entry }),
             source,
             apit.token_id,
             scope,
             limits,
+            last_verified_at,
         ))
     }
 
@@ -919,6 +942,11 @@ pub trait IdmServerTransaction<'a> {
         }
 
         let certificate_uuid = cert_entry.get_uuid();
+        // The certificate is still valid, so we mark the session as always
+        // valid/issued at now. Because of how mTLS works, this means the
+        // certificate MUST have been JUST verified for the ongoing connection.
+        let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
+        let last_verified_at = Some(odt_ct);
 
         Ok(Identity::new(
             IdentType::User(IdentUser { entry }),
@@ -927,6 +955,7 @@ pub trait IdmServerTransaction<'a> {
             certificate_uuid,
             scope,
             limits,
+            last_verified_at,
         ))
     }
 
@@ -1016,6 +1045,9 @@ pub trait IdmServerTransaction<'a> {
             limits.search_max_filter_test = max_filter as usize;
         }
 
+        // Ldap sessions don't provide strong proof of presence.
+        let last_verified_at = None;
+
         // Users via LDAP are always only granted anonymous rights unless
         // they auth with an api-token
         Ok(Identity::new(
@@ -1024,6 +1056,7 @@ pub trait IdmServerTransaction<'a> {
             session_id,
             AccessScope::ReadOnly,
             limits,
+            last_verified_at,
         ))
     }
 
@@ -1106,6 +1139,7 @@ pub trait IdmServerTransaction<'a> {
 
         // If scope is not Synchronise, then fail.
         let scope = (&sync_token.purpose).into();
+        let last_verified_at = None;
 
         let limits = Limits::unlimited();
         Ok(Identity::new(
@@ -1114,6 +1148,7 @@ pub trait IdmServerTransaction<'a> {
             sync_token.token_id,
             scope,
             limits,
+            last_verified_at,
         ))
     }
 }
@@ -1184,7 +1219,7 @@ impl IdmServerAuthTransaction<'_> {
                 // Get the first / single entry we expect here ....
                 let entry = self.qs_read.internal_search_uuid(euuid)?;
 
-                security_info!(
+                info!(
                     username = %init.username,
                     issue = ?init.issue,
                     privileged = ?init.privileged,
@@ -1637,8 +1672,9 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
 fn gen_password_mod(
     cleartext: &str,
     crypto_policy: &CryptoPolicy,
+    timestamp: OffsetDateTime,
 ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-    let new_cred = Credential::new_password_only(crypto_policy, cleartext)?;
+    let new_cred = Credential::new_password_only(crypto_policy, cleartext, timestamp)?;
     let cred_value = Value::new_credential("unix", new_cred);
     Ok(ModifyList::new_purge_and_set(
         Attribute::UnixPassword,
@@ -1769,14 +1805,15 @@ impl IdmServerProxyWriteTransaction<'_> {
     ) -> Result<(), OperationError> {
         // password strength and badlisting is always global, rather than per-pw-policy.
         // pw-policy as check on the account is about requirements for mfa for example.
-        //
-
-        // is the password at least 10 char?
-        if cleartext.len() < PW_MIN_LENGTH as usize {
+        if cleartext.len() < PW_SFA_MIN_LENGTH_NIST as usize {
             return Err(OperationError::PasswordQuality(vec![
-                PasswordFeedback::TooShort(PW_MIN_LENGTH),
+                PasswordFeedback::TooShort(PW_SFA_MIN_LENGTH_NIST),
             ]));
-        }
+        } else if cleartext.len() > PW_MAX_LENGTH_NIST as usize {
+            return Err(OperationError::PasswordQuality(vec![
+                PasswordFeedback::TooLong(PW_MAX_LENGTH_NIST),
+            ]));
+        };
 
         // does the password pass zxcvbn?
 
@@ -1847,12 +1884,13 @@ impl IdmServerProxyWriteTransaction<'_> {
     pub(crate) fn set_account_password(
         &mut self,
         pce: &PasswordChangeEvent,
+        ct: OffsetDateTime,
     ) -> Result<(), OperationError> {
         let account = self.target_to_account(pce.target)?;
 
         // Get the modifications we *want* to perform.
         let modlist = account
-            .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy)
+            .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy, ct)
             .map_err(|e| {
                 admin_error!("Failed to generate password mod {:?}", e);
                 e
@@ -1927,8 +1965,10 @@ impl IdmServerProxyWriteTransaction<'_> {
             return Err(OperationError::SystemProtectedObject);
         }
 
-        let modlist =
-            gen_password_mod(pce.cleartext.as_str(), self.crypto_policy).map_err(|e| {
+        let timestamp = self.qs_write.get_curtime_odt();
+
+        let modlist = gen_password_mod(pce.cleartext.as_str(), self.crypto_policy, timestamp)
+            .map_err(|e| {
                 admin_error!(?e, "Unable to generate password change modlist");
                 e
             })?;
@@ -1993,10 +2033,12 @@ impl IdmServerProxyWriteTransaction<'_> {
             .map(|s| s.to_string())
             .unwrap_or_else(password_from_random);
 
-        let ncred = Credential::new_generatedpassword_only(self.crypto_policy, &cleartext)
-            .inspect_err(|err| {
-                error!(?err, "unable to generate password modification");
-            })?;
+        let timestamp = self.qs_write.get_curtime_odt();
+        let ncred =
+            Credential::new_generatedpassword_only(self.crypto_policy, &cleartext, timestamp)
+                .inspect_err(|err| {
+                    error!(?err, "unable to generate password modification");
+                })?;
         let vcred = Value::new_credential("primary", ncred);
         let v_valid_from = Value::new_datetime_epoch(self.qs_write.get_curtime());
 
@@ -2523,7 +2565,7 @@ mod tests {
         pw: &str,
     ) -> Result<Uuid, OperationError> {
         let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, pw)?;
+        let cred = Credential::new_password_only(&p, pw, OffsetDateTime::UNIX_EPOCH)?;
         let cred_id = cred.uuid;
         let v_cred = Value::new_credential("primary", cred);
         let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
@@ -2754,9 +2796,15 @@ mod tests {
     async fn test_idm_simple_password_reset(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
-        assert!(idms_prox_write.set_account_password(&pce).is_ok());
-        assert!(idms_prox_write.set_account_password(&pce).is_ok());
+        let ct = duration_from_epoch_now();
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+        assert!(idms_prox_write
+            .set_account_password(&pce, OffsetDateTime::UNIX_EPOCH + ct)
+            .is_ok());
+        assert!(idms_prox_write
+            .set_account_password(&pce, OffsetDateTime::UNIX_EPOCH + ct)
+            .is_ok());
         assert!(idms_prox_write.commit().is_ok());
     }
 
@@ -2767,8 +2815,12 @@ mod tests {
     ) {
         let pce = PasswordChangeEvent::new_internal(UUID_ANONYMOUS, TEST_PASSWORD);
 
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
-        assert!(idms_prox_write.set_account_password(&pce).is_err());
+        let ct = duration_from_epoch_now();
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+        assert!(idms_prox_write
+            .set_account_password(&pce, OffsetDateTime::UNIX_EPOCH + ct)
+            .is_err());
         assert!(idms_prox_write.commit().is_ok());
     }
 
@@ -3064,7 +3116,7 @@ mod tests {
 
         let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
         let pw = Password::try_from(im_pw).expect("failed to parse");
-        let cred = Credential::new_from_password(pw);
+        let cred = Credential::new_from_password(pw, OffsetDateTime::UNIX_EPOCH);
         let v_cred = Value::new_credential("unix", cred);
 
         let me_posix = ModifyEvent::new_internal_invalid(
@@ -4320,7 +4372,8 @@ mod tests {
                     Attribute::PrimaryCredential,
                     Value::Cred(
                         "primary".to_string(),
-                        Credential::new_password_only(&p, "banana").unwrap()
+                        Credential::new_password_only(&p, "banana", OffsetDateTime::UNIX_EPOCH)
+                            .unwrap()
                     )
                 )
             );
@@ -4330,7 +4383,8 @@ mod tests {
                     Attribute::UnixPassword,
                     Value::Cred(
                         "unix".to_string(),
-                        Credential::new_password_only(&p, "kampai").unwrap(),
+                        Credential::new_password_only(&p, "kampai", OffsetDateTime::UNIX_EPOCH)
+                            .unwrap(),
                     ),
                 );
             }

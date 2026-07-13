@@ -21,6 +21,8 @@ use webauthn_authenticator_rs::prelude::RequestChallengeResponse;
 
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
 use crate::webauthn::get_authenticator;
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 #[cfg(target_family = "unix")]
 use libc::umask;

@@ -7,6 +7,7 @@ use kanidm_proto::internal::{
     Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin, OperationError,
 };
 use kanidm_proto::v1::{AccountUnixExtend, Entry as ProtoEntry, GroupUnixExtend};
+use kanidmd_lib::valueset::image::ImageValueThings;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use tracing::{info, instrument, trace};
@@ -19,6 +20,7 @@ use kanidmd_lib::{
     idm::credupdatesession::{
         CredentialUpdateIntentTokenExchange, CredentialUpdateSessionToken,
         InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
+        InitCredentialUpdateIntentSendEvent,
     },
     idm::event::{GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent},
     idm::oauth2::{
@@ -564,10 +566,7 @@ impl QueryServerWriteV1 {
             return Ok(());
         };
 
-        let target = ident.get_uuid().ok_or_else(|| {
-            error!("Invalid identity - no uuid present");
-            OperationError::InvalidState
-        })?;
+        let target = ident.get_uuid();
 
         let token_id = ident.get_session_id();
 
@@ -681,6 +680,50 @@ impl QueryServerWriteV1 {
     #[instrument(
         level = "info",
         skip_all,
+        fields(uuid = ?eventid),
+    )]
+    pub async fn handle_idm_credential_update_intent_send(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        uuid_or_name: String,
+        max_ttl: Option<Duration>,
+        email: Option<String>,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
+            })?;
+
+        let event = InitCredentialUpdateIntentSendEvent {
+            ident,
+            target,
+            max_ttl,
+            email,
+        };
+
+        idms_prox_write
+            .init_credential_update_intent_send(event, ct)
+            .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+            .inspect_err(|err| {
+                error!(?err, "Failed to process init_credential_update_intent_send",);
+            })
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_idmcredentialexchangeintent(
@@ -709,6 +752,27 @@ impl QueryServerWriteV1 {
                     },
                     sta.into(),
                 )
+            })
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idm_credential_revoke_intent(
+        &self,
+        intent_id: String,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let intent_token = CredentialUpdateIntentTokenExchange { intent_id };
+        idms_prox_write
+            .revoke_credential_update_intent(intent_token, ct)
+            .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+            .inspect_err(|err| {
+                error!(?err, "Failed to perfect exchange_intent_credential_update",);
             })
     }
 
@@ -1163,7 +1227,11 @@ impl QueryServerWriteV1 {
                 .qs_write
                 .name_to_uuid(uuid_or_name.as_str())
                 .inspect_err(|err| {
-                    info!(?err, "Error resolving as gidnumber continuing ...");
+                    if &OperationError::NoMatchingEntries == err {
+                        info!("Account not found");
+                    } else {
+                        info!(?err, "Error resolving from gidnumber ...");
+                    }
                 })
         })?;
 
@@ -1198,6 +1266,13 @@ impl QueryServerWriteV1 {
             .inspect_err(|err| {
                 error!(?err, "Invalid identity in handle_image_update");
             })?;
+
+        if let Some(image) = &image {
+            image.validate_image().map_err(|err| {
+                error!(?err, "Invalid image in handle_image_update");
+                OperationError::InvalidRequestState
+            })?;
+        }
 
         let modlist = if let Some(image) = image {
             ModifyList::new_purge_and_set(Attribute::Image, Value::Image(image))
@@ -1692,7 +1767,6 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_oauth2_token_revoke(
         &self,
-        client_auth_info: ClientAuthInfo,
         intr_req: TokenRevokeRequest,
         eventid: Uuid,
     ) -> Result<(), Oauth2Error> {
@@ -1703,7 +1777,7 @@ impl QueryServerWriteV1 {
             .await
             .map_err(Oauth2Error::ServerError)?;
         idms_prox_write
-            .oauth2_token_revoke(&client_auth_info, &intr_req, ct)
+            .oauth2_token_revoke(&intr_req, ct)
             .and_then(|()| idms_prox_write.commit().map_err(Oauth2Error::ServerError))
     }
 

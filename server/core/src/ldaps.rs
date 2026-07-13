@@ -8,6 +8,7 @@ use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;
 use ldap3_proto::LdapCodec;
+use sketching::LoggerType;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -40,8 +41,18 @@ async fn client_process_msg(
     client_address: SocketAddr,
     protomsg: LdapMsg,
     qe_r_ref: &'static QueryServerReadV1,
+    logging_pipeline: LoggerType,
 ) -> Option<LdapResponseState> {
-    let eventid = sketching::tracing_forest::id();
+    let eventid = match logging_pipeline {
+        LoggerType::TracingForest => sketching::tracing_forest::id(),
+        LoggerType::OpenTelemetry => {
+            // try to the current span ID and fail back to generating a Uuid
+            tracing::Span::current()
+                .id()
+                .map(|id| Uuid::from_u64_pair(0, id.into_u64()))
+                .unwrap_or(Uuid::new_v4())
+        }
+    };
     security_info!(
         client_ip = %client_address.ip(),
         client_port = %client_address.port(),
@@ -57,6 +68,7 @@ async fn client_process<STREAM>(
     client_address: SocketAddr,
     connection_address: SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
+    logging_pipeline: LoggerType,
 ) where
     STREAM: AsyncRead + AsyncWrite + AsyncWriteExt + Unpin,
 {
@@ -90,7 +102,7 @@ async fn client_process<STREAM>(
 
         debug!(?client_address, ?connection_address);
 
-        match client_process_msg(uat, caddr, protomsg, qe_r_ref).await {
+        match client_process_msg(uat, caddr, protomsg, qe_r_ref, logging_pipeline).await {
             // I'd really have liked to have put this near the [LdapResponseState::Bind] but due
             // to the handing of `audit` it isn't possible due to borrows, etc.
             Some(LdapResponseState::Unbind) => break,
@@ -153,6 +165,7 @@ async fn client_tls_accept(
     connection_addr: SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
     trusted_tcp_info_ips: Arc<TcpAddressInfo>,
+    logging_pipeline: LoggerType,
 ) {
     let Ok((stream, client_addr)) = process_client_addr(
         stream,
@@ -196,6 +209,7 @@ async fn client_tls_accept(
         client_addr,
         connection_addr,
         qe_r_ref,
+        logging_pipeline,
     ));
 }
 
@@ -207,6 +221,7 @@ async fn ldap_tls_acceptor(
     mut rx: broadcast::Receiver<CoreAction>,
     mut tls_acceptor_reload_rx: broadcast::Receiver<TlsAcceptor>,
     trusted_tcp_info_ips: Arc<TcpAddressInfo>,
+    logging_pipeline: LoggerType,
 ) {
     loop {
         tokio::select! {
@@ -220,7 +235,7 @@ async fn ldap_tls_acceptor(
                 match accept_result {
                     Ok((tcpstream, client_socket_addr)) => {
                         let clone_tls_acceptor = tls_acceptor.clone();
-                        tokio::spawn(client_tls_accept(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref, trusted_tcp_info_ips.clone()));
+                        tokio::spawn(client_tls_accept(tcpstream, clone_tls_acceptor, client_socket_addr, qe_r_ref, trusted_tcp_info_ips.clone(), logging_pipeline));
                     }
                     Err(err) => {
                         warn!(?err, "LDAP acceptor error, continuing");
@@ -241,6 +256,7 @@ async fn ldap_plaintext_acceptor(
     listener: TcpListener,
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
+    logging_pipeline: LoggerType,
 ) {
     loop {
         tokio::select! {
@@ -253,7 +269,7 @@ async fn ldap_plaintext_acceptor(
             accept_result = listener.accept() => {
                 match accept_result {
                     Ok((tcpstream, client_socket_addr)) => {
-                        tokio::spawn(client_process(tcpstream, client_socket_addr, client_socket_addr, qe_r_ref));
+                        tokio::spawn(client_process(tcpstream, client_socket_addr, client_socket_addr, qe_r_ref, logging_pipeline));
                     }
                     Err(e) => {
                         error!("LDAP acceptor error, continuing -> {:?}", e);
@@ -272,6 +288,7 @@ pub(crate) async fn create_ldap_server(
     server_message_tx: &broadcast::Sender<CoreAction>,
     tls_acceptor_reload_tx: &broadcast::Sender<TlsAcceptor>,
     trusted_tcp_info_ips: Arc<TcpAddressInfo>,
+    logging_pipeline: LoggerType,
 ) -> Result<Vec<tokio::task::JoinHandle<()>>, ()> {
     let mut ldap_acceptor_handles = Vec::with_capacity(addresses.len());
 
@@ -310,9 +327,15 @@ pub(crate) async fn create_ldap_server(
                     rx,
                     tls_acceptor_reload_rx,
                     trusted_tcp_info_ips,
+                    logging_pipeline,
                 ))
             }
-            None => tokio::spawn(ldap_plaintext_acceptor(listener, qe_r_ref, rx)),
+            None => tokio::spawn(ldap_plaintext_acceptor(
+                listener,
+                qe_r_ref,
+                rx,
+                logging_pipeline,
+            )),
         };
 
         info!("Created LDAP interface");
