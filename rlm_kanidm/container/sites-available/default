@@ -421,22 +421,8 @@ authorize {
 	#  The ldap module reads passwords from the LDAP database.
 	-ldap
 
-    # update control {
-    #     Cache-Status-Only = 'yes'
-    # }
 
-    # cache
-
-    # if (notfound) {
-    kanidm
-    # }
-
-    # update control {
-    #     Cache-Merge = 'yes'
-    # }
-
-    # cache
-
+	kanidm
 
 	#
 	#  Enforce daily limits on time spent logged in.
