@@ -424,13 +424,19 @@ authorize {
     # update control {
     #     Cache-Status-Only = 'yes'
     # }
-    # cache
-    # if (notfound) {
-    #     python3
-    # }
+
     # cache
 
+    # if (notfound) {
     kanidm
+    # }
+
+    # update control {
+    #     Cache-Merge = 'yes'
+    # }
+
+    # cache
+
 
 	#
 	#  Enforce daily limits on time spent logged in.

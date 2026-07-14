@@ -61,14 +61,14 @@ cache {
 	#  will be expired.
 	#
 	#  This value should be between 10 and 86400.
-	ttl = 10
+	ttl = 60
 
 	#  If yes the following attributes will be added to the request:
 	#      * &request:Cache-Entry-Hits - The number of times this entry
 	#				     has been retrieved.
 	#
 	#  Note: Not supported by the rlm_cache_memcached module.
-	add_stats = no
+	add_stats = yes
 
 	#
 	#  The list of attributes to cache for a particular key.
@@ -95,7 +95,6 @@ cache {
 		&reply:Reply-Message += "Cache last updated at %t"
 
 		&reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
-        
 	}
 
 	#  This module supports a number of runtime configuration parameters
