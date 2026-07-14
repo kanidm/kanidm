@@ -188,8 +188,9 @@ impl PwdCheckResult {
     fn warnings(&self) -> &[PasswordFeedback] {
         match self {
             PwdCheckResult::Ok => &[],
-            PwdCheckResult::Failure { warnings, .. } => &warnings,
-            PwdCheckResult::Warnings { warnings } => &warnings,
+            PwdCheckResult::Failure { warnings, .. } | PwdCheckResult::Warnings { warnings } => {
+                warnings
+            }
         }
     }
 }
