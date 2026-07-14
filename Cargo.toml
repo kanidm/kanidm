@@ -256,6 +256,7 @@ reqwest = { version = "0.13.4", default-features = false, features = [
     "multipart",
     "rustls",
     "query",
+    "socks",
 ] }
 rusqlite = { version = "0.40.1", features = ["array", "bundled"] }
 rustls = { version = "0.23.37", default-features = false, features = [
