@@ -39,7 +39,8 @@ pub enum LdapSession {
     UnixBind(Uuid),
     UserAuthToken(UserAuthToken),
     ApiToken(ApiToken),
-    ApplicationPasswordBind(Uuid, Uuid),
+    // Application working on behalf of a user
+    ApplicationPasswordBind { application_id: Uuid, user_id: Uuid },
 }
 
 #[derive(Debug, Clone)]
@@ -52,7 +53,7 @@ pub struct LdapBoundToken {
     // * A valid unix pw bind
     // * A valid ApiToken
     // In a way, this is a stepping stone to an "ident" but allows us to check
-    // the session is still "valid" depending on it's origin.
+    // the session is still "valid" depending on its origin.
     pub effective_session: LdapSession,
 }
 
@@ -381,7 +382,7 @@ impl LdapServer {
             //
             // ! Remember, searchEvent wraps to ignore hidden for us.
             let ident = idm_read
-                .validate_ldap_session(&uat.effective_session, source, ct)
+                .validate_ldap_session(uat, source, ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -451,21 +452,24 @@ impl LdapServer {
 
         let result = match target {
             LdapBindTarget::Account(uuid) => {
-                let lae = LdapAuthEvent::from_parts(uuid, pw.to_string())?;
+                let lae = LdapAuthEvent {
+                    target: uuid,
+                    cleartext: pw.to_string(),
+                };
                 idm_auth.auth_ldap(&lae, ct).await?
             }
             LdapBindTarget::ApiToken => {
-                let jwsc = JwsCompact::from_str(pw).map_err(|err| {
+                let token = JwsCompact::from_str(pw).map_err(|err| {
                     error!(?err, "Invalid JwsCompact supplied as authentication token.");
                     OperationError::NotAuthenticated
                 })?;
 
-                let lae = LdapTokenAuthEvent::from_parts(jwsc)?;
-                idm_auth.token_auth_ldap(&lae, ct).await?
+                idm_auth
+                    .token_auth_ldap(&LdapTokenAuthEvent { token }, ct)
+                    .await?
             }
             LdapBindTarget::Application(ref app_name, usr_uuid) => {
-                let lae =
-                    LdapApplicationAuthEvent::new(app_name.as_str(), usr_uuid, pw.to_string())?;
+                let lae = LdapApplicationAuthEvent::new(app_name, usr_uuid, pw);
                 idm_auth.application_auth_ldap(&lae, ct).await?
             }
         };
@@ -540,7 +544,7 @@ impl LdapServer {
 
         // Build the event, with the permissions from effective_session
         let ident = idm_read
-            .validate_ldap_session(&uat.effective_session, source, ct)
+            .validate_ldap_session(uat, source, ct)
             .map_err(|e| {
                 admin_error!("Invalid identity: {:?}", e);
                 e
@@ -1731,8 +1735,7 @@ mod tests {
         let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
 
         let mut idms_auth = idms.auth().await.unwrap();
-        let lae = LdapApplicationAuthEvent::new(app1_name, usr_uuid, pass_app1)
-            .expect("Failed to build auth event");
+        let lae = LdapApplicationAuthEvent::new(app1_name, usr_uuid, &pass_app1);
 
         let r1 = idms_auth
             .application_auth_ldap(&lae, time_low)
