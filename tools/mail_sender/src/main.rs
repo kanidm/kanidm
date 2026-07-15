@@ -364,7 +364,7 @@ fn config_security_checks(cfg_path: &Path) -> bool {
 /// Build the mailer object, tests to ensure that the server doesn't include a scheme
 fn build_mailer(
     mail_relay: &Url,
-    creds: Credentials,
+    creds: Option<Credentials>,
     timeout: u64,
 ) -> Result<AsyncSmtpTransport<Tokio1Executor>, ()> {
     let mut url_secure = mail_relay.clone();
@@ -372,14 +372,20 @@ fn build_mailer(
         url_secure.set_query(Some("tls=required"));
     }
 
-    let mailer = AsyncSmtpTransport::<Tokio1Executor>::from_url(url_secure.as_str())
-        .map_err(|err| {
+    let mailer = match AsyncSmtpTransport::<Tokio1Executor>::from_url(url_secure.as_str()) {
+        Ok(mailer_builder) => {
+            let mut mailer_builder = mailer_builder.timeout(Some(Duration::from_secs(timeout)));
+            if let Some(creds) = creds {
+                mailer_builder = mailer_builder.credentials(creds);
+            }
+            mailer_builder.build()
+        }
+        Err(err) => {
             error!(?err, "Unable to build mail transport");
-            // this intentionally has a null return
-        })?
-        .timeout(Some(Duration::from_secs(timeout)))
-        .credentials(creds)
-        .build();
+            return Err(());
+        }
+    };
+
     debug!("Mailer configuration: {:?}", mailer);
     Ok(mailer)
 }
@@ -439,11 +445,16 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
 
     rsclient.set_token(mail_config.token.clone()).await;
 
-    // Setup the connection pool
-    let creds = Credentials::new(
+    let creds = if let (Some(username), Some(password)) = (
         mail_config.mail_username.clone(),
         mail_config.mail_password.clone(),
-    );
+    ) {
+        debug!("Using username/password for mail relay");
+        Some(Credentials::new(username, password))
+    } else {
+        debug!("No username/password for mail relay");
+        None
+    };
 
     let mailer = build_mailer(
         &mail_config.mail_relay,
@@ -657,7 +668,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_build_mailer() {
-        let creds = Credentials::new("username".to_owned(), "password".to_owned());
+        let creds = Some(Credentials::new(
+            "username".to_owned(),
+            "password".to_owned(),
+        ));
 
         // smtp without port
         let mailer = build_mailer(&Url::parse("smtp://example.com").unwrap(), creds.clone(), 1)
