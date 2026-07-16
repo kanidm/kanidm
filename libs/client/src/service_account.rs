@@ -253,7 +253,7 @@ impl KanidmClient {
             format!(
                 "/v1/service_account/{}/_api_token/{}",
                 id,
-                &token_id.to_string()
+                token_id
             )
             .as_str(),
         )
