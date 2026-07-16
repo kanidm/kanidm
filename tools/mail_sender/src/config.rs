@@ -13,8 +13,8 @@ pub struct Config {
     pub mail_from_address: Address,
     pub mail_reply_to_address: Address,
     pub mail_relay: Url,
-    pub mail_username: String,
-    pub mail_password: String,
+    pub mail_username: Option<String>,
+    pub mail_password: Option<String>,
     /// Defaults to 15 seconds if not specified
     #[serde(default = "default_mail_connect_timeout_seconds")]
     pub mail_connect_timeout_seconds: u64,
