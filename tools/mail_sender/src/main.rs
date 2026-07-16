@@ -410,7 +410,7 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
         Err(e) => {
             eprintln!(
                 "Unable to parse config from '{}' error: {:?}",
-                &opt.mail_sender_config.display(),
+                opt.mail_sender_config.display(),
                 e
             );
             return Err(());

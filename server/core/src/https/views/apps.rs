@@ -49,7 +49,7 @@ pub(crate) async fn view_apps_get(
 
     let apps_partial = AppsPartialView { apps: app_links };
 
-    println!("{:?}", &uat.ui_hints);
+    println!("{:?}", uat.ui_hints);
     Ok({
         let apps_view = AppsView {
             navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),

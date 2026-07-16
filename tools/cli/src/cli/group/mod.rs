@@ -114,7 +114,7 @@ impl GroupOpt {
                 {
                     Ok(_) => opt.output_mode.print_message(format!(
                         "Successfully added {:?} to group \"{}\"",
-                        &new_members,
+                        new_members,
                         gcopt.name.as_str()
                     )),
                     Err(e) => handle_client_error(e, opt.output_mode),
