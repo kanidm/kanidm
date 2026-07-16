@@ -1,11 +1,14 @@
 use crate::error::ModuleError;
 use crate::logic::{AuthError, AuthRequest, AuthResponse, Module};
-use concread::{ARCache, ARCacheBuilder};
+use concread::arcache::{ARCache, ARCacheBuilder};
 use rlm_kanidm_shared::config::KanidmRadiusConfig;
 use std::path::Path;
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
+// The cache doesn't have to be huge, or have a long duration - it just
+// needs to help debounce freeradius which calls out to the module a few
+// times during every authorisation attempt.
 const CACHE_EXPIRY: Duration = Duration::from_secs(60);
 const CACHE_ITEMS: usize = 1024;
 
@@ -50,22 +53,24 @@ pub fn rlm_kanidm_instantiate<P: AsRef<Path>>(
 }
 
 pub fn rlm_kanidm_authorise(
-    request: AuthRequest,
+    mut request: AuthRequest,
     module_handle: &ModuleHandle,
 ) -> Result<AuthResponse, AuthError> {
     // We cache the response of the module here which avoids the need to dip into
     // tokio which would introduce latency.
     //
     // The reason we cache here is because radius often requests the same information
-    // repeatedly in quick succession.
+    // repeatedly in quick succession. We can't rely on the freeradius cache module as
+    // it seems to be broken every time I've tried it.
 
-    let req_user_id = request.user_id();
+    let req_user_id = request.user_id().map(String::from);
     let now = Instant::now();
 
-    let read_txn = module_handle.cache.read();
+    let mut read_txn = module_handle.cache.read();
 
     if let Some(cache_item) = read_txn.get(&req_user_id) {
-        if cache_item.expiry_time < now {
+        if cache_item.expiry_time >= now {
+            request.debug("cache hit");
             return cache_item.response.clone();
         }
     }
@@ -81,7 +86,7 @@ pub fn rlm_kanidm_authorise(
         response: response.clone(),
     };
 
-    read_txn.insert(req_user_id.map(String::from), item);
+    read_txn.insert(req_user_id, item);
 
     response
 }

@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 const TUNNEL_TYPE_VLAN: &str = "13";
 const TUNNEL_MEDIUM_TYPE_IEEE_802: &str = "6";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub(crate) enum AuthError {
     Reject,
