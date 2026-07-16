@@ -193,7 +193,7 @@ impl ActorLatencyMeasurer {
     }
 
     fn get_group_name(&self) -> String {
-        format!("{}-{}", &self.personal_group_name, self.group_index)
+        format!("{}-{}", self.personal_group_name, self.group_index)
     }
 
     async fn get_replicated_groups_by_client(
