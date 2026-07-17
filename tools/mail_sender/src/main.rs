@@ -364,22 +364,30 @@ fn config_security_checks(cfg_path: &Path) -> bool {
 /// Build the mailer object, tests to ensure that the server doesn't include a scheme
 fn build_mailer(
     mail_relay: &Url,
-    creds: Credentials,
+    creds: Option<Credentials>,
     timeout: u64,
 ) -> Result<AsyncSmtpTransport<Tokio1Executor>, ()> {
     let mut url_secure = mail_relay.clone();
-    url_secure.set_query(Some("tls=required"));
+    if url_secure.scheme() == "smtp" {
+        url_secure.set_query(Some("tls=required"));
+    }
 
-    match AsyncSmtpTransport::<Tokio1Executor>::from_url(url_secure.as_str()) {
-        Ok(mailer_builder) => Ok(mailer_builder
-            .timeout(Some(Duration::from_secs(timeout)))
-            .credentials(creds)
-            .build()),
+    let mailer = match AsyncSmtpTransport::<Tokio1Executor>::from_url(url_secure.as_str()) {
+        Ok(mailer_builder) => {
+            let mut mailer_builder = mailer_builder.timeout(Some(Duration::from_secs(timeout)));
+            if let Some(creds) = creds {
+                mailer_builder = mailer_builder.credentials(creds);
+            }
+            mailer_builder.build()
+        }
         Err(err) => {
             error!(?err, "Unable to build mail transport");
-            Err(())
+            return Err(());
         }
-    }
+    };
+
+    debug!("Mailer configuration: {:?}", mailer);
+    Ok(mailer)
 }
 
 async fn driver_main(opt: Opt) -> Result<(), ()> {
@@ -405,55 +413,48 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
         return Err(());
     };
 
-    let mail_config: Config = match toml::from_str(contents.as_str()) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!(
-                "Unable to parse config from '{}' error: {:?}",
-                &opt.mail_sender_config.display(),
-                e
-            );
-            return Err(());
-        }
-    };
+    let mail_config: Config = toml::from_str(contents.as_str()).map_err(|e| {
+        error!(
+            "Unable to parse config from '{}' error: {:?}",
+            &opt.mail_sender_config.display(),
+            e
+        );
+    })?;
 
     debug!(?mail_config);
 
     // Every 5 seconds.
     let expression = mail_config.schedule.as_deref().unwrap_or("*/5 * * * * * *");
 
-    let schedule = match Schedule::from_str(expression) {
-        Ok(s) => s,
-        Err(_) => {
-            error!("Failed to parse cron schedule expression");
-            return Err(());
-        }
-    };
+    let schedule = Schedule::from_str(expression).map_err(|_| {
+        error!("Failed to parse cron schedule expression");
+    })?;
 
-    let cb = match KanidmClientBuilder::new().read_options_from_optional_config(&opt.client_config)
-    {
-        Ok(v) => v,
-        Err(_) => {
-            error!("Failed to parse {}", opt.client_config.to_string_lossy());
-            return Err(());
-        }
-    };
-
-    let rsclient = match cb.build() {
-        Ok(rsc) => rsc,
-        Err(_e) => {
-            error!("Failed to build async client");
-            return Err(());
-        }
-    };
+    let rsclient = KanidmClientBuilder::new()
+        .read_options_from_optional_config(&opt.client_config)
+        .map_err(|_| {
+            error!(
+                "Failed to parse Kanidm config {}",
+                opt.client_config.to_string_lossy()
+            );
+        })?
+        .build()
+        .map_err(|_| {
+            error!("Failed to build Kanidm client");
+        })?;
 
     rsclient.set_token(mail_config.token.clone()).await;
 
-    // Setup the connection pool
-    let creds = Credentials::new(
+    let creds = if let (Some(username), Some(password)) = (
         mail_config.mail_username.clone(),
         mail_config.mail_password.clone(),
-    );
+    ) {
+        debug!("Using username/password for mail relay");
+        Some(Credentials::new(username, password))
+    } else {
+        debug!("No username/password for mail relay");
+        None
+    };
 
     let mailer = build_mailer(
         &mail_config.mail_relay,
@@ -659,23 +660,64 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::Config;
+
     use super::build_mailer;
     use lettre::transport::smtp::authentication::Credentials;
     use url::Url;
 
     #[tokio::test]
     async fn test_build_mailer() {
-        let creds = Credentials::new("username".to_owned(), "password".to_owned());
+        let creds = Some(Credentials::new(
+            "username".to_owned(),
+            "password".to_owned(),
+        ));
 
-        build_mailer(&Url::parse("smtp://example.com").unwrap(), creds.clone(), 1)
+        // smtp without port
+        let mailer = build_mailer(&Url::parse("smtp://example.com").unwrap(), creds.clone(), 1)
             .expect("Failed to build mailer");
-        build_mailer(
+        eprintln!("smtp without port: {:?}", mailer);
+        assert!(format!("{:?}", mailer).contains("tls: Required"));
+        assert!(format!("{:?}", mailer).contains("port: 587"));
+
+        // smtp with port
+        let mailer = build_mailer(
             &Url::parse("smtp://example.com:12345").unwrap(),
             creds.clone(),
             1,
         )
         .expect("Failed to build mailer with port");
+        // ensure the port's actually set
+        eprintln!("smtp with port: {:?}", mailer);
+        assert!(format!("{:?}", mailer).contains("12345"));
+        assert!(format!("{:?}", mailer).contains("tls: Required"));
+
+        // test without port
         build_mailer(&Url::parse("smtp://examplehost").unwrap(), creds.clone(), 1)
             .expect("Failed to build mailer with short name");
+
+        // smtps with port
+        let mailer = build_mailer(
+            &Url::parse("smtps://example.com:12345").expect("Failed to parse url"),
+            creds.clone(),
+            1,
+        )
+        .expect("Failed to build mailer with port");
+        // ensure the port's actually set
+        eprintln!("smtps with port: {:?}", mailer);
+        assert!(format!("{:?}", mailer).contains("12345"));
+        assert!(format!("{:?}", mailer).contains("tls: Wrapper"));
+    }
+
+    #[tokio::test]
+    /// Validate that the config parser fails when mail_relay isn't a valid URL
+    async fn test_4460() {
+        let test_config = r#"
+        token = "lol"
+        mail_relay = "example.com"
+        instance_display_name = "test"
+        "#;
+
+        assert!(toml::from_str::<Config>(test_config).is_err());
     }
 }

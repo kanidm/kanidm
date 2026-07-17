@@ -36,6 +36,20 @@ mod crypt_md5;
 
 pub use sha2;
 
+// Per https://pages.nist.gov/800-63-4/sp800-63b.html max length should be 64. This is
+// measured in GRAPHEMES, not bytes.
+pub const PW_MAX_LENGTH_NIST: u32 = 128;
+
+// Single factor passwords have a greater minimum length requirement per nist.
+pub const PW_SFA_MIN_LENGTH_NIST: u32 = 15;
+// When used with MFA, the MIN length can be relaxed. Per NIST 8 is acceptable, but we
+// have used 10 for this value.
+pub const PW_MFA_MIN_LENGTH: u32 = 10;
+
+// Since we added a max length constraint later, we should continue to allow long
+// passwords to be validated. NOTE this is BYTES not GRAPHEMES.
+pub const PW_MAX_LENGTH_CHECK: usize = PW_MAX_LENGTH_NIST as usize * 4;
+
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 const PBKDF2_SALT_LEN: usize = 24;
 
@@ -920,6 +934,11 @@ impl Password {
         cleartext: &str,
         hsm: Option<(&mut dyn TpmHmacS256, &HmacS256Key)>,
     ) -> Result<bool, CryptoError> {
+        if cleartext.len() > PW_MAX_LENGTH_CHECK {
+            error!("Cleartext input exceeds safe KDF length {PW_MAX_LENGTH_CHECK}, refusing to proceed.");
+            return Ok(false);
+        }
+
         match (&self.material, hsm) {
             (
                 Kdf::TPM_ARGON2ID {

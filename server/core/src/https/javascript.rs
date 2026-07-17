@@ -6,7 +6,7 @@ use std::path::PathBuf;
 pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
     let filepath = PathBuf::from(filename);
     match filepath.exists() {
-        false => Err(format!("Can't find {:?} to generate file hash", &filepath)),
+        false => Err(format!("Can't find {:?} to generate file hash", filepath)),
         true => std::fs::read(&filepath)
             .map(|value| hash_content(&value))
             .map_err(|err| {
