@@ -10,10 +10,6 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-#[cfg(all(not(feature = "dhat-heap"), target_os = "linux"))]
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;

@@ -22,10 +22,6 @@
 #![deny(clippy::indexing_slicing)]
 #![allow(clippy::unreachable)]
 
-#[cfg(all(test, not(any(feature = "dhat-heap", target_os = "illumos"))))]
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 #[cfg(all(test, feature = "dhat-heap"))]
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
