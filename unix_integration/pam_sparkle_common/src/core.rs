@@ -485,13 +485,10 @@ pub fn acct_mgmt<P: PamHandler>(
     req_opt: RequestOptions,
     current_time: OffsetDateTime,
 ) -> PamResultCode {
-    let info = match pamh.service_info() {
-        Ok(info) => info,
-        Err(e) => {
+    let info = pamh.service_info().inspect_err(|e| {
             error!(err = ?e, "get_pam_info");
-            return e;
         }
-    };
+    })?;
 
     /*
     // We can access values here within the calling context
