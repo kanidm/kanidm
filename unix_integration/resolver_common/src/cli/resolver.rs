@@ -325,16 +325,22 @@ async fn handle_client(
                     }
 
                 }
-                ClientRequest::PamAccountAllowed(account_id) => cachelayer
-                    .pam_account_allowed(account_id.as_str())
+                ClientRequest::PamAccountAllowed {
+                    account_id,
+                    info
+                } => cachelayer
+                    .pam_account_allowed(account_id.as_str(), &info)
                     .await
                     .map(ClientResponse::PamStatus)
                     .unwrap_or(ClientResponse::Error(
                         OperationError::KU005ErrorCheckingAccount,
                     )),
-                ClientRequest::PamAccountBeginSession(account_id) => {
+                ClientRequest::PamAccountBeginSession {
+                    account_id,
+                    info
+                } => {
                     match cachelayer
-                        .pam_account_beginsession(account_id.as_str())
+                        .pam_account_beginsession(account_id.as_str(), &info)
                         .await
                     {
                         Ok(Some(info)) => {
