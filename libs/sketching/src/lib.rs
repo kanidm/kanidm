@@ -18,6 +18,21 @@ pub mod pipeline;
 
 pub use {tracing, tracing_forest, tracing_subscriber};
 
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+pub enum LoggerType {
+    TracingForest,
+    OpenTelemetry,
+}
+
+impl LoggerType {
+    pub fn status_code_field(self) -> &'static str {
+        match self {
+            LoggerType::TracingForest => "status_code",
+            LoggerType::OpenTelemetry => "http.response.status_code",
+        }
+    }
+}
+
 /// Start up the logging for test mode.
 pub fn test_init() {
     let filter = EnvFilter::builder()

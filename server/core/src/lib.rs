@@ -58,6 +58,7 @@ use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
 use kanidmd_lib::value::CredentialType;
 use regex::Regex;
+use sketching::LoggerType;
 use std::collections::BTreeSet;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
@@ -1311,6 +1312,10 @@ pub async fn create_server_core(
     // If we have been requested to init LDAP, configure it now.
     let maybe_ldap_acceptor_handles = match &config.ldapbindaddress {
         Some(la) => {
+            let logging_pipeline = match config.otel_grpc_endpoint {
+                Some(_) => LoggerType::OpenTelemetry,
+                None => LoggerType::TracingForest,
+            };
             let opt_ldap_ssl_acceptor = maybe_tls_acceptor.clone();
 
             let h = ldaps::create_ldap_server(
@@ -1320,6 +1325,7 @@ pub async fn create_server_core(
                 &broadcast_tx,
                 &tls_acceptor_reload_tx,
                 config.ldap_client_address_info.trusted_tcp_info(),
+                logging_pipeline,
             )
             .await?;
             Some(h)

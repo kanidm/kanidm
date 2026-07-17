@@ -20,7 +20,7 @@ jobs:
   windows_build_kanidm:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install OpenSSL
         run: |
           vcpkg integrate install

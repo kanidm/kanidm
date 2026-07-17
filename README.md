@@ -168,7 +168,8 @@ replication system, developed based on enterprise LDAP server experience.
 ## Developer Getting Started
 
 If you want to contribute to Kanidm there is a getting started [guide for developers]. IDM is a diverse topic and we
-encourage contributions of many kinds in the project, from people of all backgrounds.
+encourage contributions of many kinds in the project, from people of all backgrounds. Please note that we don't
+accept AI generated content in contributions.
 
 When developing the server you should refer to the latest commit documentation instead.
 

@@ -175,7 +175,8 @@ fn search_filter_entry(
                     // Note, while schema has this as single value, we currently
                     // fetch it as a multivalue btreeset for future in case we allow
                     // multiple entry manager by in future.
-                    if let Some(entry_manager_uuids) = entry.get_ava_refer(Attribute::EntryManagedBy) {
+                    {
+                        let entry_manager_uuids = entry.get_ava_refer(Attribute::EntryManagedBy)?;
                         let group_check = ident_memberof
                             // Have at least one group allowed.
                             .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
@@ -188,9 +189,6 @@ fn search_filter_entry(
                             // Not the entry manager
                             return None
                         }
-                    } else {
-                        // Can not satisfy.
-                        return None
                     }
                 }
             };
@@ -239,7 +237,7 @@ fn search_oauth2_filter_entry(
 
             let contains_o2_scope_member = entry
                 .get_ava_as_oauthscopemaps(Attribute::OAuth2RsScopeMap)
-                .and_then(|maps| ident.get_memberof().map(|mo| (maps, mo)))
+                .zip(ident.get_memberof())
                 .map(|(maps, mo)| maps.keys().any(|k| mo.contains(k)))
                 .unwrap_or(false);
 

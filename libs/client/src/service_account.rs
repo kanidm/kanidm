@@ -250,12 +250,7 @@ impl KanidmClient {
         token_id: Uuid,
     ) -> Result<(), ClientError> {
         self.perform_delete_request(
-            format!(
-                "/v1/service_account/{}/_api_token/{}",
-                id,
-                &token_id.to_string()
-            )
-            .as_str(),
+            format!("/v1/service_account/{}/_api_token/{}", id, token_id).as_str(),
         )
         .await
     }

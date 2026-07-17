@@ -79,7 +79,7 @@ pub fn e_system_config_v1() -> EntryInitNew {
     ]);
     for pw in [
         "bad@no3IBTyqHu$list",
-        "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
+        "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiR",
         "100preteamare",
         "14defebrero",
         "1life1love",

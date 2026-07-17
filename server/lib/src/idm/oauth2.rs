@@ -2808,6 +2808,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let prefer_short_username = o2rs.prefer_short_username;
         let client_id = o2rs.name.clone();
+        let iss = o2rs.iss.to_string();
 
         // Is the user expired, or the OAuth2 session invalid?
         let valid = self
@@ -2849,7 +2850,7 @@ impl IdmServerProxyReadTransaction<'_> {
             nbf: Some(nbf),
             sub: Some(sub.to_string()),
             aud: Some(client_id),
-            iss: None,
+            iss: Some(iss),
             jti,
         })
     }
@@ -2905,6 +2906,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
                 let prefer_short_username = o2rs.prefer_short_username;
                 let client_id = o2rs.name.clone();
+                let iss = o2rs.iss.to_string();
 
                 // We can't do the same validity check for the client as we do with an account
                 let valid = self
@@ -2942,7 +2944,7 @@ impl IdmServerProxyReadTransaction<'_> {
                     nbf: Some(nbf),
                     sub: Some(uuid.to_string()),
                     aud: Some(client_id),
-                    iss: None,
+                    iss: Some(iss),
                     jti: session_id,
                 })
             }

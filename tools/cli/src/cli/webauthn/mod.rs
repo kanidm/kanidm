@@ -1,7 +1,7 @@
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-mod u2fhid;
+mod mozilla;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-use u2fhid::get_authenticator_backend;
+use mozilla::get_authenticator_backend;
 
 #[cfg(target_os = "windows")]
 mod win10;

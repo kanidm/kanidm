@@ -136,9 +136,8 @@ pub(super) fn apply_modify_access<'a>(
                         // Note, while schema has this as single value, we currently
                         // fetch it as a multivalue btreeset for future in case we allow
                         // multiple entry manager by in future.
-                        if let Some(entry_manager_uuids) =
-                            entry.get_ava_refer(Attribute::EntryManagedBy)
                         {
+                            let entry_manager_uuids = entry.get_ava_refer(Attribute::EntryManagedBy)?;
                             let group_check = ident_memberof
                                 // Have at least one group allowed.
                                 .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
@@ -151,9 +150,6 @@ pub(super) fn apply_modify_access<'a>(
                                 // Not the entry manager
                                 return None;
                             }
-                        } else {
-                            // Can not satisfy.
-                            return None;
                         }
                     }
                 };
