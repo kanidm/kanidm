@@ -487,7 +487,6 @@ pub fn acct_mgmt<P: PamHandler>(
 ) -> PamResultCode {
     let info = pamh.service_info().inspect_err(|e| {
             error!(err = ?e, "get_pam_info");
-        }
     })?;
 
     /*
