@@ -23,7 +23,10 @@ use compact_jwt::{
     JweCompact, JwsCompact, OidcClaims, OidcSubject,
 };
 use concread::cowcell::*;
-use crypto_glue::{s256::{Sha256, Sha256Output}, traits::Digest};
+use crypto_glue::{
+    s256::{Sha256, Sha256Output},
+    traits::Digest,
+};
 use hashbrown::HashMap;
 use hashbrown::HashSet;
 use kanidm_proto::constants::*;

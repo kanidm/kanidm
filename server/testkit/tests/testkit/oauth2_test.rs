@@ -12,8 +12,8 @@ use kanidm_proto::oauth2::{
     OidcDiscoveryResponse, TokenRevokeRequest,
 };
 use kanidmd_lib::constants::NAME_IDM_ALL_ACCOUNTS;
-use kanidmd_lib::prelude::Attribute;
 use kanidmd_lib::idm::oauth2::PkceS256Secret;
+use kanidmd_lib::prelude::Attribute;
 use kanidmd_testkit::{
     assert_no_cache, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, NOT_ADMIN_TEST_EMAIL,
     NOT_ADMIN_TEST_PASSWORD, NOT_ADMIN_TEST_USERNAME, TEST_INTEGRATION_RS_DISPLAY,
