@@ -55,11 +55,16 @@ enum ReplConsumerCtrl {
     Refresh(Arc<Mutex<(bool, mpsc::Sender<()>)>>),
 }
 
+pub(crate) struct ReplicationServerHandles {
+    pub repl_handle: tokio::task::JoinHandle<()>,
+    pub ctrl_tx: mpsc::Sender<ReplCtrl>,
+}
+
 pub(crate) async fn create_repl_server(
     idms: Arc<IdmServer>,
     repl_config: &ReplicationConfiguration,
     rx: broadcast::Receiver<CoreAction>,
-) -> Result<(tokio::task::JoinHandle<()>, mpsc::Sender<ReplCtrl>), ()> {
+) -> Result<ReplicationServerHandles, ()> {
     // We need to start the tcp listener. This will persist over ssl reloads!
     let listener = TcpListener::bind(&repl_config.bindaddress)
         .await
@@ -87,7 +92,10 @@ pub(crate) async fn create_repl_server(
     ));
 
     info!("Created replication interface");
-    Ok((repl_handle, ctrl_tx))
+    Ok(ReplicationServerHandles {
+        repl_handle,
+        ctrl_tx,
+    })
 }
 
 #[instrument(level = "debug", skip_all)]
@@ -1085,5 +1093,5 @@ async fn repl_acceptor(
         }
     }
 
-    info!("Stopped {}", super::TaskName::Replication);
+    info!("Stopped {}", super::TaskName::ReplicationSupervisor);
 }
