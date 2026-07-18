@@ -8,32 +8,30 @@
 set -e
 
 WAIT_TIMER=5
-if [ -z "${BUILD_MODE}" ]; then
-    BUILD_MODE="--profile dev"
+
+if [ -z "$KANI_CARGO_OPTS" ]; then
+    KANI_CARGO_OPTS="--profile dev"
 fi
 
-export KANIDM_CONFIG="./server/daemon/insecure_server.toml"
+export KANIDM_CONFIG_FILE="./scripts/insecure_server.toml"
 
 mkdir -p /tmp/kanidm/client_ca
 
-echo "Building release binaries..."
+echo "Building binaries..."
 # shellcheck disable=SC2086
-cargo build --locked $BUILD_MODE || {
+cargo build --locked ${KANI_CARGO_OPTS} || {
     echo "Failed to build release binaries, please check the output above."
     exit 1
 }
 
 echo "Generating certificates..."
 # shellcheck disable=SC2086
-cargo run --bin kanidmd $BUILD_MODE cert-generate
-
-echo "Making sure it runs with the DB..."
-# shellcheck disable=SC2086
-cargo run --bin kanidmd $BUILD_MODE scripting recover-account idm_admin
+cargo run --bin kanidmd ${KANI_CARGO_OPTS} -- cert-generate -c ${KANIDM_CONFIG_FILE}
 
 echo "Running the server..."
 # shellcheck disable=SC2086
-cargo run --bin kanidmd $BUILD_MODE server  &
+cargo run --bin kanidmd ${KANI_CARGO_OPTS} -- server -c ${KANIDM_CONFIG_FILE} &
+
 KANIDMD_PID=$!
 echo "Kanidm PID: ${KANIDMD_PID}"
 
@@ -42,17 +40,10 @@ if [ "$(jobs -p | wc -l)" -eq 0 ]; then
     exit 1
 fi
 
-ATTEMPT=0
-
-KANIDM_CONFIG_FILE="./insecure_server.toml"
-if [ -f "${KANIDM_CONFIG_FILE}" ]; then
-    echo "Found config file ${KANIDM_CONFIG_FILE}"
-else
-    echo "Config file ${KANIDM_CONFIG_FILE} not found!"
-    exit 1
-fi
 KANIDM_URL="$(grep -E '^origin.*https' "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
+
+ATTEMPT=0
 
 while true; do
     echo "Waiting for the server to start... testing url '${KANIDM_URL}'"
@@ -65,7 +56,7 @@ while true; do
     fi
 done
 
-BUILD_MODE=$BUILD_MODE ./scripts/setup_dev_environment.sh || kill -9 "${KANIDMD_PID}"
+KANI_CARGO_OPTS=${KANI_CARGO_OPTS} ./scripts/setup_dev_environment.sh
 
 echo "Running the OpenAPI schema checks"
 
@@ -76,3 +67,4 @@ sleep "${WAIT_TIMER}"
 if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
     kill $(pgrep kanidmd)
 fi
+
