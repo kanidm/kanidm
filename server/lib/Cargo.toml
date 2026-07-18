@@ -103,10 +103,6 @@ webauthn-authenticator-rs = { workspace = true, features = [
     "softtoken",
 ] }
 
-
-[target.'cfg(not(target_os = "illumos"))'.dev-dependencies]
-mimalloc = { workspace = true }
-
 [build-dependencies]
 hashbrown = { workspace = true }
 kanidm_build_profiles = { workspace = true }

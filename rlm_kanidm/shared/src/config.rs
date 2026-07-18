@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
@@ -6,6 +7,8 @@ use std::path::Path;
 pub struct RadiusGroupConfig {
     pub spn: String,
     pub vlan: u32,
+    #[serde(default)]
+    pub reply_attributes: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
