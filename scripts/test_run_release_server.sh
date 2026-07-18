@@ -9,22 +9,14 @@ set -e
 
 WAIT_TIMER=5
 if [ -z "${BUILD_MODE}" ]; then
-    BUILD_MODE="--release"
+    BUILD_MODE="--profile dev"
 fi
-
-echo "Building release binaries..."
-# shellcheck disable=SC2086
-cargo build --locked $BUILD_MODE --bin kanidm --bin kanidmd --quiet || {
-    echo "Failed to build release binaries, please check the output above."
-    exit 1
-}
 
 if [ -d '.git' ]; then
     echo "You're in the root dir, let's move you!"
     CURRENT_DIR="$(pwd)"
     cd server/daemon/ || exit 1
 fi
-
 
 if [ ! -f "run_insecure_dev_server.sh" ]; then
     echo "I'm not sure where you are, please run this from the root of the repository or the server/daemon directory"
@@ -34,6 +26,14 @@ fi
 export KANIDM_CONFIG="./insecure_server.toml"
 
 mkdir -p /tmp/kanidm/client_ca
+
+# This has to happen after any cd/dir moves else everything rebuilds!!!
+echo "Building release binaries..."
+# shellcheck disable=SC2086
+cargo build --locked $BUILD_MODE --bin kanidm --bin kanidmd --quiet || {
+    echo "Failed to build release binaries, please check the output above."
+    exit 1
+}
 
 echo "Generating certificates..."
 # shellcheck disable=SC2086
