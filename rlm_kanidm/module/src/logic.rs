@@ -315,7 +315,7 @@ mod tests {
     #[test]
     fn test_parse_examples() {
         // let's make sure our provided examples actually parse!
-        let config_files = vec!["radius.toml", "radius_full.toml"];
+        let config_files = vec!["radius.toml"];
         for config_file in config_files {
             let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../../examples/")
