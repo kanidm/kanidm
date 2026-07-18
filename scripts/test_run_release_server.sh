@@ -18,7 +18,7 @@ mkdir -p /tmp/kanidm/client_ca
 
 echo "Building release binaries..."
 # shellcheck disable=SC2086
-cargo build --locked $BUILD_MODE --bin kanidm --bin kanidmd --quiet || {
+cargo build --locked $BUILD_MODE || {
     echo "Failed to build release binaries, please check the output above."
     exit 1
 }

@@ -38,44 +38,16 @@ jobs:
             libpam0g-dev \
             libudev-dev \
             libssl-dev \
-            libsystemd-dev
-
-      - name: "Build the workspace"
-        run: cargo build --locked --workspace
-      - name: "Check disk space and size of target, then clean it"
-        run: |
-          df -h
-          echo "Checking base dir"
-          du -shc *
-          echo "Checking target dir"
-          du -shc target/*
-          rm -rf target/*
+            libsystemd-dev \
+            ripgrep
 
       - name: "Run cargo test"
         run: cargo test
-      - name: "Check disk space at the end"
-        run: du -shc *
 
-  run_release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-      - name: Install dependencies
-        run: |
-          sudo apt-get update && \
-          sudo apt-get install -y \
-            libpam0g-dev \
-            libudev-dev \
-            libssl-dev \
-            libsystemd-dev \
-            ripgrep
+      - name: "Build the workspace"
+        run: cargo build --locked --workspace
+
       - name: "Run the release build test script"
-        env:
-          BUILD_MODE: --release
         run: |
           python -m pip install uv
           ./scripts/test_run_release_server.sh
