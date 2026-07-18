@@ -74,6 +74,7 @@ lto = "thin"
 opt-level = 3
 codegen-units = 1
 
+# Sets the settings for build scripts and proc-macros.
 [profile.release.build-override]
 debug = false
 opt-level = 0
