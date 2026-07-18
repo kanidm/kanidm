@@ -4,4 +4,3 @@
 
 # Replace this with your kanidmd URI and uncomment the line
 # uri = "https://idm.example.com"
-verify_ca = true
