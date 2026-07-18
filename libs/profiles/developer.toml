@@ -1,7 +1,7 @@
 # Set to native for developer machines.
 cpu_flags = "native"
 server_admin_bind_path = "/tmp/kanidmd.sock"
-server_ui_pkg_path = "./server/core/static"
+server_ui_pkg_path = "./static"
 server_ui_pkg_path_make_absolute = true
 server_config_path = "./scripts/insecure_server.toml"
 server_migration_path = "/tmp/kanidm/migrations.d"
