@@ -12,22 +12,10 @@ if [ -z "${BUILD_MODE}" ]; then
     BUILD_MODE="--profile dev"
 fi
 
-if [ -d '.git' ]; then
-    echo "You're in the root dir, let's move you!"
-    CURRENT_DIR="$(pwd)"
-    cd server/daemon/ || exit 1
-fi
-
-if [ ! -f "run_insecure_dev_server.sh" ]; then
-    echo "I'm not sure where you are, please run this from the root of the repository or the server/daemon directory"
-    exit 1
-fi
-
-export KANIDM_CONFIG="./insecure_server.toml"
+export KANIDM_CONFIG="./server/daemon/insecure_server.toml"
 
 mkdir -p /tmp/kanidm/client_ca
 
-# This has to happen after any cd/dir moves else everything rebuilds!!!
 echo "Building release binaries..."
 # shellcheck disable=SC2086
 cargo build --locked $BUILD_MODE --bin kanidm --bin kanidmd --quiet || {
@@ -77,12 +65,7 @@ while true; do
     fi
 done
 
-BUILD_MODE=$BUILD_MODE ../../scripts/setup_dev_environment.sh || kill -9 "${KANIDMD_PID}"
-
-
-if [ -n "$CURRENT_DIR" ]; then
-    cd "$CURRENT_DIR" || exit 1
-fi
+BUILD_MODE=$BUILD_MODE ./scripts/setup_dev_environment.sh || kill -9 "${KANIDMD_PID}"
 
 echo "Running the OpenAPI schema checks"
 
