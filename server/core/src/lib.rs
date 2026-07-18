@@ -777,6 +777,35 @@ struct ScimMigration {
     assertions: ScimAssertGeneric,
 }
 
+async fn migration_reload_supervisor(
+    mut broadcast_rx: broadcast::Receiver<CoreAction>,
+    server_write_ref: &'static QueryServerWriteV1,
+    migration_path: PathBuf,
+) {
+    loop {
+        tokio::select! {
+            Ok(action) = broadcast_rx.recv() => {
+                match action {
+                    CoreAction::Shutdown => break,
+                    CoreAction::Reload => {
+                        // Read the migrations.
+                        // Apply them.
+                        let eventid = Uuid::new_v4();
+                        migration_apply(
+                            eventid,
+                            server_write_ref,
+                            migration_path.as_path(),
+                        ).await;
+
+                        info!("Migration reload complete");
+                    },
+                }
+            }
+        }
+    }
+    info!("Stopped {}", TaskName::MigrationReload);
+}
+
 #[instrument(
     level = "info",
     fields(uuid = ?eventid),
@@ -1269,30 +1298,9 @@ async fn launch_server_tasks(
         // Skip all these handles in integration test mode.
 
         // Setup the Migration Reload Trigger.
-        let mut broadcast_rx = broadcast_tx.subscribe();
+        let broadcast_rx = broadcast_tx.subscribe();
         let migration_reload_handle = task::spawn(async move {
-            loop {
-                tokio::select! {
-                    Ok(action) = broadcast_rx.recv() => {
-                        match action {
-                            CoreAction::Shutdown => break,
-                            CoreAction::Reload => {
-                                // Read the migrations.
-                                // Apply them.
-                                let eventid = Uuid::new_v4();
-                                migration_apply(
-                                    eventid,
-                                    server_write_ref,
-                                    migration_path.as_path(),
-                                ).await;
-
-                                info!("Migration reload complete");
-                            },
-                        }
-                    }
-                }
-            }
-            info!("Stopped {}", TaskName::MigrationReload);
+            migration_reload_supervisor(broadcast_rx, server_write_ref, migration_path).await
         });
 
         handles.push((TaskName::MigrationReload, migration_reload_handle));
@@ -1317,7 +1325,7 @@ async fn launch_server_tasks(
                 }
             }
             None => {
-                debug!("Online backup not requested, skipping");
+                debug!("Online backup not configured, skipping");
             }
         };
 
@@ -1340,7 +1348,7 @@ async fn launch_server_tasks(
                 Some(ctrl_tx)
             }
             None => {
-                debug!("Replication not requested, skipping");
+                debug!("Replication not configured, skipping");
                 None
             }
         };
@@ -1446,9 +1454,9 @@ async fn launch_server_tasks(
     })?;
 
     if config.role != ServerRole::WriteReplicaNoUI {
-        admin_info!("ready to rock! 🪨  UI available at: {}", config.origin);
+        admin_info!("Ready to rock! 🪨  UI available at: {}", config.origin);
     } else {
-        admin_info!("ready to rock! 🪨 ");
+        admin_info!("Ready to rock! 🪨 ");
     }
 
     for http_handle in http_handles {
