@@ -57,7 +57,6 @@ OAUTH2_RP_DISPLAY="test_oauth2"
 KANIDM="cargo run ${KANI_CARGO_OPTS} --bin kanidm -- "
 KANIDMD="cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- "
 
-export KANIDM_CONFIG="./insecure_server.toml"
 IDM_ADMIN_USER="idm_admin@localhost"
 
 echo "Resetting the idm_admin user..."
