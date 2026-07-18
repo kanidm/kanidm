@@ -219,7 +219,6 @@ lru = "0.18.0"
 mathru = "0.16.2"
 md4 = "0.10.2"
 md-5 = "0.10.6"
-mimalloc = "0.1.52"
 nix = { version = "0.31.3", features = ["mount"] }
 nonempty = "0.12.0"
 notify-debouncer-full = { version = "0.7" }
