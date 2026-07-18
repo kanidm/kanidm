@@ -961,7 +961,11 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
+    pub async fn pam_account_allowed(
+        &self,
+        account_id: &str,
+        pam_info: &PamServiceInfo,
+    ) -> Result<Option<bool>, ()> {
         let current_time = SystemTime::now();
         let id = Id::Name(account_id.to_string());
 
@@ -1438,6 +1442,7 @@ impl Resolver {
     pub async fn pam_account_beginsession(
         &self,
         account_id: &str,
+        pam_info: &PamServiceInfo,
     ) -> Result<Option<HomeDirectoryInfo>, ()> {
         let current_time = SystemTime::now();
         let id = Id::Name(account_id.to_string());

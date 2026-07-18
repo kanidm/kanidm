@@ -1,18 +1,30 @@
-uri = "https://example.com"
+uri = "https://example.com" # URL to the Kanidm server
 
-# The auth token for the service account
-auth_token = "ABC..."
+# an optional path to the CA certificate for the server URI above
+# ca_path = "/etc/kanidm/cacert.pem"
 
-# default vlan for groups that don't specify one.
-radius_default_vlan = 99
+auth_token = "ABC..." # Auth token for the service account
+# See: kanidm service-account api-token generate
 
-# if the user is in one of these Kanidm groups,
-# then they're allowed to authenticate
+# Default vlans for groups that don't specify one.
+radius_default_vlan = 1
+
+# A list of Kanidm groups which must be a member
+# before they can authenticate via RADIUS. The user
+# must be a member of at least one of these groups.
 radius_required_groups = ["radius_access_allowed@idm.example.com"]
 
+# A mapping between Kanidm groups and VLANS
 radius_groups = [{ spn = "radius_access_allowed@idm.example.com", vlan = 10 }]
 
+# A mapping of RADIUS NAS (clients) and their authentication secrets
 radius_clients = [
-    { name = "localhost", ipaddr = "127.0.0.1", secret = "testing123" },
+    { name = "test", ipaddr = "127.0.0.1", secret = "testing123" },
     { name = "docker", ipaddr = "172.17.0.0/16", secret = "testing123" },
 ]
+
+# radius_cert_path = "/data/cert.pem"
+# radius_key_path = "/data/key.pem"
+# radius_ca_path = "/data/ca.pem"
+
+# radius_ca_dir = "/data/ca"

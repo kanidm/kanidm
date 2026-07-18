@@ -106,7 +106,7 @@ impl PamHooks for PamSparkle {
 
         install_subscriber(opts.debug);
 
-        debug!(?args, ?opts, "acct_mgmt");
+        debug!(?args, ?opts, "sm_authenticate");
 
         #[allow(clippy::disallowed_methods)]
         // Allowed as this is the source of time for the operation.
