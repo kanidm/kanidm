@@ -159,8 +159,10 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
                     all_pages.push(js)
                 }
                 Err(err) => {
-                    admin_error!(
+                    let cwd_path = std::env::current_dir().unwrap_or_default();
+                    error!(
                         ?err,
+                        cwd = %cwd_path.display(),
                         "Failed to generate integrity hash for {} - cancelling startup!",
                         filepath
                     );
