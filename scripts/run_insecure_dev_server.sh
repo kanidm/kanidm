@@ -2,12 +2,10 @@
 
 set -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-
 # This script based on the developer readme and allows you to run a test server.
 
 if [ -z "$KANI_CARGO_OPTS" ]; then
-    KANI_CARGO_OPTS=""
+    KANI_CARGO_OPTS="--profile dev"
 fi
 
 # also where the files are stored
@@ -22,16 +20,13 @@ fi
 
 mkdir -p "${KANI_TMP}"/client_ca
 
-CONFIG_FILE=${CONFIG_FILE:="${SCRIPT_DIR}/insecure_server.toml"}
+CONFIG_FILE=${CONFIG_FILE:="./scripts/insecure_server.toml"}
 
 if [ ! -f "${CONFIG_FILE}" ]; then
-    echo "Couldn't find configuration file at ${CONFIG_FILE}, please ensure you're running this script from its base directory (${SCRIPT_DIR})."
+    echo "Couldn't find configuration file at ${CONFIG_FILE}, please ensure you're running this script from the project root directory."
     exit 1
 fi
 
-# Save current directory and change to script directory without pushd
-OLD_DIR=$(pwd)
-cd "${SCRIPT_DIR}" || exit 1
 if [ -n "${1}" ]; then
     COMMAND=$*
     #shellcheck disable=SC2086
@@ -42,4 +37,3 @@ else
     #shellcheck disable=SC2086
     cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- server -c "${CONFIG_FILE}"
 fi
-cd "${OLD_DIR}" || exit 1
