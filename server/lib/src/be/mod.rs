@@ -1883,14 +1883,13 @@ impl<'a> BackendWriteTransaction<'a> {
             }
         };
 
-        let dbbak = dbbak_option.map_err(|e| {
-            admin_error!("serde_json error {:?}", e);
+        let dbbak = dbbak_option.map_err(|err| {
+            error!(?err, "serde_json error");
             OperationError::SerdeJsonError
         })?;
 
-        self.danger_delete_all_db_content().map_err(|e| {
-            error!("delete_all_db_content failed {:?}", e);
-            e
+        self.danger_delete_all_db_content().inspect_err(|err| {
+            error!(?err, "delete_all_db_content failed");
         })?;
 
         let idlayer = self.get_idlayer();
