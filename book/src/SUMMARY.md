@@ -77,7 +77,7 @@
 # For Developers
 
 - [Developer Guide](developers/readme.md)
-- [AI LLM Policy](developers/ai_llm_policy.md)
+- [AI/LLM Policy](developers/ai_llm_policy.md)
 - [Developer Ethics](developers/developer_ethics.md)
 - [Frequently Asked Questions](developers/faq.md)
 - [Design Documents]()
