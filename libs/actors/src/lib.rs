@@ -1,6 +1,7 @@
 use tokio::{
     signal::unix::{signal, SignalKind},
-    sync::broadcast,
+    sync::{broadcast, mpsc},
+    task::{spawn, JoinHandle},
 };
 use tracing::*;
 
@@ -100,18 +101,139 @@ where
     }
 }
 
-/*
-pub struct Supervisor {
-    hosted_fn:
+// This is what actually hosts and drives the child tasks to completion.
+struct SupervisorTask {
+
+    // Receive messages from the parent supervisor
+    parent_ctrl_tx: broadcast::Receiver<()>,
+    // Send messages to subordinate supervisors.
+    ctrl_tx: broadcast::Sender<()>,
+
+    // Receive new task handles.
+    // register_rx: mpsc::Receiver<JoinHandle<()>>,
+
+    // handles: ()
 }
 
-impl Supervisor {
-    async fn host() -> Result<(), ()> {
+impl SupervisorTask {
+    async fn drive(&mut self) -> () {
+
+        loop {
+            tokio::select! {
+                status = parent_ctrl_tx.recv() => {
+                    if status.is_err() {
+                        warn!("Parent supervisor has stopped, stopping down all children.");
+                    } else {
+                        debug!("Stopping supervisor");
+                    };
+                    ctrl_tx.send(()).await;
+                    break
+                }
+            }
+        }
 
     }
 }
 
+pub struct Supervisor {
+    // exec_handle: JoinHandle<()>,
+    // Broadcast tx/rx
+    ctrl_tx: broadcast::Sender<()>,
+
+    // register_tx: mpsc::Sender<JoinHandle<()>>,
+
+}
+
+impl Supervisor {
+    fn primary(
+        parent_ctrl_rx: broadcast::Receiver<()>,
+    ) -> (
+        Self,
+        JoinHandle<()>
+    ) {
+        // Starts the first/primary supervisor.
+        let (ctrl_tx, ctrl_rx) = broadcast::channel(1);
+
+        let exec_handle = task::spawn(async move {
+            let supervisor_task = SupervisorTask {
+                parent_ctrl_rx,
+                ctrl_tx,
+            };
+
+            supervisor_task.drive();
+        })
+
+
+
+
+
+    }
+
+
+    /*
+
+    // Create a child-supervisor.
+    pub fn new(
+        &self,
+    ) -> Self {
+
+        let exec_handle = task::spawn(async move {
+            let supervisor_task = SupervisorTask {
+            };
+
+            supervisor_task.drive();
+        })
+        
+        Self {
+            
+        }
+    }
+
+    */
+
+    /*
+    pub fn spawn<A>(actor: A)
+        where A: Actor
+    {
+
+        let supervised_actor = SupervisedActor::from(actor);
+
+        // spawn it
+        // send the handle to the supervisor task to take care of it.
+
+        
+        
+
+    }
+    */
+
+}
+
+/*
+struct SupervisedActor<A> {
+    a: A
+}
+
+impl<A> From<A> for SupervisedActor<A> {
+    fn from(a: A) -> Self {
+        Self { a }
+    }
+}
+
+impl<A> SupervisedActor<A> {
+    async fn drive(&mut self) -> () {
+        
+    }
+}
+
+trait Actor {
+
+    
+    
+
+}
 */
+
 
 #[cfg(test)]
 mod tests {
@@ -133,3 +255,5 @@ mod tests {
         rt.exec().await;
     }
 }
+
+
