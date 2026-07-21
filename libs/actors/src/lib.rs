@@ -1,7 +1,7 @@
 use tokio::{
     signal::unix::{signal, SignalKind},
     sync::{broadcast, mpsc},
-    task::{spawn, JoinHandle},
+    task::{self, JoinHandle},
 };
 use tracing::*;
 
@@ -105,7 +105,7 @@ where
 struct SupervisorTask {
 
     // Receive messages from the parent supervisor
-    parent_ctrl_tx: broadcast::Receiver<()>,
+    parent_ctrl_rx: broadcast::Receiver<()>,
     // Send messages to subordinate supervisors.
     ctrl_tx: broadcast::Sender<()>,
 
@@ -120,13 +120,15 @@ impl SupervisorTask {
 
         loop {
             tokio::select! {
-                status = parent_ctrl_tx.recv() => {
+                status = self.parent_ctrl_rx.recv() => {
                     if status.is_err() {
-                        warn!("Parent supervisor has stopped, stopping down all children.");
+                        warn!("Parent supervisor has stopped, stopping down all subordinates.");
                     } else {
-                        debug!("Stopping supervisor");
+                        debug!("Stopping supervisor ...");
                     };
-                    ctrl_tx.send(()).await;
+                    if self.ctrl_tx.send(()).is_err() {
+                        error!("Unable to communicate with subordinate supervisor task.");
+                    }
                     break
                 }
             }
@@ -154,19 +156,27 @@ impl Supervisor {
         // Starts the first/primary supervisor.
         let (ctrl_tx, ctrl_rx) = broadcast::channel(1);
 
-        let exec_handle = task::spawn(async move {
-            let supervisor_task = SupervisorTask {
-                parent_ctrl_rx,
-                ctrl_tx,
-            };
 
-            supervisor_task.drive();
-        })
+        let exec_handle = {
+            let ctrl_tx = ctrl_tx.clone();
+
+            task::spawn(async move {
+                let mut supervisor_task = SupervisorTask {
+                    parent_ctrl_rx,
+                    ctrl_tx,
+                };
+
+                supervisor_task.drive();
+            })
+        };
 
 
-
-
-
+        (
+            Self {
+                ctrl_tx
+            },
+            exec_handle
+        )
     }
 
 
