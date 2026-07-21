@@ -55,7 +55,9 @@ where
         Self { signal_handler }
     }
 
-    pub async fn exec(mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn exec(mut self,
+        hosted_fn: (),
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let mut sigterm_stream = signal(SignalKind::terminate())?;
         let mut sigint_stream = signal(SignalKind::interrupt())?;
         let mut sighup_stream = signal(SignalKind::hangup())?;
@@ -65,10 +67,24 @@ where
 
         // also need the handle to join on.
 
-        // let stop_tx, stop_rx =
+        let (ctrl_tx, ctrl_rx) = broadcast::channel(1);
+
+        let (
+            supervisor,
+            supervisor_handle
+        ) = Supervisor::primary(ctrl_rx);
+
+        // Spawn the users task onto the supervisor.
+
+
+
 
         loop {
             tokio::select! {
+                _ = supervisor_handle.await => {
+                    break
+                }
+
                 _ = sigterm_stream.recv() => {
                     self.signal_handler.terminate().await;
                     break
@@ -96,6 +112,14 @@ where
                 }
             }
         }
+
+        if ctrl_tx.send(()).is_err() {
+            error!("Unable to communicate with primary supervisor, unclean shutdown will now occur.");
+        }
+
+        supervisor_handle.await;
+
+        debug!("Runtime has stopped.");
 
         Ok(())
     }
