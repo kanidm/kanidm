@@ -127,7 +127,7 @@ where
             );
         }
 
-        if supervisor_handle.is_finished() {
+        if !supervisor_handle.is_finished() {
             supervisor_handle.await;
         }
         debug!("Runtime has stopped.");
@@ -158,13 +158,19 @@ impl SupervisorTask {
                     } else {
                         debug!("Stopping supervisor ...");
                     };
-                    if self.ctrl_tx.send(()).is_err() {
-                        error!("Unable to communicate with subordinate supervisor task.");
-                    }
+
                     break
                 }
             }
         }
+
+        // If we haven't registered a subordinate, we don't want to error/alert
+        let _ = self.ctrl_tx.send(());
+
+        // Wait on all subordinates to stop.
+        self.ctrl_tx.closed().await;
+
+        trace!("SupervisorTask stopped");
     }
 }
 
@@ -189,7 +195,7 @@ impl Supervisor {
                     ctrl_tx,
                 };
 
-                supervisor_task.drive();
+                supervisor_task.drive().await;
             })
         };
 
