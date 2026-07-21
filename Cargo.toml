@@ -37,6 +37,7 @@ members = [
     "server/core",
     "server/testkit",
     "server/testkit-macros",
+    "libs/actors",
     "libs/client",
     "libs/crypto",
     "libs/file_permissions",
