@@ -61,23 +61,13 @@ impl IntoResponse for WebError {
                     )
                         .into_response()
                 } else {
-                    let err = ErrorResponse {
-                        error: error.to_string(),
-                        ..Default::default()
-                    };
-
-                    let body = match serde_json::to_string(&err) {
-                        Ok(val) => val,
-                        Err(e) => {
-                            warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", err, e);
-                            format!("{err:?}")
-                        }
-                    };
-
                     (
                         StatusCode::BAD_REQUEST,
                         [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
-                        body,
+                        Json(ErrorResponse {
+                            error: error.to_string(),
+                            ..Default::default()
+                        }),
                     )
                         .into_response()
                 }
@@ -118,12 +108,10 @@ impl IntoResponse for WebError {
                     }
                     _ => (StatusCode::INTERNAL_SERVER_ERROR, None),
                 };
-                let body = serde_json::to_string(&inner).unwrap_or(inner.to_string());
-                debug!(?body);
 
                 match headers {
-                    Some(headers) => (code, headers, body).into_response(),
-                    None => (code, body).into_response(),
+                    Some(headers) => (code, headers, Json(inner)).into_response(),
+                    None => (code, Json(inner)).into_response(),
                 }
             }
         }
