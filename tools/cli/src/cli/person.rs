@@ -1325,6 +1325,7 @@ fn display_status(status: CUStatus) {
         ext_cred_portal,
         mfaregstate: _,
         can_commit,
+        dirty,
         warnings,
         primary,
         primary_state,
@@ -1499,6 +1500,7 @@ fn display_status(status: CUStatus) {
     display_warnings(&warnings);
 
     println!("Can Commit: {can_commit}");
+    println!("Session Has Changes: {dirty}");
 }
 
 /// This is the REPL for updating a credential for a given account

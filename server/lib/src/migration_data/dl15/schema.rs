@@ -1074,7 +1074,7 @@ pub static SCHEMA_ATTR_S256: LazyLock<SchemaAttribute> = LazyLock::new(|| Schema
     uuid: UUID_SCHEMA_ATTR_S256,
     name: Attribute::S256,
     description: "A Sha256 output.".to_string(),
-    multivalue: false,
+    multivalue: true,
     unique: false,
     indexed: false,
     syntax: SyntaxType::Sha256,

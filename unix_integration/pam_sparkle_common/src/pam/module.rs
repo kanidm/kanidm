@@ -1,19 +1,16 @@
 //! Functions for use in pam modules.
 
-use std::ffi::{CStr, CString};
-use std::{mem, ptr};
-
-use libc::c_char;
-
+use crate::core::PamHandler;
 use crate::pam::constants::{
     PamFlag, PamItemType, PamResultCode, PAM_PROMPT_ECHO_OFF, PAM_TEXT_INFO,
 };
 use crate::pam::conv::PamConv;
 use crate::pam::items::{PamAuthTok, PamRHost, PamService, PamTty};
-
-use crate::core::PamHandler;
+use libc::{c_char, c_void};
 use sparkle_unix_common::unix_proto::DeviceAuthorizationResponse;
 use sparkle_unix_common::unix_proto::PamServiceInfo;
+use std::ffi::{CStr, CString};
+use std::{mem, ptr};
 
 /// Opaque type, used as a pointer when making pam API calls.
 ///
@@ -66,6 +63,11 @@ extern "C" {
         user: &mut *const c_char,
         prompt: *const c_char,
     ) -> PamResultCode;
+
+    fn pam_getenvlist(pamh: *const PamHandle) -> *mut *mut c_char;
+
+    #[allow(dead_code)]
+    fn pam_putenv(pamh: *const PamHandle, value: *const c_char) -> PamResultCode;
 }
 
 /// # Safety
@@ -268,6 +270,50 @@ impl PamHandle {
     fn get_conv(&self) -> PamResult<&PamConv> {
         self.get_item::<PamConv>()
     }
+
+    fn get_envlist(&self) -> PamResult<Vec<String>> {
+        let array_ptr = unsafe { pam_getenvlist(self) };
+
+        if array_ptr.is_null() {
+            return Err(PamResultCode::PAM_CONV_ERR);
+        }
+
+        let mut work_array = Vec::new();
+
+        unsafe {
+            let mut offset = 0;
+            let mut str_ptr = *array_ptr;
+
+            while !str_ptr.is_null() {
+                let c_str = CStr::from_ptr(str_ptr);
+
+                let rust_str = c_str.to_string_lossy();
+                work_array.push(rust_str.to_string());
+
+                libc::free(str_ptr as *mut c_void);
+
+                offset += 1;
+                str_ptr = *(array_ptr.add(offset));
+            }
+
+            libc::free(array_ptr as *mut c_void);
+        }
+
+        Ok(work_array)
+    }
+
+    #[allow(dead_code)]
+    fn putenv(&self, value: &str) -> PamResult<()> {
+        let c_value = CString::new(value).map_err(|_| PamResultCode::PAM_CONV_ERR)?;
+
+        let res = unsafe { pam_putenv(self, c_value.as_ptr()) };
+
+        if PamResultCode::PAM_SUCCESS == res {
+            Ok(())
+        } else {
+            Err(res)
+        }
+    }
 }
 
 impl PamHandler for PamHandle {
@@ -277,6 +323,14 @@ impl PamHandler for PamHandle {
 
     fn service_info(&self) -> PamResult<PamServiceInfo> {
         self.get_pam_info()
+    }
+
+    fn envlist(&self) -> PamResult<Vec<String>> {
+        self.get_envlist()
+    }
+
+    fn set_env(&self, value: &str) -> PamResult<()> {
+        self.putenv(value)
     }
 
     fn authtok(&self) -> PamResult<Option<String>> {
