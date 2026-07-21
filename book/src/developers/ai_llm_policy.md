@@ -20,8 +20,7 @@ If you still use an LLM during interactions with us you must disclose this.
 
 Translation can be helpful if English is not your native language. If you use machine translation when communicating
 with us, we encourage you to disclose such use to us so that both sides are aware of possible miscommunication as a
-result of mistranslation. Alternatively, you could also write in your native language if you cannot assess the
-correctness of the translation.
+result of mistranslation.
 
 Use of LLM translation is discouraged based on their generative attributes that would most likely confuse rather than
 ease the discussion.
