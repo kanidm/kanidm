@@ -1,3 +1,4 @@
+use std::future::Future;
 use tokio::{
     signal::unix::{signal, SignalKind},
     sync::{broadcast, mpsc},
@@ -43,6 +44,14 @@ pub trait SignalHandler {
     }
 }
 
+pub trait RuntimeSetup {
+    type Error;
+
+    fn setup(
+        supervisor: &mut Supervisor,
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
+}
+
 pub struct Runtime<H> {
     signal_handler: H,
 }
@@ -55,9 +64,13 @@ where
         Self { signal_handler }
     }
 
-    pub async fn exec(mut self,
-        hosted_fn: (),
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn exec<S>(
+        mut self,
+        // rt_setup: S
+    ) -> Result<(), Box<dyn std::error::Error>>
+    where
+        S: RuntimeSetup,
+    {
         let mut sigterm_stream = signal(SignalKind::terminate())?;
         let mut sigint_stream = signal(SignalKind::interrupt())?;
         let mut sighup_stream = signal(SignalKind::hangup())?;
@@ -69,19 +82,14 @@ where
 
         let (ctrl_tx, ctrl_rx) = broadcast::channel(1);
 
-        let (
-            supervisor,
-            supervisor_handle
-        ) = Supervisor::primary(ctrl_rx);
+        let (mut supervisor, mut supervisor_handle) = Supervisor::primary(ctrl_rx);
 
-        // Spawn the users task onto the supervisor.
-
-
-
+        // Run the setup function to allow registration of tasks to the supervisor.
+        S::setup(&mut supervisor).await;
 
         loop {
             tokio::select! {
-                _ = supervisor_handle.await => {
+                _ = &mut supervisor_handle => {
                     break
                 }
 
@@ -114,11 +122,14 @@ where
         }
 
         if ctrl_tx.send(()).is_err() {
-            error!("Unable to communicate with primary supervisor, unclean shutdown will now occur.");
+            error!(
+                "Unable to communicate with primary supervisor, unclean shutdown will now occur."
+            );
         }
 
-        supervisor_handle.await;
-
+        if supervisor_handle.is_finished() {
+            supervisor_handle.await;
+        }
         debug!("Runtime has stopped.");
 
         Ok(())
@@ -127,12 +138,10 @@ where
 
 // This is what actually hosts and drives the child tasks to completion.
 struct SupervisorTask {
-
     // Receive messages from the parent supervisor
     parent_ctrl_rx: broadcast::Receiver<()>,
     // Send messages to subordinate supervisors.
     ctrl_tx: broadcast::Sender<()>,
-
     // Receive new task handles.
     // register_rx: mpsc::Receiver<JoinHandle<()>>,
 
@@ -141,7 +150,6 @@ struct SupervisorTask {
 
 impl SupervisorTask {
     async fn drive(&mut self) -> () {
-
         loop {
             tokio::select! {
                 status = self.parent_ctrl_rx.recv() => {
@@ -157,7 +165,6 @@ impl SupervisorTask {
                 }
             }
         }
-
     }
 }
 
@@ -165,21 +172,13 @@ pub struct Supervisor {
     // exec_handle: JoinHandle<()>,
     // Broadcast tx/rx
     ctrl_tx: broadcast::Sender<()>,
-
     // register_tx: mpsc::Sender<JoinHandle<()>>,
-
 }
 
 impl Supervisor {
-    fn primary(
-        parent_ctrl_rx: broadcast::Receiver<()>,
-    ) -> (
-        Self,
-        JoinHandle<()>
-    ) {
+    fn primary(parent_ctrl_rx: broadcast::Receiver<()>) -> (Self, JoinHandle<()>) {
         // Starts the first/primary supervisor.
         let (ctrl_tx, ctrl_rx) = broadcast::channel(1);
-
 
         let exec_handle = {
             let ctrl_tx = ctrl_tx.clone();
@@ -194,15 +193,8 @@ impl Supervisor {
             })
         };
 
-
-        (
-            Self {
-                ctrl_tx
-            },
-            exec_handle
-        )
+        (Self { ctrl_tx }, exec_handle)
     }
-
 
     /*
 
@@ -217,9 +209,9 @@ impl Supervisor {
 
             supervisor_task.drive();
         })
-        
+
         Self {
-            
+
         }
     }
 
@@ -235,12 +227,11 @@ impl Supervisor {
         // spawn it
         // send the handle to the supervisor task to take care of it.
 
-        
-        
+
+
 
     }
     */
-
 }
 
 /*
@@ -256,27 +247,41 @@ impl<A> From<A> for SupervisedActor<A> {
 
 impl<A> SupervisedActor<A> {
     async fn drive(&mut self) -> () {
-        
+
     }
 }
 
 trait Actor {
 
-    
-    
+
+
 
 }
 */
 
-
 #[cfg(test)]
 mod tests {
-    use super::{Runtime, SignalHandler};
+    use super::{Runtime, RuntimeSetup, SignalHandler, Supervisor};
     use tracing::*;
 
     struct Handler {}
 
     impl SignalHandler for Handler {}
+
+    struct RTSetup {}
+
+    impl RuntimeSetup for RTSetup {
+        type Error = ();
+
+        fn setup(
+            supervisor: &mut Supervisor,
+        ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
+            async {
+                info!("It Runs!");
+                Ok(())
+            }
+        }
+    }
 
     #[tokio::test]
     async fn basic_test() {
@@ -286,8 +291,6 @@ mod tests {
 
         let rt = Runtime::new(Handler {});
 
-        rt.exec().await;
+        rt.exec::<RTSetup>().await;
     }
 }
-
-
