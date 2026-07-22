@@ -25,6 +25,7 @@ tokio = { workspace = true, features = [
     "sync",
     "signal",
 ] }
+pin-project-lite = { workspace = true }
 
 [dev-dependencies]
 tracing-subscriber = { workspace = true }

@@ -3575,6 +3575,7 @@ dependencies = [
 name = "kanidm_actors"
 version = "1.11.0-dev"
 dependencies = [
+ "pin-project-lite",
  "tokio",
  "tracing",
  "tracing-subscriber",

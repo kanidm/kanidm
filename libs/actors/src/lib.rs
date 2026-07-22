@@ -1,6 +1,6 @@
 use std::future::Future;
 use tokio::{
-    signal::unix::{signal, SignalKind},
+    signal::unix::{self, signal, SignalKind},
     sync::{broadcast, mpsc},
     task::{self, JoinHandle},
 };
@@ -44,79 +44,140 @@ pub trait SignalHandler {
     }
 }
 
+pub enum Signal {
+    Terminate,
+    Interrupt,
+    Hangup,
+    UserDefined1,
+    UserDefined2,
+    Alarm,
+}
+
+pub trait SignalSource {
+    fn recv(&mut self) -> impl Future<Output = Signal> + Send;
+}
+
+pub struct UnixSignalSource {
+    sigterm_stream: unix::Signal,
+    sigint_stream: unix::Signal,
+    sighup_stream: unix::Signal,
+    siguser1_stream: unix::Signal,
+    siguser2_stream: unix::Signal,
+    sigalarm_stream: unix::Signal,
+}
+
+impl UnixSignalSource {
+    pub fn new() -> Result<Self, std::io::Error> {
+        let sigterm_stream = signal(SignalKind::terminate())?;
+        let sigint_stream = signal(SignalKind::interrupt())?;
+        let sighup_stream = signal(SignalKind::hangup())?;
+        let siguser1_stream = signal(SignalKind::user_defined1())?;
+        let siguser2_stream = signal(SignalKind::user_defined2())?;
+        let sigalarm_stream = signal(SignalKind::alarm())?;
+
+        Ok(Self {
+            sigterm_stream,
+            sigint_stream,
+            sighup_stream,
+            siguser1_stream,
+            siguser2_stream,
+            sigalarm_stream,
+        })
+    }
+}
+
+impl SignalSource for UnixSignalSource {
+    fn recv(&mut self) -> impl Future<Output = Signal> + Send {
+        async {
+            tokio::select! {
+                _ = self.sigterm_stream.recv() => {
+                    Signal::Terminate
+                }
+                _ = self.sigint_stream.recv() => {
+                    Signal::Interrupt
+                }
+                _ = self.sighup_stream.recv() => {
+                    Signal::Hangup
+                }
+                _ = self.siguser1_stream.recv() => {
+                    Signal::UserDefined1
+                }
+                _ = self.siguser2_stream.recv() => {
+                    Signal::UserDefined2
+                }
+                _ = self.sigalarm_stream.recv() => {
+                    Signal::Alarm
+                }
+            }
+        }
+    }
+}
+
 pub trait RuntimeSetup {
     type Error;
 
-    fn setup(
-        supervisor: &mut Supervisor,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    fn setup(supervisor: &mut Supervisor) -> impl Future<Output = Result<(), Self::Error>> + Send;
 }
 
-pub struct Runtime<H> {
+pub struct Runtime<H, T> {
     signal_handler: H,
+    signal_source: T,
 }
 
-impl<H> Runtime<H>
+impl<H, T> Runtime<H, T>
 where
     H: SignalHandler,
+    T: SignalSource,
 {
-    pub fn new(signal_handler: H) -> Self {
-        Self { signal_handler }
+    pub fn new(signal_handler: H, signal_source: T) -> Self {
+        Self {
+            signal_handler,
+            signal_source,
+        }
     }
 
-    pub async fn exec<S>(
-        mut self,
-        // rt_setup: S
-    ) -> Result<(), Box<dyn std::error::Error>>
+    pub async fn exec<S>(mut self) -> Result<(), S::Error>
     where
         S: RuntimeSetup,
+        T: SignalSource,
     {
-        let mut sigterm_stream = signal(SignalKind::terminate())?;
-        let mut sigint_stream = signal(SignalKind::interrupt())?;
-        let mut sighup_stream = signal(SignalKind::hangup())?;
-        let mut siguser1_stream = signal(SignalKind::user_defined1())?;
-        let mut siguser2_stream = signal(SignalKind::user_defined2())?;
-        let mut sigalarm_stream = signal(SignalKind::alarm())?;
-
-        // also need the handle to join on.
-
         let (ctrl_tx, ctrl_rx) = broadcast::channel(1);
 
         let (mut supervisor, mut supervisor_handle) = Supervisor::primary(ctrl_rx);
 
         // Run the setup function to allow registration of tasks to the supervisor.
-        S::setup(&mut supervisor).await;
+        S::setup(&mut supervisor).await?;
 
         loop {
             tokio::select! {
                 _ = &mut supervisor_handle => {
+                    // This occurs if the primary supervisor stops prematurely.
                     break
                 }
 
-                _ = sigterm_stream.recv() => {
-                    self.signal_handler.terminate().await;
-                    break
-                }
-
-                _ = sigint_stream.recv() => {
-                    self.signal_handler.interrupt().await;
-                    break
-                }
-
-                _ = sighup_stream.recv() => {
-                    self.signal_handler.hangup().await;
-                }
-
-                _ = siguser1_stream.recv() => {
-                    self.signal_handler.user_defined1().await;
-                }
-
-                _ = siguser2_stream.recv() => {
-                    self.signal_handler.user_defined2().await;
-                }
-
-                _ = sigalarm_stream.recv() => {
-                    self.signal_handler.alarm().await;
+                signal_event = self.signal_source.recv() => {
+                    match signal_event {
+                        Signal::Terminate => {
+                            self.signal_handler.terminate().await;
+                            break
+                        }
+                        Signal::Interrupt => {
+                            self.signal_handler.interrupt().await;
+                            break
+                        }
+                        Signal::Hangup => {
+                            self.signal_handler.hangup().await;
+                        }
+                        Signal::UserDefined1 => {
+                            self.signal_handler.user_defined1().await;
+                        }
+                        Signal::UserDefined2 => {
+                            self.signal_handler.user_defined2().await;
+                        }
+                        Signal::Alarm => {
+                            self.signal_handler.alarm().await;
+                        }
+                    }
                 }
             }
         }
@@ -132,8 +193,8 @@ where
                 error!("Failed to stop primary supervisor.");
             } else {
                 debug!("Runtime has stopped.");
-        }
             }
+        }
 
         Ok(())
     }
@@ -235,7 +296,10 @@ impl Supervisor {
 
     /// Stop this supervisor and all it's hosted tasks.
     pub async fn stop(self) {
-        self.mbox_tx.send(SupervisorMessage::Stop).await;
+        let send_result = self.mbox_tx.send(SupervisorMessage::Stop).await;
+        if send_result.is_err() {
+            error!("Failed to communicate with supervisor task.");
+        }
 
         // Wait for the task to stop
         debug!("Waiting for stop");
@@ -276,19 +340,17 @@ where
         // Setup.
         self.a.setup().await;
 
-        // Loop + Select on shutdown.
-        loop {
-            tokio::select! {
-                status = self.parent_ctrl_rx.recv() => {
-                    if status.is_err() {
-                        warn!("Parent supervisor has stopped.");
-                    };
-
-                    break
-                }
-                _ = self.a.run() => {
-                    // Let the actor run.
-                }
+        tokio::select! {
+            status = self.parent_ctrl_rx.recv() => {
+                if status.is_err() {
+                    warn!("Parent supervisor has stopped.");
+                };
+            }
+            // Future - if we need to protect critical sections during run, we can
+            // pass in a mutex that the receiver can lock to prevent shutdown
+            // completing until they release the guard.
+            _ = self.a.run() => {
+                // Let the actor run.
             }
         }
 
@@ -303,7 +365,6 @@ pub trait Actor {
         async {}
     }
 
-    // Loop/run
     fn run(&mut self) -> impl Future<Output = ()> + Send {
         async {}
     }
@@ -315,7 +376,8 @@ pub trait Actor {
 
 #[cfg(test)]
 mod tests {
-    use super::{Actor, Runtime, RuntimeSetup, SignalHandler, Supervisor};
+    use super::{Actor, Runtime, RuntimeSetup, SignalHandler, Supervisor, UnixSignalSource};
+    use std::future::Future;
     use tokio::time::{sleep, Duration};
     use tracing::*;
 
@@ -334,9 +396,11 @@ mod tests {
             async {
                 info!("It Runs!");
 
-                let super_1 = supervisor.subordinate().await.unwrap();
+                let mut super_1 = supervisor.subordinate().await.unwrap();
 
                 let mut super_2 = supervisor.subordinate().await.unwrap();
+
+                super_1.spawn(TestActor {});
 
                 super_1.stop().await;
 
@@ -359,8 +423,10 @@ mod tests {
         // Loop/run
         fn run(&mut self) -> impl Future<Output = ()> + Send {
             async {
-                sleep(Duration::from_millis(100)).await;
-                println!("100 ms have elapsed");
+                loop {
+                    sleep(Duration::from_millis(1000)).await;
+                    info!("timer elapsed");
+                }
             }
         }
 
@@ -377,9 +443,12 @@ mod tests {
 
         trace!("It works");
 
-        let rt = Runtime::new(Handler {});
+        let signal_source = UnixSignalSource::new().unwrap();
 
-        rt.exec::<RTSetup>().await
+        let rt = Runtime::new(Handler {}, signal_source);
+
+        rt.exec::<RTSetup>()
+            .await
             .expect("Failed to stop runtime cleanly.");
     }
 }
