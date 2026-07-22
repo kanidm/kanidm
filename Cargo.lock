@@ -3572,6 +3572,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm_actors"
+version = "1.11.0-dev"
+dependencies = [
+ "pin-project-lite",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "kanidm_build_profiles"
 version = "1.11.0-dev"
 dependencies = [
