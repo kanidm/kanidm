@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 const TUNNEL_TYPE_VLAN: &str = "13";
 const TUNNEL_MEDIUM_TYPE_IEEE_802: &str = "6";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub(crate) enum AuthError {
     Reject,
@@ -22,13 +22,13 @@ pub(crate) enum AuthError {
     Updated,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AuthResponse {
     pub reply: ResponseReplyAttributes,
     pub control: ResponseControlAttributes,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct ResponseReplyAttributes {
     pub user_name: String,
@@ -39,6 +39,7 @@ pub struct ResponseReplyAttributes {
     pub reply_attributes: BTreeMap<String, String>,
 }
 
+#[derive(Clone)]
 pub struct ResponseControlAttributes {
     pub cleartext_password: Option<String>,
 }
