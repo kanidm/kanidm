@@ -113,40 +113,57 @@ impl SignalSource for UnixSignalSource {
     }
 }
 
+pub struct SoftwareSignalSource {
+    rx: mpsc::Receiver<Signal>,
+}
+
+impl SoftwareSignalSource {
+    pub fn new() -> (Self, mpsc::Sender<Signal>) {
+        let (tx, rx) = mpsc::channel(4);
+
+        (Self { rx }, tx)
+    }
+}
+
+impl SignalSource for SoftwareSignalSource {
+    fn recv(&mut self) -> impl Future<Output = Signal> + Send {
+        async { self.rx.recv().await.unwrap_or(Signal::Terminate) }
+    }
+}
+
 pub trait RuntimeSetup {
     type Error;
 
-    fn setup(supervisor: &mut Supervisor) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    fn setup(
+        self,
+        supervisor: &mut Supervisor,
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 }
 
-pub struct Runtime<H, T> {
-    signal_handler: H,
-    signal_source: T,
-}
+pub struct Runtime {}
 
-impl<H, T> Runtime<H, T>
-where
-    H: SignalHandler,
-    T: SignalSource,
-{
-    pub fn new(signal_handler: H, signal_source: T) -> Self {
-        Self {
-            signal_handler,
-            signal_source,
-        }
+impl Runtime {
+    pub fn new() -> Self {
+        Self {}
     }
 
-    pub async fn exec<S>(mut self) -> Result<(), S::Error>
+    pub async fn exec<H, T, S>(
+        self,
+        context: S,
+        mut signal_handler: H,
+        mut signal_source: T,
+    ) -> Result<(), S::Error>
     where
-        S: RuntimeSetup,
+        H: SignalHandler,
         T: SignalSource,
+        S: RuntimeSetup,
     {
         let (ctrl_tx, ctrl_rx) = broadcast::channel(1);
 
         let (mut supervisor, mut supervisor_handle) = Supervisor::primary(ctrl_rx);
 
         // Run the setup function to allow registration of tasks to the supervisor.
-        S::setup(&mut supervisor).await?;
+        context.setup(&mut supervisor).await?;
 
         loop {
             tokio::select! {
@@ -155,27 +172,27 @@ where
                     break
                 }
 
-                signal_event = self.signal_source.recv() => {
+                signal_event = signal_source.recv() => {
                     match signal_event {
                         Signal::Terminate => {
-                            self.signal_handler.terminate().await;
+                            signal_handler.terminate().await;
                             break
                         }
                         Signal::Interrupt => {
-                            self.signal_handler.interrupt().await;
+                            signal_handler.interrupt().await;
                             break
                         }
                         Signal::Hangup => {
-                            self.signal_handler.hangup().await;
+                            signal_handler.hangup().await;
                         }
                         Signal::UserDefined1 => {
-                            self.signal_handler.user_defined1().await;
+                            signal_handler.user_defined1().await;
                         }
                         Signal::UserDefined2 => {
-                            self.signal_handler.user_defined2().await;
+                            signal_handler.user_defined2().await;
                         }
                         Signal::Alarm => {
-                            self.signal_handler.alarm().await;
+                            signal_handler.alarm().await;
                         }
                     }
                 }
@@ -234,9 +251,6 @@ impl SupervisorTask {
                         }
                     }
                 }
-
-                // Listen on incoming new tasks.
-
             }
         }
 
@@ -286,12 +300,16 @@ impl Supervisor {
 
     /// Build a subordinate supervisor. This allows you to group tasks together for clean
     /// shutdowns without affecting parent or sibiling supervised tasks.
-    pub async fn subordinate(&mut self) -> Result<Self, ()> {
+    pub async fn subordinate(&mut self) -> Self {
         let parent_ctrl_rx = self.ctrl_tx.subscribe();
 
         let (supervisor, _handle) = Self::build(parent_ctrl_rx);
 
-        Ok(supervisor)
+        supervisor
+    }
+
+    pub fn subordinate_count(&self) -> usize {
+        self.ctrl_tx.receiver_count()
     }
 
     /// Stop this supervisor and all it's hosted tasks.
@@ -306,7 +324,7 @@ impl Supervisor {
         self.mbox_tx.closed().await;
     }
 
-    pub fn spawn<A>(&mut self, actor: A)
+    pub fn spawn<A>(&mut self, actor: A) -> JoinHandle<()>
     where
         A: Actor + Send + 'static,
     {
@@ -317,7 +335,7 @@ impl Supervisor {
 
         let mut supervised_actor = SupervisedActor::build(parent_ctrl_rx, actor);
 
-        let _actor_handle = tokio::spawn(async move { supervised_actor.run().await });
+        tokio::spawn(async move { supervised_actor.run().await })
     }
 }
 
@@ -335,8 +353,6 @@ where
     }
 
     async fn run(&mut self) {
-        debug!("starting actor");
-
         // Setup.
         self.a.setup().await;
 
@@ -353,8 +369,6 @@ where
                 // Let the actor run.
             }
         }
-
-        debug!("stopping actor");
 
         self.a.stop().await;
     }
@@ -376,79 +390,251 @@ pub trait Actor {
 
 #[cfg(test)]
 mod tests {
-    use super::{Actor, Runtime, RuntimeSetup, SignalHandler, Supervisor, UnixSignalSource};
+    use super::{
+        Actor, Runtime, RuntimeSetup, Signal, SignalHandler, SoftwareSignalSource, Supervisor,
+    };
     use std::future::Future;
-    use tokio::time::{sleep, Duration};
+    use tokio::sync::mpsc;
+    use tokio::task;
     use tracing::*;
 
-    struct Handler {}
-
-    impl SignalHandler for Handler {}
-
-    struct RTSetup {}
-
-    impl RuntimeSetup for RTSetup {
-        type Error = ();
-
-        fn setup(
-            supervisor: &mut Supervisor,
-        ) -> impl Future<Output = Result<(), Self::Error>> + Send {
-            async {
-                info!("It Runs!");
-
-                let mut super_1 = supervisor.subordinate().await.unwrap();
-
-                let mut super_2 = supervisor.subordinate().await.unwrap();
-
-                super_1.spawn(TestActor {});
-
-                super_1.stop().await;
-
-                super_2.spawn(TestActor {});
-
-                Ok(())
-            }
-        }
-    }
-
-    struct TestActor {}
-
-    impl Actor for TestActor {
-        fn setup(&mut self) -> impl Future<Output = ()> + Send {
-            async {
-                debug!("setup!");
-            }
+    #[tokio::test]
+    async fn signal_propagation_test() {
+        struct Handler {
+            notify_tx: mpsc::Sender<()>,
         }
 
-        // Loop/run
-        fn run(&mut self) -> impl Future<Output = ()> + Send {
-            async {
-                loop {
-                    sleep(Duration::from_millis(1000)).await;
-                    info!("timer elapsed");
+        impl SignalHandler for Handler {
+            fn hangup(&mut self) -> impl Future<Output = ()> + Send {
+                async {
+                    trace!("hangup");
+                    self.notify_tx.send(()).await.unwrap();
+                }
+            }
+
+            fn user_defined1(&mut self) -> impl Future<Output = ()> + Send {
+                async {
+                    trace!("user_defined1");
+                    self.notify_tx.send(()).await.unwrap();
+                }
+            }
+
+            fn user_defined2(&mut self) -> impl Future<Output = ()> + Send {
+                async {
+                    trace!("user_defined2");
+                    self.notify_tx.send(()).await.unwrap();
                 }
             }
         }
 
-        fn stop(&mut self) -> impl Future<Output = ()> + Send {
-            async {
-                debug!("stop");
+        struct RTContext {}
+
+        impl RuntimeSetup for RTContext {
+            type Error = ();
+
+            fn setup(
+                self,
+                _supervisor: &mut Supervisor,
+            ) -> impl Future<Output = Result<(), Self::Error>> + Send {
+                async {
+                    // Do nothing, really well.
+                    Ok(())
+                }
             }
         }
+
+        // ============================================================
+
+        let _ = tracing_subscriber::fmt::try_init();
+
+        let (signal_source, signal_tx) = SoftwareSignalSource::new();
+
+        let context = RTContext {};
+
+        let rt = Runtime::new();
+
+        let (notify_tx, mut notify_rx) = mpsc::channel(4);
+
+        let signal_handler = Handler { notify_tx };
+
+        let handle =
+            task::spawn(async move { rt.exec(context, signal_handler, signal_source).await });
+
+        assert_eq!(notify_rx.len(), 0);
+
+        signal_tx.send(Signal::Hangup).await.unwrap();
+        signal_tx.send(Signal::UserDefined1).await.unwrap();
+        signal_tx.send(Signal::UserDefined2).await.unwrap();
+
+        notify_rx.recv().await;
+
+        // We took one message from the queue, there are two more at least.
+        assert_eq!(notify_rx.len(), 2);
+
+        signal_tx.send(Signal::Terminate).await.unwrap();
+        let result = handle.await;
+
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
-    async fn basic_test() {
+    async fn supervisor_test() {
+        struct Handler {}
+
+        impl SignalHandler for Handler {}
+
+        struct TestActor {
+            setup_run: bool,
+            stop_run: bool,
+            rx: mpsc::Receiver<()>,
+        }
+
+        impl TestActor {
+            fn new(rx: mpsc::Receiver<()>) -> Self {
+                Self {
+                    setup_run: false,
+                    stop_run: false,
+                    rx,
+                }
+            }
+        }
+
+        impl Drop for TestActor {
+            fn drop(&mut self) {
+                debug_assert!(self.setup_run);
+                debug_assert!(self.stop_run);
+            }
+        }
+
+        impl Actor for TestActor {
+            fn setup(&mut self) -> impl Future<Output = ()> + Send {
+                async {
+                    self.setup_run = true;
+                }
+            }
+
+            fn run(&mut self) -> impl Future<Output = ()> + Send {
+                async {
+                    self.rx.recv().await;
+                    trace!("oneshot message received!");
+                }
+            }
+
+            fn stop(&mut self) -> impl Future<Output = ()> + Send {
+                async {
+                    self.stop_run = true;
+                }
+            }
+        }
+
+        struct RTContext {
+            signal_tx: mpsc::Sender<Signal>,
+        }
+
+        impl RuntimeSetup for RTContext {
+            type Error = ();
+
+            fn setup(
+                self,
+                supervisor: &mut Supervisor,
+            ) -> impl Future<Output = Result<(), Self::Error>> + Send {
+                async {
+                    let RTContext { signal_tx } = self;
+
+                    // This sets up the test coordinator, which actually does all the work.
+                    let test_supervisor = supervisor.subordinate().await;
+
+                    let test_coordinator = TestCoordinator {
+                        signal_tx,
+                        test_supervisor,
+                    };
+
+                    supervisor.spawn(test_coordinator);
+
+                    Ok(())
+                }
+            }
+        }
+
+        struct TestCoordinator {
+            // The software signal transmit, so we can stop the test from within
+            // the actual process ourself.
+            signal_tx: mpsc::Sender<Signal>,
+            test_supervisor: Supervisor,
+        }
+
+        impl Actor for TestCoordinator {
+            fn run(&mut self) -> impl Future<Output = ()> + Send {
+                async {
+                    // It's time to test
+                    trace!("Starting task supervision test");
+
+                    // First - we have no hosted tasks or supervisors.
+                    assert_eq!(self.test_supervisor.subordinate_count(), 0);
+
+                    // Create a task on the test_supervisor.
+                    let (task_1_tx, rx) = mpsc::channel(1);
+                    let task_1_handle = self.test_supervisor.spawn(TestActor::new(rx));
+                    assert_eq!(self.test_supervisor.subordinate_count(), 1);
+
+                    // Now we can message the oneshote and it will cause the task to stop due to how
+                    // we have configured it.
+                    task_1_tx.send(()).await.unwrap();
+                    task_1_handle.await.unwrap();
+
+                    // Now there are no hosted tasks.
+                    assert_eq!(self.test_supervisor.subordinate_count(), 0);
+
+                    // Okay, start a supervisor, and give it some child tasks.
+                    let mut supervisor = self.test_supervisor.subordinate().await;
+
+                    let (_task_2_tx, rx) = mpsc::channel(1);
+                    let task_2_handle = supervisor.spawn(TestActor::new(rx));
+
+                    let (_task_3_tx, rx) = mpsc::channel(1);
+                    let task_3_handle = supervisor.spawn(TestActor::new(rx));
+
+                    // We are hosting the supervisor.
+                    assert_eq!(self.test_supervisor.subordinate_count(), 1);
+                    // And it's hosting it's tasks.
+                    assert_eq!(supervisor.subordinate_count(), 2);
+
+                    // Now tell it to stop.
+                    supervisor.stop().await;
+                    // Once it's done, we can tell the tasks stopped as the task handles
+                    // will join automatically for us
+                    task_2_handle.await.unwrap();
+                    task_3_handle.await.unwrap();
+
+                    // And we are back to no hosted tasks.
+                    assert_eq!(self.test_supervisor.subordinate_count(), 0);
+
+                    // Now stop the supervisor - all it's children will stop!
+
+                    // We are now complete, stop everything!
+                    self.signal_tx.send(Signal::Terminate).await.unwrap();
+                }
+            }
+        }
+
+        // ============================================================
+
         let _ = tracing_subscriber::fmt::try_init();
 
-        trace!("It works");
+        let signal_handler = Handler {};
+        let (signal_source, signal_tx) = SoftwareSignalSource::new();
 
-        let signal_source = UnixSignalSource::new().unwrap();
+        let context = {
+            let signal_tx = signal_tx.clone();
+            RTContext { signal_tx }
+        };
 
-        let rt = Runtime::new(Handler {}, signal_source);
+        let rt = Runtime::new();
 
-        rt.exec::<RTSetup>()
-            .await
-            .expect("Failed to stop runtime cleanly.");
+        let handle =
+            task::spawn(async move { rt.exec(context, signal_handler, signal_source).await });
+
+        let result = handle.await;
+        assert!(result.is_ok());
     }
 }
