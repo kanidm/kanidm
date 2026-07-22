@@ -1,3 +1,15 @@
+#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
+
 use std::future::Future;
 use tokio::{
     signal::unix::{self, signal, SignalKind},
@@ -208,8 +220,6 @@ impl Runtime {
         if !supervisor_handle.is_finished() {
             if supervisor_handle.await.is_err() {
                 error!("Failed to stop primary supervisor.");
-            } else {
-                debug!("Runtime has stopped.");
             }
         }
 
@@ -254,15 +264,11 @@ impl SupervisorTask {
             }
         }
 
-        debug!("Stopping supervisor ...");
-
         // If we haven't registered a subordinate, we don't want to error/alert
         let _ = self.ctrl_tx.send(());
 
         // Wait on all subordinates to stop.
         self.ctrl_tx.closed().await;
-
-        trace!("SupervisorTask stopped");
     }
 }
 
@@ -320,7 +326,6 @@ impl Supervisor {
         }
 
         // Wait for the task to stop
-        debug!("Waiting for stop");
         self.mbox_tx.closed().await;
     }
 
@@ -362,11 +367,10 @@ where
                     warn!("Parent supervisor has stopped.");
                 };
             }
-            // Future - if we need to protect critical sections during run, we can
-            // pass in a mutex that the receiver can lock to prevent shutdown
-            // completing until they release the guard.
+            // In the future we may need to protect critical sections here during
+            // some operations, however that may involve a custom struct that implements
+            // future to manage this.
             _ = self.a.run() => {
-                // Let the actor run.
             }
         }
 
