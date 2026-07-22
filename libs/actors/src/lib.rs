@@ -329,6 +329,7 @@ impl Supervisor {
     pub fn spawn<A>(&mut self, actor: A) -> JoinHandle<()>
     where
         A: Actor + Send + 'static,
+        A::Message: Send + 'static,
     {
         // From the point we subscribe to the tx, this causes
         // the task to be owned by the supervisor, and it will now wait
@@ -349,6 +350,7 @@ struct SupervisedActor<A> {
 impl<A> SupervisedActor<A>
 where
     A: Actor + Send + 'static,
+    A::Message: Send + 'static,
 {
     fn build(parent_ctrl_rx: broadcast::Receiver<()>, a: A) -> Self {
         Self { parent_ctrl_rx, a }
@@ -358,33 +360,45 @@ where
         // Setup.
         self.a.setup().await;
 
-        tokio::select! {
-            status = self.parent_ctrl_rx.recv() => {
-                if status.is_err() {
-                    warn!("Parent supervisor has stopped.");
-                };
-            }
-            // In the future we may need to protect critical sections here during
-            // some operations, however that may involve a custom struct that implements
-            // future to manage this.
-            _ = self.a.run() => {
+        loop {
+            tokio::select! {
+                status = self.parent_ctrl_rx.recv() => {
+                    if status.is_err() {
+                        warn!("Parent supervisor has stopped.");
+                    };
+                    break
+                }
+
+                state = self.a.state() => {
+                    match state {
+                        ActorState::Ready(msg) => self.a.run(msg).await,
+                        ActorState::Stop => break,
+                    }
+                }
             }
         }
 
-        self.a.stop().await;
+        self.a.cleanup().await;
     }
 }
 
+pub enum ActorState<M> {
+    Ready(M),
+    Stop,
+}
+
 pub trait Actor {
+    type Message;
+
     fn setup(&mut self) -> impl Future<Output = ()> + Send {
         async {}
     }
 
-    fn run(&mut self) -> impl Future<Output = ()> + Send {
-        async {}
-    }
+    fn state(&mut self) -> impl Future<Output = ActorState<Self::Message>> + Send;
 
-    fn stop(&mut self) -> impl Future<Output = ()> + Send {
+    fn run(&mut self, ready: Self::Message) -> impl Future<Output = ()> + Send;
+
+    fn cleanup(&mut self) -> impl Future<Output = ()> + Send {
         async {}
     }
 }
@@ -392,7 +406,8 @@ pub trait Actor {
 #[cfg(test)]
 mod tests {
     use super::{
-        Actor, Runtime, RuntimeSetup, Signal, SignalHandler, SoftwareSignalSource, Supervisor,
+        Actor, ActorState, Runtime, RuntimeSetup, Signal, SignalHandler, SoftwareSignalSource,
+        Supervisor,
     };
     use std::future::Future;
     use tokio::sync::mpsc;
@@ -486,7 +501,7 @@ mod tests {
 
         struct TestActor {
             setup_run: bool,
-            stop_run: bool,
+            cleanup_run: bool,
             rx: mpsc::Receiver<()>,
         }
 
@@ -494,7 +509,7 @@ mod tests {
             fn new(rx: mpsc::Receiver<()>) -> Self {
                 Self {
                     setup_run: false,
-                    stop_run: false,
+                    cleanup_run: false,
                     rx,
                 }
             }
@@ -503,27 +518,34 @@ mod tests {
         impl Drop for TestActor {
             fn drop(&mut self) {
                 debug_assert!(self.setup_run);
-                debug_assert!(self.stop_run);
+                debug_assert!(self.cleanup_run);
             }
         }
 
         impl Actor for TestActor {
+            type Message = ();
+
             fn setup(&mut self) -> impl Future<Output = ()> + Send {
                 async {
                     self.setup_run = true;
                 }
             }
 
-            fn run(&mut self) -> impl Future<Output = ()> + Send {
+            fn state(&mut self) -> impl Future<Output = ActorState<Self::Message>> + Send {
                 async {
                     self.rx.recv().await;
                     trace!("oneshot message received!");
+                    ActorState::Stop
                 }
             }
 
-            fn stop(&mut self) -> impl Future<Output = ()> + Send {
+            fn run(&mut self, _msg: Self::Message) -> impl Future<Output = ()> + Send {
+                async {}
+            }
+
+            fn cleanup(&mut self) -> impl Future<Output = ()> + Send {
                 async {
-                    self.stop_run = true;
+                    self.cleanup_run = true;
                 }
             }
         }
@@ -565,7 +587,13 @@ mod tests {
         }
 
         impl Actor for TestCoordinator {
-            fn run(&mut self) -> impl Future<Output = ()> + Send {
+            type Message = ();
+
+            fn state(&mut self) -> impl Future<Output = ActorState<Self::Message>> + Send {
+                async { ActorState::Ready(()) }
+            }
+
+            fn run(&mut self, _msg: Self::Message) -> impl Future<Output = ()> + Send {
                 async {
                     // It's time to test
                     trace!("Starting task supervision test");
