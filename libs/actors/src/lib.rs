@@ -1,45 +1,43 @@
-use std::collections::BTreeMap;
 use std::future::Future;
-use std::sync::Arc;
 use tokio::{
     signal::unix::{signal, SignalKind},
-    sync::{broadcast, mpsc, Mutex},
+    sync::{broadcast, mpsc},
     task::{self, JoinHandle},
 };
 use tracing::*;
 
 pub trait SignalHandler {
-    fn terminate(&mut self) -> impl std::future::Future<Output = ()> + Send {
+    fn terminate(&mut self) -> impl Future<Output = ()> + Send {
         async {
             trace!("terminate");
         }
     }
 
-    fn interrupt(&mut self) -> impl std::future::Future<Output = ()> + Send {
+    fn interrupt(&mut self) -> impl Future<Output = ()> + Send {
         async {
             trace!("interrupt");
         }
     }
 
-    fn hangup(&mut self) -> impl std::future::Future<Output = ()> + Send {
+    fn hangup(&mut self) -> impl Future<Output = ()> + Send {
         async {
             trace!("hangup");
         }
     }
 
-    fn user_defined1(&mut self) -> impl std::future::Future<Output = ()> + Send {
+    fn user_defined1(&mut self) -> impl Future<Output = ()> + Send {
         async {
             trace!("user_defined1");
         }
     }
 
-    fn user_defined2(&mut self) -> impl std::future::Future<Output = ()> + Send {
+    fn user_defined2(&mut self) -> impl Future<Output = ()> + Send {
         async {
             trace!("user_defined2");
         }
     }
 
-    fn alarm(&mut self) -> impl std::future::Future<Output = ()> + Send {
+    fn alarm(&mut self) -> impl Future<Output = ()> + Send {
         async {
             trace!("alarm");
         }
@@ -51,7 +49,7 @@ pub trait RuntimeSetup {
 
     fn setup(
         supervisor: &mut Supervisor,
-    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 }
 
 pub struct Runtime<H> {
@@ -130,9 +128,12 @@ where
         }
 
         if !supervisor_handle.is_finished() {
-            supervisor_handle.await;
+            if supervisor_handle.await.is_err() {
+                error!("Failed to stop primary supervisor.");
+            } else {
+                debug!("Runtime has stopped.");
         }
-        debug!("Runtime has stopped.");
+            }
 
         Ok(())
     }
@@ -198,7 +199,7 @@ pub struct Supervisor {
 
 impl Supervisor {
     fn build(parent_ctrl_rx: broadcast::Receiver<()>) -> (Self, JoinHandle<()>) {
-        let (ctrl_tx, ctrl_rx) = broadcast::channel(1);
+        let (ctrl_tx, _ctrl_rx) = broadcast::channel(1);
         let (mbox_tx, mbox_rx) = mpsc::channel(4);
 
         let exec_handle = {
@@ -227,7 +228,7 @@ impl Supervisor {
     pub async fn subordinate(&mut self) -> Result<Self, ()> {
         let parent_ctrl_rx = self.ctrl_tx.subscribe();
 
-        let (supervisor, handle) = Self::build(parent_ctrl_rx);
+        let (supervisor, _handle) = Self::build(parent_ctrl_rx);
 
         Ok(supervisor)
     }
@@ -298,16 +299,16 @@ where
 }
 
 pub trait Actor {
-    fn setup(&mut self) -> impl std::future::Future<Output = ()> + Send {
+    fn setup(&mut self) -> impl Future<Output = ()> + Send {
         async {}
     }
 
     // Loop/run
-    fn run(&mut self) -> impl std::future::Future<Output = ()> + Send {
+    fn run(&mut self) -> impl Future<Output = ()> + Send {
         async {}
     }
 
-    fn stop(&mut self) -> impl std::future::Future<Output = ()> + Send {
+    fn stop(&mut self) -> impl Future<Output = ()> + Send {
         async {}
     }
 }
@@ -329,7 +330,7 @@ mod tests {
 
         fn setup(
             supervisor: &mut Supervisor,
-        ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
+        ) -> impl Future<Output = Result<(), Self::Error>> + Send {
             async {
                 info!("It Runs!");
 
@@ -349,21 +350,21 @@ mod tests {
     struct TestActor {}
 
     impl Actor for TestActor {
-        fn setup(&mut self) -> impl std::future::Future<Output = ()> + Send {
+        fn setup(&mut self) -> impl Future<Output = ()> + Send {
             async {
                 debug!("setup!");
             }
         }
 
         // Loop/run
-        fn run(&mut self) -> impl std::future::Future<Output = ()> + Send {
+        fn run(&mut self) -> impl Future<Output = ()> + Send {
             async {
                 sleep(Duration::from_millis(100)).await;
                 println!("100 ms have elapsed");
             }
         }
 
-        fn stop(&mut self) -> impl std::future::Future<Output = ()> + Send {
+        fn stop(&mut self) -> impl Future<Output = ()> + Send {
             async {
                 debug!("stop");
             }
@@ -378,6 +379,7 @@ mod tests {
 
         let rt = Runtime::new(Handler {});
 
-        rt.exec::<RTSetup>().await;
+        rt.exec::<RTSetup>().await
+            .expect("Failed to stop runtime cleanly.");
     }
 }
