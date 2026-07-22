@@ -153,7 +153,7 @@ pub struct ScimEntryApplicationPost {
 }
 
 #[serde_as]
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct ScimEntryApplication {
     #[serde(flatten)]
@@ -169,7 +169,7 @@ pub struct ScimEntryApplication {
 }
 
 #[serde_as]
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimListApplication {
     pub schemas: Vec<String>,
