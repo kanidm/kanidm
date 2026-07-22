@@ -1,10 +1,11 @@
 use std::future::Future;
 use tokio::{
     signal::unix::{signal, SignalKind},
-    sync::{broadcast, mpsc},
+    sync::{broadcast, mpsc, Mutex},
     task::{self, JoinHandle},
 };
 use tracing::*;
+use std::collections::BTreeMap;
 
 pub trait SignalHandler {
     fn terminate(&mut self) -> impl std::future::Future<Output = ()> + Send {
@@ -142,10 +143,19 @@ struct SupervisorTask {
     parent_ctrl_rx: broadcast::Receiver<()>,
     // Send messages to subordinate supervisors.
     ctrl_tx: broadcast::Sender<()>,
-    // Receive new task handles.
-    // register_rx: mpsc::Receiver<JoinHandle<()>>,
 
-    // handles: ()
+    // We probably need a way for subordinates to indicate they have stopped.
+    signal_rx: mpsc::Receiver<u64>,
+
+    // A registry of the join handles we own.
+    registry: Arc<Mutex<
+        Option<
+            BTreeMap<
+                u64,
+                JoinHandle<()>
+            >
+        >
+    >>,
 }
 
 impl SupervisorTask {
@@ -170,57 +180,107 @@ impl SupervisorTask {
         // Wait on all subordinates to stop.
         self.ctrl_tx.closed().await;
 
+        // Tell our parent we are complete.
+
         trace!("SupervisorTask stopped");
     }
 }
 
 pub struct Supervisor {
+    // My ID from the parent.
+    id: u64,
+
+    id_alloc: u64,
+
     // exec_handle: JoinHandle<()>,
     // Broadcast tx/rx
     ctrl_tx: broadcast::Sender<()>,
-    // register_tx: mpsc::Sender<JoinHandle<()>>,
+
+    signal_tx: mpsc::Sender<u64>,
+
+    // A registry of the join handles we own.
+    registry: Arc<Mutex<
+        Option<
+            BTreeMap<
+                u64,
+                JoinHandle<()>
+            >
+        >
+    >>,
 }
 
 impl Supervisor {
-    fn primary(parent_ctrl_rx: broadcast::Receiver<()>) -> (Self, JoinHandle<()>) {
+    fn build(
+        id: u64,
+        parent_ctrl_rx: broadcast::Receiver<()>,
+        parent_signal_tx: mpsc::Sender<u64>,
+    ) -> (Self, JoinHandle<()>) {
         // Starts the first/primary supervisor.
+        let id_alloc = 0;
+
         let (ctrl_tx, ctrl_rx) = broadcast::channel(1);
+        let (signal_tx, signal_rx) = mpsc::channel(8);
+
+        let registry = Default::default();
 
         let exec_handle = {
             let ctrl_tx = ctrl_tx.clone();
+            let registry = registry.clone();
 
             task::spawn(async move {
                 let mut supervisor_task = SupervisorTask {
+                    parent_signal_tx,
                     parent_ctrl_rx,
                     ctrl_tx,
+                    signal_rx,
+                    registry,
                 };
 
                 supervisor_task.drive().await;
             })
         };
 
-        (Self { ctrl_tx }, exec_handle)
+        (Self {
+            id,
+            id_alloc,
+            ctrl_tx,
+            signal_tx,
+            registry,
+        }, exec_handle)
+    }
+
+    fn primary(parent_ctrl_rx: broadcast::Receiver<()>) -> (Self, JoinHandle<()>) {
+        self.build(0, parent_ctrl_rx)
+    }
+
+    /// Build a subordinate supervisor. This allows you to group tasks together for clean
+    /// shutdowns without affecting parent or sibiling supervised tasks.
+    pub async fn subordinate(
+        &mut self,
+    ) -> Result<Self, ()> {
+
+        self.id_alloc += 1;
+        id = self.id_alloc;
+
+        let parent_ctrl_rx = self.ctrl_tx.subscribe();
+
+
+        let (supervisor, handle) = self.build(id, parent_ctrl_rx);
+
+        let mut registry_guard = self.registry.lock().await;
+
+
+
+        supervisor
     }
 
     /*
-
-    // Create a child-supervisor.
-    pub fn new(
-        &self,
-    ) -> Self {
-
-        let exec_handle = task::spawn(async move {
-            let supervisor_task = SupervisorTask {
-            };
-
-            supervisor_task.drive();
-        })
-
-        Self {
-
-        }
+    /// Stop this supervisor and all it's hosted tasks.
+    pub fn stop(
+        &self
+    ) {
+        // 
     }
-
     */
 
     /*
@@ -300,3 +360,4 @@ mod tests {
         rt.exec::<RTSetup>().await;
     }
 }
+
