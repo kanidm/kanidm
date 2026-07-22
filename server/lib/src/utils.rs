@@ -120,8 +120,6 @@ impl<'a> GraphemeClusterIter<'a> {
         let window_max = char_bounds.len().saturating_sub(window);
         let range = 0..window_max;
 
-        eprintln!("{:?} {}", char_bounds, window_max);
-
         GraphemeClusterIter {
             value,
             char_bounds,

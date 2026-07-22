@@ -42,8 +42,8 @@ use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::admin::AdminActor;
 use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
+use crate::repl::ReplicationServerHandles;
 use crate::utils::touch_file_or_quit;
-use compact_jwt::{JwsHs256Signer, JwsSigner};
 use crypto_glue::{
     s256::{Sha256, Sha256Output},
     traits::Digest,
@@ -67,6 +67,7 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 use tokio::sync::broadcast;
 use tokio::task;
+use tokio_rustls::TlsAcceptor;
 
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
@@ -776,6 +777,35 @@ struct ScimMigration {
     assertions: ScimAssertGeneric,
 }
 
+async fn migration_reload_supervisor(
+    mut broadcast_rx: broadcast::Receiver<CoreAction>,
+    server_write_ref: &'static QueryServerWriteV1,
+    migration_path: PathBuf,
+) {
+    loop {
+        tokio::select! {
+            Ok(action) = broadcast_rx.recv() => {
+                match action {
+                    CoreAction::Shutdown => break,
+                    CoreAction::Reload => {
+                        // Read the migrations.
+                        // Apply them.
+                        let eventid = Uuid::new_v4();
+                        migration_apply(
+                            eventid,
+                            server_write_ref,
+                            migration_path.as_path(),
+                        ).await;
+
+                        info!("Migration reload complete");
+                    },
+                }
+            }
+        }
+    }
+    info!("Stopped {}", TaskName::MigrationReload);
+}
+
 #[instrument(
     level = "info",
     fields(uuid = ?eventid),
@@ -918,7 +948,7 @@ pub(crate) enum TaskName {
     HttpsServer,
     IntervalActor,
     LdapActor,
-    Replication,
+    ReplicationSupervisor,
     TlsAcceptorReload,
     MigrationReload,
 }
@@ -936,7 +966,7 @@ impl Display for TaskName {
                 TaskName::HttpsServer => "HTTPS Server",
                 TaskName::IntervalActor => "Interval Actor",
                 TaskName::LdapActor => "LDAP Acceptor Actor",
-                TaskName::Replication => "Replication",
+                TaskName::ReplicationSupervisor => "Replication Supervisor",
                 TaskName::TlsAcceptorReload => "TlsAcceptor Reload Monitor",
                 TaskName::MigrationReload => "Migration Reload Monitor",
             }
@@ -995,7 +1025,7 @@ pub async fn create_server_core(
     config_test: bool,
 ) -> Result<CoreHandle, ()> {
     // Until this point, we probably want to write to the log macro fns.
-    let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
+    let (mut broadcast_tx, _broadcast_rx) = broadcast::channel(4);
 
     if config.integration_test_config.is_some() {
         warn!("RUNNING IN INTEGRATION TEST MODE.");
@@ -1016,10 +1046,6 @@ pub async fn create_server_core(
     unsafe {
         umask(0o0027)
     };
-
-    // Similar, create a stats task which aggregates statistics from the
-    // server as they come in.
-    let status_ref = StatusActor::start();
 
     // Setup TLS (if any)
     let maybe_tls_acceptor = match crypto::setup_tls(&config.tls_config) {
@@ -1047,21 +1073,10 @@ pub async fn create_server_core(
         }
     };
     // Start the IDM server.
-    let (_qs, idms, mut idms_delayed, mut idms_audit) =
-        match setup_qs_idms(be, schema, &config).await {
-            Ok(t) => t,
-            Err(e) => {
-                error!("Unable to setup query server or idm server -> {:?}", e);
-                return Err(());
-            }
-        };
-
-    // Extract any configuration from the IDMS that we may need.
-    // For now we just do this per run, but we need to extract this from the db later.
-    let jws_signer = match JwsHs256Signer::generate_hs256() {
-        Ok(k) => k.set_sign_option_embed_kid(false),
+    let (_qs, idms, idms_delayed, idms_audit) = match setup_qs_idms(be, schema, &config).await {
+        Ok(t) => t,
         Err(e) => {
-            error!("Unable to setup jws signer -> {:?}", e);
+            error!("Unable to setup query server or idm server -> {:?}", e);
             return Err(());
         }
     };
@@ -1157,6 +1172,64 @@ pub async fn create_server_core(
     // Create the server async write entry point.
     let server_write_ref = QueryServerWriteV1::start_static(idms_arc.clone());
 
+    let mut handles: Vec<(TaskName, task::JoinHandle<()>)> = Vec::with_capacity(16);
+
+    let startup_success = if config_test {
+        info!("This config rocks! 🪨 ");
+        Ok(())
+    } else {
+        launch_server_tasks(
+            &mut handles,
+            &config,
+            &mut broadcast_tx,
+            idms_delayed,
+            idms_audit,
+            server_read_ref,
+            server_write_ref,
+            idms_arc,
+            maybe_tls_acceptor,
+        )
+        .await
+    };
+
+    let mut server_ctx = CoreHandle {
+        clean_shutdown: false,
+        tx: broadcast_tx,
+        handles,
+    };
+
+    if startup_success.is_ok() {
+        Ok(server_ctx)
+    } else {
+        server_ctx.shutdown().await;
+        Err(())
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn launch_server_tasks(
+    handles: &mut Vec<(TaskName, task::JoinHandle<()>)>,
+
+    config: &Configuration,
+    broadcast_tx: &mut broadcast::Sender<CoreAction>,
+
+    mut idms_delayed: IdmServerDelayed,
+    mut idms_audit: IdmServerAudit,
+
+    server_read_ref: &'static QueryServerReadV1,
+    server_write_ref: &'static QueryServerWriteV1,
+
+    idms_arc: Arc<IdmServer>,
+
+    maybe_tls_acceptor: Option<TlsAcceptor>,
+) -> Result<(), ()> {
+    // Similar, create a stats task which aggregates statistics from the
+    // server as they come in.
+    let status_ref = StatusActor::start();
+
+    // Delayed actions
+    let mut broadcast_rx = broadcast_tx.subscribe();
+
     let delayed_handle = task::spawn(async move {
         let mut buffer = Vec::with_capacity(DELAYED_ACTION_BATCH_SIZE);
         loop {
@@ -1179,6 +1252,9 @@ pub async fn create_server_core(
         info!("Stopped {}", TaskName::DelayedActionActor);
     });
 
+    handles.push((TaskName::DelayedActionActor, delayed_handle));
+
+    // Auditing tasks
     let mut broadcast_rx = broadcast_tx.subscribe();
 
     let auditd_handle = task::spawn(async move {
@@ -1207,6 +1283,8 @@ pub async fn create_server_core(
         info!("Stopped {}", TaskName::AuditdActor);
     });
 
+    handles.push((TaskName::AuditdActor, auditd_handle));
+
     // Run the migrations *once*, only in production though.
     let migration_path = config
         .migration_path
@@ -1216,34 +1294,78 @@ pub async fn create_server_core(
     if config.integration_test_config.is_none() {
         let eventid = Uuid::new_v4();
         migration_apply(eventid, server_write_ref, migration_path.as_path()).await;
-    }
+    } else {
+        // Skip all these handles in integration test mode.
 
-    // Setup the Migration Reload Trigger.
-    let mut broadcast_rx = broadcast_tx.subscribe();
-    let migration_reload_handle = task::spawn(async move {
-        loop {
-            tokio::select! {
-                Ok(action) = broadcast_rx.recv() => {
-                    match action {
-                        CoreAction::Shutdown => break,
-                        CoreAction::Reload => {
-                            // Read the migrations.
-                            // Apply them.
-                            let eventid = Uuid::new_v4();
-                            migration_apply(
-                                eventid,
-                                server_write_ref,
-                                migration_path.as_path(),
-                            ).await;
+        // Setup the Migration Reload Trigger.
+        let broadcast_rx = broadcast_tx.subscribe();
+        let migration_reload_handle = task::spawn(async move {
+            migration_reload_supervisor(broadcast_rx, server_write_ref, migration_path).await
+        });
 
-                            info!("Migration reload complete");
-                        },
-                    }
+        handles.push((TaskName::MigrationReload, migration_reload_handle));
+
+        // Setup timed events associated to the write thread
+        let interval_handle = IntervalActor::start(server_write_ref, broadcast_tx.subscribe());
+
+        handles.push((TaskName::IntervalActor, interval_handle));
+
+        // Setup timed events associated to the read thread
+        match &config.online_backup {
+            Some(online_backup_config) => {
+                if online_backup_config.enabled {
+                    let backup_handle = IntervalActor::start_online_backup(
+                        server_read_ref,
+                        online_backup_config,
+                        broadcast_tx.subscribe(),
+                    )?;
+                    handles.push((TaskName::BackupActor, backup_handle));
+                } else {
+                    debug!("Backups disabled");
                 }
             }
-        }
-        info!("Stopped {}", TaskName::MigrationReload);
-    });
+            None => {
+                debug!("Online backup not configured, skipping");
+            }
+        };
+
+        // If we have replication configured, setup the listener with its initial replication
+        // map (if any).
+        let maybe_repl_ctrl_tx = match &config.repl_config {
+            Some(rc) => {
+                // ⚠️  only start the sockets and listeners in non-config-test modes.
+                let repl_server_handles =
+                    repl::create_repl_server(idms_arc.clone(), rc, broadcast_tx.subscribe())
+                        .await?;
+
+                let ReplicationServerHandles {
+                    repl_handle,
+                    ctrl_tx,
+                } = repl_server_handles;
+
+                handles.push((TaskName::ReplicationSupervisor, repl_handle));
+
+                Some(ctrl_tx)
+            }
+            None => {
+                debug!("Replication not configured, skipping");
+                None
+            }
+        };
+
+        let broadcast_tx_ = broadcast_tx.clone();
+
+        let admin_handle = AdminActor::create_admin_sock(
+            config.adminbindpath.as_str(),
+            server_write_ref,
+            server_read_ref,
+            broadcast_tx_,
+            maybe_repl_ctrl_tx,
+        )
+        .await?;
+
+        handles.push((TaskName::AdminSocket, admin_handle));
+    }
 
     // Setup a TLS Acceptor Reload trigger.
 
@@ -1286,31 +1408,10 @@ pub async fn create_server_core(
         info!("Stopped {}", TaskName::TlsAcceptorReload);
     });
 
-    // Setup timed events associated to the write thread
-    let interval_handle = IntervalActor::start(server_write_ref, broadcast_tx.subscribe());
-    // Setup timed events associated to the read thread
-    let maybe_backup_handle = match &config.online_backup {
-        Some(online_backup_config) => {
-            if online_backup_config.enabled {
-                let handle = IntervalActor::start_online_backup(
-                    server_read_ref,
-                    online_backup_config,
-                    broadcast_tx.subscribe(),
-                )?;
-                Some(handle)
-            } else {
-                debug!("Backups disabled");
-                None
-            }
-        }
-        None => {
-            debug!("Online backup not requested, skipping");
-            None
-        }
-    };
+    handles.push((TaskName::TlsAcceptorReload, tls_acceptor_reload_handle));
 
     // If we have been requested to init LDAP, configure it now.
-    let maybe_ldap_acceptor_handles = match &config.ldapbindaddress {
+    match &config.ldapbindaddress {
         Some(la) => {
             let logging_pipeline = match config.otel_grpc_endpoint {
                 Some(_) => LoggerType::OpenTelemetry,
@@ -1318,124 +1419,49 @@ pub async fn create_server_core(
             };
             let opt_ldap_ssl_acceptor = maybe_tls_acceptor.clone();
 
-            let h = ldaps::create_ldap_server(
+            let ldap_handles = ldaps::create_ldap_server(
                 la,
                 opt_ldap_ssl_acceptor,
                 server_read_ref,
-                &broadcast_tx,
+                broadcast_tx,
                 &tls_acceptor_reload_tx,
                 config.ldap_client_address_info.trusted_tcp_info(),
                 logging_pipeline,
             )
             .await?;
-            Some(h)
-        }
-        None => {
-            debug!("LDAP not requested, skipping");
-            None
-        }
-    };
-
-    // If we have replication configured, setup the listener with its initial replication
-    // map (if any).
-    let (maybe_repl_handle, maybe_repl_ctrl_tx) = match &config.repl_config {
-        Some(rc) => {
-            if !config_test {
-                // ⚠️  only start the sockets and listeners in non-config-test modes.
-                let (h, repl_ctrl_tx) =
-                    repl::create_repl_server(idms_arc.clone(), rc, broadcast_tx.subscribe())
-                        .await?;
-                (Some(h), Some(repl_ctrl_tx))
-            } else {
-                (None, None)
+            for ldap_handle in ldap_handles {
+                handles.push((TaskName::LdapActor, ldap_handle));
             }
         }
         None => {
-            debug!("Replication not requested, skipping");
-            (None, None)
+            debug!("LDAP not requested, skipping");
         }
     };
 
-    let maybe_http_acceptor_handles = if config_test {
-        admin_info!("This config rocks! 🪨 ");
-        None
+    // Finally launch the https tasks.
+    let http_handles: Vec<task::JoinHandle<()>> = https::create_https_server(
+        config.clone(),
+        status_ref,
+        server_write_ref,
+        server_read_ref,
+        broadcast_tx.clone(),
+        maybe_tls_acceptor,
+        &tls_acceptor_reload_tx,
+    )
+    .await
+    .inspect_err(|err| {
+        error!(?err, "Failed to start HTTPS server");
+    })?;
+
+    if config.role != ServerRole::WriteReplicaNoUI {
+        admin_info!("Ready to rock! 🪨  UI available at: {}", config.origin);
     } else {
-        let handles: Vec<task::JoinHandle<()>> = https::create_https_server(
-            config.clone(),
-            jws_signer,
-            status_ref,
-            server_write_ref,
-            server_read_ref,
-            broadcast_tx.clone(),
-            maybe_tls_acceptor,
-            &tls_acceptor_reload_tx,
-        )
-        .await
-        .inspect_err(|err| {
-            error!(?err, "Failed to start HTTPS server");
-        })?;
-
-        if config.role != ServerRole::WriteReplicaNoUI {
-            admin_info!("ready to rock! 🪨  UI available at: {}", config.origin);
-        } else {
-            admin_info!("ready to rock! 🪨 ");
-        }
-        Some(handles)
-    };
-
-    // If we are NOT in integration test mode, start the admin socket now
-    let maybe_admin_sock_handle = if config.integration_test_config.is_none() {
-        let broadcast_tx_ = broadcast_tx.clone();
-
-        let admin_handle = AdminActor::create_admin_sock(
-            config.adminbindpath.as_str(),
-            server_write_ref,
-            server_read_ref,
-            broadcast_tx_,
-            maybe_repl_ctrl_tx,
-        )
-        .await?;
-
-        Some(admin_handle)
-    } else {
-        None
-    };
-
-    let mut handles: Vec<(TaskName, task::JoinHandle<()>)> = vec![
-        (TaskName::IntervalActor, interval_handle),
-        (TaskName::DelayedActionActor, delayed_handle),
-        (TaskName::AuditdActor, auditd_handle),
-        (TaskName::TlsAcceptorReload, tls_acceptor_reload_handle),
-        (TaskName::MigrationReload, migration_reload_handle),
-    ];
-
-    if let Some(backup_handle) = maybe_backup_handle {
-        handles.push((TaskName::BackupActor, backup_handle))
+        admin_info!("Ready to rock! 🪨 ");
     }
 
-    if let Some(admin_sock_handle) = maybe_admin_sock_handle {
-        handles.push((TaskName::AdminSocket, admin_sock_handle))
+    for http_handle in http_handles {
+        handles.push((TaskName::HttpsServer, http_handle))
     }
 
-    if let Some(ldap_handles) = maybe_ldap_acceptor_handles {
-        for ldap_handle in ldap_handles {
-            handles.push((TaskName::LdapActor, ldap_handle))
-        }
-    }
-
-    if let Some(http_handles) = maybe_http_acceptor_handles {
-        for http_handle in http_handles {
-            handles.push((TaskName::HttpsServer, http_handle))
-        }
-    }
-
-    if let Some(repl_handle) = maybe_repl_handle {
-        handles.push((TaskName::Replication, repl_handle))
-    }
-
-    Ok(CoreHandle {
-        clean_shutdown: false,
-        tx: broadcast_tx,
-        handles,
-    })
+    Ok(())
 }
