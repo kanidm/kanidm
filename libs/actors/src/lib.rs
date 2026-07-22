@@ -1,11 +1,12 @@
+use std::collections::BTreeMap;
 use std::future::Future;
+use std::sync::Arc;
 use tokio::{
     signal::unix::{signal, SignalKind},
     sync::{broadcast, mpsc, Mutex},
     task::{self, JoinHandle},
 };
 use tracing::*;
-use std::collections::BTreeMap;
 
 pub trait SignalHandler {
     fn terminate(&mut self) -> impl std::future::Future<Output = ()> + Send {
@@ -137,42 +138,47 @@ where
     }
 }
 
+enum SupervisorMessage {
+    Stop,
+}
+
 // This is what actually hosts and drives the child tasks to completion.
 struct SupervisorTask {
     // Receive messages from the parent supervisor
     parent_ctrl_rx: broadcast::Receiver<()>,
+
+    mbox_rx: mpsc::Receiver<SupervisorMessage>,
+
     // Send messages to subordinate supervisors.
     ctrl_tx: broadcast::Sender<()>,
-
-    // We probably need a way for subordinates to indicate they have stopped.
-    signal_rx: mpsc::Receiver<u64>,
-
-    // A registry of the join handles we own.
-    registry: Arc<Mutex<
-        Option<
-            BTreeMap<
-                u64,
-                JoinHandle<()>
-            >
-        >
-    >>,
 }
 
 impl SupervisorTask {
-    async fn drive(&mut self) -> () {
+    async fn run(&mut self) -> () {
         loop {
             tokio::select! {
                 status = self.parent_ctrl_rx.recv() => {
                     if status.is_err() {
                         warn!("Parent supervisor has stopped, stopping down all subordinates.");
-                    } else {
-                        debug!("Stopping supervisor ...");
                     };
 
                     break
                 }
+                msg = self.mbox_rx.recv() => {
+                    match msg {
+                        Some(SupervisorMessage::Stop) => break,
+                        None => {
+                            // Do we care if this closes?
+                        }
+                    }
+                }
+
+                // Listen on incoming new tasks.
+
             }
         }
+
+        debug!("Stopping supervisor ...");
 
         // If we haven't registered a subordinate, we don't want to error/alert
         let _ = self.ctrl_tx.send(());
@@ -180,154 +186,136 @@ impl SupervisorTask {
         // Wait on all subordinates to stop.
         self.ctrl_tx.closed().await;
 
-        // Tell our parent we are complete.
-
         trace!("SupervisorTask stopped");
     }
 }
 
 pub struct Supervisor {
-    // My ID from the parent.
-    id: u64,
-
-    id_alloc: u64,
-
-    // exec_handle: JoinHandle<()>,
-    // Broadcast tx/rx
     ctrl_tx: broadcast::Sender<()>,
 
-    signal_tx: mpsc::Sender<u64>,
-
-    // A registry of the join handles we own.
-    registry: Arc<Mutex<
-        Option<
-            BTreeMap<
-                u64,
-                JoinHandle<()>
-            >
-        >
-    >>,
+    mbox_tx: mpsc::Sender<SupervisorMessage>,
 }
 
 impl Supervisor {
-    fn build(
-        id: u64,
-        parent_ctrl_rx: broadcast::Receiver<()>,
-        parent_signal_tx: mpsc::Sender<u64>,
-    ) -> (Self, JoinHandle<()>) {
-        // Starts the first/primary supervisor.
-        let id_alloc = 0;
-
+    fn build(parent_ctrl_rx: broadcast::Receiver<()>) -> (Self, JoinHandle<()>) {
         let (ctrl_tx, ctrl_rx) = broadcast::channel(1);
-        let (signal_tx, signal_rx) = mpsc::channel(8);
-
-        let registry = Default::default();
+        let (mbox_tx, mbox_rx) = mpsc::channel(4);
 
         let exec_handle = {
             let ctrl_tx = ctrl_tx.clone();
-            let registry = registry.clone();
 
             task::spawn(async move {
                 let mut supervisor_task = SupervisorTask {
-                    parent_signal_tx,
                     parent_ctrl_rx,
+                    mbox_rx,
                     ctrl_tx,
-                    signal_rx,
-                    registry,
                 };
 
-                supervisor_task.drive().await;
+                supervisor_task.run().await;
             })
         };
 
-        (Self {
-            id,
-            id_alloc,
-            ctrl_tx,
-            signal_tx,
-            registry,
-        }, exec_handle)
+        (Self { ctrl_tx, mbox_tx }, exec_handle)
     }
 
     fn primary(parent_ctrl_rx: broadcast::Receiver<()>) -> (Self, JoinHandle<()>) {
-        self.build(0, parent_ctrl_rx)
+        Self::build(parent_ctrl_rx)
     }
 
     /// Build a subordinate supervisor. This allows you to group tasks together for clean
     /// shutdowns without affecting parent or sibiling supervised tasks.
-    pub async fn subordinate(
-        &mut self,
-    ) -> Result<Self, ()> {
-
-        self.id_alloc += 1;
-        id = self.id_alloc;
-
+    pub async fn subordinate(&mut self) -> Result<Self, ()> {
         let parent_ctrl_rx = self.ctrl_tx.subscribe();
 
+        let (supervisor, handle) = Self::build(parent_ctrl_rx);
 
-        let (supervisor, handle) = self.build(id, parent_ctrl_rx);
-
-        let mut registry_guard = self.registry.lock().await;
-
-
-
-        supervisor
+        Ok(supervisor)
     }
 
-    /*
     /// Stop this supervisor and all it's hosted tasks.
-    pub fn stop(
-        &self
-    ) {
-        // 
-    }
-    */
+    pub async fn stop(self) {
+        self.mbox_tx.send(SupervisorMessage::Stop).await;
 
-    /*
-    pub fn spawn<A>(actor: A)
-        where A: Actor
+        // Wait for the task to stop
+        debug!("Waiting for stop");
+        self.mbox_tx.closed().await;
+    }
+
+    pub fn spawn<A>(&mut self, actor: A)
+    where
+        A: Actor + Send + 'static,
     {
+        // From the point we subscribe to the tx, this causes
+        // the task to be owned by the supervisor, and it will now wait
+        // for this rx to stop during a shutdown event.
+        let parent_ctrl_rx = self.ctrl_tx.subscribe();
 
-        let supervised_actor = SupervisedActor::from(actor);
+        let mut supervised_actor = SupervisedActor::build(parent_ctrl_rx, actor);
 
-        // spawn it
-        // send the handle to the supervisor task to take care of it.
-
-
-
-
+        let _actor_handle = tokio::spawn(async move { supervised_actor.run().await });
     }
-    */
 }
 
-/*
 struct SupervisedActor<A> {
-    a: A
+    parent_ctrl_rx: broadcast::Receiver<()>,
+    a: A,
 }
 
-impl<A> From<A> for SupervisedActor<A> {
-    fn from(a: A) -> Self {
-        Self { a }
+impl<A> SupervisedActor<A>
+where
+    A: Actor + Send + 'static,
+{
+    fn build(parent_ctrl_rx: broadcast::Receiver<()>, a: A) -> Self {
+        Self { parent_ctrl_rx, a }
+    }
+
+    async fn run(&mut self) {
+        debug!("starting actor");
+
+        // Setup.
+        self.a.setup().await;
+
+        // Loop + Select on shutdown.
+        loop {
+            tokio::select! {
+                status = self.parent_ctrl_rx.recv() => {
+                    if status.is_err() {
+                        warn!("Parent supervisor has stopped.");
+                    };
+
+                    break
+                }
+                _ = self.a.run() => {
+                    // Let the actor run.
+                }
+            }
+        }
+
+        debug!("stopping actor");
+
+        self.a.stop().await;
     }
 }
 
-impl<A> SupervisedActor<A> {
-    async fn drive(&mut self) -> () {
+pub trait Actor {
+    fn setup(&mut self) -> impl std::future::Future<Output = ()> + Send {
+        async {}
+    }
 
+    // Loop/run
+    fn run(&mut self) -> impl std::future::Future<Output = ()> + Send {
+        async {}
+    }
+
+    fn stop(&mut self) -> impl std::future::Future<Output = ()> + Send {
+        async {}
     }
 }
-
-trait Actor {
-
-
-
-
-}
-*/
 
 #[cfg(test)]
 mod tests {
-    use super::{Runtime, RuntimeSetup, SignalHandler, Supervisor};
+    use super::{Actor, Runtime, RuntimeSetup, SignalHandler, Supervisor};
+    use tokio::time::{sleep, Duration};
     use tracing::*;
 
     struct Handler {}
@@ -344,7 +332,40 @@ mod tests {
         ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
             async {
                 info!("It Runs!");
+
+                let super_1 = supervisor.subordinate().await.unwrap();
+
+                let mut super_2 = supervisor.subordinate().await.unwrap();
+
+                super_1.stop().await;
+
+                super_2.spawn(TestActor {});
+
                 Ok(())
+            }
+        }
+    }
+
+    struct TestActor {}
+
+    impl Actor for TestActor {
+        fn setup(&mut self) -> impl std::future::Future<Output = ()> + Send {
+            async {
+                debug!("setup!");
+            }
+        }
+
+        // Loop/run
+        fn run(&mut self) -> impl std::future::Future<Output = ()> + Send {
+            async {
+                sleep(Duration::from_millis(100)).await;
+                println!("100 ms have elapsed");
+            }
+        }
+
+        fn stop(&mut self) -> impl std::future::Future<Output = ()> + Send {
+            async {
+                debug!("stop");
             }
         }
     }
@@ -360,4 +381,3 @@ mod tests {
         rt.exec::<RTSetup>().await;
     }
 }
-
