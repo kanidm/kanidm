@@ -99,27 +99,25 @@ impl UnixSignalSource {
 }
 
 impl SignalSource for UnixSignalSource {
-    fn recv(&mut self) -> impl Future<Output = Signal> + Send {
-        async {
-            tokio::select! {
-                _ = self.sigterm_stream.recv() => {
-                    Signal::Terminate
-                }
-                _ = self.sigint_stream.recv() => {
-                    Signal::Interrupt
-                }
-                _ = self.sighup_stream.recv() => {
-                    Signal::Hangup
-                }
-                _ = self.siguser1_stream.recv() => {
-                    Signal::UserDefined1
-                }
-                _ = self.siguser2_stream.recv() => {
-                    Signal::UserDefined2
-                }
-                _ = self.sigalarm_stream.recv() => {
-                    Signal::Alarm
-                }
+    async fn recv(&mut self) -> Signal {
+        tokio::select! {
+            _ = self.sigterm_stream.recv() => {
+                Signal::Terminate
+            }
+            _ = self.sigint_stream.recv() => {
+                Signal::Interrupt
+            }
+            _ = self.sighup_stream.recv() => {
+                Signal::Hangup
+            }
+            _ = self.siguser1_stream.recv() => {
+                Signal::UserDefined1
+            }
+            _ = self.siguser2_stream.recv() => {
+                Signal::UserDefined2
+            }
+            _ = self.sigalarm_stream.recv() => {
+                Signal::Alarm
             }
         }
     }
@@ -138,8 +136,8 @@ impl SoftwareSignalSource {
 }
 
 impl SignalSource for SoftwareSignalSource {
-    fn recv(&mut self) -> impl Future<Output = Signal> + Send {
-        async { self.rx.recv().await.unwrap_or(Signal::Terminate) }
+    async fn recv(&mut self) -> Signal {
+        self.rx.recv().await.unwrap_or(Signal::Terminate)
     }
 }
 
@@ -152,6 +150,7 @@ pub trait RuntimeSetup {
     ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 }
 
+#[derive(Default)]
 pub struct Runtime {}
 
 impl Runtime {
@@ -217,10 +216,8 @@ impl Runtime {
             );
         }
 
-        if !supervisor_handle.is_finished() {
-            if supervisor_handle.await.is_err() {
-                error!("Failed to stop primary supervisor.");
-            }
+        if !supervisor_handle.is_finished() && supervisor_handle.await.is_err() {
+            error!("Failed to stop primary supervisor.");
         }
 
         Ok(())
