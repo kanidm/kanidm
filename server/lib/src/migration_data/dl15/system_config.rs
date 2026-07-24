@@ -65,6 +65,21 @@ pub fn e_hmac_name_history_feature() -> EntryInitNew {
     ])
 }
 
+// Waiting on DL16
+pub fn e_account_signup_feature() -> EntryInitNew {
+    entry_init_fn([
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Feature.to_value()),
+        (Attribute::Uuid, Value::Uuid(UUID_ACCOUNT_SIGNUP_FEATURE)),
+        (Attribute::Name, Value::new_iname("account_signup_feature")),
+        (
+            Attribute::Description,
+            Value::new_utf8s("Configuration of the account signup Feature."),
+        ),
+    ])
+}
+
+
 // This is a function instead of a static/lazylock because otherwise it entirely blows up the stack, and we only use it at migration time.
 pub fn e_system_config_v1() -> EntryInitNew {
     let mut entry = entry_init_fn([

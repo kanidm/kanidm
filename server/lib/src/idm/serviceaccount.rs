@@ -1,10 +1,8 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
-
 use compact_jwt::{jws::JwsBuilder, Jws, JwsCompact};
 use kanidm_proto::internal::ApiToken as ProtoApiToken;
 use time::OffsetDateTime;
-
 use crate::credential::Credential;
 use crate::event::SearchEvent;
 use crate::idm::account::Account;

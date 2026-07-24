@@ -149,8 +149,14 @@ pub struct HmacNameHistoryConfig {
 }
 
 #[derive(Clone, Default)]
+pub struct AccountSignupConfig {
+    pub(crate) enabled: bool,
+}
+
+#[derive(Clone, Default)]
 pub struct FeatureConfig {
     pub(crate) hmac_name_history: HmacNameHistoryConfig,
+    pub(crate) account_signup: AccountSignupConfig,
 }
 
 #[derive(Clone)]
@@ -300,6 +306,8 @@ pub trait QueryServerTransaction<'a> {
     fn get_resolve_filter_cache(&mut self) -> Option<&mut ResolveFilterCacheReadTxn<'a>>;
 
     fn get_feature_hmac_name_history_config(&self) -> &HmacNameHistoryConfig;
+
+    fn get_feature_account_signup_config(&self) -> &AccountSignupConfig;
 
     fn txn_name_to_uuid(&mut self) -> &mut BTreeMap<String, Uuid>;
 
@@ -1433,6 +1441,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.feature_config.hmac_name_history
     }
 
+    fn get_feature_account_signup_config(&self) -> &AccountSignupConfig {
+        &self.feature_config.account_signup
+    }
+
     fn txn_name_to_uuid(&mut self) -> &mut BTreeMap<String, Uuid> {
         &mut self.txn_name_to_uuid
     }
@@ -1780,6 +1792,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 
     fn get_feature_hmac_name_history_config(&self) -> &HmacNameHistoryConfig {
         &self.feature_config.hmac_name_history
+    }
+
+    fn get_feature_account_signup_config(&self) -> &AccountSignupConfig {
+        &self.feature_config.account_signup
     }
 
     fn txn_name_to_uuid(&mut self) -> &mut BTreeMap<String, Uuid> {
@@ -2775,6 +2791,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
                     std::mem::swap(&mut key, &mut feature_config_txn.hmac_name_history.key);
                 }
+
+                UUID_ACCOUNT_SIGNUP_FEATURE => {
+                    if domain_level < SOMETHING {
+                    }
+
+                    todo!();
+                }
+
+
                 feature_uuid => {
                     error!(
                         ?feature_uuid,
