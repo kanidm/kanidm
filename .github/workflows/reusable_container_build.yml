@@ -56,6 +56,8 @@ jobs:
           context: .
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
+          cache-from: type=gha,scope=${{ inputs.container_name }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.container_name }}
           outputs: type=oci,dest=/tmp/container-image.tar
       - name: Upload artifact
         uses: actions/upload-artifact@v7
