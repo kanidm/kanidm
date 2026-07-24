@@ -1,0 +1,91 @@
+---
+name: Reusable Container Build
+
+"on":
+  workflow_call:
+    inputs:
+      docker_file:
+        description: Project-relative path to the Dockerfile
+        required: true
+        type: string
+      container_name:
+        description: Name of the container image
+        required: true
+        type: string
+
+jobs:
+  set_tag_values:
+    name: Set image tag values
+    runs-on: ubuntu-latest
+    outputs:
+      owner_lc: ${{ steps.tags.outputs.owner_lc }}
+      ref_name: ${{ steps.tags.outputs.ref_name }}
+    steps:
+      - id: tags
+        name: Normalise tag values
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          echo "owner_lc=${OWNER,,}" >> "${GITHUB_OUTPUT}"
+          ref_name="${REF_NAME,,}"
+          echo "ref_name=${ref_name%%/*}" >> "${GITHUB_OUTPUT}"
+
+  container_build:
+    name: Build ${{ inputs.container_name }} Docker image
+    runs-on: ubuntu-latest
+    needs: set_tag_values
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+      - name: Build ${{ inputs.container_name }}
+        uses: docker/build-push-action@v7
+        with:
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/${{ needs.set_tag_values.outputs.owner_lc }}/${{ inputs.container_name }}:devel
+            ghcr.io/${{ needs.set_tag_values.outputs.owner_lc }}/${{ inputs.container_name }}:${{ needs.set_tag_values.outputs.ref_name }}
+          file: ${{ inputs.docker_file }}
+          context: .
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          outputs: type=oci,dest=/tmp/container-image.tar
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.container_name }}-docker
+          path: /tmp/container-image.tar
+
+  container_push:
+    name: Push ${{ inputs.container_name }} Docker image
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag' || github.ref == 'refs/heads/master'
+    needs: [container_build, set_tag_values]
+    permissions:
+      packages: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.container_name }}-docker
+          path: /tmp
+      - name: Set up ORAS
+        uses: oras-project/setup-oras@v2
+      - name: Push image to GHCR
+        env:
+          CONTAINER_NAME: ${{ inputs.container_name }}
+          GHCR_OWNER: ${{ needs.set_tag_values.outputs.owner_lc }}
+          GHCR_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USERNAME: ${{ github.actor }}
+        run: |
+          echo "${GHCR_PASSWORD}" | \
+            oras login -u "${GHCR_USERNAME}" --password-stdin ghcr.io
+          oras copy --from-oci-layout "/tmp/container-image.tar:devel" \
+            "ghcr.io/${GHCR_OWNER}/${CONTAINER_NAME}:devel"
