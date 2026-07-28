@@ -1294,7 +1294,6 @@ async fn launch_server_tasks(
     if config.integration_test_config.is_none() {
         let eventid = Uuid::new_v4();
         migration_apply(eventid, server_write_ref, migration_path.as_path()).await;
-    } else {
         // Skip all these handles in integration test mode.
 
         // Setup the Migration Reload Trigger.
