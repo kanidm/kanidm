@@ -281,8 +281,6 @@ impl QueryServerWriteTransaction<'_> {
         msg: &str,
         entries: Vec<EntryInitNew>,
     ) -> Result<(), OperationError> {
-        #[cfg(test)]
-        eprintln!("MIGRATION BATCH: {}", msg);
         let r: Result<(), _> = entries
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry));
