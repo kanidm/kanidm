@@ -5729,6 +5729,7 @@ dependencies = [
  "anyhow",
  "bindgen",
  "cc",
+ "concread",
  "kanidm_client",
  "kanidm_proto",
  "kanidmd_core",
