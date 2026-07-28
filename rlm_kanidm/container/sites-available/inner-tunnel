@@ -153,16 +153,8 @@ authorize {
 	#  The ldap module reads passwords from the LDAP database.
 	-ldap
 
-    # update control {
-    #     Cache-Status-Only = 'yes'
-    # }
-    # cache
-    # if (notfound) {
-    #     python3
-    # }
-    # cache
 
-    kanidm
+	kanidm
 
 	#
 	#  Enforce daily limits on time spent logged in.

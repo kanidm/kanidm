@@ -14,6 +14,7 @@ const CA_DIR_PATH: &str = "/etc/raddb/certs";
 const CERT_CA_DEST_PATH: &str = "/etc/raddb/certs/ca.pem";
 const CERT_SERVER_DEST_PATH: &str = "/etc/raddb/certs/server.pem";
 const FREERADIUS_EXEC: &str = "/usr/sbin/radiusd";
+const FREERADIUS_TLS_CACHE_PATH: &str = "/dev/shm/tlscache";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BootstrapLayout {
@@ -227,6 +228,11 @@ pub fn run(config_override: Option<&Path>, debug: bool) -> Result<()> {
     })?;
 
     prepare_certs(&config, &layout)?;
+
+    // Create the tlscache dir.
+    fs::create_dir(FREERADIUS_TLS_CACHE_PATH).with_context(|| {
+        format!("failed to create tls cache directory {FREERADIUS_TLS_CACHE_PATH}")
+    })?;
 
     eprintln!("Configuration set up, starting FreeRADIUS");
     exec_radiusd(debug)
