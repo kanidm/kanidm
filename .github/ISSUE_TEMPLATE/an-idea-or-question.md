@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+- Please review our projects [AI usage policy](https://github.com/kanidm/kanidm/blob/master/book/src/developers/ai_llm_policy.md) and avoid LLM outputs in feature requests.
+
 ### Is your feature request related to a problem? Please describe
 
 A clear description of what the problem is. Ex. I'm confused by, or would like to know how to...

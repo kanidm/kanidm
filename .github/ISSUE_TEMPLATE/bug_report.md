@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+- Please review our projects [AI usage policy](https://github.com/kanidm/kanidm/blob/master/book/src/developers/ai_llm_policy.md) and avoid LLM outputs in issues.
+
 ### I did this
 
 ### I expected the following

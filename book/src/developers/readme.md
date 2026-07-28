@@ -14,6 +14,10 @@ in a position to contact us to ask for changes and help.
 
 If you have not already, please see our documentation on [rights and ethics](developer_ethics.md)
 
+### AI / LLM Policy
+
+If you have not already, please see our policy on [AI/LLM usage](ai_llm_policy.md)
+
 ### Humans First
 
 We must at all times make decisions that put humans first. We must respect all cultures, languages and identities and
