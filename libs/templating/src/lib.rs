@@ -386,7 +386,7 @@ mod tests {
 
         tracing::trace!(?y, "rendered");
 
-        assert_eq!(y.as_deref(), Some("[\"json\",\"ident\"]"));
+        assert_eq!(y, Some(serde_json::json!(["json", "ident"]).to_string()));
     }
 
     #[test]
@@ -449,5 +449,7 @@ mod tests {
         let y = serde_json::to_string(&x).unwrap();
 
         tracing::trace!(?y, "serialised");
+
+        assert_eq!(y, "{\"items\":[{\"Operand\":{\"attribute\":\"Ident\",\"condition\":\"Abc\",\"renderer\":\"Json\"}}]}");
     }
 }
