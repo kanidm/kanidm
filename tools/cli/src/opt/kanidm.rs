@@ -73,6 +73,26 @@ impl OutputMode {
             }
         }
     }
+
+    pub fn print_struct<T>(self, input: T)
+    where
+        T: serde::Serialize + fmt::Debug,
+    {
+        match self {
+            OutputMode::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string(&input).unwrap_or(format!("{input:?}"))
+                );
+            }
+            OutputMode::Text => {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&input).unwrap_or(format!("{input:?}"))
+                );
+            }
+        }
+    }
 }
 
 #[derive(Debug, Args, Clone)]
@@ -467,6 +487,19 @@ pub enum PersonPosix {
 }
 
 #[derive(Debug, Subcommand, Clone)]
+pub enum PersonApplicationOpt {
+    Create {
+        name: String,
+        application_uuid: Uuid,
+        label: String,
+    },
+    Delete {
+        name: String,
+        password_id: Uuid,
+    }
+}
+
+#[derive(Debug, Subcommand, Clone)]
 pub enum ServiceAccountPosix {
     #[clap(name = "show")]
     Show(AccountNamedOpt),
@@ -606,6 +639,14 @@ pub enum PersonOpt {
         #[clap(subcommand)]
         commands: AccountValidity,
     },
+
+    /// Manage applications this person can access
+    #[clap(name = "applications")]
+    Application {
+        #[clap(subcommand)]
+        commands: PersonApplicationOpt,
+    },
+
     #[clap(name = "certificate", hide = true)]
     Certificate {
         #[clap(subcommand)]
@@ -886,6 +927,40 @@ impl ValueEnum for Oauth2ClaimMapJoin {
     fn to_possible_value(&self) -> Option<PossibleValue> {
         Some(self.as_str().into())
     }
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum ApplicationOpt {
+    #[clap(name = "list")]
+    /// List all configured applications
+    List,
+
+    #[clap(name = "get")]
+    /// Display a configured application
+    Get {
+        #[clap(name = "name")]
+        name: String,
+    },
+
+    #[clap(name = "create")]
+    /// Create a new application.
+    Create {
+        #[clap(name = "name")]
+        name: String,
+
+        #[clap(name = "displayname")]
+        displayname: String,
+
+        #[clap(name = "linked_group")]
+        linked_group: String,
+    },
+
+    #[clap(name = "delete")]
+    /// Delete an existing application.
+    Delete {
+        #[clap(name = "name")]
+        name: String,
+    },
 }
 
 #[derive(Debug, Subcommand, Clone)]
@@ -1415,6 +1490,14 @@ pub enum SystemOpt {
         #[clap(subcommand)]
         commands: Oauth2Opt,
     },
+
+    #[clap(name = "application")]
+    /// Configure and display client application configurations
+    Application {
+        #[clap(subcommand)]
+        commands: ApplicationOpt,
+    },
+
     #[clap(name = "domain")]
     /// Configure and display domain configuration
     Domain {

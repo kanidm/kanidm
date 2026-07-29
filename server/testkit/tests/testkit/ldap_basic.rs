@@ -163,7 +163,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     };
 
     let application_1_password_create_1 = person_rsclient
-        .idm_application_password_create(TEST_PERSON, &create_application_password_req)
+        .idm_person_application_password_create(TEST_PERSON, &create_application_password_req)
         .await
         .expect("Failed to create application password");
 
@@ -173,7 +173,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     };
 
     let application_1_password_create_2 = person_rsclient
-        .idm_application_password_create(TEST_PERSON, &create_application_password_req)
+        .idm_person_application_password_create(TEST_PERSON, &create_application_password_req)
         .await
         .expect("Failed to create application password");
 
@@ -183,7 +183,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     };
 
     let application_2_password_create_1 = person_rsclient
-        .idm_application_password_create(TEST_PERSON, &create_application_password_req)
+        .idm_person_application_password_create(TEST_PERSON, &create_application_password_req)
         .await
         .expect("Failed to create application password");
 
@@ -248,7 +248,7 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
 
     // Check removeal of app passwords
     person_rsclient
-        .idm_application_password_delete(TEST_PERSON, application_1_password_create_2.uuid)
+        .idm_person_application_password_delete(TEST_PERSON, application_1_password_create_2.uuid)
         .await
         .expect("Failed to remove application password");
 
