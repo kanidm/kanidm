@@ -1,18 +1,35 @@
-use super::{CredState, BAD_AUTH_TYPE_MSG, BAD_OAUTH2_CSRF_STATE_MSG};
+use super::{
+    CredState, BAD_AUTH_TYPE_MSG, BAD_OAUTH2_CSRF_STATE_MSG, BAD_OAUTH2_SESSION_MSG,
+    BAD_OAUTH2_SUBJECT_MSG,
+};
 use crate::idm::account::OAuth2AccountCredential;
 use crate::idm::authentication::{AuthCredential, AuthExternal};
 use crate::idm::oauth2::PkceS256Secret;
-use crate::idm::oauth2_client::OAuth2ClientProvider;
+use crate::idm::oauth2_client::{OAuth2ClientProvider, OAuth2SubjectVerifier};
 use crate::prelude::*;
 use crate::utils;
 use crate::value::{AuthType, SessionExtMetadata};
 use kanidm_proto::oauth2::{
-    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationRequestOidc,
-    GrantTypeReq, ResponseType,
+    AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
+    AccessTokenResponse, AuthorisationRequest, AuthorisationRequestOidc, GrantTypeReq,
+    ResponseType,
 };
 use std::collections::BTreeSet;
 use std::fmt;
 
+#[derive(Clone)]
+enum SessionState {
+    Init,
+    AccessTokenRequested,
+    AccessTokenUnverified {
+        access_expires_at: Duration,
+        access_token: String,
+        refresh_token: Option<String>,
+    },
+    Finished,
+}
+
+#[derive(Clone)]
 pub struct CredHandlerOAuth2Client {
     // For logging - this is the trust provider we are using.
     provider_id: Uuid,
@@ -20,7 +37,10 @@ pub struct CredHandlerOAuth2Client {
 
     // The users ID as the remote trust provider knows them.
     user_id: String,
+    user_sub: String,
     user_cred_id: Uuid,
+
+    user_sub_verifier: OAuth2SubjectVerifier,
 
     request_scopes: BTreeSet<String>,
     client_id: String,
@@ -30,6 +50,8 @@ pub struct CredHandlerOAuth2Client {
     token_endpoint: Url,
     pkce_secret: PkceS256Secret,
     csrf_state: String,
+
+    session_state: SessionState,
 }
 
 impl fmt::Debug for CredHandlerOAuth2Client {
@@ -58,6 +80,7 @@ impl CredHandlerOAuth2Client {
             provider_name: client_provider.name.clone(),
             request_scopes: client_provider.request_scopes.clone(),
             user_id: client_user_cred.user_id.to_string(),
+            user_sub: client_user_cred.user_sub.to_string(),
             user_cred_id: client_user_cred.cred_id,
             client_id: client_provider.client_id.clone(),
             client_basic_secret: client_provider.client_basic_secret.clone(),
@@ -66,6 +89,8 @@ impl CredHandlerOAuth2Client {
             token_endpoint: client_provider.token_endpoint.clone(),
             pkce_secret,
             csrf_state,
+            user_sub_verifier: client_provider.user_sub_verifier.clone(),
+            session_state: SessionState::Init,
         }
     }
 
@@ -95,25 +120,51 @@ impl CredHandlerOAuth2Client {
         )
     }
 
-    pub fn validate(&self, cred: &AuthCredential, current_time: Duration) -> CredState {
-        match cred {
-            AuthCredential::OAuth2AuthorisationResponse { code, state } => {
+    pub fn validate(&mut self, cred: &AuthCredential, current_time: Duration) -> CredState {
+        let (next_state, response) = match (self.session_state.clone(), cred) {
+            (SessionState::Init, AuthCredential::OAuth2AuthorisationResponse { code, state }) => {
                 self.validate_authorisation_response(code, state.as_deref())
             }
-            AuthCredential::OAuth2AccessTokenResponse { response } => {
-                self.validate_access_token_response(response, current_time)
-            }
-            _ => CredState::Denied(BAD_AUTH_TYPE_MSG),
-        }
+
+            (
+                SessionState::AccessTokenRequested,
+                AuthCredential::OAuth2AccessTokenResponse { response },
+            ) => self.validate_access_token_response(response, current_time),
+
+            (
+                SessionState::AccessTokenUnverified {
+                    access_token,
+                    refresh_token,
+                    access_expires_at,
+                },
+                AuthCredential::OAuth2AccessTokenIntrospectResponse { response },
+            ) => self.validate_access_token_introspection_response(
+                response,
+                access_token,
+                refresh_token,
+                access_expires_at,
+            ),
+            _ => (SessionState::Finished, CredState::Denied(BAD_AUTH_TYPE_MSG)),
+        };
+
+        self.session_state = next_state;
+        response
     }
 
-    fn validate_authorisation_response(&self, code: &str, state: Option<&str>) -> CredState {
+    fn validate_authorisation_response(
+        &self,
+        code: &str,
+        state: Option<&str>,
+    ) -> (SessionState, CredState) {
         // Validate our csrf state
 
         let csrf_valid = state.map(|s| s == self.csrf_state).unwrap_or_default();
 
         if !csrf_valid {
-            return CredState::Denied(BAD_OAUTH2_CSRF_STATE_MSG);
+            return (
+                SessionState::Finished,
+                CredState::Denied(BAD_OAUTH2_CSRF_STATE_MSG),
+            );
         }
 
         let code_verifier = Some(self.pkce_secret.verifier().to_string());
@@ -126,36 +177,110 @@ impl CredHandlerOAuth2Client {
 
         let request = AccessTokenRequest::from(grant_type_req);
 
-        CredState::External(AuthExternal::OAuth2AccessTokenRequest {
-            token_url: self.token_endpoint.clone(),
-            client_id: self.client_id.clone(),
-            client_secret: self.client_basic_secret.clone(),
-            request,
-        })
+        (
+            SessionState::AccessTokenRequested,
+            CredState::External(AuthExternal::OAuth2AccessTokenRequest {
+                token_url: self.token_endpoint.clone(),
+                client_id: self.client_id.clone(),
+                client_secret: self.client_basic_secret.clone(),
+                request,
+            }),
+        )
     }
 
     fn validate_access_token_response(
         &self,
         response: &AccessTokenResponse,
         current_time: Duration,
-    ) -> CredState {
+    ) -> (SessionState, CredState) {
+        // We have a positive response and now have the access and refresh tokens. However
+        // now we need to assert the token belongs to our subject.
+
+        match &self.user_sub_verifier {
+            OAuth2SubjectVerifier::None => {
+                (SessionState::Finished, CredState::Denied(BAD_AUTH_TYPE_MSG))
+            }
+            OAuth2SubjectVerifier::Rfc7662TokenIntrospection { endpoint } => {
+                let request = AccessTokenIntrospectRequest::from(response.access_token.clone());
+
+                let access_expires_at =
+                    current_time + Duration::from_secs(response.expires_in as u64);
+
+                (
+                    SessionState::AccessTokenUnverified {
+                        access_token: response.access_token.clone(),
+                        refresh_token: response.refresh_token.clone(),
+                        access_expires_at,
+                    },
+                    CredState::External(AuthExternal::OAuth2AccessTokenIntrospectionRequest {
+                        introspection_url: endpoint.clone(),
+                        client_id: self.client_id.clone(),
+                        client_secret: self.client_basic_secret.clone(),
+                        request,
+                    }),
+                )
+            }
+        }
+    }
+
+    fn validate_access_token_introspection_response(
+        &self,
+        response: &AccessTokenIntrospectResponse,
+        access_token: String,
+        refresh_token: Option<String>,
+        access_expires_at: Duration,
+    ) -> (SessionState, CredState) {
+        // Process the response!!!
+
+        // The session must be active.
+
+        if !response.active {
+            error!(
+                "access token introspection indicates the token is not active, refusing to proceed"
+            );
+            return (
+                SessionState::Finished,
+                CredState::Denied(BAD_OAUTH2_SESSION_MSG),
+            );
+        }
+
+        if let Some(response_sub) = response.sub.as_deref() {
+            if response_sub == self.user_sub {
+                // It's all good!
+            } else {
+                error!("access token introspection returned a different subject than expected, refusing to proceed with authentication.");
+                return (
+                    SessionState::Finished,
+                    CredState::Denied(BAD_OAUTH2_SUBJECT_MSG),
+                );
+            }
+        } else {
+            warn!("access token introspection has no subject field, unable to proceed with authentication.");
+            return (
+                SessionState::Finished,
+                CredState::Denied(BAD_OAUTH2_SUBJECT_MSG),
+            );
+        }
+
         // What is the credential id here? The provider id?
         // How do we make sure that session plugin doesn't kill us?
         let cred_id = self.user_cred_id;
-        let access_expires_at = current_time + Duration::from_secs(response.expires_in as u64);
 
         // We need a way to bubble up extra session metadata now.
         // Need to pass up the expiry, token, refresh token.
         let ext_session_metadata = SessionExtMetadata::OAuth2 {
-            access_token: response.access_token.clone(),
-            refresh_token: response.refresh_token.clone(),
+            access_token,
+            refresh_token,
             access_expires_at,
         };
 
-        CredState::Success {
-            auth_type: AuthType::OAuth2Trust,
-            cred_id,
-            ext_session_metadata,
-        }
+        (
+            SessionState::Finished,
+            CredState::Success {
+                auth_type: AuthType::OAuth2Trust,
+                cred_id,
+                ext_session_metadata,
+            },
+        )
     }
 }

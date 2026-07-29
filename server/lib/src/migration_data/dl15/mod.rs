@@ -129,6 +129,9 @@ pub fn phase_1_schema_attrs() -> Vec<SchemaAttribute> {
         SCHEMA_ATTR_PASSWORD_CHANGED_TIME.clone(),
         SCHEMA_ATTR_OAUTH2_REFRESH_TOKEN_EXPIRY.clone(),
         SCHEMA_ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY.clone(),
+        // DL15
+        SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_SUB.clone(),
+        SCHEMA_ATTR_OAUTH2_TOKEN_INTROSPECT_ENDPOINT.clone(),
     ]
 }
 

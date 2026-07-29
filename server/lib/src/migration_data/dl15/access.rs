@@ -2064,6 +2064,7 @@ pub static IDM_ACP_OAUTH2_CLIENT_ADMIN: LazyLock<BuiltinAcp> = LazyLock::new(|| 
         Attribute::OAuth2ClientSecret,
         Attribute::OAuth2AuthorisationEndpoint,
         Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
         Attribute::OAuth2RequestScopes,
     ],
     modify_present_attrs: vec![
@@ -2072,6 +2073,7 @@ pub static IDM_ACP_OAUTH2_CLIENT_ADMIN: LazyLock<BuiltinAcp> = LazyLock::new(|| 
         Attribute::OAuth2ClientSecret,
         Attribute::OAuth2AuthorisationEndpoint,
         Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
         Attribute::OAuth2RequestScopes,
     ],
     modify_removed_attrs: vec![
@@ -2080,6 +2082,7 @@ pub static IDM_ACP_OAUTH2_CLIENT_ADMIN: LazyLock<BuiltinAcp> = LazyLock::new(|| 
         Attribute::OAuth2ClientSecret,
         Attribute::OAuth2AuthorisationEndpoint,
         Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
         Attribute::OAuth2RequestScopes,
     ],
     create_attrs: vec![
@@ -2089,6 +2092,7 @@ pub static IDM_ACP_OAUTH2_CLIENT_ADMIN: LazyLock<BuiltinAcp> = LazyLock::new(|| 
         Attribute::OAuth2ClientSecret,
         Attribute::OAuth2AuthorisationEndpoint,
         Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
         Attribute::OAuth2RequestScopes,
     ],
     create_classes: vec![EntryClass::OAuth2Client],
@@ -2118,18 +2122,21 @@ pub static IDM_ACP_OAUTH2_ACCOUNT_ENROL: LazyLock<BuiltinAcp> = LazyLock::new(||
         Attribute::Uuid,
         Attribute::OAuth2AccountProvider,
         Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
         Attribute::OAuth2AccountCredentialUuid,
     ],
     modify_removed_attrs: vec![
         Attribute::Class,
         Attribute::OAuth2AccountProvider,
         Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
         Attribute::OAuth2AccountCredentialUuid,
     ],
     modify_present_attrs: vec![
         Attribute::Class,
         Attribute::OAuth2AccountProvider,
         Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
         Attribute::OAuth2AccountCredentialUuid,
     ],
     modify_classes: vec![EntryClass::OAuth2Account],
