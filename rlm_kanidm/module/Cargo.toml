@@ -20,6 +20,7 @@ extern-freeradius-module = []
 
 [dependencies]
 anyhow = { workspace = true }
+concread = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 libc = { workspace = true }

@@ -139,6 +139,10 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
             post(reset::view_add_ssh_publickey),
         )
         .route("/radius/generate", post(radius::view_radius_post))
+        .route(
+            "/api/check_password_strength",
+            post(reset::check_pwd_strength),
+        )
         .route("/api/delete_alt_creds", post(reset::remove_alt_creds))
         .route("/api/delete_unixcred", post(reset::remove_unixcred))
         .route("/api/add_totp", post(reset::add_totp))

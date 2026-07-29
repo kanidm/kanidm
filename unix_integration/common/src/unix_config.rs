@@ -238,7 +238,7 @@ impl Default for UnixdConfig {
 
 impl Display for UnixdConfig {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "cache_db_path: {}", &self.cache_db_path)?;
+        writeln!(f, "cache_db_path: {}", self.cache_db_path)?;
         writeln!(f, "sock_path: {}", self.sock_path)?;
         writeln!(f, "task_sock_path: {}", self.task_sock_path)?;
         writeln!(f, "unix_sock_timeout: {}", self.unix_sock_timeout)?;

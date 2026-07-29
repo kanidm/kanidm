@@ -5,7 +5,9 @@ use crate::idm::account::Account;
 use crate::idm::server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
 use crate::server::access::Access;
-use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
+use crate::utils::{
+    backup_code_from_random, readable_password_from_random, utf8_len, uuid_from_duration,
+};
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState, LABEL_RE};
 use compact_jwt::compact::JweCompact;
 use compact_jwt::jwe::JweBuilder;
@@ -42,6 +44,7 @@ const MAXIMUM_INTENT_TTL: Duration = Duration::from_secs(86400);
 #[derive(Debug)]
 pub enum PasswordQuality {
     TooShort(u32),
+    TooLong(u32),
     BadListed,
     DontReusePasswords,
     Feedback(Vec<PasswordFeedback>),
@@ -139,6 +142,9 @@ pub(crate) struct CredentialUpdateSession {
 
     // Is there an extertal credential portal?
     ext_cred_portal: CUExtPortal,
+
+    // Has anything changed?
+    dirty: bool,
 
     // The pw credential as they are being updated
     primary_state: CredentialState,
@@ -361,6 +367,9 @@ pub struct CredentialUpdateSessionStatus {
     can_commit: bool,
     // If can_commit is false, this will have warnings populated.
     warnings: Vec<CredentialUpdateSessionStatusWarnings>,
+    // If anything has changed, this will be true.
+    dirty: bool,
+
     primary: Option<CredentialDetail>,
     primary_state: CredentialState,
     passkeys: Vec<PasskeyDetail>,
@@ -416,6 +425,7 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
             },
             can_commit: self.can_commit,
             warnings: self.warnings.into_iter().map(|w| w.into()).collect(),
+            dirty: self.dirty,
             primary: self.primary,
             primary_state: self.primary_state.into(),
             passkeys: self.passkeys,
@@ -454,6 +464,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
             ext_cred_portal: session.ext_cred_portal.clone(),
             can_commit,
             warnings,
+            dirty: session.dirty,
             primary: session.primary.as_ref().map(|c| c.into()),
             primary_state: session.primary_state,
             passkeys: session
@@ -945,6 +956,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             attested_passkeys,
             attested_passkeys_state,
             mfaregstate: MfaRegState::None,
+            dirty: false,
         };
 
         let max_ttl = ct + MAXIMUM_CRED_UPDATE_TTL;
@@ -1876,9 +1888,15 @@ impl IdmServerCredUpdateTransaction<'_> {
 
         // is the password at least 10 char?
         let pw_min_length = resolved_account_policy.pw_min_length();
-        if cleartext.len() < pw_min_length as usize {
+        let pw_max_length = resolved_account_policy.pw_max_length();
+
+        let pw_graphemes = utf8_len(cleartext);
+
+        if pw_graphemes < pw_min_length as usize {
             return Err(PasswordQuality::TooShort(pw_min_length));
-        }
+        } else if pw_graphemes > pw_max_length as usize {
+            return Err(PasswordQuality::TooLong(pw_max_length));
+        };
 
         if let Some(some_radius_secret) = radius_secret {
             if cleartext.contains(some_radius_secret) {
@@ -2055,6 +2073,9 @@ impl IdmServerCredUpdateTransaction<'_> {
             PasswordQuality::TooShort(sz) => {
                 OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(sz)])
             }
+            PasswordQuality::TooLong(sz) => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::TooLong(sz)])
+            }
             PasswordQuality::BadListed => {
                 OperationError::PasswordQuality(vec![PasswordFeedback::BadListed])
             }
@@ -2098,6 +2119,9 @@ impl IdmServerCredUpdateTransaction<'_> {
             PasswordQuality::TooShort(sz) => {
                 OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(sz)])
             }
+            PasswordQuality::TooLong(sz) => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::TooLong(sz)])
+            }
             PasswordQuality::BadListed => {
                 OperationError::PasswordQuality(vec![PasswordFeedback::BadListed])
             }
@@ -2115,6 +2139,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             None => Credential::new_password_only(self.crypto_policy, pw, timestamp)?,
         };
 
+        session.dirty = true;
         session.primary = Some(ncred);
         Ok(session.deref().into())
     }
@@ -2203,6 +2228,7 @@ impl IdmServerCredUpdateTransaction<'_> {
                             OperationError::InvalidState
                         })?;
 
+                    session.dirty = true;
                     session.primary = Some(ncred);
 
                     // Set the state to None.
@@ -2268,6 +2294,7 @@ impl IdmServerCredUpdateTransaction<'_> {
 
                 security_info!("A SHA1 TOTP credential was accepted");
 
+                session.dirty = true;
                 session.primary = Some(ncred);
 
                 // Set the state to None.
@@ -2312,6 +2339,7 @@ impl IdmServerCredUpdateTransaction<'_> {
                 OperationError::InvalidState
             })?;
 
+        session.dirty = true;
         session.primary = Some(ncred);
 
         // Set the state to None.
@@ -2358,6 +2386,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             )
             ?;
 
+        session.dirty = true;
         session.primary = Some(ncred);
 
         Ok(session.deref().into()).map(|mut status: CredentialUpdateSessionStatus| {
@@ -2401,6 +2430,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             )
             ?;
 
+        session.dirty = true;
         session.primary = Some(ncred);
 
         Ok(session.deref().into())
@@ -2425,6 +2455,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        session.dirty = true;
         session.primary = None;
         Ok(session.deref().into())
     }
@@ -2497,6 +2528,8 @@ impl IdmServerCredUpdateTransaction<'_> {
                 match reg_result {
                     Ok(passkey) => {
                         let pk_id = Uuid::new_v4();
+
+                        session.dirty = true;
                         session.passkeys.insert(pk_id, (label, passkey));
 
                         let cu_status: CredentialUpdateSessionStatus = session.deref().into();
@@ -2543,6 +2576,7 @@ impl IdmServerCredUpdateTransaction<'_> {
         };
 
         // No-op if not present
+        session.dirty = true;
         session.passkeys.remove(&uuid);
 
         Ok(session.deref().into())
@@ -2645,6 +2679,8 @@ impl IdmServerCredUpdateTransaction<'_> {
                 let passkey = result?;
                 trace!(?passkey);
 
+                session.dirty = true;
+
                 let pk_id = Uuid::new_v4();
                 session.attested_passkeys.insert(pk_id, (label, passkey));
 
@@ -2677,6 +2713,7 @@ impl IdmServerCredUpdateTransaction<'_> {
         };
 
         // No-op if not present
+        session.dirty = true;
         session.attested_passkeys.remove(&uuid);
 
         Ok(session.deref().into())
@@ -2713,6 +2750,9 @@ impl IdmServerCredUpdateTransaction<'_> {
             PasswordQuality::TooShort(sz) => {
                 OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(sz)])
             }
+            PasswordQuality::TooLong(sz) => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::TooLong(sz)])
+            }
             PasswordQuality::BadListed => {
                 OperationError::PasswordQuality(vec![PasswordFeedback::BadListed])
             }
@@ -2730,6 +2770,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             None => Credential::new_password_only(self.crypto_policy, pw, timestamp)?,
         };
 
+        session.dirty = true;
         session.unixcred = Some(ncred);
         Ok(session.deref().into())
     }
@@ -2753,6 +2794,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        session.dirty = true;
         session.unixcred = None;
         Ok(session.deref().into())
     }
@@ -2793,6 +2835,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::DuplicateKey);
         }
 
+        session.dirty = true;
         session.sshkeys.insert(label, sshpubkey);
 
         Ok(session.deref().into())
@@ -2818,6 +2861,7 @@ impl IdmServerCredUpdateTransaction<'_> {
             return Err(OperationError::AccessDenied);
         };
 
+        session.dirty = true;
         session.sshkeys.remove(label).ok_or_else(|| {
             error!("No such key for label");
             OperationError::NoMatchingEntries
@@ -2865,10 +2909,11 @@ mod tests {
     };
     use crate::idm::server::{IdmServer, IdmServerCredUpdateTransaction, IdmServerDelayed};
     use crate::prelude::*;
-    use crate::utils::password_from_random_len;
+    use crate::utils::{password_from_random_len, readable_password_from_random};
     use crate::value::CredentialType;
     use crate::valueset::ValueSetEmailAddress;
     use compact_jwt::JwsCompact;
+    use kanidm_lib_crypto::{PW_MAX_LENGTH_NIST, PW_SFA_MIN_LENGTH_NIST};
     use kanidm_proto::internal::{CUExtPortal, CredentialDetailType, PasswordFeedback};
     use kanidm_proto::v1::OutboundMessage;
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, UnixUserToken};
@@ -2884,8 +2929,6 @@ mod tests {
     const TEST_CURRENT_TIME: u64 = 6000;
     const TESTPERSON_UUID: Uuid = uuid!("cf231fea-1a8f-4410-a520-fd9b1a379c86");
     const TESTPERSON_NAME: &str = "testperson";
-
-    const TESTPERSON_PASSWORD: &str = "SSBndWVzcyB5b3UgZGlzY292ZXJlZCB0aGUgc2VjcmV0";
 
     const SSHKEY_VALID_1: &str = "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey";
     const SSHKEY_VALID_2: &str = "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBIbkSsdGCRoW6v0nO/3vNYPhG20YhWU0wQPY7x52EOb4dmYhC4IJfzVDpEPg313BxWRKQglb5RQ1PPkou7JFyCUAAAAEc3NoOg== testuser@fidokey";
@@ -3711,7 +3754,7 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
@@ -3731,16 +3774,17 @@ mod tests {
         // Test initially creating a credential.
         //   - pw first
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the primary cred password");
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
         // Check it works!
-        assert!(check_testperson_password(idms, idms_delayed, test_pw, ct)
+        assert!(check_testperson_password(idms, idms_delayed, &test_pw, ct)
             .await
             .is_some());
 
@@ -3764,6 +3808,7 @@ mod tests {
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         // Can't delete, would be the last credential!
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
     }
@@ -3811,18 +3856,28 @@ mod tests {
             .unwrap_err();
         trace!(?err);
         assert!(
-            matches!(err, OperationError::PasswordQuality(details) if details == vec!(PasswordFeedback::TooShort(PW_MIN_LENGTH),))
+            matches!(err, OperationError::PasswordQuality(details) if details == vec!(PasswordFeedback::TooShort(PW_SFA_MIN_LENGTH_NIST),))
+        );
+
+        let random_pw = password_from_random_len(PW_MAX_LENGTH_NIST + 1);
+        let err = cutxn
+            .credential_primary_set_password(&cust, ct, &random_pw)
+            .unwrap_err();
+        trace!(?err);
+        assert!(
+            matches!(err, OperationError::PasswordQuality(details) if details == vec!(PasswordFeedback::TooLong(PW_MAX_LENGTH_NIST),))
         );
 
         let err = cutxn
-            .credential_primary_set_password(&cust, ct, "password1234")
+            .credential_primary_set_password(&cust, ct, "password 12345678")
             .unwrap_err();
         trace!(?err);
         assert!(
             matches!(err, OperationError::PasswordQuality(details) if details
             == vec!(
+                PasswordFeedback::UseAFewWordsAvoidCommonPhrases,
                 PasswordFeedback::AddAnotherWordOrTwo,
-                PasswordFeedback::ThisIsACommonPassword,
+                PasswordFeedback::NoNeedForSymbolsDigitsOrUppercaseLetters
             ))
         );
 
@@ -3835,7 +3890,7 @@ mod tests {
         );
 
         let err = cutxn
-            .credential_primary_set_password(&cust, ct, "testperson2023")
+            .credential_primary_set_password(&cust, ct, "testperson 2023")
             .unwrap_err();
         trace!(?err);
         assert!(
@@ -3849,7 +3904,7 @@ mod tests {
             .credential_primary_set_password(
                 &cust,
                 ct,
-                "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
+                "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiR",
             )
             .unwrap_err();
         trace!(?err);
@@ -3862,6 +3917,7 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(!c_status.dirty);
 
         drop(cutxn);
     }
@@ -3874,7 +3930,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         // Set the account policy min pw length
-        let test_pw_min_length = PW_MIN_LENGTH * 2;
+        let test_pw_min_length = PW_SFA_MIN_LENGTH_NIST * 2;
 
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
@@ -3932,6 +3988,7 @@ mod tests {
             .expect("Failed to update the primary cred password");
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -3947,7 +4004,7 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
@@ -3955,11 +4012,12 @@ mod tests {
 
         // Setup the PW
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the primary cred password");
 
         // Since it's pw only.
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         //
         let c_status = cutxn
@@ -4069,7 +4127,7 @@ mod tests {
 
         // Check it works!
         assert!(
-            check_testperson_password_totp(idms, idms_delayed, test_pw, &totp_token, ct)
+            check_testperson_password_totp(idms, idms_delayed, &test_pw, &totp_token, ct)
                 .await
                 .is_some()
         );
@@ -4093,7 +4151,7 @@ mod tests {
         commit_session(idms, ct, cust).await;
 
         // Check it works with totp removed.
-        assert!(check_testperson_password(idms, idms_delayed, test_pw, ct)
+        assert!(check_testperson_password(idms, idms_delayed, &test_pw, ct)
             .await
             .is_some());
     }
@@ -4104,7 +4162,7 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
@@ -4112,11 +4170,12 @@ mod tests {
 
         // Setup the PW
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the primary cred password");
 
         // Since it's pw only.
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         //
         let c_status = cutxn
@@ -4166,7 +4225,7 @@ mod tests {
 
         // Check it works!
         assert!(
-            check_testperson_password_totp(idms, idms_delayed, test_pw, &totp_token, ct)
+            check_testperson_password_totp(idms, idms_delayed, &test_pw, &totp_token, ct)
                 .await
                 .is_some()
         );
@@ -4178,7 +4237,7 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
@@ -4186,7 +4245,7 @@ mod tests {
 
         // Setup the PW
         let _c_status = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the primary cred password");
 
         // Backup codes are refused to be added because we don't have mfa yet.
@@ -4249,7 +4308,7 @@ mod tests {
         assert!(check_testperson_password_backup_code(
             idms,
             idms_delayed,
-            test_pw,
+            &test_pw,
             backup_code,
             ct
         )
@@ -4315,7 +4374,7 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
@@ -4323,11 +4382,12 @@ mod tests {
 
         // Setup the PW
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the primary cred password");
 
         // Since it's pw only.
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         //
         let c_status = cutxn
@@ -4336,6 +4396,7 @@ mod tests {
 
         // Check the status has the token.
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(matches!(
             c_status.mfaregstate,
             MfaRegStateStatus::TotpCheck(_)
@@ -4347,12 +4408,13 @@ mod tests {
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
         // It's pw only, since we canceled TOTP
-        assert!(check_testperson_password(idms, idms_delayed, test_pw, ct)
+        assert!(check_testperson_password(idms, idms_delayed, &test_pw, ct)
             .await
             .is_some());
     }
@@ -4409,7 +4471,7 @@ mod tests {
         idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
 
         let (cust, _) = setup_test_session(idms, ct).await;
         let cutxn = idms.cred_update_transaction().await.unwrap();
@@ -4454,14 +4516,16 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
 
         // For now, set a password to allow saving.
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the primary cred password");
 
         // Could proceed now!
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(!c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -4543,6 +4607,7 @@ mod tests {
             ext_cred_portal,
             mfaregstate: _,
             can_commit: _,
+            dirty: _,
             warnings: _,
             primary: _,
             primary_state,
@@ -4651,6 +4716,8 @@ mod tests {
 
         // Since there are no credentials we can't proceed anyway.
         assert!(!c_status.can_commit);
+        // All changes were denied, so we can't be dirty.
+        assert!(!c_status.dirty);
         assert!(c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -4662,7 +4729,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
@@ -4697,10 +4764,11 @@ mod tests {
         // Test initially creating a credential.
         //   - pw first
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the primary cred password");
 
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::MfaRequired));
@@ -4735,6 +4803,7 @@ mod tests {
 
         // Done, can now commit.
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status.warnings.is_empty());
 
         drop(cutxn);
@@ -4756,6 +4825,7 @@ mod tests {
 
         // Delete of the totp forces us back here.
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::MfaRequired));
@@ -4772,6 +4842,7 @@ mod tests {
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status.warnings.is_empty());
         assert_eq!(c_status.passkeys.len(), 1);
 
@@ -4784,7 +4855,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
@@ -4820,7 +4891,7 @@ mod tests {
         ));
 
         let err = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .unwrap_err();
         assert!(matches!(err, OperationError::AccessDenied));
 
@@ -4830,6 +4901,7 @@ mod tests {
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status.warnings.is_empty());
         assert_eq!(c_status.passkeys.len(), 1);
 
@@ -5038,6 +5110,7 @@ mod tests {
 
         // Removed every passkey, you can't proceed!!!!
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -5216,8 +5289,10 @@ mod tests {
         trace!(?c_status);
         assert!(c_status.attested_passkeys.is_empty());
 
-        // But we can't commit:
+        // But we can't commit, there are no valid credentials.
         assert!(!c_status.can_commit);
+        // Session isn't dirty, we haven't changed anything.
+        assert!(!c_status.dirty);
         assert!(c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -5378,6 +5453,7 @@ mod tests {
             c_status.attested_passkeys_state,
             CredentialState::DeleteOnly
         ));
+        assert!(!c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -5388,7 +5464,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
@@ -5410,11 +5486,13 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(!c_status.dirty);
         // User needs at least one credential else they can't save.
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the primary cred password");
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(!c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -5422,16 +5500,17 @@ mod tests {
         // Test initially creating a credential.
         //   - pw first
         let c_status = cutxn
-            .credential_unix_set_password(&cust, ct, test_pw)
+            .credential_unix_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the unix cred password");
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
         // Check it works!
-        assert!(check_testperson_unix_password(idms, test_pw, ct)
+        assert!(check_testperson_unix_password(idms, &test_pw, ct)
             .await
             .is_some());
 
@@ -5455,14 +5534,14 @@ mod tests {
         commit_session(idms, ct, cust).await;
 
         // Must fail now!
-        assert!(check_testperson_unix_password(idms, test_pw, ct)
+        assert!(check_testperson_unix_password(idms, &test_pw, ct)
             .await
             .is_none());
     }
 
     #[idm_test]
     async fn credential_update_sshkeys(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
         let sshkey_valid_1 =
             SshPublicKey::from_string(SSHKEY_VALID_1).expect("Invalid SSHKEY_VALID_1");
         let sshkey_valid_2 =
@@ -5483,9 +5562,10 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(!c_status.dirty);
         // User needs at least one credential else they can't save.
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the primary cred password");
 
         // Ready to proceed with ssh keys
@@ -5555,7 +5635,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
-        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let test_pw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
@@ -5577,14 +5657,16 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(!c_status.dirty);
 
         // Test initially creating a credential.
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, test_pw)
+            .credential_primary_set_password(&cust, ct, &test_pw)
             .expect("Failed to update the primary cred password");
 
         // Could proceed now!
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert!(!c_status
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
@@ -5599,6 +5681,7 @@ mod tests {
             .warnings
             .contains(&CredentialUpdateSessionStatusWarnings::NoValidCredentials));
         assert!(!c_status.can_commit);
+        assert!(c_status.dirty);
     }
 
     async fn get_testperson_password_changed_time(idms: &IdmServer) -> Option<OffsetDateTime> {
@@ -5615,6 +5698,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
+        let testpw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
@@ -5625,9 +5709,10 @@ mod tests {
         // Primary Cred with No fallback => EPOCH
         let cutxn = idms.cred_update_transaction().await.unwrap();
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, TESTPERSON_PASSWORD)
+            .credential_primary_set_password(&cust, ct, &testpw)
             .expect("Failed to update the primary cred password");
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
@@ -5640,9 +5725,10 @@ mod tests {
         let (cust, _) = renew_test_session(idms, ct).await;
         let cutxn = idms.cred_update_transaction().await.unwrap();
         let c_status = cutxn
-            .credential_unix_set_password(&cust, ct, TESTPERSON_PASSWORD)
+            .credential_unix_set_password(&cust, ct, &testpw)
             .expect("Failed to set unix password");
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
@@ -5675,16 +5761,17 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
+        let testpw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         // Set up both credentials.
         let (cust, _) = setup_test_session(idms, ct).await;
         let cutxn = idms.cred_update_transaction().await.unwrap();
         let _ = cutxn
-            .credential_primary_set_password(&cust, ct, TESTPERSON_PASSWORD)
+            .credential_primary_set_password(&cust, ct, &testpw)
             .expect("Failed to set primary password");
         let _ = cutxn
-            .credential_unix_set_password(&cust, ct, TESTPERSON_PASSWORD)
+            .credential_unix_set_password(&cust, ct, &testpw)
             .expect("Failed to set unix password");
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -5704,6 +5791,7 @@ mod tests {
             .expect("Failed to delete unix credential");
         assert!(c_status.unixcred.is_none());
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
@@ -5719,6 +5807,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
+        let testpw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session_no_posix(idms, ct).await;
@@ -5729,9 +5818,10 @@ mod tests {
         // No POSIX still causes default to EPOCH
         let cutxn = idms.cred_update_transaction().await.unwrap();
         let c_status = cutxn
-            .credential_primary_set_password(&cust, ct, TESTPERSON_PASSWORD)
+            .credential_primary_set_password(&cust, ct, &testpw)
             .expect("Failed to set primary password");
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         drop(cutxn);
         commit_session(idms, ct, cust).await;
 
@@ -5758,7 +5848,7 @@ mod tests {
         let (cust, _) = renew_test_session(idms, ct).await;
         let cutxn = idms.cred_update_transaction().await.unwrap();
         let _ = cutxn
-            .credential_primary_set_password(&cust, ct, TESTPERSON_PASSWORD)
+            .credential_primary_set_password(&cust, ct, &testpw)
             .expect("Failed to set primary password");
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -5786,6 +5876,7 @@ mod tests {
 
         let c_status = create_new_passkey(ct, &origin, &cutxn, &cust, &mut wa).await;
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         assert_eq!(c_status.passkeys.len(), 1);
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -5802,15 +5893,16 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
+        let testpw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (cust, _) = setup_test_session(idms, ct).await;
 
         let cutxn = idms.cred_update_transaction().await.unwrap();
         let _ = cutxn
-            .credential_primary_set_password(&cust, ct, TESTPERSON_PASSWORD)
+            .credential_primary_set_password(&cust, ct, &testpw)
             .expect("Failed to set primary password");
         let _ = cutxn
-            .credential_unix_set_password(&cust, ct, TESTPERSON_PASSWORD)
+            .credential_unix_set_password(&cust, ct, &testpw)
             .expect("Failed to set unix password");
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -5825,6 +5917,7 @@ mod tests {
         let (cust, c_status) = renew_test_session(idms, ct2).await;
         assert!(c_status.primary.is_some());
         assert!(c_status.can_commit);
+        assert!(!c_status.dirty);
         commit_session(idms, ct2, cust).await;
 
         let pwd_changed_2 = get_testperson_password_changed_time(idms)
@@ -5840,6 +5933,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
+        let testpw = readable_password_from_random();
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let ct2 = Duration::from_secs(TEST_CURRENT_TIME + 50);
 
@@ -5864,11 +5958,11 @@ mod tests {
 
         let cutxn = idms.cred_update_transaction().await.unwrap();
         let _ = cutxn
-            .credential_primary_set_password(&cust, ct, TESTPERSON_PASSWORD)
+            .credential_primary_set_password(&cust, ct, &testpw)
             .expect("Failed to set primary password");
 
         let _ = cutxn
-            .credential_unix_set_password(&cust, ct2, TESTPERSON_PASSWORD)
+            .credential_unix_set_password(&cust, ct2, &testpw)
             .expect("Failed to set unix password");
 
         let c_status = cutxn
@@ -5891,6 +5985,7 @@ mod tests {
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -5910,6 +6005,7 @@ mod tests {
             .expect("Failed to delete unix credential");
 
         assert!(c_status.can_commit);
+        assert!(c_status.dirty);
         drop(cutxn);
         commit_session(idms, ct2, cust).await;
 

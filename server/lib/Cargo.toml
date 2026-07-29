@@ -65,6 +65,7 @@ tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
+unicode-segmentation = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 utoipa = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
@@ -101,10 +102,6 @@ webauthn-authenticator-rs = { workspace = true, features = [
     "softpasskey",
     "softtoken",
 ] }
-
-
-[target.'cfg(not(target_os = "illumos"))'.dev-dependencies]
-mimalloc = { workspace = true }
 
 [build-dependencies]
 hashbrown = { workspace = true }

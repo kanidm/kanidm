@@ -8,44 +8,30 @@
 set -e
 
 WAIT_TIMER=5
-if [ -z "${BUILD_MODE}" ]; then
-    BUILD_MODE="--release"
+
+if [ -z "$KANI_CARGO_OPTS" ]; then
+    KANI_CARGO_OPTS="--profile dev"
 fi
 
-echo "Building release binaries..."
+export KANIDM_CONFIG_FILE="./scripts/insecure_server.toml"
+
+mkdir -p /tmp/kanidm/client_ca
+
+echo "Building binaries..."
 # shellcheck disable=SC2086
-cargo build --locked $BUILD_MODE --bin kanidm --bin kanidmd --quiet || {
+cargo build --locked ${KANI_CARGO_OPTS} || {
     echo "Failed to build release binaries, please check the output above."
     exit 1
 }
 
-if [ -d '.git' ]; then
-    echo "You're in the root dir, let's move you!"
-    CURRENT_DIR="$(pwd)"
-    cd server/daemon/ || exit 1
-fi
-
-
-if [ ! -f "run_insecure_dev_server.sh" ]; then
-    echo "I'm not sure where you are, please run this from the root of the repository or the server/daemon directory"
-    exit 1
-fi
-
-export KANIDM_CONFIG="./insecure_server.toml"
-
-mkdir -p /tmp/kanidm/client_ca
-
 echo "Generating certificates..."
 # shellcheck disable=SC2086
-cargo run --bin kanidmd $BUILD_MODE cert-generate
-
-echo "Making sure it runs with the DB..."
-# shellcheck disable=SC2086
-cargo run --bin kanidmd $BUILD_MODE scripting recover-account idm_admin
+cargo run --bin kanidmd ${KANI_CARGO_OPTS} -- cert-generate -c ${KANIDM_CONFIG_FILE}
 
 echo "Running the server..."
 # shellcheck disable=SC2086
-cargo run --bin kanidmd $BUILD_MODE server  &
+cargo run --bin kanidmd ${KANI_CARGO_OPTS} -- server -c ${KANIDM_CONFIG_FILE} &
+
 KANIDMD_PID=$!
 echo "Kanidm PID: ${KANIDMD_PID}"
 
@@ -54,17 +40,10 @@ if [ "$(jobs -p | wc -l)" -eq 0 ]; then
     exit 1
 fi
 
-ATTEMPT=0
-
-KANIDM_CONFIG_FILE="./insecure_server.toml"
-if [ -f "${KANIDM_CONFIG_FILE}" ]; then
-    echo "Found config file ${KANIDM_CONFIG_FILE}"
-else
-    echo "Config file ${KANIDM_CONFIG_FILE} not found!"
-    exit 1
-fi
 KANIDM_URL="$(grep -E '^origin.*https' "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
+
+ATTEMPT=0
 
 while true; do
     echo "Waiting for the server to start... testing url '${KANIDM_URL}'"
@@ -77,12 +56,7 @@ while true; do
     fi
 done
 
-BUILD_MODE=$BUILD_MODE ../../scripts/setup_dev_environment.sh || kill -9 "${KANIDMD_PID}"
-
-
-if [ -n "$CURRENT_DIR" ]; then
-    cd "$CURRENT_DIR" || exit 1
-fi
+KANI_CARGO_OPTS=${KANI_CARGO_OPTS} ./scripts/setup_dev_environment.sh
 
 echo "Running the OpenAPI schema checks"
 
@@ -93,3 +67,4 @@ sleep "${WAIT_TIMER}"
 if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
     kill $(pgrep kanidmd)
 fi
+

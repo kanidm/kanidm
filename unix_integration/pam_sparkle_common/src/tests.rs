@@ -106,6 +106,14 @@ impl PamHandler for TestHandler {
         }
     }
 
+    fn envlist(&self) -> PamResult<Vec<String>> {
+        Ok(Vec::default())
+    }
+
+    fn set_env(&self, _value: &str) -> PamResult<()> {
+        Ok(())
+    }
+
     fn authtok(&self) -> PamResult<Option<String>> {
         let mut q = self.response_queue.lock().unwrap();
         match q.pop_front() {
@@ -323,7 +331,10 @@ fn pam_fallback_acct_mgmt_default() {
     let mod_opts = ModuleOptions::default();
     let test_time = OffsetDateTime::UNIX_EPOCH;
 
-    let pamh = TestHandler::from(vec![Event::Account("tobias")]);
+    let pamh = TestHandler::from(vec![
+        Event::ServiceInfo(PamServiceInfo::default()),
+        Event::Account("tobias"),
+    ]);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
@@ -338,7 +349,10 @@ fn pam_fallback_acct_mgmt_root() {
     let mod_opts = ModuleOptions::default();
     let test_time = OffsetDateTime::UNIX_EPOCH;
 
-    let pamh = TestHandler::from(vec![Event::Account("root")]);
+    let pamh = TestHandler::from(vec![
+        Event::ServiceInfo(PamServiceInfo::default()),
+        Event::Account("root"),
+    ]);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
@@ -353,7 +367,10 @@ fn pam_fallback_acct_mgmt_deny_unknown() {
     let mod_opts = ModuleOptions::default();
     let test_time = OffsetDateTime::UNIX_EPOCH;
 
-    let pamh = TestHandler::from(vec![Event::Account("nonexist")]);
+    let pamh = TestHandler::from(vec![
+        Event::ServiceInfo(PamServiceInfo::default()),
+        Event::Account("nonexist"),
+    ]);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
@@ -371,7 +388,10 @@ fn pam_fallback_acct_mgmt_ignore_unknown() {
     };
     let test_time = OffsetDateTime::UNIX_EPOCH;
 
-    let pamh = TestHandler::from(vec![Event::Account("nonexist")]);
+    let pamh = TestHandler::from(vec![
+        Event::ServiceInfo(PamServiceInfo::default()),
+        Event::Account("nonexist"),
+    ]);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
@@ -387,7 +407,10 @@ fn pam_fallback_acct_mgmt_expired() {
     let mod_opts = ModuleOptions::default();
     let test_time = OffsetDateTime::UNIX_EPOCH + time::Duration::days(16);
 
-    let pamh = TestHandler::from(vec![Event::Account("tobias")]);
+    let pamh = TestHandler::from(vec![
+        Event::ServiceInfo(PamServiceInfo::default()),
+        Event::Account("tobias"),
+    ]);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
@@ -400,7 +423,10 @@ fn pam_fallback_sm_open_session() {
     let req_opt = RequestOptions::fallback_fixture();
     let mod_opts = ModuleOptions::default();
 
-    let pamh = TestHandler::from(vec![Event::Account("tobias")]);
+    let pamh = TestHandler::from(vec![
+        Event::ServiceInfo(PamServiceInfo::default()),
+        Event::Account("tobias"),
+    ]);
 
     assert_eq!(
         core::sm_open_session(&pamh, &mod_opts, req_opt),

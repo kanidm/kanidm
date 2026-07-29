@@ -1,4 +1,5 @@
 #![deny(warnings)]
+use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::{JwkKeySet, JwsEs256Verifier, JwsVerifier, OidcToken, OidcUnverified};
 use kanidm_client::ClientError;
 use kanidm_client::{http::header, KanidmClient, StatusCode};
@@ -11,6 +12,7 @@ use kanidm_proto::oauth2::{
     OidcDiscoveryResponse, TokenRevokeRequest,
 };
 use kanidmd_lib::constants::NAME_IDM_ALL_ACCOUNTS;
+use kanidmd_lib::idm::oauth2::PkceS256Secret;
 use kanidmd_lib::prelude::Attribute;
 use kanidmd_testkit::{
     assert_no_cache, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, NOT_ADMIN_TEST_EMAIL,
@@ -18,7 +20,6 @@ use kanidmd_testkit::{
     TEST_INTEGRATION_RS_GROUP_ALL, TEST_INTEGRATION_RS_ID, TEST_INTEGRATION_RS_REDIRECT_URL,
     TEST_INTEGRATION_RS_URL, TEST_INTEGRATION_STATE_VALUE,
 };
-use oauth2_ext::PkceCodeChallenge;
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryFrom;
@@ -267,7 +268,9 @@ async fn test_oauth2_openid_basic_flow_impl(
     // Since we are a client, we can just "pretend" we got the redirect, and issue the
     // get call directly. This should be a 200. (?)
 
-    let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
+    let pkce_secret = PkceS256Secret::default();
+    let pkce_code_challenge = general_purpose::URL_SAFE_NO_PAD.encode(&pkce_secret.to_challenge());
+    let pkce_code_verifier = pkce_secret.to_verifier();
 
     let mut query = vec![
         ("response_type", "code"),
@@ -364,7 +367,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     let mut form_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
         code: code.to_string(),
         redirect_uri: Url::parse(TEST_INTEGRATION_RS_REDIRECT_URL).expect("Invalid URL"),
-        code_verifier: Some(pkce_code_verifier.secret().clone()),
+        code_verifier: Some(pkce_code_verifier),
     }
     .into();
 
@@ -881,7 +884,9 @@ async fn test_oauth2_openid_public_flow_impl(
     //
     // Since we are a client, we can just "pretend" we got the redirect, and issue the
     // get call directly. This should be a 200. (?)
-    let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
+    let pkce_secret = PkceS256Secret::default();
+    let pkce_code_challenge = general_purpose::URL_SAFE_NO_PAD.encode(&pkce_secret.to_challenge());
+    let pkce_code_verifier = pkce_secret.to_verifier();
 
     let mut query = vec![
         ("response_type", "code"),
@@ -989,7 +994,7 @@ async fn test_oauth2_openid_public_flow_impl(
         grant_type: GrantTypeReq::AuthorizationCode {
             code: code.to_string(),
             redirect_uri: Url::parse(TEST_INTEGRATION_RS_REDIRECT_URL).expect("Invalid URL"),
-            code_verifier: Some(pkce_code_verifier.secret().clone()),
+            code_verifier: Some(pkce_code_verifier),
         },
         client_post_auth: (TEST_INTEGRATION_RS_ID, None).into(),
     };

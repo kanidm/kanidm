@@ -88,7 +88,7 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
         Err(e) => {
             eprintln!(
                 "Unable to parse config from '{}' error: {:?}",
-                &opt.ldap_sync_config.display(),
+                opt.ldap_sync_config.display(),
                 e
             );
             return Err(());

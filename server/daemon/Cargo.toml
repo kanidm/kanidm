@@ -42,7 +42,6 @@ serde_json = { workspace = true }
 [target.'cfg(target_os = "linux")'.dependencies]
 sd-notify = { workspace = true }
 prctl = { workspace = true }
-mimalloc = { workspace = true }
 
 [target.'cfg(target_family = "windows")'.dependencies]
 whoami = { workspace = true }

@@ -36,13 +36,13 @@ const ATTR_USER_NAME: &str = "User-Name";
 const ATTR_TLS_CN: &str = "TLS-Client-Cert-Common-Name";
 const ATTR_TLS_SAN_DN_CN: &str = "TLS-Client-Cert-Subject-Alt-Name-Directory-Name-Common-Name";
 
-const REPLY_USER_NAME: &CStr = c"User-Name";
-const REPLY_MESSAGE: &CStr = c"Reply-Message";
-const REPLY_TUNNEL_TYPE: &CStr = c"Tunnel-Type";
-const REPLY_TUNNEL_MEDIUM_TYPE: &CStr = c"Tunnel-Medium-Type";
-const REPLY_TUNNEL_PRIVATE_GROUP_ID: &CStr = c"Tunnel-Private-Group-ID";
+const REPLY_USER_NAME: &str = "User-Name";
+const REPLY_MESSAGE: &str = "Reply-Message";
+const REPLY_TUNNEL_TYPE: &str = "Tunnel-Type";
+const REPLY_TUNNEL_MEDIUM_TYPE: &str = "Tunnel-Medium-Type";
+const REPLY_TUNNEL_PRIVATE_GROUP_ID: &str = "Tunnel-Private-Group-ID";
 
-const CONTROL_CLEARTEXT_PASSWORD: &CStr = c"Cleartext-Password";
+const CONTROL_CLEARTEXT_PASSWORD: &str = "Cleartext-Password";
 
 const CONFIG_PATH_KEY: &CStr = c"config_path";
 const DEFAULT_CONFIG_PATH: &CStr = c"/data/radius.toml";
@@ -335,23 +335,85 @@ impl AuthResponse {
             tunnel_type,
             tunnel_medium_type,
             tunnel_private_group_id,
+            reply_attributes,
         } = reply;
 
-        vp_add_pair(talloc_ctx, reply_vp, REPLY_USER_NAME, user_name.as_str())?;
-        vp_add_pair(talloc_ctx, reply_vp, REPLY_MESSAGE, message.as_str())?;
-        vp_add_pair(talloc_ctx, reply_vp, REPLY_TUNNEL_TYPE, tunnel_type)?;
+        // Add user attrs first before our defined ones.
+        for (key, value) in reply_attributes {
+            // Custom attribute errors are ignored, because the specified key may not be valid for
+            // freeradius.
+            let _ = vp_add_pair(talloc_ctx, reply_vp, &key, &value).inspect_err(|_| {
+                rerror(
+                    format!("populate_request: failed to add reply_attribute: {}", key).as_str(),
+                    request,
+                );
+            });
+        }
+
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_USER_NAME, user_name.as_str()).inspect_err(
+            |_| {
+                rerror(
+                    format!(
+                        "populate_request: failed to add reply_attribute: {}",
+                        REPLY_USER_NAME
+                    )
+                    .as_str(),
+                    request,
+                );
+            },
+        )?;
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_MESSAGE, message.as_str()).inspect_err(|_| {
+            rerror(
+                format!(
+                    "populate_request: failed to add reply_attribute: {}",
+                    REPLY_MESSAGE
+                )
+                .as_str(),
+                request,
+            );
+        })?;
+        vp_add_pair(talloc_ctx, reply_vp, REPLY_TUNNEL_TYPE, tunnel_type).inspect_err(|_| {
+            rerror(
+                format!(
+                    "populate_request: failed to add reply_attribute: {}",
+                    REPLY_TUNNEL_TYPE
+                )
+                .as_str(),
+                request,
+            );
+        })?;
         vp_add_pair(
             talloc_ctx,
             reply_vp,
             REPLY_TUNNEL_MEDIUM_TYPE,
             tunnel_medium_type,
-        )?;
+        )
+        .inspect_err(|_| {
+            rerror(
+                format!(
+                    "populate_request: failed to add reply_attribute: {}",
+                    REPLY_TUNNEL_MEDIUM_TYPE
+                )
+                .as_str(),
+                request,
+            );
+        })?;
         vp_add_pair(
             talloc_ctx,
             reply_vp,
             REPLY_TUNNEL_PRIVATE_GROUP_ID,
             tunnel_private_group_id.as_str(),
-        )?;
+        )
+        .inspect_err(|_| {
+            rerror(
+                format!(
+                    "populate_request: failed to add reply_attribute: {}",
+                    REPLY_TUNNEL_PRIVATE_GROUP_ID
+                )
+                .as_str(),
+                request,
+            );
+        })?;
 
         Ok(())
     }
@@ -360,9 +422,10 @@ impl AuthResponse {
 fn vp_add_pair(
     talloc_ctx: *mut c_void,
     vp: *mut *mut value_pair,
-    key: &CStr,
+    key: &str,
     value: &str,
 ) -> Result<(), AuthError> {
+    let key = CString::new(key).map_err(|_| AuthError::Fail)?;
     let value = CString::new(value).map_err(|_| AuthError::Fail)?;
 
     let key_c = key.as_ptr();

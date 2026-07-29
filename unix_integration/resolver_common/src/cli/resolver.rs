@@ -325,16 +325,22 @@ async fn handle_client(
                     }
 
                 }
-                ClientRequest::PamAccountAllowed(account_id) => cachelayer
-                    .pam_account_allowed(account_id.as_str())
+                ClientRequest::PamAccountAllowed {
+                    account_id,
+                    info
+                } => cachelayer
+                    .pam_account_allowed(account_id.as_str(), &info)
                     .await
                     .map(ClientResponse::PamStatus)
                     .unwrap_or(ClientResponse::Error(
                         OperationError::KU005ErrorCheckingAccount,
                     )),
-                ClientRequest::PamAccountBeginSession(account_id) => {
+                ClientRequest::PamAccountBeginSession {
+                    account_id,
+                    info
+                } => {
                     match cachelayer
-                        .pam_account_beginsession(account_id.as_str())
+                        .pam_account_beginsession(account_id.as_str(), &info)
                         .await
                     {
                         Ok(Some(info)) => {
@@ -638,11 +644,11 @@ async fn main_inner<F: SparkleFlavour>(clap_args: clap::ArgMatches, flavour: F) 
     if clap_args.get_flag("configtest") {
         eprintln!("###################################");
         eprintln!("Dumping configs:\n###################################");
-        eprintln!("kanidm_unixd config (from {:#?})", &unixd_path);
+        eprintln!("kanidm_unixd config (from {:#?})", unixd_path);
         eprintln!("{cfg}");
         eprintln!("###################################");
         if let Some((cb, _)) = client_builder.as_ref() {
-            eprintln!("kanidm client config (from {:#?})", &cfg_path);
+            eprintln!("kanidm client config (from {:#?})", cfg_path);
             eprintln!("{cb}");
         } else {
             eprintln!("kanidm client: disabled");

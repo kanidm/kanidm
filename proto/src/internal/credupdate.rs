@@ -187,6 +187,7 @@ pub struct CUStatus {
     // Display hints + The credential details.
     pub can_commit: bool,
     pub warnings: Vec<CURegWarning>,
+    pub dirty: bool,
     pub primary: Option<CredentialDetail>,
     pub primary_state: CUCredState,
     pub passkeys: Vec<PasskeyDetail>,
@@ -302,7 +303,7 @@ pub struct BackupCodesView {
     pub backup_codes: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, ToSchema, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum PasswordFeedback {
     // https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Suggestion.html
@@ -336,6 +337,7 @@ pub enum PasswordFeedback {
     CommonNamesAndSurnamesAreEasyToGuess,
     // Custom
     TooShort(u32),
+    TooLong(u32),
     BadListed,
     DontReusePasswords,
 }
@@ -423,6 +425,10 @@ impl fmt::Display for PasswordFeedback {
             PasswordFeedback::TooShort(minlength) => write!(
                 f,
                 "Password was too short, needs to be at least {minlength} characters long."
+            ),
+            PasswordFeedback::TooLong(maxlength) => write!(
+                f,
+                "Password was too long, must not be greater than {maxlength} characters long."
             ),
             PasswordFeedback::UseAFewWordsAvoidCommonPhrases => {
                 write!(f, "Use a few words and avoid common phrases.")

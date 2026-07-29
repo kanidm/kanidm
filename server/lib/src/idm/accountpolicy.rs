@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::value::CredentialType;
+use kanidm_lib_crypto::{PW_MAX_LENGTH_NIST, PW_MFA_MIN_LENGTH, PW_SFA_MIN_LENGTH_NIST};
 use webauthn_rs::prelude::AttestationCaList;
 
 #[derive(Clone)]
@@ -34,7 +35,7 @@ impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
 
         let pw_min_length = val
             .get_ava_single_uint32(Attribute::AuthPasswordMinimumLength)
-            .unwrap_or(PW_MIN_LENGTH);
+            .unwrap_or(PW_MFA_MIN_LENGTH);
 
         let credential_policy = val
             .get_ava_single_credential_type(Attribute::CredentialTypeMinimum)
@@ -74,6 +75,7 @@ pub(crate) struct ResolvedAccountPolicy {
     privilege_expiry: u32,
     authsession_expiry: u32,
     pw_min_length: u32,
+    pw_max_length: u32,
     credential_policy: CredentialType,
     webauthn_att_ca_list: Option<AttestationCaList>,
     limit_search_max_filter_test: Option<u64>,
@@ -87,7 +89,8 @@ impl ResolvedAccountPolicy {
         ResolvedAccountPolicy {
             privilege_expiry: DEFAULT_AUTH_PRIVILEGE_EXPIRY,
             authsession_expiry: DEFAULT_AUTH_SESSION_EXPIRY,
-            pw_min_length: PW_MIN_LENGTH,
+            pw_min_length: PW_MFA_MIN_LENGTH,
+            pw_max_length: PW_MAX_LENGTH_NIST,
             credential_policy: CredentialType::Any,
             webauthn_att_ca_list: None,
             limit_search_max_filter_test: Some(DEFAULT_LIMIT_SEARCH_MAX_FILTER_TEST),
@@ -104,7 +107,8 @@ impl ResolvedAccountPolicy {
         let mut accumulate = ResolvedAccountPolicy {
             privilege_expiry: MAXIMUM_AUTH_PRIVILEGE_EXPIRY,
             authsession_expiry: MAXIMUM_AUTH_SESSION_EXPIRY,
-            pw_min_length: PW_MIN_LENGTH,
+            pw_min_length: PW_MFA_MIN_LENGTH,
+            pw_max_length: PW_MAX_LENGTH_NIST,
             credential_policy: CredentialType::Any,
             webauthn_att_ca_list: None,
             limit_search_max_filter_test: None,
@@ -170,6 +174,14 @@ impl ResolvedAccountPolicy {
             }
         });
 
+        // Per NIST, if a password can be used as a single factor authenticator,
+        // then we need to set the minimum length to a greater value.
+        if accumulate.credential_policy < CredentialType::Mfa
+            && accumulate.pw_min_length < PW_SFA_MIN_LENGTH_NIST
+        {
+            accumulate.pw_min_length = PW_SFA_MIN_LENGTH_NIST;
+        }
+
         accumulate
     }
 
@@ -183,6 +195,10 @@ impl ResolvedAccountPolicy {
 
     pub(crate) fn pw_min_length(&self) -> u32 {
         self.pw_min_length
+    }
+
+    pub(crate) fn pw_max_length(&self) -> u32 {
+        self.pw_max_length
     }
 
     pub(crate) fn credential_policy(&self) -> CredentialType {

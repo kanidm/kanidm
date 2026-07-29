@@ -172,7 +172,6 @@ pub const RECYCLEBIN_MAX_AGE: u64 = 7 * 86400;
 pub const AUTH_SESSION_TIMEOUT: u64 = 300;
 // 5 minute mfa reg window
 pub const MFAREG_SESSION_TIMEOUT: u64 = 300;
-pub const PW_MIN_LENGTH: u32 = 10;
 
 // Maximum - Sessions have no upper bound.
 pub const MAXIMUM_AUTH_SESSION_EXPIRY: u32 = u32::MAX;

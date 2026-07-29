@@ -54,7 +54,7 @@ pub use self::oauth::{
 pub use self::restricted::ValueSetRestricted;
 pub use self::s256::ValueSetSha256;
 pub use self::secret::ValueSetSecret;
-pub use self::session::{ValueSetApiToken, ValueSetOauth2Session, ValueSetSession};
+pub use self::session::{ValueSetApiTokenSet, ValueSetOauth2Session, ValueSetSession};
 pub use self::spn::ValueSetSpn;
 pub use self::ssh::ValueSetSshKey;
 pub use self::syntax::ValueSetSyntax;
@@ -964,7 +964,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::JwsKeyEs256(k) => ValueSetJwsKeyEs256::new(k),
         Value::JwsKeyRs256(k) => ValueSetJwsKeyRs256::new(k),
         Value::Session(u, m) => ValueSetSession::new(u, m),
-        Value::ApiToken(u, m) => ValueSetApiToken::new(u, m),
+        Value::ApiToken(u, m) => ValueSetApiTokenSet::new(u, m),
         Value::Oauth2Session(u, m) => ValueSetOauth2Session::new(u, m),
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::TotpSecret(l, t) => ValueSetTotpSecret::new(l, t),
@@ -1043,7 +1043,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Passkey(set) => ValueSetPasskey::from_dbvs2(set),
         DbValueSetV2::AttestedPasskey(set) => ValueSetAttestedPasskey::from_dbvs2(set),
         DbValueSetV2::Session(set) => ValueSetSession::from_dbvs2(&set),
-        DbValueSetV2::ApiToken(set) => ValueSetApiToken::from_dbvs2(set),
+        DbValueSetV2::ApiTokenSet(set) => ValueSetApiTokenSet::from_dbvs2(set),
         DbValueSetV2::Oauth2Session(set) => ValueSetOauth2Session::from_dbvs2(set),
         DbValueSetV2::JwsKeyEs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
         DbValueSetV2::JwsKeyRs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),

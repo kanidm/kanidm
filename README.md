@@ -52,8 +52,11 @@ All interactions with the project are covered by our [code of conduct].
 
 When we develop features, we follow our project's guidelines on [rights and ethics].
 
+We maintain an [AI/LLM usage policy] for interactions with this project.
+
 [code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
 [rights and ethics]: https://github.com/kanidm/kanidm/blob/master/book/src/developers/developer_ethics.md
+[AI/LLM usage policy]: https://github.com/kanidm/kanidm/blob/master/book/src/developers/ai_llm_policy.md
 
 ## Getting in Contact / Questions
 
@@ -168,8 +171,8 @@ replication system, developed based on enterprise LDAP server experience.
 ## Developer Getting Started
 
 If you want to contribute to Kanidm there is a getting started [guide for developers]. IDM is a diverse topic and we
-encourage contributions of many kinds in the project, from people of all backgrounds. Please note that we don't
-accept AI generated content in contributions.
+encourage contributions of many kinds in the project, from people of all backgrounds. Please note that we don't accept
+AI generated content in contributions.
 
 When developing the server you should refer to the latest commit documentation instead.
 

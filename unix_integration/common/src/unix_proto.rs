@@ -103,13 +103,23 @@ pub enum PamAuthRequest {
     Pin { cred: String },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PamServiceInfo {
     pub service: String,
     // Somehow SDDM doesn't set this ...
     pub tty: Option<String>,
     // Only set if it really is a remote host?
     pub rhost: Option<String>,
+}
+
+impl Default for PamServiceInfo {
+    fn default() -> Self {
+        PamServiceInfo {
+            service: "kanidm:default".into(),
+            tty: None,
+            rhost: None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -129,8 +139,14 @@ pub enum ClientRequest {
         request: PamAuthRequest,
         session_id: u64,
     },
-    PamAccountAllowed(String),
-    PamAccountBeginSession(String),
+    PamAccountAllowed {
+        account_id: String,
+        info: PamServiceInfo,
+    },
+    PamAccountBeginSession {
+        account_id: String,
+        info: PamServiceInfo,
+    },
     InvalidateCache,
     ClearCache,
     Status,
@@ -155,10 +171,22 @@ impl ClientRequest {
                 info.rhost.as_deref().unwrap_or("")
             ),
             ClientRequest::PamAuthenticateStep { .. } => "PamAuthenticateStep".to_string(),
-            ClientRequest::PamAccountAllowed(id) => {
-                format!("PamAccountAllowed({id})")
-            }
-            ClientRequest::PamAccountBeginSession(_) => "PamAccountBeginSession".to_string(),
+
+            ClientRequest::PamAccountAllowed { account_id, info } => format!(
+                "PamAccountAllowed{{ account_id={} tty={} pam_secvice{} rhost={} }}",
+                account_id,
+                info.service,
+                info.tty.as_deref().unwrap_or(""),
+                info.rhost.as_deref().unwrap_or("")
+            ),
+            ClientRequest::PamAccountBeginSession { account_id, info } => format!(
+                "PamAccountBeginSession{{ account_id={} tty={} pam_secvice{} rhost={} }}",
+                account_id,
+                info.service,
+                info.tty.as_deref().unwrap_or(""),
+                info.rhost.as_deref().unwrap_or("")
+            ),
+
             ClientRequest::InvalidateCache => "InvalidateCache".to_string(),
             ClientRequest::ClearCache => "ClearCache".to_string(),
             ClientRequest::Status => "Status".to_string(),

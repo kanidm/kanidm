@@ -14,7 +14,7 @@ use axum::{
     Router,
 };
 use axum_extra::extract::cookie::CookieJar;
-use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
+use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsSigner, JwsVerifier};
 use crypto_glue::{
     traits::DecodeDer,
     x509::{x509_digest_public_key_sha256, Certificate},
@@ -159,8 +159,10 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
                     all_pages.push(js)
                 }
                 Err(err) => {
-                    admin_error!(
+                    let cwd_path = std::env::current_dir().unwrap_or_default();
+                    error!(
                         ?err,
+                        cwd = %cwd_path.display(),
                         "Failed to generate integrity hash for {} - cancelling startup!",
                         filepath
                     );
@@ -178,7 +180,6 @@ async fn handler_404() -> Response {
 
 pub async fn create_https_server(
     config: Configuration,
-    jws_signer: JwsHs256Signer,
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
@@ -271,6 +272,14 @@ pub async fn create_https_server(
         LoggerType::OpenTelemetry
     } else {
         LoggerType::TracingForest
+    };
+
+    let jws_signer = match JwsHs256Signer::generate_hs256() {
+        Ok(k) => k.set_sign_option_embed_kid(false),
+        Err(e) => {
+            error!("Unable to setup jws signer -> {:?}", e);
+            return Err(());
+        }
     };
 
     let state = ServerState {

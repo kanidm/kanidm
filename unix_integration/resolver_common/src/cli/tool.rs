@@ -79,13 +79,15 @@ pub async fn main<F: SparkleFlavour>(flavour: F) -> ExitCode {
 
             info!("Sending request for user {}", &account_id);
 
+            let pam_info = PamServiceInfo {
+                service: "kanidm-unix".to_string(),
+                tty: None,
+                rhost: None,
+            };
+
             let mut req = ClientRequest::PamAuthenticateInit {
                 account_id: account_id.clone(),
-                info: PamServiceInfo {
-                    service: "kanidm-unix".to_string(),
-                    tty: None,
-                    rhost: None,
-                },
+                info: pam_info.clone(),
             };
             loop {
                 match daemon_client.call(req, None).await {
@@ -160,7 +162,10 @@ pub async fn main<F: SparkleFlavour>(flavour: F) -> ExitCode {
                 }
             }
 
-            let sereq = ClientRequest::PamAccountAllowed(account_id);
+            let sereq = ClientRequest::PamAccountAllowed {
+                account_id,
+                info: pam_info,
+            };
 
             match daemon_client.call(sereq, None).await {
                 Ok(r) => match r {
