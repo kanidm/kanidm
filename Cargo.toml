@@ -44,6 +44,7 @@ members = [
     "libs/profiles",
     "libs/scim_proto",
     "libs/sketching",
+    "libs/templating",
     "libs/users",
 ]
 
