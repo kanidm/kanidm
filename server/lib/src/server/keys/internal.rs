@@ -1164,17 +1164,15 @@ impl KeyObjectInternalJwtRs256 {
 
         let keys = signing_keys
             .iter()
-            .filter_map(|(_key_id, rs256)| {
-                match &rs256.status {
-                    InternalJwtRs256Status::Valid { verifier, .. }
-                    | InternalJwtRs256Status::Retained { verifier, .. } => verifier
-                        .public_key_as_jwk()
-                        .map_err(|err| {
-                            error!(?err);
-                        })
-                        .ok(),
-                    InternalJwtRs256Status::Revoked { .. } => None,
-                }
+            .filter_map(|(_key_id, rs256)| match &rs256.status {
+                InternalJwtRs256Status::Valid { verifier, .. }
+                | InternalJwtRs256Status::Retained { verifier, .. } => verifier
+                    .public_key_as_jwk()
+                    .map_err(|err| {
+                        error!(?err);
+                    })
+                    .ok(),
+                InternalJwtRs256Status::Revoked { .. } => None,
             })
             .collect::<Vec<_>>();
 
