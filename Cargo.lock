@@ -4514,6 +4514,7 @@ name = "nss_sparkle"
 version = "1.11.0-dev"
 dependencies = [
  "cc",
+ "libc",
  "libnss",
  "nss_sparkle_common",
 ]

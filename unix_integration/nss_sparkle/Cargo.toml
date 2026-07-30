@@ -19,6 +19,7 @@ path = "src/lib.rs"
 nss_sparkle_common = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
+libc = { workspace = true }
 libnss = { workspace = true }
 
 [target."cfg(target_os = \"freebsd\")".build-dependencies]
