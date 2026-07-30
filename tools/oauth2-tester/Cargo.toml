@@ -34,6 +34,5 @@ tokio = { version = "1.51.1", default-features = false, features = ["rt", "macro
 time = { version = "^0.3.47", features = ["formatting", "local-offset"] }
 url = "^2.5.8"
 
-
 tracing = "^0.1.44"
 tracing-subscriber = { version = "^0.3.23", features = ["env-filter"] }

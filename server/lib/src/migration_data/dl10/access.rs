@@ -1,7 +1,7 @@
 #![allow(clippy::expect_used)]
 //! Constant Entries for the IDM
 
-use crate::constants::uuids::*;
+// use crate::constants::uuids::*;
 use crate::entry::EntryInitNew;
 use crate::prelude::*;
 use crate::value::Value;
