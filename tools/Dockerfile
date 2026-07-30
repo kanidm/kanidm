@@ -61,7 +61,7 @@ RUN \
         --release && \
     cargo auditable install \
         --git https://github.com/kanidm/webauthn-rs.git \
-        --rev 2ac5ff0e20f323cd904856a38a15899adf13fa5b \
+        --rev 8d17715ae596173aac0577846b3cd3982616d50f \
         --force fido-mds-tool \
         --target-dir="/usr/src/kanidm/target/" && \
     sccache -s
