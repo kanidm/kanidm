@@ -2321,8 +2321,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let loopback_uri_matched = auth_req_uri_is_loopback && type_allows_localhost_redirect;
 
         // Strict uri validation is in use, must be an exact match.
-        let strict_redirect_uri_matched =
-            o2rs.redirect_uris.contains(&auth_req.redirect_uri);
+        let strict_redirect_uri_matched = o2rs.redirect_uris.contains(&auth_req.redirect_uri);
 
         // Allow opaque origins such as app uris.
         let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
@@ -2333,9 +2332,8 @@ impl IdmServerProxyReadTransaction<'_> {
             || auth_req.redirect_uri.scheme() == "https";
 
         // We must assert that *AT LEAST* one of the above match conditions holds true to proceed.
-        let valid_match_condition_asserted = loopback_uri_matched
-            || strict_redirect_uri_matched
-            || opaque_origin_matched;
+        let valid_match_condition_asserted =
+            loopback_uri_matched || strict_redirect_uri_matched || opaque_origin_matched;
 
         if valid_match_condition_asserted {
             debug!(

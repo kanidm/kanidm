@@ -44,9 +44,8 @@ pub type DomainVersion = u32;
 /// previously.
 pub const DOMAIN_LEVEL_0: DomainVersion = 0;
 
-/// Domain Level introduced with 1.5.0.
-/// Deprecated as of 1.7.0
-pub const DOMAIN_LEVEL_9: DomainVersion = 9;
+/// The domain's patch level - this is used for emergency migrations
+/// within a release cycle, and should not be changed otherwise.
 pub const PATCH_LEVEL_2: u32 = 2;
 
 /// Domain Level introduced with 1.6.0.
@@ -96,7 +95,7 @@ pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_1_13;
 
 // This is the LOWEST level of database we can recreate. This is important for testing,
 // but we don't actually expect it to be used.
-pub const DOMAIN_MIN_CREATION_LEVEL: DomainVersion = DOMAIN_LEVEL_10;
+pub const DOMAIN_MIN_CREATION_LEVEL: DomainVersion = DOMAIN_LEVEL_11;
 
 // The previous releases domain functional level
 pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL - 1;
