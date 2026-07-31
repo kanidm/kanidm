@@ -4,7 +4,7 @@ authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
 ]
-rust-version = "1.93"
+rust-version = "1.96"
 edition = "2021"
 license = "MPL-2.0"
 homepage = "https://github.com/kanidm/kanidm/"
@@ -188,7 +188,7 @@ compact_jwt = "^0.5.6"
 concread = "^0.5.10"
 cron = "0.17.0"
 crossbeam = "0.8.4"
-crypto-glue = "^0.1.17"
+crypto-glue = "^0.1.18"
 csv = "1.4.0"
 dialoguer = "0.12.0"
 dhat = "0.3.3"
