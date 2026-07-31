@@ -2296,6 +2296,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         } else {
             match self.get_domain_version() {
                 DOMAIN_LEVEL_1_11 => self.migrate_schema_1_11()?,
+                DOMAIN_LEVEL_1_12 => self.migrate_schema_1_12()?,
                 _ => {
                     debug_assert!(false, "domain level was not configured in reload_schema");
                     return Err(OperationError::MG0001InvalidReMigrationLevel);
@@ -2659,10 +2660,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.migrate_domain_1_11_to_1_12()?;
         }
 
+        if previous_version <= DOMAIN_LEVEL_1_12 && domain_info_version >= DOMAIN_LEVEL_1_13 {
+            // 1.12 -> 1.13
+            self.migrate_domain_1_12_to_1_13()?;
+        }
+
         // This is here to catch when we increase domain levels but didn't create the migration
         // hooks. If this fails it probably means you need to add another migration hook
         // in the above.
-        const { assert!(DOMAIN_MAX_LEVEL == DOMAIN_LEVEL_1_12) };
+        const { assert!(DOMAIN_MAX_LEVEL == DOMAIN_LEVEL_1_13) };
         debug_assert!(domain_info_version <= DOMAIN_MAX_LEVEL);
 
         Ok(())
