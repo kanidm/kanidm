@@ -1,13 +1,8 @@
-use crate::constants::uuids::*;
-use crate::entry::{entry_init_fn, EntryInitNew};
-use crate::prelude::{Attribute, EntryClass};
-use crate::value::Value;
-use std::sync::LazyLock;
-
 // Default entries for system_config
 // This is separated because the password badlist section may become very long
+use crate::prelude::*;
 
-pub static E_SYSTEM_INFO_V1: LazyLock<EntryInitNew> = LazyLock::new(|| {
+pub fn e_system_info_v1() -> EntryInitNew {
     entry_init_fn([
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::SystemInfo.to_value()),
@@ -19,15 +14,16 @@ pub static E_SYSTEM_INFO_V1: LazyLock<EntryInitNew> = LazyLock::new(|| {
         ),
         (Attribute::Version, Value::Uint32(20)),
     ])
-});
+}
 
-pub static E_DOMAIN_INFO_DL6: LazyLock<EntryInitNew> = LazyLock::new(|| {
+pub fn e_domain_info_dl6() -> EntryInitNew {
     entry_init_fn([
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::DomainInfo.to_value()),
         (Attribute::Class, EntryClass::System.to_value()),
         (Attribute::Class, EntryClass::KeyObject.to_value()),
         (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJwtHs256.to_value()),
         (Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value()),
         (Attribute::Name, Value::new_iname("domain_local")),
         (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
@@ -36,7 +32,38 @@ pub static E_DOMAIN_INFO_DL6: LazyLock<EntryInitNew> = LazyLock::new(|| {
             Value::new_utf8s("This local domain's info and metadata object."),
         ),
     ])
-});
+}
+
+pub fn e_uuid_domain_id_verification_key_v1() -> EntryInitNew {
+    entry_init_fn([
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::KeyObject.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectHkdfS256.to_value()),
+        (
+            Attribute::Uuid,
+            Value::Uuid(UUID_DOMAIN_ID_VERIFICATION_KEY),
+        ),
+        (
+            Attribute::Description,
+            Value::new_utf8s("The domain-local HMAC key used for user ID verification."),
+        ),
+    ])
+}
+
+pub fn e_hmac_name_history_feature() -> EntryInitNew {
+    entry_init_fn([
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Feature.to_value()),
+        (Attribute::Class, EntryClass::KeyObject.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectHkdfS256.to_value()),
+        (Attribute::Uuid, Value::Uuid(UUID_HMAC_NAME_FEATURE)),
+        (Attribute::Name, Value::new_iname("hmac_name_feature")),
+        (
+            Attribute::Description,
+            Value::new_utf8s("Configuration of the HMAC Name History Feature."),
+        ),
+    ])
+}
 
 // This is a function instead of a static/lazylock because otherwise it entirely blows up the stack, and we only use it at migration time.
 pub fn e_system_config_v1() -> EntryInitNew {
@@ -52,7 +79,7 @@ pub fn e_system_config_v1() -> EntryInitNew {
     ]);
     for pw in [
         "bad@no3IBTyqHu$list",
-        "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
+        "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiR",
         "100preteamare",
         "14defebrero",
         "1life1love",

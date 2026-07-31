@@ -1,11 +1,7 @@
 #![allow(clippy::expect_used)]
 //! Constant Entries for the IDM
 
-use crate::entry::EntryInitNew;
 use crate::prelude::*;
-use crate::value::Value;
-use kanidm_proto::internal::Filter as ProtoFilter;
-use std::sync::LazyLock;
 
 /// either recycled or tombstone
 pub static FILTER_RECYCLED_OR_TOMBSTONE: LazyLock<ProtoFilter> = LazyLock::new(|| {
@@ -362,6 +358,7 @@ pub static IDM_ACP_ACP_MANAGE_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
     search_attrs: vec![
         Attribute::Class,
         Attribute::Name,
+        Attribute::Uuid,
         Attribute::Description,
         Attribute::AcpEnable,
         Attribute::AcpReceiverGroup,
@@ -458,6 +455,7 @@ pub static IDM_ACP_GROUP_READ_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         Attribute::Spn,
         Attribute::Description,
         Attribute::Member,
+        Attribute::MemberOf,
         Attribute::EntryManagedBy,
     ],
     ..Default::default()
@@ -568,6 +566,7 @@ pub static IDM_ACP_OAUTH2_MANAGE: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         Attribute::Description,
         Attribute::DisplayName,
         Attribute::Name,
+        Attribute::Uuid,
         Attribute::Spn,
         Attribute::OAuth2Session,
         Attribute::OAuth2RsOrigin,
@@ -578,6 +577,7 @@ pub static IDM_ACP_OAUTH2_MANAGE: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         Attribute::OAuth2AllowInsecureClientDisablePkce,
         Attribute::OAuth2JwtLegacyCryptoEnable,
         Attribute::OAuth2PreferShortUsername,
+        Attribute::OAuth2RefreshTokenExpiry,
         Attribute::OAuth2AllowLocalhostRedirect,
         Attribute::OAuth2RsClaimMap,
         Attribute::Image,
@@ -598,6 +598,7 @@ pub static IDM_ACP_OAUTH2_MANAGE: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         Attribute::OAuth2AllowInsecureClientDisablePkce,
         Attribute::OAuth2JwtLegacyCryptoEnable,
         Attribute::OAuth2PreferShortUsername,
+        Attribute::OAuth2RefreshTokenExpiry,
         Attribute::OAuth2AllowLocalhostRedirect,
         Attribute::OAuth2RsClaimMap,
         Attribute::Image,
@@ -617,6 +618,7 @@ pub static IDM_ACP_OAUTH2_MANAGE: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         Attribute::OAuth2AllowInsecureClientDisablePkce,
         Attribute::OAuth2JwtLegacyCryptoEnable,
         Attribute::OAuth2PreferShortUsername,
+        Attribute::OAuth2RefreshTokenExpiry,
         Attribute::OAuth2AllowLocalhostRedirect,
         Attribute::OAuth2RsClaimMap,
         Attribute::Image,
@@ -638,6 +640,7 @@ pub static IDM_ACP_OAUTH2_MANAGE: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         Attribute::OAuth2AllowInsecureClientDisablePkce,
         Attribute::OAuth2JwtLegacyCryptoEnable,
         Attribute::OAuth2PreferShortUsername,
+        Attribute::OAuth2RefreshTokenExpiry,
         Attribute::OAuth2AllowLocalhostRedirect,
         Attribute::OAuth2RsClaimMap,
         Attribute::Image,
@@ -651,6 +654,27 @@ pub static IDM_ACP_OAUTH2_MANAGE: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         EntryClass::OAuth2ResourceServerBasic,
         EntryClass::OAuth2ResourceServerPublic,
     ],
+    ..Default::default()
+});
+
+pub static IDM_ACP_OAUTH2_MANAGE_BASIC: LazyLock<BuiltinAcp> = LazyLock::new(|| BuiltinAcp {
+    classes: vec![
+        EntryClass::Object,
+        EntryClass::AccessControlProfile,
+        EntryClass::AccessControlModify,
+        EntryClass::AccessControlSearch,
+    ],
+    name: "idm_acp_oauth2_manage_basic",
+    uuid: UUID_IDM_ACP_OAUTH2_MANAGE_BASIC,
+    description: "Builtin IDM Control for managing Basic OAuth2 resource server integrations.",
+    receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ADMINS]),
+    target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+        match_class_filter!(EntryClass::OAuth2ResourceServerBasic),
+        FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+    ])),
+    search_attrs: vec![Attribute::OAuth2ConsentPromptEnable],
+    modify_removed_attrs: vec![Attribute::OAuth2ConsentPromptEnable],
+    modify_present_attrs: vec![Attribute::OAuth2ConsentPromptEnable],
     ..Default::default()
 });
 
@@ -677,6 +701,7 @@ pub static IDM_ACP_DOMAIN_ADMIN_DL9: LazyLock<BuiltinAcp> = LazyLock::new(|| Bui
         Attribute::Name,
         Attribute::Uuid,
         Attribute::DomainAllowEasterEggs,
+        Attribute::DomainAllowAccountRecovery,
         Attribute::DomainDisplayName,
         Attribute::DomainName,
         Attribute::DomainLdapBasedn,
@@ -694,6 +719,7 @@ pub static IDM_ACP_DOMAIN_ADMIN_DL9: LazyLock<BuiltinAcp> = LazyLock::new(|| Bui
         Attribute::DomainLdapBasedn,
         Attribute::LdapMaxQueryableAttrs,
         Attribute::DomainAllowEasterEggs,
+        Attribute::DomainAllowAccountRecovery,
         Attribute::LdapAllowUnixPwBind,
         Attribute::KeyActionRevoke,
         Attribute::KeyActionRotate,
@@ -705,6 +731,7 @@ pub static IDM_ACP_DOMAIN_ADMIN_DL9: LazyLock<BuiltinAcp> = LazyLock::new(|| Bui
         Attribute::LdapMaxQueryableAttrs,
         Attribute::DomainSsid,
         Attribute::DomainAllowEasterEggs,
+        Attribute::DomainAllowAccountRecovery,
         Attribute::LdapAllowUnixPwBind,
         Attribute::KeyActionRevoke,
         Attribute::KeyActionRotate,
@@ -735,8 +762,8 @@ pub static IDM_ACP_SYNC_ACCOUNT_MANAGE_V1: LazyLock<BuiltinAcp> = LazyLock::new(
     ])),
     search_attrs: vec![
         Attribute::Class,
-        Attribute::Uuid,
         Attribute::Name,
+        Attribute::Uuid,
         Attribute::Description,
         Attribute::JwsEs256PrivateKey,
         Attribute::SyncTokenSession,
@@ -815,8 +842,10 @@ pub static IDM_ACP_RADIUS_SERVERS_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| Bu
     search_attrs: vec![
         Attribute::Class,
         Attribute::Name,
-        Attribute::Spn,
         Attribute::Uuid,
+        Attribute::DisplayName,
+        Attribute::MemberOf,
+        Attribute::Spn,
         Attribute::RadiusSecret,
     ],
     ..Default::default()
@@ -864,8 +893,8 @@ pub static IDM_ACP_MAIL_SERVERS_DL8: LazyLock<BuiltinAcp> = LazyLock::new(|| Bui
     search_attrs: vec![
         Attribute::Class,
         Attribute::Name,
-        Attribute::Spn,
         Attribute::Uuid,
+        Attribute::Spn,
         Attribute::DisplayName,
         Attribute::Mail,
         Attribute::Member,
@@ -910,6 +939,7 @@ pub static IDM_ACP_SELF_READ_DL8: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
     search_attrs: vec![
         Attribute::Class,
         Attribute::Name,
+        Attribute::Uuid,
         Attribute::Spn,
         Attribute::DisplayName,
         Attribute::LegalName,
@@ -919,7 +949,6 @@ pub static IDM_ACP_SELF_READ_DL8: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         Attribute::RadiusSecret,
         Attribute::GidNumber,
         Attribute::LoginShell,
-        Attribute::Uuid,
         Attribute::SyncParentUuid,
         Attribute::AccountExpire,
         Attribute::AccountValidFrom,
@@ -930,6 +959,8 @@ pub static IDM_ACP_SELF_READ_DL8: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         Attribute::ApplicationPassword,
         Attribute::SshPublicKey,
         Attribute::UnixPassword,
+        Attribute::LastModifiedCid,
+        Attribute::PasswordChangedTime,
     ],
     ..Default::default()
 });
@@ -966,7 +997,7 @@ pub static IDM_ACP_SELF_WRITE_DL8: LazyLock<BuiltinAcp> = LazyLock::new(|| {
             Attribute::ApplicationPassword,
         ],
         ..Default::default()
-    }
+}
 });
 
 pub static IDM_ACP_SELF_NAME_WRITE_DL7: LazyLock<BuiltinAcp> = LazyLock::new(|| {
@@ -996,7 +1027,7 @@ pub static IDM_ACP_SELF_NAME_WRITE_DL7: LazyLock<BuiltinAcp> = LazyLock::new(|| 
             Attribute::LegalName,
         ],
         ..Default::default()
-    }
+}
 });
 
 pub static IDM_ACP_ACCOUNT_SELF_WRITE_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| {
@@ -1015,7 +1046,7 @@ pub static IDM_ACP_ACCOUNT_SELF_WRITE_V1: LazyLock<BuiltinAcp> = LazyLock::new(|
             Attribute::UserAuthTokenSession
             ],
         ..Default::default()
-    }
+}
 });
 
 pub static IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| {
@@ -1028,13 +1059,13 @@ pub static IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1: LazyLock<BuiltinAcp> = LazyLock::
         name: "idm_acp_all_accounts_posix_read",
         uuid: UUID_IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1,
         description:
-            "Builtin IDM Control for reading minimal posix attrs - applies anonymous and all authenticated accounts.",
-        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_ACCOUNTS] ),
+            "Builtin IDM control for reading minimal POSIX attrs. Required for services to authenticate UNIX users.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_UNIX_AUTHENTICATION_READ] ),
         target: BuiltinAcpTarget::Filter( ProtoFilter::And(
             vec![
                 ProtoFilter::Or(vec![
-                    match_class_filter!(EntryClass::Account),
-                    match_class_filter!(EntryClass::Group),
+                    match_class_filter!(EntryClass::PosixAccount),
+                    match_class_filter!(EntryClass::PosixGroup),
                 ]),
                 FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
             ]
@@ -1042,19 +1073,20 @@ pub static IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1: LazyLock<BuiltinAcp> = LazyLock::
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::Uuid,
             Attribute::Spn,
             Attribute::DisplayName,
             Attribute::Class,
             Attribute::MemberOf,
             Attribute::Member,
             Attribute::DynMember,
-            Attribute::Uuid,
             Attribute::GidNumber,
             Attribute::LoginShell,
             Attribute::SshPublicKey,
+            Attribute::PasswordChangedTime,
         ],
         ..Default::default()
-    }
+}
 });
 
 pub static IDM_ACP_ACCOUNT_MAIL_READ_DL6: LazyLock<BuiltinAcp> = LazyLock::new(|| BuiltinAcp {
@@ -1100,6 +1132,7 @@ pub static IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1: LazyLock<BuiltinAcp> 
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
+            Attribute::Spn,
             Attribute::Uuid,
             Attribute::Description,
             Attribute::BadlistPassword,
@@ -1149,6 +1182,7 @@ pub static IDM_ACP_HP_GROUP_UNIX_MANAGE_V1: LazyLock<BuiltinAcp> = LazyLock::new
         Attribute::Spn,
         Attribute::Description,
         Attribute::Member,
+        Attribute::MemberOf,
         Attribute::GidNumber,
     ],
     modify_removed_attrs: vec![Attribute::GidNumber],
@@ -1184,6 +1218,7 @@ pub static IDM_ACP_GROUP_MANAGE_DL9: LazyLock<BuiltinAcp> = LazyLock::new(|| Bui
         Attribute::Description,
         Attribute::Mail,
         Attribute::Member,
+        Attribute::MemberOf,
         Attribute::DynMember,
         Attribute::EntryManagedBy,
     ],
@@ -1479,16 +1514,23 @@ pub static IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1: LazyLock<BuiltinAcp> =
             Attribute::AccountValidFrom,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::AccountSoftlockExpire,
         ],
         modify_removed_attrs: vec![
             Attribute::PrimaryCredential,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::AccountValidFrom,
+            Attribute::AccountExpire,
+            Attribute::AccountSoftlockExpire,
         ],
         modify_present_attrs: vec![
             Attribute::PrimaryCredential,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::AccountValidFrom,
+            Attribute::AccountExpire,
+            Attribute::AccountSoftlockExpire,
         ],
         ..Default::default()
     });
@@ -1567,6 +1609,7 @@ pub static IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: LazyLock<BuiltinAcp> = LazyLock::n
         Attribute::Description,
         Attribute::AccountExpire,
         Attribute::AccountValidFrom,
+        Attribute::Mail,
     ],
     create_classes: vec![
         EntryClass::Object,
@@ -1581,6 +1624,7 @@ pub static IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1: LazyLock<BuiltinAcp> = LazyLock::n
         EntryClass::Object,
         EntryClass::AccessControlProfile,
         EntryClass::AccessControlModify,
+        EntryClass::AccessControlSearch,
     ],
     name: "idm_acp_service_account_manage",
     uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1,
@@ -1591,6 +1635,20 @@ pub static IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1: LazyLock<BuiltinAcp> = LazyLock::n
         match_class_filter!(EntryClass::Account).clone(),
         FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
     ])),
+    search_attrs: vec![
+        Attribute::Class,
+        Attribute::Name,
+        Attribute::Spn,
+        Attribute::Uuid,
+        Attribute::EntryManagedBy,
+        Attribute::DisplayName,
+        Attribute::SshPublicKey,
+        Attribute::UnixPassword,
+        Attribute::PrimaryCredential,
+        Attribute::ApiTokenSession,
+        Attribute::UserAuthTokenSession,
+        Attribute::Mail,
+    ],
     modify_removed_attrs: vec![
         Attribute::Name,
         Attribute::DisplayName,
@@ -1600,6 +1658,7 @@ pub static IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1: LazyLock<BuiltinAcp> = LazyLock::n
         Attribute::PrimaryCredential,
         Attribute::ApiTokenSession,
         Attribute::UserAuthTokenSession,
+        Attribute::Mail,
     ],
     modify_present_attrs: vec![Attribute::Name, Attribute::DisplayName, Attribute::Mail],
     ..Default::default()
@@ -1660,6 +1719,7 @@ pub static IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1: LazyLock<BuiltinAcp> =
             Attribute::AccountValidFrom,
             Attribute::ApiTokenSession,
             Attribute::UserAuthTokenSession,
+            Attribute::Mail,
         ],
         modify_removed_attrs: vec![
             Attribute::DisplayName,
@@ -1709,9 +1769,10 @@ pub static IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1: LazyLock<BuiltinA
         search_attrs: vec![
             Attribute::Class,
             Attribute::Name,
-            Attribute::Spn,
             Attribute::Uuid,
+            Attribute::Spn,
             Attribute::EntryManagedBy,
+            Attribute::Mail,
         ],
         modify_removed_attrs: vec![Attribute::EntryManagedBy],
         modify_present_attrs: vec![Attribute::EntryManagedBy],
@@ -1748,7 +1809,7 @@ pub static IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1: LazyLock<Built
         modify_removed_attrs: vec![Attribute::EntryManagedBy],
         modify_present_attrs: vec![Attribute::EntryManagedBy],
         ..Default::default()
-    }
+}
     });
 
 pub static IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7: LazyLock<BuiltinAcp> =
@@ -1807,6 +1868,7 @@ pub static IDM_ACP_APPLICATION_MANAGE_DL8: LazyLock<BuiltinAcp> = LazyLock::new(
         Attribute::Class,
         Attribute::Uuid,
         Attribute::Name,
+        Attribute::Spn,
         Attribute::Description,
         Attribute::DisplayName,
         Attribute::Mail,
@@ -1878,6 +1940,7 @@ pub static IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8: LazyLock<BuiltinAcp> =
             Attribute::Class,
             Attribute::Uuid,
             Attribute::Name,
+            Attribute::Spn,
             Attribute::DisplayName,
             Attribute::Mail,
             Attribute::UnixPassword,
@@ -1908,3 +1971,174 @@ pub static IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8: LazyLock<BuiltinAcp> =
         ],
         ..Default::default()
     });
+
+pub static IDM_ACP_MESSAGE_MANAGE: LazyLock<BuiltinAcp> = LazyLock::new(|| BuiltinAcp {
+    classes: vec![
+        EntryClass::Object,
+        EntryClass::AccessControlProfile,
+        EntryClass::AccessControlModify,
+        EntryClass::AccessControlSearch,
+        EntryClass::AccessControlCreate,
+    ],
+    name: "idm_acp_message_manage",
+    uuid: UUID_IDM_ACP_MESSAGE_MANAGE,
+    description: "Builtin IDM Control for allowing management of message entries.",
+    receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_MESSAGE_ADMINS]),
+    target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+        match_class_filter!(EntryClass::OutboundMessage),
+        FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+    ])),
+    search_attrs: vec![
+        Attribute::Class,
+        Attribute::Uuid,
+        Attribute::MessageTemplate,
+        Attribute::SendAfter,
+        Attribute::DeleteAfter,
+        Attribute::SentAt,
+        Attribute::MailDestination,
+    ],
+    modify_present_attrs: vec![Attribute::SentAt, Attribute::SendAfter],
+    modify_removed_attrs: vec![Attribute::SentAt, Attribute::SendAfter],
+    create_attrs: vec![
+        Attribute::Class,
+        Attribute::MessageTemplate,
+        Attribute::SendAfter,
+        Attribute::DeleteAfter,
+        Attribute::MailDestination,
+    ],
+    create_classes: vec![EntryClass::Object, EntryClass::OutboundMessage],
+    ..Default::default()
+});
+
+pub static IDM_ACP_MESSAGE_SENDER: LazyLock<BuiltinAcp> = LazyLock::new(|| BuiltinAcp {
+    classes: vec![
+        EntryClass::Object,
+        EntryClass::AccessControlProfile,
+        EntryClass::AccessControlModify,
+        EntryClass::AccessControlSearch,
+    ],
+    name: "idm_acp_message_sender",
+    uuid: UUID_IDM_ACP_MESSAGE_SENDER,
+    description: "Builtin IDM Control for allowing an external sender to process messages.",
+    receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_MESSAGE_SENDERS]),
+    target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+        match_class_filter!(EntryClass::OutboundMessage),
+        FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+    ])),
+    search_attrs: vec![
+        Attribute::Class,
+        Attribute::Uuid,
+        Attribute::MessageTemplate,
+        Attribute::SendAfter,
+        Attribute::DeleteAfter,
+        Attribute::SentAt,
+        Attribute::MailDestination,
+    ],
+    modify_present_attrs: vec![Attribute::SentAt],
+    modify_removed_attrs: vec![Attribute::SentAt],
+    ..Default::default()
+});
+
+pub static IDM_ACP_OAUTH2_CLIENT_ADMIN: LazyLock<BuiltinAcp> = LazyLock::new(|| BuiltinAcp {
+    classes: vec![
+        EntryClass::Object,
+        EntryClass::AccessControlCreate,
+        EntryClass::AccessControlModify,
+        EntryClass::AccessControlProfile,
+        EntryClass::AccessControlSearch,
+    ],
+    name: "idm_acp_oauth2_client_admin",
+    uuid: UUID_IDM_ACP_OAUTH2_CLIENT_ADMIN,
+    description: "Builtin IDM Control for granting oauth2 trust provider administration rights.",
+    receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_CLIENT_ADMINS]),
+    target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+        match_class_filter!(EntryClass::OAuth2Client),
+        FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+    ])),
+    search_attrs: vec![
+        Attribute::Class,
+        Attribute::Uuid,
+        Attribute::Name,
+        Attribute::Spn,
+        Attribute::OAuth2ClientId,
+        Attribute::OAuth2ClientSecret,
+        Attribute::OAuth2AuthorisationEndpoint,
+        Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
+        Attribute::OAuth2RequestScopes,
+    ],
+    modify_present_attrs: vec![
+        Attribute::Name,
+        Attribute::OAuth2ClientId,
+        Attribute::OAuth2ClientSecret,
+        Attribute::OAuth2AuthorisationEndpoint,
+        Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
+        Attribute::OAuth2RequestScopes,
+    ],
+    modify_removed_attrs: vec![
+        Attribute::Name,
+        Attribute::OAuth2ClientId,
+        Attribute::OAuth2ClientSecret,
+        Attribute::OAuth2AuthorisationEndpoint,
+        Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
+        Attribute::OAuth2RequestScopes,
+    ],
+    create_attrs: vec![
+        Attribute::Class,
+        Attribute::Name,
+        Attribute::OAuth2ClientId,
+        Attribute::OAuth2ClientSecret,
+        Attribute::OAuth2AuthorisationEndpoint,
+        Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
+        Attribute::OAuth2RequestScopes,
+    ],
+    create_classes: vec![EntryClass::OAuth2Client],
+    ..Default::default()
+});
+
+pub static IDM_ACP_OAUTH2_ACCOUNT_ENROL: LazyLock<BuiltinAcp> = LazyLock::new(|| BuiltinAcp {
+    classes: vec![
+        EntryClass::Object,
+        EntryClass::AccessControlProfile,
+        EntryClass::AccessControlModify,
+        EntryClass::AccessControlSearch,
+    ],
+    name: "idm_acp_oauth2_account_enrol",
+    uuid: UUID_IDM_ACP_OAUTH2_ACCOUNT_ENROL,
+    description:
+        "Builtin IDM Control for enroling other accounts as oauth2 authentication consumers.",
+    receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ACCOUNT_ADMINS]),
+    target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+        match_class_filter!(EntryClass::Person),
+        FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+    ])),
+    search_attrs: vec![
+        Attribute::Class,
+        Attribute::Name,
+        Attribute::Spn,
+        Attribute::Uuid,
+        Attribute::OAuth2AccountProvider,
+        Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
+        Attribute::OAuth2AccountCredentialUuid,
+    ],
+    modify_removed_attrs: vec![
+        Attribute::Class,
+        Attribute::OAuth2AccountProvider,
+        Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
+        Attribute::OAuth2AccountCredentialUuid,
+    ],
+    modify_present_attrs: vec![
+        Attribute::Class,
+        Attribute::OAuth2AccountProvider,
+        Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
+        Attribute::OAuth2AccountCredentialUuid,
+    ],
+    modify_classes: vec![EntryClass::OAuth2Account],
+    ..Default::default()
+});

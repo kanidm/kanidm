@@ -1,9 +1,5 @@
 //! Schema Entries
-use crate::constants::entries::{Attribute, EntryClass};
-use crate::constants::uuids::*;
-use crate::schema::{SchemaAttribute, SchemaClass};
-use crate::value::SyntaxType;
-use std::sync::LazyLock;
+use crate::prelude::*;
 
 pub static SCHEMA_ATTR_DISPLAYNAME_DL7: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
@@ -27,18 +23,6 @@ pub static SCHEMA_ATTR_MAIL_DL7: LazyLock<SchemaAttribute> = LazyLock::new(|| Sc
     syntax: SyntaxType::EmailAddress,
     ..Default::default()
 });
-
-pub static SCHEMA_ATTR_EC_KEY_PRIVATE: LazyLock<SchemaAttribute> =
-    LazyLock::new(|| SchemaAttribute {
-        uuid: UUID_SCHEMA_ATTR_EC_KEY_PRIVATE,
-        name: Attribute::IdVerificationEcKey,
-        description: "Account verification private key".to_string(),
-        indexed: true,
-        unique: false,
-        sync_allowed: false,
-        syntax: SyntaxType::SecretUtf8String,
-        ..Default::default()
-    });
 
 pub static SCHEMA_ATTR_SSH_PUBLICKEY: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
@@ -105,14 +89,6 @@ pub static SCHEMA_ATTR_DOMAIN_NAME: LazyLock<SchemaAttribute> = LazyLock::new(||
     indexed: true,
     unique: true,
     syntax: SyntaxType::Utf8StringIname,
-    ..Default::default()
-});
-
-pub static SCHEMA_ATTR_IMAGE: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_IMAGE,
-    name: Attribute::Image,
-    description: "An image for display to end users.".to_string(),
-    syntax: SyntaxType::Image,
     ..Default::default()
 });
 
@@ -281,6 +257,15 @@ pub static SCHEMA_ATTR_UNIX_PASSWORD: LazyLock<SchemaAttribute> =
         ..Default::default()
     });
 
+pub static SCHEMA_ATTR_PASSWORD_CHANGED_TIME: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_PASSWORD_CHANGED_TIME,
+        name: Attribute::PasswordChangedTime,
+        description: "The time when the password was last changed.".to_string(),
+        syntax: SyntaxType::DateTime,
+        ..Default::default()
+    });
+
 pub static SCHEMA_ATTR_NSUNIQUEID: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_NSUNIQUEID,
     name: Attribute::NsUniqueId,
@@ -312,6 +297,17 @@ pub static SCHEMA_ATTR_ACCOUNT_VALID_FROM: LazyLock<SchemaAttribute> =
         syntax: SyntaxType::DateTime,
         ..Default::default()
     });
+
+pub static SCHEMA_ATTR_ACCOUNT_SOFTLOCK_EXPIRE: LazyLock<SchemaAttribute> = LazyLock::new(|| {
+    SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_ACCOUNT_SOFTLOCK_EXPIRE,
+    name: Attribute::AccountSoftlockExpire,
+    description: "The datetime after which softlocks no longer are valid - allows them to be reset from 'now'".to_string(),
+    sync_allowed: true,
+    syntax: SyntaxType::DateTime,
+    ..Default::default()
+}
+});
 
 pub static SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
@@ -455,15 +451,6 @@ pub static SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI_DL7: LazyLock<SchemaAttribute>
         ..Default::default()
     });
 
-pub static SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9: LazyLock<SchemaAttribute> =
-    LazyLock::new(|| SchemaAttribute {
-        uuid: UUID_SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE,
-        name: Attribute::OAuth2DeviceFlowEnable,
-        description: "Represents if OAuth2 Device Flow is permitted on this client.".to_string(),
-        syntax: SyntaxType::Boolean,
-        ..Default::default()
-    });
-
 pub static SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER,
@@ -570,6 +557,16 @@ pub static SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME: LazyLock<SchemaAttribute> =
         name: Attribute::OAuth2PreferShortUsername,
         description: "Use 'name' instead of 'spn' in the preferred_username claim".to_string(),
         syntax: SyntaxType::Boolean,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_REFRESH_TOKEN_EXPIRY: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_REFRESH_TOKEN_EXPIRY,
+        name: Attribute::OAuth2RefreshTokenExpiry,
+        description: "Defines the duration in seconds that a refresh token is valid for."
+            .to_string(),
+        syntax: SyntaxType::Uint32,
         ..Default::default()
     });
 
@@ -701,7 +698,7 @@ pub static SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_DATA,
         name: Attribute::KeyInternalData,
-        description: "-".to_string(),
+        description: "Internal Key Data".to_string(),
         multivalue: true,
         syntax: SyntaxType::KeyInternal,
         ..Default::default()
@@ -711,7 +708,7 @@ pub static SCHEMA_ATTR_KEY_PROVIDER_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_PROVIDER,
         name: Attribute::KeyProvider,
-        description: "-".to_string(),
+        description: "Cryptographic Key Provider".to_string(),
         multivalue: false,
         indexed: true,
         syntax: SyntaxType::ReferenceUuid,
@@ -722,7 +719,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_ROTATE,
         name: Attribute::KeyActionRotate,
-        description: "-".to_string(),
+        description: "Marker attribute that denotes a key rotation should occur.".to_string(),
         multivalue: false,
         // Ephemeral action.
         phantom: true,
@@ -734,7 +731,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_REVOKE,
         name: Attribute::KeyActionRevoke,
-        description: "-".to_string(),
+        description: "Marker attribute that denotes a key should be revoked.".to_string(),
         multivalue: true,
         // Ephemeral action.
         phantom: true,
@@ -746,7 +743,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6: LazyLock<SchemaAttribute
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256,
         name: Attribute::KeyActionImportJwsEs256,
-        description: "-".to_string(),
+        description: "Marker attribute that denotes a jws es256 key to be imported.".to_string(),
         multivalue: true,
         // Ephemeral action.
         phantom: true,
@@ -758,7 +755,7 @@ pub static SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256_DL6: LazyLock<SchemaAttribute
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_RS256,
         name: Attribute::KeyActionImportJwsRs256,
-        description: "-".to_string(),
+        description: "Marker attribute that denotes a jws rs256 key to be imported.".to_string(),
         multivalue: true,
         // Ephemeral action.
         phantom: true,
@@ -770,7 +767,7 @@ pub static SCHEMA_ATTR_PATCH_LEVEL_DL7: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_PATCH_LEVEL,
         name: Attribute::PatchLevel,
-        description: "-".to_string(),
+        description: "The domain's patch level".to_string(),
         syntax: SyntaxType::Uint32,
         ..Default::default()
     });
@@ -799,15 +796,32 @@ pub static SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9: LazyLock<SchemaAttribute> =
     },
 );
 
-pub static SCHEMA_ATTR_REFERS_DL7: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_REFERS,
-    name: Attribute::Refers,
-    description: "A reference to linked object".to_string(),
-    indexed: true,
-    multivalue: false,
-    syntax: SyntaxType::ReferenceUuid,
+pub static SCHEMA_ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY,
+        name: Attribute::DomainAllowAccountRecovery,
+        description: "A flag to enable account recovery requests to be submitted by users."
+            .to_string(),
+        syntax: SyntaxType::Boolean,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_IMAGE: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_IMAGE,
+    name: Attribute::Image,
+    description: "An image for display to end users.".to_string(),
+    syntax: SyntaxType::Image,
     ..Default::default()
 });
+
+pub static SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE,
+        name: Attribute::OAuth2DeviceFlowEnable,
+        description: "Enable the OAuth2 Device Flow for this client.".to_string(),
+        syntax: SyntaxType::Boolean,
+        ..Default::default()
+    });
 
 pub static SCHEMA_ATTR_LINKED_GROUP_DL8: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
@@ -851,8 +865,224 @@ pub static SCHEMA_ATTR_APPLICATION_PASSWORD_DL8: LazyLock<SchemaAttribute> =
         ..Default::default()
     });
 
+pub static SCHEMA_ATTR_APPLICATION_URL: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_APPLICATION_URL,
+        name: Attribute::ApplicationUrl,
+        description: "The URL of an external application".to_string(),
+        syntax: SyntaxType::Url,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_MESSAGE_TEMPLATE: LazyLock<SchemaAttribute> = LazyLock::new(|| {
+    SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_MESSAGE_TEMPLATE,
+    name: Attribute::MessageTemplate,
+    description: "A JSON object containing the named message template and fields related to a message that can be substituted into the template.".to_string(),
+    syntax: SyntaxType::Message,
+    ..Default::default()
+}
+});
+
+pub static SCHEMA_ATTR_SEND_AFTER: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_SEND_AFTER,
+    name: Attribute::SendAfter,
+    description:
+        "The datetime after which this message is allowed to be released to the destination"
+            .to_string(),
+    syntax: SyntaxType::DateTime,
+    indexed: true,
+    ..Default::default()
+});
+
+pub static SCHEMA_ATTR_DELETE_AFTER: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_DELETE_AFTER,
+        name: Attribute::DeleteAfter,
+        description: "The datetime after which this entry will be deleted.".to_string(),
+        syntax: SyntaxType::DateTime,
+        indexed: true,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_SENT_AT: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_SENT_AT,
+    name: Attribute::SentAt,
+    indexed: true,
+    description: "The datetime when this message was sent.".to_string(),
+    syntax: SyntaxType::DateTime,
+    ..Default::default()
+});
+
+pub static SCHEMA_ATTR_MAIL_DESTINATION: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_MAIL_DESTINATION,
+        name: Attribute::MailDestination,
+        description: "The destination addresses that will recieve this message.".to_string(),
+        multivalue: true,
+        syntax: SyntaxType::EmailAddress,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_ACCOUNT_PROVIDER: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_PROVIDER,
+        name: Attribute::OAuth2AccountProvider,
+        description:
+            "The reference to the OAuth2 client that provides authentication for this entry."
+                .to_string(),
+        sync_allowed: true,
+        syntax: SyntaxType::ReferenceUuid,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID,
+        name: Attribute::OAuth2AccountCredentialUuid,
+        description:
+            "The uuid of this credential for session tracking when OAuth2 is used to authenticate."
+                .to_string(),
+        syntax: SyntaxType::Uuid,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID,
+        name: Attribute::OAuth2AccountUniqueUserId,
+        description: "The unique user id of this account as known by the remote OAuth2 provider."
+            .to_string(),
+        sync_allowed: true,
+        syntax: SyntaxType::Utf8String,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_SUB: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_SUB,
+        name: Attribute::OAuth2AccountUniqueUserSub,
+        description:
+            "The unique user subject of this account as known by the remote OAuth2 provider."
+                .to_string(),
+        sync_allowed: true,
+        syntax: SyntaxType::Utf8String,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_CLIENT_ID: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_CLIENT_ID,
+        name: Attribute::OAuth2ClientId,
+        description: "The OAuth2 Client ID".to_string(),
+        syntax: SyntaxType::Utf8String,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_CLIENT_SECRET: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_CLIENT_SECRET,
+        name: Attribute::OAuth2ClientSecret,
+        description: "The OAuth2 Client Secret".to_string(),
+        // TODO: We may need a new secret type that CAN be imported from externally. Currently
+        // our secret string type denies external modification.
+        syntax: SyntaxType::Utf8String,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_AUTHORISATION_ENDPOINT,
+        name: Attribute::OAuth2AuthorisationEndpoint,
+        description: "The authorisation url of the OAuth2 provider".to_string(),
+        syntax: SyntaxType::Url,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT,
+        name: Attribute::OAuth2TokenEndpoint,
+        description: "The token url of the OAuth2 provider".to_string(),
+        syntax: SyntaxType::Url,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_TOKEN_INTROSPECT_ENDPOINT: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_TOKEN_INTROSPECT_ENDPOINT,
+        name: Attribute::OAuth2TokenIntrospectEndpoint,
+        description: "The rfc7662 token introspect url of the OAuth2 provider".to_string(),
+        syntax: SyntaxType::Url,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_REQUEST_SCOPES,
+        name: Attribute::OAuth2RequestScopes,
+        description: "The set of scopes to request during OAuth2 authorisation requests."
+            .to_string(),
+        multivalue: true,
+        syntax: SyntaxType::OauthScope,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_HMAC_NAME_HISTORY: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_HMAC_NAME_HISTORY,
+        name: Attribute::HmacNameHistory,
+        description: "The set of all names used on an entry, HMACed to preserve privacy."
+            .to_string(),
+        multivalue: true,
+        unique: true,
+        indexed: true,
+        syntax: SyntaxType::Sha256,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_IN_MEMORIAM: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_IN_MEMORIAM_UUID,
+    name: Attribute::InMemoriam,
+    description: "The uuid of the entry that this memorial is dedicated to.".to_string(),
+    indexed: true,
+    syntax: SyntaxType::Uuid,
+    ..Default::default()
+});
+
+pub static SCHEMA_ATTR_ENABLED: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_ENABLED,
+    name: Attribute::Enabled,
+    description: "A flag describing if a feature is enabled or disabled.".to_string(),
+    multivalue: false,
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+});
+
+pub static SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_CONSENT_PROMPT_ENABLE,
+        name: Attribute::OAuth2ConsentPromptEnable,
+        description:
+            "Enable the consent prompt when authorising for the first time or when scopes change."
+                .to_string(),
+        syntax: SyntaxType::Boolean,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_S256: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_S256,
+    name: Attribute::S256,
+    description: "A Sha256 output.".to_string(),
+    multivalue: true,
+    unique: false,
+    indexed: false,
+    syntax: SyntaxType::Sha256,
+    ..Default::default()
+});
+
 // === classes ===
-pub static SCHEMA_CLASS_PERSON_DL8: LazyLock<SchemaClass> = LazyLock::new(|| SchemaClass {
+pub static SCHEMA_CLASS_PERSON_DL14: LazyLock<SchemaClass> = LazyLock::new(|| SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
     name: EntryClass::Person.into(),
     description: "Object representation of a person".to_string(),
@@ -871,12 +1101,29 @@ pub static SCHEMA_CLASS_PERSON_DL8: LazyLock<SchemaClass> = LazyLock::new(|| Sch
         Attribute::Mail,
         Attribute::LegalName,
         Attribute::ApplicationPassword,
+        Attribute::PasswordChangedTime,
     ],
-    systemmust: vec![Attribute::IdVerificationEcKey],
+    systemmust: vec![Attribute::Name],
     systemexcludes: vec![
         EntryClass::ServiceAccount.into(),
         EntryClass::Application.into(),
     ],
+    ..Default::default()
+});
+
+pub static SCHEMA_CLASS_OAUTH2_ACCOUNT: LazyLock<SchemaClass> = LazyLock::new(|| SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_ACCOUNT,
+    name: EntryClass::OAuth2Account.into(),
+    description: "Marker class designating that an can use OAuth2 for authentication.".to_string(),
+    sync_allowed: true,
+    systemmust: vec![
+        Attribute::OAuth2AccountProvider,
+        Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
+        // This is the "credential id" that allows us to link this trust to a session.
+        Attribute::OAuth2AccountCredentialUuid,
+    ],
+    systemsupplements: vec![EntryClass::Person.into()],
     ..Default::default()
 });
 
@@ -901,8 +1148,9 @@ pub static SCHEMA_CLASS_GROUP_DL6: LazyLock<SchemaClass> = LazyLock::new(|| Sche
         Attribute::GrantUiHint,
         Attribute::Description,
         Attribute::Mail,
+        Attribute::Name,
     ],
-    systemmust: vec![Attribute::Name, Attribute::Spn],
+    systemmust: vec![Attribute::Spn],
     ..Default::default()
 });
 
@@ -913,7 +1161,7 @@ pub static SCHEMA_CLASS_DYNGROUP: LazyLock<SchemaClass> = LazyLock::new(|| Schem
 
     systemmust: vec![Attribute::DynGroupFilter],
     systemmay: vec![Attribute::DynMember],
-    systemsupplements: vec![Attribute::Group.into()],
+    systemsupplements: vec![EntryClass::Group.into()],
     ..Default::default()
 });
 
@@ -932,7 +1180,7 @@ pub static SCHEMA_CLASS_ACCOUNT_POLICY_DL8: LazyLock<SchemaClass> = LazyLock::ne
         Attribute::LimitSearchMaxFilterTest,
         Attribute::AllowPrimaryCredFallback,
     ],
-    systemsupplements: vec![Attribute::Group.into()],
+    systemsupplements: vec![EntryClass::Group.into()],
     ..Default::default()
 });
 
@@ -946,12 +1194,14 @@ pub static SCHEMA_CLASS_ACCOUNT_DL5: LazyLock<SchemaClass> = LazyLock::new(|| Sc
         Attribute::AccountExpire,
         Attribute::AccountValidFrom,
         Attribute::NameHistory,
+        Attribute::HmacNameHistory,
+        Attribute::AccountSoftlockExpire,
     ],
-    systemmust: vec![Attribute::DisplayName, Attribute::Name, Attribute::Spn],
+    systemmust: vec![Attribute::DisplayName, Attribute::Spn],
     systemsupplements: vec![
-        EntryClass::OAuth2ResourceServer.into(),
         EntryClass::Person.into(),
         EntryClass::ServiceAccount.into(),
+        EntryClass::OAuth2ResourceServer.into(),
     ],
     ..Default::default()
 });
@@ -973,6 +1223,7 @@ pub static SCHEMA_CLASS_SERVICE_ACCOUNT_DL7: LazyLock<SchemaClass> =
             Attribute::PrimaryCredential,
             Attribute::ApiTokenSession,
         ],
+        systemmust: vec![Attribute::Name],
         systemexcludes: vec![EntryClass::Person.into()],
         ..Default::default()
     });
@@ -1007,6 +1258,7 @@ pub static SCHEMA_CLASS_DOMAIN_INFO_DL10: LazyLock<SchemaClass> = LazyLock::new(
         Attribute::PatchLevel,
         Attribute::DomainDevelopmentTaint,
         Attribute::DomainAllowEasterEggs,
+        Attribute::DomainAllowAccountRecovery,
         Attribute::DomainDisplayName,
     ],
     systemmust: vec![
@@ -1025,7 +1277,7 @@ pub static SCHEMA_CLASS_POSIXGROUP: LazyLock<SchemaClass> = LazyLock::new(|| Sch
 
     sync_allowed: true,
     systemmust: vec![Attribute::GidNumber],
-    systemsupplements: vec![Attribute::Group.into()],
+    systemsupplements: vec![EntryClass::Group.into()],
     ..Default::default()
 });
 
@@ -1037,7 +1289,7 @@ pub static SCHEMA_CLASS_POSIXACCOUNT: LazyLock<SchemaClass> = LazyLock::new(|| S
     sync_allowed: true,
     systemmay: vec![Attribute::LoginShell, Attribute::UnixPassword],
     systemmust: vec![Attribute::GidNumber],
-    systemsupplements: vec![Attribute::Account.into()],
+    systemsupplements: vec![EntryClass::Account.into()],
     ..Default::default()
 });
 
@@ -1067,18 +1319,20 @@ pub static SCHEMA_CLASS_OAUTH2_RS_DL9: LazyLock<SchemaClass> = LazyLock::new(|| 
         Attribute::OAuth2RsSupScopeMap,
         Attribute::OAuth2JwtLegacyCryptoEnable,
         Attribute::OAuth2PreferShortUsername,
+        Attribute::OAuth2RefreshTokenExpiry,
         Attribute::Image,
         Attribute::OAuth2RsClaimMap,
         Attribute::OAuth2Session,
         Attribute::OAuth2RsOrigin,
         Attribute::OAuth2StrictRedirectUri,
         Attribute::OAuth2DeviceFlowEnable,
+        Attribute::OAuth2ConsentPromptEnable,
         // Deprecated
         Attribute::Rs256PrivateKeyDer,
         Attribute::OAuth2RsTokenKey,
         Attribute::Es256PrivateKeyDer,
     ],
-    systemmust: vec![Attribute::OAuth2RsOriginLanding],
+    systemmust: vec![Attribute::OAuth2RsOriginLanding, Attribute::Name],
     ..Default::default()
 });
 
@@ -1110,6 +1364,26 @@ pub static SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4: LazyLock<SchemaClass> =
         systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
         ..Default::default()
     });
+
+pub static SCHEMA_CLASS_OAUTH2_CLIENT: LazyLock<SchemaClass> = LazyLock::new(|| {
+    SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_CLIENT,
+    name: EntryClass::OAuth2Client.into(),
+    description: "The class representing a configured OAuth2 Confidential Client acting as an authentication source".to_string(),
+    systemmust: vec![
+        Attribute::Name,
+        Attribute::OAuth2ClientId,
+        Attribute::OAuth2ClientSecret,
+        Attribute::OAuth2AuthorisationEndpoint,
+        Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2RequestScopes,
+    ],
+    systemmay: vec![
+        Attribute::OAuth2TokenIntrospectEndpoint,
+    ],
+    ..Default::default()
+}
+});
 
 // =========================================
 // KeyProviders
@@ -1154,6 +1428,17 @@ pub static SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6: LazyLock<SchemaClass> =
         ..Default::default()
     });
 
+pub static SCHEMA_CLASS_KEY_OBJECT_JWT_HS256_DL6: LazyLock<SchemaClass> =
+    LazyLock::new(|| SchemaClass {
+        uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_HS256,
+        name: EntryClass::KeyObjectJwtHs256.into(),
+        description:
+            "A marker class indicating that this keyobject must provide jwt hs256 capability."
+                .to_string(),
+        systemsupplements: vec![EntryClass::KeyObject.into()],
+        ..Default::default()
+    });
+
 pub static SCHEMA_CLASS_KEY_OBJECT_JWT_RS256: LazyLock<SchemaClass> =
     LazyLock::new(|| SchemaClass {
         uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_RS256,
@@ -1171,6 +1456,17 @@ pub static SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6: LazyLock<SchemaClass> =
         name: EntryClass::KeyObjectJweA128GCM.into(),
         description:
             "A marker class indicating that this keyobject must provide jwe aes-256-gcm capability."
+                .to_string(),
+        systemsupplements: vec![EntryClass::KeyObject.into()],
+        ..Default::default()
+    });
+
+pub static SCHEMA_CLASS_KEY_OBJECT_HKDF_S256: LazyLock<SchemaClass> =
+    LazyLock::new(|| SchemaClass {
+        uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_HKDF_S256,
+        name: EntryClass::KeyObjectHkdfS256.into(),
+        description:
+            "A marker class indicating that this keyobject must provide hmac kdf sha256 capability."
                 .to_string(),
         systemsupplements: vec![EntryClass::KeyObject.into()],
         ..Default::default()
@@ -1199,13 +1495,71 @@ pub static SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7: LazyLock<SchemaClass> =
         ..Default::default()
     });
 
-pub static SCHEMA_CLASS_APPLICATION_DL8: LazyLock<SchemaClass> = LazyLock::new(|| SchemaClass {
+pub static SCHEMA_CLASS_APPLICATION: LazyLock<SchemaClass> = LazyLock::new(|| SchemaClass {
     uuid: UUID_SCHEMA_CLASS_APPLICATION,
     name: EntryClass::Application.into(),
 
     description: "The class representing an application".to_string(),
-    systemmust: vec![Attribute::Name, Attribute::LinkedGroup],
-    systemmay: vec![Attribute::Description],
+    systemmust: vec![Attribute::LinkedGroup],
+    systemmay: vec![Attribute::ApplicationUrl],
+    // I think this could change before release - I can see a world
+    // when we may want an oauth2 application to have application passwords,
+    // or for this to be it's own thing. But service accounts also don't
+    // quite do enough, they have api tokens, but that's all we kind
+    // of want from them?
     systemsupplements: vec![EntryClass::ServiceAccount.into()],
     ..Default::default()
+});
+
+// Messaging
+
+pub static SCHEMA_CLASS_OUTBOUND_MESSAGE: LazyLock<SchemaClass> = LazyLock::new(|| {
+    SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OUTBOUND_MESSAGE,
+    name: EntryClass::OutboundMessage.into(),
+
+    description: "A class representing a message that is to be sent externally to a user in some way, generally via email.".to_string(),
+    systemmust: vec![
+        Attribute::MessageTemplate,
+        Attribute::SendAfter,
+        Attribute::DeleteAfter,
+    ],
+    systemmay: vec![
+        Attribute::SentAt,
+        Attribute::MailDestination,
+    ],
+    ..Default::default()
+
+}
+});
+
+pub static SCHEMA_CLASS_FEATURE: LazyLock<SchemaClass> = LazyLock::new(|| SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_FEATURE,
+    name: EntryClass::Feature.into(),
+    description: "The class representing the state of a feature.".to_string(),
+    systemmust: vec![Attribute::Name, Attribute::Description],
+    systemmay: vec![Attribute::Enabled],
+    ..Default::default()
+});
+
+pub static SCHEMA_CLASS_MEMORIAL: LazyLock<SchemaClass> = LazyLock::new(|| SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_MEMORIAL,
+    name: EntryClass::Memorial.into(),
+    description: "The class representing a memorial to an entry that has been deleted.".to_string(),
+    systemmust: vec![Attribute::InMemoriam],
+    systemmay: vec![Attribute::HmacNameHistory],
+    ..Default::default()
+});
+
+pub static SCHEMA_CLASS_ASSERTION_NONCE: LazyLock<SchemaClass> = LazyLock::new(|| {
+    SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_ASSERTION_NONCE,
+    name: EntryClass::AssertionNonce.into(),
+    description: "The class representing the nonce tied to an assertion event so that it is only applied once.".to_string(),
+    systemmust: vec![
+        Attribute::Uuid,
+        Attribute::S256,
+    ],
+    ..Default::default()
+}
 });

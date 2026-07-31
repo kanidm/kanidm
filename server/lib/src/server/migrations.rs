@@ -2,9 +2,9 @@ use crate::prelude::*;
 
 use crate::migration_data;
 use kanidm_proto::internal::{
-    DomainUpgradeCheckItem as ProtoDomainUpgradeCheckItem,
+    // DomainUpgradeCheckItem as ProtoDomainUpgradeCheckItem,
     DomainUpgradeCheckReport as ProtoDomainUpgradeCheckReport,
-    DomainUpgradeCheckStatus as ProtoDomainUpgradeCheckStatus,
+    // DomainUpgradeCheckStatus as ProtoDomainUpgradeCheckStatus,
 };
 
 use super::ServerPhase;
@@ -58,19 +58,19 @@ impl QueryServer {
             debug_assert!(domain_target_level <= DOMAIN_MAX_LEVEL);
 
             // Assert that we have a minimum creation level that is valid.
-            const { assert!(DOMAIN_MIN_CREATION_LEVEL == DOMAIN_LEVEL_10) };
+            const { assert!(DOMAIN_MIN_CREATION_LEVEL == DOMAIN_LEVEL_11) };
 
             // No domain info was present, so neither was the rest of the IDM. Bring up the
             // full IDM here.
 
             match domain_target_level {
-                DOMAIN_LEVEL_10 => write_txn.migrate_domain_9_to_10()?,
                 DOMAIN_LEVEL_11 => write_txn.migrate_domain_10_to_11()?,
                 DOMAIN_LEVEL_12 => write_txn.migrate_domain_11_to_12()?,
                 DOMAIN_LEVEL_13 => write_txn.migrate_domain_12_to_13()?,
                 DOMAIN_LEVEL_14 => write_txn.migrate_domain_13_to_14()?,
                 DOMAIN_LEVEL_1_11 => write_txn.migrate_domain_1_10_to_1_11()?,
                 DOMAIN_LEVEL_1_12 => write_txn.migrate_domain_1_11_to_1_12()?,
+                DOMAIN_LEVEL_1_13 => write_txn.migrate_domain_1_12_to_1_13()?,
                 _ => {
                     error!("Invalid requested domain target level for server bootstrap");
                     debug_assert!(false);
@@ -163,6 +163,9 @@ impl QueryServer {
                 // included, so we have to do min -> max which includes min and excludes max,
                 // and by adding 1 we gett the same result.
                 let domain_target_level_step = domain_target_level_step + 1;
+
+                // Note that this triggers a reload for us, we don't need to manually determine if
+                // one is needed or not.
                 write_txn
                     .internal_apply_domain_migration(domain_target_level_step)
                     .map(|()| {
@@ -171,15 +174,6 @@ impl QueryServer {
                             domain_target_level_step
                         );
                     })?;
-            }
-
-            // Reload if anything in migrations requires it - this triggers the domain migrations
-            // which in turn can trigger schema reloads etc. If the server was just brought up
-            // then we don't need the extra reload since we are already at the correct
-            // version of the server, and this call to set the target level is just for persistence
-            // of the value.
-            if domain_info_version != DOMAIN_LEVEL_0 {
-                reload_required = true;
             }
         } else if domain_info_version > domain_target_level {
             // This is a DOWNGRADE which may not proceed.
@@ -432,149 +426,6 @@ impl QueryServerWriteTransaction<'_> {
         Ok(())
     }
     */
-
-    /// Migration domain level 9 to 10 (1.6.0)
-    #[instrument(level = "info", skip_all)]
-    pub(crate) fn migrate_domain_9_to_10(&mut self) -> Result<(), OperationError> {
-        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_9 {
-            error!("Unable to raise domain level from 9 to 10.");
-            return Err(OperationError::MG0004DomainLevelInDevelopment);
-        }
-
-        // =========== Apply changes ==============
-        self.internal_migrate_or_create_batch(
-            "phase 1 - schema attrs",
-            migration_data::dl10::phase_1_schema_attrs(),
-        )?;
-
-        self.internal_migrate_or_create_batch(
-            "phase 2 - schema classes",
-            migration_data::dl10::phase_2_schema_classes(),
-        )?;
-
-        // Reload for the new schema.
-        self.reload()?;
-
-        // Since we just loaded in a ton of schema, lets reindex it in case we added
-        // new indexes, or this is a bootstrap and we have no indexes yet.
-        self.reindex(false)?;
-
-        // Set Phase
-        // Indicate the schema is now ready, which allows dyngroups to work when they
-        // are created in the next phase of migrations.
-        self.set_phase(ServerPhase::SchemaReady);
-
-        self.internal_migrate_or_create_batch(
-            "phase 3 - key provider",
-            migration_data::dl10::phase_3_key_provider(),
-        )?;
-
-        // Reload for the new key providers
-        self.reload()?;
-
-        self.internal_migrate_or_create_batch(
-            "phase 4 - system entries",
-            migration_data::dl10::phase_4_system_entries(),
-        )?;
-
-        // Reload for the new system entries
-        self.reload()?;
-
-        // Domain info is now ready and reloaded, we can proceed.
-        self.set_phase(ServerPhase::DomainInfoReady);
-
-        // Bring up the IDM entries.
-        self.internal_migrate_or_create_batch(
-            "phase 5 - builtin admin entries",
-            migration_data::dl10::phase_5_builtin_admin_entries()?,
-        )?;
-
-        self.internal_migrate_or_create_batch(
-            "phase 6 - builtin not admin entries",
-            migration_data::dl10::phase_6_builtin_non_admin_entries()?,
-        )?;
-
-        self.internal_migrate_or_create_batch(
-            "phase 7 - builtin access control profiles",
-            migration_data::dl10::phase_7_builtin_access_control_profiles(),
-        )?;
-
-        self.reload()?;
-
-        // =========== OAuth2 Cryptography Migration ==============
-
-        debug!("START OAUTH2 MIGRATION");
-
-        // Load all the OAuth2 providers.
-        let all_oauth2_rs_entries = self.internal_search(filter!(f_eq(
-            Attribute::Class,
-            EntryClass::OAuth2ResourceServer.into()
-        )))?;
-
-        if !all_oauth2_rs_entries.is_empty() {
-            let entry_iter = all_oauth2_rs_entries.iter().map(|tgt_entry| {
-                let entry_uuid = tgt_entry.get_uuid();
-                let mut modlist = ModifyList::new_list(vec![
-                    Modify::Present(Attribute::Class, EntryClass::KeyObject.to_value()),
-                    Modify::Present(Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
-                    Modify::Present(Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value()),
-                    // Delete the fernet key, rs256 if any, and the es256 key
-                    Modify::Purged(Attribute::OAuth2RsTokenKey),
-                    Modify::Purged(Attribute::Es256PrivateKeyDer),
-                    Modify::Purged(Attribute::Rs256PrivateKeyDer),
-                ]);
-
-                trace!(?tgt_entry);
-
-                // Import the ES256 Key
-                if let Some(es256_private_der) =
-                    tgt_entry.get_ava_single_private_binary(Attribute::Es256PrivateKeyDer)
-                {
-                    modlist.push_mod(Modify::Present(
-                        Attribute::KeyActionImportJwsEs256,
-                        Value::PrivateBinary(es256_private_der.to_vec()),
-                    ))
-                } else {
-                    warn!("Unable to migrate es256 key");
-                }
-
-                let has_rs256 = tgt_entry
-                    .get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable)
-                    .unwrap_or(false);
-
-                // If there is an rs256 key, import it.
-                // Import the RS256 Key
-                if has_rs256 {
-                    modlist.push_mod(Modify::Present(
-                        Attribute::Class,
-                        EntryClass::KeyObjectJwtEs256.to_value(),
-                    ));
-
-                    if let Some(rs256_private_der) =
-                        tgt_entry.get_ava_single_private_binary(Attribute::Rs256PrivateKeyDer)
-                    {
-                        modlist.push_mod(Modify::Present(
-                            Attribute::KeyActionImportJwsRs256,
-                            Value::PrivateBinary(rs256_private_der.to_vec()),
-                        ))
-                    } else {
-                        warn!("Unable to migrate rs256 key");
-                    }
-                }
-
-                (entry_uuid, modlist)
-            });
-
-            self.internal_batch_modify(entry_iter)?;
-        }
-
-        // Reload for new keys, and updated oauth2
-        self.reload()?;
-
-        // Done!
-
-        Ok(())
-    }
 
     /// Migration domain level 10 to 11 (1.7.0)
     #[instrument(level = "info", skip_all)]
@@ -985,11 +836,94 @@ impl QueryServerWriteTransaction<'_> {
         Ok(())
     }
 
+    pub(crate) fn migrate_schema_1_12(&mut self) -> Result<(), OperationError> {
+        self.schema.extend_in_memory(
+            migration_data::dl_1_12::phase_1_schema_attrs(),
+            migration_data::dl_1_12::phase_2_schema_classes(),
+        )
+    }
+
     /// Migration domain level 1.11 to 1.12
     #[instrument(level = "info", skip_all)]
     pub(crate) fn migrate_domain_1_11_to_1_12(&mut self) -> Result<(), OperationError> {
-        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_1_11 {
-            error!("Unable to raise domain level from 15 to 16.");
+        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_1_12 {
+            error!("Unable to raise domain level from 1_11 to 1_12.");
+            return Err(OperationError::MG0004DomainLevelInDevelopment);
+        }
+
+        use migration_data::dl_1_12 as dl_target;
+
+        // =========== Apply changes ==============
+        self.migrate_schema_1_12()?;
+
+        // Reload for the new schema.
+        self.reload()?;
+
+        // Since we just loaded in a ton of schema, lets reindex it in case we added
+        // new indexes, or this is a bootstrap and we have no indexes yet.
+        self.reindex(false)?;
+
+        // Delete all existing DB contained schema.
+
+        let filter = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::ClassType.into()),
+            f_eq(Attribute::Class, EntryClass::AttributeType.into()),
+        ]));
+
+        self.internal_delete_if_exists(&filter)?;
+
+        // Set Phase
+        // Indicate the schema is now ready, which allows dyngroups to work when they
+        // are created in the next phase of migrations.
+        self.set_phase(ServerPhase::SchemaReady);
+
+        self.internal_migrate_or_create_batch(
+            "phase 3 - key provider",
+            dl_target::phase_3_key_provider(),
+        )?;
+
+        // Reload for the new key providers
+        self.reload()?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 4 - system entries",
+            dl_target::phase_4_system_entries(),
+        )?;
+
+        // Reload for the new system entries
+        self.reload()?;
+
+        // Domain info is now ready and reloaded, we can proceed.
+        self.set_phase(ServerPhase::DomainInfoReady);
+
+        // Bring up the IDM entries.
+        self.internal_migrate_or_create_batch(
+            "phase 5 - builtin admin entries",
+            dl_target::phase_5_builtin_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 6 - builtin not admin entries",
+            dl_target::phase_6_builtin_non_admin_entries()?,
+        )?;
+
+        self.internal_migrate_or_create_batch(
+            "phase 7 - builtin access control profiles",
+            dl_target::phase_7_builtin_access_control_profiles(),
+        )?;
+
+        self.internal_delete_batch("phase 8 - delete UUIDS", dl_target::phase_8_delete_uuids())?;
+
+        self.reload()?;
+
+        Ok(())
+    }
+
+    /// Migration domain level 1.12 to 1.13
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_1_12_to_1_13(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_1_13 {
+            error!("Unable to raise domain level from 1_12 to 1_13.");
             return Err(OperationError::MG0004DomainLevelInDevelopment);
         }
 
@@ -1032,20 +966,11 @@ impl QueryServerReadTransaction<'_> {
         let current_level = d_info.d_vers;
         let upgrade_level = DOMAIN_TGT_NEXT_LEVEL;
 
-        let mut report_items = Vec::with_capacity(1);
+        let report_items = Vec::with_capacity(1);
 
+        // Intentionally left commented to serve as a future check template.
+        /*
         if current_level <= DOMAIN_LEVEL_7 && upgrade_level >= DOMAIN_LEVEL_8 {
-            let item = self
-                .domain_upgrade_check_7_to_8_security_keys()
-                .map_err(|err| {
-                    error!(
-                        ?err,
-                        "Failed to perform domain upgrade check 7 to 8 - security-keys"
-                    );
-                    err
-                })?;
-            report_items.push(item);
-
             let item = self
                 .domain_upgrade_check_7_to_8_oauth2_strict_redirect_uri()
                 .map_err(|err| {
@@ -1057,6 +982,7 @@ impl QueryServerReadTransaction<'_> {
                 })?;
             report_items.push(item);
         }
+        */
 
         Ok(ProtoDomainUpgradeCheckReport {
             name,
@@ -1067,45 +993,8 @@ impl QueryServerReadTransaction<'_> {
         })
     }
 
-    pub(crate) fn domain_upgrade_check_7_to_8_security_keys(
-        &mut self,
-    ) -> Result<ProtoDomainUpgradeCheckItem, OperationError> {
-        let filter = filter!(f_and!([
-            f_eq(Attribute::Class, EntryClass::Account.into()),
-            f_pres(Attribute::PrimaryCredential),
-        ]));
-
-        let results = self.internal_search(filter)?;
-
-        let affected_entries = results
-            .into_iter()
-            .filter_map(|entry| {
-                if entry
-                    .get_ava_single_credential(Attribute::PrimaryCredential)
-                    .map(|cred| cred.has_securitykey())
-                    .unwrap_or_default()
-                {
-                    Some(entry.get_display_id())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-        let status = if affected_entries.is_empty() {
-            ProtoDomainUpgradeCheckStatus::Pass7To8SecurityKeys
-        } else {
-            ProtoDomainUpgradeCheckStatus::Fail7To8SecurityKeys
-        };
-
-        Ok(ProtoDomainUpgradeCheckItem {
-            status,
-            from_level: DOMAIN_LEVEL_7,
-            to_level: DOMAIN_LEVEL_8,
-            affected_entries,
-        })
-    }
-
+    // Intentionally left commented to serve as a future check template.
+    /*
     pub(crate) fn domain_upgrade_check_7_to_8_oauth2_strict_redirect_uri(
         &mut self,
     ) -> Result<ProtoDomainUpgradeCheckItem, OperationError> {
@@ -1134,6 +1023,7 @@ impl QueryServerReadTransaction<'_> {
             affected_entries,
         })
     }
+    */
 }
 
 #[cfg(test)]
@@ -1333,40 +1223,6 @@ mod tests {
             .initialise_helper(curtime, DOMAIN_TGT_LEVEL)
             .await
             .expect("Migration failed!!!!")
-    }
-
-    #[qs_test(domain_level=DOMAIN_LEVEL_10)]
-    async fn test_migrations_dl10_dl11(server: &QueryServer) {
-        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
-
-        let db_domain_version = write_txn
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("unable to access domain entry")
-            .get_ava_single_uint32(Attribute::Version)
-            .expect("Attribute Version not present");
-
-        assert_eq!(db_domain_version, DOMAIN_LEVEL_10);
-
-        write_txn.commit().expect("Unable to commit");
-
-        // == pre migration verification. ==
-        // check we currently would fail a migration.
-
-        // let mut read_txn = server.read().await.unwrap();
-        // drop(read_txn);
-
-        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
-
-        // Fix any issues
-
-        // == Increase the version ==
-        write_txn
-            .internal_apply_domain_migration(DOMAIN_LEVEL_11)
-            .expect("Unable to set domain level to version 11");
-
-        // post migration verification.
-
-        write_txn.commit().expect("Unable to commit");
     }
 
     #[qs_test(domain_level=DOMAIN_LEVEL_11)]
@@ -1598,6 +1454,40 @@ mod tests {
 
         let entries_remain = write_txn.internal_exists(&filter).unwrap();
         assert!(!entries_remain);
+
+        write_txn.commit().expect("Unable to commit");
+    }
+
+    #[qs_test(domain_level=DOMAIN_LEVEL_1_11)]
+    async fn test_migrations_dl1_11_to_dl_1_12(server: &QueryServer) {
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_LEVEL_1_11);
+
+        write_txn.commit().expect("Unable to commit");
+
+        // == pre migration verification. ==
+        // check we currently would fail a migration.
+
+        // let mut read_txn = server.read().await.unwrap();
+        // drop(read_txn);
+
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        // Fix any issues
+
+        // == Increase the version ==
+        write_txn
+            .internal_apply_domain_migration(DOMAIN_LEVEL_1_12)
+            .expect("Unable to set domain level to version 1_12");
+
+        // post migration verification.
 
         write_txn.commit().expect("Unable to commit");
     }
