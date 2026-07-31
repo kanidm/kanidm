@@ -164,6 +164,9 @@ impl QueryServer {
                 // included, so we have to do min -> max which includes min and excludes max,
                 // and by adding 1 we gett the same result.
                 let domain_target_level_step = domain_target_level_step + 1;
+
+                // Note that this triggers a reload for us, we don't need to manually determine if
+                // one is needed or not.
                 write_txn
                     .internal_apply_domain_migration(domain_target_level_step)
                     .map(|()| {
@@ -172,15 +175,6 @@ impl QueryServer {
                             domain_target_level_step
                         );
                     })?;
-            }
-
-            // Reload if anything in migrations requires it - this triggers the domain migrations
-            // which in turn can trigger schema reloads etc. If the server was just brought up
-            // then we don't need the extra reload since we are already at the correct
-            // version of the server, and this call to set the target level is just for persistence
-            // of the value.
-            if domain_info_version != DOMAIN_LEVEL_0 {
-                reload_required = true;
             }
         } else if domain_info_version > domain_target_level {
             // This is a DOWNGRADE which may not proceed.
