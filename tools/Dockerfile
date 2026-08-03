@@ -54,12 +54,12 @@ COPY . /usr/src/kanidm
 
 WORKDIR /usr/src/kanidm/
 
-# export RUSTC_WRAPPER=/usr/bin/sccache; \
 # build the CLI
 RUN \
     --mount=type=cache,id=cargo,target=/cargo \
     --mount=type=cache,id=sccache,target=/sccache \
     export CARGO_HOME=/cargo; \
+    export RUSTC_WRAPPER="$(which sccache)"; \
     export SCCACHE_DIR=/sccache; \
     export CC="/usr/bin/clang"; \
     cargo auditable build --locked -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
