@@ -1,0 +1,21 @@
+---
+name: Container - Kanidm Tools
+
+"on":
+  pull_request:
+  push:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  container_build:
+    name: Build kanidm-tools container
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/reusable_container_build.yml
+    with:
+      container_name: kanidm-tools
+      docker_file: tools/Dockerfile
