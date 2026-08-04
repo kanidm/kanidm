@@ -510,6 +510,10 @@ pub enum GrantType {
     Implicit,
     #[serde(rename = "urn:ietf:params:oauth:grant-type:token-exchange")]
     TokenExchange,
+    ClientCredentials,
+    RefreshToken,
+    #[serde(rename = "urn:ietf:params:oauth:grant-type:jwt-bearer")]
+    JwtBearer,
 }
 
 fn grant_types_supported_default() -> Vec<GrantType> {
