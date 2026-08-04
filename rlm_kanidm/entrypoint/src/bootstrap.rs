@@ -230,9 +230,12 @@ pub fn run(config_override: Option<&Path>, debug: bool) -> Result<()> {
     prepare_certs(&config, &layout)?;
 
     // Create the tlscache dir.
-    fs::create_dir(FREERADIUS_TLS_CACHE_PATH).with_context(|| {
-        format!("failed to create tls cache directory {FREERADIUS_TLS_CACHE_PATH}")
-    })?;
+    let cache_path: &Path = FREERADIUS_TLS_CACHE_PATH.as_ref();
+    if !cache_path.exists() {
+        fs::create_dir(cache_path).with_context(|| {
+            format!("failed to create tls cache directory {FREERADIUS_TLS_CACHE_PATH}")
+        })?;
+    }
 
     eprintln!("Configuration set up, starting FreeRADIUS");
     exec_radiusd(debug)
