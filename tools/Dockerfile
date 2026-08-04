@@ -31,7 +31,9 @@ RUN \
     sqlite3-devel \
     rsync
 
+
 FROM build_base AS fido_mds_builder
+# doing this separately means the docker cache doesn't get polluted by the install of a thing being pulled from another repo, reducing build time on multiple runs
 
 RUN \
     --mount=type=cache,id=fido-cargo,target=/cargo \
