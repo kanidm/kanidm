@@ -2793,13 +2793,24 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 }
 
                 UUID_ACCOUNT_SIGNUP_FEATURE => {
-                    if domain_level < SOMETHING {
+                    if domain_level < DOMAIN_LEVEL_1_12 {
+                        trace!("Skipping account signup config");
+                        continue;
                     }
 
-                    todo!();
+                    let new_feature_enabled_state = feature_entry
+                        .get_ava_single_bool(Attribute::Enabled)
+                        .unwrap_or_default();
+
+                    let feature_config_txn = self.feature_config.get_mut();
+
+                    hmac_name_history_fixup =
+                        !feature_config_txn.account_signup.enabled && new_feature_enabled_state;
+
+                    feature_config_txn.account_signup.enabled = new_feature_enabled_state;
+
+                    // Probably will add flags here soon?
                 }
-
-
                 feature_uuid => {
                     error!(
                         ?feature_uuid,
