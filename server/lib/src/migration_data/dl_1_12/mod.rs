@@ -195,6 +195,7 @@ pub fn phase_4_system_entries() -> Vec<EntryInitNew> {
         e_system_config_v1(),
         e_uuid_domain_id_verification_key_v1(),
         e_hmac_name_history_feature(),
+        e_account_signup_feature(),
     ]
 }
 
