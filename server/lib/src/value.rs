@@ -91,7 +91,8 @@ pub static NSUNIQUEID_RE: LazyLock<Regex> = LazyLock::new(|| {
 /// Must not contain whitespace.
 pub static OAUTHSCOPE_RE: LazyLock<Regex> = LazyLock::new(|| {
     #[allow(clippy::expect_used)]
-    Regex::new("^[0-9a-zA-Z_][0-9a-zA-Z_.:/]{0,63}$").expect("Invalid oauthscope regex found")
+    Regex::new("^[0-9a-zA-Z_]+(([:\\-.]|(://))[0-9a-zA-Z_]+)*$")
+        .expect("Invalid oauthscope regex found")
 });
 
 /// Must not contain whitespace. Allows "abcd", "abcd:efgh", but ":" and "-" need to be separating
@@ -2685,13 +2686,14 @@ mod tests {
         assert!(OAUTHSCOPE_RE.is_match("abcd"));
         assert!(OAUTHSCOPE_RE.is_match("https://abcd"));
         assert!(OAUTHSCOPE_RE.is_match("abcd.efgh"));
-        assert!(OAUTHSCOPE_RE.is_match("abcd::blah"));
+        assert!(OAUTHSCOPE_RE.is_match("abcd.efgh.xfz"));
 
         // Negative
         assert!(!OAUTHSCOPE_RE.is_match(""));
         assert!(!OAUTHSCOPE_RE.is_match("."));
         assert!(!OAUTHSCOPE_RE.is_match(":"));
         assert!(!OAUTHSCOPE_RE.is_match("/"));
-        assert!(!OAUTHSCOPE_RE.is_match("/////"));
+        assert!(!OAUTHSCOPE_RE.is_match("abcd."));
+        assert!(!OAUTHSCOPE_RE.is_match("abcd::blah"));
     }
 }
