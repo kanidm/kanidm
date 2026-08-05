@@ -91,7 +91,7 @@ pub static NSUNIQUEID_RE: LazyLock<Regex> = LazyLock::new(|| {
 /// Must not contain whitespace.
 pub static OAUTHSCOPE_RE: LazyLock<Regex> = LazyLock::new(|| {
     #[allow(clippy::expect_used)]
-    Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
+    Regex::new("^[0-9a-zA-Z_][0-9a-zA-Z_.:/]{0,63}$").expect("Invalid oauthscope regex found")
 });
 
 /// Must not contain whitespace. Allows "abcd", "abcd:efgh", but ":" and "-" need to be separating
@@ -2677,5 +2677,21 @@ mod tests {
         assert_eq!(do_extract("cn=william"), "william");
         assert_eq!(do_extract("cn=william,o=blackhats"), "william");
         assert_eq!(do_extract("cn=william@example.com"), "william@example.com");
+    }
+
+    #[test]
+    fn test_oauth2_scope_re_valid() {
+        // Positive
+        assert!(OAUTHSCOPE_RE.is_match("abcd"));
+        assert!(OAUTHSCOPE_RE.is_match("https://abcd"));
+        assert!(OAUTHSCOPE_RE.is_match("abcd.efgh"));
+        assert!(OAUTHSCOPE_RE.is_match("abcd::blah"));
+
+        // Negative
+        assert!(!OAUTHSCOPE_RE.is_match(""));
+        assert!(!OAUTHSCOPE_RE.is_match("."));
+        assert!(!OAUTHSCOPE_RE.is_match(":"));
+        assert!(!OAUTHSCOPE_RE.is_match("/"));
+        assert!(!OAUTHSCOPE_RE.is_match("/////"));
     }
 }
