@@ -6,15 +6,15 @@ pub struct AccountSignupRequestEvent {
     // Who initiated this? By default I think
     // this will be an internal identity?
     pub ident: Identity,
-    // username: String,
-    // display_name: String,
-    // email: String,
+    username: String,
+    display_name: String,
+    email: String,
 }
 
 impl IdmServerProxyWriteTransaction<'_> {
     pub fn account_signup_request(
         &mut self,
-        _asre: AccountSignupRequestEvent,
+        asre: AccountSignupRequestEvent,
     ) -> Result<(), OperationError> {
         // If the feature is not enabled, error.
         if !self.qs_write.get_feature_account_signup_config().enabled {
@@ -23,8 +23,35 @@ impl IdmServerProxyWriteTransaction<'_> {
         }
 
         // Generates a new account signup request entry that needs further processing.
-
         // It needs a "delete after" tag.
+
+        let AccountSignupRequestEvent {
+            ident,
+            username,
+            display_name,
+            email
+        }
+
+        let account_signup_entry = EntryInitNew::from_iter([
+            (
+                Attribute::Class,
+                vs_iutf8!(
+                    EntryClass::AccountSignupRequest.into(),
+                ),
+            ),
+            (
+                Attribute::Name,
+                ValueSetIname::new(name) as ValueSet,
+            ),
+            (
+                Attribute::DisplayName,
+                ValueSetUtf8::new(display_name) as ValueSet,
+            ),
+            (
+                Attribute::Mail,
+                ValueSetEmailAddress::new(email) as ValueSet,
+            ),
+        ])
 
         // Perform the post process on the request.
 
@@ -94,10 +121,18 @@ mod tests {
         write_txn.qs_write.reload().unwrap();
 
         // Create a new request.
+        let account_signup_req = AccountSignupRequestEvent {
+            ident: Identity::account_request(),
+        };
+
+        write_txn
+            .account_signup_request(account_signup_req)
+            .unwrap();
 
         // Since there are no validation rules in place, it should immediately succeed.
 
         // Validate the person
-        // Validate the message in the delayed queue
+
+        // TODO: Validate the message in the delayed queue
     }
 }
