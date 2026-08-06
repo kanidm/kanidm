@@ -2804,9 +2804,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
                     let feature_config_txn = self.feature_config.get_mut();
 
-                    hmac_name_history_fixup =
-                        !feature_config_txn.account_signup.enabled && new_feature_enabled_state;
-
                     feature_config_txn.account_signup.enabled = new_feature_enabled_state;
 
                     // Probably will add flags here soon?

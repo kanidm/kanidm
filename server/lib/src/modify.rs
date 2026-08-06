@@ -234,9 +234,9 @@ impl ModifyList<ModifyInvalid> {
     }
 }
 
-impl From<BTreeMap<Attribute, Option<ValueSet>>> for ModifyList<ModifyInvalid> {
-    fn from(attrs: BTreeMap<Attribute, Option<ValueSet>>) -> Self {
-        let mods = attrs
+impl FromIterator<(Attribute, Option<ValueSet>)> for ModifyList<ModifyInvalid> {
+    fn from_iter<I: IntoIterator<Item = (Attribute, Option<ValueSet>)>>(iter: I) -> Self {
+        let mods = iter
             .into_iter()
             .map(|(attr, maybe_valueset)| {
                 if let Some(valueset) = maybe_valueset {
@@ -251,6 +251,12 @@ impl From<BTreeMap<Attribute, Option<ValueSet>>> for ModifyList<ModifyInvalid> {
             valid: ModifyInvalid,
             mods,
         }
+    }
+}
+
+impl From<BTreeMap<Attribute, Option<ValueSet>>> for ModifyList<ModifyInvalid> {
+    fn from(attrs: BTreeMap<Attribute, Option<ValueSet>>) -> Self {
+        Self::from_iter(attrs)
     }
 }
 

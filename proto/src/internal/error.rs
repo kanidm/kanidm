@@ -162,6 +162,9 @@ pub enum OperationError {
     KG005HowDidYouEvenManageThis,
     KG006DatastructureCorruption,
 
+    // Account Signup Errors
+    AS0001FeatureDisabled,
+
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
     CU0002WebauthnRegistrationError,
@@ -475,6 +478,7 @@ impl OperationError {
             Self::KG004UnknownFeatureUuid => None,
             Self::KG005HowDidYouEvenManageThis => Some("You have damaged the fabric of space time and managed to perform an impossible action.".into()),
             Self::KG006DatastructureCorruption => None,
+            Self::AS0001FeatureDisabled => None,
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,
             Self::KP0003KeyProviderInvalidType => None,
