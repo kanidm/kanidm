@@ -1563,3 +1563,13 @@ pub static SCHEMA_CLASS_ASSERTION_NONCE: LazyLock<SchemaClass> = LazyLock::new(|
     ..Default::default()
 }
 });
+
+pub static SCHEMA_CLASS_ACCOUNT_SIGNUP_REQUEST: LazyLock<SchemaClass> =
+    LazyLock::new(|| SchemaClass {
+        uuid: UUID_SCHEMA_CLASS_ACCOUNT_SIGNUP_REQUEST,
+        name: EntryClass::AccountSignupRequest.into(),
+        description: "A pending account signup request that is pending review and/or verification"
+            .to_string(),
+        systemmust: vec![Attribute::Name, Attribute::DisplayName, Attribute::Mail],
+        ..Default::default()
+    });

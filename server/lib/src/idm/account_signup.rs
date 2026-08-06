@@ -29,20 +29,15 @@ impl IdmServerProxyWriteTransaction<'_> {
             ident,
             username,
             display_name,
-            email
-        }
+            email,
+        } = asre;
 
         let account_signup_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                vs_iutf8!(
-                    EntryClass::AccountSignupRequest.into(),
-                ),
+                ValueSetIutf8::new(EntryClass::AccountSignupRequest.into()) as ValueSet,
             ),
-            (
-                Attribute::Name,
-                ValueSetIname::new(name) as ValueSet,
-            ),
+            (Attribute::Name, ValueSetIname::new(&username) as ValueSet),
             (
                 Attribute::DisplayName,
                 ValueSetUtf8::new(display_name) as ValueSet,
@@ -51,11 +46,20 @@ impl IdmServerProxyWriteTransaction<'_> {
                 Attribute::Mail,
                 ValueSetEmailAddress::new(email) as ValueSet,
             ),
-        ])
+        ]);
 
-        // Perform the post process on the request.
+        // Create
+        let ce = CreateEvent {
+            ident,
+            entries: vec![account_signup_entry],
+            return_created_uuids: true,
+        };
 
-        todo!();
+        self.qs_write.create(&ce)?;
+
+        // TODO: Perform the post process on the request.
+
+        Ok(())
     }
 
     // We need a post-process handler for any events on the signup request. In a way this
@@ -78,6 +82,10 @@ mod tests {
     use super::AccountSignupRequestEvent;
     use crate::prelude::*;
 
+    const TESTPERSON_NAME: &str = "testperson";
+    const TESTPERSON_DISPLAY_NAME: &str = "Test Personington";
+    const TESTPERSON_EMAIL: &str = "testperson@example.com";
+
     #[idm_test]
     async fn test_account_signup_request_feature_disable(
         idms: &IdmServer,
@@ -89,6 +97,9 @@ mod tests {
 
         let account_signup_req = AccountSignupRequestEvent {
             ident: Identity::account_request(),
+            username: TESTPERSON_NAME.into(),
+            display_name: TESTPERSON_DISPLAY_NAME.into(),
+            email: TESTPERSON_EMAIL.into(),
         };
 
         let result = write_txn
@@ -123,6 +134,9 @@ mod tests {
         // Create a new request.
         let account_signup_req = AccountSignupRequestEvent {
             ident: Identity::account_request(),
+            username: TESTPERSON_NAME.into(),
+            display_name: TESTPERSON_DISPLAY_NAME.into(),
+            email: TESTPERSON_EMAIL.into(),
         };
 
         write_txn
