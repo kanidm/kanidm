@@ -181,6 +181,8 @@ pub fn phase_2_schema_classes() -> Vec<SchemaClass> {
         SCHEMA_CLASS_ASSERTION_NONCE.clone(),
         SCHEMA_CLASS_KEY_OBJECT_JWT_HS256_DL6.clone(),
         SCHEMA_CLASS_ASSERTION_NONCE.clone(),
+        // DL_1_12
+        SCHEMA_CLASS_ACCOUNT_SIGNUP_REQUEST.clone(),
     ]
 }
 
@@ -195,6 +197,7 @@ pub fn phase_4_system_entries() -> Vec<EntryInitNew> {
         e_system_config_v1(),
         e_uuid_domain_id_verification_key_v1(),
         e_hmac_name_history_feature(),
+        e_account_signup_feature(),
     ]
 }
 

@@ -330,6 +330,7 @@ pub const ACCESS_CONTROL_TARGET_SCOPE: &str = "access_control_target_scope";
 pub const ENTRYCLASS_BUILTIN: &str = "builtin";
 pub const ENTRYCLASS_ACCOUNT: &str = "account";
 pub const ENTRYCLASS_ACCOUNT_POLICY: &str = "account_policy";
+pub const ENTRYCLASS_ACCOUNT_SIGNUP_REQUEST: &str = "account_signup_request";
 pub const ENTRYCLASS_APPLICATION: &str = "application";
 pub const ENTRYCLASS_ASSERTION_NONCE: &str = "assertion_nonce";
 pub const ENTRYCLASS_ATTRIBUTE_TYPE: &str = "attributetype";

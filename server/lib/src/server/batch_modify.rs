@@ -347,21 +347,21 @@ mod tests {
             .is_ok());
 
         // Do a batch mod.
-        assert!(server_txn
+        server_txn
             .internal_batch_modify(
                 [
                     (
                         uuid_a,
-                        ModifyList::new_append(Attribute::Description, Value::Utf8("a".into()))
+                        ModifyList::new_append(Attribute::Description, Value::Utf8("a".into())),
                     ),
                     (
                         uuid_b,
-                        ModifyList::new_append(Attribute::Description, Value::Utf8("b".into()))
+                        ModifyList::new_append(Attribute::Description, Value::Utf8("b".into())),
                     ),
                 ]
-                .into_iter()
+                .into_iter(),
             )
-            .is_ok());
+            .unwrap();
 
         // Now check them
         let ent_a = server_txn
