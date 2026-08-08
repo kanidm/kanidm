@@ -985,9 +985,9 @@ dependencies = [
 
 [[package]]
 name = "compact_jwt"
-version = "0.5.6"
+version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0edc5af3006c35170ccbc0ecd24ead895bf19cdc1f1a2805c636bc5d53576954"
+checksum = "d8faea2ff793c0275ebf23a1bf472e273daaf567debcaa6cda19e7017cd265fa"
 dependencies = [
  "base64 0.22.1",
  "base64urlsafedata 0.5.5",
@@ -6787,7 +6787,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",

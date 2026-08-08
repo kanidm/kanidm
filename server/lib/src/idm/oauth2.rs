@@ -17,7 +17,7 @@ use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE
 use base64::{engine::general_purpose, Engine as _};
 pub use compact_jwt::{compact::JwkKeySet, OidcToken};
 use compact_jwt::{
-    crypto::{JweA128GCMEncipher, JweA128KWEncipher},
+    crypto::{JweA256GCMEncipher, JweA256KWEncipher},
     jwe::JweBuilder,
     jws::JwsBuilder,
     JweCompact, JwsCompact, OidcClaims, OidcSubject,
@@ -614,7 +614,7 @@ impl std::fmt::Debug for Oauth2RS {
 #[derive(Clone)]
 struct Oauth2RSInner {
     origin: Url,
-    consent_key: JweA128KWEncipher,
+    consent_key: JweA256KWEncipher,
     private_rs_set: HashMap<String, Oauth2RS>,
     private_key_map: HashMap<KeyId, String>,
 }
@@ -645,7 +645,7 @@ pub struct Oauth2ResourceServersWriteTransaction<'a> {
 
 impl Oauth2ResourceServers {
     pub fn new(origin: Url) -> Result<Self, OperationError> {
-        let consent_key = JweA128KWEncipher::generate_ephemeral()
+        let consent_key = JweA256KWEncipher::generate_ephemeral()
             .map_err(|_| OperationError::CryptographyError)?;
 
         Ok(Oauth2ResourceServers {
@@ -694,7 +694,7 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
         &mut self,
         value: Vec<Arc<EntrySealedCommitted>>,
         key_providers: &KeyProvidersWriteTransaction,
-        _domain_level: DomainVersion,
+        domain_level: DomainVersion,
     ) -> Result<(), OperationError> {
         let mut kid_map: HashMap<KeyId, String> = Default::default();
 
@@ -933,12 +933,21 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                 };
 
                 // We also need the encryption keyids
-                kid_map.extend(
-                    key_object
-                        .jwe_a128gcm_kid()
-                        .into_iter()
-                        .map(|kid| (kid.clone(), client_id.clone())),
-                );
+                if domain_level >= DOMAIN_LEVEL_1_12 {
+                    kid_map.extend(
+                        key_object
+                            .jwe_a256gcm_kid()
+                            .into_iter()
+                            .map(|kid| (kid.clone(), client_id.clone())),
+                    );
+                } else {
+                    kid_map.extend(
+                        key_object
+                            .jwe_a128gcm_kid()
+                            .into_iter()
+                            .map(|kid| (kid.clone(), client_id.clone())),
+                    );
+                }
 
                 let prefer_short_username = ent
                     .get_ava_single_bool(Attribute::OAuth2PreferShortUsername)
@@ -1442,14 +1451,25 @@ impl IdmServerProxyWriteTransaction<'_> {
                 OperationError::SerdeJsonError
             })?;
 
-        let code = o2rs
-            .key_object
-            .jwe_a128gcm_encrypt(&code_data_jwe, ct)
-            .map(|code| code.to_string())
-            .map_err(|err| {
-                error!(?err, "Unable to encrypt xchg_code");
-                OperationError::CryptographyError
-            })?;
+        let domain_level = self.qs_write.get_domain_version();
+
+        let code = if domain_level >= DOMAIN_LEVEL_1_12 {
+            o2rs.key_object
+                .jwe_a256gcm_encrypt(&code_data_jwe, ct)
+                .map(|code| code.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encrypt xchg_code");
+                    OperationError::CryptographyError
+                })?
+        } else {
+            o2rs.key_object
+                .jwe_a128gcm_encrypt(&code_data_jwe, ct)
+                .map(|code| code.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encrypt xchg_code");
+                    OperationError::CryptographyError
+                })?
+        };
 
         // Everything is DONE! Now submit that it's all happy and the user consented correctly.
         // this will let them bypass consent steps in the future.
@@ -1914,14 +1934,25 @@ impl IdmServerProxyWriteTransaction<'_> {
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
             })?;
 
-        let access_token = o2rs
-            .key_object
-            .jwe_a128gcm_encrypt(&access_token_data, ct)
-            .map(|jwe| jwe.to_string())
-            .map_err(|err| {
-                error!(?err, "Unable to encode token data");
-                Oauth2Error::ServerError(OperationError::CryptographyError)
-            })?;
+        let domain_level = self.qs_write.get_domain_version();
+
+        let access_token = if domain_level >= DOMAIN_LEVEL_1_12 {
+            o2rs.key_object
+                .jwe_a256gcm_encrypt(&access_token_data, ct)
+                .map(|jwe| jwe.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encode token data");
+                    Oauth2Error::ServerError(OperationError::CryptographyError)
+                })?
+        } else {
+            o2rs.key_object
+                .jwe_a128gcm_encrypt(&access_token_data, ct)
+                .map(|jwe| jwe.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encode token data");
+                    Oauth2Error::ServerError(OperationError::CryptographyError)
+                })?
+        };
 
         // Write the session to the db
         let session = Value::Oauth2Session(
@@ -2127,14 +2158,25 @@ impl IdmServerProxyWriteTransaction<'_> {
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
             })?;
 
-        let refresh_token = o2rs
-            .key_object
-            .jwe_a128gcm_encrypt(&refresh_token_data, ct)
-            .map(|jwe| jwe.to_string())
-            .map_err(|err| {
-                error!(?err, "Unable to encrypt token data");
-                Oauth2Error::ServerError(OperationError::CryptographyError)
-            })?;
+        let domain_level = self.qs_write.get_domain_version();
+
+        let refresh_token = if domain_level >= DOMAIN_LEVEL_1_12 {
+            o2rs.key_object
+                .jwe_a256gcm_encrypt(&refresh_token_data, ct)
+                .map(|jwe| jwe.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encrypt token data");
+                    Oauth2Error::ServerError(OperationError::CryptographyError)
+                })?
+        } else {
+            o2rs.key_object
+                .jwe_a128gcm_encrypt(&refresh_token_data, ct)
+                .map(|jwe| jwe.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encrypt token data");
+                    Oauth2Error::ServerError(OperationError::CryptographyError)
+                })?
+        };
 
         // Write the session to the db even with the refresh path, we need to do
         // this to update the "not issued before" time.
@@ -2560,14 +2602,25 @@ impl IdmServerProxyReadTransaction<'_> {
                     Oauth2Error::ServerError(OperationError::SerdeJsonError)
                 })?;
 
-            let code = o2rs
-                .key_object
-                .jwe_a128gcm_encrypt(&code_data_jwe, ct)
-                .map(|jwe| jwe.to_string())
-                .map_err(|err| {
-                    error!(?err, "Unable to encrypt xchg_code data");
-                    Oauth2Error::ServerError(OperationError::CryptographyError)
-                })?;
+            let domain_level = self.qs_read.get_domain_version();
+
+            let code = if domain_level >= DOMAIN_LEVEL_1_12 {
+                o2rs.key_object
+                    .jwe_a256gcm_encrypt(&code_data_jwe, ct)
+                    .map(|jwe| jwe.to_string())
+                    .map_err(|err| {
+                        error!(?err, "Unable to encrypt xchg_code data");
+                        Oauth2Error::ServerError(OperationError::CryptographyError)
+                    })?
+            } else {
+                o2rs.key_object
+                    .jwe_a128gcm_encrypt(&code_data_jwe, ct)
+                    .map(|jwe| jwe.to_string())
+                    .map_err(|err| {
+                        error!(?err, "Unable to encrypt xchg_code data");
+                        Oauth2Error::ServerError(OperationError::CryptographyError)
+                    })?
+            };
 
             Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {
                 redirect_uri: auth_req.redirect_uri.clone(),
@@ -2642,7 +2695,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 .oauth2rs
                 .inner
                 .consent_key
-                .encipher::<JweA128GCMEncipher>(&consent_jwe)
+                .encipher::<JweA256GCMEncipher>(&consent_jwe)
                 .map(|jwe_compact| jwe_compact.to_string())
                 .map_err(|err| {
                     error!(?err, "Unable to encrypt jwe");

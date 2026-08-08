@@ -25,6 +25,7 @@ pub fn e_domain_info_dl6() -> EntryInitNew {
         (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
         (Attribute::Class, EntryClass::KeyObjectJwtHs256.to_value()),
         (Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJweA256GCM.to_value()),
         (Attribute::Name, Value::new_iname("domain_local")),
         (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
         (

@@ -76,6 +76,17 @@ pub trait KeyObjectT {
 
     fn jwe_a128gcm_kid(&self) -> Vec<&KeyId>;
 
+    fn jwe_a256gcm_assert(&mut self, valid_from: Duration, cid: &Cid)
+        -> Result<(), OperationError>;
+
+    fn jwe_a256gcm_encrypt(
+        &self,
+        jwe: &Jwe,
+        current_time: Duration,
+    ) -> Result<JweCompact, OperationError>;
+
+    fn jwe_a256gcm_kid(&self) -> Vec<&KeyId>;
+
     fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError>;
 
     fn hkdf_s256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError>;
