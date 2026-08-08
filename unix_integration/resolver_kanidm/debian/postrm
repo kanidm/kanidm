@@ -1,0 +1,33 @@
+#!/bin/sh
+# postinst script for kanidm-unixd
+#
+# see: dh_installdeb(1)
+
+set -e
+
+remove_unix_chkpwd_apparmor() {
+    profile="/etc/apparmor.d/unix-chkpwd"
+    local_profile="/etc/apparmor.d/local/unix-chkpwd"
+
+    [ -f "$local_profile" ] || return 0
+
+    if grep -q '^# BEGIN kanidm-unixd$' "$local_profile"; then
+        echo "Removing AppArmor profile for unix_chkpwd that allowed access to kanidm-unixd socket, backing up $local_profile to $local_profile.bak"
+        cp "$local_profile" "$local_profile.bak"
+        sed -i '/^# BEGIN kanidm-unixd$/,/^# END kanidm-unixd$/d' "$local_profile"
+    fi
+
+    if command -v apparmor_parser >/dev/null 2>&1 && [ -f "$profile" ]; then
+        apparmor_parser -r -W -T "$profile" || true
+    fi
+}
+
+case "$1" in
+    purge)
+        remove_unix_chkpwd_apparmor
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0
