@@ -558,9 +558,9 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "base64"
-version = "0.23.0"
+version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b25655df2c3cdd83c5e5b293b88acd880332b2ddadd7c30ac43144fdc0033da9"
+checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
 name = "base64ct"
@@ -890,9 +890,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.6.4"
+version = "4.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d91e0c145792ef73a6ad36d27c75ac09f1832222a3c209689d90f534685ee5b7"
+checksum = "473c7e07f409a8d772161724aa8db6a765a2532a70f9667eeb7b49d3d02fbdca"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -900,9 +900,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.6.2"
+version = "4.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f09628afdcc538b57f3c6341e9c8e9970f18e4a481690a64974d7023bd33548b"
+checksum = "7b48fea5a88e9ae728a2dcbedbfc0e730f7d60da42e1cb049a83c9fb8b789889"
 dependencies = [
  "anstream",
  "anstyle",
@@ -912,9 +912,9 @@ dependencies = [
 
 [[package]]
 name = "clap_complete"
-version = "4.6.8"
+version = "4.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f84a88507dbd05c695f2cb5e8558e747179134005e9893882dec964190ed89"
+checksum = "3be2ad0423bdbbb0e25bc89add796f3559706d4a95e1bc98e4d9662a957b6a19"
 dependencies = [
  "clap",
 ]
@@ -1717,7 +1717,7 @@ version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "420b9da095f052ea597503e39073b5b3c522f7db933fbac202d91d24492693fd"
 dependencies = [
- "base64 0.23.0",
+ "base64 0.23.1",
  "memchr",
 ]
 
@@ -1829,6 +1829,17 @@ name = "fancy-regex"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1e1dacd0d2082dfcf1351c4bdd566bbe89a2b263235a2b50058f1e130a47277"
+dependencies = [
+ "bit-set",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
+name = "fancy-regex"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "476de73bddf2ef8490aa4ee8f1cf40b430bf1d56c48c22080e5186952cd580e6"
 dependencies = [
  "bit-set",
  "regex-automata",
@@ -3493,15 +3504,15 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.49.2"
+version = "0.49.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8a77951c56b6a0af03c22af6953d6ffcfba9403c765578921f3f1089b999db6"
+checksum = "ce93912abc8220a3fdb768b2c4a826a7a9a4b1599cfb4d760d422eaa1faf88c7"
 dependencies = [
  "ahash",
  "bytecount",
  "data-encoding",
  "email_address",
- "fancy-regex",
+ "fancy-regex 0.19.0",
  "fraction",
  "getrandom 0.3.4",
  "idna",
@@ -3524,18 +3535,18 @@ dependencies = [
 
 [[package]]
 name = "jsonschema-regex"
-version = "0.49.2"
+version = "0.49.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4c2e64f341a1d6a15d2daa3c967e48921cf15b9c7f23a9899e8b63c7f7c4199"
+checksum = "8165657ebed4d32c50f3c250c1986d8428b16fbfeac355222e8fec50aa26eb1d"
 dependencies = [
  "regex-syntax",
 ]
 
 [[package]]
 name = "jsonschema-value"
-version = "0.49.2"
+version = "0.49.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94e097778f3e9c6a33862077dbf07aca0360d0b18d2a7abc323da132df49ee83"
+checksum = "b069c5fdda3e9c2242bba49d811d5bbdb488abd8d234ed44a6312fd2891113e1"
 dependencies = [
  "ahash",
  "bytecount",
@@ -3649,7 +3660,7 @@ dependencies = [
 name = "kanidm_build_profiles"
 version = "1.12.0-dev"
 dependencies = [
- "base64 0.23.0",
+ "base64 0.23.1",
  "gix",
  "serde",
  "sha2 0.11.0-rc.5",
@@ -3683,7 +3694,7 @@ dependencies = [
 name = "kanidm_lib_crypto"
 version = "1.12.0-dev"
 dependencies = [
- "base64 0.23.0",
+ "base64 0.23.1",
  "base64urlsafedata 0.6.1-dev",
  "crypto-glue",
  "hex",
@@ -3710,7 +3721,7 @@ name = "kanidm_proto"
 version = "1.12.0-dev"
 dependencies = [
  "base32",
- "base64 0.23.0",
+ "base64 0.23.1",
  "clap",
  "crypto-glue",
  "enum-iterator",
@@ -3813,7 +3824,7 @@ dependencies = [
  "axum-extra",
  "axum-htmx",
  "axum-macros",
- "base64 0.23.0",
+ "base64 0.23.1",
  "bytes",
  "chrono",
  "cidr",
@@ -3869,7 +3880,7 @@ dependencies = [
 name = "kanidmd_lib"
 version = "1.12.0-dev"
 dependencies = [
- "base64 0.23.0",
+ "base64 0.23.1",
  "base64urlsafedata 0.6.1-dev",
  "bitflags 2.13.1",
  "compact_jwt",
@@ -3932,7 +3943,7 @@ dependencies = [
 name = "kanidmd_testkit"
 version = "1.12.0-dev"
 dependencies = [
- "base64 0.23.0",
+ "base64 0.23.1",
  "cidr",
  "compact_jwt",
  "escargot",
@@ -4060,12 +4071,12 @@ dependencies = [
 
 [[package]]
 name = "lettre"
-version = "0.11.22"
+version = "0.11.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0da65617f6cb926332d039cb578aad56178da86e128db6a1b09f4c94fa5b3349"
+checksum = "f2c646bd5cc763b1087b15493e29a64be6147ba8f19342004fa52048ee596eae"
 dependencies = [
  "async-trait",
- "base64 0.22.1",
+ "base64 0.23.1",
  "email-encoding",
  "email_address",
  "fastrand",
@@ -4226,9 +4237,9 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.18.1"
+version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b6180140927ee907000b0aa540091f6ea512ead4447c92b8fc35bc72788a5a6"
+checksum = "5d2f2f9b4ba7e6b24d95e7e899329d35be83bcded72c8540cdd5368932d1d90a"
 dependencies = [
  "hashbrown 0.17.1",
 ]
@@ -5601,9 +5612,9 @@ dependencies = [
 
 [[package]]
 name = "referencing"
-version = "0.49.2"
+version = "0.49.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b772e96f8eb6badd4eb10fbc08b8a98244c09b4af37e72e8fa612c854604b870"
+checksum = "f39f4c36ce0f50e96fb740d895f1cad34cfa76c4ab5c36934d6590bcd7029087"
 dependencies = [
  "ahash",
  "fluent-uri",
@@ -5673,7 +5684,7 @@ dependencies = [
  "quinn",
  "rustls",
  "rustls-pki-types",
- "rustls-platform-verifier 0.7.0",
+ "rustls-platform-verifier 0.6.2",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -6563,7 +6574,7 @@ dependencies = [
  "kanidmd_core",
  "kanidmd_testkit",
  "libc",
- "lru 0.18.1",
+ "lru 0.18.2",
  "nix",
  "notify-debouncer-full",
  "prctl",
@@ -6776,7 +6787,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
@@ -8366,7 +8377,7 @@ checksum = "f9eaee90f4a795d1eb4ba6c51e1c1721d4784d550e8efa7b2600f29c867365e0"
 dependencies = [
  "chrono",
  "derive_builder",
- "fancy-regex",
+ "fancy-regex 0.18.0",
  "itertools 0.14.0",
  "lazy_static",
  "regex",
