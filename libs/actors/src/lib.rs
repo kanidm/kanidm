@@ -590,10 +590,16 @@ mod tests {
             type Message = ();
 
             fn state(&mut self) -> impl Future<Output = ActorState<Self::Message>> + Send {
-                async { ActorState::Ready(()) }
+                async { ActorState::Stop }
             }
 
             fn run(&mut self, _msg: Self::Message) -> impl Future<Output = ()> + Send {
+                async {
+                    trace!("Disregarding message.");
+                }
+            }
+
+            fn setup(&mut self) -> impl Future<Output = ()> + Send {
                 async {
                     // It's time to test
                     trace!("Starting task supervision test");
@@ -606,7 +612,7 @@ mod tests {
                     let task_1_handle = self.test_supervisor.spawn(TestActor::new(rx));
                     assert_eq!(self.test_supervisor.subordinate_count(), 1);
 
-                    // Now we can message the oneshote and it will cause the task to stop due to how
+                    // Now we can message the oneshot and it will cause the task to stop due to how
                     // we have configured it.
                     task_1_tx.send(()).await.unwrap();
                     task_1_handle.await.unwrap();
@@ -641,6 +647,7 @@ mod tests {
                     // Now stop the supervisor - all it's children will stop!
 
                     // We are now complete, stop everything!
+                    trace!("Test pass! Terminating ...");
                     self.signal_tx.send(Signal::Terminate).await.unwrap();
                 }
             }
