@@ -2509,7 +2509,23 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let session_id = ident.get_session_id();
 
-        if consent_previously_granted || !o2rs.enable_consent_prompt() {
+        let consent_required = (
+                // consent was NOT previously granted, we SHOULD request it.
+                !consent_previously_granted
+                // OR
+                ||
+                // client is NOT basic AND is localhost
+                // - This prevents a malicious localhost client hijacking an existing localhost
+                // - consent that was granted.
+                (!o2rs.is_basic() && loopback_uri_matched)
+                // Future - if we add DCR then we will always force TRUE here.
+            )
+            // AND
+            &&
+            // consent prompt is enabled. This can only be false on confidential clients.
+            o2rs.enable_consent_prompt();
+
+        if !consent_required {
             if event_enabled!(tracing::Level::DEBUG) {
                 let pretty_scopes: Vec<String> =
                     granted_scopes.iter().map(|s| s.to_owned()).collect();
