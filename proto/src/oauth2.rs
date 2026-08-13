@@ -254,10 +254,15 @@ pub struct OAuth2RFC9068TokenExtensions {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum IssuedTokenType {
+    #[serde(rename = "urn:ietf:params:oauth:token-type:access_token")]
     AccessToken,
+    #[serde(rename = "urn:ietf:params:oauth:token-type:refresh_token")]
     RefreshToken,
+    #[serde(rename = "urn:ietf:params:oauth:token-type:id_token")]
     IdToken,
+    #[serde(rename = "urn:ietf:params:oauth:token-type:saml1")]
     Saml1,
+    #[serde(rename = "urn:ietf:params:oauth:token-type:saml2")]
     Saml2,
 }
 
