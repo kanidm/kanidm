@@ -1,6 +1,5 @@
 use crate::idm::server::IdmServerProxyWriteTransaction;
 use crate::prelude::*;
-// use kanidm_proto::scim_v1::client::
 
 pub struct AccountSignupRequestEvent {
     // Who initiated this? By default I think
