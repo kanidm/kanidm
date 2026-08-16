@@ -390,6 +390,10 @@ fn build_mailer(
     Ok(mailer)
 }
 
+fn parse_config(contents: &str) -> Result<Config, String> {
+    toml::from_str(contents).map_err(|e| e.message().to_owned())
+}
+
 async fn driver_main(opt: Opt) -> Result<(), ()> {
     let mut f = match File::open(&opt.mail_sender_config) {
         Ok(f) => f,
@@ -413,9 +417,9 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
         return Err(());
     };
 
-    let mail_config: Config = toml::from_str(contents.as_str()).map_err(|e| {
+    let mail_config = parse_config(contents.as_str()).map_err(|e| {
         error!(
-            "Unable to parse config from '{}' error: {:?}",
+            "Unable to parse config from '{}' error: {}",
             &opt.mail_sender_config.display(),
             e
         );
@@ -662,7 +666,7 @@ fn main() {
 mod tests {
     use crate::config::Config;
 
-    use super::build_mailer;
+    use super::{build_mailer, parse_config};
     use lettre::transport::smtp::authentication::Credentials;
     use url::Url;
 
@@ -719,5 +723,19 @@ mod tests {
         "#;
 
         assert!(toml::from_str::<Config>(test_config).is_err());
+    }
+
+    #[test]
+    fn config_parse_error_does_not_include_secrets() {
+        let test_config = r#"
+        token = "secret-token"
+        mail_password = "secret-password"
+        mail_relay = "example.com"
+        instance_display_name = "test"
+        "#;
+
+        let error = parse_config(test_config).unwrap_err();
+        assert!(!error.contains("secret-token"));
+        assert!(!error.contains("secret-password"));
     }
 }
