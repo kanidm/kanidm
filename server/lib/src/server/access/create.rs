@@ -133,8 +133,23 @@ fn create_filter_entry<'a>(
             return IResult::Ignore;
         }
         IdentType::Internal(InternalRole::AccountRequest) => {
-            // No current rules.
-            return IResult::Ignore;
+            trace!(uuid = ?entry.get_display_id(), "Account Request");
+
+            let pres = BTreeSet::from([
+                Attribute::Class,
+                Attribute::DeleteAfter,
+                Attribute::Name,
+                Attribute::DisplayName,
+                Attribute::Mail,
+            ]);
+
+            let pres_cls = BTreeSet::from([
+                EntryClass::Object.into(),
+                EntryClass::AccountSignupRequest.into(),
+            ]);
+
+            // We may create account signup requests.
+            return IResult::Allow { pres, pres_cls };
         }
         IdentType::Internal(InternalRole::MessageQueue) => {
             // No current rules.

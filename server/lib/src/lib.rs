@@ -105,8 +105,8 @@ pub mod prelude {
         ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value,
     };
     pub(crate) use crate::valueset::{
-        ValueSet, ValueSetBool, ValueSetCid, ValueSetIname, ValueSetIutf8, ValueSetRefer,
-        ValueSetSha256, ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
+        ValueSet, ValueSetBool, ValueSetCid, ValueSetEmailAddress, ValueSetIname, ValueSetIutf8,
+        ValueSetRefer, ValueSetSha256, ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
     };
     pub use kanidm_proto::attribute::{AttrString, Attribute};
     pub use kanidm_proto::constants::*;
