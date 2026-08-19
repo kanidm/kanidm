@@ -1,13 +1,21 @@
 use axum::{
     body::Body,
     extract::State,
-    http::{header, HeaderValue, Request},
+    http::{header, HeaderName, HeaderValue, Request},
     middleware::Next,
     response::Response,
 };
 
 use crate::https::ServerState;
 
+// once the http crate has them built in, those can be used instead
+const COEP_NAME: &str = "cross-origin-embedder-policy";
+const COOP_NAME: &str = "cross-origin-opener-policy";
+const CORP_NAME: &str = "cross-origin-resource-policy";
+
+const COEP_VALUE: &str = "require-corp";
+const COOP_VALUE: &str = "same-origin";
+const CORP_VALUE: &str = "same-origin";
 const HSTS_VALUE: &str = "max-age=63072001"; // 2 years + 1 second
 const PERMISSIONS_POLICY_VALUE: &str = "fullscreen=(), geolocation=()";
 const X_CONTENT_TYPE_OPTIONS_VALUE: &str = "nosniff";
@@ -57,6 +65,30 @@ pub async fn security_headers_layer(
     response.headers_mut().insert(
         header::STRICT_TRANSPORT_SECURITY,
         HeaderValue::from_static(HSTS_VALUE),
+    );
+
+    // Restrict loading of external resources to ones having properly set CORP and/or CORS
+    //
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy
+    response.headers_mut().insert(
+        HeaderName::from_static(COEP_NAME),
+        HeaderValue::from_static(COEP_VALUE),
+    );
+
+    // Isolate windows opened with JavaScript from other sites
+    //
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Opener-Policy
+    response.headers_mut().insert(
+        HeaderName::from_static(COOP_NAME),
+        HeaderValue::from_static(COOP_VALUE),
+    );
+
+    // Require browsers loading our resources to use CORS
+    //
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Resource-Policy
+    response.headers_mut().insert(
+        HeaderName::from_static(CORP_NAME),
+        HeaderValue::from_static(CORP_VALUE),
     );
 
     response
