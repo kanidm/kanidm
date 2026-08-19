@@ -8,6 +8,7 @@ use axum::{
 
 use crate::https::ServerState;
 
+const HSTS_VALUE: &str = "max-age=63072001"; // 2 years + 1 second
 const PERMISSIONS_POLICY_VALUE: &str = "fullscreen=(), geolocation=()";
 const X_CONTENT_TYPE_OPTIONS_VALUE: &str = "nosniff";
 
@@ -49,6 +50,14 @@ pub async fn security_headers_layer(
     // https://scotthelme.co.uk/a-new-security-header-referrer-policy/
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy
     headers.insert(header::REFERRER_POLICY, HeaderValue::from_static("origin"));
+
+    // Request the browser to only load this site via HTTPS in the future
+    //
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security
+    response.headers_mut().insert(
+        header::STRICT_TRANSPORT_SECURITY,
+        HeaderValue::from_static(HSTS_VALUE),
+    );
 
     response
 }
