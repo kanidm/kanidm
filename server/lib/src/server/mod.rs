@@ -2253,70 +2253,86 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_schema(&mut self) -> Result<(), OperationError> {
-        if self.get_domain_version() < DOMAIN_LEVEL_1_11 {
-            // supply entries to the writable schema to reload from.
-            // find all attributes.
-            let filt = filter!(f_eq(Attribute::Class, EntryClass::AttributeType.into()));
-            let res = self.internal_search(filt).map_err(|e| {
-                error!("reload schema internal search failed {:?}", e);
-                e
-            })?;
-            // load them.
-            let attributetypes: Result<Vec<_>, _> =
-                res.iter().map(|e| SchemaAttribute::try_from(e)).collect();
+        match self.get_domain_version() {
+            /*
+            0 => {
+                // server is being brought up, so the schema was already set by a caller.
+            }
+            */
+            level if level < DOMAIN_LEVEL_1_11 => {
+                // supply entries to the writable schema to reload from.
+                // find all attributes.
+                let filt = filter!(f_eq(Attribute::Class, EntryClass::AttributeType.into()));
+                let res = self.internal_search(filt).map_err(|e| {
+                    error!("reload schema internal search failed {:?}", e);
+                    e
+                })?;
+                // load them.
+                let attributetypes: Result<Vec<_>, _> =
+                    res.iter().map(|e| SchemaAttribute::try_from(e)).collect();
 
-            let attributetypes = attributetypes.map_err(|e| {
-                error!("reload schema attributetypes {:?}", e);
-                e
-            })?;
-
-            self.schema
-                .update_attributes(attributetypes.into_iter())
-                .map_err(|e| {
-                    error!("reload schema update attributetypes {:?}", e);
+                let attributetypes = attributetypes.map_err(|e| {
+                    error!("reload schema attributetypes {:?}", e);
                     e
                 })?;
 
-            // find all classes
-            let filt = filter!(f_eq(Attribute::Class, EntryClass::ClassType.into()));
-            let res = self.internal_search(filt).map_err(|e| {
-                error!("reload schema internal search failed {:?}", e);
-                e
-            })?;
-            // load them.
-            let classtypes: Result<Vec<_>, _> =
-                res.iter().map(|e| SchemaClass::try_from(e)).collect();
-            let classtypes = classtypes.map_err(|e| {
-                error!("reload schema classtypes {:?}", e);
-                e
-            })?;
+                // IMPORTANT: If attribute types is empty, it's because we are in "in memory schema"
+                // mode only. This is a horrid hack but it's needed for backwards compat for now.
+                //
+                // The reason it's needed is that at this phase in bootstrap, domain_version is 0
+                // but the on-disk schema mode relies on that to trigger a read from the DB. We can't
+                // gate on version == 0 because that breaks the older versions. But if we DONT do
+                // anything then this call will nuke the in memory schema that we just setup causing
+                // the server to fail.
+                if attributetypes.is_empty() {
+                    debug!("DB attributes are empty - we are probably in DL_1_11 memory only schema mode.");
+                } else {
+                    self.schema
+                        .update_attributes(attributetypes.into_iter())
+                        .map_err(|e| {
+                            error!("reload schema update attributetypes {:?}", e);
+                            e
+                        })?;
 
-            self.schema
-                .update_classes(classtypes.into_iter())
-                .map_err(|e| {
-                    error!("reload schema update classtypes {:?}", e);
-                    e
-                })?;
+                    // find all classes
+                    let filt = filter!(f_eq(Attribute::Class, EntryClass::ClassType.into()));
+                    let res = self.internal_search(filt).map_err(|e| {
+                        error!("reload schema internal search failed {:?}", e);
+                        e
+                    })?;
+                    // load them.
+                    let classtypes: Result<Vec<_>, _> =
+                        res.iter().map(|e| SchemaClass::try_from(e)).collect();
+                    let classtypes = classtypes.map_err(|e| {
+                        error!("reload schema classtypes {:?}", e);
+                        e
+                    })?;
 
-            // validate.
-            let valid_r = self.schema.validate();
+                    self.schema
+                        .update_classes(classtypes.into_iter())
+                        .map_err(|e| {
+                            error!("reload schema update classtypes {:?}", e);
+                            e
+                        })?;
 
-            // Translate the result.
-            if !valid_r.is_empty() {
-                // Log the failures
-                error!("Schema reload failed -> {:?}", valid_r);
-                return Err(OperationError::ConsistencyError(
-                    valid_r.into_iter().filter_map(|v| v.err()).collect(),
-                ));
-            };
-        } else {
-            match self.get_domain_version() {
-                DOMAIN_LEVEL_1_11 => self.migrate_schema_1_11()?,
-                DOMAIN_LEVEL_1_12 => self.migrate_schema_1_12()?,
-                _ => {
-                    debug_assert!(false, "domain level was not configured in reload_schema");
-                    return Err(OperationError::MG0001InvalidReMigrationLevel);
+                    // validate.
+                    let valid_r = self.schema.validate();
+
+                    // Translate the result.
+                    if !valid_r.is_empty() {
+                        // Log the failures
+                        error!("Schema reload failed -> {:?}", valid_r);
+                        return Err(OperationError::ConsistencyError(
+                            valid_r.into_iter().filter_map(|v| v.err()).collect(),
+                        ));
+                    };
                 }
+            }
+            DOMAIN_LEVEL_1_11 => self.migrate_schema_1_11()?,
+            DOMAIN_LEVEL_1_12 => self.migrate_schema_1_12()?,
+            _ => {
+                debug_assert!(false, "domain level was not configured in reload_schema");
+                return Err(OperationError::MG0001InvalidReMigrationLevel);
             }
         }
 
