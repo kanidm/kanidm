@@ -216,12 +216,12 @@ pub async fn create_https_server(
     let csp_header = format!(
         concat!(
             "default-src 'self'; ",
-            "base-uri 'self' https:; ",
+            "base-uri 'none'; ",
             "form-action 'self'; ",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
-            "script-src 'self' 'unsafe-eval'{};",
+            "script-src 'self'{};",
             // https://datatracker.ietf.org/doc/html/rfc9700#name-clickjacking
             "frame-ancestors 'none'; ",
         ),
@@ -242,11 +242,11 @@ pub async fn create_https_server(
     let csp_header_no_form_action = format!(
         concat!(
             "default-src 'self'; ",
-            "base-uri 'self' https:; ",
+            "base-uri 'none'; ",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
-            "script-src 'self' 'unsafe-eval'{};",
+            "script-src 'self'{};",
             // https://datatracker.ietf.org/doc/html/rfc9700#name-clickjacking
             "frame-ancestors 'none'; ",
         ),
