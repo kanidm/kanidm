@@ -80,6 +80,11 @@ ldap_filter = "(|(objectclass=person)(objectclass=posixgroup))"
 # group_attr_member = "member"
 # group_attr_gidnumber = "gidnumber"
 
+# LDAP client max ber (message) size.
+# If one of your LDAP fields is large, your client can maybe throw "lber request too large".
+# With this options you can increse the size.
+# Size is in kilobytes ! (Kanidm ldap3 client default ber size is 32768)
+# max_ber_size = 1024000
 
 # The sync tool can alter or exclude entries. These are mapped by their syncuuid
 # The syncuuid is derived from nsUniqueId in 389-ds. It is the entryUUID for OpenLDAP
