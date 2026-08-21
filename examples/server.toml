@@ -94,6 +94,12 @@ domain = "idm.example.com"
 origin = "https://idm.example.com"
 #
 
+#   Select the HTTP protocol versions offered by the server.
+#   Defaults to "all".
+# http_server_versions = "1"
+#   OR
+# http_server_versions = "2"
+
 #   HTTPS requests can be reverse proxied by a loadbalancer.
 #   To preserve the original IP of the caller, these systems
 #   will often add a header such as "Forwarded" or
