@@ -916,6 +916,14 @@ impl QueryServerWriteTransaction<'_> {
 
         self.reload()?;
 
+        let filter = filter_all!(f_and!([f_eq(
+            Attribute::Class,
+            EntryClass::OAuth2ResourceServer.into()
+        ),]));
+        let modlist =
+            ModifyList::new_append(Attribute::Class, EntryClass::KeyObjectJweA256GCM.into());
+        self.internal_modify(&filter, &modlist)?;
+
         Ok(())
     }
 
@@ -1470,6 +1478,42 @@ mod tests {
 
         assert_eq!(db_domain_version, DOMAIN_LEVEL_1_11);
 
+        // Create an OAuth2 Client
+
+        let oauth2_client_uuid = Uuid::new_v4();
+        let oauth2_client_entry = EntryInitNew::from_iter([
+            (
+                Attribute::Class,
+                vs_iutf8!(
+                    EntryClass::Object.into(),
+                    EntryClass::Account.into(),
+                    EntryClass::OAuth2ResourceServer.into(),
+                    EntryClass::OAuth2ResourceServerBasic.into()
+                ),
+            ),
+            (Attribute::Name, vs_iname!("test_oauth2_client")),
+            (
+                Attribute::DisplayName,
+                vs_utf8!("test_oauth2_client".to_string()),
+            ),
+            (Attribute::Uuid, vs_uuid!(oauth2_client_uuid)),
+            (
+                Attribute::OAuth2RsOriginLanding,
+                vs_url!(Url::parse("https://demo.example.com").unwrap()),
+            ),
+        ]);
+
+        write_txn
+            .internal_create(vec![oauth2_client_entry])
+            .expect("Unable to create entries");
+
+        let oauth2_client_entry_pre = write_txn
+            .internal_search_uuid(oauth2_client_uuid)
+            .expect("Unable to load oauth2 client");
+
+        // sanity check
+        assert!(!oauth2_client_entry_pre.has_class(&EntryClass::KeyObjectJweA256GCM));
+
         write_txn.commit().expect("Unable to commit");
 
         // == pre migration verification. ==
@@ -1488,6 +1532,12 @@ mod tests {
             .expect("Unable to set domain level to version 1_12");
 
         // post migration verification.
+        let oauth2_client_entry_pre = write_txn
+            .internal_search_uuid(oauth2_client_uuid)
+            .expect("Unable to load oauth2 client");
+
+        // Must now have the A256GCM class
+        assert!(oauth2_client_entry_pre.has_class(&EntryClass::KeyObjectJweA256GCM));
 
         write_txn.commit().expect("Unable to commit");
     }

@@ -563,10 +563,26 @@ macro_rules! vs_uuid {
         compile_error!("ValueSetUuid needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetUuid::new($e)
+        ValueSetUuid::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
         let mut x = ValueSetUuid::new($e);
+        $(assert!(x.push($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! vs_url {
+    () => (
+        compile_error!("ValueSetUuid needs at least 1 element")
+    );
+    ($e:expr) => ({
+        ValueSetUrl::new($e) as ValueSet
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x = ValueSetUrl::new($e);
         $(assert!(x.push($item));)*
         x
     });
@@ -579,7 +595,7 @@ macro_rules! vs_refer {
         compile_error!("ValueSetRefer needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetRefer::new($e)
+        ValueSetRefer::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
         let mut x = ValueSetRefer::new($e);
@@ -595,12 +611,12 @@ macro_rules! vs_bool {
         compile_error!("ValueSetBool needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetBool::new($e)
+        ValueSetBool::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
         let mut x = ValueSetBool::new($e);
         $(assert!(x.push($item));)*
-        x
+        x as ValueSet
     });
 }
 
@@ -611,12 +627,12 @@ macro_rules! vs_syntax {
         compile_error!("ValueSetSyntax needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetSyntax::new($e)
+        ValueSetSyntax::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
         let mut x = ValueSetSyntax::new($e);
         $(assert!(x.push($item));)*
-        x
+        x as ValueSet
     });
 }
 
@@ -627,12 +643,12 @@ macro_rules! vs_cid {
         compile_error!("ValueSetCid needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetCid::new($e)
+        ValueSetCid::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
         let mut x = ValueSetCid::new($e);
         $(assert!(x.push($item));)*
-        x
+        x as ValueSet
     });
 }
 
