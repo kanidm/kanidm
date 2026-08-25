@@ -1,0 +1,16 @@
+(% extends "base.html" %)
+
+(% block title %)Login Required(% endblock %)
+
+(% block head %)
+(% endblock %)
+
+(% block body %)
+    <h2>Login Required</h2>
+    <main id="main">
+        <p>No valid authentication session is available, and the calling application does not allow you to re-authenticate.</p>
+        <p>If you believe this is an error, please quote the below Operation ID to support persons.</p>
+        <p>Operation ID: (( operation_id ))</p>
+    </main>
+(% endblock %)
+
