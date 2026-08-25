@@ -47,12 +47,6 @@ struct AccessDeniedView {
     operation_id: Uuid,
 }
 
-#[derive(Template, WebTemplate)]
-#[template(path = "oauth2_login_required.html")]
-struct LoginRequiredView {
-    operation_id: Uuid,
-}
-
 #[derive(Default)]
 enum AuthReqState {
     #[default]
@@ -274,22 +268,26 @@ async fn oauth2_auth_req(
                     .into_response(),
             }
         }
+        Ok(AuthoriseResponse::Reject(rejection)) => {
+            let redirect_uri = rejection.build_redirect_uri();
+            (
+                jar,
+                [
+                    (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                    (
+                        ACCESS_CONTROL_ALLOW_ORIGIN,
+                        redirect_uri.origin().ascii_serialization(),
+                    ),
+                ],
+                Redirect::to(redirect_uri.as_str()),
+            )
+                .into_response()
+        }
         Err(Oauth2Error::AccessDenied) => {
             // If scopes are not available for this account.
             (
                 jar,
                 AccessDeniedView {
-                    operation_id: kopid.eventid,
-                },
-            )
-                .into_response()
-        }
-        Err(Oauth2Error::LoginRequired) => {
-            // A login event is required, but the requesting client does not want the user to attempt
-            // reauthentication.
-            (
-                jar,
-                LoginRequiredView {
                     operation_id: kopid.eventid,
                 },
             )
