@@ -1353,7 +1353,7 @@ where
     Ok(opt_form)
 }
 
-async fn get_cu_session(jar: &CookieJar) -> Result<CUSessionToken, Response> {
+async fn get_cu_session(jar: &CookieJar) -> axum::response::Result<CUSessionToken> {
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     if let Some(cookie) = cookie {
         let cu_session_token = cookie.value();
@@ -1366,6 +1366,6 @@ async fn get_cu_session(jar: &CookieJar) -> Result<CUSessionToken, Response> {
             StatusCode::FORBIDDEN,
             Redirect::to(Urls::CredReset.as_ref()),
         )
-            .into_response())
+            .into())
     }
 }
