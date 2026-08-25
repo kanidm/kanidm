@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 dependencies = ["kanidm"]
 
 [dependency-groups]
-dev = ["mypy>=2.3.0", "pytest>=9.1.1", "ruff>=0.16.3", "ty>=0.0.71"]
+dev = ["mypy>=2.3.1", "pytest>=9.1.1", "ruff>=0.16.4", "ty>=0.0.73"]
 
 [tool.uv.sources]
 kanidm = { path = "../pykanidm" }
