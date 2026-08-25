@@ -8664,8 +8664,9 @@ mod tests {
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // Ident is authenticated but has never granted consent.
-        let result =
-            idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct).unwrap();
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
+            .unwrap();
 
         let result = match result {
             AuthoriseResponse::Reject(rejection)
