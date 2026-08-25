@@ -2424,7 +2424,7 @@ impl IdmServerProxyReadTransaction<'_> {
             // OIDC Core 1.0 §3.1.2.1
             // prompt=none - The Authorization Server MUST NOT display any authentication or consent user interface pages
             if auth_req.prompt.contains(&Prompt::None) {
-                debug!("prompt=none was requested, but no identity is available, returning error");
+                warn!("prompt=none was requested by the client, but no authenticated identity is available, returning an error");
                 return Err(Oauth2Error::LoginRequired);
             } else {
                 return Ok(AuthoriseResponse::AuthenticationRequired {

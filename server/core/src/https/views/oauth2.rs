@@ -47,6 +47,12 @@ struct AccessDeniedView {
     operation_id: Uuid,
 }
 
+#[derive(Template, WebTemplate)]
+#[template(path = "oauth2_login_required.html")]
+struct LoginRequiredView {
+    operation_id: Uuid,
+}
+
 #[derive(Default)]
 enum AuthReqState {
     #[default]
@@ -273,6 +279,17 @@ async fn oauth2_auth_req(
             (
                 jar,
                 AccessDeniedView {
+                    operation_id: kopid.eventid,
+                },
+            )
+                .into_response()
+        }
+        Err(Oauth2Error::LoginRequired) => {
+            // A login event is required, but the requesting client does not want the user to attempt
+            // reauthentication.
+            (
+                jar,
+                LoginRequiredView {
                     operation_id: kopid.eventid,
                 },
             )
