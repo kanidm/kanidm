@@ -11,7 +11,7 @@ use crate::session::{process_auth_state, read_tokens};
 use crate::{KanidmClientParser, LoginOpt};
 
 #[derive(Debug)]
-#[allow(clippy::large_enum_variant, clippy::result_large_err)]
+#[allow(clippy::large_enum_variant)]
 pub enum ToClientError {
     NeedLogin(String),
     NeedReauth(String, KanidmClient),
@@ -111,6 +111,7 @@ impl KanidmClientParser {
         })
     }
 
+    #[allow(clippy::result_large_err)]
     pub(crate) async fn try_to_client(
         &self,
         optype: OpType,
