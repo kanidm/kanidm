@@ -216,7 +216,7 @@ pub async fn create_https_server(
     let csp_header = format!(
         concat!(
             "default-src 'self'; ",
-            "base-uri 'self' https:; ",
+            "base-uri 'none'; ",
             "form-action 'self'; ",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
@@ -242,7 +242,7 @@ pub async fn create_https_server(
     let csp_header_no_form_action = format!(
         concat!(
             "default-src 'self'; ",
-            "base-uri 'self' https:; ",
+            "base-uri 'none'; ",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
@@ -362,10 +362,7 @@ pub async fn create_https_server(
             state.clone(),
             middleware::security_headers::security_headers_layer,
         ))
-        .layer(from_fn(middleware::version_middleware))
-        .layer(from_fn(
-            middleware::hsts_header::strict_transport_security_layer,
-        ));
+        .layer(from_fn(middleware::version_middleware));
 
     // layer which checks the responses have a content-type of JSON when we're in debug mode
     #[cfg(any(test, debug_assertions))]
