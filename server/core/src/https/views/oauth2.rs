@@ -268,6 +268,21 @@ async fn oauth2_auth_req(
                     .into_response(),
             }
         }
+        Ok(AuthoriseResponse::Reject(rejection)) => {
+            let redirect_uri = rejection.build_redirect_uri();
+            (
+                jar,
+                [
+                    (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                    (
+                        ACCESS_CONTROL_ALLOW_ORIGIN,
+                        redirect_uri.origin().ascii_serialization(),
+                    ),
+                ],
+                Redirect::to(redirect_uri.as_str()),
+            )
+                .into_response()
+        }
         Err(Oauth2Error::AccessDenied) => {
             // If scopes are not available for this account.
             (

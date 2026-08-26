@@ -102,9 +102,9 @@ pub enum Oauth2Error {
     ExpiredToken,
 }
 
-impl std::fmt::Display for Oauth2Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
+impl AsRef<str> for Oauth2Error {
+    fn as_ref(&self) -> &'static str {
+        match self {
             Oauth2Error::AuthenticationRequired => "authentication_required",
             Oauth2Error::InvalidClientId => "invalid_client_id",
             Oauth2Error::InvalidOrigin => "invalid_origin",
@@ -125,7 +125,13 @@ impl std::fmt::Display for Oauth2Error {
             Oauth2Error::SlowDown => "slow_down",
             Oauth2Error::AuthorizationPending => "authorization_pending",
             Oauth2Error::ExpiredToken => "expired_token",
-        })
+        }
+    }
+}
+
+impl std::fmt::Display for Oauth2Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())
     }
 }
 
@@ -316,6 +322,8 @@ pub enum AuthoriseResponse {
         consent_token: String,
     },
     Permitted(AuthorisePermitSuccess),
+
+    Reject(AuthoriseReject),
 }
 
 #[derive(Debug)]
@@ -372,6 +380,10 @@ impl AuthorisePermitSuccess {
 pub struct AuthoriseReject {
     // Where the client wants us to go back to.
     pub redirect_uri: Url,
+    // The CSRF as a string
+    pub state: Option<String>,
+    /// The error we are returning.
+    pub error: Oauth2Error,
     /// The format the response should be returned to the application in.
     response_mode: SupportedResponseMode,
 }
@@ -388,8 +400,7 @@ impl AuthoriseReject {
 
         // We can't set query pairs on fragments, only query.
         let encoded = url::form_urlencoded::Serializer::new(String::new())
-            .append_pair("error", "access_denied")
-            .append_pair("error_description", "authorisation rejected")
+            .append_pair("error", self.error.as_ref())
             .finish();
 
         match self.response_mode {
@@ -2419,14 +2430,20 @@ impl IdmServerProxyReadTransaction<'_> {
         // TODO: id_token_hint - a past token which can be used as a hint.
 
         let Some(ident) = maybe_ident else {
-            debug!("No identity available, assume authentication required");
-
             // OIDC Core 1.0 §3.1.2.1
             // prompt=none - The Authorization Server MUST NOT display any authentication or consent user interface pages
             if auth_req.prompt.contains(&Prompt::None) {
-                debug!("prompt=none was requested, but no identity is available, returning error");
-                return Err(Oauth2Error::LoginRequired);
+                warn!("prompt=none was requested by the client, but no authenticated identity is available, returning authorise reject.");
+
+                return Ok(AuthoriseResponse::Reject(AuthoriseReject {
+                    redirect_uri: auth_req.redirect_uri.clone(),
+                    error: Oauth2Error::LoginRequired,
+                    state: auth_req.state.clone(),
+                    response_mode,
+                }));
             } else {
+                debug!("No identity available, assume authentication required");
+
                 return Ok(AuthoriseResponse::AuthenticationRequired {
                     client_name: o2rs.displayname.clone(),
                     login_hint: auth_req.oidc_ext.login_hint.clone(),
@@ -2581,7 +2598,12 @@ impl IdmServerProxyReadTransaction<'_> {
             // consent user interface pages.
             if auth_req.prompt.contains(&Prompt::None) {
                 debug!("prompt=none was requested, but consent is required, returning error");
-                return Err(Oauth2Error::InteractionRequired);
+                return Ok(AuthoriseResponse::Reject(AuthoriseReject {
+                    redirect_uri: auth_req.redirect_uri.clone(),
+                    error: Oauth2Error::InteractionRequired,
+                    state: auth_req.state.clone(),
+                    response_mode,
+                }));
             }
 
             //  Check that the scopes are the same as a previous consent (if any)
@@ -2718,6 +2740,8 @@ impl IdmServerProxyReadTransaction<'_> {
         // All good, now confirm the rejection to the client application.
         Ok(AuthoriseReject {
             redirect_uri: consent_req.redirect_uri,
+            error: Oauth2Error::AccessDenied,
+            state: consent_req.state,
             response_mode: consent_req.response_mode,
         })
     }
@@ -8597,11 +8621,22 @@ mod tests {
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // No identity provided (None) - user is not authenticated.
-        let result = idms_prox_read.check_oauth2_authorisation(None, &auth_req, &auth_req_ctx, ct);
+        let result = idms_prox_read
+            .check_oauth2_authorisation(None, &auth_req, &auth_req_ctx, ct)
+            .unwrap();
+
+        let result = match result {
+            AuthoriseResponse::Reject(rejection)
+                if rejection.error == Oauth2Error::LoginRequired =>
+            {
+                true
+            }
+            _ => false,
+        };
 
         assert!(
-            result.unwrap_err() == Oauth2Error::LoginRequired,
-            "prompt=none without authentication must return login_required"
+            result,
+            "prompt=none without authentication must return a rejection for login_required"
         );
     }
 
@@ -8629,11 +8664,21 @@ mod tests {
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // Ident is authenticated but has never granted consent.
-        let result =
-            idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct);
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
+            .unwrap();
+
+        let result = match result {
+            AuthoriseResponse::Reject(rejection)
+                if rejection.error == Oauth2Error::InteractionRequired =>
+            {
+                true
+            }
+            _ => false,
+        };
 
         assert!(
-            result.unwrap_err() == Oauth2Error::InteractionRequired,
+            result,
             "prompt=none with authenticated user but no prior consent must return interaction_required"
         );
     }
