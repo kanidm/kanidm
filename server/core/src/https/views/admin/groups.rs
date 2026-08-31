@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;

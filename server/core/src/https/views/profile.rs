@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use super::constants::{ProfileMenuItems, Urls};
 use super::errors::HtmxError;
 use super::navbar::NavbarCtx;
