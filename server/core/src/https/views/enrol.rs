@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use super::constants::Urls;
 use super::navbar::NavbarCtx;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};

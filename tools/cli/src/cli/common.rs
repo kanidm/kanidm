@@ -111,6 +111,7 @@ impl KanidmClientParser {
         })
     }
 
+    #[allow(clippy::result_large_err)]
     pub(crate) async fn try_to_client(
         &self,
         optype: OpType,

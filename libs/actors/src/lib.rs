@@ -421,25 +421,19 @@ mod tests {
         }
 
         impl SignalHandler for Handler {
-            fn hangup(&mut self) -> impl Future<Output = ()> + Send {
-                async {
-                    trace!("hangup");
-                    self.notify_tx.send(()).await.unwrap();
-                }
+            async fn hangup(&mut self) {
+                trace!("hangup");
+                self.notify_tx.send(()).await.unwrap();
             }
 
-            fn user_defined1(&mut self) -> impl Future<Output = ()> + Send {
-                async {
-                    trace!("user_defined1");
-                    self.notify_tx.send(()).await.unwrap();
-                }
+            async fn user_defined1(&mut self) {
+                trace!("user_defined1");
+                self.notify_tx.send(()).await.unwrap();
             }
 
-            fn user_defined2(&mut self) -> impl Future<Output = ()> + Send {
-                async {
-                    trace!("user_defined2");
-                    self.notify_tx.send(()).await.unwrap();
-                }
+            async fn user_defined2(&mut self) {
+                trace!("user_defined2");
+                self.notify_tx.send(()).await.unwrap();
             }
         }
 

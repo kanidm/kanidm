@@ -1,3 +1,4 @@
+use crate::errors::Error;
 use crate::idprovider::interface::{GroupToken, Id, UserToken};
 use async_trait::async_trait;
 use kanidm_hsm_crypto::structures::{LoadableHmacS256Key, LoadableStorageKey};
@@ -31,17 +32,6 @@ pub trait KeyStore {
         Self: 'db;
 
     async fn write_keystore<'db>(&'db self) -> Self::Txn<'db>;
-}
-
-#[derive(Debug)]
-pub enum CacheError {
-    Cryptography,
-    SerdeJson,
-    Parse,
-    Sqlite,
-    TooManyResults,
-    TransactionInvalidState,
-    Tpm,
 }
 
 pub struct Db {
@@ -147,14 +137,14 @@ impl<'a> DbTxn<'a> {
     }
 
     /// This handles an error coming back from an sqlite event and dumps more information from it
-    fn sqlite_error(&self, msg: &str, error: &rusqlite::Error) -> CacheError {
+    fn sqlite_error(&self, msg: &str, error: &rusqlite::Error) -> Error {
         error!(
             "sqlite {} error: {:?} db_path={:?}",
             msg,
             error,
             &self.conn.path()
         );
-        CacheError::Sqlite
+        Error::Sqlite
     }
 
     /// This handles an error coming back from an sqlite transaction and dumps a load of information from it
@@ -162,14 +152,14 @@ impl<'a> DbTxn<'a> {
         &self,
         error: &rusqlite::Error,
         _stmt: &rusqlite::Statement,
-    ) -> CacheError {
+    ) -> Error {
         error!(
             "sqlite transaction error={:?} db_path={:?}",
             error,
             &self.conn.path(),
         );
         // TODO: one day figure out if there's an easy way to dump the transaction without the token...
-        CacheError::Sqlite
+        Error::Sqlite
     }
 
     fn get_db_version(&self, key: &str) -> i64 {
@@ -185,7 +175,7 @@ impl<'a> DbTxn<'a> {
             })
     }
 
-    fn set_db_version(&self, key: &str, v: i64) -> Result<(), CacheError> {
+    fn set_db_version(&self, key: &str, v: i64) -> Result<(), Error> {
         self.conn
             .execute(
                 "INSERT OR REPLACE INTO db_version_t (id, version) VALUES(:id, :dbv)",
@@ -198,10 +188,7 @@ impl<'a> DbTxn<'a> {
             .map_err(|e| self.sqlite_error("set db_version_t", &e))
     }
 
-    fn get_account_data_name(
-        &mut self,
-        account_id: &str,
-    ) -> Result<Vec<(Vec<u8>, i64)>, CacheError> {
+    fn get_account_data_name(&mut self, account_id: &str) -> Result<Vec<(Vec<u8>, i64)>, Error> {
         let mut stmt = self.conn
             .prepare(
         "SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id"
@@ -220,7 +207,7 @@ impl<'a> DbTxn<'a> {
         data
     }
 
-    fn get_account_data_gid(&mut self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, CacheError> {
+    fn get_account_data_gid(&mut self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT token, expiry FROM account_t WHERE gidnumber = :gid")
@@ -236,7 +223,7 @@ impl<'a> DbTxn<'a> {
         data
     }
 
-    fn get_group_data_name(&mut self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, CacheError> {
+    fn get_group_data_name(&mut self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, Error> {
         let mut stmt = self.conn
             .prepare(
                 "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
@@ -255,7 +242,7 @@ impl<'a> DbTxn<'a> {
         data
     }
 
-    fn get_group_data_gid(&mut self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, CacheError> {
+    fn get_group_data_gid(&mut self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT token, expiry FROM group_t WHERE gidnumber = :gid")
@@ -276,28 +263,21 @@ impl KeyStoreTxn<'_, '_> {
     pub fn get_tagged_hsm_key<K: DeserializeOwned>(
         &mut self,
         tag: &str,
-    ) -> Result<Option<K>, CacheError> {
+    ) -> Result<Option<K>, Error> {
         self.db.get_tagged_hsm_key(tag)
     }
 
-    pub fn insert_tagged_hsm_key<K: Serialize>(
-        &mut self,
-        tag: &str,
-        key: &K,
-    ) -> Result<(), CacheError> {
+    pub fn insert_tagged_hsm_key<K: Serialize>(&mut self, tag: &str, key: &K) -> Result<(), Error> {
         self.db.insert_tagged_hsm_key(tag, key)
     }
 
-    pub fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), CacheError> {
+    pub fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), Error> {
         self.db.delete_tagged_hsm_key(tag)
     }
 }
 
 impl DbTxn<'_> {
-    fn get_tagged_hsm_key<K: DeserializeOwned>(
-        &mut self,
-        tag: &str,
-    ) -> Result<Option<K>, CacheError> {
+    fn get_tagged_hsm_key<K: DeserializeOwned>(&mut self, tag: &str) -> Result<Option<K>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_data_t WHERE key = :key")
@@ -323,14 +303,10 @@ impl DbTxn<'_> {
         }
     }
 
-    fn insert_tagged_hsm_key<K: Serialize>(
-        &mut self,
-        tag: &str,
-        key: &K,
-    ) -> Result<(), CacheError> {
+    fn insert_tagged_hsm_key<K: Serialize>(&mut self, tag: &str, key: &K) -> Result<(), Error> {
         let data = serde_json::to_vec(key).map_err(|e| {
             error!("json error -> {:?}", e);
-            CacheError::SerdeJson
+            Error::SerdeJson
         })?;
 
         let mut stmt = self
@@ -348,7 +324,7 @@ impl DbTxn<'_> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), CacheError> {
+    fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), Error> {
         self.conn
             .execute(
                 "DELETE FROM hsm_data_t where key = :key",
@@ -362,7 +338,7 @@ impl DbTxn<'_> {
 }
 
 impl DbTxn<'_> {
-    pub fn migrate(&mut self) -> Result<(), CacheError> {
+    pub fn migrate(&mut self) -> Result<(), Error> {
         // This definition can never change.
         self.conn
             .execute(
@@ -536,10 +512,10 @@ impl DbTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn commit(mut self) -> Result<(), CacheError> {
+    pub fn commit(mut self) -> Result<(), Error> {
         if self.committed {
             error!("Invalid state, SQL transaction was already committed!");
-            return Err(CacheError::TransactionInvalidState);
+            return Err(Error::TransactionInvalidState);
         }
 
         self.conn
@@ -550,7 +526,7 @@ impl DbTxn<'_> {
             .map_err(|e| self.sqlite_error("commit", &e))
     }
 
-    pub fn invalidate(&mut self) -> Result<(), CacheError> {
+    pub fn invalidate(&mut self) -> Result<(), Error> {
         self.conn
             .execute("UPDATE group_t SET expiry = 0", [])
             .map_err(|e| self.sqlite_error("update group_t", &e))?;
@@ -562,7 +538,7 @@ impl DbTxn<'_> {
         Ok(())
     }
 
-    pub fn clear(&mut self) -> Result<(), CacheError> {
+    pub fn clear(&mut self) -> Result<(), Error> {
         self.conn
             .execute("DELETE FROM memberof_t", [])
             .map_err(|e| self.sqlite_error("delete memberof_t", &e))?;
@@ -578,7 +554,7 @@ impl DbTxn<'_> {
         Ok(())
     }
 
-    pub fn clear_hsm(&mut self) -> Result<(), CacheError> {
+    pub fn clear_hsm(&mut self) -> Result<(), Error> {
         self.clear()?;
 
         self.conn
@@ -592,7 +568,7 @@ impl DbTxn<'_> {
         Ok(())
     }
 
-    pub fn get_hsm_root_storage_key(&mut self) -> Result<Option<LoadableStorageKey>, CacheError> {
+    pub fn get_hsm_root_storage_key(&mut self) -> Result<Option<LoadableStorageKey>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_int_t WHERE key = 'mk'")
@@ -616,10 +592,10 @@ impl DbTxn<'_> {
     pub fn insert_hsm_root_storage_key(
         &mut self,
         machine_key: &LoadableStorageKey,
-    ) -> Result<(), CacheError> {
+    ) -> Result<(), Error> {
         let data = serde_json::to_vec(machine_key).map_err(|e| {
             error!("insert_hsm_machine_key json error -> {:?}", e);
-            CacheError::SerdeJson
+            Error::SerdeJson
         })?;
 
         let mut stmt = self
@@ -637,7 +613,7 @@ impl DbTxn<'_> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    pub fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacS256Key>, CacheError> {
+    pub fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacS256Key>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_int_t WHERE key = 'hmac'")
@@ -658,13 +634,10 @@ impl DbTxn<'_> {
         }
     }
 
-    pub fn insert_hsm_hmac_key(
-        &mut self,
-        hmac_key: &LoadableHmacS256Key,
-    ) -> Result<(), CacheError> {
+    pub fn insert_hsm_hmac_key(&mut self, hmac_key: &LoadableHmacS256Key) -> Result<(), Error> {
         let data = serde_json::to_vec(hmac_key).map_err(|e| {
             error!("insert_hsm_hmac_key json error -> {:?}", e);
-            CacheError::SerdeJson
+            Error::SerdeJson
         })?;
 
         let mut stmt = self
@@ -683,7 +656,7 @@ impl DbTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn get_account(&mut self, account_id: &Id) -> Result<Option<(UserToken, u64)>, CacheError> {
+    pub fn get_account(&mut self, account_id: &Id) -> Result<Option<(UserToken, u64)>, Error> {
         let data = match account_id {
             Id::Name(n) => self.get_account_data_name(n.as_str()),
             Id::Gid(g) => self.get_account_data_gid(*g),
@@ -692,7 +665,7 @@ impl DbTxn<'_> {
         // Assert only one result?
         if data.len() >= 2 {
             error!("invalid db state, multiple entries matched query?");
-            return Err(CacheError::TooManyResults);
+            return Err(Error::TooManyResults);
         }
 
         if let Some((token, expiry)) = data.first() {
@@ -703,7 +676,7 @@ impl DbTxn<'_> {
                 Ok(t) => {
                     let e = u64::try_from(*expiry).map_err(|e| {
                         error!("u64 convert error -> {:?}", e);
-                        CacheError::Parse
+                        Error::Parse
                     })?;
                     Ok(Some((t, e)))
                 }
@@ -718,7 +691,7 @@ impl DbTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn get_accounts(&mut self) -> Result<Vec<UserToken>, CacheError> {
+    pub fn get_accounts(&mut self) -> Result<Vec<UserToken>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT token FROM account_t")
@@ -748,14 +721,14 @@ impl DbTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn update_account(&mut self, account: &UserToken, expire: u64) -> Result<(), CacheError> {
+    pub fn update_account(&mut self, account: &UserToken, expire: u64) -> Result<(), Error> {
         let data = serde_json::to_vec(account).map_err(|e| {
             error!("update_account json error -> {:?}", e);
-            CacheError::SerdeJson
+            Error::SerdeJson
         })?;
         let expire = i64::try_from(expire).map_err(|e| {
             error!("update_account i64 conversion error -> {:?}", e);
-            CacheError::Parse
+            Error::Parse
         })?;
 
         // This is needed because sqlites 'insert or replace into', will null the password field
@@ -845,7 +818,7 @@ impl DbTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn delete_account(&mut self, a_uuid: Uuid) -> Result<(), CacheError> {
+    pub fn delete_account(&mut self, a_uuid: Uuid) -> Result<(), Error> {
         let account_uuid = a_uuid.as_hyphenated().to_string();
 
         self.conn
@@ -866,7 +839,7 @@ impl DbTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn get_group(&mut self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, CacheError> {
+    pub fn get_group(&mut self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, Error> {
         let data = match grp_id {
             Id::Name(n) => self.get_group_data_name(n.as_str()),
             Id::Gid(g) => self.get_group_data_gid(*g),
@@ -875,7 +848,7 @@ impl DbTxn<'_> {
         // Assert only one result?
         if data.len() >= 2 {
             error!("invalid db state, multiple entries matched query?");
-            return Err(CacheError::TooManyResults);
+            return Err(Error::TooManyResults);
         }
 
         if let Some((token, expiry)) = data.first() {
@@ -886,7 +859,7 @@ impl DbTxn<'_> {
                 Ok(t) => {
                     let e = u64::try_from(*expiry).map_err(|e| {
                         error!("u64 convert error -> {:?}", e);
-                        CacheError::Parse
+                        Error::Parse
                     })?;
                     Ok(Some((t, e)))
                 }
@@ -901,7 +874,7 @@ impl DbTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn get_group_members(&mut self, g_uuid: Uuid) -> Result<Vec<UserToken>, CacheError> {
+    pub fn get_group_members(&mut self, g_uuid: Uuid) -> Result<Vec<UserToken>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid")
@@ -924,14 +897,14 @@ impl DbTxn<'_> {
                 // trace!("{:?}", token);
                 serde_json::from_slice(token.as_slice()).map_err(|e| {
                     error!("json error -> {:?}", e);
-                    CacheError::SerdeJson
+                    Error::SerdeJson
                 })
             })
             .collect()
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn get_groups(&mut self) -> Result<Vec<GroupToken>, CacheError> {
+    pub fn get_groups(&mut self) -> Result<Vec<GroupToken>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT token FROM group_t")
@@ -961,14 +934,14 @@ impl DbTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn update_group(&mut self, grp: &GroupToken, expire: u64) -> Result<(), CacheError> {
+    pub fn update_group(&mut self, grp: &GroupToken, expire: u64) -> Result<(), Error> {
         let data = serde_json::to_vec(grp).map_err(|e| {
             error!("json error -> {:?}", e);
-            CacheError::SerdeJson
+            Error::SerdeJson
         })?;
         let expire = i64::try_from(expire).map_err(|e| {
             error!("i64 convert error -> {:?}", e);
-            CacheError::Parse
+            Error::Parse
         })?;
 
         let mut stmt = self.conn
@@ -993,7 +966,7 @@ impl DbTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn delete_group(&mut self, g_uuid: Uuid) -> Result<(), CacheError> {
+    pub fn delete_group(&mut self, g_uuid: Uuid) -> Result<(), Error> {
         let group_uuid = g_uuid.as_hyphenated().to_string();
         self.conn
             .execute(
