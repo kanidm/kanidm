@@ -8625,14 +8625,7 @@ mod tests {
             .check_oauth2_authorisation(None, &auth_req, &auth_req_ctx, ct)
             .unwrap();
 
-        let result = match result {
-            AuthoriseResponse::Reject(rejection)
-                if rejection.error == Oauth2Error::LoginRequired =>
-            {
-                true
-            }
-            _ => false,
-        };
+        let result = matches!(result, AuthoriseResponse::Reject(rejection) if rejection.error == Oauth2Error::LoginRequired);
 
         assert!(
             result,
@@ -8668,14 +8661,7 @@ mod tests {
             .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
             .unwrap();
 
-        let result = match result {
-            AuthoriseResponse::Reject(rejection)
-                if rejection.error == Oauth2Error::InteractionRequired =>
-            {
-                true
-            }
-            _ => false,
-        };
+        let result = matches!(result, AuthoriseResponse::Reject(rejection) if rejection.error == Oauth2Error::InteractionRequired);
 
         assert!(
             result,
