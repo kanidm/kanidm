@@ -171,7 +171,7 @@ async fn client_tls_accept(
         stream,
         connection_addr,
         LDAP_CLIENT_CONN_TIMEOUT,
-        trusted_tcp_info_ips,
+        trusted_tcp_info_ips.as_ref(),
     )
     .await
     else {
