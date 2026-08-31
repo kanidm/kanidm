@@ -409,7 +409,6 @@ mod tests {
         Actor, ActorState, Runtime, RuntimeSetup, Signal, SignalHandler, SoftwareSignalSource,
         Supervisor,
     };
-    use std::future::Future;
     use tokio::sync::mpsc;
     use tokio::task;
     use tracing::*;
@@ -442,14 +441,9 @@ mod tests {
         impl RuntimeSetup for RTContext {
             type Error = ();
 
-            fn setup(
-                self,
-                _supervisor: &mut Supervisor,
-            ) -> impl Future<Output = Result<(), Self::Error>> + Send {
-                async {
-                    // Do nothing, really well.
-                    Ok(())
-                }
+            async fn setup(self, _supervisor: &mut Supervisor) -> Result<(), Self::Error> {
+                // Do nothing, really well.
+                Ok(())
             }
         }
 
@@ -519,28 +513,20 @@ mod tests {
         impl Actor for TestActor {
             type Message = ();
 
-            fn setup(&mut self) -> impl Future<Output = ()> + Send {
-                async {
-                    self.setup_run = true;
-                }
+            async fn setup(&mut self) {
+                self.setup_run = true;
             }
 
-            fn state(&mut self) -> impl Future<Output = ActorState<Self::Message>> + Send {
-                async {
-                    self.rx.recv().await;
-                    trace!("oneshot message received!");
-                    ActorState::Stop
-                }
+            async fn state(&mut self) -> ActorState<Self::Message> {
+                self.rx.recv().await;
+                trace!("oneshot message received!");
+                ActorState::Stop
             }
 
-            fn run(&mut self, _msg: Self::Message) -> impl Future<Output = ()> + Send {
-                async {}
-            }
+            async fn run(&mut self, _msg: Self::Message) {}
 
-            fn cleanup(&mut self) -> impl Future<Output = ()> + Send {
-                async {
-                    self.cleanup_run = true;
-                }
+            async fn cleanup(&mut self) {
+                self.cleanup_run = true;
             }
         }
 
