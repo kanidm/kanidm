@@ -551,25 +551,20 @@ mod tests {
         impl RuntimeSetup for RTContext {
             type Error = ();
 
-            fn setup(
-                self,
-                supervisor: &mut Supervisor,
-            ) -> impl Future<Output = Result<(), Self::Error>> + Send {
-                async {
-                    let RTContext { signal_tx } = self;
+            async fn setup(self, supervisor: &mut Supervisor) -> Result<(), Self::Error> {
+                let RTContext { signal_tx } = self;
 
-                    // This sets up the test coordinator, which actually does all the work.
-                    let test_supervisor = supervisor.subordinate().await;
+                // This sets up the test coordinator, which actually does all the work.
+                let test_supervisor = supervisor.subordinate().await;
 
-                    let test_coordinator = TestCoordinator {
-                        signal_tx,
-                        test_supervisor,
-                    };
+                let test_coordinator = TestCoordinator {
+                    signal_tx,
+                    test_supervisor,
+                };
 
-                    supervisor.spawn(test_coordinator);
+                supervisor.spawn(test_coordinator);
 
-                    Ok(())
-                }
+                Ok(())
             }
         }
 
@@ -583,67 +578,63 @@ mod tests {
         impl Actor for TestCoordinator {
             type Message = ();
 
-            fn state(&mut self) -> impl Future<Output = ActorState<Self::Message>> + Send {
-                async { ActorState::Stop }
+            async fn state(&mut self) -> ActorState<Self::Message> {
+                ActorState::Stop
             }
 
-            fn run(&mut self, _msg: Self::Message) -> impl Future<Output = ()> + Send {
-                async {
-                    trace!("Disregarding message.");
-                }
+            async fn run(&mut self, _msg: Self::Message) {
+                trace!("Disregarding message.");
             }
 
-            fn setup(&mut self) -> impl Future<Output = ()> + Send {
-                async {
-                    // It's time to test
-                    trace!("Starting task supervision test");
+            async fn setup(&mut self) {
+                // It's time to test
+                trace!("Starting task supervision test");
 
-                    // First - we have no hosted tasks or supervisors.
-                    assert_eq!(self.test_supervisor.subordinate_count(), 0);
+                // First - we have no hosted tasks or supervisors.
+                assert_eq!(self.test_supervisor.subordinate_count(), 0);
 
-                    // Create a task on the test_supervisor.
-                    let (task_1_tx, rx) = mpsc::channel(1);
-                    let task_1_handle = self.test_supervisor.spawn(TestActor::new(rx));
-                    assert_eq!(self.test_supervisor.subordinate_count(), 1);
+                // Create a task on the test_supervisor.
+                let (task_1_tx, rx) = mpsc::channel(1);
+                let task_1_handle = self.test_supervisor.spawn(TestActor::new(rx));
+                assert_eq!(self.test_supervisor.subordinate_count(), 1);
 
-                    // Now we can message the oneshot and it will cause the task to stop due to how
-                    // we have configured it.
-                    task_1_tx.send(()).await.unwrap();
-                    task_1_handle.await.unwrap();
+                // Now we can message the oneshot and it will cause the task to stop due to how
+                // we have configured it.
+                task_1_tx.send(()).await.unwrap();
+                task_1_handle.await.unwrap();
 
-                    // Now there are no hosted tasks.
-                    assert_eq!(self.test_supervisor.subordinate_count(), 0);
+                // Now there are no hosted tasks.
+                assert_eq!(self.test_supervisor.subordinate_count(), 0);
 
-                    // Okay, start a supervisor, and give it some child tasks.
-                    let mut supervisor = self.test_supervisor.subordinate().await;
+                // Okay, start a supervisor, and give it some child tasks.
+                let mut supervisor = self.test_supervisor.subordinate().await;
 
-                    let (_task_2_tx, rx) = mpsc::channel(1);
-                    let task_2_handle = supervisor.spawn(TestActor::new(rx));
+                let (_task_2_tx, rx) = mpsc::channel(1);
+                let task_2_handle = supervisor.spawn(TestActor::new(rx));
 
-                    let (_task_3_tx, rx) = mpsc::channel(1);
-                    let task_3_handle = supervisor.spawn(TestActor::new(rx));
+                let (_task_3_tx, rx) = mpsc::channel(1);
+                let task_3_handle = supervisor.spawn(TestActor::new(rx));
 
-                    // We are hosting the supervisor.
-                    assert_eq!(self.test_supervisor.subordinate_count(), 1);
-                    // And it's hosting it's tasks.
-                    assert_eq!(supervisor.subordinate_count(), 2);
+                // We are hosting the supervisor.
+                assert_eq!(self.test_supervisor.subordinate_count(), 1);
+                // And it's hosting it's tasks.
+                assert_eq!(supervisor.subordinate_count(), 2);
 
-                    // Now tell it to stop.
-                    supervisor.stop().await;
-                    // Once it's done, we can tell the tasks stopped as the task handles
-                    // will join automatically for us
-                    task_2_handle.await.unwrap();
-                    task_3_handle.await.unwrap();
+                // Now tell it to stop.
+                supervisor.stop().await;
+                // Once it's done, we can tell the tasks stopped as the task handles
+                // will join automatically for us
+                task_2_handle.await.unwrap();
+                task_3_handle.await.unwrap();
 
-                    // And we are back to no hosted tasks.
-                    assert_eq!(self.test_supervisor.subordinate_count(), 0);
+                // And we are back to no hosted tasks.
+                assert_eq!(self.test_supervisor.subordinate_count(), 0);
 
-                    // Now stop the supervisor - all it's children will stop!
+                // Now stop the supervisor - all it's children will stop!
 
-                    // We are now complete, stop everything!
-                    trace!("Test pass! Terminating ...");
-                    self.signal_tx.send(Signal::Terminate).await.unwrap();
-                }
+                // We are now complete, stop everything!
+                trace!("Test pass! Terminating ...");
+                self.signal_tx.send(Signal::Terminate).await.unwrap();
             }
         }
 
