@@ -24,7 +24,7 @@ impl ServiceAccountOpt {
                         .await
                     {
                         Ok(cstatus) => {
-                            println!("{cstatus}");
+                            opt.output_mode.print_message(cstatus);
                         }
                         Err(e) => {
                             error!("Error getting credential status -> {:?}", e);
@@ -38,7 +38,7 @@ impl ServiceAccountOpt {
                         .await
                     {
                         Ok(new_pw) => {
-                            println!("Success: {new_pw}");
+                            opt.output_mode.print_message(format!("Success: {new_pw}"));
                         }
                         Err(e) => {
                             error!("Error generating service account credential -> {:?}", e);
@@ -55,11 +55,9 @@ impl ServiceAccountOpt {
                     {
                         Ok(tokens) => {
                             if tokens.is_empty() {
-                                println!("No api tokens exist");
+                                opt.output_mode.print_message("No API tokens found");
                             } else {
-                                for token in tokens {
-                                    println!("token: {token}");
-                                }
+                                opt.output_mode.print_vec(tokens);
                             }
                         }
                         Err(e) => {
@@ -138,9 +136,7 @@ impl ServiceAccountOpt {
                         .idm_service_account_destroy_api_token(aopts.account_id.as_str(), *token_id)
                         .await
                     {
-                        Ok(()) => {
-                            println!("Success");
-                        }
+                        Ok(()) => opt.output_mode.print_message("Success"),
                         Err(e) => {
                             error!("Error destroying service account token -> {:?}", e);
                         }
@@ -154,7 +150,7 @@ impl ServiceAccountOpt {
                         .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
                         .await
                     {
-                        Ok(token) => println!("{token}"),
+                        Ok(token) => opt.output_mode.print_message(token),
                         Err(e) => handle_client_error(e, opt.output_mode),
                     }
                 }
@@ -190,13 +186,11 @@ impl ServiceAccountOpt {
                     {
                         Ok(tokens) => {
                             if tokens.is_empty() {
-                                println!("No sessions exist");
+                                opt.output_mode.print_message("No sessions exist");
                             } else {
-                                for token in tokens {
-                                    println!("token: {token}");
-                                }
+                                opt.output_mode.print_vec(tokens);
                             }
-                        }
+                        },
                         Err(e) => {
                             error!("Error listing sessions -> {:?}", e);
                         }
@@ -208,9 +202,7 @@ impl ServiceAccountOpt {
                         .idm_account_destroy_user_auth_token(aopts.account_id.as_str(), *session_id)
                         .await
                     {
-                        Ok(()) => {
-                            println!("Success");
-                        }
+                        Ok(()) => opt.output_mode.print_message("Success"),
                         Err(e) => {
                             error!("Error destroying account session -> {:?}", e);
                         }
@@ -228,7 +220,8 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        Ok(pkeys) => pkeys.iter().flatten().for_each(|pkey| println!("{pkey}")),
+                        Ok(pkeys) => opt.output_mode.print_vec(pkeys.iter().flatten().collect::<Vec<&String>>()),
+                        // Ok(pkeys) => pkeys.iter().flatten().for_each(|pkey| println!("{pkey}")),
                         Err(e) => handle_client_error(e, opt.output_mode),
                     }
                 }
@@ -261,7 +254,13 @@ impl ServiceAccountOpt {
             ServiceAccountOpt::List => {
                 let client = opt.to_client(OpType::Read).await;
                 match client.idm_service_account_list().await {
-                    Ok(r) => r.iter().for_each(|ent| println!("{ent}")),
+                    Ok(r) => {
+                        if r.is_empty() {
+                            opt.output_mode.print_message("No service accounts found");
+                        } else {
+                            opt.output_mode.print_vec(r);
+                        }
+                    }
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
@@ -277,7 +276,7 @@ impl ServiceAccountOpt {
                     )
                     .await
                 {
-                    Ok(()) => println!("Success"),
+                    Ok(()) => opt.output_mode.print_message("Success"),
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
@@ -295,7 +294,10 @@ impl ServiceAccountOpt {
             ServiceAccountOpt::Delete(aopt) => {
                 let client = opt.to_client(OpType::Write).await;
                 let mut modmessage = AccountChangeMessage {
-                    output_mode: ConsoleOutputMode::Text,
+                    output_mode: match opt.output_mode {
+                        OutputMode::Json => ConsoleOutputMode::JSON,
+                        OutputMode::Text => ConsoleOutputMode::Text,
+                    },
                     action: "account delete".to_string(),
                     result: "deleted".to_string(),
                     src_user: opt
@@ -312,11 +314,11 @@ impl ServiceAccountOpt {
                     Err(e) => {
                         modmessage.result = format!("Error -> {e:?}");
                         modmessage.status = MessageStatus::Failure;
-                        eprintln!("{modmessage}");
+                        opt.output_mode.print_message(modmessage);
                     }
                     Ok(result) => {
                         debug!("{:?}", result);
-                        println!("{modmessage}");
+                        opt.output_mode.print_message(modmessage);
                     }
                 };
             }
@@ -469,7 +471,7 @@ impl ServiceAccountOpt {
                     .idm_service_account_into_person(aopt.aopts.account_id.as_str())
                     .await
                 {
-                    Ok(()) => println!("Success"),
+                    Ok(()) => opt.output_mode.print_message("Success"),
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
