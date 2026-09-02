@@ -1332,6 +1332,7 @@ pub enum KeyUsage {
     JwsHs256,
     JwsRs256,
     JweA128GCM,
+    JweA256GCM,
     HkdfS256,
 }
 
@@ -1345,6 +1346,7 @@ impl fmt::Display for KeyUsage {
                 KeyUsage::JwsHs256 => "jws_hs256",
                 KeyUsage::JwsRs256 => "jws_rs256",
                 KeyUsage::JweA128GCM => "jwe_a128gcm",
+                KeyUsage::JweA256GCM => "jwe_a256gcm",
                 KeyUsage::HkdfS256 => "hkdf_s256",
             }
         )
