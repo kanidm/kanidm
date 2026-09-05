@@ -8,7 +8,13 @@ impl SynchOpt {
             SynchOpt::List => {
                 let client = opt.to_client(OpType::Read).await;
                 match client.idm_sync_account_list().await {
-                    Ok(r) => r.iter().for_each(|ent| println!("{ent}")),
+                    Ok(r) => {
+                        if r.is_empty() {
+                            opt.output_mode.print_message("No sync accounts found");
+                        } else {
+                            opt.output_mode.print_vec(r);
+                        }
+                    },
 
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
@@ -16,8 +22,8 @@ impl SynchOpt {
             SynchOpt::Get(nopt) => {
                 let client = opt.to_client(OpType::Read).await;
                 match client.idm_sync_account_get(nopt.name.as_str()).await {
-                    Ok(Some(e)) => println!("{e}"),
-                    Ok(None) => println!("No matching entries"),
+                    Ok(Some(e)) => opt.output_mode.print_message(e),
+                    Ok(None) => opt.output_mode.print_message("No matching entries"),
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
@@ -27,7 +33,7 @@ impl SynchOpt {
                     .idm_sync_account_set_credential_portal(account_id, url.as_ref())
                     .await
                 {
-                    Ok(()) => println!("Success"),
+                    Ok(()) => opt.output_mode.print_message("Success"),
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
@@ -40,7 +46,7 @@ impl SynchOpt {
                     .idm_sync_account_create(account_id, description.as_deref())
                     .await
                 {
-                    Ok(()) => println!("Success"),
+                    Ok(()) => opt.output_mode.print_message("Success"),
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
@@ -50,7 +56,7 @@ impl SynchOpt {
                     .idm_sync_account_generate_token(account_id, label)
                     .await
                 {
-                    Ok(token) => println!("token: {token}"),
+                    Ok(token) => opt.output_mode.print_message(format!("token: {token}")),
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
