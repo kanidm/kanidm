@@ -183,6 +183,7 @@ pub fn phase_2_schema_classes() -> Vec<SchemaClass> {
         SCHEMA_CLASS_ASSERTION_NONCE.clone(),
         // DL_1_12
         SCHEMA_CLASS_ACCOUNT_SIGNUP_REQUEST.clone(),
+        SCHEMA_CLASS_KEY_OBJECT_JWE_A256GCM.clone(),
     ]
 }
 

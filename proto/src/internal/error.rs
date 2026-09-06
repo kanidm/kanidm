@@ -332,6 +332,15 @@ pub enum OperationError {
 
     KP0080KeyProviderNoSuchKey,
 
+    KP0081KeyObjectImportJweA256GCMInvalid,
+    KP0082KeyObjectImportJweA256GCMInvalid,
+    KP0083KeyObjectJweNotAssociated,
+    KP0084KeyObjectJweInvalid,
+    KP0085KeyObjectJweRevoked,
+    KP0086KeyObjectNoActiveEncryptionKeys,
+    KP0087KeyObjectJweA256GCMEncryption,
+    KP0088KeyProviderNoSuchKey,
+
     // Plugins
     PL0001GidOverlapsSystemRange,
 
@@ -561,6 +570,15 @@ impl OperationError {
             Self::KP0078KeyObjectNotFound => None,
             Self::KP0079KeyObjectNotFound => None,
             Self::KP0080KeyProviderNoSuchKey => None,
+
+            Self::KP0081KeyObjectImportJweA256GCMInvalid => None,
+            Self::KP0082KeyObjectImportJweA256GCMInvalid => None,
+            Self::KP0083KeyObjectJweNotAssociated => None,
+            Self::KP0084KeyObjectJweInvalid => None,
+            Self::KP0085KeyObjectJweRevoked => None,
+            Self::KP0086KeyObjectNoActiveEncryptionKeys => None,
+            Self::KP0087KeyObjectJweA256GCMEncryption => None,
+            Self::KP0088KeyProviderNoSuchKey => None,
 
             Self::KU001InitWhileSessionActive => Some("The session was active when the init function was called.".into()),
             Self::KU002ContinueWhileSessionInActive => Some("Attempted to continue auth session while current session is inactive".into()),

@@ -739,6 +739,7 @@ pub enum DbValueKeyUsage {
     JwsHs256,
     JwsRs256,
     JweA128GCM,
+    JweA256GCM,
     HkdfS256,
 }
 
