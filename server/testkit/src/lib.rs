@@ -202,6 +202,43 @@ pub async fn setup_account_passkey(rsclient: &KanidmClient, account_name: &str) 
     wa
 }
 
+pub async fn login_account_passkey(
+    rsclient: &KanidmClient,
+    account_name: &str,
+    soft_passkey: &mut SoftPasskey,
+) {
+    rsclient.logout().await.expect("Failed to logout");
+
+    let res = rsclient
+        .auth_passkey_begin(account_name)
+        .await
+        .expect("Failed to start passkey auth");
+
+    let pkc = soft_passkey
+        .do_authentication(rsclient.get_origin().clone(), res)
+        .map(Box::new)
+        .expect("Failed to authentication with soft passkey");
+
+    let res = rsclient.auth_passkey_complete(pkc).await;
+    assert!(res.is_ok());
+}
+
+pub async fn reauth_account_passkey(rsclient: &KanidmClient, soft_passkey: &mut SoftPasskey) {
+    // We need RW privs, elevate now.
+    let res = rsclient
+        .reauth_passkey_begin()
+        .await
+        .expect("Failed to start passkey reauth");
+
+    let pkc = soft_passkey
+        .do_authentication(rsclient.get_origin().clone(), res)
+        .map(Box::new)
+        .expect("Failed to authentication with soft passkey");
+
+    let res = rsclient.reauth_passkey_complete(pkc).await;
+    assert!(res.is_ok());
+}
+
 /// creates a user (username: `id`) and puts them into a group, creating it if need be.
 pub async fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) {
     #[allow(clippy::expect_used)]
