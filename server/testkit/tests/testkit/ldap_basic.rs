@@ -3,11 +3,11 @@ use kanidm_proto::scim_v1::{
     ScimApplicationPasswordCreate,
 };
 use kanidmd_testkit::{
-    setup_account_passkey, AsyncTestEnvironment, IDM_ADMIN_TEST_PASSWORD, IDM_ADMIN_TEST_USER,
+    login_account_passkey, reauth_account_passkey, setup_account_passkey, AsyncTestEnvironment,
+    IDM_ADMIN_TEST_PASSWORD, IDM_ADMIN_TEST_USER, NOT_ADMIN_TEST_PASSWORD,
 };
 use ldap3_client::LdapClientBuilder;
 use tracing::debug;
-use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 const TEST_PERSON: &str = "user_mcuserton";
 const TEST_GROUP: &str = "group_mcgroupington";
@@ -23,6 +23,77 @@ async fn test_ldap_basic_unix_bind(test_env: &AsyncTestEnvironment) {
         .bind("".to_string(), "".to_string())
         .await
         .unwrap();
+
+    let whoami = ldap_client.whoami().await.unwrap();
+
+    assert_eq!(whoami, Some("u: anonymous@localhost".to_string()));
+}
+
+#[kanidmd_testkit::test(ldap = true)]
+async fn test_ldap_failed_bind_anonymous(test_env: &AsyncTestEnvironment) {
+    let idm_admin_rsclient = test_env.rsclient.new_session().unwrap();
+
+    // Create a person
+
+    idm_admin_rsclient
+        .auth_simple_password(IDM_ADMIN_TEST_USER, IDM_ADMIN_TEST_PASSWORD)
+        .await
+        .expect("Failed to login as admin");
+
+    idm_admin_rsclient
+        .idm_person_account_create(TEST_PERSON, TEST_PERSON)
+        .await
+        .expect("Failed to create the user");
+
+    idm_admin_rsclient
+        .idm_person_account_unix_extend(TEST_PERSON, None, None)
+        .await
+        .expect("Failed to setup posix attrs.");
+
+    let mut soft_passkey = setup_account_passkey(&idm_admin_rsclient, TEST_PERSON).await;
+
+    // Login as the person
+    let person_rsclient = test_env.rsclient.new_session().unwrap();
+
+    login_account_passkey(&person_rsclient, TEST_PERSON, &mut soft_passkey).await;
+
+    reauth_account_passkey(&person_rsclient, &mut soft_passkey).await;
+
+    person_rsclient
+        .idm_person_account_unix_cred_put(TEST_PERSON, NOT_ADMIN_TEST_PASSWORD)
+        .await
+        .expect("Failed to set unix password");
+
+    let ldap_url = test_env.ldap_url.as_ref().unwrap();
+
+    let mut ldap_client = LdapClientBuilder::new(ldap_url).build().await.unwrap();
+
+    // Bind as anonymous
+    ldap_client
+        .bind("".to_string(), "".to_string())
+        .await
+        .unwrap();
+
+    let whoami = ldap_client.whoami().await.unwrap();
+
+    assert_eq!(whoami, Some("u: anonymous@localhost".to_string()));
+
+    // Now rebind correctly as the user
+    ldap_client
+        .bind(TEST_PERSON.to_string(), NOT_ADMIN_TEST_PASSWORD.to_string())
+        .await
+        .unwrap();
+
+    let whoami = ldap_client.whoami().await.unwrap();
+
+    assert_eq!(whoami, Some("u: user_mcuserton@localhost".to_string()));
+
+    // On a failed bind, should revert to anonymous
+    ldap_client
+        .bind(TEST_PERSON.to_string(), TEST_PERSON.to_string())
+        .await
+        //We expect this to fail
+        .expect_err("Bind must FAIL");
 
     let whoami = ldap_client.whoami().await.unwrap();
 
@@ -103,34 +174,9 @@ async fn test_ldap_application_password_basic(test_env: &AsyncTestEnvironment) {
     // Login as the person
     let person_rsclient = test_env.rsclient.new_session().unwrap();
 
-    let _ = person_rsclient.logout().await;
+    login_account_passkey(&person_rsclient, TEST_PERSON, &mut soft_passkey).await;
 
-    let res = person_rsclient
-        .auth_passkey_begin(TEST_PERSON)
-        .await
-        .expect("Failed to start passkey auth");
-
-    let pkc = soft_passkey
-        .do_authentication(person_rsclient.get_origin().clone(), res)
-        .map(Box::new)
-        .expect("Failed to authentication with soft passkey");
-
-    let res = person_rsclient.auth_passkey_complete(pkc).await;
-    assert!(res.is_ok());
-
-    // We need RW privs, elevate now.
-    let res = person_rsclient
-        .reauth_passkey_begin()
-        .await
-        .expect("Failed to start passkey reauth");
-
-    let pkc = soft_passkey
-        .do_authentication(person_rsclient.get_origin().clone(), res)
-        .map(Box::new)
-        .expect("Failed to authentication with soft passkey");
-
-    let res = person_rsclient.reauth_passkey_complete(pkc).await;
-    assert!(res.is_ok());
+    reauth_account_passkey(&person_rsclient, &mut soft_passkey).await;
 
     // List the applications we can see
     let applications = person_rsclient
