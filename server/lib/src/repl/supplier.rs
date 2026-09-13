@@ -10,10 +10,9 @@ use crypto_glue::{
     ecdsa_p256::{self, EcdsaP256DerSignature, EcdsaP256SigningKey, EcdsaP256VerifyingKey},
     traits::Pkcs8EncodePrivateKey,
     x509::{
-        self, oiddb, Builder, Certificate, CertificateBuilder, ExtendedKeyUsage, GeneralName,
-        GeneralizedTime, Ia5String, OctetString, SubjectAltName, SubjectPublicKeyInfoOwned,
-        Validity,
-        profile::cabf::tls::*,
+        self, oiddb, profile::cabf::tls::*, Builder, Certificate, CertificateBuilder,
+        ExtendedKeyUsage, GeneralName, GeneralizedTime, Ia5String, OctetString, SubjectAltName,
+        SubjectPublicKeyInfoOwned, Validity,
     },
 };
 use rustls::pki_types::{IpAddr, ServerName};
@@ -97,23 +96,21 @@ impl QueryServerWriteTransaction<'_> {
         let subject_alt_name = SubjectAltName(names.clone());
 
         let certificate_type =
-            CertificateType::domain_validated(subject.clone(), names).unwrap();
+            CertificateType::domain_validated(subject.clone(), names).map_err(|err| {
+                error!(?err, "Unable to construct certificate type");
+                OperationError::CryptographyError
+            })?;
 
         let profile = Subscriber {
             certificate_type,
             issuer: subject,
-            client_auth: false,
+            client_auth: true,
             tls12_options: Default::default(),
             enable_data_encipherment: Default::default(),
         };
 
-        let mut x509_builder = CertificateBuilder::new(
-            profile,
-            serial_number,
-            validity,
-            pub_key,
-        )
-        .map_err(|err| {
+        let mut x509_builder = CertificateBuilder::new(profile, serial_number, validity, pub_key)
+            .map_err(|err| {
             error!(?err, "Unable to construct certificate builder");
             OperationError::CryptographyError
         })?;

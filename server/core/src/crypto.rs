@@ -7,16 +7,19 @@ use crypto_glue::{
     ecdsa_p256::{EcdsaP256SigningKey, EcdsaP256VerifyingKey},
     ecdsa_p384::{EcdsaP384DerSignature, EcdsaP384SigningKey, EcdsaP384VerifyingKey},
     pkcs8::PrivateKeyInfo,
-    rand,
     rsa::RS256PrivateKey,
     traits::{
-        DecodeDer, DecodePem, EncodePem, Pkcs1DecodeRsaPrivateKey, Pkcs8DecodePrivateKey,
+        DecodeDer, DecodePem, EncodePem, Generate, Pkcs1DecodeRsaPrivateKey, Pkcs8DecodePrivateKey,
         Pkcs8EncodePrivateKey, PublicKeyParts,
     },
     x509::{
         oiddb::{rfc5280, rfc5912},
+        profile::cabf::{
+            tls::{CertificateType, Subscriber},
+            Root,
+        },
         uuid_to_serial, Builder, Certificate, CertificateBuilder, ExtendedKeyUsage, GeneralName,
-        Ia5String, Name, Profile, SubjectAltName, SubjectPublicKeyInfoOwned, Time, Validity,
+        Ia5String, Name, SubjectAltName, SubjectPublicKeyInfoOwned, Time, Validity,
     },
 };
 use rustls::{
@@ -286,8 +289,6 @@ pub(crate) fn write_ca(
 
 /// build up a CA certificate and key.
 pub(crate) fn build_ca() -> Result<CaHandle, ()> {
-    let mut rng = rand::thread_rng();
-
     let root_serial_uuid = Uuid::new_v4();
     let serial_number = uuid_to_serial(root_serial_uuid);
 
@@ -300,37 +301,32 @@ pub(crate) fn build_ca() -> Result<CaHandle, ()> {
             error!(?err, "Unable to convert system time");
         })?;
 
-    let validity = Validity {
-        not_before,
-        not_after,
-    };
+    let validity = Validity::new(not_before, not_after);
 
-    let profile = Profile::Root;
+    let emits_ocsp_response = false;
+
     let root_subject = Name::from_str("C=AU,ST=QLD,O=Kanidm,CN=Kanidm Generated CA,OU=Development and Evaluation - NOT FOR PRODUCTION")
         .map_err(|err| {
             error!(?err, "Invalid root subject DN - THIS IS A BUG.");
         })?;
 
-    let signing_key = EcdsaP384SigningKey::random(&mut rng);
+    let profile = Root::new(emits_ocsp_response, root_subject).map_err(|err| {
+        error!(?err, "Unable to build root profile - THIS IS A BUG.");
+    })?;
+
+    let signing_key = EcdsaP384SigningKey::generate();
     let verifying_key = EcdsaP384VerifyingKey::from(&signing_key);
-    let pub_key = SubjectPublicKeyInfoOwned::from_key(verifying_key).map_err(|err| {
+    let pub_key = SubjectPublicKeyInfoOwned::from_key(&verifying_key).map_err(|err| {
         error!(?err, "Unable to access subject public key information");
     })?;
 
-    let builder = CertificateBuilder::new(
-        profile,
-        serial_number,
-        validity,
-        root_subject.clone(),
-        pub_key.clone(),
-        &signing_key,
-    )
-    .map_err(|err| {
-        error!(?err, "Unable to create certificate builder");
-    })?;
+    let builder = CertificateBuilder::new(profile, serial_number, validity, pub_key.clone())
+        .map_err(|err| {
+            error!(?err, "Unable to create certificate builder");
+        })?;
 
     let cert = builder
-        .build_with_rng::<EcdsaP384DerSignature>(&mut rng)
+        .build::<EcdsaP384SigningKey, EcdsaP384DerSignature>(&signing_key)
         .map_err(|err| {
             error!(?err, "Unable to sign certificate request");
         })?;
@@ -435,8 +431,6 @@ pub(crate) fn write_cert(
 }
 
 pub(crate) fn build_cert(domain_name: &str, ca_handle: &CaHandle) -> Result<CertHandle, ()> {
-    let mut rng = rand::thread_rng();
-
     let root_serial_uuid = Uuid::new_v4();
     let serial_number = uuid_to_serial(root_serial_uuid);
 
@@ -449,25 +443,37 @@ pub(crate) fn build_cert(domain_name: &str, ca_handle: &CaHandle) -> Result<Cert
             error!(?err, "Unable to convert system time");
         })?;
 
-    let validity = Validity {
-        not_before,
-        not_after,
-    };
+    let validity = Validity::new(not_before, not_after);
 
-    let profile = Profile::Leaf {
-        issuer: ca_handle.cert.tbs_certificate.subject.clone(),
-        enable_key_agreement: true,
-        enable_key_encipherment: true,
-        include_subject_key_identifier: true,
-    };
-    let root_subject = Name::from_str("C=AU,ST=QLD,O=Kanidm,CN=Kanidm Generated Server Certificate,OU=Development and Evaluation - NOT FOR PRODUCTION")
+    let subject = Name::from_str("C=AU,ST=QLD,O=Kanidm,CN=Kanidm Generated Server Certificate,OU=Development and Evaluation - NOT FOR PRODUCTION")
         .map_err(|err| {
             error!(?err, "Invalid cert subject DN - THIS IS A BUG.");
         })?;
 
-    let signing_key = EcdsaP256SigningKey::random(&mut rng);
+    let alt_name = Ia5String::new(domain_name).map_err(|err| {
+        error!(?err, "Invalid subject alternative name");
+    })?;
+
+    let names = vec![GeneralName::DnsName(alt_name)];
+
+    let san = SubjectAltName(names.clone());
+
+    let certificate_type =
+        CertificateType::domain_validated(subject.clone(), names).map_err(|err| {
+            error!(?err, "Unable to create certificate type");
+        })?;
+
+    let profile = Subscriber {
+        certificate_type,
+        issuer: ca_handle.cert.tbs_certificate().subject().clone(),
+        client_auth: false,
+        tls12_options: Default::default(),
+        enable_data_encipherment: Default::default(),
+    };
+
+    let signing_key = EcdsaP256SigningKey::generate();
     let verifying_key = EcdsaP256VerifyingKey::from(&signing_key);
-    let pub_key = SubjectPublicKeyInfoOwned::from_key(verifying_key).map_err(|err| {
+    let pub_key = SubjectPublicKeyInfoOwned::from_key(&verifying_key).map_err(|err| {
         error!(?err, "Unable to access subject public key information");
     })?;
 
@@ -475,9 +481,9 @@ pub(crate) fn build_cert(domain_name: &str, ca_handle: &CaHandle) -> Result<Cert
         profile,
         serial_number,
         validity,
-        root_subject.clone(),
+        // root_subject.clone(),
         pub_key.clone(),
-        &ca_handle.key,
+        // &ca_handle.key,
     )
     .map_err(|err| {
         error!(?err, "Unable to create certificate builder");
@@ -489,18 +495,12 @@ pub(crate) fn build_cert(domain_name: &str, ca_handle: &CaHandle) -> Result<Cert
         error!(?err, "Unable to add extended key usage extension");
     })?;
 
-    let alt_name = Ia5String::new(domain_name).map_err(|err| {
-        error!(?err, "Invalid subject alternative name");
-    })?;
-
-    let san = SubjectAltName(vec![GeneralName::DnsName(alt_name)]);
-
     builder.add_extension(&san).map_err(|err| {
         error!(?err, "Unable to add subject alternative name extension");
     })?;
 
     let cert = builder
-        .build_with_rng::<EcdsaP384DerSignature>(&mut rng)
+        .build::<EcdsaP384SigningKey, EcdsaP384DerSignature>(&ca_handle.key)
         .map_err(|err| {
             error!(?err, "Unable to sign certificate request");
         })?;

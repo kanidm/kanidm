@@ -4,8 +4,8 @@ use axum_extra::extract::cookie::{CookieJar, SameSite};
 use crypto_glue::{
     hex,
     hmac_s256::HmacSha256,
-    rand::{self, Rng},
-    traits::{Mac, KeyInit},
+    rand::{self, RngExt},
+    traits::{KeyInit, Mac},
 };
 use kanidm_proto::internal::COOKIE_CSRF_NONCE;
 use serde::Deserialize;
