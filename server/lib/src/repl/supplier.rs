@@ -8,11 +8,12 @@ use crate::prelude::*;
 use crypto_glue::{
     der::SecretDocument,
     ecdsa_p256::{self, EcdsaP256DerSignature, EcdsaP256SigningKey, EcdsaP256VerifyingKey},
-    rand,
     traits::Pkcs8EncodePrivateKey,
     x509::{
         self, oiddb, Builder, Certificate, CertificateBuilder, ExtendedKeyUsage, GeneralName,
         GeneralizedTime, Ia5String, OctetString, SubjectAltName, SubjectPublicKeyInfoOwned,
+        Validity,
+        profile::cabf::tls::*,
     },
 };
 use rustls::pki_types::{IpAddr, ServerName};
@@ -30,13 +31,10 @@ impl QueryServerWriteTransaction<'_> {
         let signing_key = EcdsaP256SigningKey::from(&private_key);
         let verifying_key = EcdsaP256VerifyingKey::from(&signing_key);
 
-        let pub_key = SubjectPublicKeyInfoOwned::from_key(verifying_key).map_err(|err| {
+        let pub_key = SubjectPublicKeyInfoOwned::from_key(&verifying_key).map_err(|err| {
             error!(?err, "Unable to create public key from private key");
             OperationError::CryptographyError
         })?;
-
-        // Indicate that this is self-signed.
-        let profile = x509::Profile::Manual { issuer: None };
 
         let not_before = GeneralizedTime::from_unix_duration(self.get_curtime())
             .map(x509::Time::from)
@@ -53,10 +51,7 @@ impl QueryServerWriteTransaction<'_> {
             OperationError::CryptographyError
         })?;
 
-        let validity = x509::Validity {
-            not_before,
-            not_after,
-        };
+        let validity = Validity::new(not_before, not_after);
 
         let serial_number = x509::uuid_to_serial(s_uuid);
         let subject =
@@ -65,13 +60,58 @@ impl QueryServerWriteTransaction<'_> {
                 OperationError::CryptographyError
             })?;
 
+        // Subject Alt Name
+        // We need to understand how rustls treats this to issue the correct SAN value.
+        // How does rustls interpret this name?
+        let Ok(server_name) = ServerName::try_from(domain_name.to_owned()) else {
+            error!("Invalid server name for replication");
+            return Err(OperationError::CryptographyError);
+        };
+
+        let names = match server_name {
+            ServerName::DnsName(_) => {
+                let alt_name = Ia5String::new(domain_name).map_err(|err| {
+                    error!(?err, "Invalid subject alt name");
+                    OperationError::CryptographyError
+                })?;
+                vec![GeneralName::DnsName(alt_name)]
+            }
+            ServerName::IpAddress(IpAddr::V4(ipv4_addr)) => {
+                let ip_address = OctetString::new(*ipv4_addr.as_ref()).map_err(|err| {
+                    error!(?err, "Unable to convert ipv4 address to octet string");
+                    OperationError::CryptographyError
+                })?;
+                vec![GeneralName::IpAddress(ip_address)]
+            }
+            ServerName::IpAddress(IpAddr::V6(ipv6_addr)) => {
+                let ip_address = OctetString::new(*ipv6_addr.as_ref()).map_err(|err| {
+                    error!(?err, "Unable to convert ipv6 address to octet string");
+                    OperationError::CryptographyError
+                })?;
+                vec![GeneralName::IpAddress(ip_address)]
+            }
+
+            _ => return Err(OperationError::CryptographyError),
+        };
+
+        let subject_alt_name = SubjectAltName(names.clone());
+
+        let certificate_type =
+            CertificateType::domain_validated(subject.clone(), names).unwrap();
+
+        let profile = Subscriber {
+            certificate_type,
+            issuer: subject,
+            client_auth: false,
+            tls12_options: Default::default(),
+            enable_data_encipherment: Default::default(),
+        };
+
         let mut x509_builder = CertificateBuilder::new(
             profile,
             serial_number,
             validity,
-            subject,
             pub_key,
-            &signing_key,
         )
         .map_err(|err| {
             error!(?err, "Unable to construct certificate builder");
@@ -89,40 +129,6 @@ impl QueryServerWriteTransaction<'_> {
             OperationError::CryptographyError
         })?;
 
-        // Subject Alt Name
-        // We need to understand how rustls treats this to issue the correct SAN value.
-        // How does rustls interpret this name?
-        let Ok(server_name) = ServerName::try_from(domain_name.to_owned()) else {
-            error!("Invalid server name for replication");
-            return Err(OperationError::CryptographyError);
-        };
-
-        let subject_alt_name = match server_name {
-            ServerName::DnsName(_) => {
-                let alt_name = Ia5String::new(domain_name).map_err(|err| {
-                    error!(?err, "Invalid subject alt name");
-                    OperationError::CryptographyError
-                })?;
-                SubjectAltName(vec![GeneralName::DnsName(alt_name)])
-            }
-            ServerName::IpAddress(IpAddr::V4(ipv4_addr)) => {
-                let ip_address = OctetString::new(ipv4_addr.as_ref()).map_err(|err| {
-                    error!(?err, "Unable to convert ipv4 address to octet string");
-                    OperationError::CryptographyError
-                })?;
-                SubjectAltName(vec![GeneralName::IpAddress(ip_address)])
-            }
-            ServerName::IpAddress(IpAddr::V6(ipv6_addr)) => {
-                let ip_address = OctetString::new(ipv6_addr.as_ref()).map_err(|err| {
-                    error!(?err, "Unable to convert ipv6 address to octet string");
-                    OperationError::CryptographyError
-                })?;
-                SubjectAltName(vec![GeneralName::IpAddress(ip_address)])
-            }
-
-            _ => return Err(OperationError::CryptographyError),
-        };
-
         x509_builder
             .add_extension(&subject_alt_name)
             .map_err(|err| {
@@ -130,9 +136,8 @@ impl QueryServerWriteTransaction<'_> {
                 OperationError::CryptographyError
             })?;
 
-        let mut rng = rand::thread_rng();
         let x509 = x509_builder
-            .build_with_rng::<EcdsaP256DerSignature>(&mut rng)
+            .build::<EcdsaP256SigningKey, EcdsaP256DerSignature>(&signing_key)
             .map_err(|err| {
                 error!(?err, "Unable to generate self signed key/cert");
                 OperationError::CryptographyError

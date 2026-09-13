@@ -2,7 +2,7 @@ use crypto_glue::{
     hmac_s1::{HmacSha1, HmacSha1Key},
     hmac_s256::{HmacSha256, HmacSha256Key},
     hmac_s512::{HmacSha512, HmacSha512Key},
-    traits::Mac,
+    traits::{Mac, KeyInit},
 };
 use kanidm_proto::internal::{TotpAlgo as ProtoTotpAlgo, TotpSecret as ProtoTotp};
 use rand::RngExt;

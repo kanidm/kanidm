@@ -45,7 +45,7 @@ impl ValueSetScimPut for ValueSetSha256 {
             .set
             .into_iter()
             .map(|bytes| {
-                Sha256Output::from_exact_iter(bytes).ok_or_else(|| {
+                Sha256Output::try_from_iter(bytes).map_err(|_| {
                     error!("SCIM SHA256 Syntax Invalid");
                     OperationError::SC0030Sha256SyntaxInvalid
                 })
