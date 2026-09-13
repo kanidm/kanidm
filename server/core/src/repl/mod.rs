@@ -819,8 +819,8 @@ async fn repl_acceptor(
         };
 
         info!(
-            replication_cert_not_before = ?server_cert.tbs_certificate.validity.not_before,
-            replication_cert_not_after = ?server_cert.tbs_certificate.validity.not_after,
+            replication_cert_not_before = ?server_cert.tbs_certificate().validity().not_before,
+            replication_cert_not_after = ?server_cert.tbs_certificate().validity().not_after,
         );
 
         // rustls expects these to be der
