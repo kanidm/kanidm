@@ -5,7 +5,7 @@ use crypto_glue::{
     hex,
     hmac_s256::HmacSha256,
     rand::{self, Rng},
-    traits::Mac,
+    traits::{Mac, KeyInit},
 };
 use kanidm_proto::internal::COOKIE_CSRF_NONCE;
 use serde::Deserialize;
@@ -45,7 +45,7 @@ pub(crate) fn generate_parameters(
     let mut nonce: Nonce = [0; _];
 
     {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         rng.fill(&mut nonce);
     }
 
