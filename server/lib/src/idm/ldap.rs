@@ -27,6 +27,7 @@ pub enum LdapResponseState {
     Unbind,
     Disconnect(LdapMsg),
     Bind(LdapBoundToken, LdapMsg),
+    BindFailed(LdapBoundToken, LdapMsg),
     Respond(LdapMsg),
     MultiPartResponse(Vec<LdapMsg>),
     BindMultiPartResponse(LdapBoundToken, Vec<LdapMsg>),
@@ -617,17 +618,32 @@ impl LdapServer {
         let source = Source::Ldaps(ip_addr);
 
         match server_op {
-            ServerOps::SimpleBind(sbr) => self
-                .do_bind(idms, sbr.dn.as_str(), sbr.pw.as_str())
-                .await
-                .map(|r| match r {
-                    Some(lbt) => LdapResponseState::Bind(lbt, sbr.gen_success()),
-                    None => LdapResponseState::Respond(sbr.gen_invalid_cred()),
-                })
-                .or_else(|e| {
-                    let (rc, msg) = operationerr_to_ldapresultcode(e);
-                    Ok(LdapResponseState::Respond(sbr.gen_error(rc, msg)))
-                }),
+            ServerOps::SimpleBind(sbr) => {
+                let result = self.do_bind(idms, sbr.dn.as_str(), sbr.pw.as_str()).await;
+
+                let err = match result {
+                    Ok(Some(lbt)) => return Ok(LdapResponseState::Bind(lbt, sbr.gen_success())),
+                    Ok(None) => {
+                        // On a failed bind, move to anonymous.
+                        // Important that if anonymous is locked/expired this will FAIL which is
+                        // what we want!
+                        match self.do_bind(idms, "", "").await {
+                            Ok(Some(lbt)) => {
+                                return Ok(LdapResponseState::BindFailed(
+                                    lbt,
+                                    sbr.gen_invalid_cred(),
+                                ))
+                            }
+                            _ => OperationError::InvalidRequestState,
+                        }
+                    }
+                    Err(err) => err,
+                };
+
+                let (rc, msg) = operationerr_to_ldapresultcode(err);
+                // Unable to proceed, we are in an invalid state now. Disconnect the client.
+                Ok(LdapResponseState::Disconnect(sbr.gen_error(rc, msg)))
+            }
             ServerOps::Search(sr) => match uat {
                 Some(u) => self
                     .do_search(idms, &sr, &u, source)

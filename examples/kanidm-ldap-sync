@@ -61,6 +61,8 @@ ldap_filter = "(|(objectclass=person)(objectclass=posixgroup))"
 # person_attr_gidnumber = "uidnumber"
 # person_attr_login_shell = "loginshell"
 # person_attr_password = "userpassword"
+# person_attr_mail = "mail"
+# person_attr_ssh_public_key = "sshpublickey"
 
 # If the password value requires a prefix for Kanidm to import it, this can be optionally
 # provided here.

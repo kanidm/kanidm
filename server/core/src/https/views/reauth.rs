@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
