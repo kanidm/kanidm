@@ -10,9 +10,9 @@ use crypto_glue::{
     ecdsa_p256::{self, EcdsaP256DerSignature, EcdsaP256SigningKey, EcdsaP256VerifyingKey},
     traits::Pkcs8EncodePrivateKey,
     x509::{
-        self, oiddb, profile::cabf::tls::*, Builder, Certificate, CertificateBuilder,
-        ExtendedKeyUsage, GeneralName, GeneralizedTime, Ia5String, OctetString, SubjectAltName,
-        SubjectPublicKeyInfoOwned, Validity,
+        self, profile::cabf::tls::*, Builder, Certificate, CertificateBuilder, GeneralName,
+        GeneralizedTime, Ia5String, OctetString, SubjectAltName, SubjectPublicKeyInfoOwned,
+        Validity,
     },
 };
 use rustls::pki_types::{IpAddr, ServerName};
@@ -54,7 +54,7 @@ impl QueryServerWriteTransaction<'_> {
 
         let serial_number = x509::uuid_to_serial(s_uuid);
         let subject =
-            x509::Name::from_str(&format!("O=Kanidm Replication,CN={s_uuid}")).map_err(|err| {
+            x509::Name::from_str(&format!("CN={s_uuid},O=Kanidm Replication")).map_err(|err| {
                 error!(?err, "Unable to parse subject dn");
                 OperationError::CryptographyError
             })?;
@@ -112,17 +112,6 @@ impl QueryServerWriteTransaction<'_> {
         let mut x509_builder = CertificateBuilder::new(profile, serial_number, validity, pub_key)
             .map_err(|err| {
             error!(?err, "Unable to construct certificate builder");
-            OperationError::CryptographyError
-        })?;
-
-        // Key Usage (server + client )
-        let eku_extension = ExtendedKeyUsage(vec![
-            oiddb::rfc5280::ID_KP_CLIENT_AUTH,
-            oiddb::rfc5280::ID_KP_SERVER_AUTH,
-        ]);
-
-        x509_builder.add_extension(&eku_extension).map_err(|err| {
-            error!(?err, "Unable to add extended key usage extension");
             OperationError::CryptographyError
         })?;
 
