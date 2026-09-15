@@ -2,7 +2,6 @@ use crate::config::TcpAddressInfo;
 use haproxy_protocol::{ProxyHdrV1, ProxyHdrV2, RemoteAddress};
 use std::io::ErrorKind;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::{net::TcpStream, time::timeout};
 
@@ -10,11 +9,11 @@ pub(crate) async fn process_client_addr(
     stream: TcpStream,
     connection_addr: SocketAddr,
     time_limit: Duration,
-    trusted_tcp_info_ips: Arc<TcpAddressInfo>,
+    trusted_tcp_info_ips: &TcpAddressInfo,
 ) -> Result<(TcpStream, SocketAddr), std::io::Error> {
     let canonical_conn_addr = connection_addr.ip().to_canonical();
 
-    let hdr_result = match trusted_tcp_info_ips.as_ref() {
+    let hdr_result = match trusted_tcp_info_ips {
         TcpAddressInfo::ProxyV2(trusted)
             if trusted
                 .iter()
