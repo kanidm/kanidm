@@ -13,13 +13,13 @@ use crypto_glue::{
         Pkcs8EncodePrivateKey, PublicKeyParts,
     },
     x509::{
-        oiddb::{rfc5280, rfc5912},
+        oiddb::rfc5912,
         profile::cabf::{
             tls::{CertificateType, Subscriber},
             Root,
         },
-        uuid_to_serial, Builder, Certificate, CertificateBuilder, ExtendedKeyUsage, GeneralName,
-        Ia5String, Name, SubjectAltName, SubjectPublicKeyInfoOwned, Time, Validity,
+        uuid_to_serial, Builder, Certificate, CertificateBuilder, GeneralName, Ia5String, Name,
+        SubjectAltName, SubjectPublicKeyInfoOwned, Time, Validity,
     },
 };
 use rustls::{
@@ -304,11 +304,11 @@ pub(crate) fn build_ca() -> Result<CaHandle, ()> {
     let validity = Validity::new(not_before, not_after);
 
     let emits_ocsp_response = false;
-
-    let root_subject = Name::from_str("C=AU,ST=QLD,O=Kanidm,CN=Kanidm Generated CA,OU=Development and Evaluation - NOT FOR PRODUCTION")
-        .map_err(|err| {
-            error!(?err, "Invalid root subject DN - THIS IS A BUG.");
-        })?;
+    let root_subject =
+        Name::from_str("CN=Kanidm Generated CA - NOT FOR PRODUCTION,O=Kanidm,ST=QLD,C=AU")
+            .map_err(|err| {
+                error!(?err, "Invalid root subject DN - THIS IS A BUG.");
+            })?;
 
     let profile = Root::new(emits_ocsp_response, root_subject).map_err(|err| {
         error!(?err, "Unable to build root profile - THIS IS A BUG.");
@@ -445,10 +445,12 @@ pub(crate) fn build_cert(domain_name: &str, ca_handle: &CaHandle) -> Result<Cert
 
     let validity = Validity::new(not_before, not_after);
 
-    let subject = Name::from_str("C=AU,ST=QLD,O=Kanidm,CN=Kanidm Generated Server Certificate,OU=Development and Evaluation - NOT FOR PRODUCTION")
-        .map_err(|err| {
-            error!(?err, "Invalid cert subject DN - THIS IS A BUG.");
-        })?;
+    let subject = Name::from_str(
+        "CN=Kanidm Generated Server Certificate - NOT FOR PRODUCTION,O=Kanidm,ST=QLD,C=AU",
+    )
+    .map_err(|err| {
+        error!(?err, "Invalid cert subject DN - THIS IS A BUG.");
+    })?;
 
     let alt_name = Ia5String::new(domain_name).map_err(|err| {
         error!(?err, "Invalid subject alternative name");
@@ -481,12 +483,6 @@ pub(crate) fn build_cert(domain_name: &str, ca_handle: &CaHandle) -> Result<Cert
         .map_err(|err| {
             error!(?err, "Unable to create certificate builder");
         })?;
-
-    let eku_extension = ExtendedKeyUsage(vec![rfc5280::ID_KP_SERVER_AUTH]);
-
-    builder.add_extension(&eku_extension).map_err(|err| {
-        error!(?err, "Unable to add extended key usage extension");
-    })?;
 
     builder.add_extension(&san).map_err(|err| {
         error!(?err, "Unable to add subject alternative name extension");
