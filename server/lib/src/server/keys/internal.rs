@@ -17,7 +17,7 @@ use crypto_glue::{
     aes128,
     hkdf_s256::HkdfSha256,
     hmac_s256::{self, HmacSha256, HmacSha256Key},
-    traits::{Mac, Zeroizing},
+    traits::{KeyInit, Mac, Zeroizing},
 };
 use smolset::SmolSet;
 use std::cmp::Reverse;

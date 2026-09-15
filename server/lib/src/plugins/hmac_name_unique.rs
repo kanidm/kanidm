@@ -2,7 +2,10 @@ use crate::event::ReviveRecycledEvent;
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::valueset::ValueSetSha256;
-use crypto_glue::{hmac_s256::HmacSha256, traits::Mac};
+use crypto_glue::{
+    hmac_s256::HmacSha256,
+    traits::{KeyInit, Mac},
+};
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::sync::Arc;
