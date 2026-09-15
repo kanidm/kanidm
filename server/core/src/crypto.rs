@@ -481,9 +481,7 @@ pub(crate) fn build_cert(domain_name: &str, ca_handle: &CaHandle) -> Result<Cert
         profile,
         serial_number,
         validity,
-        // root_subject.clone(),
         pub_key.clone(),
-        // &ca_handle.key,
     )
     .map_err(|err| {
         error!(?err, "Unable to create certificate builder");
