@@ -6,6 +6,7 @@ pub type PamMessageStyle = c_int;
 pub type AlwaysZero = c_int;
 
 // See /usr/include/security/pam_constants.h
+// <https://github.com/freebsd/freebsd-src/blob/stable/15/contrib/openpam/include/security/pam_constants.h>
 
 pub const _PAM_SILENT: PamFlag = 0x8000_0000;
 pub const _PAM_DISALLOW_NULL_AUTHTOK: PamFlag = 0x0001;
