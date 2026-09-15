@@ -1020,6 +1020,7 @@ impl Drop for CoreHandle {
     }
 }
 
+#[allow(clippy::result_unit_err)]
 pub async fn create_server_core(
     config: Configuration,
     config_test: bool,

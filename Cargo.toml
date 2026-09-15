@@ -200,7 +200,7 @@ fs4 = "^1.0.2"
 futures = "^0.3.32"
 futures-util = { version = "^0.3.32", features = ["sink"] }
 gethostname = "1.1.0"
-gix = { version = "0.86.0", default-features = false, features = ["sha1"] }
+gix = { version = "0.87.1", default-features = false, features = ["sha1"] }
 haproxy-protocol = { version = "0.0.4" }
 hashbrown = { version = "0.17.1", features = ["serde", "inline-more"] }
 hex = "^0.4.3"
@@ -215,7 +215,7 @@ image = { version = "0.25.9", default-features = false, features = [
     "webp",
 ] }
 itertools = "0.15.0"
-jsonschema = "0.49.1"
+jsonschema = "0.53.0"
 ldap3_client = "^0.8.0"
 ldap3_proto = { version = "^0.8.0", features = ["serde"] }
 lettre = { version = "0.11.22", default-features = false }
@@ -264,7 +264,7 @@ reqwest = { version = "0.13.4", default-features = false, features = [
     "query",
     "socks",
 ] }
-rusqlite = { version = "=0.40.1", features = ["array", "bundled"] }
+rusqlite = { version = "=0.40.2", features = ["array", "bundled"] }
 rustls = { version = "0.23.37", default-features = false, features = [
     "std",
     "aws_lc_rs",

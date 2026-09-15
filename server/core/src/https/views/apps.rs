@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::{

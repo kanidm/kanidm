@@ -242,6 +242,28 @@ async fn oauth2_authorise(
                 .body(body)
                 .unwrap()
         }
+
+        Ok(AuthoriseResponse::Reject(rejection)) => {
+            #[allow(clippy::unwrap_used)]
+            let body = Body::default();
+            let redirect_uri = rejection.build_redirect_uri();
+
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::FOUND)
+                .header(
+                    LOCATION,
+                    HeaderValue::from_str(redirect_uri.as_str()).unwrap(),
+                )
+                // I think the client server needs this
+                .header(
+                    ACCESS_CONTROL_ALLOW_ORIGIN,
+                    HeaderValue::from_str(&redirect_uri.origin().ascii_serialization()).unwrap(),
+                )
+                .body(body)
+                .unwrap()
+        }
+
         Ok(AuthoriseResponse::ReauthenticationRequired { .. })
         | Ok(AuthoriseResponse::AuthenticationRequired { .. })
         | Err(Oauth2Error::AuthenticationRequired) =>
