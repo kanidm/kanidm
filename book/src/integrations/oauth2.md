@@ -414,6 +414,55 @@ kanidm system oauth2 warning-enable-legacy-crypto <client name>
 
 In this mode, Kanidm will not offer `ES256` support for the client at all.
 
+## Rotating Token Signing Keys
+
+Each OAuth2 client has its own unique cryptographic keys, used to sign the `id_token` and access tokens it issues.
+Kanidm stores these keys in its database and publishes the public portion at the client's JWKS endpoint
+(`https://idm.example.com/oauth2/openid/:client_id:/public_key.jwk`) so that clients can validate the tokens they
+receive. Kanidm does not rotate signing keys automatically. A client's keys remain in use until you rotate or revoke
+them.
+
+To rotate the signing and encryption keys for a client, specify the time the rotation should take effect as an
+[RFC 3339][rfc3339] timestamp. As soon as you run the command the new public key is published in the JWKS endpoint, but
+it does not begin signing tokens until the time you specified:
+
+```bash
+kanidm system oauth2 rotate-cryptographic-keys <client name> <rotation time in the future>
+```
+
+After the rotation takes effect, newly issued tokens are signed with the new key. The previous key is retained and
+continues to be published in the JWKS endpoint, so tokens that were already issued remain valid until they expire. This
+allows a key rotation to occur without disrupting active sessions.
+
+> [!IMPORTANT]
+>
+> You should almost always schedule a rotation for a point in the **future**, not `now`. Relying parties cache the JWKS
+> endpoint, and in a [replicated](../repl/) deployment the new key must propagate to all Kanidm nodes. If a key begins
+> signing tokens before clients and peers have discovered it, those clients will reject the tokens as having an unknown
+> signing key until their cache refreshes. Staging the rotation in the future gives the new public key time to be
+> discovered everywhere before it is first used to sign. Allow a window comfortably longer than your clients' JWKS cache
+> lifetime — a few hours, or a day, is a safe choice.
+
+Rotating keys periodically is good practice and limits the window in which a leaked key could be abused. A rotation
+every three to six months is a reasonable starting point for most deployments. Note that rotation does not revoke the
+previous key: it is retained so that already-issued tokens remain valid, and it must be revoked manually once it is no
+longer needed (see [Revoking a Signing Key](#revoking-a-compromised-signing-key)). A reasonable approach is to revoke
+the old key one to two months after the rotation that replaced it. Any session still relying on the old key at that
+point will require the user to re-authenticate.
+
+## Revoking a Compromised Signing Key
+
+If you believe a signing key has been disclosed or compromised, you should _revoke_ it rather than rotate it. Unlike
+rotation, revocation immediately invalidates the key: any tokens or signatures produced by the revoked key are no longer
+accepted. Revoking a key also triggers a rotation so the client continues to have a usable signing key.
+
+You must supply the key's identifier (`kid`), which you can obtain from the client's JWKS endpoint
+(`https://idm.example.com/oauth2/openid/:client_id:/public_key.jwk`):
+
+```bash
+kanidm system oauth2 revoke-cryptographic-key <client name> <key id>
+```
+
 ## Resetting Client Security Material
 
 In the case of disclosure of the basic secret or some other security event where you may wish to invalidate a services
@@ -490,6 +539,7 @@ OAuth 2.0 Authorisation Server Metadata URL instead of WebFinger.
 If a WebFinger client only checks WebFinger once during setup, you may wish to temporarily serve an appropriate static
 WebFinger document for that client instead.
 
+[rfc3339]: https://datatracker.ietf.org/doc/html/rfc3339
 [rfc7565]: https://datatracker.ietf.org/doc/html/rfc7565
 [rfc7565s4]: https://datatracker.ietf.org/doc/html/rfc7565#section-4
 [webfinger]: https://datatracker.ietf.org/doc/html/rfc7033
