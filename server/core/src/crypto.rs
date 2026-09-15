@@ -477,15 +477,10 @@ pub(crate) fn build_cert(domain_name: &str, ca_handle: &CaHandle) -> Result<Cert
         error!(?err, "Unable to access subject public key information");
     })?;
 
-    let mut builder = CertificateBuilder::new(
-        profile,
-        serial_number,
-        validity,
-        pub_key.clone(),
-    )
-    .map_err(|err| {
-        error!(?err, "Unable to create certificate builder");
-    })?;
+    let mut builder = CertificateBuilder::new(profile, serial_number, validity, pub_key.clone())
+        .map_err(|err| {
+            error!(?err, "Unable to create certificate builder");
+        })?;
 
     let eku_extension = ExtendedKeyUsage(vec![rfc5280::ID_KP_SERVER_AUTH]);
 
