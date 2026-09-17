@@ -2142,3 +2142,29 @@ pub static IDM_ACP_OAUTH2_ACCOUNT_ENROL: LazyLock<BuiltinAcp> = LazyLock::new(||
     modify_classes: vec![EntryClass::OAuth2Account],
     ..Default::default()
 });
+
+pub static IDM_ACP_FEATURE_MANAGE: LazyLock<BuiltinAcp> = LazyLock::new(|| BuiltinAcp {
+    classes: vec![
+        EntryClass::Object,
+        EntryClass::AccessControlProfile,
+        EntryClass::AccessControlModify,
+        EntryClass::AccessControlSearch,
+    ],
+    name: "idm_acp_feature_manage",
+    uuid: UUID_IDM_ACP_FEATURE_MANAGE,
+    description: "Builtin IDM Control that allows control over enabled system features.",
+    receiver: BuiltinAcpReceiver::Group(vec![UUID_DOMAIN_ADMINS]),
+    target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+        match_class_filter!(EntryClass::Feature),
+        FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+    ])),
+    search_attrs: vec![
+        Attribute::Class,
+        Attribute::Name,
+        Attribute::Description,
+        Attribute::Enabled,
+    ],
+    modify_removed_attrs: vec![Attribute::Enabled],
+    modify_present_attrs: vec![Attribute::Enabled],
+    ..Default::default()
+});
