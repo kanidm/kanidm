@@ -20,11 +20,6 @@ impl QueryServer {
         // databases during upgrades.
         let mut write_txn = self.write(ts).await?;
 
-        // Check our database version - attempt to do an initial indexing
-        // based on the in memory configuration. This ONLY triggers ONCE on
-        // the very first run of the instance when the DB in newely created.
-        write_txn.upgrade_reindex(SYSTEM_INDEX_VERSION)?;
-
         // Because we init the schema here, and commit, this reloads meaning
         // that the on-disk index meta has been loaded, so our subsequent
         // migrations will be correctly indexed.
@@ -35,6 +30,15 @@ impl QueryServer {
         // mem schema that defines how schema is structured, and this is all
         // marked "system", then we won't have an issue here.
         if domain_target_level < DOMAIN_LEVEL_1_11 {
+            // Check our database version - attempt to do an initial indexing
+            // based on the in memory configuration. This ONLY triggers ONCE on
+            // the very first run of the instance when the DB in newely created.
+            //
+            // NOTE: After DL_1_11 this is no longer needed since all the schema
+            // is in memory, and we don't need these initial indexes in order
+            // to speed up index loading.
+            write_txn.upgrade_reindex(SYSTEM_INDEX_VERSION)?;
+
             // We don't create these in the DB after 1_11
             write_txn
                 .initialise_schema_core()
@@ -739,6 +743,10 @@ impl QueryServerWriteTransaction<'_> {
     }
 
     pub(crate) fn migrate_schema_1_11(&mut self) -> Result<(), OperationError> {
+        // Flag that the schema changes - this is important because now that the
+        // schema is in memory only, the on-disk triggers won't fire now.
+        self.force_schema_reload();
+
         self.schema.extend_in_memory(
             migration_data::dl15::phase_1_schema_attrs(),
             migration_data::dl15::phase_2_schema_classes(),
@@ -837,6 +845,10 @@ impl QueryServerWriteTransaction<'_> {
     }
 
     pub(crate) fn migrate_schema_1_12(&mut self) -> Result<(), OperationError> {
+        // Flag that the schema changes - this is important because now that the
+        // schema is in memory only, the on-disk triggers won't fire now.
+        self.force_schema_reload();
+
         self.schema.extend_in_memory(
             migration_data::dl_1_12::phase_1_schema_attrs(),
             migration_data::dl_1_12::phase_2_schema_classes(),
