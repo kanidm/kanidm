@@ -31,11 +31,17 @@ impl IdmServerProxyWriteTransaction<'_> {
             email,
         } = asre;
 
+        let curtime_odt = self.qs_write.get_curtime_odt();
+        let delete_after_odt = curtime_odt + DEFAULT_ACCOUNT_SIGNUP_RETENTION;
+
+        let account_signup_uuid = Uuid::new_v4();
+
         let account_signup_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
                 ValueSetIutf8::new(EntryClass::AccountSignupRequest.into()) as ValueSet,
             ),
+            (Attribute::Uuid, ValueSetUuid::new(account_signup_uuid)),
             (Attribute::Name, ValueSetIname::new(&username) as ValueSet),
             (
                 Attribute::DisplayName,
@@ -45,13 +51,17 @@ impl IdmServerProxyWriteTransaction<'_> {
                 Attribute::Mail,
                 ValueSetEmailAddress::new(email) as ValueSet,
             ),
+            (
+                Attribute::DeleteAfter,
+                ValueSetDateTime::new(delete_after_odt),
+            ),
         ]);
 
         // Create
         let ce = CreateEvent {
             ident,
             entries: vec![account_signup_entry],
-            return_created_uuids: true,
+            return_created_uuids: false,
         };
 
         self.qs_write.create(&ce)?;
