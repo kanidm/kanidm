@@ -91,6 +91,9 @@ impl OAuth2 {
                 if has_rs256 {
                     entry.add_ava(Attribute::Class, EntryClass::KeyObjectJwtRs256.to_value());
                 }
+                if domain_level >= DOMAIN_LEVEL_1_12 {
+                    entry.add_ava(Attribute::Class, EntryClass::KeyObjectJweA256GCM.to_value());
+                }
             } else {
                 if !entry.attribute_pres(Attribute::OAuth2RsTokenKey) {
                     security_info!("regenerating oauth2 token key");
