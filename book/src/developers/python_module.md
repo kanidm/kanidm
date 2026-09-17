@@ -11,6 +11,8 @@ So far it includes:
 
 TODO: a lot of things.
 
+The Python library is published on PyPi under the name [kanidm](https://pypi.org/project/kanidm).
+
 ## Setting up your dev environment
 
 Setting up a dev environment can be a little complex because of the mono-repo.
