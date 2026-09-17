@@ -154,7 +154,7 @@ sparkle_resolver_common = { path = "./unix_integration/resolver_common", version
 scim_proto = { path = "./libs/scim_proto", version = "=1.12.0-dev" }
 sketching = { path = "./libs/sketching", version = "=1.12.0-dev" }
 
-kanidm-hsm-crypto = { version = "^0.3.5" }
+kanidm-hsm-crypto = { version = "^0.4.0" }
 
 anyhow = { version = "1.0.102" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
@@ -184,11 +184,11 @@ clap = { version = "4.6.0", features = ["derive", "env"] }
 clap_complete = "^4.6.5"
 # Forced by saffron/cron
 chrono = "^0.4.45"
-compact_jwt = "^0.5.7"
+compact_jwt = "^0.6.0"
 concread = "^0.5.10"
 cron = "0.17.0"
 crossbeam = "0.8.4"
-crypto-glue = "^0.1.18"
+crypto-glue = "^0.2.1"
 csv = "1.4.0"
 dialoguer = "0.12.0"
 dhat = "0.3.3"
@@ -224,7 +224,7 @@ libnss = "^0.9.0"
 lodepng = "3.12.2"
 lru = "0.18.0"
 mathru = "0.16.2"
-md4 = "0.10.2"
+md4 = "0.11.0"
 md-5 = "0.10.6"
 nix = { version = "0.31.3", features = ["mount"] }
 nonempty = "0.12.0"
