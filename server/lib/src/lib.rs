@@ -106,7 +106,8 @@ pub mod prelude {
     };
     pub(crate) use crate::valueset::{
         ValueSet, ValueSetBool, ValueSetCid, ValueSetEmailAddress, ValueSetIname, ValueSetIutf8,
-        ValueSetRefer, ValueSetSha256, ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
+        ValueSetRefer, ValueSetSha256, ValueSetSyntax, ValueSetT, ValueSetUrl, ValueSetUtf8,
+        ValueSetUuid,
     };
     pub use kanidm_proto::attribute::{AttrString, Attribute};
     pub use kanidm_proto::constants::*;

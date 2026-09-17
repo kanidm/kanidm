@@ -480,7 +480,6 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &Path) {
 }
 
 pub async fn reindex_server_core(config: &Configuration) {
-    info!("Start Index Phase 1 ...");
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
     let schema = match Schema::new() {
         Ok(s) => s,
@@ -504,6 +503,7 @@ pub async fn reindex_server_core(config: &Configuration) {
 }
 
 async fn reindex_inner(be: Backend, schema: Schema, config: &Configuration) {
+    info!("Start Index Phase 1 ...");
     // Reindex only the core schema attributes to bootstrap the process.
     let mut be_wr_txn = match be.write() {
         Ok(txn) => txn,
@@ -525,7 +525,7 @@ async fn reindex_inner(be: Backend, schema: Schema, config: &Configuration) {
     }
     info!("Index Phase 1 Success!");
 
-    info!("Attempting to init query server ...");
+    debug!("Attempting to init query server ...");
 
     let (qs, _idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
@@ -534,7 +534,7 @@ async fn reindex_inner(be: Backend, schema: Schema, config: &Configuration) {
             return;
         }
     };
-    info!("Init Query Server Success!");
+    debug!("Init Query Server Success!");
 
     info!("Start Index Phase 2 ...");
 
@@ -1425,7 +1425,7 @@ async fn launch_server_tasks(
                 server_read_ref,
                 broadcast_tx,
                 &tls_acceptor_reload_tx,
-                config.ldap_client_address_info.trusted_tcp_info(),
+                Arc::new(config.ldap_client_address_info.trusted_tcp_info()),
                 logging_pipeline,
             )
             .await?;

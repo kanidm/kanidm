@@ -20,11 +20,6 @@ impl QueryServer {
         // databases during upgrades.
         let mut write_txn = self.write(ts).await?;
 
-        // Check our database version - attempt to do an initial indexing
-        // based on the in memory configuration. This ONLY triggers ONCE on
-        // the very first run of the instance when the DB in newely created.
-        write_txn.upgrade_reindex(SYSTEM_INDEX_VERSION)?;
-
         // Because we init the schema here, and commit, this reloads meaning
         // that the on-disk index meta has been loaded, so our subsequent
         // migrations will be correctly indexed.
@@ -35,6 +30,15 @@ impl QueryServer {
         // mem schema that defines how schema is structured, and this is all
         // marked "system", then we won't have an issue here.
         if domain_target_level < DOMAIN_LEVEL_1_11 {
+            // Check our database version - attempt to do an initial indexing
+            // based on the in memory configuration. This ONLY triggers ONCE on
+            // the very first run of the instance when the DB in newely created.
+            //
+            // NOTE: After DL_1_11 this is no longer needed since all the schema
+            // is in memory, and we don't need these initial indexes in order
+            // to speed up index loading.
+            write_txn.upgrade_reindex(SYSTEM_INDEX_VERSION)?;
+
             // We don't create these in the DB after 1_11
             write_txn
                 .initialise_schema_core()
@@ -739,6 +743,10 @@ impl QueryServerWriteTransaction<'_> {
     }
 
     pub(crate) fn migrate_schema_1_11(&mut self) -> Result<(), OperationError> {
+        // Flag that the schema changes - this is important because now that the
+        // schema is in memory only, the on-disk triggers won't fire now.
+        self.force_schema_reload();
+
         self.schema.extend_in_memory(
             migration_data::dl15::phase_1_schema_attrs(),
             migration_data::dl15::phase_2_schema_classes(),
@@ -837,6 +845,10 @@ impl QueryServerWriteTransaction<'_> {
     }
 
     pub(crate) fn migrate_schema_1_12(&mut self) -> Result<(), OperationError> {
+        // Flag that the schema changes - this is important because now that the
+        // schema is in memory only, the on-disk triggers won't fire now.
+        self.force_schema_reload();
+
         self.schema.extend_in_memory(
             migration_data::dl_1_12::phase_1_schema_attrs(),
             migration_data::dl_1_12::phase_2_schema_classes(),
@@ -915,6 +927,14 @@ impl QueryServerWriteTransaction<'_> {
         self.internal_delete_batch("phase 8 - delete UUIDS", dl_target::phase_8_delete_uuids())?;
 
         self.reload()?;
+
+        let filter = filter_all!(f_and!([f_eq(
+            Attribute::Class,
+            EntryClass::OAuth2ResourceServer.into()
+        ),]));
+        let modlist =
+            ModifyList::new_append(Attribute::Class, EntryClass::KeyObjectJweA256GCM.into());
+        self.internal_modify(&filter, &modlist)?;
 
         Ok(())
     }
@@ -1470,6 +1490,42 @@ mod tests {
 
         assert_eq!(db_domain_version, DOMAIN_LEVEL_1_11);
 
+        // Create an OAuth2 Client
+
+        let oauth2_client_uuid = Uuid::new_v4();
+        let oauth2_client_entry = EntryInitNew::from_iter([
+            (
+                Attribute::Class,
+                vs_iutf8!(
+                    EntryClass::Object.into(),
+                    EntryClass::Account.into(),
+                    EntryClass::OAuth2ResourceServer.into(),
+                    EntryClass::OAuth2ResourceServerBasic.into()
+                ),
+            ),
+            (Attribute::Name, vs_iname!("test_oauth2_client")),
+            (
+                Attribute::DisplayName,
+                vs_utf8!("test_oauth2_client".to_string()),
+            ),
+            (Attribute::Uuid, vs_uuid!(oauth2_client_uuid)),
+            (
+                Attribute::OAuth2RsOriginLanding,
+                vs_url!(Url::parse("https://demo.example.com").unwrap()),
+            ),
+        ]);
+
+        write_txn
+            .internal_create(vec![oauth2_client_entry])
+            .expect("Unable to create entries");
+
+        let oauth2_client_entry_pre = write_txn
+            .internal_search_uuid(oauth2_client_uuid)
+            .expect("Unable to load oauth2 client");
+
+        // sanity check
+        assert!(!oauth2_client_entry_pre.has_class(&EntryClass::KeyObjectJweA256GCM));
+
         write_txn.commit().expect("Unable to commit");
 
         // == pre migration verification. ==
@@ -1488,6 +1544,12 @@ mod tests {
             .expect("Unable to set domain level to version 1_12");
 
         // post migration verification.
+        let oauth2_client_entry_pre = write_txn
+            .internal_search_uuid(oauth2_client_uuid)
+            .expect("Unable to load oauth2 client");
+
+        // Must now have the A256GCM class
+        assert!(oauth2_client_entry_pre.has_class(&EntryClass::KeyObjectJweA256GCM));
 
         write_txn.commit().expect("Unable to commit");
     }
