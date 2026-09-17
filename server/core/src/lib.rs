@@ -1425,7 +1425,7 @@ async fn launch_server_tasks(
                 server_read_ref,
                 broadcast_tx,
                 &tls_acceptor_reload_tx,
-                config.ldap_client_address_info.trusted_tcp_info(),
+                Arc::new(config.ldap_client_address_info.trusted_tcp_info()),
                 logging_pipeline,
             )
             .await?;

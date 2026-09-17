@@ -22,6 +22,8 @@ tls_key = "/tmp/kanidm/key.pem"
 domain = "localhost"
 origin = "https://localhost:8443"
 
+# http_server_versions = "1"
+
 [online_backup]
 # defaults to db_path
 # path = "/tmp/kanidm/backups/"
