@@ -215,7 +215,7 @@ image = { version = "0.25.9", default-features = false, features = [
     "webp",
 ] }
 itertools = "0.15.0"
-jsonschema = "0.53.0"
+jsonschema = "0.56.0"
 ldap3_client = "^0.8.0"
 ldap3_proto = { version = "^0.8.0", features = ["serde"] }
 lettre = { version = "0.11.22", default-features = false }
@@ -225,7 +225,7 @@ lodepng = "3.12.2"
 lru = "0.18.0"
 mathru = "0.16.2"
 md4 = "0.11.0"
-md-5 = "0.10.6"
+md-5 = "0.11.0"
 nix = { version = "0.31.3", features = ["mount"] }
 nonempty = "0.12.0"
 notify-debouncer-full = { version = "0.7" }
@@ -277,7 +277,7 @@ serde-hjson = "1.1.0"
 serde_json = "^1.0.150"
 serde_urlencoded = "^0.7.1"
 serde_with = "3.21.0"
-sha-crypt = "0.5.0"
+sha-crypt = "0.6.0"
 sha2 = "0.11.0-rc.5"
 subtle = "2.6"
 shellexpand = "3.1.2"
@@ -317,6 +317,6 @@ webauthn-rs-core = "0.6.1-dev"
 webauthn-rs-proto = "0.6.1-dev"
 whoami = "^2.1.1"
 walkdir = "2"
-x509-cert = "0.2.5"
+x509-cert = "0.3.0"
 yescrypt = "0.1.0-rc.5"
 zxcvbn = "3.1.1"
