@@ -843,6 +843,7 @@ pub enum SessionOpt {
 pub enum RawOpt {
     #[clap(name = "search")]
     Search {
+        /// "class eq \"object\""
         filter: ScimFilter
     },
     #[clap(name = "create")]

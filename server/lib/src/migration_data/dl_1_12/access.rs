@@ -2160,6 +2160,7 @@ pub static IDM_ACP_FEATURE_MANAGE: LazyLock<BuiltinAcp> = LazyLock::new(|| Built
     ])),
     search_attrs: vec![
         Attribute::Class,
+        Attribute::Uuid,
         Attribute::Name,
         Attribute::Description,
         Attribute::Enabled,
