@@ -1,5 +1,6 @@
 // use async_trait::async_trait;
 use crate::db::{Cache, Db};
+use crate::errors::Error;
 use crate::idprovider::interface::{
     AuthCredHandler,
     AuthResult,
@@ -150,7 +151,7 @@ impl Resolver {
         home_alias: Option<HomeAttr>,
         uid_attr_map: UidAttr,
         gid_attr_map: UidAttr,
-    ) -> Result<(Self, mpsc::Receiver<Id>), ()> {
+    ) -> Result<(Self, mpsc::Receiver<Id>), Error> {
         let hsm = Mutex::new(hsm);
 
         let primary_origin = clients.first().map(|c| c.origin()).unwrap_or_default();
@@ -211,34 +212,31 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn clear_cache(&self) -> Result<(), ()> {
+    pub async fn clear_cache(&self) -> Result<(), Error> {
         let mut dbtxn = self.db.write().await;
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.clear();
-        dbtxn.clear().and_then(|_| dbtxn.commit()).map_err(|_| ())
+        dbtxn.clear().and_then(|_| dbtxn.commit())
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn invalidate(&self) -> Result<(), ()> {
+    pub async fn invalidate(&self) -> Result<(), Error> {
         let mut dbtxn = self.db.write().await;
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.clear();
-        dbtxn
-            .invalidate()
-            .and_then(|_| dbtxn.commit())
-            .map_err(|_| ())
+        dbtxn.invalidate().and_then(|_| dbtxn.commit())
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn get_cached_usertokens(&self) -> Result<Vec<UserToken>, ()> {
+    async fn get_cached_usertokens(&self) -> Result<Vec<UserToken>, Error> {
         let mut dbtxn = self.db.write().await;
-        dbtxn.get_accounts().map_err(|_| ())
+        dbtxn.get_accounts()
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn get_cached_grouptokens(&self) -> Result<Vec<GroupToken>, ()> {
+    async fn get_cached_grouptokens(&self) -> Result<Vec<GroupToken>, Error> {
         let mut dbtxn = self.db.write().await;
-        dbtxn.get_groups().map_err(|_| ())
+        dbtxn.get_groups()
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -273,7 +271,7 @@ impl Resolver {
         &self,
         account_id: &Id,
         current_time: SystemTime,
-    ) -> Result<(ExpiryState, Option<UserToken>), ()> {
+    ) -> Result<(ExpiryState, Option<UserToken>), Error> {
         // Is it in the nxcache?
         if let Some(ex_time) = self.check_nxcache(account_id).await {
             if current_time >= ex_time {
@@ -294,7 +292,7 @@ impl Resolver {
         //  * uuid
         //  Attempt to search these in the db.
         let mut dbtxn = self.db.write().await;
-        let r = dbtxn.get_account(account_id).map_err(|err| {
+        let r = dbtxn.get_account(account_id).inspect_err(|err| {
             debug!(?err, "get_cached_usertoken");
         })?;
 
@@ -328,7 +326,10 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn get_cached_grouptoken(&self, grp_id: &Id) -> Result<(bool, Option<GroupToken>), ()> {
+    async fn get_cached_grouptoken(
+        &self,
+        grp_id: &Id,
+    ) -> Result<(bool, Option<GroupToken>), Error> {
         let current_time = SystemTime::now();
         // Is it in the nxcache?
         if let Some(ex_time) = self.check_nxcache(grp_id).await {
@@ -349,7 +350,7 @@ impl Resolver {
         //  * uuid
         //  Attempt to search these in the db.
         let mut dbtxn = self.db.write().await;
-        let r = dbtxn.get_group(grp_id).map_err(|err| {
+        let r = dbtxn.get_group(grp_id).inspect_err(|err| {
             debug!(?err, "get_cached_grouptoken");
         })?;
 
@@ -380,7 +381,7 @@ impl Resolver {
         token: &mut UserToken,
         // This is just for proof that only one write can occur at a time.
         _tpm: &mut BoxedDynTpm,
-    ) -> Result<(), ()> {
+    ) -> Result<(), Error> {
         // Set an expiry
         // To try and prevent too many requests occuring all at the same time, we subtract a small
         // amount of "jitter" from expiry values so that we space out refreshes.
@@ -389,11 +390,12 @@ impl Resolver {
             - Duration::from_millis(jitter);
         let offset = ex_time
             .duration_since(SystemTime::UNIX_EPOCH)
-            .map_err(|e| {
+            .map_err(|err| {
                 error!(
-                    "Time conversion error - cache expiry time became less than epoch? {:?}",
-                    e
+                    ?err,
+                    "Time conversion error - cache expiry time became less than epoch?",
                 );
+                Error::TimeConversion
             })?;
 
         // Check if requested `shell` exists on the system, else use `default_shell`
@@ -479,42 +481,35 @@ impl Resolver {
                 dbtxn
                     .update_account(token, offset.as_secs()))
             .and_then(|_| dbtxn.commit())
-            .map_err(|_| ())
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn set_cache_grouptoken(&self, token: &GroupToken) -> Result<(), ()> {
+    async fn set_cache_grouptoken(&self, token: &GroupToken) -> Result<(), Error> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
         let offset = ex_time
             .duration_since(SystemTime::UNIX_EPOCH)
-            .map_err(|e| {
-                error!("time conversion error - ex_time less than epoch? {:?}", e);
+            .map_err(|err| {
+                error!(?err, "time conversion error - ex_time less than epoch?");
+                Error::TimeConversion
             })?;
 
         let mut dbtxn = self.db.write().await;
         dbtxn
             .update_group(token, offset.as_secs())
             .and_then(|_| dbtxn.commit())
-            .map_err(|_| ())
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn delete_cache_usertoken(&self, a_uuid: Uuid) -> Result<(), ()> {
+    async fn delete_cache_usertoken(&self, a_uuid: Uuid) -> Result<(), Error> {
         let mut dbtxn = self.db.write().await;
-        dbtxn
-            .delete_account(a_uuid)
-            .and_then(|_| dbtxn.commit())
-            .map_err(|_| ())
+        dbtxn.delete_account(a_uuid).and_then(|_| dbtxn.commit())
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn delete_cache_grouptoken(&self, g_uuid: Uuid) -> Result<(), ()> {
+    async fn delete_cache_grouptoken(&self, g_uuid: Uuid) -> Result<(), Error> {
         let mut dbtxn = self.db.write().await;
-        dbtxn
-            .delete_group(g_uuid)
-            .and_then(|_| dbtxn.commit())
-            .map_err(|_| ())
+        dbtxn.delete_group(g_uuid).and_then(|_| dbtxn.commit())
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -522,7 +517,7 @@ impl Resolver {
         &self,
         account_id: &Id,
         current_time: SystemTime,
-    ) -> Result<Option<UserToken>, ()> {
+    ) -> Result<Option<UserToken>, Error> {
         let mut hsm_lock = self.hsm.lock().await;
 
         // We need to re-acquire the token now behind the hsmlock - this is so that
@@ -533,7 +528,7 @@ impl Resolver {
             .get_cached_usertoken(account_id, current_time)
             .await
             .map(|(_expired, option_token)| option_token)
-            .map_err(|err| {
+            .inspect_err(|err| {
                 debug!(?err, "get_usertoken error");
             })?;
 
@@ -614,7 +609,7 @@ impl Resolver {
         grp_id: &Id,
         token: Option<GroupToken>,
         current_time: SystemTime,
-    ) -> Result<Option<GroupToken>, ()> {
+    ) -> Result<Option<GroupToken>, Error> {
         let mut hsm_lock = self.hsm.lock().await;
 
         let group_get_result = if let Some(tok) = token.as_ref() {
@@ -680,13 +675,13 @@ impl Resolver {
         &self,
         account_id: &Id,
         current_time: SystemTime,
-    ) -> Result<Option<UserToken>, ()> {
+    ) -> Result<Option<UserToken>, Error> {
         // get the item from the cache
         let (expiry_state, item) = self
             .get_cached_usertoken(account_id, current_time)
             .await
-            .map_err(|e| {
-                debug!("get_usertoken error -> {:?}", e);
+            .inspect_err(|err| {
+                debug!(?err, "get_usertoken error");
             })?;
 
         // If the token isn't found, get_cached will set expired = true.
@@ -713,8 +708,8 @@ impl Resolver {
         &self,
         grp_id: Id,
         current_time: SystemTime,
-    ) -> Result<Option<GroupToken>, ()> {
-        let (expired, item) = self.get_cached_grouptoken(&grp_id).await.map_err(|e| {
+    ) -> Result<Option<GroupToken>, Error> {
+        let (expired, item) = self.get_cached_grouptoken(&grp_id).await.inspect_err(|e| {
             debug!("get_grouptoken error -> {:?}", e);
         })?;
 
@@ -724,9 +719,8 @@ impl Resolver {
             // Still valid, return the cached entry.
             Ok(item)
         }
-        .map(|t| {
+        .inspect(|t| {
             trace!("token -> {:?}", t);
-            t
         })
     }
 
@@ -743,7 +737,7 @@ impl Resolver {
 
     // Get ssh keys for an account id
     #[instrument(level = "debug", skip(self))]
-    pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, ()> {
+    pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, Error> {
         let current_time = SystemTime::now();
         let token = self
             .get_usertoken(&Id::Name(account_id.to_string()), current_time)
@@ -801,7 +795,7 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn get_nssaccounts(&self) -> Result<Vec<NssUser>, ()> {
+    pub async fn get_nssaccounts(&self) -> Result<Vec<NssUser>, Error> {
         // We don't need to filter the cached tokens as the cache shouldn't
         // have anything that collides with system.
         let system_nss_users = self.system_provider.get_nssaccounts().await;
@@ -826,7 +820,7 @@ impl Resolver {
         &self,
         account_id: Id,
         current_time: SystemTime,
-    ) -> Result<Option<NssUser>, ()> {
+    ) -> Result<Option<NssUser>, Error> {
         if let Some(nss_user) = self.system_provider.get_nssaccount(&account_id).await {
             debug!("system provider satisfied request");
             return Ok(Some(nss_user));
@@ -848,20 +842,20 @@ impl Resolver {
         &self,
         account_id: &str,
         current_time: SystemTime,
-    ) -> Result<Option<NssUser>, ()> {
+    ) -> Result<Option<NssUser>, Error> {
         self.get_nssaccount(Id::Name(account_id.to_string()), current_time)
             .await
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub async fn get_nssaccount_name(&self, account_id: &str) -> Result<Option<NssUser>, ()> {
+    pub async fn get_nssaccount_name(&self, account_id: &str) -> Result<Option<NssUser>, Error> {
         let current_time = SystemTime::now();
         self.get_nssaccount(Id::Name(account_id.to_string()), current_time)
             .await
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub async fn get_nssaccount_gid(&self, gid: u32) -> Result<Option<NssUser>, ()> {
+    pub async fn get_nssaccount_gid(&self, gid: u32) -> Result<Option<NssUser>, Error> {
         let current_time = SystemTime::now();
         self.get_nssaccount(Id::Gid(gid), current_time).await
     }
@@ -875,7 +869,7 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn get_nssgroups(&self) -> Result<Vec<NssGroup>, ()> {
+    pub async fn get_nssgroups(&self) -> Result<Vec<NssGroup>, Error> {
         let mut r = self.system_provider.get_nssgroups().await;
 
         // Extend all the local groups if maps exist.
@@ -909,7 +903,7 @@ impl Resolver {
     }
 
     #[instrument(level = "trace", skip_all)]
-    async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
+    async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, Error> {
         if let Some(mut nss_group) = self.system_provider.get_nssgroup(&grp_id).await {
             debug!("system provider satisfied request");
 
@@ -951,12 +945,12 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub async fn get_nssgroup_name(&self, grp_id: &str) -> Result<Option<NssGroup>, ()> {
+    pub async fn get_nssgroup_name(&self, grp_id: &str) -> Result<Option<NssGroup>, Error> {
         self.get_nssgroup(Id::Name(grp_id.to_string())).await
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub async fn get_nssgroup_gid(&self, gid: u32) -> Result<Option<NssGroup>, ()> {
+    pub async fn get_nssgroup_gid(&self, gid: u32) -> Result<Option<NssGroup>, Error> {
         self.get_nssgroup(Id::Gid(gid)).await
     }
 
@@ -965,7 +959,7 @@ impl Resolver {
         &self,
         account_id: &str,
         pam_info: &PamServiceInfo,
-    ) -> Result<Option<bool>, ()> {
+    ) -> Result<Option<bool>, Error> {
         let current_time = SystemTime::now();
         let id = Id::Name(account_id.to_string());
 
@@ -983,10 +977,12 @@ impl Resolver {
                     .cloned()
                     .ok_or_else(|| {
                         error!(provider = ?token.provider, "Token was resolved by a provider that no longer appears to be present.");
+                        Error::Provider
                     })?;
 
                 client.unix_user_authorise(&token).await.map_err(|err| {
                     error!(?err, "unable to authorise account");
+                    Error::IdpError
                 })
             }
             None => Ok(None),
@@ -1000,7 +996,7 @@ impl Resolver {
         pam_info: &PamServiceInfo,
         current_time: OffsetDateTime,
         shutdown_rx: broadcast::Receiver<()>,
-    ) -> Result<(AuthSession, PamAuthResponse), ()> {
+    ) -> Result<(AuthSession, PamAuthResponse), Error> {
         // Setup an auth session. If possible bring the resolver online.
         // Further steps won't attempt to bring the cache online to prevent
         // weird interactions - they should assume online/offline only for
@@ -1073,6 +1069,7 @@ impl Resolver {
                 .cloned()
                 .ok_or_else(|| {
                     error!(provider = ?token.provider, "Token was resolved by a provider that no longer appears to be present.");
+                    Error::Provider
                 })?;
 
             // Can the auth proceed offline? This is important for us to make choices about
@@ -1096,49 +1093,44 @@ impl Resolver {
 
             // We're online, go for it.
             if online_at_init {
-                let init_result = client
+                let (next_req, cred_handler) = client
                     .unix_user_online_auth_init(
                         account_id,
                         &token,
                         hsm_lock.deref_mut(),
                         &shutdown_rx,
                     )
-                    .await;
+                    .await
+                    .map_err(|err| {
+                        error!(?err, "Unable to start authentication");
+                        Error::IdpError
+                    })?;
 
-                match init_result {
-                    Ok((next_req, cred_handler)) => {
-                        let auth_session = AuthSession::Online {
-                            client,
-                            account_id: account_id.to_string(),
-                            id,
-                            cred_handler,
-                            shutdown_rx,
-                        };
-                        Ok((auth_session, next_req.into()))
-                    }
-                    Err(err) => {
-                        error!(?err, "Unable to start authentication");
-                        Err(())
-                    }
-                }
+                let auth_session = AuthSession::Online {
+                    client,
+                    account_id: account_id.to_string(),
+                    id,
+                    cred_handler,
+                    shutdown_rx,
+                };
+                Ok((auth_session, next_req.into()))
             } else {
-                let init_result = client.unix_user_offline_auth_init(&token).await;
-                match init_result {
-                    Ok((next_req, cred_handler)) => {
-                        let auth_session = AuthSession::Offline {
-                            account_id: account_id.to_string(),
-                            id,
-                            client,
-                            session_token: Box::new(token),
-                            cred_handler,
-                        };
-                        Ok((auth_session, next_req.into()))
-                    }
-                    Err(err) => {
+                let (next_req, cred_handler) = client
+                    .unix_user_offline_auth_init(&token)
+                    .await
+                    .map_err(|err| {
                         error!(?err, "Unable to start authentication");
-                        Err(())
-                    }
-                }
+                        Error::IdpError
+                    })?;
+
+                let auth_session = AuthSession::Offline {
+                    account_id: account_id.to_string(),
+                    id,
+                    client,
+                    session_token: Box::new(token),
+                    cred_handler,
+                };
+                Ok((auth_session, next_req.into()))
             }
         } else {
             // We don't know anything about this user. Can we try to auth them?
@@ -1164,10 +1156,14 @@ impl Resolver {
                         hsm_lock.deref_mut(),
                         &shutdown_rx,
                     )
-                    .await;
+                    .await
+                    .map_err(|err| {
+                        error!(?err, "Unable to start authentication");
+                        Error::IdpError
+                    })?;
 
                 match init_result {
-                    Ok(Some((next_req, cred_handler))) => {
+                    Some((next_req, cred_handler)) => {
                         let auth_session = AuthSession::Online {
                             client: client.clone(),
                             account_id: account_id.to_string(),
@@ -1177,12 +1173,8 @@ impl Resolver {
                         };
                         return Ok((auth_session, next_req.into()));
                     }
-                    Ok(None) => {
+                    None => {
                         // Not for us, check the next provider.
-                    }
-                    Err(err) => {
-                        error!(?err, "Unable to start authentication");
-                        return Err(());
                     }
                 }
             }
@@ -1198,7 +1190,7 @@ impl Resolver {
         &self,
         auth_session: &mut AuthSession,
         pam_next_req: PamAuthRequest,
-    ) -> Result<PamAuthResponse, ()> {
+    ) -> Result<PamAuthResponse, Error> {
         let current_time = SystemTime::now();
         let mut hsm_lock = self.hsm.lock().await;
 
@@ -1218,7 +1210,7 @@ impl Resolver {
                     .get_cached_usertoken(id, current_time)
                     .await
                     .map(|(_expired, option_token)| option_token)
-                    .map_err(|err| {
+                    .inspect_err(|err| {
                         debug!(?err, "get_usertoken error");
                     })?;
 
@@ -1263,7 +1255,7 @@ impl Resolver {
                     .get_cached_usertoken(id, current_time)
                     .await
                     .map(|(_expired, option_token)| option_token)
-                    .map_err(|err| {
+                    .inspect_err(|err| {
                         debug!(?err, "get_usertoken error");
                     })?;
 
@@ -1348,16 +1340,11 @@ impl Resolver {
                 Ok(PamAuthResponse::Denied)
             }
             Ok(AuthResult::Next(req)) => Ok(req.into()),
-            Err(IdpError::NotFound) => {
-                *auth_session = AuthSession::Denied;
-
-                Ok(PamAuthResponse::Unknown)
-            }
             Err(err) => {
                 *auth_session = AuthSession::Denied;
 
                 error!(?err, "Unable to proceed, failing the session");
-                Err(())
+                Ok(PamAuthResponse::Denied)
             }
         }
     }
@@ -1369,7 +1356,7 @@ impl Resolver {
         account_id: &str,
         current_time: OffsetDateTime,
         password: &str,
-    ) -> Result<Option<bool>, ()> {
+    ) -> Result<Option<bool>, Error> {
         let (_shutdown_tx, shutdown_rx) = broadcast::channel(1);
 
         let pam_info = PamServiceInfo {
@@ -1443,7 +1430,7 @@ impl Resolver {
         &self,
         account_id: &str,
         pam_info: &PamServiceInfo,
-    ) -> Result<Option<HomeDirectoryInfo>, ()> {
+    ) -> Result<Option<HomeDirectoryInfo>, Error> {
         let current_time = SystemTime::now();
         let id = Id::Name(account_id.to_string());
 

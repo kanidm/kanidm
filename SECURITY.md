@@ -4,7 +4,13 @@ Thanks for taking the time to engage with the project! We believe in the concept
 [coordinated disclosure](https://en.wikipedia.org/wiki/Coordinated_vulnerability_disclosure) and currently expect a 60
 day grace period for resolution of any outstanding issues.
 
-## Reporting a vulnerability
+## AI Usage in Vulnerability Reports
+
+- Please review our projects [AI usage policy](https://github.com/kanidm/kanidm/blob/master/book/src/developers/ai_llm_policy.md) and avoid LLM outputs in issues.
+
+Importantly, note that while we allow AI/LLM usage to discover vulnerabilities, if you use AI/LLMs to generate the security report we will resolve the issue but will not grant you credit or publish the advisory to acknowledge you. 
+
+## Reporting a Vulnerability
 
 You can report a security vulnerability in two ways:
 

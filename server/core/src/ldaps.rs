@@ -118,6 +118,15 @@ async fn client_process<STREAM>(
                     break;
                 }
             }
+            Some(LdapResponseState::BindFailed(uat, rmsg)) => {
+                // RFC 4513 Section 4 - if a bind fails, move to
+                // the anonymous bind state. This is provided in the returned
+                // uat here.
+                session.uat = Some(uat);
+                if w.send(rmsg).await.is_err() {
+                    break;
+                }
+            }
             Some(LdapResponseState::Respond(rmsg)) => {
                 if w.send(rmsg).await.is_err() {
                     break;

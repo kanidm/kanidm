@@ -24,7 +24,16 @@
 //! a Linux system.  That means that it might take some work to get this library
 //! to work on other platforms.
 
-pub mod constants;
+#[cfg(target_os = "linux")]
+pub mod constants_linux;
+#[cfg(target_os = "linux")]
+pub use constants_linux as constants;
+
+#[cfg(any(target_os = "macos", target_os = "freebsd"))]
+pub mod constants_openpam;
+#[cfg(any(target_os = "macos", target_os = "freebsd"))]
+pub use constants_openpam as constants;
+
 pub mod conv;
 pub mod items;
 #[doc(hidden)]
