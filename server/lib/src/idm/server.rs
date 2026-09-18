@@ -1825,16 +1825,19 @@ impl IdmServerProxyWriteTransaction<'_> {
             // https://docs.rs/zxcvbn/2.0.0/zxcvbn/struct.Entropy.html
             let feedback: zxcvbn::feedback::Feedback = entropy
                 .feedback()
-                .ok_or(OperationError::InvalidState)
                 .cloned()
-                .inspect_err(|err| {
-                    security_info!(?err, "zxcvbn returned no feedback when score < 3");
+                .ok_or_else(|| {
+                    security_info!("zxcvbn returned no feedback when score < 3");
+                    // Return some generic feedback when the password is this bad.
+                    OperationError::PasswordQuality(vec![
+                        PasswordFeedback::UseAFewWordsAvoidCommonPhrases,
+                        PasswordFeedback::AddAnotherWordOrTwo,
+                        PasswordFeedback::NoNeedForSymbolsDigitsOrUppercaseLetters,
+                    ])
                 })?;
 
             security_info!(?feedback, "pw quality feedback");
 
-            // return Err(OperationError::PasswordTooWeak(feedback))
-            // return Err(OperationError::PasswordTooWeak);
             return Err(OperationError::PasswordQuality(vec![
                 PasswordFeedback::BadListed,
             ]));
