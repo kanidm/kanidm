@@ -26,9 +26,15 @@ jobs:
           echo "REF_NAME=$(echo ${REF_NAME,,} | awk -F/ '{print $1}')" >> "${GITHUB_OUTPUT}"
         env:
           REF_NAME: '${{ github.ref_name }}'
+      - id: step3
+        run: |
+          echo "MINOR_VERSION=$(echo "${REF_NAME}" | cut -d. -f1,2)" >> "${GITHUB_OUTPUT}"
+        env:
+          REF_NAME: '${{ steps.step2.outputs.REF_NAME }}'
     outputs:
       owner_lc: ${{ steps.step1.outputs.OWNER_LC }}
       ref_name: ${{ steps.step2.outputs.REF_NAME }}
+      minor_version: ${{ steps.step3.outputs.MINOR_VERSION }}
   kanidm_build:
     name: Build kanidm Docker image
     runs-on: ubuntu-latest
@@ -48,7 +54,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           platforms: "linux/amd64"
-          tags: ghcr.io/${{ needs.set_tag_values.outputs.owner_lc }}/kanidm:devel,ghcr.io/${{ needs.set_tag_values.outputs.owner_lc }}/kanidm:${{ needs.set_tag_values.outputs.ref_name}}
+          tags: ghcr.io/${{ needs.set_tag_values.outputs.owner_lc }}/kanidm:devel,ghcr.io/${{ needs.set_tag_values.outputs.owner_lc }}/kanidm:${{ needs.set_tag_values.outputs.ref_name}},ghcr.io/${{ needs.set_tag_values.outputs.owner_lc }}/kanidm:${{ needs.set_tag_values.outputs.minor_version}}
 
           build-args: |
             "KANIDM_FEATURES="
