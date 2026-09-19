@@ -684,7 +684,10 @@ pub trait AccessControlsTransaction<'a> {
         let sync_agmts = self.get_sync_agreements();
 
         match apply_modify_access(ident, related_acp, sync_agmts, entry) {
-            ModifyResult::Deny => false,
+            ModifyResult::Deny => {
+                security_error!("modify access denied.");
+                false
+            }
             ModifyResult::Grant => true,
             ModifyResult::Allow {
                 pres,
