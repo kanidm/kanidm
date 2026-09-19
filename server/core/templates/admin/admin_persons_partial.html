@@ -9,20 +9,45 @@
     </ol>
 </nav>
 
+<h2>Create new user</h2>
+
+<form hx-boost="true"
+        hx-post="/ui/api/admin/person/create"
+        hx-target="#persons"
+        hx-swap="afterbegin">
+    <div class="col-12 col-md-11 col-lg-8">
+        <div class="input-group">
+            <input type="text" class="form-control" id="add-person-input" name="name"
+                aria-label="Name of person to add" placeholder="username"
+                aria-describedby="add-person-button">
+            <input type="text" class="form-control" id="add-person-email-input" name="email"
+                aria-label="Email address of person to add" placeholder="email"
+                aria-describedby="add-person-button">
+            <button class="btn btn-primary float-end" id="add-person-button">Add person</button>
+        </div>
+    </div>
+</form>
+
+<h2 class="mt-5">Manage existing users</h2>
+
 <table class="table table-striped">
     <thead>
         <tr>
             <th scope="col">Username</th>
+            <th scope="col">Email</th>
             <th scope="col">Uuid</th>
+            <th scope="col">Actions</th>
         </tr>
     </thead>
-    <tbody>
+    <tbody id="persons">
     (% for (person, _) in persons %)
-        <tr>
-            <td><a href="/ui/admin/person/(( person.uuid ))/view" hx-target="#main">(( person.name ))</a></td>
-            <td>(( person.uuid ))</td>
-        </tr>
+        (% let person_name = person.name.clone() %)
+        (% let person_mail = person.get_primary_mail().unwrap_or(String::from("N/A")) %)
+        (% let person_uuid = person.uuid.clone() %)
+        (% include "admin_person_entry_partial.html" %)
     (% endfor %)
     </tbody>
 </table>
+
+<div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 (% endblock %)

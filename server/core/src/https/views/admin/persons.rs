@@ -5,23 +5,28 @@ use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::navbar::NavbarCtx;
-use crate::https::views::Urls;
+use crate::https::views::{ErrorToastPartial, Urls};
 use crate::https::ServerState;
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::extract::{Path, State};
+use axum::extract::{Form, Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::Extension;
 use axum_htmx::{HxPushUrl, HxRequest};
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::internal::{OperationError, UserAuthToken};
+use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_MAIL, ATTR_NAME};
+use kanidm_proto::internal::{CreateRequest, DeleteRequest, Filter};
+use kanidm_proto::internal::{OperationError, SchemaError, UserAuthToken};
 use kanidm_proto::scim_v1::server::{
     ScimEffectiveAccess, ScimEntryKanidm, ScimListResponse, ScimPerson,
 };
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidm_proto::scim_v1::ScimFilter;
+use kanidm_proto::v1::Entry;
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::idm::authentication::ClientAuthInfo;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use uuid::Uuid;
 
 pub const PERSON_ATTRIBUTES: [Attribute; 9] = [
@@ -93,6 +98,168 @@ pub(crate) async fn view_person_view_get(
         )
             .into_response()
     })
+}
+
+// TODO: The following variant of PersonEntryResponse includes a toast. But for some reason it
+// doesn't work yet.
+//#[derive(Template, WebTemplate)]
+//#[template(
+//    ext = "html",
+//    source = "\
+//(% include \"admin/admin_person_entry_partial.html\" %)\
+//(% include \"admin/saved_toast.html\" %)\
+//"
+//)]
+//struct PersonEntryResponse {
+//    person_uuid: Uuid,
+//    person_name: String,
+//}
+
+#[derive(Template, WebTemplate)]
+#[template(path = "admin/admin_person_entry_partial.html")]
+struct PersonEntryResponse {
+    person_uuid: Uuid,
+    person_mail: String,
+    person_name: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct AddPersonForm {
+    name: String,
+    email: String,
+}
+
+pub(crate) async fn create_person(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    DomainInfo(domain_info): DomainInfo,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Form(query): Form<AddPersonForm>,
+) -> axum::response::Result<Response> {
+    let username = query.name.to_string();
+    let email = query.email.to_string();
+
+    let mut new_acct = Entry {
+        attrs: BTreeMap::new(),
+    };
+    new_acct
+        .attrs
+        .insert(ATTR_NAME.to_string(), vec![username.clone()]);
+    new_acct
+        .attrs
+        .insert(ATTR_MAIL.to_string(), vec![email.clone()]);
+    new_acct
+        .attrs
+        .insert(ATTR_DISPLAYNAME.to_string(), vec![username.clone()]);
+
+    let classes: Vec<String> = vec![
+        EntryClass::Person.into(),
+        EntryClass::Account.into(),
+        EntryClass::Object.into(),
+    ];
+
+    new_acct.attrs.insert(Attribute::Class.to_string(), classes);
+    let req = CreateRequest::new(vec![new_acct.to_owned()]);
+
+    info!("Attempting to create user '{username}'");
+
+    // Try creating the user
+    let creation_result = state
+        .qe_w_ref
+        .handle_create(client_auth_info.clone(), req, kopid.eventid)
+        .await;
+
+    if let Err(error) = creation_result {
+        match error {
+            OperationError::AttributeUniqueness(ref attributes) => {
+                if attributes.contains(&Attribute::Name) {
+                    return Ok((ErrorToastPartial {
+                        err_code: OperationError::UI0005PersonAlreadyExists,
+                        operation_id: kopid.eventid,
+                    })
+                    .into_response());
+                } else if attributes.contains(&Attribute::Mail) {
+                    return Ok((ErrorToastPartial {
+                        err_code: OperationError::UI0007DuplicateEmail,
+                        operation_id: kopid.eventid,
+                    })
+                    .into_response());
+                } else {
+                    return Err(HtmxError::new(&kopid, error, domain_info.clone()))?;
+                }
+            }
+            OperationError::SchemaViolation(ref schemaerror) => {
+                match schemaerror {
+                    SchemaError::InvalidAttributeSyntax(details) => {
+                        if details == "displayname" {
+                            return Ok((ErrorToastPartial {
+                                err_code: OperationError::UI0006MissingDisplayName,
+                                operation_id: kopid.eventid,
+                            })
+                            .into_response());
+                        }
+                        if details == "name" {
+                            return Ok((ErrorToastPartial {
+                                err_code: OperationError::UI0008InvalidUserName,
+                                operation_id: kopid.eventid,
+                            })
+                            .into_response());
+                        }
+                    }
+                    _ => {}
+                }
+                return Err(HtmxError::new(&kopid, error, domain_info.clone()))?;
+            }
+            // TODO: Handling of error when email address is invalid
+            _ => {
+                return Err(HtmxError::new(&kopid, error, domain_info.clone()))?;
+            }
+        }
+    }
+
+    info!("Creation of user '{username}' successful.");
+
+    // Get Uuid
+    let user_attrs = state
+        .qe_r_ref
+        .scim_entry_id_get(
+            client_auth_info.clone(),
+            kopid.eventid,
+            username.clone(),
+            EntryClass::Person,
+            ScimEntryGetQuery::default(),
+        )
+        .await
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
+
+    let uuid = user_attrs.header.id;
+
+    Ok((PersonEntryResponse {
+        person_uuid: uuid,
+        person_mail: String::from("[...]"),
+        person_name: username,
+    })
+    .into_response())
+}
+
+#[derive(Template, WebTemplate)]
+#[template(path = "admin/saved_toast.html")]
+struct SavedToast {}
+
+// TODO: Is rehook_string_list_removers from server/core/static/external/forms.js relevant?
+pub(crate) async fn remove_person(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(person_uuid): Path<String>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> axum::response::Result<Response> {
+    let filter = Filter::Eq(String::from("uuid"), person_uuid);
+    let req = DeleteRequest::new(filter);
+    let _operation_result = state
+        .qe_w_ref
+        .handle_delete(client_auth_info.clone(), req, kopid.eventid)
+        .await;
+    Ok((SavedToast {}).into_response())
 }
 
 pub(crate) async fn view_persons_get(
