@@ -923,9 +923,8 @@ impl Schema {
 mod tests {
     use crate::prelude::*;
     use crate::schema::{Schema, SchemaAttribute, SchemaClass, SchemaTransaction, SyntaxType};
+    use std::collections::BTreeMap;
     use uuid::Uuid;
-
-    // use crate::proto_v1::Filter as ProtoFilter;
 
     macro_rules! validate_schema {
         ($sch:ident) => {{
@@ -1730,4 +1729,60 @@ mod tests {
 
         assert!(e_person_valid.validate(&schema).is_ok());
     }
+
+    #[qs_test]
+    async fn test_schema_syntax_multivalue_unique(server: &QueryServer) {
+        #[derive(Default)]
+        struct X {
+            multi: Vec<Attribute>,
+            single: Vec<Attribute>,
+        }
+
+        // Get the schema.
+        let read_txn = server
+            .read()
+            .await
+            .expect("Failed to start read transaction");
+
+        let schema_txn = read_txn.get_schema();
+        let schema_attrs_txn = schema_txn.get_attributes();
+
+        let mut attr_set: BTreeMap<SyntaxType, X> = BTreeMap::new();
+
+        // Build up a set containing the syntaxes + multivalue.
+        for schema_attr in schema_attrs_txn.values() {
+            if schema_attr.phantom {
+                continue;
+            }
+
+            let s = attr_set.entry(schema_attr.syntax).or_default();
+
+            if schema_attr.multivalue {
+                s.multi.push(schema_attr.name.clone())
+            } else {
+                s.single.push(schema_attr.name.clone())
+            }
+        }
+
+        let mut pass = true;
+
+        for (syntax, x) in attr_set {
+            if x.multi.is_empty() && x.single.is_empty() {
+                error!("{} NOT USED", syntax);
+                pass = false;
+            } else if x.multi.is_empty() || x.single.is_empty() {
+                // One is empty, move on.
+                continue;
+            } else {
+                pass = false;
+            }
+
+            warn!("{}", syntax);
+            warn!("multi:  {:?}", x.multi);
+            warn!("single: {:?}", x.single);
+        }
+
+        assert!(pass);
+    }
 }
+
