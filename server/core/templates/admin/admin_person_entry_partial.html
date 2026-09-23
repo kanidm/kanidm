@@ -1,0 +1,13 @@
+<tr hx-target="this">
+  <td><a href="/ui/admin/person/(( person_uuid ))/view" hx-target="#main">(( person_name ))</a></td>
+  <td>N/A</td>
+  <td>(( person_uuid ))</td>
+  <td>
+    <form hx-target=""
+          hx-swap="delete"
+          hx-get="/ui/api/admin/person/(( person_uuid ))/remove"
+          hx-confirm="Are you sure you wish to delete the user &quot;((person_name))&quot;?">
+      <button class="btn btn-secondary float-end" id="delete-person-button">Delete</button>
+    </form>
+  </td>
+</tr>

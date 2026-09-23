@@ -1923,10 +1923,8 @@ impl IdmServerCredUpdateTransaction<'_> {
         if entropy.score() < Score::Four {
             // The password is too week as per:
             // https://docs.rs/zxcvbn/2.0.0/zxcvbn/struct.Entropy.html
-            let feedback: zxcvbn::feedback::Feedback = entropy
-                .feedback()
-                .cloned()
-                .ok_or_else(|| {
+            let feedback: zxcvbn::feedback::Feedback =
+                entropy.feedback().cloned().ok_or_else(|| {
                     security_info!("zxcvbn returned no feedback when score < 3");
                     // Return some generic feedback when the password is this bad.
                     PasswordQuality::Feedback(vec![
