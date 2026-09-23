@@ -173,24 +173,24 @@ pub(crate) async fn create_person(
 
         Err(OperationError::AttributeUniqueness(attributes)) => {
             if attributes.contains(&Attribute::Name) {
-                return Ok((ErrorToastPartial {
+                Ok((ErrorToastPartial {
                     err_code: OperationError::UI0005PersonAlreadyExists,
                     operation_id: kopid.eventid,
                 })
-                .into_response());
+                .into_response())
             } else if attributes.contains(&Attribute::Mail) {
-                return Ok((ErrorToastPartial {
+                Ok((ErrorToastPartial {
                     err_code: OperationError::UI0007DuplicateEmail,
                     operation_id: kopid.eventid,
                 })
-                .into_response());
+                .into_response())
             } else {
-                return Err(HtmxError::new(
+                Err(HtmxError::new(
                     &kopid,
                     OperationError::AttributeUniqueness(attributes),
                     domain_info.clone(),
                 )
-                .into());
+                .into())
             }
         }
         Err(OperationError::SchemaViolation(schemaerror)) => {
@@ -210,16 +210,14 @@ pub(crate) async fn create_person(
                     .into_response());
                 }
             }
-            return Err(HtmxError::new(
+            Err(HtmxError::new(
                 &kopid,
                 OperationError::SchemaViolation(schemaerror),
                 domain_info.clone(),
             )
-            .into());
+            .into())
         }
-        Err(error) => {
-            return Err(HtmxError::new(&kopid, error, domain_info.clone()).into());
-        }
+        Err(error) => Err(HtmxError::new(&kopid, error, domain_info.clone()).into()),
     }
 }
 

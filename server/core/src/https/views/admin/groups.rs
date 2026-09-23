@@ -322,24 +322,22 @@ pub(crate) async fn create_group(
         Err(OperationError::AttributeUniqueness(ref attributes))
             if attributes.contains(&Attribute::Name) =>
         {
-            return Ok((ErrorToastPartial {
+            Ok((ErrorToastPartial {
                 err_code: OperationError::UI0009GroupAlreadyExists,
                 operation_id: kopid.eventid,
             })
-            .into_response());
+            .into_response())
         }
         Err(OperationError::SchemaViolation(SchemaError::InvalidAttributeSyntax(details)))
             if details == "name" =>
         {
-            return Ok((ErrorToastPartial {
+            Ok((ErrorToastPartial {
                 err_code: OperationError::UI0011InvalidGroupName,
                 operation_id: kopid.eventid,
             })
-            .into_response());
+            .into_response())
         }
-        Err(err) => {
-            return Err(HtmxError::new(&kopid, err, domain_info.clone()).into());
-        }
+        Err(err) => Err(HtmxError::new(&kopid, err, domain_info.clone()).into()),
     }
 }
 
