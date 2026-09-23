@@ -1925,10 +1925,9 @@ impl IdmServerCredUpdateTransaction<'_> {
             // https://docs.rs/zxcvbn/2.0.0/zxcvbn/struct.Entropy.html
             let feedback: zxcvbn::feedback::Feedback = entropy
                 .feedback()
-                .ok_or(OperationError::InvalidState)
                 .cloned()
-                .map_err(|e| {
-                    security_info!("zxcvbn returned no feedback when score < 3 -> {:?}", e);
+                .ok_or_else(|| {
+                    security_info!("zxcvbn returned no feedback when score < 3");
                     // Return some generic feedback when the password is this bad.
                     PasswordQuality::Feedback(vec![
                         PasswordFeedback::UseAFewWordsAvoidCommonPhrases,
