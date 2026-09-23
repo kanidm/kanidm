@@ -325,26 +325,24 @@ pub(crate) async fn create_group(
                     })
                     .into_response());
                 } else {
-                    return Err(HtmxError::new(&kopid, error, domain_info.clone()))?;
+                    return Err(HtmxError::new(&kopid, error, domain_info.clone()).into());
                 }
             }
             OperationError::SchemaViolation(ref schemaerror) => {
                 match schemaerror {
-                    SchemaError::InvalidAttributeSyntax(details) => {
-                        if details == "name" {
-                            return Ok((ErrorToastPartial {
-                                err_code: OperationError::UI0011InvalidGroupName,
-                                operation_id: kopid.eventid,
-                            })
-                            .into_response());
-                        }
+                    SchemaError::InvalidAttributeSyntax(details) if details == "name" => {
+                        return Ok((ErrorToastPartial {
+                            err_code: OperationError::UI0011InvalidGroupName,
+                            operation_id: kopid.eventid,
+                        })
+                        .into_response());
                     }
                     _ => {}
                 }
-                return Err(HtmxError::new(&kopid, error, domain_info.clone()))?;
+                return Err(HtmxError::new(&kopid, error, domain_info.clone()).into());
             }
             _ => {
-                return Err(HtmxError::new(&kopid, error, domain_info.clone()))?;
+                return Err(HtmxError::new(&kopid, error, domain_info.clone()).into());
             }
         }
     }

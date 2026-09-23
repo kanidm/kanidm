@@ -325,11 +325,10 @@ pub struct ScimPerson {
 
 impl ScimPerson {
     pub fn get_primary_mail(&self) -> Option<String> {
-        if let Some(primary_mail) = self.mails.iter().find(|m| m.primary) {
-            return Some(primary_mail.value.clone());
-        } else {
-            return None;
-        }
+        self.mails
+            .iter()
+            .find(|m| m.primary)
+            .map(|primary_mail| primary_mail.value.clone())
     }
 }
 

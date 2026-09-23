@@ -185,34 +185,31 @@ pub(crate) async fn create_person(
                     })
                     .into_response());
                 } else {
-                    return Err(HtmxError::new(&kopid, error, domain_info.clone()))?;
+                    return Err(HtmxError::new(&kopid, error, domain_info.clone()).into());
                 }
             }
             OperationError::SchemaViolation(ref schemaerror) => {
-                match schemaerror {
-                    SchemaError::InvalidAttributeSyntax(details) => {
-                        if details == "displayname" {
-                            return Ok((ErrorToastPartial {
-                                err_code: OperationError::UI0006MissingDisplayName,
-                                operation_id: kopid.eventid,
-                            })
-                            .into_response());
-                        }
-                        if details == "name" {
-                            return Ok((ErrorToastPartial {
-                                err_code: OperationError::UI0008InvalidUserName,
-                                operation_id: kopid.eventid,
-                            })
-                            .into_response());
-                        }
+                if let SchemaError::InvalidAttributeSyntax(details) = schemaerror {
+                    if details == "displayname" {
+                        return Ok((ErrorToastPartial {
+                            err_code: OperationError::UI0006MissingDisplayName,
+                            operation_id: kopid.eventid,
+                        })
+                        .into_response());
                     }
-                    _ => {}
+                    if details == "name" {
+                        return Ok((ErrorToastPartial {
+                            err_code: OperationError::UI0008InvalidUserName,
+                            operation_id: kopid.eventid,
+                        })
+                        .into_response());
+                    }
                 }
-                return Err(HtmxError::new(&kopid, error, domain_info.clone()))?;
+                return Err(HtmxError::new(&kopid, error, domain_info.clone()).into());
             }
             // TODO: Handling of error when email address is invalid
             _ => {
-                return Err(HtmxError::new(&kopid, error, domain_info.clone()))?;
+                return Err(HtmxError::new(&kopid, error, domain_info.clone()).into());
             }
         }
     }
