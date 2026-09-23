@@ -17,17 +17,15 @@ use axum_extra::extract::Form;
 use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::ATTR_NAME;
-use kanidm_proto::internal::{
-    CreateRequest, DeleteRequest, Filter as InternalFilter, OperationError, SchemaError,
-    UserAuthToken,
-};
+use kanidm_proto::internal::{OperationError, SchemaError, UserAuthToken};
 use kanidm_proto::scim_v1::server::{
     ScimEffectiveAccess, ScimEntryKanidm, ScimGroup, ScimListResponse, ScimValueKanidm,
 };
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
-use kanidm_proto::scim_v1::{client::ScimEntryPutKanidm, ScimFilter};
-use kanidm_proto::v1::Entry;
+use kanidm_proto::scim_v1::{
+    client::{ScimEntryPostGeneric, ScimEntryPutKanidm},
+    JsonValue, ScimFilter,
+};
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::filter::{f_eq, Filter};
 use kanidmd_lib::idm::authentication::ClientAuthInfo;
@@ -293,96 +291,73 @@ pub(crate) async fn create_group(
 ) -> axum::response::Result<Response> {
     let name = query.name.to_string();
 
-    let mut new_entry = Entry {
-        attrs: BTreeMap::new(),
+    let entry = ScimEntryPostGeneric {
+        attrs: BTreeMap::from([(Attribute::Name, JsonValue::String(name.clone()))]),
     };
-    new_entry
-        .attrs
-        .insert(ATTR_NAME.to_string(), vec![name.clone()]);
-
-    let classes: Vec<String> = vec![EntryClass::Group.into(), EntryClass::Object.into()];
-
-    new_entry
-        .attrs
-        .insert(Attribute::Class.to_string(), classes);
-    let req = CreateRequest::new(vec![new_entry.to_owned()]);
 
     info!("Attempting to create group '{name}'");
 
     // Try creating the user
     let creation_result = state
         .qe_w_ref
-        .handle_create(client_auth_info.clone(), req, kopid.eventid)
-        .await;
-
-    if let Err(error) = creation_result {
-        match error {
-            OperationError::AttributeUniqueness(ref attributes) => {
-                if attributes.contains(&Attribute::Name) {
-                    return Ok((ErrorToastPartial {
-                        err_code: OperationError::UI0009GroupAlreadyExists,
-                        operation_id: kopid.eventid,
-                    })
-                    .into_response());
-                } else {
-                    return Err(HtmxError::new(&kopid, error, domain_info.clone()).into());
-                }
-            }
-            OperationError::SchemaViolation(ref schemaerror) => {
-                match schemaerror {
-                    SchemaError::InvalidAttributeSyntax(details) if details == "name" => {
-                        return Ok((ErrorToastPartial {
-                            err_code: OperationError::UI0011InvalidGroupName,
-                            operation_id: kopid.eventid,
-                        })
-                        .into_response());
-                    }
-                    _ => {}
-                }
-                return Err(HtmxError::new(&kopid, error, domain_info.clone()).into());
-            }
-            _ => {
-                return Err(HtmxError::new(&kopid, error, domain_info.clone()).into());
-            }
-        }
-    }
-
-    info!("Creation of group '{name}' successful.");
-
-    // Get Uuid
-    let attrs = state
-        .qe_r_ref
-        .scim_entry_id_get(
+        .scim_entry_create(
             client_auth_info.clone(),
             kopid.eventid,
-            name.clone(),
-            EntryClass::Group,
-            ScimEntryGetQuery::default(),
+            &[EntryClass::Group],
+            entry,
         )
-        .await
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
+        .await;
 
-    let uuid = attrs.header.id;
+    match creation_result {
+        Ok(scim_entry) => {
+            info!("Creation of group '{name}' successful.");
 
-    Ok((GroupEntryResponse {
-        group_uuid: uuid,
-        group_name: name,
-    })
-    .into_response())
+            Ok((GroupEntryResponse {
+                group_uuid: scim_entry.header.id,
+                group_name: name,
+            })
+            .into_response())
+        }
+
+        Err(OperationError::AttributeUniqueness(ref attributes))
+            if attributes.contains(&Attribute::Name) =>
+        {
+            return Ok((ErrorToastPartial {
+                err_code: OperationError::UI0009GroupAlreadyExists,
+                operation_id: kopid.eventid,
+            })
+            .into_response());
+        }
+        Err(OperationError::SchemaViolation(SchemaError::InvalidAttributeSyntax(details)))
+            if details == "name" =>
+        {
+            return Ok((ErrorToastPartial {
+                err_code: OperationError::UI0011InvalidGroupName,
+                operation_id: kopid.eventid,
+            })
+            .into_response());
+        }
+        Err(err) => {
+            return Err(HtmxError::new(&kopid, err, domain_info.clone()).into());
+        }
+    }
 }
 
 // TODO: Is rehook_string_list_removers from server/core/static/external/forms.js relevant?
 pub(crate) async fn remove_group(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    Path(group_uuid): Path<String>,
+    Path(group_id): Path<String>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> axum::response::Result<Response> {
-    let filter = InternalFilter::Eq(String::from("uuid"), group_uuid);
-    let req = DeleteRequest::new(filter);
     let _operation_result = state
         .qe_w_ref
-        .handle_delete(client_auth_info.clone(), req, kopid.eventid)
+        .scim_entry_id_delete(
+            client_auth_info.clone(),
+            kopid.eventid,
+            group_id,
+            EntryClass::Group,
+        )
         .await;
     Ok((SavedToast {}).into_response())
 }
