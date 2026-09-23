@@ -349,6 +349,13 @@ pub enum OperationError {
     UI0002InvalidState,
     UI0003InvalidOauth2Resume,
     UI0004MemberAlreadyExists,
+    UI0005PersonAlreadyExists,
+    UI0006MissingDisplayName,
+    UI0007DuplicateEmail,
+    UI0008InvalidUserName,
+    UI0009GroupAlreadyExists,
+    UI0010MissingGroupName,
+    UI0011InvalidGroupName,
 
     // Unixd Things
     KU001InitWhileSessionActive,
@@ -636,6 +643,13 @@ impl OperationError {
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
             Self::UI0003InvalidOauth2Resume => Some("The server attempted to resume OAuth2, but no OAuth2 session is in progress.".into()),
             Self::UI0004MemberAlreadyExists => Some("The target is already a member.".into()),
+            Self::UI0005PersonAlreadyExists => Some("A person with this username already exists.".into()),
+            Self::UI0006MissingDisplayName => Some("A display name is required for every user.".into()),
+            Self::UI0007DuplicateEmail => Some("Another user with the same email address already exists.".into()),
+            Self::UI0008InvalidUserName => Some("Invalid username.".into()),
+            Self::UI0009GroupAlreadyExists => Some("A group with this name already exists.".into()),
+            Self::UI0010MissingGroupName => Some("A name is required for every group.".into()),
+            Self::UI0011InvalidGroupName => Some("Invalid group name.".into()),
             Self::VL0001ValueSshPublicKeyString => None,
             Self::VS0001IncomingReplSshPublicKey => None,
             Self::VS0002CertificatePublicKeyDigest |
