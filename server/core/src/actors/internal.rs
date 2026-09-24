@@ -4,14 +4,16 @@
 
 use crate::{QueryServerReadV1, QueryServerWriteV1};
 use crypto_glue::s256::Sha256Output;
-use kanidm_proto::internal::{
-    DomainInfo as ProtoDomainInfo, DomainUpgradeCheckReport as ProtoDomainUpgradeCheckReport,
+use kanidm_proto::{
+    internal::{
+        DomainInfo as ProtoDomainInfo, DomainUpgradeCheckReport as ProtoDomainUpgradeCheckReport,
+    },
+    scim_v1::client::ScimAssertGeneric,
 };
-use kanidm_proto::scim_v1::client::ScimAssertGeneric;
-use kanidmd_lib::prelude::*;
 use kanidmd_lib::{
     event::{PurgeDeleteAfterEvent, PurgeRecycledEvent, PurgeTombstoneEvent},
     idm::delayed::DelayedAction,
+    prelude::*,
     server::scim::ScimAssertEvent,
 };
 use tracing::{Instrument, Level};

@@ -409,8 +409,7 @@ mod tests {
         Actor, ActorState, Runtime, RuntimeSetup, Signal, SignalHandler, SoftwareSignalSource,
         Supervisor,
     };
-    use tokio::sync::mpsc;
-    use tokio::task;
+    use tokio::{sync::mpsc, task};
     use tracing::*;
 
     #[tokio::test]

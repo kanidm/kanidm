@@ -1,9 +1,9 @@
-use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
-use crate::idm::server::IdmServerProxyReadTransaction;
-use crate::prelude::*;
-use crate::server::identity::Identity;
-use crate::server::keys::KeyProvidersTransaction;
-use crate::server::QueryServerTransaction;
+use crate::{
+    credential::totp::{Totp, TotpAlgo, TotpDigits},
+    idm::server::IdmServerProxyReadTransaction,
+    prelude::*,
+    server::{identity::Identity, keys::KeyProvidersTransaction, QueryServerTransaction},
+};
 use crypto_glue::hmac_s256::HmacSha256Key;
 use kanidm_proto::internal::IdentifyUserResponse;
 use std::sync::Arc;
@@ -211,10 +211,12 @@ impl IdmServerProxyReadTransaction<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::idm::identityverification::{
-        IdentifyUserDisplayCodeEvent, IdentifyUserStartEvent, IdentifyUserSubmitCodeEvent,
+    use crate::{
+        idm::identityverification::{
+            IdentifyUserDisplayCodeEvent, IdentifyUserStartEvent, IdentifyUserSubmitCodeEvent,
+        },
+        prelude::*,
     };
-    use crate::prelude::*;
     use kanidm_proto::internal::IdentifyUserResponse;
 
     #[idm_test]

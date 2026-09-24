@@ -1,5 +1,4 @@
-use std::fs;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 /// Check for passwd and groups lines and return them if they're missing, this allows us to test parsing
 pub fn parse_nsswitch_contents_return_missing(contents: &str, module_name: &str) -> Vec<String> {

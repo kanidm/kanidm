@@ -13,34 +13,38 @@
 #[macro_use]
 extern crate tracing;
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::{Debug, Display, Formatter};
-use std::fs::File;
 #[cfg(target_family = "unix")] // not needed for windows builds
 use std::fs::{metadata, Metadata};
-use std::io::{ErrorKind, Read};
 #[cfg(target_family = "unix")] // not needed for windows builds
 use std::os::unix::fs::MetadataExt;
-use std::path::Path;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::{Debug, Display, Formatter},
+    fs::File,
+    io::{ErrorKind, Read},
+    path::Path,
+    sync::Arc,
+    time::Duration,
+};
 
 use compact_jwt::Jwk;
 
 pub use http;
-use kanidm_proto::constants::uri::V1_AUTH_VALID;
-use kanidm_proto::constants::{
-    ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID, ATTR_ENTRY_MANAGED_BY,
-    ATTR_KEY_ACTION_REVOKE, ATTR_LDAP_ALLOW_UNIX_PW_BIND, ATTR_LDAP_MAX_QUERYABLE_ATTRS, ATTR_NAME,
-    CLIENT_TOKEN_CACHE, KOPID, KSESSIONID, KVERSION,
+use kanidm_proto::{
+    constants::{
+        uri::V1_AUTH_VALID, ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID,
+        ATTR_ENTRY_MANAGED_BY, ATTR_KEY_ACTION_REVOKE, ATTR_LDAP_ALLOW_UNIX_PW_BIND,
+        ATTR_LDAP_MAX_QUERYABLE_ATTRS, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KSESSIONID, KVERSION,
+    },
+    internal::*,
+    v1::*,
 };
-use kanidm_proto::internal::*;
-use kanidm_proto::v1::*;
-use reqwest::cookie::{CookieStore, Jar};
-use reqwest::Response;
 pub use reqwest::StatusCode;
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use reqwest::{
+    cookie::{CookieStore, Jar},
+    Response,
+};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::error::Error as SerdeJsonError;
 use serde_urlencoded::ser::Error as UrlEncodeError;
 use tokio::sync::{Mutex, RwLock};

@@ -1,5 +1,4 @@
-use crate::plugins::Plugin;
-use crate::prelude::*;
+use crate::{plugins::Plugin, prelude::*};
 use std::sync::Arc;
 
 pub struct KeyObjectManagement {}

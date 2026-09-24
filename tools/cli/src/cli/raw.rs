@@ -1,14 +1,10 @@
-use crate::OpType;
-use crate::{KanidmClientParser, OutputMode, RawOpt};
+use crate::{KanidmClientParser, OpType, OutputMode, RawOpt};
 use kanidm_proto::scim_v1::{
     client::{ScimEntryPostGeneric, ScimEntryPutGeneric},
     ScimEntryGetQuery,
 };
 use serde::de::DeserializeOwned;
-use std::error::Error;
-use std::fs::File;
-use std::io::BufReader;
-use std::path::Path;
+use std::{error::Error, fs::File, io::BufReader, path::Path};
 
 fn read_file<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, Box<dyn Error>> {
     let f = File::open(path)?;

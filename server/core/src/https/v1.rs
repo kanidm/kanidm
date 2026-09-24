@@ -1,35 +1,49 @@
 //! The V1 API things!
 
-use super::errors::WebError;
-use super::middleware::caching::{cache_me_short, dont_cache_me};
-use super::middleware::KOpId;
-use super::ServerState;
-use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
-use crate::https::extractors::{ClientConnInfo, VerifiedClientInformation};
-use axum::extract::{Path, State};
-use axum::http::{HeaderMap, HeaderValue};
-use axum::middleware::from_fn;
-use axum::response::{IntoResponse, Response};
-use axum::routing::{delete, get, post, put};
-use axum::{Extension, Json, Router};
+use super::{
+    errors::WebError,
+    middleware::{
+        caching::{cache_me_short, dont_cache_me},
+        KOpId,
+    },
+    ServerState,
+};
+use crate::https::{
+    apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse},
+    extractors::{ClientConnInfo, VerifiedClientInformation},
+};
+use axum::{
+    extract::{Path, State},
+    http::{HeaderMap, HeaderValue},
+    middleware::from_fn,
+    response::{IntoResponse, Response},
+    routing::{delete, get, post, put},
+    Extension, Json, Router,
+};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use compact_jwt::{Jwk, Jws, JwsSigner};
-use kanidm_proto::constants::uri::V1_AUTH_VALID;
-use kanidm_proto::internal::{
-    ApiToken, AppLink, CUIntentSend, CUIntentToken, CURequest, CUSessionToken, CUStatus,
-    CreateRequest, CredentialStatus, DeleteRequest, IdentifyUserRequest, IdentifyUserResponse,
-    ModifyRequest, RadiusAuthToken, SearchRequest, SearchResponse, UserAuthToken,
-    COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN,
+use kanidm_proto::{
+    constants::uri::V1_AUTH_VALID,
+    internal::{
+        ApiToken, AppLink, CUIntentSend, CUIntentToken, CURequest, CUSessionToken, CUStatus,
+        CreateRequest, CredentialStatus, DeleteRequest, IdentifyUserRequest, IdentifyUserResponse,
+        ModifyRequest, RadiusAuthToken, SearchRequest, SearchResponse, UserAuthToken,
+        COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN,
+    },
+    v1::{
+        AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
+        AuthState as ProtoAuthState, Entry as ProtoEntry, GroupUnixExtend, SingleStringRequest,
+        UatStatus, UnixGroupToken, UnixUserToken, WhoamiResponse,
+    },
 };
-use kanidm_proto::v1::{
-    AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
-    AuthState as ProtoAuthState, Entry as ProtoEntry, GroupUnixExtend, SingleStringRequest,
-    UatStatus, UnixGroupToken, UnixUserToken, WhoamiResponse,
+use kanidmd_lib::{
+    idm::{
+        authentication::{AuthState, AuthStep, ReauthRequest},
+        event::AuthResult,
+    },
+    prelude::*,
+    value::PartialValue,
 };
-use kanidmd_lib::idm::authentication::{AuthState, AuthStep, ReauthRequest};
-use kanidmd_lib::idm::event::AuthResult;
-use kanidmd_lib::prelude::*;
-use kanidmd_lib::value::PartialValue;
 use std::net::IpAddr;
 use uuid::Uuid;
 

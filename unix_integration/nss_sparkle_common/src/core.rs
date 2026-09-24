@@ -1,15 +1,15 @@
-use libnss::group::Group;
-use libnss::interop::Response;
-use libnss::passwd::Passwd;
-use sparkle_unix_common::client_sync::DaemonClientBlocking;
-use sparkle_unix_common::constants::{SYSTEM_GROUP_PATH, SYSTEM_PASSWD_PATH};
-use sparkle_unix_common::unix_config::PamNssConfig;
-use sparkle_unix_common::unix_passwd::{
-    read_etc_group_file, read_etc_passwd_file, EtcGroup, EtcUser,
+use libnss::{group::Group, interop::Response, passwd::Passwd};
+use sparkle_unix_common::{
+    client_sync::DaemonClientBlocking,
+    constants::{SYSTEM_GROUP_PATH, SYSTEM_PASSWD_PATH},
+    unix_config::PamNssConfig,
+    unix_passwd::{read_etc_group_file, read_etc_passwd_file, EtcGroup, EtcUser},
+    unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser},
 };
-use sparkle_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser};
-use std::ops::{Deref, DerefMut};
-use std::sync::RwLock;
+use std::{
+    ops::{Deref, DerefMut},
+    sync::RwLock,
+};
 
 #[cfg(test)]
 use sparkle_unix_common::client_sync::UnixStream;

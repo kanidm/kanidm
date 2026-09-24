@@ -5,14 +5,11 @@ mod key_providers;
 pub(crate) mod schema;
 mod system_config;
 
-use self::access::*;
-use self::accounts::*;
-use self::groups::*;
-use self::schema::*;
-use self::system_config::*;
-use crate::constants::UUID_SCHEMA_ATTR_EC_KEY_PRIVATE;
-use crate::migration_data::dl14::key_providers::e_key_provider_internal_dl6;
-use crate::prelude::*;
+use self::{access::*, accounts::*, groups::*, schema::*, system_config::*};
+use crate::{
+    constants::UUID_SCHEMA_ATTR_EC_KEY_PRIVATE,
+    migration_data::dl14::key_providers::e_key_provider_internal_dl6, prelude::*,
+};
 use kanidm_proto::internal::OperationError;
 use uuid::Uuid;
 

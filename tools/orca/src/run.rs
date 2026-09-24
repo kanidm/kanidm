@@ -1,6 +1,8 @@
-use crate::error::Error;
-use crate::state::*;
-use crate::stats::{BasicStatistics, TestPhase};
+use crate::{
+    error::Error,
+    state::*,
+    stats::{BasicStatistics, TestPhase},
+};
 
 use std::sync::Arc;
 

@@ -4,11 +4,15 @@ macro_rules! pam_hooks {
     ($ident:ident) => {
         pub use self::pam_hooks_scope::*;
         mod pam_hooks_scope {
-            use std::ffi::CStr;
-            use std::os::raw::{c_char, c_int};
+            use std::{
+                ffi::CStr,
+                os::raw::{c_char, c_int},
+            };
 
-            use $crate::pam::constants::{PamFlag, PamResultCode};
-            use $crate::pam::module::{PamHandle, PamHooks};
+            use $crate::pam::{
+                constants::{PamFlag, PamResultCode},
+                module::{PamHandle, PamHooks},
+            };
 
             fn extract_argv<'a>(argc: c_int, argv: *const *const c_char) -> Vec<&'a CStr> {
                 (0..argc)

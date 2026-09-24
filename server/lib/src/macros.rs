@@ -74,10 +74,12 @@ macro_rules! run_create_test {
         $internal:expr,
         $check:expr
     ) => {{
-        use crate::be::{Backend, BackendConfig};
-        use crate::event::CreateEvent;
-        use crate::prelude::*;
-        use crate::schema::Schema;
+        use crate::{
+            be::{Backend, BackendConfig},
+            event::CreateEvent,
+            prelude::*,
+            schema::Schema,
+        };
 
         let qs = setup_test!($preload_entries);
 
@@ -139,10 +141,12 @@ macro_rules! run_modify_test {
         // the result we expect
         $check:expr
     ) => {{
-        use crate::be::{Backend, BackendConfig};
-        use crate::event::ModifyEvent;
-        use crate::prelude::*;
-        use crate::schema::Schema;
+        use crate::{
+            be::{Backend, BackendConfig},
+            event::ModifyEvent,
+            prelude::*,
+            schema::Schema,
+        };
 
         let qs = setup_test!($preload_entries);
 
@@ -204,10 +208,12 @@ macro_rules! run_delete_test {
         $internal:expr,
         $check:expr
     ) => {{
-        use crate::be::{Backend, BackendConfig};
-        use crate::event::DeleteEvent;
-        use crate::prelude::*;
-        use crate::schema::Schema;
+        use crate::{
+            be::{Backend, BackendConfig},
+            event::DeleteEvent,
+            prelude::*,
+            schema::Schema,
+        };
 
         let qs = setup_test!($preload_entries);
 

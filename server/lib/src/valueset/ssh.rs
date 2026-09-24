@@ -1,15 +1,13 @@
-use crate::be::dbvalue::DbValueTaggedStringV1;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::utils::trigraph_iter;
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+use crate::{
+    be::dbvalue::DbValueTaggedStringV1,
+    prelude::*,
+    schema::SchemaAttribute,
+    utils::trigraph_iter,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
 };
-use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::ScimSshPublicKey;
+use kanidm_proto::scim_v1::{JsonValue, ScimSshPublicKey};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry as BTreeEntry, BTreeMap};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetSshKey {

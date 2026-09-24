@@ -11,10 +11,7 @@
 //! [SchemaClass]es. [SchemaClass] entries are additive.
 //!
 
-use crate::be::IdxKey;
-use crate::migration_data;
-use crate::prelude::*;
-use crate::valueset::ValueSet;
+use crate::{be::IdxKey, migration_data, prelude::*, valueset::ValueSet};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use std::collections::BTreeSet;
@@ -921,8 +918,10 @@ impl Schema {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
-    use crate::schema::{Schema, SchemaAttribute, SchemaClass, SchemaTransaction, SyntaxType};
+    use crate::{
+        prelude::*,
+        schema::{Schema, SchemaAttribute, SchemaClass, SchemaTransaction, SyntaxType},
+    };
     use uuid::Uuid;
 
     // use crate::proto_v1::Filter as ProtoFilter;

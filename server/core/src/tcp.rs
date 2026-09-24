@@ -1,8 +1,6 @@
 use crate::config::TcpAddressInfo;
 use haproxy_protocol::{ProxyHdrV1, ProxyHdrV2, RemoteAddress};
-use std::io::ErrorKind;
-use std::net::SocketAddr;
-use std::time::Duration;
+use std::{io::ErrorKind, net::SocketAddr, time::Duration};
 use tokio::{net::TcpStream, time::timeout};
 
 pub(crate) async fn process_client_addr(

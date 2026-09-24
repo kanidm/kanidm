@@ -1,31 +1,37 @@
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
-use std::convert::TryInto;
-use std::ops::DerefMut;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    convert::TryInto,
+    ops::DerefMut,
+    sync::Arc,
+    time::Duration,
+};
 
-use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn};
-use concread::cowcell::*;
+use concread::{
+    arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn},
+    cowcell::*,
+};
 use hashbrown::HashMap;
-use idlset::v2::IDLBitRange;
-use idlset::AndNot;
+use idlset::{v2::IDLBitRange, AndNot};
 use kanidm_proto::internal::{ConsistencyError, OperationError};
 use tracing::trace;
 use uuid::Uuid;
 
-use crate::be::idl_sqlite::{
-    IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
+use crate::{
+    be::{
+        idl_sqlite::{
+            IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
+        },
+        idxkey::{
+            IdlCacheKey, IdlCacheKeyRef, IdlCacheKeyToRef, IdxKey, IdxKeyRef, IdxKeyToRef,
+            IdxNameKey, IdxSlope,
+        },
+        keystorage::{KeyHandle, KeyHandleId},
+        BackendConfig, IdList, IdRawEntry,
+    },
+    entry::{Entry, EntryCommitted, EntrySealed},
+    prelude::*,
+    value::{IndexType, Value},
 };
-use crate::be::idxkey::{
-    IdlCacheKey, IdlCacheKeyRef, IdlCacheKeyToRef, IdxKey, IdxKeyRef, IdxKeyToRef, IdxNameKey,
-    IdxSlope,
-};
-use crate::be::keystorage::{KeyHandle, KeyHandleId};
-use crate::be::{BackendConfig, IdList, IdRawEntry};
-use crate::entry::{Entry, EntryCommitted, EntrySealed};
-use crate::prelude::*;
-use crate::value::{IndexType, Value};
 
 // use std::borrow::Borrow;
 

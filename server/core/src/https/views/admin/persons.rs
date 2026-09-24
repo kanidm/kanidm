@@ -1,28 +1,30 @@
 #![allow(clippy::result_large_err)]
 
-use crate::https::errors::WebError;
-use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::navbar::NavbarCtx;
-use crate::https::views::{ErrorToastPartial, Urls};
-use crate::https::ServerState;
+use crate::https::{
+    errors::WebError,
+    extractors::{DomainInfo, VerifiedClientInformation},
+    middleware::KOpId,
+    views::{errors::HtmxError, navbar::NavbarCtx, ErrorToastPartial, Urls},
+    ServerState,
+};
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::extract::{Form, Path, State};
-use axum::response::{IntoResponse, Response};
-use axum::Extension;
+use axum::{
+    extract::{Form, Path, State},
+    response::{IntoResponse, Response},
+    Extension,
+};
 use axum_htmx::{HxPushUrl, HxRequest};
-use kanidm_proto::attribute::Attribute;
-use kanidm_proto::internal::{OperationError, SchemaError, UserAuthToken};
-use kanidm_proto::scim_v1::server::{
-    ScimEffectiveAccess, ScimEntryKanidm, ScimListResponse, ScimPerson,
+use kanidm_proto::{
+    attribute::Attribute,
+    internal::{OperationError, SchemaError, UserAuthToken},
+    scim_v1::{
+        client::ScimEntryPostGeneric,
+        server::{ScimEffectiveAccess, ScimEntryKanidm, ScimListResponse, ScimPerson},
+        JsonValue, ScimEntryGetQuery, ScimFilter,
+    },
 };
-use kanidm_proto::scim_v1::{
-    client::ScimEntryPostGeneric, JsonValue, ScimEntryGetQuery, ScimFilter,
-};
-use kanidmd_lib::constants::EntryClass;
-use kanidmd_lib::idm::authentication::ClientAuthInfo;
+use kanidmd_lib::{constants::EntryClass, idm::authentication::ClientAuthInfo};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;

@@ -1,21 +1,20 @@
-use crate::be::dbvalue::{
-    DbCidV1, DbValueAccessScopeV1, DbValueApiToken, DbValueApiTokenScopeV1, DbValueAuthTypeV1,
-    DbValueIdentityId, DbValueOauth2Session, DbValueSession, DbValueSessionExtMetadataV1,
-    DbValueSessionStateV1,
+use crate::{
+    be::dbvalue::{
+        DbCidV1, DbValueAccessScopeV1, DbValueApiToken, DbValueApiTokenScopeV1, DbValueAuthTypeV1,
+        DbValueIdentityId, DbValueOauth2Session, DbValueSession, DbValueSessionExtMetadataV1,
+        DbValueSessionStateV1,
+    },
+    prelude::*,
+    repl::cid::Cid,
+    schema::SchemaAttribute,
+    value::{
+        ApiToken, ApiTokenScope, AuthType, Oauth2Session, Session, SessionExtMetadata,
+        SessionScope, SessionState,
+    },
+    valueset::{uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ValueSet},
 };
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::schema::SchemaAttribute;
-use crate::value::{
-    ApiToken, ApiTokenScope, AuthType, Oauth2Session, Session, SessionExtMetadata, SessionScope,
-    SessionState,
-};
-use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ValueSet};
-use kanidm_proto::scim_v1::server::ScimApiToken;
-use kanidm_proto::scim_v1::server::ScimAuthSession;
-use kanidm_proto::scim_v1::server::ScimOAuth2Session;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
+use kanidm_proto::scim_v1::server::{ScimApiToken, ScimAuthSession, ScimOAuth2Session};
+use std::collections::{btree_map::Entry as BTreeEntry, BTreeMap};
 use time::OffsetDateTime;
 
 #[derive(Debug, Clone)]
@@ -1316,9 +1315,11 @@ impl ValueSetT for ValueSetApiTokenSet {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetOauth2Session, ValueSetSession, SESSION_MAXIMUM};
-    use crate::prelude::{IdentityId, SessionScope, Uuid, ValueSet, UUID_SYSTEM};
-    use crate::repl::cid::Cid;
-    use crate::value::{AuthType, Oauth2Session, Session, SessionState};
+    use crate::{
+        prelude::{IdentityId, SessionScope, Uuid, ValueSet, UUID_SYSTEM},
+        repl::cid::Cid,
+        value::{AuthType, Oauth2Session, Session, SessionState},
+    };
     use time::OffsetDateTime;
 
     #[test]

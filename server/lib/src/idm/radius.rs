@@ -4,9 +4,11 @@ use kanidm_proto::internal::RadiusAuthToken;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::entry::{Entry, EntryCommitted, EntryReduced};
-use crate::idm::group::Group;
-use crate::prelude::*;
+use crate::{
+    entry::{Entry, EntryCommitted, EntryReduced},
+    idm::group::Group,
+    prelude::*,
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct RadiusAccount {

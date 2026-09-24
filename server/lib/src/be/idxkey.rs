@@ -1,8 +1,9 @@
-use crate::prelude::entries::Attribute;
-use crate::value::IndexType;
-use std::borrow::Borrow;
-use std::cmp::Ordering;
-use std::hash::{Hash, Hasher};
+use crate::{prelude::entries::Attribute, value::IndexType};
+use std::{
+    borrow::Borrow,
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 
 pub type IdxSlope = u8;
 

@@ -1,6 +1,8 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::constants::{ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY, ATTR_DOMAIN_ALLOW_EASTER_EGGS};
-use kanidm_proto::internal::ImageValue;
+use kanidm_proto::{
+    constants::{ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY, ATTR_DOMAIN_ALLOW_EASTER_EGGS},
+    internal::ImageValue,
+};
 use reqwest::multipart;
 
 impl KanidmClient {

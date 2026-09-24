@@ -1,5 +1,4 @@
-use crate::OpType;
-use crate::{handle_client_error, KanidmClientParser, RecycleOpt};
+use crate::{handle_client_error, KanidmClientParser, OpType, RecycleOpt};
 
 impl RecycleOpt {
     pub async fn exec(&self, opt: KanidmClientParser) {

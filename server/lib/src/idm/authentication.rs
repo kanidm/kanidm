@@ -1,5 +1,7 @@
-use crate::prelude::{OperationError, Url};
-use crate::server::identity::Source;
+use crate::{
+    prelude::{OperationError, Url},
+    server::identity::Source,
+};
 use compact_jwt::JwsCompact;
 use crypto_glue::{s256::Sha256Output, x509::Certificate};
 use kanidm_proto::{

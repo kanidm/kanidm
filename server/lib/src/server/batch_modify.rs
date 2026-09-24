@@ -1,6 +1,5 @@
 use super::{ChangeFlag, QueryServerWriteTransaction};
-use crate::prelude::*;
-use crate::server::Plugins;
+use crate::{prelude::*, server::Plugins};
 use std::collections::BTreeMap;
 
 pub type ModSetValid = BTreeMap<Uuid, ModifyList<ModifyValid>>;

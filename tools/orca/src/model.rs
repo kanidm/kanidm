@@ -1,6 +1,8 @@
-use crate::error::Error;
-use crate::run::{EventDetail, EventRecord};
-use crate::state::*;
+use crate::{
+    error::Error,
+    run::{EventDetail, EventRecord},
+    state::*,
+};
 use std::time::{Duration, Instant};
 
 use kanidm_client::{ClientError, KanidmClient};

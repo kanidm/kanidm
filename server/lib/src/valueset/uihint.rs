@@ -1,10 +1,9 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
 };
-use kanidm_proto::internal::UiHint;
-use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::{internal::UiHint, scim_v1::JsonValue};
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]

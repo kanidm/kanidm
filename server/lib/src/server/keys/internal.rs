@@ -1,9 +1,13 @@
 use self::{jwe_a128_gcm::*, jwe_a256_gcm::*};
-use super::object::{KeyObject, KeyObjectT};
-use super::KeyId;
-use crate::prelude::*;
-use crate::value::{KeyStatus, KeyUsage};
-use crate::valueset::{KeyInternalData, ValueSetKeyInternal};
+use super::{
+    object::{KeyObject, KeyObjectT},
+    KeyId,
+};
+use crate::{
+    prelude::*,
+    value::{KeyStatus, KeyUsage},
+    valueset::{KeyInternalData, ValueSetKeyInternal},
+};
 use compact_jwt::{
     compact::{JweAlg, JweCompact, JweEnc},
     crypto::{JwsRs256Signer, JwsRs256Verifier},
@@ -18,10 +22,12 @@ use crypto_glue::{
     traits::{KeyInit, Mac, Zeroizing},
 };
 use smolset::SmolSet;
-use std::cmp::Reverse;
-use std::collections::{BTreeMap, BTreeSet};
-use std::ops::Bound::{Included, Unbounded};
-use std::sync::Arc;
+use std::{
+    cmp::Reverse,
+    collections::{BTreeMap, BTreeSet},
+    ops::Bound::{Included, Unbounded},
+    sync::Arc,
+};
 
 mod jwe_a128_gcm;
 mod jwe_a256_gcm;

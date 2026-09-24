@@ -70,54 +70,60 @@ pub mod testkit;
 // Clippy is wrong, these are used. Hush little clippy.
 #[allow(unused_imports)]
 pub mod prelude {
-    pub(crate) use crate::be::Limits;
-    pub(crate) use crate::constants::uuids::*;
-    pub use crate::constants::*;
-    pub(crate) use crate::entry::{
-        entry_init_fn, Entry, EntryCommitted, EntryIncrementalCommitted, EntryIncrementalNew,
-        EntryInit, EntryInitNew, EntryInvalid, EntryInvalidCommitted, EntryInvalidNew, EntryNew,
-        EntryReduced, EntryReducedCommitted, EntryRefresh, EntryRefreshNew, EntrySealed,
-        EntrySealedCommitted, EntrySealedNew, EntryTuple, EntryValid,
+    pub(crate) use crate::{
+        be::Limits,
+        constants::uuids::*,
+        entry::{
+            entry_init_fn, Entry, EntryCommitted, EntryIncrementalCommitted, EntryIncrementalNew,
+            EntryInit, EntryInitNew, EntryInvalid, EntryInvalidCommitted, EntryInvalidNew,
+            EntryNew, EntryReduced, EntryReducedCommitted, EntryRefresh, EntryRefreshNew,
+            EntrySealed, EntrySealedCommitted, EntrySealedNew, EntryTuple, EntryValid,
+        },
+        valueset::{
+            ValueSet, ValueSetBool, ValueSetCid, ValueSetDateTime, ValueSetEmailAddress,
+            ValueSetIname, ValueSetIutf8, ValueSetRefer, ValueSetSha256, ValueSetSyntax, ValueSetT,
+            ValueSetUrl, ValueSetUtf8, ValueSetUuid,
+        },
     };
-    pub use crate::event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, SearchEvent};
-    pub use crate::filter::{
-        f_and, f_andnot, f_eq, f_gt, f_id, f_inc, f_invalid, f_lt, f_or, f_pres, f_self,
-        f_spn_name, f_sub, Filter, FilterInvalid, FilterValid, FC,
+    pub use crate::{
+        constants::*,
+        event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, SearchEvent},
+        filter::{
+            f_and, f_andnot, f_eq, f_gt, f_id, f_inc, f_invalid, f_lt, f_or, f_pres, f_self,
+            f_spn_name, f_sub, Filter, FilterInvalid, FilterValid, FC,
+        },
+        idm::{
+            authentication::{ClientAuthInfo, ClientCertInfo},
+            server::{IdmServer, IdmServerAudit, IdmServerDelayed},
+        },
+        modify::{
+            m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
+        },
+        repl::cid::Cid,
+        schema::{SchemaAttribute, SchemaClass},
+        server::{
+            access::AccessControlsTransaction,
+            batch_modify::BatchModifyEvent,
+            identity::{
+                AccessScope, IdentType, IdentUser, Identity, IdentityId, InternalRole, Source,
+            },
+            QueryServer, QueryServerReadTransaction, QueryServerTransaction,
+            QueryServerWriteTransaction,
+        },
+        time::duration_from_epoch_now,
+        value::{ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value},
     };
-    pub use crate::idm::authentication::{ClientAuthInfo, ClientCertInfo};
-    pub use crate::idm::server::{IdmServer, IdmServerAudit, IdmServerDelayed};
-    pub use crate::modify::{
-        m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
-    };
-    pub use crate::repl::cid::Cid;
-    pub use crate::schema::{SchemaAttribute, SchemaClass};
-    pub use crate::server::access::AccessControlsTransaction;
-    pub use crate::server::batch_modify::BatchModifyEvent;
-    pub use crate::server::identity::{
-        AccessScope, IdentType, IdentUser, Identity, IdentityId, InternalRole, Source,
-    };
-    pub use crate::server::{
-        QueryServer, QueryServerReadTransaction, QueryServerTransaction,
-        QueryServerWriteTransaction,
-    };
-    pub use crate::time::duration_from_epoch_now;
-    pub use crate::value::{
-        ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value,
-    };
-    pub(crate) use crate::valueset::{
-        ValueSet, ValueSetBool, ValueSetCid, ValueSetDateTime, ValueSetEmailAddress, ValueSetIname,
-        ValueSetIutf8, ValueSetRefer, ValueSetSha256, ValueSetSyntax, ValueSetT, ValueSetUrl,
-        ValueSetUtf8, ValueSetUuid,
-    };
-    pub use kanidm_proto::attribute::{AttrString, Attribute};
-    pub use kanidm_proto::constants::*;
-    pub use kanidm_proto::internal::{
-        ConsistencyError, Filter as ProtoFilter, OperationError, PluginError, SchemaError,
-    };
-    pub use kanidm_proto::scim_v1::JsonValue;
     pub(crate) use kanidm_proto::scim_v1::{
         server::{ScimEntryKanidm, ScimValueKanidm},
         ScimEntryHeader,
+    };
+    pub use kanidm_proto::{
+        attribute::{AttrString, Attribute},
+        constants::*,
+        internal::{
+            ConsistencyError, Filter as ProtoFilter, OperationError, PluginError, SchemaError,
+        },
+        scim_v1::JsonValue,
     };
     #[cfg(test)]
     pub use kanidmd_lib_macros::*;

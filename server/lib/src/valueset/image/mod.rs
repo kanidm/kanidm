@@ -1,16 +1,17 @@
-use crate::be::dbvalue::DbValueImage;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    be::dbvalue::DbValueImage,
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 use crypto_glue::{s256::Sha256, traits::Digest};
 use hashbrown::HashSet;
-use image::codecs::gif::GifDecoder;
-use image::codecs::webp::WebPDecoder;
-use image::ImageDecoder;
+use image::{
+    codecs::{gif::GifDecoder, webp::WebPDecoder},
+    ImageDecoder,
+};
 use kanidm_proto::internal::{ImageType, ImageValue};
-use std::fmt::Display;
-use std::io::Cursor;
+use std::{fmt::Display, io::Cursor};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetImage {

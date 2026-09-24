@@ -1,6 +1,4 @@
-use std::borrow::Borrow;
-use std::fmt;
-use std::hash::Hash;
+use std::{borrow::Borrow, fmt, hash::Hash};
 
 mod internal;
 mod object;
@@ -9,10 +7,12 @@ mod provider;
 #[cfg(test)]
 pub(crate) use self::internal::KeyObjectInternal;
 
-pub(crate) use self::object::KeyObject;
-pub(crate) use self::provider::{
-    KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
-    KeyProvidersWriteTransaction,
+pub(crate) use self::{
+    object::KeyObject,
+    provider::{
+        KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
+        KeyProvidersWriteTransaction,
+    },
 };
 
 // 96 bits is sufficent length for key uniqueness. This is just to look up keys, and is

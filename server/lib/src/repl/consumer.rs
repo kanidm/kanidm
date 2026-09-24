@@ -1,9 +1,13 @@
 use super::proto::*;
-use crate::plugins::Plugins;
-use crate::prelude::*;
-use crate::server::{ChangeFlag, ServerPhase};
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use crate::{
+    plugins::Plugins,
+    prelude::*,
+    server::{ChangeFlag, ServerPhase},
+};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 impl QueryServerWriteTransaction<'_> {
     // Apply the state changes if they are valid.

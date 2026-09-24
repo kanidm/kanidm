@@ -1,6 +1,7 @@
-use crate::prelude::*;
-use crate::server::CreateEvent;
-use crate::server::{ChangeFlag, Plugins};
+use crate::{
+    prelude::*,
+    server::{ChangeFlag, CreateEvent, Plugins},
+};
 
 impl QueryServerWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]

@@ -1,8 +1,10 @@
-use crate::be::dbvalue::DbCidV1;
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
+use crate::{
+    be::dbvalue::DbCidV1,
+    prelude::*,
+    repl::cid::Cid,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 
 use smolset::SmolSet;
 

@@ -40,20 +40,19 @@ pub mod items;
 pub mod macros;
 pub mod module;
 
-use crate::core::{self, RequestOptions};
-use crate::pam::constants::*;
-use crate::pam::module::{PamHandle, PamHooks};
+use crate::{
+    core::{self, RequestOptions},
+    pam::{
+        constants::*,
+        module::{PamHandle, PamHooks},
+    },
+};
 use constants::PamResultCode;
-use sparkle_unix_common::constants::DEFAULT_CONFIG_PATH;
-use sparkle_unix_common::unix_config::PamNssConfig;
-use std::collections::BTreeSet;
-use std::convert::TryFrom;
-use std::ffi::CStr;
+use sparkle_unix_common::{constants::DEFAULT_CONFIG_PATH, unix_config::PamNssConfig};
+use std::{collections::BTreeSet, convert::TryFrom, ffi::CStr};
 use time::OffsetDateTime;
 use tracing::debug;
-use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::fmt;
-use tracing_subscriber::prelude::*;
+use tracing_subscriber::{filter::LevelFilter, fmt, prelude::*};
 
 pub fn get_cfg() -> Result<PamNssConfig, PamResultCode> {
     PamNssConfig::new()

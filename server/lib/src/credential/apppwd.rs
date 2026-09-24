@@ -1,8 +1,9 @@
-use crate::credential::{CryptoPolicy, Password};
-use crate::prelude::*;
+use crate::{
+    credential::{CryptoPolicy, Password},
+    prelude::*,
+};
 use kanidm_proto::internal::OperationError;
-use std::cmp::Ordering;
-use std::fmt;
+use std::{cmp::Ordering, fmt};
 
 #[derive(Clone)]
 pub struct ApplicationPassword {

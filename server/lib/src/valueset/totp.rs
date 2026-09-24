@@ -1,10 +1,11 @@
-use crate::be::dbvalue::DbTotpV1;
-use crate::credential::totp::Totp;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
+use crate::{
+    be::dbvalue::DbTotpV1,
+    credential::totp::Totp,
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
+use std::collections::{btree_map::Entry as BTreeEntry, BTreeMap};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetTotpSecret {

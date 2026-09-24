@@ -5,18 +5,20 @@
 //! or domain entries that are able to be replicated.
 
 use cidr::IpCidr;
-use kanidm_proto::backup::BackupCompression;
-use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
-use kanidm_proto::internal::FsType;
+use kanidm_proto::{
+    backup::BackupCompression, constants::DEFAULT_SERVER_ADDRESS, internal::FsType,
+};
 use serde::Deserialize;
 use serde_with::{formats::PreferOne, serde_as, OneOrMany};
 use sketching::LogLevel;
-use std::fmt::{self, Display};
-use std::fs::File;
-use std::io::Read;
-use std::net::IpAddr;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::{
+    fmt::{self, Display},
+    fs::File,
+    io::Read,
+    net::IpAddr,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 use url::Url;
 
 use crate::repl::config::ReplicationConfiguration;

@@ -4,9 +4,7 @@ pub mod entries;
 pub mod uuids;
 pub mod values;
 
-pub use self::entries::*;
-pub use self::uuids::*;
-pub use self::values::*;
+pub use self::{entries::*, uuids::*, values::*};
 
 use std::time::Duration;
 
