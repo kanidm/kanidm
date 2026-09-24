@@ -1581,6 +1581,11 @@ pub static SCHEMA_CLASS_ACCOUNT_SIGNUP_REQUEST: LazyLock<SchemaClass> =
         name: EntryClass::AccountSignupRequest.into(),
         description: "A pending account signup request that is pending review and/or verification"
             .to_string(),
-        systemmust: vec![Attribute::Name, Attribute::DisplayName, Attribute::Mail],
+        systemmust: vec![
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::DeleteAfter,
+        ],
         ..Default::default()
     });

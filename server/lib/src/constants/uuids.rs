@@ -541,6 +541,8 @@ pub const UUID_INTERNAL_SESSION_ID: Uuid = uuid!("00000000-0000-0000-0000-ffffff
 pub const UUID_INTERNAL_ACCOUNT_REQUEST: Uuid = uuid!("00000000-0000-0000-0000-ffffff000084");
 pub const UUID_INTERNAL_MESSAGE_QUEUE: Uuid = uuid!("00000000-0000-0000-0000-ffffff000085");
 
+pub const UUID_IDM_ACP_FEATURE_MANAGE: Uuid = uuid!("00000000-0000-0000-0000-ffffff000086");
+
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");
 pub const UUID_ANONYMOUS: Uuid = uuid!("00000000-0000-0000-0000-ffffffffffff");
