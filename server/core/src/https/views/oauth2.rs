@@ -1,12 +1,15 @@
-use super::login::{LoginDisplayCtx, Oauth2Ctx};
-use super::{cookies, UnrecoverableErrorView};
-use crate::https::views::{
-    errors::HtmxError,
-    login::{Reauth, ReauthPurpose},
+use super::{
+    cookies,
+    login::{LoginDisplayCtx, Oauth2Ctx},
+    UnrecoverableErrorView,
 };
 use crate::https::{
     extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
     middleware::KOpId,
+    views::{
+        errors::HtmxError,
+        login::{Reauth, ReauthPurpose},
+    },
     ServerState,
 };
 use askama::Template;
@@ -19,12 +22,13 @@ use axum::{
 };
 use axum_extra::extract::cookie::{CookieJar, SameSite};
 use axum_htmx::HX_REDIRECT;
-use kanidm_proto::internal::UserAuthToken;
-use kanidm_proto::internal::COOKIE_OAUTH2_REQ;
-use kanidmd_lib::idm::oauth2::{
-    AuthorisationRequest, AuthorisationRequestContext, AuthoriseResponse, Oauth2Error,
+use kanidm_proto::internal::{UserAuthToken, COOKIE_OAUTH2_REQ};
+use kanidmd_lib::{
+    idm::oauth2::{
+        AuthorisationRequest, AuthorisationRequestContext, AuthoriseResponse, Oauth2Error,
+    },
+    prelude::*,
 };
-use kanidmd_lib::prelude::*;
 use serde::Deserialize;
 use std::collections::BTreeSet;
 

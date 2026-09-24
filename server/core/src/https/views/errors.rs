@@ -1,5 +1,7 @@
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Redirect, Response},
+};
 use axum_htmx::{HxEvent, HxResponseTrigger, HxReswap, HxRetarget, SwapOption};
 use kanidmd_lib::idm::server::DomainInfoRead;
 use utoipa::ToSchema;
@@ -7,8 +9,10 @@ use uuid::Uuid;
 
 use kanidm_proto::internal::OperationError;
 
-use crate::https::middleware::KOpId;
-use crate::https::views::{ErrorToastPartial, KanidmHxEventName, UnrecoverableErrorView};
+use crate::https::{
+    middleware::KOpId,
+    views::{ErrorToastPartial, KanidmHxEventName, UnrecoverableErrorView},
+};
 
 /// The web app's top level error type, this takes an `OperationError` and converts it into a HTTP response.
 #[derive(Debug, ToSchema)]

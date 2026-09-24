@@ -75,8 +75,9 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMod
 }
 
 pub(crate) fn handle_group_account_policy_error(response: ClientError, _output_mode: OutputMode) {
-    use kanidm_proto::internal::OperationError::SchemaViolation;
-    use kanidm_proto::internal::SchemaError::AttributeNotValidForClass;
+    use kanidm_proto::internal::{
+        OperationError::SchemaViolation, SchemaError::AttributeNotValidForClass,
+    };
 
     if let ClientError::Http(_status, Some(SchemaViolation(AttributeNotValidForClass(att))), opid) =
         response

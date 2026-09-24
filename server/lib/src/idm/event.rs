@@ -1,5 +1,7 @@
-use crate::idm::authentication::{AuthCredential, AuthState, AuthStep};
-use crate::prelude::*;
+use crate::{
+    idm::authentication::{AuthCredential, AuthState, AuthStep},
+    prelude::*,
+};
 use compact_jwt::JwsCompact;
 use kanidm_proto::v1::{AuthIssueSession, AuthMech};
 

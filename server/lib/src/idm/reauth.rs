@@ -1,12 +1,16 @@
 use crate::prelude::*;
 
-use crate::credential::softlock::CredSoftLock;
-use crate::idm::account::Account;
-use crate::idm::authentication::{AuthState, ReauthRequest};
-use crate::idm::authsession::{AuthSession, AuthSessionData};
-use crate::idm::event::AuthResult;
-use crate::idm::server::IdmServerAuthTransaction;
-use crate::utils::uuid_from_duration;
+use crate::{
+    credential::softlock::CredSoftLock,
+    idm::{
+        account::Account,
+        authentication::{AuthState, ReauthRequest},
+        authsession::{AuthSession, AuthSessionData},
+        event::AuthResult,
+        server::IdmServerAuthTransaction,
+    },
+    utils::uuid_from_duration,
+};
 
 // use webauthn_rs::prelude::Webauthn;
 
@@ -178,19 +182,22 @@ impl IdmServerAuthTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::totp::Totp;
-    use crate::idm::audit::AuditEvent;
-    use crate::idm::authentication::{AuthState, ReauthRequest};
-    use crate::idm::credupdatesession::{InitCredentialUpdateEvent, MfaRegStateStatus};
-    use crate::idm::delayed::DelayedAction;
-    use crate::idm::event::{AuthEvent, AuthResult};
-    use crate::idm::server::IdmServerTransaction;
-    use crate::prelude::*;
+    use crate::{
+        credential::totp::Totp,
+        idm::{
+            audit::AuditEvent,
+            authentication::{AuthState, ReauthRequest},
+            credupdatesession::{InitCredentialUpdateEvent, MfaRegStateStatus},
+            delayed::DelayedAction,
+            event::{AuthEvent, AuthResult},
+            server::IdmServerTransaction,
+        },
+        prelude::*,
+    };
     use compact_jwt::JwsCompact;
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
     use uuid::uuid;
-    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
-    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
 
     const TESTPERSON_UUID: Uuid = uuid!("cf231fea-1a8f-4410-a520-fd9b1a379c86");
 

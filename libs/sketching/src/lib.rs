@@ -1,22 +1,19 @@
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(non_snake_case)]
-use std::fmt::Display;
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::Deserialize;
-use tracing_forest::printer::TestCapturePrinter;
-use tracing_forest::tag::NoTag;
-use tracing_forest::util::*;
-use tracing_forest::Tag;
-use tracing_subscriber::filter::Directive;
-use tracing_subscriber::prelude::*;
+use tracing_forest::{printer::TestCapturePrinter, tag::NoTag, util::*, Tag};
+use tracing_subscriber::{filter::Directive, prelude::*};
 
 pub mod macros;
 pub mod pipeline;
 
-pub use {tracing, tracing_forest, tracing_subscriber};
+pub use tracing;
+pub use tracing_forest;
+pub use tracing_subscriber;
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum LoggerType {

@@ -1,12 +1,13 @@
 use crate::prelude::JsonValue;
 use hashbrown::HashSet;
-use kanidm_proto::internal::ImageType;
-use kanidm_proto::v1::OutboundMessage;
+use kanidm_proto::{internal::ImageType, v1::OutboundMessage};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
-use std::time::Duration;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+    time::Duration,
+};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;

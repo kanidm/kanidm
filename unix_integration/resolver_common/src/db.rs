@@ -1,12 +1,13 @@
-use crate::errors::Error;
-use crate::idprovider::interface::{GroupToken, Id, UserToken};
+use crate::{
+    errors::Error,
+    idprovider::interface::{GroupToken, Id, UserToken},
+};
 use async_trait::async_trait;
 use kanidm_hsm_crypto::structures::{LoadableHmacS256Key, LoadableStorageKey};
 use libc::umask;
 use rusqlite::{Connection, OptionalExtension};
 use serde::{de::DeserializeOwned, Serialize};
-use std::convert::TryFrom;
-use std::fmt;
+use std::{convert::TryFrom, fmt};
 use tokio::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
 

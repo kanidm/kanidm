@@ -1,15 +1,19 @@
 use super::KeyId;
-use crate::prelude::*;
-use crate::value::{KeyStatus, KeyUsage};
-use crate::valueset::KeyInternalData;
+use crate::{
+    prelude::*,
+    value::{KeyStatus, KeyUsage},
+    valueset::KeyInternalData,
+};
 use compact_jwt::{
     compact::JweCompact,
     crypto::{JweA128GCMEncipher, JweA128KWEncipher},
     jwe::Jwe,
 };
 use crypto_glue::{aes128, traits::Zeroizing};
-use std::collections::BTreeMap;
-use std::ops::Bound::{Included, Unbounded};
+use std::{
+    collections::BTreeMap,
+    ops::Bound::{Included, Unbounded},
+};
 
 #[derive(Clone)]
 pub enum InternalJweA128GCMStatus {

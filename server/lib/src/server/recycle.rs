@@ -1,7 +1,5 @@
 use super::modify::ModifyPartial;
-use crate::event::ReviveRecycledEvent;
-use crate::prelude::*;
-use crate::server::Plugins;
+use crate::{event::ReviveRecycledEvent, prelude::*, server::Plugins};
 use std::collections::BTreeMap;
 
 impl QueryServerWriteTransaction<'_> {
@@ -359,11 +357,11 @@ impl QueryServerWriteTransaction<'_> {
 #[cfg(test)]
 mod tests {
     use super::ReviveRecycledEvent;
-    use crate::event::{CreateEvent, DeleteEvent};
-    use crate::prelude::*;
-    use crate::server::ModifyEvent;
-    use crate::server::SearchEvent;
-    use crate::server::ValueSetMessage;
+    use crate::{
+        event::{CreateEvent, DeleteEvent},
+        prelude::*,
+        server::{ModifyEvent, SearchEvent, ValueSetMessage},
+    };
     use kanidm_proto::v1::OutboundMessage;
     use time::OffsetDateTime;
 

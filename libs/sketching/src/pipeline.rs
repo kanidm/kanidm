@@ -8,8 +8,7 @@ use opentelemetry_semantic_conventions::{
     attribute::{DEPLOYMENT_ENVIRONMENT_NAME, SERVICE_VERSION},
     SCHEMA_URL,
 };
-use std::str::FromStr;
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 use tracing::Subscriber;
 use tracing_core::Level;
 use tracing_opentelemetry::OpenTelemetryLayer;

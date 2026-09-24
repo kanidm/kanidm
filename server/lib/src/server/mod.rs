@@ -1,50 +1,58 @@
 //! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
-use self::access::{
-    profiles::{
-        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+use self::{
+    access::{
+        profiles::{
+            AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+        },
+        AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
+        AccessControlsWriteTransaction,
     },
-    AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
-    AccessControlsWriteTransaction,
+    keys::{
+        KeyObject, KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
+        KeyProvidersWriteTransaction,
+    },
 };
-use self::keys::{
-    KeyObject, KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
-    KeyProvidersWriteTransaction,
+use crate::{
+    be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction},
+    filter::{
+        Filter, FilterInvalid, FilterValid, FilterValidResolved, ResolveFilterCache,
+        ResolveFilterCacheReadTxn,
+    },
+    plugins::{
+        self,
+        dyngroup::{DynGroup, DynGroupCache},
+        Plugins,
+    },
+    prelude::*,
+    repl::{cid::Cid, proto::ReplRuvRange, ruv::ReplicationUpdateVectorTransaction},
+    schema::{
+        Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
+        SchemaWriteTransaction,
+    },
+    value::{CredentialType, EXTRACT_VAL_DN},
+    valueset::*,
 };
-use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
-use crate::filter::{
-    Filter, FilterInvalid, FilterValid, FilterValidResolved, ResolveFilterCache,
-    ResolveFilterCacheReadTxn,
+use concread::{
+    arcache::{ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn},
+    cowcell::*,
 };
-use crate::plugins::{
-    self,
-    dyngroup::{DynGroup, DynGroupCache},
-    Plugins,
-};
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::repl::proto::ReplRuvRange;
-use crate::repl::ruv::ReplicationUpdateVectorTransaction;
-use crate::schema::{
-    Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
-    SchemaWriteTransaction,
-};
-use crate::value::{CredentialType, EXTRACT_VAL_DN};
-use crate::valueset::*;
-use concread::arcache::{ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn};
-use concread::cowcell::*;
 use crypto_glue::{hmac_s256::HmacSha256Key, s256::Sha256Output};
 use hashbrown::{HashMap, HashSet};
-use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
-use kanidm_proto::scim_v1::{
-    server::{ScimListResponse, ScimOAuth2ClaimMap, ScimOAuth2ScopeMap, ScimReference},
-    JsonValue, ScimEntryGetQuery, ScimFilter,
+use kanidm_proto::{
+    internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint},
+    scim_v1::{
+        server::{ScimListResponse, ScimOAuth2ClaimMap, ScimOAuth2ScopeMap, ScimReference},
+        JsonValue, ScimEntryGetQuery, ScimFilter,
+    },
 };
-use std::collections::{BTreeMap, BTreeSet};
-use std::num::NonZeroU64;
-use std::str::FromStr;
-use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    num::NonZeroU64,
+    str::FromStr,
+    sync::Arc,
+};
 use time::OffsetDateTime;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;

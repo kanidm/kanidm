@@ -3,8 +3,7 @@
 use crate::https::ServerState;
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use compact_jwt::{Jws, JwsSigner};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 
 fn new_cookie<'a>(state: &'_ ServerState, ck_id: &'a str, value: String) -> Cookie<'a> {
     let mut token_cookie = Cookie::new(ck_id, value);

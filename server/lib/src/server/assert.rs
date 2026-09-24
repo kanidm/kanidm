@@ -1,5 +1,4 @@
-use crate::prelude::*;
-use crate::server::batch_modify::ModSetValid;
+use crate::{prelude::*, server::batch_modify::ModSetValid};
 use crypto_glue::s256::Sha256Output;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -366,8 +365,7 @@ impl QueryServerWriteTransaction<'_> {
 mod tests {
     use super::{AssertEvent, AssertOnce, EntryAssertion};
     use crate::prelude::*;
-    use crypto_glue::s256::Sha256;
-    use crypto_glue::traits::*;
+    use crypto_glue::{s256::Sha256, traits::*};
     use std::collections::BTreeMap;
     // use std::sync::Arc;
 

@@ -1,6 +1,7 @@
-use crate::prelude::*;
-use crate::value::AuthType;
-use crate::value::SessionExtMetadata;
+use crate::{
+    prelude::*,
+    value::{AuthType, SessionExtMetadata},
+};
 use std::fmt;
 use time::OffsetDateTime;
 use uuid::Uuid;

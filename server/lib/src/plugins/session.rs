@@ -7,12 +7,8 @@
 //! This plugin is also responsible for invaliding old sessions that are past
 //! their expiry.
 
-use crate::event::ModifyEvent;
-use crate::plugins::Plugin;
-use crate::prelude::*;
-use crate::value::SessionState;
-use std::collections::BTreeSet;
-use std::sync::Arc;
+use crate::{event::ModifyEvent, plugins::Plugin, prelude::*, value::SessionState};
+use std::{collections::BTreeSet, sync::Arc};
 use time::OffsetDateTime;
 
 pub struct SessionConsistency {}
@@ -192,8 +188,10 @@ impl SessionConsistency {
 mod tests {
     use crate::prelude::*;
 
-    use crate::event::CreateEvent;
-    use crate::value::{AuthType, Oauth2Session, Session, SessionState};
+    use crate::{
+        event::CreateEvent,
+        value::{AuthType, Oauth2Session, Session, SessionState},
+    };
     use kanidm_proto::constants::OAUTH2_SCOPE_OPENID;
     use std::time::Duration;
     use time::OffsetDateTime;

@@ -1,18 +1,18 @@
 //! These are types that a client will send to the server.
 use super::{ScimEntryGeneric, ScimEntryGetQuery, ScimMail, ScimOauth2ClaimMapJoinChar};
-use crate::attribute::Attribute;
-use crate::v1::OutboundMessage;
+use crate::{attribute::Attribute, v1::OutboundMessage};
 use scim_proto::ScimEntryHeader;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use serde_with::formats::PreferMany;
-use serde_with::OneOrMany;
-use serde_with::{base64, formats, serde_as, skip_serializing_none};
+use serde_with::{
+    base64, formats, formats::PreferMany, serde_as, skip_serializing_none, OneOrMany,
+};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::collections::{BTreeMap, BTreeSet};
-use std::num::NonZeroU64;
-use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    num::NonZeroU64,
+};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;

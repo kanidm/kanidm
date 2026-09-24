@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use super::ChangeFlag;
-use crate::plugins::Plugins;
-use crate::prelude::*;
+use crate::{plugins::Plugins, prelude::*};
 
 pub(crate) struct ModifyPartial<'a> {
     pub norm_cand: Vec<Entry<EntrySealed, EntryCommitted>>,
@@ -607,8 +606,7 @@ impl QueryServerWriteTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::Credential;
-    use crate::prelude::*;
+    use crate::{credential::Credential, prelude::*};
     use kanidm_lib_crypto::CryptoPolicy;
     use time::OffsetDateTime;
 

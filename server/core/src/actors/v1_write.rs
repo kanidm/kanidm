@@ -1,12 +1,14 @@
 use std::iter;
 
 use compact_jwt::JweCompact;
-use kanidm_proto::internal::{
-    CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest, ImageValue,
-    Modify as ProtoModify, ModifyList as ProtoModifyList, ModifyRequest,
-    Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin, OperationError,
+use kanidm_proto::{
+    internal::{
+        CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest, ImageValue,
+        Modify as ProtoModify, ModifyList as ProtoModifyList, ModifyRequest,
+        Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin, OperationError,
+    },
+    v1::{AccountUnixExtend, Entry as ProtoEntry, GroupUnixExtend},
 };
-use kanidm_proto::v1::{AccountUnixExtend, Entry as ProtoEntry, GroupUnixExtend};
 use kanidmd_lib::valueset::image::ImageValueThings;
 use std::str::FromStr;
 use time::OffsetDateTime;
@@ -16,19 +18,21 @@ use uuid::Uuid;
 use kanidmd_lib::{
     event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent},
     filter::{Filter, FilterInvalid},
-    idm::account::DestroySessionTokenEvent,
-    idm::credupdatesession::{
-        CredentialUpdateIntentTokenExchange, CredentialUpdateSessionToken,
-        InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
-        InitCredentialUpdateIntentSendEvent,
+    idm::{
+        account::DestroySessionTokenEvent,
+        credupdatesession::{
+            CredentialUpdateIntentTokenExchange, CredentialUpdateSessionToken,
+            InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
+            InitCredentialUpdateIntentSendEvent,
+        },
+        event::{GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent},
+        oauth2::{
+            AccessTokenRequest, AccessTokenResponse, AuthorisePermitSuccess, Oauth2Error,
+            TokenRevokeRequest,
+        },
+        server::IdmServerTransaction,
+        serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent},
     },
-    idm::event::{GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent},
-    idm::oauth2::{
-        AccessTokenRequest, AccessTokenResponse, AuthorisePermitSuccess, Oauth2Error,
-        TokenRevokeRequest,
-    },
-    idm::server::IdmServerTransaction,
-    idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent},
     modify::{Modify, ModifyInvalid, ModifyList},
     value::{OauthClaimMapJoin, PartialValue, Value},
 };

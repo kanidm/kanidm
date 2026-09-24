@@ -1,7 +1,6 @@
 use super::UiHint;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
-use std::fmt;
+use std::{collections::BTreeSet, fmt};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;

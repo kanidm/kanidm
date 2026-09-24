@@ -27,12 +27,14 @@ use rustls::{
     server::{ServerConfig, WebPkiClientVerifier},
     RootCertStore,
 };
-use std::fs;
-use std::io::{Read, Write};
-use std::path::Path;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::{
+    fs,
+    io::{Read, Write},
+    path::Path,
+    str::FromStr,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 use tokio_rustls::TlsAcceptor;
 use uuid::Uuid;
 

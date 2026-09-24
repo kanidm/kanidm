@@ -1,24 +1,28 @@
 //! LDAP specific operations handling components. This is where LDAP operations
 //! are sent to for processing.
 
-use std::collections::BTreeSet;
-use std::iter;
-use std::str::FromStr;
+use std::{collections::BTreeSet, iter, str::FromStr};
 
 use compact_jwt::JwsCompact;
 use itertools::Itertools;
-use kanidm_proto::constants::*;
-use kanidm_proto::internal::{ApiToken, UserAuthToken};
+use kanidm_proto::{
+    constants::*,
+    internal::{ApiToken, UserAuthToken},
+};
 use ldap3_proto::simple::*;
 use regex::{Regex, RegexBuilder};
 use std::net::IpAddr;
 use tracing::trace;
 use uuid::Uuid;
 
-use crate::event::SearchEvent;
-use crate::idm::event::{LdapApplicationAuthEvent, LdapAuthEvent, LdapTokenAuthEvent};
-use crate::idm::server::{IdmServer, IdmServerAuthTransaction, IdmServerTransaction};
-use crate::prelude::*;
+use crate::{
+    event::SearchEvent,
+    idm::{
+        event::{LdapApplicationAuthEvent, LdapAuthEvent, LdapTokenAuthEvent},
+        server::{IdmServer, IdmServerAuthTransaction, IdmServerTransaction},
+    },
+    prelude::*,
+};
 
 // Clippy doesn't like Bind here. But proto needs unboxed ldapmsg,
 // and ldapboundtoken is moved. Really, it's not too bad, every message here is pretty sucky.
@@ -884,15 +888,19 @@ mod tests {
     use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
     use hashbrown::HashSet;
     use kanidm_proto::internal::ApiToken;
-    use ldap3_proto::proto::{
-        LdapFilter, LdapMsg, LdapOp, LdapResultCode, LdapSearchScope, LdapSubstringFilter,
+    use ldap3_proto::{
+        proto::{
+            LdapFilter, LdapMsg, LdapOp, LdapResultCode, LdapSearchScope, LdapSubstringFilter,
+        },
+        simple::*,
     };
-    use ldap3_proto::simple::*;
 
     use super::{LdapServer, LdapSession};
-    use crate::idm::application::GenerateApplicationPasswordEvent;
-    use crate::idm::event::{LdapApplicationAuthEvent, UnixPasswordChangeEvent};
-    use crate::idm::serviceaccount::GenerateApiTokenEvent;
+    use crate::idm::{
+        application::GenerateApplicationPasswordEvent,
+        event::{LdapApplicationAuthEvent, UnixPasswordChangeEvent},
+        serviceaccount::GenerateApiTokenEvent,
+    };
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
 

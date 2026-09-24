@@ -1,6 +1,8 @@
 use crate::https::ServerState;
-use axum::routing::{get, post};
-use axum::Router;
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use axum_htmx::HxRequestGuardLayer;
 
 pub(crate) mod groups;

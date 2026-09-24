@@ -1,8 +1,10 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::{
-    uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ScimValueIntermediate, ValueSet,
-    ValueSetIntermediate, ValueSetResolveStatus, ValueSetScimPut,
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{
+        uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ScimValueIntermediate, ValueSet,
+        ValueSetIntermediate, ValueSetResolveStatus, ValueSetScimPut,
+    },
 };
 use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;

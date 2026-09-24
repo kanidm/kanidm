@@ -19,20 +19,24 @@ use std::collections::BTreeSet;
 #[cfg(test)]
 use std::sync::Arc;
 
-use kanidm_proto::internal::{
-    CreateRequest, DeleteRequest, ModifyList as ProtoModifyList, ModifyRequest, OperationError,
-    SearchRequest, SearchResponse,
+use kanidm_proto::{
+    internal::{
+        CreateRequest, DeleteRequest, ModifyList as ProtoModifyList, ModifyRequest, OperationError,
+        SearchRequest, SearchResponse,
+    },
+    v1::{Entry as ProtoEntry, WhoamiResponse},
 };
-use kanidm_proto::v1::{Entry as ProtoEntry, WhoamiResponse};
 use ldap3_proto::simple::LdapFilter;
 use uuid::Uuid;
 
-use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
-use crate::filter::{Filter, FilterInvalid, FilterValid};
-use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
-use crate::prelude::*;
-use crate::schema::SchemaTransaction;
-use crate::value::PartialValue;
+use crate::{
+    entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced},
+    filter::{Filter, FilterInvalid, FilterValid},
+    modify::{ModifyInvalid, ModifyList, ModifyValid},
+    prelude::*,
+    schema::SchemaTransaction,
+    value::PartialValue,
+};
 
 #[derive(Debug)]
 pub struct SearchResult {

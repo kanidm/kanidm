@@ -1,6 +1,4 @@
-use crate::entry::EntryInitNew;
-use crate::prelude::*;
-use crate::value::CredentialType;
+use crate::{entry::EntryInitNew, prelude::*, value::CredentialType};
 
 use kanidm_proto::internal::{Filter, OperationError, UiHint};
 

@@ -1,8 +1,10 @@
 use std::str::FromStr;
 
-use crate::be::{Backend, BackendConfig};
-use crate::prelude::*;
-use crate::schema::Schema;
+use crate::{
+    be::{Backend, BackendConfig},
+    prelude::*,
+    schema::Schema,
+};
 
 pub struct TestConfiguration {
     pub domain_level: DomainVersion,

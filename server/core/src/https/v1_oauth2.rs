@@ -1,18 +1,24 @@
-use super::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
-use super::errors::WebError;
-use super::middleware::KOpId;
-use super::oauth2::oauth2_id;
-use super::v1::{
-    json_rest_event_delete_id_attr, json_rest_event_get, json_rest_event_post,
-    json_rest_event_post_id_attr,
+use super::{
+    apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse},
+    errors::WebError,
+    middleware::KOpId,
+    oauth2::oauth2_id,
+    v1::{
+        json_rest_event_delete_id_attr, json_rest_event_get, json_rest_event_post,
+        json_rest_event_post_id_attr,
+    },
+    ServerState,
 };
-use super::ServerState;
 
 use crate::https::extractors::VerifiedClientInformation;
-use axum::extract::{Path, State};
-use axum::{Extension, Json};
-use kanidm_proto::internal::{ImageType, ImageValue, Oauth2ClaimMapJoin};
-use kanidm_proto::v1::Entry as ProtoEntry;
+use axum::{
+    extract::{Path, State},
+    Extension, Json,
+};
+use kanidm_proto::{
+    internal::{ImageType, ImageValue, Oauth2ClaimMapJoin},
+    v1::Entry as ProtoEntry,
+};
 use kanidmd_lib::prelude::*;
 
 #[utoipa::path(

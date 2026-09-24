@@ -1,10 +1,11 @@
 //! Where we hide the error handling widgets
 //!
 
-use axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN;
-use axum::http::{HeaderValue, StatusCode};
-use axum::response::{IntoResponse, Response};
-use axum::Json;
+use axum::{
+    http::{header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue, StatusCode},
+    response::{IntoResponse, Response},
+    Json,
+};
 
 use hyper::header::WWW_AUTHENTICATE;
 use kanidm_proto::oauth2::ErrorResponse;

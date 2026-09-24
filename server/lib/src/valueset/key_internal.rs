@@ -1,13 +1,13 @@
-use crate::be::dbvalue::{DbValueKeyInternal, DbValueKeyStatus, DbValueKeyUsage};
-use crate::prelude::*;
-use crate::server::keys::KeyId;
-use crate::value::{KeyStatus, KeyUsage};
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    be::dbvalue::{DbValueKeyInternal, DbValueKeyStatus, DbValueKeyUsage},
+    prelude::*,
+    server::keys::KeyId,
+    value::{KeyStatus, KeyUsage},
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 use crypto_glue::traits::Zeroizing;
 use kanidm_proto::scim_v1::server::ScimKeyInternal;
-use std::collections::BTreeMap;
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 use time::OffsetDateTime;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -412,9 +412,7 @@ impl ValueSetT for ValueSetKeyInternal {
 #[cfg(test)]
 mod tests {
     use super::{KeyInternalData, ValueSetKeyInternal};
-    use crate::prelude::*;
-    use crate::server::keys::KeyId;
-    use crate::value::*;
+    use crate::{prelude::*, server::keys::KeyId, value::*};
     use crypto_glue::traits::Zeroizing;
 
     #[test]

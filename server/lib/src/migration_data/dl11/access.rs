@@ -1,9 +1,7 @@
 #![allow(clippy::expect_used)]
 //! Constant Entries for the IDM
 
-use crate::entry::EntryInitNew;
-use crate::prelude::*;
-use crate::value::Value;
+use crate::{entry::EntryInitNew, prelude::*, value::Value};
 use kanidm_proto::internal::Filter as ProtoFilter;
 use std::sync::LazyLock;
 

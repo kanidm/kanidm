@@ -1,13 +1,13 @@
-use std::collections::BTreeSet;
-use std::iter::once;
-use std::sync::Arc;
+use std::{collections::BTreeSet, iter::once, sync::Arc};
 
 use hashbrown::HashSet;
 
-use crate::event::{CreateEvent, ModifyEvent};
-use crate::modify::Modify;
-use crate::plugins::Plugin;
-use crate::prelude::*;
+use crate::{
+    event::{CreateEvent, ModifyEvent},
+    modify::Modify,
+    plugins::Plugin,
+    prelude::*,
+};
 
 // This module has some special properties around it's operation, namely that it
 // has to make a certain number of assertions *early* in the entry lifecycle around

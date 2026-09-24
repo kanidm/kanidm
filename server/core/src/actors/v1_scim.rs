@@ -5,13 +5,18 @@ use kanidm_proto::scim_v1::{
     ScimApplicationPassword, ScimApplicationPasswordCreate, ScimEntryGetQuery, ScimFilter,
     ScimSyncRequest, ScimSyncState,
 };
-use kanidmd_lib::idm::application::GenerateApplicationPasswordEvent;
-use kanidmd_lib::idm::scim::{
-    GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncUpdateEvent,
+use kanidmd_lib::{
+    idm::{
+        application::GenerateApplicationPasswordEvent,
+        scim::{
+            GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent,
+            ScimSyncUpdateEvent,
+        },
+        server::IdmServerTransaction,
+    },
+    prelude::*,
+    server::scim::{ScimCreateEvent, ScimDeleteEvent, ScimEntryPutEvent},
 };
-use kanidmd_lib::idm::server::IdmServerTransaction;
-use kanidmd_lib::prelude::*;
-use kanidmd_lib::server::scim::{ScimCreateEvent, ScimDeleteEvent, ScimEntryPutEvent};
 
 impl QueryServerWriteV1 {
     #[instrument(

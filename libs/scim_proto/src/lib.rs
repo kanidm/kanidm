@@ -24,9 +24,10 @@ pub mod group;
 pub mod user;
 
 pub mod prelude {
-    pub use crate::constants::*;
-    pub use crate::user::MultiValueAttr;
-    pub use crate::{ScimAttr, ScimComplexAttr, ScimEntry, ScimEntryHeader, ScimMeta, ScimValue};
+    pub use crate::{
+        constants::*, user::MultiValueAttr, ScimAttr, ScimComplexAttr, ScimEntry, ScimEntryHeader,
+        ScimMeta, ScimValue,
+    };
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]

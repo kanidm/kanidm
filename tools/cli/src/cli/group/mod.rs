@@ -1,5 +1,4 @@
-use crate::OpType;
-use crate::{handle_client_error, GroupOpt, GroupPosix, KanidmClientParser, OutputMode};
+use crate::{handle_client_error, GroupOpt, GroupPosix, KanidmClientParser, OpType, OutputMode};
 use kanidm_proto::constants::ATTR_GIDNUMBER;
 
 mod account_policy;

@@ -1,5 +1,4 @@
-use crate::idm::server::IdmServerProxyReadTransaction;
-use crate::prelude::*;
+use crate::{idm::server::IdmServerProxyReadTransaction, prelude::*};
 use kanidm_proto::internal::AppLink;
 
 impl IdmServerProxyReadTransaction<'_> {

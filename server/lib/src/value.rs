@@ -3,15 +3,14 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
-use crate::be::dbentry::DbIdentSpn;
-use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
-use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::server::identity::IdentityId;
-use crate::server::keys::KeyId;
-use crate::valueset::image::ImageValueThings;
-use crate::valueset::uuid_to_proto_string;
+use crate::{
+    be::{dbentry::DbIdentSpn, dbvalue::DbValueOauthClaimMapJoinV1},
+    credential::{apppwd::ApplicationPassword, totp::Totp, Credential},
+    prelude::*,
+    repl::cid::Cid,
+    server::{identity::IdentityId, keys::KeyId},
+    valueset::{image::ImageValueThings, uuid_to_proto_string},
+};
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use crypto_glue::{
     s256::Sha256Output,
@@ -19,22 +18,19 @@ use crypto_glue::{
     x509::Certificate,
 };
 use hashbrown::HashSet;
-use kanidm_proto::internal::ImageValue;
-use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
-use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
-use kanidm_proto::v1::UatPurposeStatus;
+use kanidm_proto::{
+    internal::{ApiTokenPurpose, Filter as ProtoFilter, ImageValue, UiHint},
+    scim_v1::ScimOauth2ClaimMapJoinChar,
+    v1::UatPurposeStatus,
+};
 use num_enum::TryFromPrimitive;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::cmp::Ordering;
-use std::collections::BTreeSet;
-use std::convert::TryFrom;
-use std::fmt;
-use std::fmt::Formatter;
-use std::hash::Hash;
-use std::str::FromStr;
-use std::time::Duration;
+use std::{
+    cmp::Ordering, collections::BTreeSet, convert::TryFrom, fmt, fmt::Formatter, hash::Hash,
+    str::FromStr, time::Duration,
+};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;

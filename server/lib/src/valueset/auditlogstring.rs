@@ -1,8 +1,9 @@
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    prelude::*,
+    repl::cid::Cid,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 use kanidm_proto::scim_v1::server::ScimAuditString;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
@@ -191,9 +192,7 @@ impl ValueSetT for ValueSetAuditLogString {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
-    use crate::repl::cid::Cid;
-    use crate::value::Value;
-    use crate::valueset::ValueSet;
+    use crate::{repl::cid::Cid, value::Value, valueset::ValueSet};
     use std::time::Duration;
 
     #[test]

@@ -1,8 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::errors::WebError;
-use super::middleware::KOpId;
-use super::ServerState;
+use super::{errors::WebError, middleware::KOpId, ServerState};
 use crate::https::extractors::{AuthorisationHeaders, VerifiedClientInformation};
 use axum::{
     body::Body,
@@ -20,21 +18,24 @@ use axum::{
     Extension, Form, Json, Router,
 };
 use axum_macros::debug_handler;
-use kanidm_proto::constants::uri::{
-    OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT,
+use kanidm_proto::{
+    constants::{
+        uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT},
+        APPLICATION_JSON,
+    },
+    oauth2::AuthorisationResponse,
 };
-use kanidm_proto::constants::APPLICATION_JSON;
-use kanidm_proto::oauth2::AuthorisationResponse;
-use kanidmd_lib::idm::oauth2::{
-    AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest,
-    AuthorisationRequestContext, AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
+use kanidmd_lib::{
+    idm::oauth2::{
+        AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest,
+        AuthorisationRequestContext, AuthoriseResponse, ErrorResponse, Oauth2Error,
+        TokenRevokeRequest,
+    },
+    prelude::{f_eq, *},
+    value::PartialValue,
 };
-use kanidmd_lib::prelude::f_eq;
-use kanidmd_lib::prelude::*;
-use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
-use serde_with::formats::CommaSeparator;
-use serde_with::{serde_as, StringWithSeparator};
+use serde_with::{formats::CommaSeparator, serde_as, StringWithSeparator};
 
 #[cfg(feature = "dev-oauth2-device-flow")]
 use kanidm_proto::oauth2::DeviceAuthorizationResponse;

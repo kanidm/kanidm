@@ -1,11 +1,9 @@
-use crate::idprovider::interface::IdProvider;
-use crate::idprovider::kanidm::KanidmProvider;
-use crate::idprovider::system::SystemProvider;
-use crate::resolver::{AuthSession, Resolver};
-use crate::SparkleFlavour;
 use crate::{
     check::check_nsswitch_has_module,
     db::{Cache, Db},
+    idprovider::{interface::IdProvider, kanidm::KanidmProvider, system::SystemProvider},
+    resolver::{AuthSession, Resolver},
+    SparkleFlavour,
 };
 use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
@@ -15,39 +13,45 @@ use kanidm_hsm_crypto::{
     AuthValue,
 };
 use kanidm_lib_file_permissions::diagnose_path;
-use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
-use kanidm_proto::internal::OperationError;
+use kanidm_proto::{constants::DEFAULT_CLIENT_CONFIG_PATH, internal::OperationError};
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
 use lru::LruCache;
-use sketching::tracing::span;
-use sketching::tracing_forest::util::*;
-use sketching::tracing_forest::{self, traits::*};
-use sparkle_unix_common::constants::DEFAULT_CONFIG_PATH;
-use sparkle_unix_common::json_codec::JsonCodec;
-use sparkle_unix_common::unix_config::{HsmType, UnixdConfig};
-use sparkle_unix_common::unix_passwd::EtcDb;
-use sparkle_unix_common::unix_proto::{
-    ClientRequest, ClientResponse, TaskRequest, TaskRequestFrame, TaskResponse,
+use sketching::{
+    tracing::span,
+    tracing_forest::{self, traits::*, util::*},
 };
-use std::collections::BTreeMap;
-use std::error::Error;
-use std::fs::metadata;
-use std::io::Error as IoError;
-use std::num::NonZeroUsize;
-use std::os::unix::fs::MetadataExt;
-use std::path::PathBuf;
-use std::process::ExitCode;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use sparkle_unix_common::{
+    constants::DEFAULT_CONFIG_PATH,
+    json_codec::JsonCodec,
+    unix_config::{HsmType, UnixdConfig},
+    unix_passwd::EtcDb,
+    unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskRequestFrame, TaskResponse},
+};
+use std::{
+    collections::BTreeMap,
+    error::Error,
+    fs::metadata,
+    io::Error as IoError,
+    num::NonZeroUsize,
+    os::unix::fs::MetadataExt,
+    path::PathBuf,
+    process::ExitCode,
+    str::FromStr,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 use time::OffsetDateTime;
-use tokio::fs::File;
 use tokio::io::AsyncReadExt; // for read_to_end()
-use tokio::net::{UnixListener, UnixStream};
-use tokio::sync::broadcast;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::oneshot;
+use tokio::{
+    fs::File,
+    net::{UnixListener, UnixStream},
+    sync::{
+        broadcast,
+        mpsc::{channel, Receiver, Sender},
+        oneshot,
+    },
+};
 use tokio_util::codec::Framed;
 
 #[cfg(feature = "dhat-heap")]

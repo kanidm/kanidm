@@ -1,20 +1,26 @@
 #![allow(clippy::result_large_err)]
 
-use super::constants::{ProfileMenuItems, Urls};
-use super::navbar::NavbarCtx;
-use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::login::ReauthPurpose;
-use crate::https::views::reauth::{
-    render_readonly, render_reauth, uat_privilege_decision, PrivilegeDecision,
+use super::{
+    constants::{ProfileMenuItems, Urls},
+    navbar::NavbarCtx,
 };
-use crate::https::ServerState;
+use crate::https::{
+    extractors::{DomainInfo, VerifiedClientInformation},
+    middleware::KOpId,
+    views::{
+        errors::HtmxError,
+        login::ReauthPurpose,
+        reauth::{render_readonly, render_reauth, uat_privilege_decision, PrivilegeDecision},
+    },
+    ServerState,
+};
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::extract::State;
-use axum::response::{IntoResponse, Response};
-use axum::Extension;
+use axum::{
+    extract::State,
+    response::{IntoResponse, Response},
+    Extension,
+};
 use axum_extra::extract::CookieJar;
 use kanidm_proto::internal::UserAuthToken;
 

@@ -1,12 +1,13 @@
-use std::collections::BTreeMap;
-use std::time::Duration;
+use std::{collections::BTreeMap, time::Duration};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::dbrepl::{DbEntryChangeState, DbReplMeta};
-use super::dbvalue::DbValueSetV2;
-use super::keystorage::{KeyHandle, KeyHandleId};
+use super::{
+    dbrepl::{DbEntryChangeState, DbReplMeta},
+    dbvalue::DbValueSetV2,
+    keystorage::{KeyHandle, KeyHandleId},
+};
 use crate::prelude::entries::Attribute;
 
 // REMEMBER: If you add a new version here, you MUST

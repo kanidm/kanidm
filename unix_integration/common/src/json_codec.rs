@@ -1,8 +1,7 @@
 use crate::constants::{CODEC_BYTESMUT_ALLOCATION_LIMIT, CODEC_MIMIMUM_BYTESMUT_ALLOCATION};
 use bytes::{BufMut, BytesMut};
 use serde::{de::DeserializeOwned, Serialize};
-use std::io;
-use std::marker::PhantomData;
+use std::{io, marker::PhantomData};
 use tokio_util::codec::{Decoder, Encoder};
 
 const U32_WIDTH: usize = 4;

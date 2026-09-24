@@ -1,9 +1,8 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::ValueSetResolveStatus;
-use crate::valueset::ValueSetScimPut;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
+};
 use crypto_glue::s256::Sha256Output;
 use serde::Deserialize;
 use serde_with::serde_as;

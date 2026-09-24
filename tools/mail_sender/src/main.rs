@@ -16,30 +16,31 @@ use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
 use hashbrown::HashSet;
-use kanidm_client::KanidmClient;
-use kanidm_client::KanidmClientBuilder;
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 use kanidm_proto::v1::OutboundMessage;
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use lettre::{
-    address::Address, message::header::ContentType, message::Mailbox,
-    transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message,
-    Tokio1Executor,
+    address::Address,
+    message::{header::ContentType, Mailbox},
+    transport::smtp::authentication::Credentials,
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
 };
-use std::fs::metadata;
-use std::fs::File;
-use std::io::Read;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use std::time::Duration;
+use std::{
+    fs::{metadata, File},
+    io::Read,
+    path::{Path, PathBuf},
+    str::FromStr,
+    time::Duration,
+};
 use time::format_description::well_known::Rfc2822;
-use tokio::runtime;
-use tokio::sync::broadcast;
-use tokio::sync::mpsc;
-use tokio::time::sleep;
+use tokio::{
+    runtime,
+    sync::{broadcast, mpsc},
+    time::sleep,
+};
 use tracing::{debug, error, info, warn};
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 use url::Url;
 use uuid::Uuid;
 

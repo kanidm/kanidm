@@ -1,8 +1,10 @@
-use libc::passwd as c_passwd;
-use libc::{gid_t, uid_t};
-use std::ffi::{CStr, OsStr, OsString};
-use std::os::unix::ffi::OsStrExt;
-use std::{mem, ptr};
+use libc::{gid_t, passwd as c_passwd, uid_t};
+use std::{
+    ffi::{CStr, OsStr, OsString},
+    mem,
+    os::unix::ffi::OsStrExt,
+    ptr,
+};
 
 pub fn get_current_uid() -> uid_t {
     unsafe { libc::getuid() }

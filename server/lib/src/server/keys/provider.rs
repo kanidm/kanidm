@@ -3,13 +3,9 @@ use crate::prelude::*;
 use concread::cowcell::*;
 use uuid::Uuid;
 
-use std::collections::BTreeMap;
-use std::fmt;
-use std::ops::Deref;
-use std::sync::Arc;
+use std::{collections::BTreeMap, fmt, ops::Deref, sync::Arc};
 
-use super::internal::KeyProviderInternal;
-use super::object::KeyObject;
+use super::{internal::KeyProviderInternal, object::KeyObject};
 
 #[cfg(test)]
 use super::object::KeyObjectRef;
