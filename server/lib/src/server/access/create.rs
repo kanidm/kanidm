@@ -138,9 +138,10 @@ fn create_filter_entry<'a>(
             let pres = BTreeSet::from([
                 Attribute::Class,
                 Attribute::DeleteAfter,
-                Attribute::Name,
                 Attribute::DisplayName,
                 Attribute::Mail,
+                Attribute::Name,
+                Attribute::Uuid,
             ]);
 
             let pres_cls = BTreeSet::from([
