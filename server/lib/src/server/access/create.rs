@@ -349,6 +349,7 @@ fn message_queue<'a>(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IR
                         Attribute::MailDestination,
                         Attribute::MessageTemplate,
                         Attribute::SendAfter,
+                        Attribute::Uuid,
                     ]);
 
                     let allow_cls = BTreeSet::from([

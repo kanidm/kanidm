@@ -10,26 +10,33 @@ impl QueryServerWriteTransaction<'_> {
         ident: &Identity,
         message: OutboundMessage,
         to_address: String,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         let curtime_odt = self.get_curtime_odt();
         let delete_after_odt = curtime_odt + DEFAULT_MESSAGE_RETENTION;
 
-        let mut e_msg: EntryInitNew = Entry::new();
-        e_msg.set_ava_set(
-            &Attribute::Class,
-            ValueSetIutf8::new(EntryClass::OutboundMessage.into()),
-        );
-        e_msg.set_ava_set(&Attribute::SendAfter, ValueSetDateTime::new(curtime_odt));
-        e_msg.set_ava_set(
-            &Attribute::DeleteAfter,
-            ValueSetDateTime::new(delete_after_odt),
-        );
-        e_msg.set_ava_set(&Attribute::MessageTemplate, ValueSetMessage::new(message));
-        e_msg.set_ava_set(
-            &Attribute::MailDestination,
-            ValueSetEmailAddress::new(to_address),
-        );
+        let message_uuid = Uuid::new_v4();
 
-        self.impersonate_create(ident, vec![e_msg])
+        let e_msg = EntryInitNew::from_iter([
+            (
+                Attribute::Class,
+                ValueSetIutf8::new(EntryClass::OutboundMessage.into()) as ValueSet,
+            ),
+            (Attribute::Uuid, ValueSetUuid::new(message_uuid)),
+            (Attribute::SendAfter, ValueSetDateTime::new(curtime_odt)),
+            (
+                Attribute::DeleteAfter,
+                ValueSetDateTime::new(delete_after_odt),
+            ),
+            (Attribute::MessageTemplate, ValueSetMessage::new(message)),
+            (
+                Attribute::MailDestination,
+                ValueSetEmailAddress::new(to_address),
+            ),
+        ]);
+
+        self.impersonate_create(ident, vec![e_msg]).map(|()| {
+            debug!(?message_uuid, "Queued");
+            message_uuid
+        })
     }
 }

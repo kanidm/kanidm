@@ -336,7 +336,7 @@ impl QueryServerWriteV1 {
         client_auth_info: ClientAuthInfo,
         eventid: Uuid,
         uuid_or_name: String,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
         let ident = idms_prox_write

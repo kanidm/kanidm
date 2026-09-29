@@ -65,7 +65,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         self.qs_write.create(&ce)?;
 
-        // TODO: Perform the post process on the request.
+        // TODO: Queue the email to validate the account.
 
         Ok(())
     }

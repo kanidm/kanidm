@@ -693,7 +693,7 @@ impl QueryServerWriteV1 {
         max_ttl: Option<Duration>,
         email: Option<String>,
         eventid: Uuid,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
         let ident = idms_prox_write
