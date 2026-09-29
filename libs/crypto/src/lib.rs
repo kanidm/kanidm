@@ -10,9 +10,11 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 #![deny(clippy::unreachable)]
 
-use base64::engine::general_purpose;
-use base64::engine::GeneralPurpose;
-use base64::{alphabet, Engine};
+use base64::{
+    alphabet,
+    engine::{general_purpose, GeneralPurpose},
+    Engine,
+};
 use base64urlsafedata::Base64UrlSafeData;
 use crypto_glue::{
     argon2::{Algorithm, Argon2, Params, PasswordHash, Version},
@@ -26,10 +28,12 @@ use kanidm_hsm_crypto::{provider::TpmHmacS256, structures::HmacS256Key};
 use md4::Md4;
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::fmt::Display;
-use std::num::ParseIntError;
-use std::time::{Duration, Instant};
+use std::{
+    fmt,
+    fmt::Display,
+    num::ParseIntError,
+    time::{Duration, Instant},
+};
 use tracing::{debug, error, warn};
 
 mod crypt_md5;

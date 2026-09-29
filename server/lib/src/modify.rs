@@ -4,17 +4,19 @@
 
 use std::slice;
 
-use kanidm_proto::internal::{
-    Modify as ProtoModify, ModifyList as ProtoModifyList, OperationError, SchemaError,
+use kanidm_proto::{
+    internal::{Modify as ProtoModify, ModifyList as ProtoModifyList, OperationError, SchemaError},
+    v1::Entry as ProtoEntry,
 };
-use kanidm_proto::v1::Entry as ProtoEntry;
 // Should this be std?
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use crate::prelude::*;
-use crate::schema::SchemaTransaction;
-use crate::value::{PartialValue, Value};
+use crate::{
+    prelude::*,
+    schema::SchemaTransaction,
+    value::{PartialValue, Value},
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModifyValid;

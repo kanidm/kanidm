@@ -1,15 +1,16 @@
-use crate::check::check_nsswitch_has_module;
-use crate::opt::tool::{KanidmUnixOpt, KanidmUnixParser};
-use crate::SparkleFlavour;
-use clap::Parser;
-use sparkle_unix_common::client::DaemonClient;
-use sparkle_unix_common::constants::DEFAULT_CONFIG_PATH;
-use sparkle_unix_common::unix_config::PamNssConfig;
-use sparkle_unix_common::unix_proto::{
-    ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo,
+use crate::{
+    check::check_nsswitch_has_module,
+    opt::tool::{KanidmUnixOpt, KanidmUnixParser},
+    SparkleFlavour,
 };
-use std::path::PathBuf;
-use std::process::ExitCode;
+use clap::Parser;
+use sparkle_unix_common::{
+    client::DaemonClient,
+    constants::DEFAULT_CONFIG_PATH,
+    unix_config::PamNssConfig,
+    unix_proto::{ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo},
+};
+use std::{path::PathBuf, process::ExitCode};
 
 macro_rules! setup_client {
     () => {{

@@ -1,11 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
-use std::fmt;
+use std::{cmp::Ordering, fmt};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use webauthn_rs_proto::PublicKeyCredential;
-use webauthn_rs_proto::RequestChallengeResponse;
+use webauthn_rs_proto::{PublicKeyCredential, RequestChallengeResponse};
 
 /// Authentication to Kanidm is a stepped process.
 ///

@@ -6,8 +6,10 @@ use crypto_glue::{
 };
 use kanidm_proto::internal::{TotpAlgo as ProtoTotpAlgo, TotpSecret as ProtoTotp};
 use rand::RngExt;
-use std::convert::{TryFrom, TryInto};
-use std::time::{Duration, SystemTime};
+use std::{
+    convert::{TryFrom, TryInto},
+    time::{Duration, SystemTime},
+};
 
 use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
 

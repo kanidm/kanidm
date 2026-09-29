@@ -1,14 +1,18 @@
-use crate::prelude::*;
-use crate::schema::{SchemaAttribute, SchemaTransaction};
-use crate::server::assert::{AssertEvent, AssertOnce, EntryAssertion};
-use crate::server::batch_modify::{BatchModifyEvent, ModSetValid};
-use crate::server::ValueSetResolveStatus;
-use crate::valueset::*;
-use crypto_glue::s256::Sha256Output;
-use kanidm_proto::scim_v1::client::{
-    ScimEntryAssertion, ScimEntryPostGeneric, ScimEntryPutGeneric,
+use crate::{
+    prelude::*,
+    schema::{SchemaAttribute, SchemaTransaction},
+    server::{
+        assert::{AssertEvent, AssertOnce, EntryAssertion},
+        batch_modify::{BatchModifyEvent, ModSetValid},
+        ValueSetResolveStatus,
+    },
+    valueset::*,
 };
-use kanidm_proto::scim_v1::JsonValue;
+use crypto_glue::s256::Sha256Output;
+use kanidm_proto::scim_v1::{
+    client::{ScimEntryAssertion, ScimEntryPostGeneric, ScimEntryPutGeneric},
+    JsonValue,
+};
 use std::collections::{
     // BTreeSet,
     BTreeMap,
@@ -532,11 +536,11 @@ impl QueryServerWriteTransaction<'_> {
 mod tests {
     use super::{ScimAssertEvent, ScimEntryPutEvent};
     use crate::prelude::*;
-    use kanidm_proto::scim_v1::client::{
-        ScimEntryAssertion, ScimEntryPutKanidm, ScimReference as ScimClientReference,
+    use kanidm_proto::scim_v1::{
+        client::{ScimEntryAssertion, ScimEntryPutKanidm, ScimReference as ScimClientReference},
+        server::ScimReference,
+        ScimMail,
     };
-    use kanidm_proto::scim_v1::server::ScimReference;
-    use kanidm_proto::scim_v1::ScimMail;
     use std::collections::BTreeMap;
 
     #[qs_test]

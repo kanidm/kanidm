@@ -1,12 +1,12 @@
-use crate::opt::ssh_authorisedkeys::SshAuthorisedKeysOpt;
-use crate::SparkleFlavour;
+use crate::{opt::ssh_authorisedkeys::SshAuthorisedKeysOpt, SparkleFlavour};
 use clap::Parser;
-use sparkle_unix_common::client::DaemonClient;
-use sparkle_unix_common::constants::DEFAULT_CONFIG_PATH;
-use sparkle_unix_common::unix_config::PamNssConfig;
-use sparkle_unix_common::unix_proto::{ClientRequest, ClientResponse};
-use std::path::PathBuf;
-use std::process::ExitCode;
+use sparkle_unix_common::{
+    client::DaemonClient,
+    constants::DEFAULT_CONFIG_PATH,
+    unix_config::PamNssConfig,
+    unix_proto::{ClientRequest, ClientResponse},
+};
+use std::{path::PathBuf, process::ExitCode};
 
 pub async fn main<F: SparkleFlavour>(_flavour: F) -> ExitCode {
     let opt = SshAuthorisedKeysOpt::parse();

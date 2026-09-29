@@ -1,10 +1,17 @@
-use super::proto::{
-    ReplEntryV1, ReplIncrementalContext, ReplIncrementalEntryV1, ReplRefreshContext, ReplRuvRange,
+use super::{
+    proto::{
+        ReplEntryV1, ReplIncrementalContext, ReplIncrementalEntryV1, ReplRefreshContext,
+        ReplRuvRange,
+    },
+    ruv::{RangeDiffStatus, ReplicationUpdateVector, ReplicationUpdateVectorTransaction},
 };
-use super::ruv::{RangeDiffStatus, ReplicationUpdateVector, ReplicationUpdateVectorTransaction};
-use crate::be::keystorage::{KeyHandle, KeyHandleId};
-use crate::be::BackendTransaction;
-use crate::prelude::*;
+use crate::{
+    be::{
+        keystorage::{KeyHandle, KeyHandleId},
+        BackendTransaction,
+    },
+    prelude::*,
+};
 use crypto_glue::{
     der::SecretDocument,
     ecdsa_p256::{self, EcdsaP256DerSignature, EcdsaP256SigningKey, EcdsaP256VerifyingKey},

@@ -4,16 +4,19 @@
 //! integrations, which are then able to be used an accessed from the IDM layer
 //! for operations involving OAuth2 authentication processing.
 
-use crate::idm::account::Account;
-use crate::idm::server::{
-    IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction, Token,
+use crate::{
+    idm::{
+        account::Account,
+        server::{
+            IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
+            Token,
+        },
+    },
+    prelude::*,
+    server::keys::{KeyId, KeyObject, KeyProvidersTransaction, KeyProvidersWriteTransaction},
+    utils,
+    value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE},
 };
-use crate::prelude::*;
-use crate::server::keys::{
-    KeyId, KeyObject, KeyProvidersTransaction, KeyProvidersWriteTransaction,
-};
-use crate::utils;
-use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 use base64::{engine::general_purpose, Engine as _};
 pub use compact_jwt::{compact::JwkKeySet, OidcToken};
 use compact_jwt::{
@@ -27,9 +30,7 @@ use crypto_glue::{
     s256::{Sha256, Sha256Output},
     traits::Digest,
 };
-use hashbrown::HashMap;
-use hashbrown::HashSet;
-use kanidm_proto::constants::*;
+use hashbrown::{HashMap, HashSet};
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AccessTokenType, AuthorisationRequest, ClaimType, ClientAuth,
@@ -39,15 +40,19 @@ pub use kanidm_proto::oauth2::{
     OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, PkceRequest, ResponseMode, ResponseType,
     SubjectType, TokenRevokeRequest, OAUTH2_TOKEN_TYPE_ACCESS_TOKEN,
 };
-use kanidm_proto::oauth2::{IssuedTokenType, Prompt};
+use kanidm_proto::{
+    constants::*,
+    oauth2::{IssuedTokenType, Prompt},
+};
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    collections::{btree_map::Entry as BTreeEntry, BTreeMap, BTreeSet},
+    fmt,
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
+};
 use subtle::ConstantTimeEq;
 use time::OffsetDateTime;
 use tracing::trace;
@@ -3691,16 +3696,20 @@ mod tests {
         AuthorisationRequestContext, CtSecret, Oauth2TokenType, PkceS256Secret,
         TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS,
     };
-    use crate::credential::Credential;
-    use crate::idm::accountpolicy::ResolvedAccountPolicy;
-    use crate::idm::oauth2::{
-        host_is_local, parse_basic_authz, AuthoriseResponse, Oauth2Error, OauthRSType,
+    use crate::{
+        credential::Credential,
+        idm::{
+            accountpolicy::ResolvedAccountPolicy,
+            oauth2::{
+                host_is_local, parse_basic_authz, AuthoriseResponse, Oauth2Error, OauthRSType,
+            },
+            server::{IdmServer, IdmServerTransaction},
+            serviceaccount::GenerateApiTokenEvent,
+        },
+        prelude::*,
+        value::{AuthType, OauthClaimMapJoin, SessionState},
+        valueset::{ValueSetOauthScopeMap, ValueSetSshKey, ValueSetUint32},
     };
-    use crate::idm::server::{IdmServer, IdmServerTransaction};
-    use crate::idm::serviceaccount::GenerateApiTokenEvent;
-    use crate::prelude::*;
-    use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
-    use crate::valueset::{ValueSetOauthScopeMap, ValueSetSshKey, ValueSetUint32};
     use base64::{engine::general_purpose, Engine as _};
     use compact_jwt::{
         compact::JwkUse, crypto::JwsRs256Verifier, dangernoverify::JwsDangerReleaseWithoutVerify,
@@ -3708,13 +3717,17 @@ mod tests {
         OidcUnverified,
     };
     use kanidm_lib_crypto::CryptoPolicy;
-    use kanidm_proto::constants::*;
-    use kanidm_proto::internal::{SshPublicKey, UserAuthToken};
-    use kanidm_proto::oauth2::*;
-    use std::collections::{BTreeMap, BTreeSet};
-    use std::convert::TryFrom;
-    use std::str::FromStr;
-    use std::time::Duration;
+    use kanidm_proto::{
+        constants::*,
+        internal::{SshPublicKey, UserAuthToken},
+        oauth2::*,
+    };
+    use std::{
+        collections::{BTreeMap, BTreeSet},
+        convert::TryFrom,
+        str::FromStr,
+        time::Duration,
+    };
     use time::OffsetDateTime;
     use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 

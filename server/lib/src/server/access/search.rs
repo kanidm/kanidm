@@ -1,12 +1,12 @@
-use super::migration::{MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES};
-use super::profiles::{
-    AccessControlReceiverCondition, AccessControlSearchResolved, AccessControlTargetCondition,
+use super::{
+    migration::{MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES},
+    profiles::{
+        AccessControlReceiverCondition, AccessControlSearchResolved, AccessControlTargetCondition,
+    },
+    AccessSrchResult,
 };
-use super::AccessSrchResult;
 use crate::prelude::*;
-use std::collections::BTreeSet;
-use std::ops::Sub;
-use std::sync::Arc;
+use std::{collections::BTreeSet, ops::Sub, sync::Arc};
 
 pub(super) enum SearchResult {
     Deny,

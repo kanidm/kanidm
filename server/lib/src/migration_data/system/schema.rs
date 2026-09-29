@@ -1,5 +1,4 @@
-use crate::prelude::*;
-use crate::schema::Replicated;
+use crate::{prelude::*, schema::Replicated};
 
 pub static SCHEMA_ATTR_CLASS: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     name: Attribute::Class,

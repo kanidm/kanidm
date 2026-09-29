@@ -1,15 +1,18 @@
 #![allow(clippy::result_large_err)]
 
 use super::csrf::{self, CsrfData, CsrfSolution};
-use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
-use crate::https::ServerState;
+use crate::https::{
+    extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
+    middleware::KOpId,
+    ServerState,
+};
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::extract::State;
-use axum::response::{IntoResponse, Response};
-use axum::Extension;
-use axum::Form;
+use axum::{
+    extract::State,
+    response::{IntoResponse, Response},
+    Extension, Form,
+};
 use axum_extra::extract::CookieJar;
 use kanidmd_lib::prelude::duration_from_epoch_now;
 use serde::Deserialize;

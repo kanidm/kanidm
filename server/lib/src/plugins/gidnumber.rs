@@ -1,13 +1,14 @@
 // A plugin that generates gid numbers on types that require them for posix
 // support.
 
-use std::iter::once;
-use std::sync::Arc;
+use std::{iter::once, sync::Arc};
 
-use crate::event::{CreateEvent, ModifyEvent};
-use crate::plugins::Plugin;
-use crate::prelude::*;
-use crate::utils::uuid_to_gid_u32;
+use crate::{
+    event::{CreateEvent, ModifyEvent},
+    plugins::Plugin,
+    prelude::*,
+    utils::uuid_to_gid_u32,
+};
 
 // Systemd dynamic units allocate between 61184–65519, most distros allocate
 // system uids from 0 - 1000, and many others give user ids between 1000 to

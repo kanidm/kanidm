@@ -4,36 +4,44 @@
 //! is to persist content safely to disk, load that content, and execute queries
 //! utilising indexes in the most effective way possible.
 
-use crate::be::dbentry::{DbBackup, DbEntry};
-use crate::be::dbrepl::DbReplMeta;
-use crate::entry::Entry;
-use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::repl::proto::ReplCidRange;
-use crate::repl::ruv::{
-    ReplicationUpdateVector, ReplicationUpdateVectorReadTransaction,
-    ReplicationUpdateVectorTransaction, ReplicationUpdateVectorWriteTransaction,
+use crate::{
+    be::{
+        dbentry::{DbBackup, DbEntry},
+        dbrepl::DbReplMeta,
+    },
+    entry::Entry,
+    filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved},
+    prelude::*,
+    repl::{
+        cid::Cid,
+        proto::ReplCidRange,
+        ruv::{
+            ReplicationUpdateVector, ReplicationUpdateVectorReadTransaction,
+            ReplicationUpdateVectorTransaction, ReplicationUpdateVectorWriteTransaction,
+        },
+    },
+    utils::trigraph_iter,
+    value::{IndexType, Value},
 };
-use crate::utils::trigraph_iter;
-use crate::value::{IndexType, Value};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
-use idlset::v2::IDLBitRange;
-use idlset::AndNot;
-use kanidm_proto::backup::BackupCompression;
-use kanidm_proto::internal::{ConsistencyError, OperationError};
-use std::collections::BTreeMap;
-use std::io::prelude::*;
-use std::ops::DerefMut;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::time::Duration;
+use idlset::{v2::IDLBitRange, AndNot};
+use kanidm_proto::{
+    backup::BackupCompression,
+    internal::{ConsistencyError, OperationError},
+};
+use std::{
+    collections::BTreeMap,
+    io::prelude::*,
+    ops::DerefMut,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 use tracing::{trace, trace_span};
 use uuid::Uuid;
 
-use flate2::write::GzEncoder;
-use flate2::Compression;
+use flate2::{write::GzEncoder, Compression};
 
 pub(crate) mod dbentry;
 pub(crate) mod dbrepl;
@@ -2275,20 +2283,23 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
-    use super::super::entry::{Entry, EntryInit, EntryNew};
-    use super::Limits;
     use super::{
+        super::entry::{Entry, EntryInit, EntryNew},
         Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, DbBackup, IdList,
-        IdxKey, OperationError,
+        IdxKey, Limits, OperationError,
     };
-    use crate::prelude::*;
-    use crate::repl::cid::Cid;
-    use crate::value::{IndexType, PartialValue, Value};
+    use crate::{
+        prelude::*,
+        repl::cid::Cid,
+        value::{IndexType, PartialValue, Value},
+    };
     use idlset::v2::IDLBitRange;
     use kanidm_proto::backup::BackupCompression;
-    use std::iter::FromIterator;
-    use std::sync::{Arc, LazyLock};
-    use std::time::Duration;
+    use std::{
+        iter::FromIterator,
+        sync::{Arc, LazyLock},
+        time::Duration,
+    };
 
     static CID_ZERO: LazyLock<Cid> = LazyLock::new(Cid::new_zero);
     static CID_ONE: LazyLock<Cid> = LazyLock::new(|| Cid::new_count(1));

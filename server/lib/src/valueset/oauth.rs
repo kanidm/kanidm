@@ -1,21 +1,26 @@
 use crate::valueset::ScimResolveStatus;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{btree_map::Entry as BTreeEntry, BTreeMap, BTreeSet};
 
-use crate::be::dbvalue::{DbValueOauthClaimMap, DbValueOauthScopeMapV1};
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE, OAUTH_CLAIMNAME_RE};
-use crate::valueset::{
-    uuid_to_proto_string, DbValueSetV2, ResolvedValueSetOauth2ClaimMap,
-    ResolvedValueSetOauth2ScopeMap, ScimValueIntermediate, UnresolvedScimValueOauth2ClaimMap,
-    UnresolvedScimValueOauth2ScopeMap, UnresolvedValueSetOauth2ClaimMap,
-    UnresolvedValueSetOauth2ScopeMap, ValueSet, ValueSetIntermediate, ValueSetResolveStatus,
-    ValueSetScimPut,
+use crate::{
+    be::dbvalue::{DbValueOauthClaimMap, DbValueOauthScopeMapV1},
+    prelude::*,
+    schema::SchemaAttribute,
+    value::{OauthClaimMapJoin, OAUTHSCOPE_RE, OAUTH_CLAIMNAME_RE},
+    valueset::{
+        uuid_to_proto_string, DbValueSetV2, ResolvedValueSetOauth2ClaimMap,
+        ResolvedValueSetOauth2ScopeMap, ScimValueIntermediate, UnresolvedScimValueOauth2ClaimMap,
+        UnresolvedScimValueOauth2ScopeMap, UnresolvedValueSetOauth2ClaimMap,
+        UnresolvedValueSetOauth2ScopeMap, ValueSet, ValueSetIntermediate, ValueSetResolveStatus,
+        ValueSetScimPut,
+    },
 };
-use kanidm_proto::scim_v1::client::ScimOAuth2ClaimMap as ClientScimOAuth2ClaimMap;
-use kanidm_proto::scim_v1::client::ScimOAuth2ScopeMap as ClientScimOAuth2ScopeMap;
-use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::{
+    client::{
+        ScimOAuth2ClaimMap as ClientScimOAuth2ClaimMap,
+        ScimOAuth2ScopeMap as ClientScimOAuth2ScopeMap,
+    },
+    JsonValue,
+};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetOauthScope {

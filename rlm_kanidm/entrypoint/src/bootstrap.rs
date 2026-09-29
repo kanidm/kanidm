@@ -1,11 +1,13 @@
 use anyhow::{anyhow, bail, Context, Result};
 use rlm_kanidm_shared::config::KanidmRadiusConfig;
-use std::ffi::OsString;
-use std::fs;
-use std::io::{Read, Write};
-use std::os::unix::process::CommandExt;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    ffi::OsString,
+    fs,
+    io::{Read, Write},
+    os::unix::process::CommandExt,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 const CONTAINER_CONFIG_FILE_PATH: &str = "/data/radius.toml";
 

@@ -1,8 +1,10 @@
 #[test]
 fn bench_ip_address_parsing() {
-    use std::net::{IpAddr, SocketAddr};
-    use std::str::FromStr;
-    use std::time::Instant;
+    use std::{
+        net::{IpAddr, SocketAddr},
+        str::FromStr,
+        time::Instant,
+    };
 
     let ip_input_some = Some("1.2.3.4:1234");
     let test_val = Some(IpAddr::from_str("1.2.3.4").unwrap());

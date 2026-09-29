@@ -2,20 +2,23 @@ use super::{
     CredState, BAD_AUTH_TYPE_MSG, BAD_OAUTH2_CSRF_STATE_MSG, BAD_OAUTH2_SESSION_MSG,
     BAD_OAUTH2_SUBJECT_MSG,
 };
-use crate::idm::account::OAuth2AccountCredential;
-use crate::idm::authentication::{AuthCredential, AuthExternal};
-use crate::idm::oauth2::PkceS256Secret;
-use crate::idm::oauth2_client::{OAuth2ClientProvider, OAuth2SubjectVerifier};
-use crate::prelude::*;
-use crate::utils;
-use crate::value::{AuthType, SessionExtMetadata};
+use crate::{
+    idm::{
+        account::OAuth2AccountCredential,
+        authentication::{AuthCredential, AuthExternal},
+        oauth2::PkceS256Secret,
+        oauth2_client::{OAuth2ClientProvider, OAuth2SubjectVerifier},
+    },
+    prelude::*,
+    utils,
+    value::{AuthType, SessionExtMetadata},
+};
 use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, AuthorisationRequestOidc, GrantTypeReq,
     ResponseType,
 };
-use std::collections::BTreeSet;
-use std::fmt;
+use std::{collections::BTreeSet, fmt};
 
 #[derive(Clone)]
 enum SessionState {

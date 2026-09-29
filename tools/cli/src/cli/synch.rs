@@ -1,5 +1,4 @@
-use crate::OpType;
-use crate::{handle_client_error, KanidmClientParser, SynchOpt};
+use crate::{handle_client_error, KanidmClientParser, OpType, SynchOpt};
 use dialoguer::Confirm;
 
 impl SynchOpt {

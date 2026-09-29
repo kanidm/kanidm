@@ -24,38 +24,46 @@
 //! [`filter`]: ../filter/index.html
 //! [`schema`]: ../schema/index.html
 
-use crate::be::dbentry::{DbEntry, DbEntryVers};
-use crate::be::dbvalue::DbValueSetV2;
-use crate::be::{IdxKey, IdxSlope};
-use crate::credential::apppwd::ApplicationPassword;
-use crate::credential::Credential;
-use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
-use crate::idm::ldap::ldap_vattr_map;
-use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::repl::entry::EntryChangeState;
-use crate::repl::proto::{ReplEntryV1, ReplIncrementalEntryV1};
-use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
-use crate::server::access::AccessEffectivePermission;
-use crate::value::{
-    ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session,
-    SyntaxType, Value,
+use crate::{
+    be::{
+        dbentry::{DbEntry, DbEntryVers},
+        dbvalue::DbValueSetV2,
+        IdxKey, IdxSlope,
+    },
+    credential::{apppwd::ApplicationPassword, Credential},
+    filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved},
+    idm::ldap::ldap_vattr_map,
+    modify::{Modify, ModifyInvalid, ModifyList, ModifyValid},
+    prelude::*,
+    repl::{
+        cid::Cid,
+        entry::EntryChangeState,
+        proto::{ReplEntryV1, ReplIncrementalEntryV1},
+    },
+    schema::{SchemaAttribute, SchemaClass, SchemaTransaction},
+    server::access::AccessEffectivePermission,
+    value::{
+        ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue,
+        Session, SyntaxType, Value,
+    },
+    valueset::{self, ScimResolveStatus, ValueSet, ValueSetSpn},
 };
-use crate::valueset::{self, ScimResolveStatus, ValueSet, ValueSetSpn};
 use compact_jwt::JwsEs256Signer;
 use crypto_glue::s256::Sha256Output;
 use hashbrown::{HashMap, HashSet};
-use kanidm_proto::internal::ImageValue;
-use kanidm_proto::internal::{
-    ConsistencyError, Filter as ProtoFilter, OperationError, SchemaError, UiHint,
+use kanidm_proto::{
+    internal::{
+        ConsistencyError, Filter as ProtoFilter, ImageValue, OperationError, SchemaError, UiHint,
+    },
+    scim_v1::server::ScimEffectiveAccess,
+    v1::Entry as ProtoEntry,
 };
-use kanidm_proto::scim_v1::server::ScimEffectiveAccess;
-use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
-use std::cmp::Ordering;
-use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
-use std::sync::Arc;
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap as Map, BTreeMap, BTreeSet},
+    sync::Arc,
+};
 use time::OffsetDateTime;
 use tracing::trace;
 use uuid::Uuid;
@@ -3420,10 +3428,12 @@ mod tests {
 
     use hashbrown::HashMap;
 
-    use crate::be::{IdxKey, IdxSlope};
-    use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew};
-    use crate::modify::{Modify, ModifyList};
-    use crate::value::{IndexType, PartialValue, Value};
+    use crate::{
+        be::{IdxKey, IdxSlope},
+        entry::{Entry, EntryInit, EntryInvalid, EntryNew},
+        modify::{Modify, ModifyList},
+        value::{IndexType, PartialValue, Value},
+    };
 
     #[test]
     fn test_entry_basic() {

@@ -1,12 +1,16 @@
-use crate::error::Error;
-use crate::run::{EventDetail, EventRecord};
+use crate::{
+    error::Error,
+    run::{EventDetail, EventRecord},
+};
 use chrono::Local;
 use crossbeam::queue::{ArrayQueue, SegQueue};
 use csv::Writer;
 use serde::Serialize;
-use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 
 use mathru::statistics::distrib::{Continuous, Normal};
 

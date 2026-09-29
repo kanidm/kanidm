@@ -1,14 +1,16 @@
 use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError};
-use dialoguer::theme::ColorfulTheme;
-use dialoguer::{Confirm, Select};
+use dialoguer::{theme::ColorfulTheme, Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
-use kanidm_proto::internal::{PrivilegesActive, UserAuthToken};
-use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use kanidm_proto::{
+    constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME},
+    internal::{PrivilegesActive, UserAuthToken},
+};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
-use crate::session::{process_auth_state, read_tokens};
-use crate::{KanidmClientParser, LoginOpt};
+use crate::{
+    session::{process_auth_state, read_tokens},
+    KanidmClientParser, LoginOpt,
+};
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]

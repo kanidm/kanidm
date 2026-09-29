@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use crate::plugins::Plugin;
-use crate::prelude::*;
+use crate::{plugins::Plugin, prelude::*};
 
 pub struct ValueDeny {}
 

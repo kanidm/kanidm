@@ -2,31 +2,25 @@ use self::codec::{ConsumerRequest, SupplierResponse};
 use crate::CoreAction;
 use config::{RepNodeConfig, ReplicationConfiguration};
 use crypto_glue::{traits::EncodeDer, x509::Certificate};
-use futures_util::sink::SinkExt;
-use futures_util::stream::StreamExt;
-use kanidmd_lib::prelude::duration_from_epoch_now;
-use kanidmd_lib::prelude::IdmServer;
-use kanidmd_lib::repl::proto::ConsumerState;
-use kanidmd_lib::server::QueryServerTransaction;
+use futures_util::{sink::SinkExt, stream::StreamExt};
+use kanidmd_lib::{
+    prelude::{duration_from_epoch_now, IdmServer},
+    repl::proto::ConsumerState,
+    server::QueryServerTransaction,
+};
 use rustls::{
     client::ClientConfig,
     pki_types::{CertificateDer, PrivateKeyDer, ServerName},
     server::{ServerConfig, WebPkiClientVerifier},
     RootCertStore,
 };
-use std::collections::VecDeque;
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::AsyncWriteExt;
-use tokio::sync::broadcast;
-use tokio::sync::mpsc;
-use tokio::sync::oneshot;
-use tokio::sync::{Mutex, MutexGuard};
-use tokio::time::{interval, sleep, timeout};
+use std::{collections::VecDeque, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::{
+    io::AsyncWriteExt,
     net::{TcpListener, TcpStream},
+    sync::{broadcast, mpsc, oneshot, Mutex, MutexGuard},
     task::JoinHandle,
+    time::{interval, sleep, timeout},
 };
 use tokio_rustls::{client::TlsStream, TlsAcceptor, TlsConnector};
 use tokio_util::codec::{Framed, FramedRead, FramedWrite};

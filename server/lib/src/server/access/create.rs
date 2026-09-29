@@ -1,11 +1,12 @@
-use super::migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES};
-use super::profiles::{
-    AccessControlCreateResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
+use super::{
+    migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES},
+    profiles::{
+        AccessControlCreateResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
+    },
+    protected::{PROTECTED_ENTRY_CLASSES, PROTECTED_MOD_PRES_ENTRY_CLASSES},
 };
-use super::protected::{PROTECTED_ENTRY_CLASSES, PROTECTED_MOD_PRES_ENTRY_CLASSES};
 use crate::prelude::*;
-use std::collections::BTreeSet;
-use std::ops::Sub;
+use std::{collections::BTreeSet, ops::Sub};
 
 pub(super) enum CreateResult<'a> {
     Deny,

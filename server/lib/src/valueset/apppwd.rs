@@ -1,8 +1,10 @@
-use crate::be::dbvalue::{DbValueApplicationPassword, DbValueSetV2};
-use crate::credential::{apppwd::ApplicationPassword, Password};
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
+use crate::{
+    be::dbvalue::{DbValueApplicationPassword, DbValueSetV2},
+    credential::{apppwd::ApplicationPassword, Password},
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::ScimResolveStatus,
+};
 use std::collections::BTreeMap;
 
 use kanidm_proto::scim_v1::server::ScimApplicationPasswordReference;
@@ -250,9 +252,11 @@ impl ValueSetT for ValueSetApplicationPassword {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::{apppwd::ApplicationPassword, Password};
-    use crate::prelude::*;
-    use crate::valueset::ValueSetApplicationPassword;
+    use crate::{
+        credential::{apppwd::ApplicationPassword, Password},
+        prelude::*,
+        valueset::ValueSetApplicationPassword,
+    };
     use kanidm_lib_crypto::CryptoPolicy;
 
     // Test the remove operation, removing all application passwords for an

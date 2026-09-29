@@ -8,31 +8,37 @@
 //! [`Filter`]: struct.Filter.html
 //! [`Entry`]: ../entry/struct.Entry.html
 
-use std::cmp::{Ordering, PartialOrd};
-use std::collections::BTreeSet;
-use std::fmt;
-use std::hash::Hash;
-use std::iter;
-use std::num::NonZeroU8;
-use std::str::FromStr;
-use std::sync::Arc;
+use std::{
+    cmp::{Ordering, PartialOrd},
+    collections::BTreeSet,
+    fmt,
+    hash::Hash,
+    iter,
+    num::NonZeroU8,
+    str::FromStr,
+    sync::Arc,
+};
 
 use concread::arcache::{ARCache, ARCacheReadTxn};
 use hashbrown::HashMap;
 #[cfg(test)]
 use hashbrown::HashSet;
-use kanidm_proto::constants::ATTR_UUID;
-use kanidm_proto::internal::{Filter as ProtoFilter, OperationError, SchemaError};
-use kanidm_proto::scim_v1::{AttrPath as ScimAttrPath, ScimFilter};
+use kanidm_proto::{
+    constants::ATTR_UUID,
+    internal::{Filter as ProtoFilter, OperationError, SchemaError},
+    scim_v1::{AttrPath as ScimAttrPath, ScimFilter},
+};
 use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta, IdxSlope};
-use crate::idm::ldap::ldap_attr_filter_map;
-use crate::prelude::*;
-use crate::schema::SchemaTransaction;
-use crate::value::{IndexType, PartialValue};
+use crate::{
+    be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta, IdxSlope},
+    idm::ldap::ldap_attr_filter_map,
+    prelude::*,
+    schema::SchemaTransaction,
+    value::{IndexType, PartialValue},
+};
 
 pub type ResolveFilterCache =
     ARCache<(IdentityId, Arc<Filter<FilterValid>>), Arc<Filter<FilterValidResolved>>>;
@@ -1796,16 +1802,20 @@ impl FilterResolved {
 
 #[cfg(test)]
 mod tests {
-    use std::cmp::{Ordering, PartialOrd};
-    use std::collections::BTreeSet;
-    use std::time::Duration;
+    use std::{
+        cmp::{Ordering, PartialOrd},
+        collections::BTreeSet,
+        time::Duration,
+    };
 
     use kanidm_proto::internal::Filter as ProtoFilter;
     use ldap3_proto::simple::LdapFilter;
 
-    use crate::event::{CreateEvent, DeleteEvent};
-    use crate::filter::{Filter, FilterInvalid, DEFAULT_LIMIT_FILTER_DEPTH_MAX};
-    use crate::prelude::*;
+    use crate::{
+        event::{CreateEvent, DeleteEvent},
+        filter::{Filter, FilterInvalid, DEFAULT_LIMIT_FILTER_DEPTH_MAX},
+        prelude::*,
+    };
 
     #[test]
     fn test_filter_simple() {

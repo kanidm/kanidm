@@ -3,11 +3,15 @@
 //! helps to ensure that data is always in specific known states within the
 //! `QueryServer`
 
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
-use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent};
-use crate::prelude::*;
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use crate::{
+    entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed},
+    event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent},
+    prelude::*,
+};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 mod attrunique;
 mod base;

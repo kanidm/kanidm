@@ -1,53 +1,60 @@
 use super::ldap::{LdapBoundToken, LdapSession};
-use crate::credential::{softlock::CredSoftLock, Credential};
-use crate::idm::account::Account;
-use crate::idm::application::{
-    LdapApplications, LdapApplicationsReadTransaction, LdapApplicationsWriteTransaction,
+use crate::{
+    credential::{softlock::CredSoftLock, Credential},
+    idm::{
+        account::Account,
+        application::{
+            LdapApplications, LdapApplicationsReadTransaction, LdapApplicationsWriteTransaction,
+        },
+        audit::AuditEvent,
+        authentication::{AuthState, PreValidatedTokenStatus},
+        authsession::{AuthSession, AuthSessionData},
+        credupdatesession::CredentialUpdateSessionMutex,
+        delayed::{
+            AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade,
+            UnixPasswordUpgrade, WebauthnCounterIncrement,
+        },
+        event::{
+            AuthEvent, AuthEventStep, AuthResult, CredentialStatusEvent, LdapAuthEvent,
+            LdapTokenAuthEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+            UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+        },
+        group::{Group, Unix},
+        oauth2::{
+            Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
+            Oauth2ResourceServersWriteTransaction,
+        },
+        oauth2_client::OAuth2ClientProvider,
+        radius::RadiusAccount,
+        scim::SyncAccount,
+        serviceaccount::ServiceAccount,
+    },
+    prelude::*,
+    server::{keys::KeyProvidersTransaction, DomainInfo},
+    utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid},
+    value::{Session, SessionState},
 };
-use crate::idm::audit::AuditEvent;
-use crate::idm::authentication::{AuthState, PreValidatedTokenStatus};
-use crate::idm::authsession::{AuthSession, AuthSessionData};
-use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
-use crate::idm::delayed::{
-    AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
-    WebauthnCounterIncrement,
-};
-use crate::idm::event::{
-    AuthEvent, AuthEventStep, AuthResult, CredentialStatusEvent, LdapAuthEvent, LdapTokenAuthEvent,
-    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
-    UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
-};
-use crate::idm::group::{Group, Unix};
-use crate::idm::oauth2::{
-    Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
-    Oauth2ResourceServersWriteTransaction,
-};
-use crate::idm::oauth2_client::OAuth2ClientProvider;
-use crate::idm::radius::RadiusAccount;
-use crate::idm::scim::SyncAccount;
-use crate::idm::serviceaccount::ServiceAccount;
-use crate::prelude::*;
-use crate::server::keys::KeyProvidersTransaction;
-use crate::server::DomainInfo;
-use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-use crate::value::{Session, SessionState};
 use compact_jwt::{Jwk, JwsCompact};
-use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
-use concread::cowcell::CowCellReadTxn;
-use concread::hashmap::{HashMap, HashMapReadTxn, HashMapWriteTxn};
-use kanidm_lib_crypto::{CryptoPolicy, PW_MAX_LENGTH_NIST, PW_SFA_MIN_LENGTH_NIST};
-use kanidm_proto::internal::{
-    ApiToken, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken, UatPurpose,
-    UserAuthToken,
+use concread::{
+    bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn},
+    cowcell::CowCellReadTxn,
+    hashmap::{HashMap, HashMapReadTxn, HashMapWriteTxn},
 };
-use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+use kanidm_lib_crypto::{CryptoPolicy, PW_MAX_LENGTH_NIST, PW_SFA_MIN_LENGTH_NIST};
+use kanidm_proto::{
+    internal::{
+        ApiToken, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken, UatPurpose,
+        UserAuthToken,
+    },
+    v1::{UnixGroupToken, UnixUserToken},
+};
 use rand::prelude::*;
-use std::convert::TryFrom;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{convert::TryFrom, sync::Arc, time::Duration};
 use time::OffsetDateTime;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::{
+    mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    Mutex, Semaphore,
+};
 use tracing::trace;
 use url::Url;
 use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
@@ -2371,25 +2378,28 @@ impl IdmServerProxyWriteTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
-    use std::time::Duration;
+    use std::{convert::TryFrom, time::Duration};
 
-    use crate::credential::{Credential, Password};
-    use crate::idm::account::DestroySessionTokenEvent;
-    use crate::idm::accountpolicy::ResolvedAccountPolicy;
-    use crate::idm::audit::AuditEvent;
-    use crate::idm::authentication::AuthState;
-    use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
-    use crate::idm::event::{AuthEvent, AuthResult};
-    use crate::idm::event::{
-        LdapAuthEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-        UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+    use crate::{
+        credential::{Credential, Password},
+        idm::{
+            account::DestroySessionTokenEvent,
+            accountpolicy::ResolvedAccountPolicy,
+            audit::AuditEvent,
+            authentication::AuthState,
+            delayed::{AuthSessionRecord, DelayedAction},
+            event::{
+                AuthEvent, AuthResult, LdapAuthEvent, PasswordChangeEvent, RadiusAuthTokenEvent,
+                RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent,
+                UnixUserAuthEvent, UnixUserTokenEvent,
+            },
+            server::{IdmServer, IdmServerTransaction, Token},
+        },
+        modify::{Modify, ModifyList},
+        prelude::*,
+        server::keys::KeyProvidersTransaction,
+        value::{AuthType, SessionState},
     };
-    use crate::idm::server::{IdmServer, IdmServerTransaction, Token};
-    use crate::modify::{Modify, ModifyList};
-    use crate::prelude::*;
-    use crate::server::keys::KeyProvidersTransaction;
-    use crate::value::{AuthType, SessionState};
     use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
     use kanidm_lib_crypto::CryptoPolicy;
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};

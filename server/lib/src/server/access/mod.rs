@@ -14,20 +14,18 @@
 //!   requirements (also search).
 
 use hashbrown::HashMap;
-use std::cell::Cell;
-use std::collections::BTreeSet;
-use std::ops::DerefMut;
-use std::sync::Arc;
+use std::{cell::Cell, collections::BTreeSet, ops::DerefMut, sync::Arc};
 
-use concread::arcache::ARCacheBuilder;
-use concread::cowcell::*;
+use concread::{arcache::ARCacheBuilder, cowcell::*};
 use uuid::Uuid;
 
-use crate::entry::{Entry, EntryInit, EntryNew};
-use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
-use crate::filter::{Filter, FilterValid, ResolveFilterCache, ResolveFilterCacheReadTxn};
-use crate::modify::Modify;
-use crate::prelude::*;
+use crate::{
+    entry::{Entry, EntryInit, EntryNew},
+    event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent},
+    filter::{Filter, FilterValid, ResolveFilterCache, ResolveFilterCacheReadTxn},
+    modify::Modify,
+    prelude::*,
+};
 
 use self::profiles::{
     AccessControlCreate, AccessControlCreateResolved, AccessControlDelete,
@@ -38,10 +36,12 @@ use self::profiles::{
 
 use kanidm_proto::scim_v1::server::ScimAttributeEffectiveAccess;
 
-use self::create::{apply_create_access, CreateResult};
-use self::delete::{apply_delete_access, DeleteResult};
-use self::modify::{apply_modify_access, ModifyResult};
-use self::search::{apply_search_access, SearchResult};
+use self::{
+    create::{apply_create_access, CreateResult},
+    delete::{apply_delete_access, DeleteResult},
+    modify::{apply_modify_access, ModifyResult},
+    search::{apply_search_access, SearchResult},
+};
 
 const ACP_RESOLVE_FILTER_CACHE_MAX: usize = 256;
 const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
@@ -1187,8 +1187,7 @@ impl AccessControls {
 #[cfg(test)]
 mod tests {
     use hashbrown::HashMap;
-    use std::collections::BTreeSet;
-    use std::sync::Arc;
+    use std::{collections::BTreeSet, sync::Arc};
 
     use uuid::uuid;
 
@@ -1199,9 +1198,7 @@ mod tests {
         },
         Access, AccessClass, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
-    use crate::migration_data::BUILTIN_ACCOUNT_ANONYMOUS;
-    use crate::prelude::*;
-    use crate::valueset::ValueSetIname;
+    use crate::{migration_data::BUILTIN_ACCOUNT_ANONYMOUS, prelude::*, valueset::ValueSetIname};
 
     const UUID_TEST_ACCOUNT_1: Uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
     const UUID_TEST_ACCOUNT_2: Uuid = uuid::uuid!("cec0852a-abdf-4ea6-9dae-d3157cb33d3a");

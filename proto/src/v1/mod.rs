@@ -6,9 +6,7 @@
 #![allow(non_upper_case_globals)]
 
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fmt;
-use std::fmt::Display;
+use std::{collections::BTreeMap, fmt, fmt::Display};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -16,9 +14,7 @@ mod auth;
 mod message;
 mod unix;
 
-pub use self::auth::*;
-pub use self::message::*;
-pub use self::unix::*;
+pub use self::{auth::*, message::*, unix::*};
 
 /// The type of Account in use.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, ToSchema)]

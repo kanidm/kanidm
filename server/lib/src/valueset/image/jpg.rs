@@ -1,7 +1,6 @@
 use std::io::Cursor;
 
-use image::codecs::jpeg::JpegDecoder;
-use image::ImageDecoder;
+use image::{codecs::jpeg::JpegDecoder, ImageDecoder};
 use sketching::*;
 
 use super::ImageValidationError;

@@ -1,8 +1,5 @@
 use filetime::FileTime;
-use std::fs::File;
-use std::io::ErrorKind;
-use std::path::Path;
-use std::time::SystemTime;
+use std::{fs::File, io::ErrorKind, path::Path, time::SystemTime};
 
 pub fn touch_file_or_quit<P: AsRef<Path>>(file_path: P) {
     /*

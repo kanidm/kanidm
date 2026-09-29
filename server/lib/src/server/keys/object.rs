@@ -1,7 +1,6 @@
 use super::KeyId;
 use crate::prelude::*;
-use compact_jwt::{compact::JweCompact, jwe::Jwe};
-use compact_jwt::{Jwk, JwkKeySet, Jws, JwsCompact};
+use compact_jwt::{compact::JweCompact, jwe::Jwe, Jwk, JwkKeySet, Jws, JwsCompact};
 use smolset::SmolSet;
 use std::collections::BTreeSet;
 use uuid::Uuid;

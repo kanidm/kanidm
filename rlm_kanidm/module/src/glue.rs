@@ -1,9 +1,13 @@
-use crate::error::ModuleError;
-use crate::logic::{AuthError, AuthRequest, AuthResponse, Module};
+use crate::{
+    error::ModuleError,
+    logic::{AuthError, AuthRequest, AuthResponse, Module},
+};
 use concread::arcache::{ARCache, ARCacheBuilder};
 use rlm_kanidm_shared::config::KanidmRadiusConfig;
-use std::path::Path;
-use std::time::{Duration, Instant};
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 use tokio::runtime::Runtime;
 
 // The cache doesn't have to be huge, or have a long duration - it just

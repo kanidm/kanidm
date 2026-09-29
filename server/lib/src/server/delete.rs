@@ -1,6 +1,7 @@
-use crate::prelude::*;
-use crate::server::DeleteEvent;
-use crate::server::{ChangeFlag, Plugins};
+use crate::{
+    prelude::*,
+    server::{ChangeFlag, DeleteEvent, Plugins},
+};
 use std::collections::BTreeMap;
 
 impl QueryServerWriteTransaction<'_> {

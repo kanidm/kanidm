@@ -1,14 +1,13 @@
-use axum::extract::State;
-use axum::http::header::CONTENT_TYPE;
-use axum::response::{IntoResponse, Redirect};
-use axum::{Extension, Json};
-use kanidmd_lib::prelude::APPLICATION_JSON;
-use kanidmd_lib::status::StatusRequestEvent;
+use axum::{
+    extract::State,
+    http::header::CONTENT_TYPE,
+    response::{IntoResponse, Redirect},
+    Extension, Json,
+};
+use kanidmd_lib::{prelude::APPLICATION_JSON, status::StatusRequestEvent};
 use url::Url;
 
-use super::middleware::KOpId;
-use super::views::constants::Urls;
-use super::ServerState;
+use super::{middleware::KOpId, views::constants::Urls, ServerState};
 
 #[utoipa::path(
     get,

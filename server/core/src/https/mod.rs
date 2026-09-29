@@ -1,9 +1,10 @@
-use self::extractors::ClientConnInfo;
-use self::javascript::*;
-use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use crate::config::{AddressSet, Configuration, HttpVersions, ServerRole, TcpAddressInfo};
-use crate::tcp::process_client_addr;
-use crate::CoreAction;
+use self::{extractors::ClientConnInfo, javascript::*};
+use crate::{
+    actors::{QueryServerReadV1, QueryServerWriteV1},
+    config::{AddressSet, Configuration, HttpVersions, ServerRole, TcpAddressInfo},
+    tcp::process_client_addr,
+    CoreAction,
+};
 use axum::{
     body::Body,
     extract::connect_info::IntoMakeServiceWithConnectInfo,
@@ -26,12 +27,10 @@ use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::authentication::ClientCertInfo, status::StatusActor};
 use serde::de::DeserializeOwned;
 use sketching::*;
-use std::fmt::Write;
-use std::io::ErrorKind;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
-use std::{net::SocketAddr, str::FromStr};
+use std::{
+    fmt::Write, io::ErrorKind, net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc,
+    time::Duration,
+};
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite},
     net::{TcpListener, TcpStream},

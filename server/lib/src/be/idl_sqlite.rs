@@ -1,20 +1,22 @@
 use super::keystorage::{KeyHandle, KeyHandleId};
-use crate::be::dbentry::DbIdentSpn;
-use crate::be::dbvalue::DbCidV1;
-use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
-use crate::entry::{Entry, EntryCommitted, EntrySealed};
-use crate::prelude::*;
-use crate::value::{IndexType, Value};
+use crate::{
+    be::{
+        dbentry::DbIdentSpn, dbvalue::DbCidV1, BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope,
+    },
+    entry::{Entry, EntryCommitted, EntrySealed},
+    prelude::*,
+    value::{IndexType, Value},
+};
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use kanidm_proto::internal::{ConsistencyError, OperationError};
-use rusqlite::vtab::array::Array;
-use rusqlite::{Connection, OpenFlags, OptionalExtension};
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::convert::{TryFrom, TryInto};
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::time::Duration;
+use rusqlite::{vtab::array::Array, Connection, OpenFlags, OptionalExtension};
+use std::{
+    collections::{BTreeMap, BTreeSet, VecDeque},
+    convert::{TryFrom, TryInto},
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use uuid::Uuid;
 
 const DBV_ID2ENTRY: &str = "id2entry";
@@ -1883,8 +1885,10 @@ impl IdlSqlite {
 
 #[cfg(test)]
 mod tests {
-    use crate::be::idl_sqlite::{IdlSqlite, IdlSqliteTransaction};
-    use crate::be::BackendConfig;
+    use crate::be::{
+        idl_sqlite::{IdlSqlite, IdlSqliteTransaction},
+        BackendConfig,
+    };
 
     #[test]
     fn test_idl_sqlite_verify() {

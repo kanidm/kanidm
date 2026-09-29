@@ -1,70 +1,74 @@
-use crate::be::dbvalue::DbValueSetV2;
-use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::schema::SchemaAttribute;
-use crate::server::keys::KeyId;
-use crate::value::{
-    Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, OauthClaimMapJoin, Session,
+use crate::{
+    be::dbvalue::DbValueSetV2,
+    credential::{apppwd::ApplicationPassword, totp::Totp, Credential},
+    prelude::*,
+    repl::cid::Cid,
+    schema::SchemaAttribute,
+    server::keys::KeyId,
+    value::{
+        Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, OauthClaimMapJoin,
+        Session,
+    },
 };
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use crypto_glue::{s256::Sha256Output, x509::Certificate};
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
-use kanidm_proto::internal::ImageValue;
-use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
-use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
-use kanidm_proto::v1::OutboundMessage;
+use kanidm_proto::{
+    internal::{Filter as ProtoFilter, ImageValue, UiHint},
+    scim_v1::{JsonValue, ScimOauth2ClaimMapJoinChar},
+    v1::OutboundMessage,
+};
 use smolset::SmolSet;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+};
 use time::OffsetDateTime;
-use webauthn_rs::prelude::AttestationCaList;
-use webauthn_rs::prelude::AttestedPasskey as AttestedPasskeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
 
-pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
-use self::apppwd::ValueSetApplicationPassword;
-pub use self::auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
-pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
-pub use self::bool::ValueSetBool;
-pub use self::certificate::ValueSetCertificate;
-pub use self::cid::ValueSetCid;
-pub use self::cred::{
-    ValueSetAttestedPasskey, ValueSetCredential, ValueSetCredentialType, ValueSetIntentToken,
-    ValueSetPasskey, ValueSetWebauthnAttestationCaList,
+pub use self::{
+    address::{ValueSetAddress, ValueSetEmailAddress},
+    auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY},
+    binary::{ValueSetPrivateBinary, ValueSetPublicBinary},
+    bool::ValueSetBool,
+    certificate::ValueSetCertificate,
+    cid::ValueSetCid,
+    cred::{
+        ValueSetAttestedPasskey, ValueSetCredential, ValueSetCredentialType, ValueSetIntentToken,
+        ValueSetPasskey, ValueSetWebauthnAttestationCaList,
+    },
+    datetime::ValueSetDateTime,
+    hexstring::ValueSetHexString,
+    iname::ValueSetIname,
+    index::ValueSetIndex,
+    int64::ValueSetInt64,
+    iutf8::ValueSetIutf8,
+    json::{ValueSetJson, ValueSetJsonFilter},
+    jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256},
+    key_internal::{KeyInternalData, ValueSetKeyInternal},
+    message::ValueSetMessage,
+    nsuniqueid::ValueSetNsUniqueId,
+    oauth::{OauthClaimMapping, ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap},
+    restricted::ValueSetRestricted,
+    s256::ValueSetSha256,
+    secret::ValueSetSecret,
+    session::{ValueSetApiTokenSet, ValueSetOauth2Session, ValueSetSession},
+    spn::ValueSetSpn,
+    ssh::ValueSetSshKey,
+    syntax::ValueSetSyntax,
+    totp::ValueSetTotpSecret,
+    uihint::ValueSetUiHint,
+    uint32::ValueSetUint32,
+    uint64::ValueSetUint64,
+    url::ValueSetUrl,
+    utf8::ValueSetUtf8,
+    uuid::{ValueSetRefer, ValueSetUuid},
 };
-pub use self::datetime::ValueSetDateTime;
-pub use self::hexstring::ValueSetHexString;
-use self::image::ValueSetImage;
-pub use self::iname::ValueSetIname;
-pub use self::index::ValueSetIndex;
-pub use self::int64::ValueSetInt64;
-pub use self::iutf8::ValueSetIutf8;
-pub use self::json::{ValueSetJson, ValueSetJsonFilter};
-pub use self::jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256};
-pub use self::key_internal::{KeyInternalData, ValueSetKeyInternal};
-pub use self::message::ValueSetMessage;
-pub use self::nsuniqueid::ValueSetNsUniqueId;
-pub use self::oauth::{
-    OauthClaimMapping, ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap,
-};
-pub use self::restricted::ValueSetRestricted;
-pub use self::s256::ValueSetSha256;
-pub use self::secret::ValueSetSecret;
-pub use self::session::{ValueSetApiTokenSet, ValueSetOauth2Session, ValueSetSession};
-pub use self::spn::ValueSetSpn;
-pub use self::ssh::ValueSetSshKey;
-pub use self::syntax::ValueSetSyntax;
-pub use self::totp::ValueSetTotpSecret;
-pub use self::uihint::ValueSetUiHint;
-pub use self::uint32::ValueSetUint32;
-pub use self::uint64::ValueSetUint64;
-pub use self::url::ValueSetUrl;
-pub use self::utf8::ValueSetUtf8;
-pub use self::uuid::{ValueSetRefer, ValueSetUuid};
+use self::{apppwd::ValueSetApplicationPassword, image::ValueSetImage};
 
 mod address;
 mod apppwd;

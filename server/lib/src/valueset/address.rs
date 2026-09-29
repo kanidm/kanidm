@@ -1,14 +1,14 @@
-use crate::be::dbvalue::DbValueAddressV1;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::utils::trigraph_iter;
-use crate::value::{Address, VALIDATE_EMAIL_RE};
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+use crate::{
+    be::dbvalue::DbValueAddressV1,
+    prelude::*,
+    schema::SchemaAttribute,
+    utils::trigraph_iter,
+    value::{Address, VALIDATE_EMAIL_RE},
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
 };
-use kanidm_proto::scim_v1::client::ScimAddress as ScimAddressClient;
-use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::{server::ScimAddress, ScimMail};
+use kanidm_proto::scim_v1::{
+    client::ScimAddress as ScimAddressClient, server::ScimAddress, JsonValue, ScimMail,
+};
 use smolset::SmolSet;
 use std::collections::BTreeSet;
 
@@ -583,9 +583,11 @@ pub struct ValueSetPhoneNumber {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetAddress, ValueSetEmailAddress};
-    use crate::repl::cid::Cid;
-    use crate::value::{Address, PartialValue, Value};
-    use crate::valueset::{self, ValueSet};
+    use crate::{
+        repl::cid::Cid,
+        value::{Address, PartialValue, Value},
+        valueset::{self, ValueSet},
+    };
 
     #[test]
     fn test_valueset_emailaddress() {

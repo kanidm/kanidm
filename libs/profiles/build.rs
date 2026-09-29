@@ -1,5 +1,7 @@
-use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 use base64::{engine::general_purpose, Engine as _};
 

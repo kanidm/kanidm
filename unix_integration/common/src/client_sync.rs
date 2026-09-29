@@ -1,11 +1,15 @@
-use crate::constants::DEFAULT_CONN_TIMEOUT;
-use crate::json_codec::JsonCodec;
-use crate::unix_proto::{ClientRequest, ClientResponse};
+use crate::{
+    constants::DEFAULT_CONN_TIMEOUT,
+    json_codec::JsonCodec,
+    unix_proto::{ClientRequest, ClientResponse},
+};
 use bytes::BytesMut;
-use std::error::Error;
-use std::io::{self, ErrorKind, Read, Write};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::{
+    error::Error,
+    io::{self, ErrorKind, Read, Write},
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 use tokio_util::codec::{Decoder, Encoder};
 
 pub use std::os::unix::net::UnixStream;
@@ -41,8 +45,7 @@ impl DaemonClientBlocking {
     pub fn new(path: &str, default_timeout: u64) -> Result<DaemonClientBlocking, Box<dyn Error>> {
         // Setup a subscriber incase one isn't setup.
         if cfg!(feature = "client_sync_tracing") {
-            use tracing_subscriber::prelude::*;
-            use tracing_subscriber::{filter::LevelFilter, fmt};
+            use tracing_subscriber::{filter::LevelFilter, fmt, prelude::*};
 
             let fmt_layer = fmt::layer().with_target(false);
             let filter_layer = LevelFilter::WARN;

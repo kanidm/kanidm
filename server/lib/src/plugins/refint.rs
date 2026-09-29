@@ -9,13 +9,14 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
-use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::plugins::Plugin;
-use crate::prelude::*;
-use crate::schema::{SchemaAttribute, SchemaTransaction};
+use crate::{
+    event::{CreateEvent, DeleteEvent, ModifyEvent},
+    plugins::Plugin,
+    prelude::*,
+    schema::{SchemaAttribute, SchemaTransaction},
+};
 use hashbrown::{HashMap, HashSet};
-use std::collections::BTreeSet;
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 pub struct ReferentialIntegrity;
 
@@ -588,10 +589,12 @@ impl ReferentialIntegrity {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::Credential;
-    use crate::event::CreateEvent;
-    use crate::prelude::*;
-    use crate::value::{AuthType, Oauth2Session, OauthClaimMapJoin, Session, SessionState};
+    use crate::{
+        credential::Credential,
+        event::CreateEvent,
+        prelude::*,
+        value::{AuthType, Oauth2Session, OauthClaimMapJoin, Session, SessionState},
+    };
     use crypto_glue::{traits::DecodePem, x509::Certificate};
     use kanidm_lib_crypto::CryptoPolicy;
     use kanidm_proto::internal::Filter as ProtoFilter;

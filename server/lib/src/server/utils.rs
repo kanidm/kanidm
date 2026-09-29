@@ -1,5 +1,7 @@
-use crate::prelude::*;
-use crate::valueset::{ValueSetDateTime, ValueSetEmailAddress, ValueSetIutf8, ValueSetMessage};
+use crate::{
+    prelude::*,
+    valueset::{ValueSetDateTime, ValueSetEmailAddress, ValueSetIutf8, ValueSetMessage},
+};
 use kanidm_proto::v1::OutboundMessage;
 
 impl QueryServerWriteTransaction<'_> {

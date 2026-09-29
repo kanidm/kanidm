@@ -1,35 +1,32 @@
-use crate::common::try_expire_at_from_string;
-use crate::OpType;
 use crate::{
-    handle_client_error, password_prompt, AccountCertificate, AccountCredential, AccountRadius,
-    AccountSsh, AccountUserAuthToken, AccountValidity, KanidmClientParser, OutputMode,
-    PersonApplicationOpt, PersonOpt, PersonPosix,
+    common::try_expire_at_from_string, handle_client_error, password_prompt, AccountCertificate,
+    AccountCredential, AccountRadius, AccountSsh, AccountUserAuthToken, AccountValidity,
+    KanidmClientParser, OpType, OutputMode, PersonApplicationOpt, PersonOpt, PersonPosix,
 };
-use dialoguer::theme::ColorfulTheme;
-use dialoguer::{Confirm, Input, Password, Select};
+use dialoguer::{theme::ColorfulTheme, Confirm, Input, Password, Select};
 use kanidm_client::{ClientError, KanidmClient};
-use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{
-    ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_SOFTLOCK_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER,
+use kanidm_proto::{
+    attribute::Attribute,
+    constants::{
+        ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_SOFTLOCK_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER,
+    },
+    internal::{
+        CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CUSessionToken,
+        CUStatus, CredentialDetail, CredentialDetailType,
+        OperationError::{
+            DuplicateKey, DuplicateLabel, InvalidLabel, NoMatchingEntries, PasswordQuality,
+        },
+        SshPublicKey, TotpSecret,
+    },
+    messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus},
+    scim_v1::{client::ScimSshPublicKeys, ScimApplicationPasswordCreate, ScimEntryGetQuery},
 };
-use kanidm_proto::internal::OperationError::{
-    DuplicateKey, DuplicateLabel, InvalidLabel, NoMatchingEntries, PasswordQuality,
+use qrcode::{render::unicode, QrCode};
+use std::{
+    fmt::{self, Debug},
+    str::FromStr,
 };
-use kanidm_proto::internal::{
-    CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CUSessionToken, CUStatus,
-    SshPublicKey, TotpSecret,
-};
-use kanidm_proto::internal::{CredentialDetail, CredentialDetailType};
-use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
-use kanidm_proto::scim_v1::{
-    client::ScimSshPublicKeys, ScimApplicationPasswordCreate, ScimEntryGetQuery,
-};
-use qrcode::render::unicode;
-use qrcode::QrCode;
-use std::fmt::{self, Debug};
-use std::str::FromStr;
-use time::format_description::well_known::Rfc3339;
-use time::{OffsetDateTime, UtcOffset};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]

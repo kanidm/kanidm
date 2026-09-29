@@ -1,12 +1,14 @@
-use crate::be::BackendTransaction;
-use crate::credential::Credential;
-use crate::prelude::*;
-use crate::repl::entry::State;
-use crate::repl::proto::ConsumerState;
-use crate::repl::proto::ReplIncrementalContext;
-use crate::repl::ruv::ReplicationUpdateVectorTransaction;
-use crate::repl::ruv::{RangeDiffStatus, ReplicationUpdateVector};
-use crate::value::{AuthType, Session, SessionState};
+use crate::{
+    be::BackendTransaction,
+    credential::Credential,
+    prelude::*,
+    repl::{
+        entry::State,
+        proto::{ConsumerState, ReplIncrementalContext},
+        ruv::{RangeDiffStatus, ReplicationUpdateVector, ReplicationUpdateVectorTransaction},
+    },
+    value::{AuthType, Session, SessionState},
+};
 use crypto_glue::{traits::DecodePem, x509::Certificate};
 use kanidm_lib_crypto::CryptoPolicy;
 use std::collections::BTreeMap;

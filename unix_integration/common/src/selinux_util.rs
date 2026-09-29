@@ -1,11 +1,14 @@
 use kanidm_utils_users::get_user_name_by_uid;
-use std::ffi::{CString, OsStr};
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    ffi::{CString, OsStr},
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use selinux::{
-    current_mode, kernel_support, label::back_end::File, label::Labeler, KernelSupport,
-    SELinuxMode, SecurityContext,
+    current_mode, kernel_support,
+    label::{back_end::File, Labeler},
+    KernelSupport, SELinuxMode, SecurityContext,
 };
 
 pub fn supported() -> bool {

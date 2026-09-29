@@ -4,9 +4,7 @@ use kanidm_proto::constants::{
     DEFAULT_REPL_TASK_POLL_INTERVAL,
 };
 use serde::Deserialize;
-use std::collections::BTreeMap;
-use std::net::SocketAddr;
-use std::str::FromStr;
+use std::{collections::BTreeMap, net::SocketAddr, str::FromStr};
 use url::Url;
 
 #[derive(Deserialize, Debug, Clone)]

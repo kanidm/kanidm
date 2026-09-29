@@ -1,11 +1,15 @@
-use crate::error::Error;
-use crate::kani::KanidmOrcaClient;
-use crate::model::ActorRole;
-use crate::profile::Profile;
-use crate::state::{Credential, Flag, Group, GroupName, Person, PreflightState, State};
+use crate::{
+    error::Error,
+    kani::KanidmOrcaClient,
+    model::ActorRole,
+    profile::Profile,
+    state::{Credential, Flag, Group, GroupName, Person, PreflightState, State},
+};
 use hashbrown::HashMap;
-use rand::distr::{Alphanumeric, SampleString, Uniform};
-use rand::seq::{index, IndexedRandom};
+use rand::{
+    distr::{Alphanumeric, SampleString, Uniform},
+    seq::{index, IndexedRandom},
+};
 
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;

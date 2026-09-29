@@ -1,9 +1,6 @@
-use crate::constants::*;
-use crate::internal::OperationError;
+use crate::{constants::*, internal::OperationError};
 use serde::{Deserialize, Serialize};
-use std::convert::Infallible;
-use std::fmt;
-use std::str::FromStr;
+use std::{convert::Infallible, fmt, str::FromStr};
 use utoipa::ToSchema;
 
 pub use smartstring::alias::String as AttrString;

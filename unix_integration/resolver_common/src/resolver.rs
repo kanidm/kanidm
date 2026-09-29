@@ -1,6 +1,4 @@
 // use async_trait::async_trait;
-use crate::db::{Cache, Db};
-use crate::errors::Error;
 use crate::idprovider::interface::{
     AuthCredHandler,
     AuthResult,
@@ -14,34 +12,40 @@ use crate::idprovider::interface::{
     UserToken,
     UserTokenState,
 };
-use crate::idprovider::system::{
-    Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit, SystemProviderSession,
+use crate::{
+    db::{Cache, Db},
+    errors::Error,
+    idprovider::system::{
+        Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit, SystemProviderSession,
+    },
 };
 use hashbrown::HashMap;
 use kanidm_hsm_crypto::provider::BoxedDynTpm;
 use kanidm_lib_file_permissions::diagnose_path;
 use lru::LruCache;
-use sparkle_unix_common::constants::{
-    DEFAULT_CACHE_TIMEOUT_JITTER_MS, DEFAULT_CACHE_TIMEOUT_MAXIMUM, DEFAULT_CACHE_TIMEOUT_MINIMUM,
-    DEFAULT_SHELL_SEARCH_PATHS, SYSTEM_SHADOW_PATH,
+use sparkle_unix_common::{
+    constants::{
+        DEFAULT_CACHE_TIMEOUT_JITTER_MS, DEFAULT_CACHE_TIMEOUT_MAXIMUM,
+        DEFAULT_CACHE_TIMEOUT_MINIMUM, DEFAULT_SHELL_SEARCH_PATHS, SYSTEM_SHADOW_PATH,
+    },
+    unix_config::{HomeAttr, UidAttr},
+    unix_passwd::{EtcGroup, EtcShadow, EtcUser},
+    unix_proto::{
+        HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse, PamServiceInfo,
+        ProviderStatus,
+    },
 };
-use sparkle_unix_common::unix_config::{HomeAttr, UidAttr};
-use sparkle_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
-use sparkle_unix_common::unix_proto::{
-    HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse, PamServiceInfo,
-    ProviderStatus,
+use std::{
+    fmt::Display,
+    num::NonZeroUsize,
+    ops::DerefMut,
+    path::{Path, PathBuf},
+    string::ToString,
+    sync::Arc,
+    time::{Duration, SystemTime},
 };
-use std::fmt::Display;
-use std::num::NonZeroUsize;
-use std::ops::DerefMut;
-use std::path::{Path, PathBuf};
-use std::string::ToString;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
 use time::OffsetDateTime;
-use tokio::sync::broadcast;
-use tokio::sync::mpsc;
-use tokio::sync::Mutex;
+use tokio::sync::{broadcast, mpsc, Mutex};
 use uuid::Uuid;
 
 const NXCACHE_SIZE: NonZeroUsize =

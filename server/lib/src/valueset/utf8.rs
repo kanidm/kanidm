@@ -1,11 +1,10 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::utils::trigraph_iter;
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    utils::trigraph_iter,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
 };
-use kanidm_proto::scim_v1::client::ScimStrings;
-use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::{client::ScimStrings, JsonValue};
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
@@ -231,8 +230,10 @@ impl ValueSetT for ValueSetUtf8 {
 #[cfg(test)]
 mod tests {
     use super::ValueSetUtf8;
-    use crate::migration_data::latest::schema::SCHEMA_ATTR_DISPLAYNAME_DL7;
-    use crate::prelude::{PartialValue, ValueSet, ValueSetT};
+    use crate::{
+        migration_data::latest::schema::SCHEMA_ATTR_DISPLAYNAME_DL7,
+        prelude::{PartialValue, ValueSet, ValueSetT},
+    };
 
     #[test]
     fn test_utf8_substring_insensitive() {

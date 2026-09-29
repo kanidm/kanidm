@@ -2,9 +2,11 @@ use crate::error::ModuleError;
 use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};
 use kanidm_proto::internal::{Group, RadiusAuthToken};
 use rlm_kanidm_shared::config::KanidmRadiusConfig;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
-use std::marker::PhantomData;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+    marker::PhantomData,
+};
 
 const TUNNEL_TYPE_VLAN: &str = "13";
 const TUNNEL_MEDIUM_TYPE_IEEE_802: &str = "6";
@@ -264,8 +266,7 @@ mod tests {
     use super::*;
     use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
     use rlm_kanidm_shared::config::RadiusGroupConfig;
-    use std::marker::PhantomData;
-    use std::path::PathBuf;
+    use std::{marker::PhantomData, path::PathBuf};
     use url::Url;
 
     fn sample_token(groups: Vec<Group>) -> RadiusAuthToken {

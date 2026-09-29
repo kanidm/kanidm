@@ -1,18 +1,18 @@
-use super::migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES};
-use super::profiles::{
-    AccessControlModify, AccessControlModifyResolved, AccessControlReceiverCondition,
-    AccessControlTargetCondition,
+use super::{
+    migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES},
+    profiles::{
+        AccessControlModify, AccessControlModifyResolved, AccessControlReceiverCondition,
+        AccessControlTargetCondition,
+    },
+    protected::{
+        LOCKED_ENTRY_CLASSES, PROTECTED_MOD_ENTRY_CLASSES, PROTECTED_MOD_PRES_ENTRY_CLASSES,
+        PROTECTED_MOD_REM_ENTRY_CLASSES,
+    },
+    AccessBasicResult, AccessModResult,
 };
-use super::protected::{
-    LOCKED_ENTRY_CLASSES, PROTECTED_MOD_ENTRY_CLASSES, PROTECTED_MOD_PRES_ENTRY_CLASSES,
-    PROTECTED_MOD_REM_ENTRY_CLASSES,
-};
-use super::{AccessBasicResult, AccessModResult};
 use crate::prelude::*;
 use hashbrown::HashMap;
-use std::collections::BTreeSet;
-use std::ops::Sub;
-use std::sync::Arc;
+use std::{collections::BTreeSet, ops::Sub, sync::Arc};
 
 pub(super) enum ModifyResult<'a> {
     Deny,

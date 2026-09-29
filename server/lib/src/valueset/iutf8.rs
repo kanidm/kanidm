@@ -1,11 +1,11 @@
 use super::iname::ValueSetIname;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::utils::trigraph_iter;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
-use kanidm_proto::scim_v1::client::ScimStrings;
-use kanidm_proto::scim_v1::JsonValue;
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    utils::trigraph_iter,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
+};
+use kanidm_proto::scim_v1::{client::ScimStrings, JsonValue};
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]

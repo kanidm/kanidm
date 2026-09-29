@@ -11,17 +11,21 @@
 // We allow expect since it forces good error messages at the least.
 #![allow(clippy::expect_used)]
 
-use crate::config::{Config, EntryConfig, GroupAttrSchema};
-use crate::error::SyncError;
+use crate::{
+    config::{Config, EntryConfig, GroupAttrSchema},
+    error::SyncError,
+};
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
 use kanidm_client::KanidmClientBuilder;
 use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
-use kanidm_proto::constants::ATTR_OBJECTCLASS;
-use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntry, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
-    ScimSyncRetentionMode, ScimSyncState,
+use kanidm_proto::{
+    constants::ATTR_OBJECTCLASS,
+    scim_v1::{
+        MultiValueAttr, ScimEntry, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
+        ScimSyncRetentionMode, ScimSyncState,
+    },
 };
 #[cfg(target_family = "unix")]
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
@@ -31,27 +35,24 @@ use ldap3_client::{
     LdapClient, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry, LdapSyncStateValue,
 };
 use rustls::pki_types::pem::PemObject;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fs::metadata;
-use std::fs::File;
-use std::io::Read;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
-use tokio::io::AsyncWriteExt;
-use tokio::net::TcpListener;
-use tokio::runtime;
-use tokio::sync::broadcast;
-use tokio::time::sleep;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs::{metadata, File},
+    io::Read,
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread,
+    time::Duration,
+};
+use tokio::{io::AsyncWriteExt, net::TcpListener, runtime, sync::broadcast, time::sleep};
 use tracing::{debug, error, info, warn};
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 mod config;
 mod error;

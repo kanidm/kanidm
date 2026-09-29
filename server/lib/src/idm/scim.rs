@@ -1,20 +1,26 @@
-use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
-use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
-use crate::prelude::*;
-use crate::schema::{SchemaClass, SchemaTransaction};
-use crate::value::ApiToken;
-use crate::valueset::ValueSetDateTime;
+use crate::{
+    credential::totp::{Totp, TotpAlgo, TotpDigits},
+    idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction},
+    prelude::*,
+    schema::{SchemaClass, SchemaTransaction},
+    value::ApiToken,
+    valueset::ValueSetDateTime,
+};
 use base64::{
     engine::general_purpose::{STANDARD, URL_SAFE},
     Engine as _,
 };
 use compact_jwt::{Jws, JwsCompact};
-use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
-use kanidm_proto::scim_v1::*;
-use kanidm_proto::v1::OutboundMessage;
+use kanidm_proto::{
+    internal::{ApiTokenPurpose, ScimSyncToken},
+    scim_v1::*,
+    v1::OutboundMessage,
+};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::collections::{BTreeMap, BTreeSet};
-use std::time::Duration;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    time::Duration,
+};
 
 // Internals of a Scim Sync token
 
@@ -1540,14 +1546,13 @@ impl IdmServerProxyReadTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction};
-    use crate::prelude::*;
-    use compact_jwt::traits::JwsVerifiable;
-    use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
-    use kanidm_proto::internal::ApiTokenPurpose;
-    use kanidm_proto::scim_v1::*;
-    use std::sync::Arc;
-    use std::time::Duration;
+    use crate::{
+        idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction},
+        prelude::*,
+    };
+    use compact_jwt::{traits::JwsVerifiable, Jws, JwsCompact, JwsEs256Signer, JwsSigner};
+    use kanidm_proto::{internal::ApiTokenPurpose, scim_v1::*};
+    use std::{sync::Arc, time::Duration};
 
     use super::{
         GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncToken,

@@ -2,8 +2,10 @@
 
 use crate::prelude::*;
 use hashbrown::HashSet;
-use rand::distr::{Distribution, Uniform};
-use rand::{rng, Rng, RngExt};
+use rand::{
+    distr::{Distribution, Uniform},
+    rng, Rng, RngExt,
+};
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 

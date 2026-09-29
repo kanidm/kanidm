@@ -1,14 +1,9 @@
-use crate::event::ReviveRecycledEvent;
-use crate::plugins::Plugin;
-use crate::prelude::*;
-use crate::valueset::ValueSetSha256;
+use crate::{event::ReviveRecycledEvent, plugins::Plugin, prelude::*, valueset::ValueSetSha256};
 use crypto_glue::{
     hmac_s256::HmacSha256,
     traits::{KeyInit, Mac},
 };
-use std::collections::BTreeMap;
-use std::ops::Deref;
-use std::sync::Arc;
+use std::{collections::BTreeMap, ops::Deref, sync::Arc};
 
 pub struct HmacNameUnique {}
 
@@ -266,8 +261,7 @@ impl Plugin for HmacNameUnique {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
-    use crate::valueset::ValueSetIname;
+    use crate::{prelude::*, valueset::ValueSetIname};
 
     #[qs_test]
     async fn hmac_name_unique_basic(server: &QueryServer) {

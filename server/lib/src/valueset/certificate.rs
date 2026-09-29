@@ -1,16 +1,17 @@
-use crate::be::dbvalue::DbValueCertificate;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
+use crate::{
+    be::dbvalue::DbValueCertificate,
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
+};
 use crypto_glue::{
     s256::Sha256Output,
     traits::{DecodeDer, EncodeDer, EncodePem, LineEndingPem},
     x509::{x509_digest_public_key_sha256, Certificate},
 };
-use kanidm_proto::scim_v1::client::ScimCertificate as ClientScimCertificate;
-use kanidm_proto::scim_v1::server::ScimCertificate;
-use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::{
+    client::ScimCertificate as ClientScimCertificate, server::ScimCertificate, JsonValue,
+};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]

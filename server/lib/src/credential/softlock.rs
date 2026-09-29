@@ -295,8 +295,7 @@ impl CredSoftLock {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::softlock::*;
-    use crate::credential::totp::TOTP_DEFAULT_STEP;
+    use crate::credential::{softlock::*, totp::TOTP_DEFAULT_STEP};
 
     #[test]
     fn test_credential_softlock_statemachine() {

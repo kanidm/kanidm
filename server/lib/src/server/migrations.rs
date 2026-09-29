@@ -1049,9 +1049,7 @@ impl QueryServerReadTransaction<'_> {
 #[cfg(test)]
 mod tests {
     // use super::{ProtoDomainUpgradeCheckItem, ProtoDomainUpgradeCheckStatus};
-    use crate::prelude::*;
-    use crate::value::CredentialType;
-    use crate::valueset::ValueSetCredentialType;
+    use crate::{prelude::*, value::CredentialType, valueset::ValueSetCredentialType};
 
     #[qs_test]
     async fn test_init_idempotent_schema_core(server: &QueryServer) {

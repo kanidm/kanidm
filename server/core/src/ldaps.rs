@@ -1,21 +1,20 @@
-use crate::actors::QueryServerReadV1;
-use crate::config::TcpAddressInfo;
-use crate::tcp::process_client_addr;
-use crate::CoreAction;
-use futures_util::sink::SinkExt;
-use futures_util::stream::StreamExt;
-use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
-use kanidmd_lib::prelude::*;
-use ldap3_proto::proto::LdapMsg;
-use ldap3_proto::LdapCodec;
+use crate::{
+    actors::QueryServerReadV1, config::TcpAddressInfo, tcp::process_client_addr, CoreAction,
+};
+use futures_util::{sink::SinkExt, stream::StreamExt};
+use kanidmd_lib::{
+    idm::ldap::{LdapBoundToken, LdapResponseState},
+    prelude::*,
+};
+use ldap3_proto::{proto::LdapMsg, LdapCodec};
 use sketching::LoggerType;
-use std::net::SocketAddr;
-use std::str::FromStr;
-use std::sync::Arc;
-use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::broadcast;
-use tokio::time::timeout;
+use std::{net::SocketAddr, str::FromStr, sync::Arc};
+use tokio::{
+    io::{AsyncRead, AsyncWrite, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+    sync::broadcast,
+    time::timeout,
+};
 use tokio_rustls::TlsAcceptor;
 use tokio_util::codec::{FramedRead, FramedWrite};
 

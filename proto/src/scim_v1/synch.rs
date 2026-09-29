@@ -3,8 +3,7 @@ use serde_with::{base64, formats, serde_as};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use scim_proto::user::MultiValueAttr;
-use scim_proto::{ScimEntry, ScimEntryHeader};
+use scim_proto::{user::MultiValueAttr, ScimEntry, ScimEntryHeader};
 use serde_with::skip_serializing_none;
 
 #[serde_as]

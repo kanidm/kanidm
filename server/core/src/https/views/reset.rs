@@ -1,27 +1,29 @@
 #![allow(clippy::result_large_err)]
 
-use super::constants::Urls;
-use super::navbar::NavbarCtx;
-use super::UnrecoverableErrorView;
-use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
-use crate::https::views::constants::ProfileMenuItems;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::login::ReauthPurpose;
-use crate::https::views::reauth::{
-    render_readonly, render_reauth, uat_privilege_decision, PrivilegeDecision,
+use super::{constants::Urls, navbar::NavbarCtx, UnrecoverableErrorView};
+use crate::https::{
+    extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
+    middleware::KOpId,
+    views::{
+        constants::ProfileMenuItems,
+        cookies,
+        errors::HtmxError,
+        login::ReauthPurpose,
+        reauth::{render_readonly, render_reauth, uat_privilege_decision, PrivilegeDecision},
+        KanidmHxEventName,
+    },
+    ServerState,
 };
-use crate::https::views::{cookies, KanidmHxEventName};
-use crate::https::ServerState;
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::body::Bytes;
-use axum::extract::{Query, RawForm, State};
-use axum::http::StatusCode;
-use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
-use axum::{Extension, Form};
-use axum_extra::extract::cookie::SameSite;
-use axum_extra::extract::CookieJar;
+use axum::{
+    body::Bytes,
+    extract::{Query, RawForm, State},
+    http::StatusCode,
+    response::{ErrorResponse, IntoResponse, Redirect, Response},
+    Extension, Form,
+};
+use axum_extra::extract::{cookie::SameSite, CookieJar};
 use axum_htmx::{
     HxEvent, HxLocation, HxPushUrl, HxRequest, HxReselect, HxResponseTrigger, HxReswap, HxRetarget,
     SwapOption,
@@ -34,14 +36,15 @@ use kanidm_proto::internal::{
     UserAuthToken, COOKIE_CU_SESSION_TOKEN,
 };
 use kanidmd_lib::prelude::ClientAuthInfo;
-use qrcode::render::svg;
-use qrcode::QrCode;
+use qrcode::{render::svg, QrCode};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::str::FromStr;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+    fmt::{Display, Formatter},
+    str::FromStr,
+};
 use uuid::Uuid;
 
 pub use sshkey_attest::proto::PublicKey as SshPublicKey;

@@ -1,17 +1,23 @@
 use crate::be::dbrepl::DbReplMeta;
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
-use std::ops::Bound::*;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+    ops::Bound::*,
+    sync::Arc,
+    time::Duration,
+};
 
 use concread::bptree::{BptreeMap, BptreeMapReadSnapshot, BptreeMapReadTxn, BptreeMapWriteTxn};
 
 use idlset::v2::IDLBitRange;
 
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::repl::proto::{ReplAnchoredCidRange, ReplCidRange};
+use crate::{
+    prelude::*,
+    repl::{
+        cid::Cid,
+        proto::{ReplAnchoredCidRange, ReplCidRange},
+    },
+};
 use std::fmt;
 
 #[derive(Default)]
@@ -1011,11 +1017,8 @@ impl ReplicationUpdateVectorWriteTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::RangeDiffStatus;
-    use super::ReplCidRange;
-    use super::ReplicationUpdateVector;
-    use std::collections::BTreeMap;
-    use std::time::Duration;
+    use super::{RangeDiffStatus, ReplCidRange, ReplicationUpdateVector};
+    use std::{collections::BTreeMap, time::Duration};
 
     const UUID_A: uuid::Uuid = uuid::uuid!("13b530b0-efdd-4934-8fb7-9c35c8aab79e");
     const UUID_B: uuid::Uuid = uuid::uuid!("16327cf8-6a34-4a17-982c-b2eaa6d02d00");

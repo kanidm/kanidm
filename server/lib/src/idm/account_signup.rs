@@ -1,5 +1,4 @@
-use crate::idm::server::IdmServerProxyWriteTransaction;
-use crate::prelude::*;
+use crate::{idm::server::IdmServerProxyWriteTransaction, prelude::*};
 
 pub struct AccountSignupRequestEvent {
     // Who initiated this? By default I think

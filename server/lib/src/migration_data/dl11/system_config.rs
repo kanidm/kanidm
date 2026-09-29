@@ -1,5 +1,4 @@
-use crate::prelude::*;
-use crate::value::Value;
+use crate::{prelude::*, value::Value};
 
 // Default entries for system_config
 // This is separated because the password badlist section may become very long

@@ -1,8 +1,9 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::utils::trigraph_iter;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    utils::trigraph_iter,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 
 use std::collections::BTreeSet;
 

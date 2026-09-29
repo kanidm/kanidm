@@ -1,14 +1,16 @@
-use super::cid::Cid;
-use super::entry::EntryChangeState;
-use super::entry::State;
-use crate::be::dbvalue::DbValueSetV2;
-use crate::entry::Eattrs;
-use crate::prelude::*;
-use crate::schema::{SchemaReadTransaction, SchemaTransaction};
-use crate::valueset;
+use super::{
+    cid::Cid,
+    entry::{EntryChangeState, State},
+};
+use crate::{
+    be::dbvalue::DbValueSetV2,
+    entry::Eattrs,
+    prelude::*,
+    schema::{SchemaReadTransaction, SchemaTransaction},
+    valueset,
+};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 
 pub enum ConsumerState {
     Ok,

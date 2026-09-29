@@ -1,18 +1,19 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{
-    ATTR_DISPLAYNAME, ATTR_KEY_ACTION_REVOKE, ATTR_KEY_ACTION_ROTATE, ATTR_NAME,
-    ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE, ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
-    ATTR_OAUTH2_CONSENT_PROMPT_ENABLE, ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
-    ATTR_OAUTH2_PREFER_SHORT_USERNAME, ATTR_OAUTH2_RS_BASIC_SECRET, ATTR_OAUTH2_RS_ORIGIN,
-    ATTR_OAUTH2_RS_ORIGIN_LANDING, ATTR_OAUTH2_STRICT_REDIRECT_URI,
+use kanidm_proto::{
+    attribute::Attribute,
+    constants::{
+        ATTR_DISPLAYNAME, ATTR_KEY_ACTION_REVOKE, ATTR_KEY_ACTION_ROTATE, ATTR_NAME,
+        ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE, ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
+        ATTR_OAUTH2_CONSENT_PROMPT_ENABLE, ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
+        ATTR_OAUTH2_PREFER_SHORT_USERNAME, ATTR_OAUTH2_RS_BASIC_SECRET, ATTR_OAUTH2_RS_ORIGIN,
+        ATTR_OAUTH2_RS_ORIGIN_LANDING, ATTR_OAUTH2_STRICT_REDIRECT_URI,
+    },
+    internal::{ImageValue, Oauth2ClaimMapJoin},
+    v1::Entry,
 };
-use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin};
-use kanidm_proto::v1::Entry;
 use reqwest::multipart;
 use std::collections::BTreeMap;
-use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use url::Url;
 
 impl KanidmClient {

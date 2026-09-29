@@ -1,6 +1,8 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 
 use smolset::SmolSet;
 

@@ -1,15 +1,19 @@
 //! Externally Facing Symbols - This is what we export to FreeRADIUS to call into us
 //! to drive the operation of the rlm_kanidm module.
 
-use crate::glue::{rlm_kanidm_authorise, rlm_kanidm_instantiate, ModuleHandle};
-use crate::logic::{
-    AuthError, AuthRequest, AuthResponse, ResponseControlAttributes, ResponseReplyAttributes,
+use crate::{
+    glue::{rlm_kanidm_authorise, rlm_kanidm_instantiate, ModuleHandle},
+    logic::{
+        AuthError, AuthRequest, AuthResponse, ResponseControlAttributes, ResponseReplyAttributes,
+    },
 };
-use std::collections::BTreeMap;
-use std::ffi::{c_char, c_int, c_void, CStr, CString};
-use std::marker::PhantomData;
-use std::mem::offset_of;
-use std::ptr;
+use std::{
+    collections::BTreeMap,
+    ffi::{c_char, c_int, c_void, CStr, CString},
+    marker::PhantomData,
+    mem::offset_of,
+    ptr,
+};
 
 use crate::freeradius::{
     conf_part, dict_attr, fr_cursor_init, fr_cursor_next, fr_pair_make,

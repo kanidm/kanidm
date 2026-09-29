@@ -316,8 +316,7 @@ impl FromStr for ScimComplexFilter {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::filter::AttrPath;
-    use crate::filter::ScimFilter;
+    use crate::filter::{AttrPath, ScimFilter};
     use serde_json::Value;
 
     #[test]

@@ -1,17 +1,15 @@
-use super::idl_arc_sqlite::IdlArcSqliteWriteTransaction;
-use super::idl_sqlite::IdlSqliteTransaction;
-use super::idl_sqlite::IdlSqliteWriteTransaction;
-use super::idl_sqlite::{serde_json_error, sqlite_error};
-use super::BackendWriteTransaction;
-use crate::prelude::OperationError;
-use crate::rusqlite::OptionalExtension;
+use super::{
+    idl_arc_sqlite::IdlArcSqliteWriteTransaction,
+    idl_sqlite::{serde_json_error, sqlite_error, IdlSqliteTransaction, IdlSqliteWriteTransaction},
+    BackendWriteTransaction,
+};
+use crate::{prelude::OperationError, rusqlite::OptionalExtension};
 use crypto_glue::{
     der::SecretDocument,
     x509::{pkeyb64, x509b64, Certificate},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::hash::Hash;
+use std::{collections::BTreeMap, hash::Hash};
 
 /// These are key handles for storing keys related to various cryptographic components
 /// within Kanidm. Generally these are for keys that are "static", as in have known

@@ -1,19 +1,20 @@
-use crate::be::dbvalue::{
-    DbValueAttestedPasskeyV1, DbValueCredV1, DbValueIntentTokenStateV1, DbValuePasskeyV1,
+use crate::{
+    be::dbvalue::{
+        DbValueAttestedPasskeyV1, DbValueCredV1, DbValueIntentTokenStateV1, DbValuePasskeyV1,
+    },
+    credential::Credential,
+    prelude::*,
+    schema::SchemaAttribute,
+    utils::trigraph_iter,
+    value::{CredUpdateSessionPerms, CredentialType, IntentTokenState},
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
 };
-use crate::credential::Credential;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::utils::trigraph_iter;
-use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+use kanidm_proto::scim_v1::{
+    server::{ScimIntentToken, ScimIntentTokenState},
+    JsonValue,
 };
-use kanidm_proto::scim_v1::server::{ScimIntentToken, ScimIntentTokenState};
-use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry as BTreeEntry, BTreeMap};
 use time::OffsetDateTime;
 use webauthn_rs::prelude::{
     AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,

@@ -1,14 +1,10 @@
-use super::apidocs::response_schema::DefaultApiResponse;
-use super::errors::WebError;
-use super::ServerState;
-use crate::https::extractors::DomainInfo;
-use crate::https::extractors::VerifiedClientInformation;
-use axum::extract::State;
-use axum::Json;
+use super::{apidocs::response_schema::DefaultApiResponse, errors::WebError, ServerState};
+use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use axum::{
-    http::header::CONTENT_TYPE,
-    http::StatusCode,
+    extract::State,
+    http::{header::CONTENT_TYPE, StatusCode},
     response::{IntoResponse, Response},
+    Json,
 };
 use kanidm_proto::internal::{ImageType, ImageValue};
 use kanidmd_lib::prelude::*;

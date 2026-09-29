@@ -1,11 +1,11 @@
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 use kanidm_proto::internal::Filter as ProtoFilter;
 
-use crate::filter::FilterInvalid;
-use crate::prelude::*;
-use crate::server::ServerPhase;
+use crate::{filter::FilterInvalid, prelude::*, server::ServerPhase};
 
 #[derive(Clone, Default)]
 pub struct DynGroupCache {

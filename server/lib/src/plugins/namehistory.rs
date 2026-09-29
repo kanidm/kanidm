@@ -1,9 +1,10 @@
-use crate::entry::{EntryInvalidCommitted, EntrySealedCommitted};
-use crate::event::ModifyEvent;
-use crate::plugins::Plugin;
-use crate::prelude::*;
-use crate::prelude::{BatchModifyEvent, QueryServerWriteTransaction};
-use crate::repl::cid::Cid;
+use crate::{
+    entry::{EntryInvalidCommitted, EntrySealedCommitted},
+    event::ModifyEvent,
+    plugins::Plugin,
+    prelude::{BatchModifyEvent, QueryServerWriteTransaction, *},
+    repl::cid::Cid,
+};
 use std::sync::Arc;
 
 pub struct NameHistory {}
@@ -96,12 +97,13 @@ impl Plugin for NameHistory {
 mod tests {
     use std::time::Duration;
 
-    use crate::entry::{Entry, EntryInit, EntryNew};
-    use crate::prelude::entries::Attribute;
-    use crate::prelude::{uuid, EntryClass};
-    use crate::repl::cid::Cid;
-    use crate::value::Value;
-    use crate::valueset::AUDIT_LOG_STRING_CAPACITY;
+    use crate::{
+        entry::{Entry, EntryInit, EntryNew},
+        prelude::{entries::Attribute, uuid, EntryClass},
+        repl::cid::Cid,
+        value::Value,
+        valueset::AUDIT_LOG_STRING_CAPACITY,
+    };
 
     #[test]
     fn name_purge_and_set() {
