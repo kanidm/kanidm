@@ -1,4 +1,12 @@
-use crate::{idm::server::IdmServerProxyWriteTransaction, prelude::*};
+use crate::{
+    idm::server::IdmServerProxyWriteTransaction,
+    prelude::*,
+    utils::readable_password_from_random,
+};
+use crypto_glue::{
+    s256::Sha256,
+    traits::Digest,
+};
 
 pub struct AccountSignupRequestEvent {
     // Who initiated this? By default I think
@@ -35,6 +43,11 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         let account_signup_uuid = Uuid::new_v4();
 
+        let intent_id = readable_password_from_random();
+        // We treat this like pkce - we store a sha256, and the requestor has to present the plaintext
+        // code to accept the request.
+        let intent_sha256 = Sha256::digest(intent_id.as_bytes());
+
         let account_signup_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
@@ -54,6 +67,10 @@ impl IdmServerProxyWriteTransaction<'_> {
                 Attribute::DeleteAfter,
                 ValueSetDateTime::new(delete_after_odt),
             ),
+            (
+                Attribute::S256,
+                ValueSetSha256::new(intent_sha256) as ValueSet,
+            )
         ]);
 
         // Create

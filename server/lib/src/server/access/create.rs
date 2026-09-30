@@ -142,6 +142,7 @@ fn create_filter_entry<'a>(
                 Attribute::DisplayName,
                 Attribute::Mail,
                 Attribute::Name,
+                Attribute::S256,
                 Attribute::Uuid,
             ]);
 
