@@ -413,6 +413,7 @@ impl QueryServerWriteTransaction<'_> {
             SyntaxType::Utf8String => ValueSetUtf8::from_scim_json_put(value),
             SyntaxType::Utf8StringInsensitive => ValueSetIutf8::from_scim_json_put(value),
             SyntaxType::Uuid => ValueSetUuid::from_scim_json_put(value),
+            SyntaxType::UuidSingle => ValueSetUuidSingle::from_scim_json_put(value),
             SyntaxType::Boolean => ValueSetBool::from_scim_json_put(value),
             SyntaxType::SyntaxId => ValueSetSyntax::from_scim_json_put(value),
             SyntaxType::IndexId => ValueSetIndex::from_scim_json_put(value),

@@ -284,6 +284,7 @@ pub enum SyntaxType {
     Sha256 = 44,
     Int64 = 45,
     Uint64 = 46,
+    UuidSingle = 47,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -296,6 +297,7 @@ impl TryFrom<&str> for SyntaxType {
             "UTF8STRING_INSENSITIVE" => Ok(SyntaxType::Utf8StringInsensitive),
             "UTF8STRING_INAME" => Ok(SyntaxType::Utf8StringIname),
             "UUID" => Ok(SyntaxType::Uuid),
+            "UUID_SINGLE" => Ok(SyntaxType::UuidSingle),
             "BOOLEAN" => Ok(SyntaxType::Boolean),
             "SYNTAX_ID" => Ok(SyntaxType::SyntaxId),
             "INDEX_ID" => Ok(SyntaxType::IndexId),
@@ -351,6 +353,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::Utf8StringInsensitive => "UTF8STRING_INSENSITIVE",
             SyntaxType::Utf8StringIname => "UTF8STRING_INAME",
             SyntaxType::Uuid => "UUID",
+            SyntaxType::UuidSingle => "UUID_SINGLE",
             SyntaxType::Boolean => "BOOLEAN",
             SyntaxType::SyntaxId => "SYNTAX_ID",
             SyntaxType::IndexId => "INDEX_ID",
@@ -410,7 +413,9 @@ impl SyntaxType {
                 IndexType::Presence,
                 IndexType::SubString,
             ],
-            SyntaxType::Uuid => &[IndexType::Equality, IndexType::Presence],
+            SyntaxType::Uuid | SyntaxType::UuidSingle => {
+                &[IndexType::Equality, IndexType::Presence]
+            }
             SyntaxType::Boolean => &[IndexType::Equality],
             SyntaxType::ReferenceUuid => &[IndexType::Equality, IndexType::Presence],
             SyntaxType::Credential => &[IndexType::Equality],

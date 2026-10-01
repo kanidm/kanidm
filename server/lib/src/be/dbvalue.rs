@@ -790,8 +790,13 @@ pub enum DbValueSetV2 {
     Iutf8(Vec<String>),
     #[serde(rename = "N8")]
     Iname(Vec<String>),
+
     #[serde(rename = "UU")]
     Uuid(Vec<Uuid>),
+
+    #[serde(rename = "US")]
+    UuidSingle(Uuid),
+
     #[serde(rename = "BO")]
     Bool(Vec<bool>),
     #[serde(rename = "SY")]
@@ -944,7 +949,7 @@ impl DbValueSetV2 {
             DbValueSetV2::Certificate(set) => set.len(),
             DbValueSetV2::ApplicationPassword(set) => set.len(),
             DbValueSetV2::Sha256(set) => set.len(),
-            DbValueSetV2::Json(_) | DbValueSetV2::Message(_) => 1,
+            DbValueSetV2::UuidSingle(_) | DbValueSetV2::Json(_) | DbValueSetV2::Message(_) => 1,
         }
     }
 

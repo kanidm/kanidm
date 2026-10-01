@@ -900,7 +900,6 @@ impl Entry<EntryIncremental, EntryNew> {
                             match (self.attrs.get(attr_name), db_ent.attrs.get(attr_name)) {
                                 (Some(vs_left), Some(vs_right)) if take_left => {
                                     changes.insert(attr_name.clone(), cid_left.clone());
-                                    #[allow(clippy::todo)]
                                     if let Some(merged_attr_state) =
                                         vs_left.repl_merge_valueset(vs_right, trim_cid)
                                     {
@@ -913,7 +912,6 @@ impl Entry<EntryIncremental, EntryNew> {
                                 }
                                 (Some(vs_left), Some(vs_right)) => {
                                     changes.insert(attr_name.clone(), cid_right.clone());
-                                    #[allow(clippy::todo)]
                                     if let Some(merged_attr_state) =
                                         vs_right.repl_merge_valueset(vs_left, trim_cid)
                                     {
