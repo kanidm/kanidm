@@ -10,20 +10,20 @@ use kanidm_proto::scim_v1::JsonValue;
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
-pub struct ValueSetUuid {
+pub struct ValueSetUuidN {
     set: BTreeSet<Uuid>,
 }
 
-impl ValueSetUuid {
+impl ValueSetUuidN {
     pub fn new(u: Uuid) -> Box<Self> {
         let mut set = BTreeSet::new();
         set.insert(u);
-        Box::new(ValueSetUuid { set })
+        Box::new(ValueSetUuidN { set })
     }
 
     pub fn from_dbvs2(data: Vec<Uuid>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
-        Ok(Box::new(ValueSetUuid { set }))
+        Ok(Box::new(ValueSetUuidN { set }))
     }
 
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
@@ -34,30 +34,30 @@ impl ValueSetUuid {
         T: IntoIterator<Item = Uuid>,
     {
         let set = iter.into_iter().collect();
-        Some(Box::new(ValueSetUuid { set }))
+        Some(Box::new(ValueSetUuidN { set }))
     }
-
-    /*
-    pub(crate) fn migrate_to_single(&self) -> Option<Box<ValueSetUuidSingle>> {
-        self.to_uuid_single().map(|uuid| Box::new(ValueSetUuidSingle { uuid }))
-    }
-    */
 }
 
-impl ValueSetScimPut for ValueSetUuid {
+impl ValueSetScimPut for ValueSetUuidN {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         let set: BTreeSet<Uuid> = serde_json::from_value(value).map_err(|err| {
             warn!(?err, "Invalid SCIM Uuid syntax");
             OperationError::SC0004UuidSyntaxInvalid
         })?;
 
-        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUuid {
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUuidN {
             set,
         })))
     }
 }
 
-impl ValueSetT for ValueSetUuid {
+impl ValueSetT for ValueSetUuidN {
+    fn migrate(&self) -> Result<Option<ValueSet>, OperationError> {
+        Ok(self
+            .to_uuid_single()
+            .map(|uuid| Box::new(ValueSetUuid { uuid }) as ValueSet))
+    }
+
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::Uuid(u) => Ok(self.set.insert(u)),
@@ -120,7 +120,7 @@ impl ValueSetT for ValueSetUuid {
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::Uuid
+        SyntaxType::UuidN
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
@@ -187,34 +187,34 @@ impl ValueSetT for ValueSetUuid {
 }
 
 #[derive(Debug, Clone)]
-pub struct ValueSetUuidSingle {
+pub struct ValueSetUuid {
     uuid: Uuid,
 }
 
-impl ValueSetUuidSingle {
+impl ValueSetUuid {
     pub fn new(uuid: Uuid) -> Box<Self> {
-        Box::new(ValueSetUuidSingle { uuid })
+        Box::new(ValueSetUuid { uuid })
     }
 
     pub fn from_dbvs2(uuid: Uuid) -> Result<ValueSet, OperationError> {
-        Ok(Box::new(ValueSetUuidSingle { uuid }))
+        Ok(Box::new(ValueSetUuid { uuid }))
     }
 }
 
-impl ValueSetScimPut for ValueSetUuidSingle {
+impl ValueSetScimPut for ValueSetUuid {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         let uuid: Uuid = serde_json::from_value(value).map_err(|err| {
             warn!(?err, "Invalid SCIM Uuid syntax");
             OperationError::SC0034UuidSyntaxInvalid
         })?;
 
-        Ok(ValueSetResolveStatus::Resolved(Box::new(
-            ValueSetUuidSingle { uuid },
-        )))
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUuid {
+            uuid,
+        })))
     }
 }
 
-impl ValueSetT for ValueSetUuidSingle {
+impl ValueSetT for ValueSetUuid {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::Uuid(u) => {
@@ -284,7 +284,7 @@ impl ValueSetT for ValueSetUuidSingle {
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::UuidSingle
+        SyntaxType::Uuid
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
@@ -564,31 +564,30 @@ impl ValueSetT for ValueSetRefer {
 
 #[cfg(test)]
 mod tests {
-    use super::{ValueSetRefer, ValueSetUuid};
+    use super::{ValueSetRefer, ValueSetUuid, ValueSetUuidN};
     use crate::prelude::*;
 
     #[test]
     fn test_scim_uuid_single() {
-        let vs: ValueSet =
-            ValueSetUuidSingle::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
+        let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
         let data = r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#;
 
         crate::valueset::scim_json_reflexive(&vs, data);
 
-        crate::valueset::scim_json_put_reflexive::<ValueSetUuidSingle>(&vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetUuid>(&vs, &[])
     }
 
     #[test]
     fn test_scim_uuid_multi() {
-        let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
+        let vs: ValueSet = ValueSetUuidN::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
         let data = r#"["4d21d04a-dc0e-42eb-b850-34dd180b107f"]"#;
 
         crate::valueset::scim_json_reflexive(&vs, data);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetUuid>(&vs, &[])
+        crate::valueset::scim_json_put_reflexive::<ValueSetUuidN>(&vs, &[])
     }
 
     #[qs_test]

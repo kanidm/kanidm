@@ -928,10 +928,35 @@ impl QueryServerWriteTransaction<'_> {
 
         self.reload()?;
 
-        // Migrate anything from the old uuid type to the new one.
-        
+        // Rewrite all entries in place to cause them to re-write their on disk format.
 
+        let filter = filter_all!(f_or!([
+            f_pres(Attribute::DomainUuid),
+            f_pres(Attribute::InMemoriam),
+            f_pres(Attribute::OAuth2AccountCredentialUuid),
+            f_pres(Attribute::Uuid),
+            f_pres(Attribute::CascadeDeleted),
+        ]));
 
+        let mut entries = self.internal_search_writeable(&filter)?;
+
+        for (_, entry) in entries.iter_mut() {
+            for attr in [
+                Attribute::DomainUuid,
+                Attribute::InMemoriam,
+                Attribute::OAuth2AccountCredentialUuid,
+                Attribute::Uuid,
+                Attribute::CascadeDeleted,
+            ] {
+                entry.migrate_ava(attr)?;
+            }
+        }
+
+        let count = entries.len();
+
+        self.internal_apply_writable(entries)?;
+
+        debug!("Updated UUID format for {} entries", count);
 
         let filter = filter_all!(f_and!([f_eq(
             Attribute::Class,

@@ -82,7 +82,7 @@ pub mod prelude {
         valueset::{
             ValueSet, ValueSetBool, ValueSetCid, ValueSetDateTime, ValueSetEmailAddress,
             ValueSetIname, ValueSetIutf8, ValueSetRefer, ValueSetSha256, ValueSetSyntax, ValueSetT,
-            ValueSetUrl, ValueSetUtf8, ValueSetUuid, ValueSetUuidSingle,
+            ValueSetUrl, ValueSetUtf8, ValueSetUuid, ValueSetUuidN,
         },
     };
     pub use crate::{

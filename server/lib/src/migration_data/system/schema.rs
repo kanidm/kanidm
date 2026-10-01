@@ -40,7 +40,7 @@ pub static SCHEMA_ATTR_SOURCE_UUID: LazyLock<SchemaAttribute> = LazyLock::new(||
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: true,
-    syntax: SyntaxType::Uuid,
+    syntax: SyntaxType::UuidN,
 });
 pub static SCHEMA_ATTR_CREATED_AT_CID: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {

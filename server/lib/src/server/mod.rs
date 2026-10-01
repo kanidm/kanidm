@@ -750,7 +750,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::CredentialType => CredentialType::try_from(value)
                         .map(Value::CredentialType)
                         .map_err(|()| OperationError::InvalidAttribute("Invalid CredentialType syntax".to_string())),
-                    SyntaxType::Uuid | SyntaxType::UuidSingle => {
+                    SyntaxType::Uuid | SyntaxType::UuidN => {
                         // Attempt to resolve this name to a uuid. If it's already a uuid, then
                         // name to uuid will "do the right thing" and give us the Uuid back.
                         let un = self
@@ -861,7 +861,7 @@ pub trait QueryServerTransaction<'a> {
                                 "Invalid credentialtype syntax".to_string(),
                             )
                         }),
-                    SyntaxType::Uuid | SyntaxType::UuidSingle => {
+                    SyntaxType::Uuid | SyntaxType::UuidN => {
                         let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(PartialValue::Uuid(un))
                     }

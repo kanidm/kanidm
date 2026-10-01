@@ -66,7 +66,7 @@ pub use self::{
     uint64::ValueSetUint64,
     url::ValueSetUrl,
     utf8::ValueSetUtf8,
-    uuid::{ValueSetRefer, ValueSetUuid, ValueSetUuidSingle},
+    uuid::{ValueSetRefer, ValueSetUuid, ValueSetUuidN},
 };
 use self::{apppwd::ValueSetApplicationPassword, image::ValueSetImage};
 
@@ -193,8 +193,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         self.len() == 0
     }
 
-    fn migrate_iutf8_iname(&self) -> Result<Option<ValueSet>, OperationError> {
-        debug_assert!(false);
+    fn migrate(&self) -> Result<Option<ValueSet>, OperationError> {
         Ok(None)
     }
 
@@ -868,7 +867,7 @@ pub fn from_result_value_iter(
         Value::Utf8(s) => ValueSetUtf8::new(s),
         Value::Iutf8(s) => ValueSetIutf8::new(&s),
         Value::Iname(s) => ValueSetIname::new(&s),
-        Value::Uuid(u) => ValueSetUuidSingle::new(u),
+        Value::Uuid(u) => ValueSetUuid::new(u),
         Value::Refer(u) => ValueSetRefer::new(u),
         Value::Bool(u) => ValueSetBool::new(u),
         Value::Uint32(u) => ValueSetUint32::new(u),
@@ -938,7 +937,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::Utf8(s) => ValueSetUtf8::new(s),
         Value::Iutf8(s) => ValueSetIutf8::new(&s),
         Value::Iname(s) => ValueSetIname::new(&s),
-        Value::Uuid(u) => ValueSetUuidSingle::new(u),
+        Value::Uuid(u) => ValueSetUuid::new(u),
         Value::Refer(u) => ValueSetRefer::new(u),
         Value::Bool(u) => ValueSetBool::new(u),
         Value::Uint32(u) => ValueSetUint32::new(u),
@@ -1019,8 +1018,9 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Utf8(set) => ValueSetUtf8::from_dbvs2(set),
         DbValueSetV2::Iutf8(set) => ValueSetIutf8::from_dbvs2(set),
         DbValueSetV2::Iname(set) => ValueSetIname::from_dbvs2(set),
-        DbValueSetV2::Uuid(set) => ValueSetUuid::from_dbvs2(set),
-        DbValueSetV2::UuidSingle(uuid) => ValueSetUuidSingle::from_dbvs2(uuid),
+        DbValueSetV2::Uuid(set) => ValueSetUuidN::from_dbvs2(set),
+        DbValueSetV2::UuidSingle(uuid) => ValueSetUuid::from_dbvs2(uuid),
+
         DbValueSetV2::Reference(set) => ValueSetRefer::from_dbvs2(set),
         DbValueSetV2::Bool(set) => ValueSetBool::from_dbvs2(set),
         DbValueSetV2::Uint32(set) => ValueSetUint32::from_dbvs2(set),

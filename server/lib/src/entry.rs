@@ -770,7 +770,10 @@ impl Entry<EntryIncremental, EntryNew> {
                         };
 
                         // Move the current uuid to source_uuid
-                        cnf_ent.add_ava(Attribute::SourceUuid, Value::Uuid(db_ent.valid.uuid));
+                        cnf_ent.set_ava_set(
+                            &Attribute::SourceUuid,
+                            ValueSetUuidN::new(db_ent.valid.uuid),
+                        );
 
                         // We need to make a random uuid in the conflict gen process.
                         let new_uuid = Uuid::new_v4();
@@ -1100,7 +1103,11 @@ impl Entry<EntryIncremental, EntryCommitted> {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
             ne.add_ava_int(Attribute::Class, EntryClass::Recycled.into());
             ne.add_ava_int(Attribute::Class, EntryClass::Conflict.into());
-            ne.add_ava_int(Attribute::SourceUuid, Value::Uuid(self.valid.uuid));
+
+            ne.set_ava_int(
+                Attribute::SourceUuid,
+                ValueSetUuidN::new(self.valid.uuid) as ValueSet,
+            );
         }
         ne
     }
@@ -1213,9 +1220,9 @@ impl Entry<EntryInvalid, EntryCommitted> {
         self.add_ava(Attribute::Class, EntryClass::Recycled.into());
         self.add_ava(Attribute::Class, EntryClass::Conflict.into());
         // Add all the source uuids we conflicted against.
-        for source_uuid in iter {
-            self.add_ava(Attribute::SourceUuid, Value::Uuid(source_uuid));
-        }
+        if let Some(vs) = ValueSetUuidN::from_iter(iter) {
+            self.set_ava_set(&Attribute::SourceUuid, vs as ValueSet)
+        };
     }
 
     /// Extract this entry from the recycle bin into a live state.
@@ -2603,6 +2610,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Doesn't matter if it already exists, equality will replace.
     }
 
+    fn set_ava_int(&mut self, attr: Attribute, vs: ValueSet) {
+        if let Some(existing_vs) = self.attrs.get_mut(&attr) {
+            // This is the suboptimal path. This can only exist in rare cases.
+            let _ = existing_vs.merge(&vs);
+        } else {
+            // Normally this is what's taken.
+            self.attrs.insert(attr, vs);
+        }
+    }
+
     /// Overwrite the current set of values for an attribute, with this new set.
     fn set_ava_iter_int<T>(&mut self, attr: Attribute, iter: T)
     where
@@ -2613,13 +2630,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             return;
         };
 
-        if let Some(existing_vs) = self.attrs.get_mut(&attr) {
-            // This is the suboptimal path. This can only exist in rare cases.
-            let _ = existing_vs.merge(&vs);
-        } else {
-            // Normally this is what's taken.
-            self.attrs.insert(attr, vs);
-        }
+        self.set_ava_int(attr, vs)
     }
 
     /// Update the last_changed flag of this entry to the given change identifier.
@@ -3363,6 +3374,27 @@ where
             self.attrs.insert(attr.clone(), vs);
             Ok(())
         }
+    }
+
+    pub(crate) fn migrate_ava<A: AsRef<Attribute>>(
+        &mut self,
+        attr: A,
+    ) -> Result<(), OperationError> {
+        let attr_ref = attr.as_ref();
+        // In theory we don't need to bump the CID here, but we do it out of correctness.
+        self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
+
+        let maybe_vs = if let Some(vs) = self.attrs.get(attr_ref) {
+            vs.migrate()?
+        } else {
+            None
+        };
+
+        if let Some(vs) = maybe_vs {
+            self.attrs.insert(attr_ref.clone(), vs);
+        }
+
+        Ok(())
     }
 
     /// Apply the content of this modlist to this entry, enforcing the expressed state.

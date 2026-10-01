@@ -224,9 +224,11 @@ impl ValueSetT for ValueSetIname {
         Some(Box::new(self.set.iter().map(|s| s.as_str())))
     }
 
+    /*
     fn migrate_iutf8_iname(&self) -> Result<Option<ValueSet>, OperationError> {
         Ok(None)
     }
+    */
 }
 
 #[cfg(test)]
