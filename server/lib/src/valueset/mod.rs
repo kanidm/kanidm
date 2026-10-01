@@ -1066,8 +1066,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Json(object) => Ok(ValueSetJson::new(object)),
         DbValueSetV2::Sha256(set) => ValueSetSha256::from_dbvs2(set),
         DbValueSetV2::Message(object) => Ok(ValueSetMessage::new(object)),
-        DbValueSetV2::EcKeyPrivate(_) |
-        DbValueSetV2::RestrictedString(_) => {
+        DbValueSetV2::EcKeyPrivate(_) | DbValueSetV2::RestrictedString(_) => {
             error!("Use of a deprecated database type");
             debug_assert!(false);
             Err(OperationError::InvalidState)

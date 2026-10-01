@@ -1,12 +1,7 @@
 use crate::{
-    idm::server::IdmServerProxyWriteTransaction,
-    prelude::*,
-    utils::readable_password_from_random,
+    idm::server::IdmServerProxyWriteTransaction, prelude::*, utils::readable_password_from_random,
 };
-use crypto_glue::{
-    s256::Sha256,
-    traits::Digest,
-};
+use crypto_glue::{s256::Sha256, traits::Digest};
 
 pub struct AccountSignupRequestEvent {
     // Who initiated this? By default I think
@@ -70,7 +65,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             (
                 Attribute::S256,
                 ValueSetSha256::new(intent_sha256) as ValueSet,
-            )
+            ),
         ]);
 
         // Create
