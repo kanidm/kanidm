@@ -5,17 +5,20 @@
 (% block admin_page %)
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/ui/admin/persons" hx-target="#main">Person Management</a></li>
+        <li class="breadcrumb-item"><a href="/ui/admin/persons" hx-target="#main">Persons</a></li>
         <li class="breadcrumb-item active" aria-current="page">(( person.spn ))</li>
     </ol>
 </nav>
+
+<h2>(( person.spn ))</h2>
+<hr>
 
 (% include "admin_person_details_partial.html" %)
 
 <hr>
 
 (% if scim_effective_access.search.check(&Attribute::Mail) %)
-<label class="mt-3 fw-bold">Emails</label>
+<h4>E-mail addresses</h4>
 <form hx-validate="true" hx-ext="bs-validation">
     (% if person.mails.len() == 0 %)
     <p>There are no email addresses associated with this person.</p>
@@ -34,7 +37,7 @@
 (% endif %)
 
 (% if scim_effective_access.search.check(&Attribute::DirectMemberOf) %)
-<label class="mt-3 fw-bold">DirectMemberOf</label>
+<h4 class="mt-3">Direct member of</h4>
 <form hx-validate="true" hx-ext="bs-validation">
     (% if person.groups.len() == 0 %)
     <p>There are no groups this person is a direct member of.</p>
