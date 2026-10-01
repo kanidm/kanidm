@@ -130,6 +130,50 @@ msg_id: {message_id}
                 ),
             )
         }
+        OutboundMessage::AccountSignupRequestV1 {
+            username,
+            intent_id,
+            expiry_time,
+        } => {
+            let mut reset_url = ctx.instance_url.clone();
+            reset_url.set_path("/ui/signup_verify");
+            reset_url.query_pairs_mut().append_pair("token", intent_id);
+
+            let mut revoke_url = ctx.instance_url.clone();
+            revoke_url.set_path("/ui/signup_revoke");
+            revoke_url.query_pairs_mut().append_pair("token", intent_id);
+
+            // TODO - local users timezone preference.
+            let pretty_expiry_time = expiry_time
+                .format(&Rfc2822)
+                .unwrap_or("ERROR - invalid expiration time".into());
+
+            (
+                format!(
+                    "{0}: Account Signup Verification",
+                    ctx.instance_display_name
+                ),
+                format!(
+                    r#"Hi,
+
+A request was made to create an account "{username}" associated with this email address.
+
+If this was you then you can verify your email by following this link:
+
+{reset_url}
+
+This link will expire at {pretty_expiry_time}
+
+If you did not request this message, please revoke the reset using the following link:
+
+{revoke_url}
+
+msg_id: {message_id}
+            "#,
+                    message_id = ctx.message_id,
+                ),
+            )
+        }
     }
 }
 

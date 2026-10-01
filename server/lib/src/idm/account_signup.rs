@@ -2,6 +2,7 @@ use crate::{
     idm::server::IdmServerProxyWriteTransaction, prelude::*, utils::readable_password_from_random,
 };
 use crypto_glue::{s256::Sha256, traits::Digest};
+use kanidm_proto::v1::OutboundMessage;
 
 pub struct AccountSignupRequestEvent {
     // Who initiated this? By default I think
@@ -56,7 +57,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             ),
             (
                 Attribute::Mail,
-                ValueSetEmailAddress::new(email) as ValueSet,
+                ValueSetEmailAddress::new(email.clone()) as ValueSet,
             ),
             (
                 Attribute::DeleteAfter,
@@ -77,7 +78,15 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         self.qs_write.create(&ce)?;
 
-        // TODO: Queue the email to validate the account.
+        let message = OutboundMessage::AccountSignupRequestV1 {
+            username,
+            intent_id,
+            expiry_time: delete_after_odt,
+        };
+
+        let mail_ident = Identity::message_queue();
+
+        self.qs_write.queue_message(&mail_ident, message, email)?;
 
         Ok(())
     }
@@ -101,6 +110,7 @@ impl IdmServerProxyWriteTransaction<'_> {
 mod tests {
     use super::AccountSignupRequestEvent;
     use crate::prelude::*;
+    use kanidm_proto::v1::OutboundMessage;
 
     const TESTPERSON_NAME: &str = "testperson";
     const TESTPERSON_DISPLAY_NAME: &str = "Test Personington";
@@ -168,5 +178,46 @@ mod tests {
         // Validate the person
 
         // TODO: Validate the message in the delayed queue
+        let idm_admin_identity = write_txn
+            .qs_write
+            .impersonate_uuid_as_readwrite_identity(UUID_IDM_ADMIN)
+            .expect("Failed to retrieve identity");
+
+        let filter = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::OutboundMessage.into()),
+            f_eq(
+                Attribute::MailDestination,
+                PartialValue::EmailAddress(TESTPERSON_EMAIL.into())
+            )
+        ]));
+
+        let mut entries = write_txn
+            .qs_write
+            .impersonate_search(filter.clone(), filter, &idm_admin_identity)
+            .expect("Unable to search message queue");
+
+        assert_eq!(entries.len(), 1);
+        let message_entry = entries.pop().unwrap();
+
+        let message = message_entry
+            .get_ava_set(Attribute::MessageTemplate)
+            .and_then(|vs| vs.as_message())
+            .unwrap();
+
+        let _intent_id = match message {
+            OutboundMessage::AccountSignupRequestV1 {
+                username,
+                intent_id,
+                ..
+            } => {
+                assert_eq!(username, TESTPERSON_NAME);
+                intent_id
+            }
+            _ => panic!("Wrong message type!"),
+        };
+
+        // Now use the intent_id to complete the signup.
+
+        assert!(write_txn.commit().is_ok());
     }
 }
