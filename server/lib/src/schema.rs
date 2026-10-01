@@ -225,7 +225,9 @@ impl SchemaAttribute {
             SyntaxType::Boolean => matches!(v, PartialValue::Bool(_)),
             SyntaxType::SyntaxId => matches!(v, PartialValue::Syntax(_)),
             SyntaxType::IndexId => matches!(v, PartialValue::Index(_)),
-            SyntaxType::Uuid | SyntaxType::UuidSingle => matches!(v, PartialValue::Uuid(_)),
+            SyntaxType::Uuid | SyntaxType::UuidN => {
+                matches!(v, PartialValue::Uuid(_))
+            }
             SyntaxType::ReferenceUuid => matches!(v, PartialValue::Refer(_)),
             SyntaxType::Utf8StringInsensitive => matches!(v, PartialValue::Iutf8(_)),
             SyntaxType::Utf8StringIname => matches!(v, PartialValue::Iname(_)),
@@ -302,7 +304,7 @@ impl SchemaAttribute {
                 SyntaxType::Boolean => matches!(v, Value::Bool(_)),
                 SyntaxType::SyntaxId => matches!(v, Value::Syntax(_)),
                 SyntaxType::IndexId => matches!(v, Value::Index(_)),
-                SyntaxType::Uuid | SyntaxType::UuidSingle => matches!(v, Value::Uuid(_)),
+                SyntaxType::Uuid => matches!(v, Value::Uuid(_)),
                 SyntaxType::ReferenceUuid => matches!(v, Value::Refer(_)),
                 SyntaxType::Utf8StringInsensitive => matches!(v, Value::Iutf8(_)),
                 SyntaxType::Utf8StringIname => matches!(v, Value::Iname(_)),
@@ -350,7 +352,7 @@ impl SchemaAttribute {
                 SyntaxType::Json => matches!(v, Value::Json(_)),
                 SyntaxType::Sha256 => matches!(v, Value::Sha256(_)),
                 SyntaxType::EcKeyPrivate => matches!(v, Value::SecretValue(_)),
-                SyntaxType::Message => false,
+                SyntaxType::UuidN | SyntaxType::Message => false,
             };
         if r {
             Ok(())

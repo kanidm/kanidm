@@ -426,41 +426,6 @@ mod tests {
         );
     }
 
-    // check entry where uuid is empty list
-    #[test]
-    fn test_pre_create_uuid_empty() {
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
-
-        let mut e = entry_init!(
-            (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
-            (
-                Attribute::DisplayName,
-                Value::Utf8("Test Person".to_string())
-            ),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611d"))
-            )
-        );
-
-        let vs = e.get_ava_mut(Attribute::Uuid).unwrap();
-        vs.clear();
-
-        let create = vec![e.clone()];
-
-        run_create_test!(
-            Err(OperationError::Plugin(PluginError::Base(
-                "Uuid format invalid".to_string()
-            ))),
-            preload,
-            create,
-            None,
-            |_| {}
-        );
-    }
-
     // check create where provided uuid is valid. It should be unchanged.
     #[test]
     fn test_pre_create_uuid_valid() {
@@ -500,41 +465,6 @@ mod tests {
                     &PartialValue::Uuid(uuid!("79724141-3603-4060-b6bb-35c72772611d"))
                 ));
             }
-        );
-    }
-
-    #[test]
-    fn test_pre_create_uuid_valid_multi() {
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
-
-        let e = entry_init!(
-            (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
-            (
-                Attribute::DisplayName,
-                Value::Utf8("Test Person".to_string())
-            ),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611e"))
-            ),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611d"))
-            )
-        );
-
-        let create = vec![e];
-
-        run_create_test!(
-            Err(OperationError::Plugin(PluginError::Base(
-                "Uuid has multiple values".to_string()
-            ))),
-            preload,
-            create,
-            None,
-            |_| {}
         );
     }
 

@@ -220,19 +220,9 @@ impl fmt::Display for IndexType {
 }
 
 #[allow(non_camel_case_types)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 #[derive(
-    Hash,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Deserialize,
-    Serialize,
-    TryFromPrimitive,
-    Default,
+    Hash, Debug, Clone, Copy, Eq, PartialOrd, Ord, Deserialize, Serialize, TryFromPrimitive, Default,
 )]
 #[repr(u16)]
 pub enum SyntaxType {
@@ -284,7 +274,7 @@ pub enum SyntaxType {
     Sha256 = 44,
     Int64 = 45,
     Uint64 = 46,
-    UuidSingle = 47,
+    UuidN = 47,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -297,7 +287,7 @@ impl TryFrom<&str> for SyntaxType {
             "UTF8STRING_INSENSITIVE" => Ok(SyntaxType::Utf8StringInsensitive),
             "UTF8STRING_INAME" => Ok(SyntaxType::Utf8StringIname),
             "UUID" => Ok(SyntaxType::Uuid),
-            "UUID_SINGLE" => Ok(SyntaxType::UuidSingle),
+            "UUID_MULTI" => Ok(SyntaxType::UuidN),
             "BOOLEAN" => Ok(SyntaxType::Boolean),
             "SYNTAX_ID" => Ok(SyntaxType::SyntaxId),
             "INDEX_ID" => Ok(SyntaxType::IndexId),
@@ -353,7 +343,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::Utf8StringInsensitive => "UTF8STRING_INSENSITIVE",
             SyntaxType::Utf8StringIname => "UTF8STRING_INAME",
             SyntaxType::Uuid => "UUID",
-            SyntaxType::UuidSingle => "UUID_SINGLE",
+            SyntaxType::UuidN => "UUID_MULTI",
             SyntaxType::Boolean => "BOOLEAN",
             SyntaxType::SyntaxId => "SYNTAX_ID",
             SyntaxType::IndexId => "INDEX_ID",
@@ -413,9 +403,7 @@ impl SyntaxType {
                 IndexType::Presence,
                 IndexType::SubString,
             ],
-            SyntaxType::Uuid | SyntaxType::UuidSingle => {
-                &[IndexType::Equality, IndexType::Presence]
-            }
+            SyntaxType::Uuid | SyntaxType::UuidN => &[IndexType::Equality, IndexType::Presence],
             SyntaxType::Boolean => &[IndexType::Equality],
             SyntaxType::ReferenceUuid => &[IndexType::Equality, IndexType::Presence],
             SyntaxType::Credential => &[IndexType::Equality],
@@ -473,6 +461,19 @@ impl SyntaxType {
             SyntaxType::Json => &[],
             SyntaxType::Message => &[],
             SyntaxType::Sha256 => &[IndexType::Equality],
+        }
+    }
+}
+
+// This exists to allow transition between the former syntax types and the
+// new single/multivalue types.
+impl PartialEq for SyntaxType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            // This allows migration of existing Uuids into the new single
+            // type
+            (SyntaxType::Uuid, SyntaxType::UuidN) | (SyntaxType::UuidN, SyntaxType::Uuid) => true,
+            (a, b) => *a as u16 == *b as u16,
         }
     }
 }

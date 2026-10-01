@@ -1,4 +1,3 @@
-use super::iname::ValueSetIname;
 use crate::{
     prelude::*,
     schema::SchemaAttribute,
@@ -212,11 +211,13 @@ impl ValueSetT for ValueSetIutf8 {
         Some(Box::new(self.set.iter().map(|s| s.as_str())))
     }
 
+    /*
     fn migrate_iutf8_iname(&self) -> Result<Option<ValueSet>, OperationError> {
         let vsi: Option<ValueSet> =
             ValueSetIname::from_iter(self.set.iter().map(|s| s.as_str())).map(|vs| vs as _);
         Ok(vsi)
     }
+    */
 }
 
 #[cfg(test)]
