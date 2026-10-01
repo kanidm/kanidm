@@ -6,11 +6,11 @@
 (% if scim_effective_access.search.check(&attribute) -%)
 <div class="row mt-2">
     (% if can_rw && can_modify_any_attr -%)
-    <label for="group(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0 py-md-2">(( dispname ))</label>
+    <label for="group(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label py-0">(( dispname ))</label>
     (% else -%)
-    <label for="group(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
+    <label for="group(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label py-0">(( dispname ))</label>
     (% endif -%)
-    <div class="col-12 col-md-8 col-lg-6 align-content-center">
+    <div class="col-12 col-md-8 col-lg-6 align-content-center(% if attribute == Attribute::Uuid %) font-monospace text-secondary(% endif %)">
         (% if scim_effective_access.modify_present.check(&attribute) -%)
         <input class="form-control py-0" id="group(( name ))" name="(( name ))" value="(( value ))"/>
         (% else -%)
@@ -24,10 +24,13 @@
 (% block admin_page %)
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/ui/admin/groups" hx-target="#main">Group List</a></li>
-        <li class="breadcrumb-item active" aria-current="page">(% if can_rw %)Managing(% else %)Viewing(% endif %) Entry</li>
+        <li class="breadcrumb-item"><a href="/ui/admin/groups" hx-target="#main">Groups</a></li>
+        <li class="breadcrumb-item active" aria-current="page">(( group.name ))</li>
     </ol>
 </nav>
+
+<h2>(( group.name ))</h2>
+<hr>
 
 <form id="user_settings_container" class="needs-validation"
       hx-post="/ui/api/admin/group/(( group.uuid ))"
@@ -37,26 +40,27 @@
       hx-ext="bs-validation"
       novalidate>
    
-    (% if can_rw -%)
-        (% if can_modify_any_attr -%)
-            <button type="submit" class="btn btn-primary">Save</button>
-        (% endif -%)
-    (% else -%)
-        <a href="/ui/unlock">
-            <button type="button" class="btn btn-secondary">Unlock Edit 🔒</button>
-        </a>
-    (% endif -%)
-
     (% call string_attr("UUID", "uuid", group.uuid, can_modify_any_attr, Attribute::Uuid) -%)(% endcall %)
     (% call string_attr("Name", "name", group.name.clone(), can_modify_any_attr, Attribute::Name) -%)(% endcall %)
     (% let description = group.description.clone().unwrap_or(String::new()) %)
     (% call string_attr("Description", "description", description, can_modify_any_attr, Attribute::Description) -%)(% endcall %)
+
+    (% if can_rw -%)
+        (% if can_modify_any_attr -%)
+            <button type="submit" class="btn btn-primary mt-2">Save</button>
+        (% endif -%)
+    (% else -%)
+        <a href="/ui/unlock">
+            <button type="button" class="btn btn-secondary mt-2">Unlock Edit 🔒</button>
+        </a>
+    (% endif -%)
 </form>
+<hr>
 
 (% if scim_effective_access.search.check(&Attribute::Member) %)
     (% let can_edit_member = can_rw && scim_effective_access.modify_present.check(&Attribute::Member) %)
-    <label class="mt-2 fw-bold">Members</label>
     (% if can_edit_member %)
+    <h4 class="mt-3">Add member</h4>
     <form hx-boost="true"
             hx-post="/ui/api/admin/group/(( group.uuid ))/add_member"
             hx-target="#members"
@@ -64,13 +68,17 @@
         <div class="col-12 col-md-11 col-lg-8">
             <div class="input-group">
                 <input type="text" class="form-control" id="add-member-input" name="member"
-                    aria-label="Name or uuid of member to add" placeholder="name or uuid"
+                    aria-label="Name or UUID of member to add" placeholder="name or UUID"
                     aria-describedby="add-member-button">
                 <button class="btn btn-primary float-end" id="add-member-button">Add member</button>
             </div>
         </div>
     </form>
     (% endif %)
+    <h4 class="mt-3">Members</h4>
+    (% if group.members.len() == 0 %)
+    <p>There are no members associated with this group.</p>
+    (% else %)
     <ol class="list-group col-12 col-md-11 col-lg-8 mt-1" id="members">
         (% for member in group.members %)
             (% let member_name = member.value.clone() %)
@@ -78,6 +86,7 @@
             (% include "admin_group_member_entry_partial.html" %)
         (% endfor %)
     </ol>
+    (% endif %)
 (% endif %)
 
 <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
