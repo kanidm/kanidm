@@ -7,23 +7,18 @@ use crate::{
     },
 };
 use kanidm_proto::scim_v1::JsonValue;
-use smolset::SmolSet;
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUuid {
-    set: SmolSet<[Uuid; 1]>,
+    set: BTreeSet<Uuid>,
 }
 
 impl ValueSetUuid {
     pub fn new(u: Uuid) -> Box<Self> {
-        let mut set = SmolSet::new();
+        let mut set = BTreeSet::new();
         set.insert(u);
         Box::new(ValueSetUuid { set })
-    }
-
-    pub fn push(&mut self, u: Uuid) -> bool {
-        self.set.insert(u)
     }
 
     pub fn from_dbvs2(data: Vec<Uuid>) -> Result<ValueSet, OperationError> {
@@ -41,17 +36,21 @@ impl ValueSetUuid {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetUuid { set }))
     }
+
+    /*
+    pub(crate) fn migrate_to_single(&self) -> Option<Box<ValueSetUuidSingle>> {
+        self.to_uuid_single().map(|uuid| Box::new(ValueSetUuidSingle { uuid }))
+    }
+    */
 }
 
 impl ValueSetScimPut for ValueSetUuid {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let uuid: Uuid = serde_json::from_value(value).map_err(|err| {
+        let set: BTreeSet<Uuid> = serde_json::from_value(value).map_err(|err| {
             warn!(?err, "Invalid SCIM Uuid syntax");
             OperationError::SC0004UuidSyntaxInvalid
         })?;
 
-        let mut set = SmolSet::new();
-        set.insert(uuid);
         Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUuid {
             set,
         })))
@@ -133,12 +132,9 @@ impl ValueSetT for ValueSetUuid {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        self.set
-            .iter()
-            .next()
-            .copied()
-            .map(ScimValueKanidm::Uuid)
-            .map(ScimResolveStatus::Resolved)
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::ArrayUuid(
+            self.set.iter().copied().collect::<Vec<_>>(),
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -179,7 +175,7 @@ impl ValueSetT for ValueSetUuid {
         }
     }
 
-    fn as_uuid_set(&self) -> Option<&SmolSet<[Uuid; 1]>> {
+    fn as_uuid_set(&self) -> Option<&BTreeSet<Uuid>> {
         Some(&self.set)
     }
 
@@ -188,6 +184,152 @@ impl ValueSetT for ValueSetUuid {
         Some(Box::new(self.set.iter().copied()))
     }
     */
+}
+
+#[derive(Debug, Clone)]
+pub struct ValueSetUuidSingle {
+    uuid: Uuid,
+}
+
+impl ValueSetUuidSingle {
+    pub fn new(uuid: Uuid) -> Box<Self> {
+        Box::new(ValueSetUuidSingle { uuid })
+    }
+
+    pub fn from_dbvs2(uuid: Uuid) -> Result<ValueSet, OperationError> {
+        Ok(Box::new(ValueSetUuidSingle { uuid }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetUuidSingle {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let uuid: Uuid = serde_json::from_value(value).map_err(|err| {
+            warn!(?err, "Invalid SCIM Uuid syntax");
+            OperationError::SC0034UuidSyntaxInvalid
+        })?;
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(
+            ValueSetUuidSingle { uuid },
+        )))
+    }
+}
+
+impl ValueSetT for ValueSetUuidSingle {
+    fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
+        match value {
+            Value::Uuid(u) => {
+                if self.uuid != u {
+                    self.uuid = u;
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            _ => {
+                debug_assert!(false);
+                Err(OperationError::InvalidValueState)
+            }
+        }
+    }
+
+    fn clear(&mut self) {
+        debug_assert!(false);
+        // NO-OP
+        // self.set.clear();
+    }
+
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
+        match pv {
+            // If we return true, then the whole ava is removed on the entry.
+            PartialValue::Uuid(u) => *u == self.uuid,
+            _ => {
+                debug_assert!(false);
+                true
+            }
+        }
+    }
+
+    fn contains(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Uuid(u) => *u == self.uuid,
+            _ => false,
+        }
+    }
+
+    fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn lessthan(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Uuid(u) => self.uuid < *u,
+            _ => false,
+        }
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+
+    fn generate_idx_eq_keys(&self) -> Vec<String> {
+        std::iter::once(self.uuid.as_hyphenated().to_string()).collect()
+    }
+
+    fn syntax(&self) -> SyntaxType {
+        SyntaxType::UuidSingle
+    }
+
+    fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
+        true
+    }
+
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
+        Box::new(std::iter::once(self.uuid).map(uuid_to_proto_string))
+    }
+
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::Uuid(
+            self.uuid,
+        )))
+    }
+
+    fn to_db_valueset_v2(&self) -> DbValueSetV2 {
+        DbValueSetV2::UuidSingle(self.uuid)
+    }
+
+    fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
+        Box::new(std::iter::once(self.uuid).map(PartialValue::Uuid))
+    }
+
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
+        Box::new(std::iter::once(self.uuid).map(Value::Uuid))
+    }
+
+    fn equal(&self, other: &ValueSet) -> bool {
+        if let Some(other) = other.to_uuid_single() {
+            self.uuid == other
+        } else {
+            debug_assert!(false);
+            false
+        }
+    }
+
+    fn merge(&mut self, _other: &ValueSet) -> Result<(), OperationError> {
+        debug_assert!(false);
+        Err(OperationError::InvalidValueState)
+    }
+
+    fn to_uuid_single(&self) -> Option<Uuid> {
+        Some(self.uuid)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -426,10 +568,22 @@ mod tests {
     use crate::prelude::*;
 
     #[test]
-    fn test_scim_uuid() {
-        let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
+    fn test_scim_uuid_single() {
+        let vs: ValueSet =
+            ValueSetUuidSingle::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
         let data = r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#;
+
+        crate::valueset::scim_json_reflexive(&vs, data);
+
+        crate::valueset::scim_json_put_reflexive::<ValueSetUuidSingle>(&vs, &[])
+    }
+
+    #[test]
+    fn test_scim_uuid_multi() {
+        let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
+
+        let data = r#"["4d21d04a-dc0e-42eb-b850-34dd180b107f"]"#;
 
         crate::valueset::scim_json_reflexive(&vs, data);
 

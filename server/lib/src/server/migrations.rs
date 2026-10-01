@@ -928,6 +928,11 @@ impl QueryServerWriteTransaction<'_> {
 
         self.reload()?;
 
+        // Migrate anything from the old uuid type to the new one.
+        
+
+
+
         let filter = filter_all!(f_and!([f_eq(
             Attribute::Class,
             EntryClass::OAuth2ResourceServer.into()
