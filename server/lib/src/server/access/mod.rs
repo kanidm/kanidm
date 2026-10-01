@@ -2183,7 +2183,6 @@ mod tests {
             modlist!([Modify::Set(
                 Attribute::Class,
                 ValueSetIutf8::from_iter([EntryClass::Account.into(), EntryClass::Object.into(),])
-                    .unwrap()
             )]),
         );
 

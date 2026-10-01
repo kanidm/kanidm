@@ -149,6 +149,8 @@ fn create_filter_entry<'a>(
             let pres_cls = BTreeSet::from([
                 EntryClass::Object.into(),
                 EntryClass::AccountSignupRequest.into(),
+                EntryClass::Account.into(),
+                EntryClass::Person.into(),
             ]);
 
             // We may create account signup requests.

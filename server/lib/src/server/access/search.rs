@@ -97,8 +97,8 @@ fn search_filter_entry(
             let valid_account_request_class = entry
                 .get_ava_as_iutf8(Attribute::Class)
                 .map(|classes| {
-                    trace!(?classes);
                     classes.contains(&EntryClass::Account.to_string())
+                        || classes.contains(&EntryClass::AccountSignupRequest.to_string())
                 })
                 .unwrap_or(false);
 

@@ -3516,8 +3516,7 @@ mod tests {
                     EntryClass::Account.into(),
                     EntryClass::PosixAccount.into(),
                     EntryClass::Person.into(),
-                ])
-                .unwrap() as ValueSet,
+                ]) as ValueSet,
             ),
             (
                 Attribute::Name,
@@ -3650,8 +3649,7 @@ mod tests {
                     EntryClass::Object.into(),
                     EntryClass::Account.into(),
                     EntryClass::Person.into(),
-                ])
-                .unwrap() as ValueSet,
+                ]) as ValueSet,
             ),
             (
                 Attribute::Name,
