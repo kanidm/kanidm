@@ -247,6 +247,14 @@ impl ValueSetScimPut for ValueSetInameN {
 }
 
 impl ValueSetT for ValueSetInameN {
+    fn migrate(&self) -> Result<Option<ValueSet>, OperationError> {
+        Ok(self.to_iname_single().map(|value| {
+            Box::new(ValueSetIname {
+                value: value.to_string(),
+            }) as ValueSet
+        }))
+    }
+
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::Iname(s) => Ok(self.set.insert(s)),

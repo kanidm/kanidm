@@ -225,6 +225,14 @@ impl ValueSetScimPut for ValueSetIutf8N {
 }
 
 impl ValueSetT for ValueSetIutf8N {
+    fn migrate(&self) -> Result<Option<ValueSet>, OperationError> {
+        Ok(self.to_iutf8_single().map(|value| {
+            Box::new(ValueSetIutf8 {
+                value: value.to_string(),
+            }) as ValueSet
+        }))
+    }
+
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::Iutf8(s) => Ok(self.set.insert(s)),

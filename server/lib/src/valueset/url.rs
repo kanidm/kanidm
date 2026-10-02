@@ -55,6 +55,14 @@ impl ValueSetScimPut for ValueSetUrlN {
 }
 
 impl ValueSetT for ValueSetUrlN {
+    fn migrate(&self) -> Result<Option<ValueSet>, OperationError> {
+        Ok(self.to_url_single().map(|value| {
+            Box::new(ValueSetUrl {
+                value: value.clone(),
+            }) as ValueSet
+        }))
+    }
+
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::Url(u) => Ok(self.set.insert(u)),
