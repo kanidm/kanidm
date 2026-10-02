@@ -582,6 +582,33 @@ pub trait QueryServerTransaction<'a> {
         self.search_ext(&se)
     }
 
+    fn ident_search(
+        &mut self,
+        ident: &Identity,
+        filter: Filter<FilterInvalid>,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        let f_intent_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let f_valid = f_intent_valid.clone().into_ignore_hidden();
+
+        let se = SearchEvent::new_impersonate(ident, f_valid, f_intent_valid);
+        self.search(&se)
+    }
+
+    fn ident_search_single(
+        &mut self,
+        ident: &Identity,
+        filter: Filter<FilterInvalid>,
+    ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
+        let mut vs = self.ident_search(ident, filter)?;
+        match vs.pop() {
+            Some(entry) if vs.is_empty() => Ok(entry),
+            _ => Err(OperationError::NoMatchingEntries),
+        }
+    }
+
     // Who they are will go here
     fn impersonate_search(
         &mut self,
