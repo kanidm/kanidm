@@ -435,6 +435,11 @@ impl QueryServerWriteTransaction<'_> {
             SyntaxType::Uint64 => ValueSetUint64::from_scim_json_put(value),
             SyntaxType::Sha256 => ValueSetSha256::from_scim_json_put(value),
 
+            SyntaxType::UrlN => ValueSetUrlN::from_scim_json_put(value),
+            SyntaxType::ReferenceUuidN => ValueSetReferN::from_scim_json_put(value),
+            SyntaxType::Utf8StringInameN => ValueSetInameN::from_scim_json_put(value),
+            SyntaxType::Utf8StringInsensitiveN => ValueSetIutf8N::from_scim_json_put(value),
+
             // Not Yet ... if ever
             // SyntaxType::JsonFilter => ValueSetJsonFilter::from_scim_json_put(value),
             SyntaxType::JsonFilter => Err(OperationError::InvalidAttribute(

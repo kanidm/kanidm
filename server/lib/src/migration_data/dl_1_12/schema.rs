@@ -614,6 +614,7 @@ pub static SCHEMA_ATTR_SYNC_TOKEN_SESSION: LazyLock<SchemaAttribute> =
         description: "A session entry related to an issued sync token".to_string(),
         indexed: true,
         unique: true,
+        multivalue: true,
         syntax: SyntaxType::ApiToken,
         ..Default::default()
     });
