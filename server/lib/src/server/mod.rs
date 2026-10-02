@@ -766,7 +766,9 @@ pub trait QueryServerTransaction<'a> {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::Utf8String => Ok(Value::new_utf8(value.to_string())),
+                    SyntaxType::Utf8StringInsensitiveN |
                     SyntaxType::Utf8StringInsensitive => Ok(Value::new_iutf8(value)),
+                    SyntaxType::Utf8StringInameN |
                     SyntaxType::Utf8StringIname => Ok(Value::new_iname(value)),
                     SyntaxType::Boolean => Value::new_bools(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
@@ -777,6 +779,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::CredentialType => CredentialType::try_from(value)
                         .map(Value::CredentialType)
                         .map_err(|()| OperationError::InvalidAttribute("Invalid CredentialType syntax".to_string())),
+                    SyntaxType::UuidN |
                     SyntaxType::Uuid => {
                         // Attempt to resolve this name to a uuid. If it's already a uuid, then
                         // name to uuid will "do the right thing" and give us the Uuid back.
@@ -785,6 +788,7 @@ pub trait QueryServerTransaction<'a> {
                             .unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(Value::Uuid(un))
                     }
+                    SyntaxType::ReferenceUuidN |
                     SyntaxType::ReferenceUuid => {
                         let un = self
                             .name_to_uuid(value)
@@ -812,6 +816,7 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid DateTime (rfc3339) syntax".to_string())),
                     SyntaxType::EmailAddress => Value::new_email_address_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Email Address syntax".to_string())),
+                        SyntaxType::UrlN |
                     SyntaxType::Url => Value::new_url_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
                     SyntaxType::OauthScope => Value::new_oauthscope(value)
@@ -845,7 +850,6 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::Sha256 => Err(OperationError::InvalidAttribute("SHA256 values can not be supplied through modification".to_string())),
                     SyntaxType::Message => Err(OperationError::InvalidAttribute("Message values can not be supplied through modification".to_string())),
 
-                    SyntaxType::UuidN | SyntaxType::Utf8StringInsensitiveN | SyntaxType::ReferenceUuidN | SyntaxType::Utf8StringInameN | SyntaxType::UrlN => { todo!(); }
                 }
             }
             None => {

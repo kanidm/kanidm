@@ -163,7 +163,7 @@ impl ValueSetT for ValueSetIname {
 
     fn equal(&self, other: &ValueSet) -> bool {
         if let Some(other) = other.to_iname_single() {
-            &self.value == other
+            self.value == other
         } else {
             debug_assert!(false);
             false

@@ -590,7 +590,7 @@ impl ValueSetScimPut for ValueSetRefer {
                 value: None,
             } => {
                 warn!("Invalid SCIM reference set syntax, uuid and value are both unset.");
-                return Err(OperationError::SC0002ReferenceSyntaxInvalid);
+                Err(OperationError::SC0002ReferenceSyntaxInvalid)
             }
             ScimReference {
                 uuid: Some(uuid),
