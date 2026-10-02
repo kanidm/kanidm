@@ -577,24 +577,24 @@ impl From<&SchemaClass> for EntryInitNew {
             ],
         );
 
-        let vs_systemmay = ValueSetIutf8::from_iter(s.systemmay.iter().map(|sm| sm.as_str()));
+        let vs_systemmay = ValueSetIutf8N::from_iter(s.systemmay.iter().map(|sm| sm.as_str()));
         if let Some(vs) = vs_systemmay {
             attrs.insert(Attribute::SystemMay, vs);
         }
 
-        let vs_systemmust = ValueSetIutf8::from_iter(s.systemmust.iter().map(|sm| sm.as_str()));
+        let vs_systemmust = ValueSetIutf8N::from_iter(s.systemmust.iter().map(|sm| sm.as_str()));
         if let Some(vs) = vs_systemmust {
             attrs.insert(Attribute::SystemMust, vs);
         }
 
         let vs_systemexcludes =
-            ValueSetIutf8::from_iter(s.systemexcludes.iter().map(|sm| sm.as_str()));
+            ValueSetIutf8N::from_iter(s.systemexcludes.iter().map(|sm| sm.as_str()));
         if let Some(vs) = vs_systemexcludes {
             attrs.insert(Attribute::SystemExcludes, vs);
         }
 
         let vs_systemsupplements =
-            ValueSetIutf8::from_iter(s.systemsupplements.iter().map(|sm| sm.as_str()));
+            ValueSetIutf8N::from_iter(s.systemsupplements.iter().map(|sm| sm.as_str()));
         if let Some(vs) = vs_systemsupplements {
             attrs.insert(Attribute::SystemSupplements, vs);
         }

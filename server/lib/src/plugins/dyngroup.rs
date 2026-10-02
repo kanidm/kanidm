@@ -89,7 +89,7 @@ impl DynGroup {
 
             trace!(entries_len = %entries.len());
 
-            let members = ValueSetRefer::from_iter(entries.iter().map(|e| e.get_uuid()));
+            let members = ValueSetReferN::from_iter(entries.iter().map(|e| e.get_uuid()));
             trace!(?members);
 
             if let Some(uuid_iter) = members.as_ref().and_then(|a| a.as_ref_uuid_iter()) {

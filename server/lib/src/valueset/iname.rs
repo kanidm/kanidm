@@ -47,9 +47,9 @@ impl ValueSetT for ValueSetIname {
             Value::Iname(s) => {
                 if s != self.value {
                     self.value = s;
-                    true
+                    Ok(true)
                 } else {
-                    false
+                    Ok(false)
                 }
             }
             _ => {
@@ -63,7 +63,7 @@ impl ValueSetT for ValueSetIname {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Iname(s) => s == self.value,
+            PartialValue::Iname(s) => *s == self.value,
             _ => {
                 debug_assert!(false);
                 true
@@ -73,7 +73,7 @@ impl ValueSetT for ValueSetIname {
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Iname(s) => s == self.value,
+            PartialValue::Iname(s) => *s == self.value,
             _ => false,
         }
     }
@@ -121,9 +121,9 @@ impl ValueSetT for ValueSetIname {
     }
 
     fn generate_idx_sub_keys(&self) -> Vec<String> {
-        debug_assert!(self.value == s.to_lowercase());
+        debug_assert!(self.value == self.value.to_lowercase());
 
-        let mut trigraphs: Vec<_> = trigraph_iter(v).collect();
+        let mut trigraphs: Vec<_> = trigraph_iter(&self.value).collect();
 
         trigraphs.sort_unstable();
         trigraphs.dedup();
@@ -136,17 +136,17 @@ impl ValueSetT for ValueSetIname {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        Value::validate_str_escapes(self.value)
-            && Value::validate_singleline(self.value)
-            && Value::validate_iname(self.value.as_str())
+        Value::validate_str_escapes(&self.value)
+            && Value::validate_singleline(&self.value)
+            && Value::validate_iname(&self.value)
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(std::iter::once(self.value.cloned()))
+        Box::new(std::iter::once(self.value.clone()))
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        Some(self.value.into())
+        Some(self.value.clone().into())
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -172,24 +172,20 @@ impl ValueSetT for ValueSetIname {
 
     fn cmp(&self, other: &ValueSet) -> Ordering {
         if let Some(other) = other.to_iname_single() {
-            self.value.cmp(other)
+            self.value.as_str().cmp(other)
         } else {
             debug_assert!(false);
             Ordering::Equal
         }
     }
 
-    fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
+    fn merge(&mut self, _other: &ValueSet) -> Result<(), OperationError> {
         debug_assert!(false);
         Err(OperationError::InvalidValueState)
     }
 
     fn to_iname_single(&self) -> Option<&str> {
-        if self.set.len() == 1 {
-            self.set.iter().take(1).next().map(|s| s.as_str())
-        } else {
-            None
-        }
+        Some(self.value.as_str())
     }
 
     /*
@@ -208,7 +204,7 @@ impl ValueSetInameN {
     pub fn new(s: &str) -> Box<Self> {
         let mut set = BTreeSet::new();
         set.insert(s.to_lowercase());
-        Box::new(ValueSetIname { set })
+        Box::new(ValueSetInameN { set })
     }
 
     pub fn push(&mut self, s: &str) -> bool {
@@ -217,7 +213,7 @@ impl ValueSetInameN {
 
     pub fn from_dbvs2(data: Vec<String>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
-        Ok(Box::new(ValueSetIname { set }))
+        Ok(Box::new(ValueSetInameN { set }))
     }
 
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
@@ -228,7 +224,7 @@ impl ValueSetInameN {
         T: IntoIterator<Item = &'a str>,
     {
         let set = iter.into_iter().map(str::to_string).collect();
-        Some(Box::new(ValueSetIname { set }))
+        Some(Box::new(ValueSetInameN { set }))
     }
 }
 
@@ -241,7 +237,7 @@ impl ValueSetScimPut for ValueSetInameN {
 
         let set = set.into_iter().map(|value| value.to_lowercase()).collect();
 
-        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIname {
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetInameN {
             set,
         })))
     }

@@ -52,9 +52,9 @@ fn do_group_memberof(
     tgte.purge_ava(Attribute::DirectMemberOf);
 
     // What are our direct and indirect mos?
-    let dmo = ValueSetRefer::from_iter(groups.iter().map(|g| g.get_uuid()));
+    let dmo = ValueSetReferN::from_iter(groups.iter().map(|g| g.get_uuid()));
 
-    let mut mo = ValueSetRefer::from_iter(
+    let mut mo = ValueSetReferN::from_iter(
         groups
             .iter()
             .filter_map(|g| {
@@ -208,7 +208,7 @@ fn do_leaf_memberof(
                 if let Some(dmo_set) = tgte.get_ava_refer_mut(Attribute::DirectMemberOf) {
                     dmo_set.insert(group_uuid);
                 } else {
-                    let dmo = ValueSetRefer::new(group_uuid);
+                    let dmo = ValueSetReferN::new(group_uuid);
                     tgte.set_ava_set(&Attribute::DirectMemberOf, dmo);
                 }
 
@@ -216,7 +216,7 @@ fn do_leaf_memberof(
                 if let Some(mo_set) = tgte.get_ava_refer_mut(Attribute::MemberOf) {
                     mo_set.insert(group_uuid);
                 } else {
-                    let mo = ValueSetRefer::new(group_uuid);
+                    let mo = ValueSetReferN::new(group_uuid);
                     tgte.set_ava_set(&Attribute::MemberOf, mo);
                 }
 

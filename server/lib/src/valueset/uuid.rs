@@ -2,8 +2,9 @@ use crate::{
     prelude::*,
     schema::SchemaAttribute,
     valueset::{
-        uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ScimValueIntermediate, ValueSet,
-        ValueSetIntermediate, ValueSetResolveStatus, ValueSetScimPut,
+        uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ScimValueIntermediate,
+        UnresolvedReferenceState, ValueSet, ValueSetIntermediate, ValueSetResolveStatus,
+        ValueSetScimPut,
     },
 };
 use kanidm_proto::scim_v1::JsonValue;
@@ -394,9 +395,6 @@ impl ValueSetScimPut for ValueSetReferN {
             OperationError::SC0002ReferenceSyntaxInvalid
         })?;
 
-        // let mut resolved = BTreeSet::default();
-        let mut unresolved = Vec::with_capacity(scim_refs.len());
-
         let unresolved = scim_refs
             .into_iter()
             .map(|scim_ref| match scim_ref {
@@ -405,27 +403,27 @@ impl ValueSetScimPut for ValueSetReferN {
                     value: None,
                 } => {
                     warn!("Invalid SCIM reference set syntax, uuid and value are both unset.");
-                    return Err(OperationError::SC0002ReferenceSyntaxInvalid);
+                    Err(OperationError::SC0002ReferenceSyntaxInvalid)
                 }
                 ScimReference {
                     uuid: Some(uuid),
                     value: Some(value),
-                } => UnresolvedReferenceState::Complete { uuid, value },
+                } => Ok(UnresolvedReferenceState::Complete { uuid, value }),
                 ScimReference {
                     uuid: Some(uuid),
                     value: None,
-                } => UnresolvedReferenceState::Uuid(uuid),
+                } => Ok(UnresolvedReferenceState::Uuid(uuid)),
                 ScimReference {
                     uuid: None,
                     value: Some(value),
-                } => UnresolvedReferenceState::Value(value),
+                } => Ok(UnresolvedReferenceState::Value(value)),
             })
             .collect::<Result<Vec<_>, _>>()?;
 
         // We may not actually need to resolve anything, but to make tests easier we
         // always return that we need resolution.
         Ok(ValueSetResolveStatus::NeedsResolution(
-            ValueSetIntermediate::References(unresolved),
+            ValueSetIntermediate::References { unresolved },
         ))
     }
 }
@@ -737,7 +735,7 @@ impl ValueSetT for ValueSetRefer {
 
 #[cfg(test)]
 mod tests {
-    use super::{ValueSetRefer, ValueSetUuid, ValueSetUuidN};
+    use super::{ValueSetRefer, ValueSetReferN, ValueSetUuid, ValueSetUuidN};
     use crate::prelude::*;
 
     #[test]

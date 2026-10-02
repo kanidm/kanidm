@@ -43,9 +43,9 @@ impl ValueSetT for ValueSetIutf8 {
             Value::Iutf8(s) => {
                 if self.value != s {
                     self.value = s;
-                    true
+                    Ok(true)
                 } else {
-                    false
+                    Ok(false)
                 }
             }
             _ => {
@@ -59,7 +59,7 @@ impl ValueSetT for ValueSetIutf8 {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Iutf8(s) => s == self.value,
+            PartialValue::Iutf8(s) => *s == self.value,
             _ => {
                 debug_assert!(false);
                 true
@@ -69,7 +69,7 @@ impl ValueSetT for ValueSetIutf8 {
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Iutf8(s) => s == self.value,
+            PartialValue::Iutf8(s) => *s == self.value,
             _ => false,
         }
     }
@@ -109,7 +109,7 @@ impl ValueSetT for ValueSetIutf8 {
     }
 
     fn len(&self) -> usize {
-        self.set.len()
+        1
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
@@ -117,9 +117,9 @@ impl ValueSetT for ValueSetIutf8 {
     }
 
     fn generate_idx_sub_keys(&self) -> Vec<String> {
-        debug_assert!(self.value == s.to_lowercase());
+        debug_assert!(self.value == self.value.to_lowercase());
 
-        let mut trigraphs: Vec<_> = trigraph_iter(v).collect();
+        let mut trigraphs: Vec<_> = trigraph_iter(&self.value).collect();
 
         trigraphs.sort_unstable();
         trigraphs.dedup();
@@ -132,17 +132,17 @@ impl ValueSetT for ValueSetIutf8 {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        Value::validate_str_escapes(self.value) && Value::validate_singleline(self.value) &&
+        Value::validate_str_escapes(&self.value) && Value::validate_singleline(&self.value) &&
                 // I'm sure there is a better way ...
-                self.value.to_lowercase().as_str() == s.as_str()
+                self.value.to_lowercase().as_str() == self.value.as_str()
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(std::iter::once(self.value.cloned()))
+        Box::new(std::iter::once(self.value.clone()))
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        Some(self.value.into())
+        Some(self.value.clone().into())
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -166,17 +166,13 @@ impl ValueSetT for ValueSetIutf8 {
         }
     }
 
-    fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
+    fn merge(&mut self, _other: &ValueSet) -> Result<(), OperationError> {
         debug_assert!(false);
         Err(OperationError::InvalidValueState)
     }
 
     fn to_iutf8_single(&self) -> Option<&str> {
-        if self.set.len() == 1 {
-            self.set.iter().take(1).next().map(|s| s.as_str())
-        } else {
-            None
-        }
+        Some(self.value.as_str())
     }
 }
 
@@ -185,7 +181,7 @@ pub struct ValueSetIutf8N {
     set: BTreeSet<String>,
 }
 
-impl ValueSetIutf8 {
+impl ValueSetIutf8N {
     pub fn new(s: &str) -> Box<Self> {
         let mut set = BTreeSet::new();
         set.insert(s.to_lowercase());
@@ -209,7 +205,7 @@ impl ValueSetIutf8 {
         T: IntoIterator<Item = &'a str>,
     {
         let set = iter.into_iter().map(str::to_string).collect();
-        Some(Box::new(ValueSetIutf8 { set }))
+        Some(Box::new(ValueSetIutf8N { set }))
     }
 }
 
@@ -222,7 +218,7 @@ impl ValueSetScimPut for ValueSetIutf8N {
 
         let set = values.iter().map(|s| s.to_lowercase()).collect();
 
-        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIutf8 {
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIutf8N {
             set,
         })))
     }
