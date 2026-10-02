@@ -747,7 +747,14 @@ pub struct UnresolvedScimValueOauth2ScopeMap {
     pub scopes: BTreeSet<String>,
 }
 
+pub enum UnresolvedReferenceState {
+    Uuid(Uuid),
+    Value(String),
+    Complete { uuid: Uuid, value: String },
+}
+
 pub enum ScimValueIntermediate {
+    Reference(Uuid),
     References(Vec<Uuid>),
     Oauth2ClaimMap(Vec<UnresolvedScimValueOauth2ClaimMap>),
     Oauth2ScopeMap(Vec<UnresolvedScimValueOauth2ScopeMap>),
@@ -811,9 +818,9 @@ impl ValueSetResolveStatus {
 }
 
 pub enum ValueSetIntermediate {
+    Reference(UnresolvedReferenceState),
     References {
-        resolved: BTreeSet<Uuid>,
-        unresolved: Vec<String>,
+        unresolved: Vec<UnresolvedReferenceState>,
     },
     Oauth2ClaimMap {
         resolved: Vec<ResolvedValueSetOauth2ClaimMap>,
