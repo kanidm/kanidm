@@ -159,7 +159,7 @@ impl ValueSetT for ValueSetIutf8 {
 
     fn equal(&self, other: &ValueSet) -> bool {
         if let Some(other) = other.to_iutf8_single() {
-            &self.value == other
+            self.value == other
         } else {
             debug_assert!(false);
             false

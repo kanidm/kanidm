@@ -331,6 +331,9 @@ impl Entry<EntryInit, EntryNew> {
             .map(|(k, v)| {
                 trace!(?k, ?v, "attribute");
                 let attr_nk = Attribute::from(k.as_str());
+                // TODO: Make this look up the syntax, then use that
+                // to guide the Valueset.
+
                 let nv = valueset::from_result_value_iter(
                     v.iter().map(|vr| qs.clone_value(&attr_nk, vr)),
                 );
