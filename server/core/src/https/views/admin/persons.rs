@@ -46,6 +46,7 @@ pub const PERSON_ATTRIBUTES: [Attribute; 9] = [
 pub(crate) struct PersonsView {
     navbar_ctx: NavbarCtx,
     partial: PersonsPartialView,
+    title: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -59,6 +60,7 @@ struct PersonsPartialView {
 struct PersonView {
     partial: PersonViewPartial,
     navbar_ctx: NavbarCtx,
+    title: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -79,7 +81,7 @@ pub(crate) async fn view_person_view_get(
     let (person, scim_effective_access) =
         get_person_info(uuid, state, &kopid, client_auth_info.clone()).await?;
     let person_partial = PersonViewPartial {
-        person,
+        person: person.clone(),
         scim_effective_access,
     };
     let uat: &UserAuthToken = client_auth_info
@@ -94,6 +96,7 @@ pub(crate) async fn view_person_view_get(
             PersonView {
                 partial: person_partial,
                 navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
+                title: format!("Person - {}", person.spn),
             },
         )
             .into_response()
@@ -267,6 +270,7 @@ pub(crate) async fn view_persons_get(
             PersonsView {
                 navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
                 partial: persons_partial,
+                title: "Persons".to_string(),
             },
         )
             .into_response()
