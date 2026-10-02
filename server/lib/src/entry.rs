@@ -2630,6 +2630,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             return;
         };
 
+        debug!(?attr, ?vs);
+
         self.set_ava_int(attr, vs)
     }
 
@@ -3369,6 +3371,7 @@ where
     pub fn merge_ava_set(&mut self, attr: &Attribute, vs: ValueSet) -> Result<(), OperationError> {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
         if let Some(existing_vs) = self.attrs.get_mut(attr) {
+            debug!(?attr, ?existing_vs, ?vs);
             existing_vs.merge(&vs)
         } else {
             self.attrs.insert(attr.clone(), vs);

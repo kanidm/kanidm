@@ -3102,7 +3102,7 @@ mod tests {
         // Check that anonymous is denied even though it's a member of the group.
         let anon: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS.clone().into();
         let mut anon = anon.into_invalid_new();
-        anon.set_ava_set(&Attribute::MemberOf, ValueSetRefer::new(UUID_TEST_GROUP_1));
+        anon.set_ava_set(&Attribute::MemberOf, ValueSetReferN::new(UUID_TEST_GROUP_1));
 
         let anon = Arc::new(anon.into_sealed_committed());
 
