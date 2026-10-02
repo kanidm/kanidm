@@ -163,7 +163,7 @@ pub static SCHEMA_ATTR_DENIED_NAME_DL10: LazyLock<SchemaAttribute> =
         uuid: UUID_SCHEMA_ATTR_DENIED_NAME,
         name: Attribute::DeniedName,
         description: "Iname values that are not allowed to be used in 'name'.".to_string(),
-        syntax: SyntaxType::Utf8StringIname,
+        syntax: SyntaxType::Utf8StringInameN,
         multivalue: true,
         ..Default::default()
     });
@@ -206,7 +206,7 @@ pub static SCHEMA_ATTR_BADLIST_PASSWORD: LazyLock<SchemaAttribute> = LazyLock::n
     name: Attribute::BadlistPassword,
     description: "A password that is badlisted meaning that it can not be set as a valid password by any user account".to_string(),
     multivalue: true,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
     ..Default::default()
 }
 });
@@ -335,7 +335,7 @@ pub static SCHEMA_ATTR_OAUTH2_RS_ORIGIN_DL7: LazyLock<SchemaAttribute> =
         uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN,
         name: Attribute::OAuth2RsOrigin,
         description: "The origin domain of an OAuth2 client".to_string(),
-        syntax: SyntaxType::Url,
+        syntax: SyntaxType::UrlN,
         multivalue: true,
         ..Default::default()
     });
@@ -656,7 +656,7 @@ pub static SCHEMA_ATTR_SYNC_YIELD_AUTHORITY: LazyLock<SchemaAttribute> =
             "A set of attributes that have their authority yielded to Kanidm in a sync agreement"
                 .to_string(),
         multivalue: true,
-        syntax: SyntaxType::Utf8StringInsensitive,
+        syntax: SyntaxType::Utf8StringInsensitiveN,
         ..Default::default()
     });
 

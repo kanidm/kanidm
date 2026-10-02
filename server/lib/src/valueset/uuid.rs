@@ -429,6 +429,12 @@ impl ValueSetScimPut for ValueSetReferN {
 }
 
 impl ValueSetT for ValueSetReferN {
+    fn migrate(&self) -> Result<Option<ValueSet>, OperationError> {
+        Ok(self
+            .to_refer_single()
+            .map(|uuid| Box::new(ValueSetRefer { uuid }) as ValueSet))
+    }
+
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::Refer(u) => Ok(self.set.insert(u)),

@@ -311,9 +311,15 @@ impl SchemaAttribute {
                 SyntaxType::SyntaxId => matches!(v, Value::Syntax(_)),
                 SyntaxType::IndexId => matches!(v, Value::Index(_)),
                 SyntaxType::Uuid => matches!(v, Value::Uuid(_)),
-                SyntaxType::ReferenceUuid => matches!(v, Value::Refer(_)),
-                SyntaxType::Utf8StringInsensitive => matches!(v, Value::Iutf8(_)),
-                SyntaxType::Utf8StringIname => matches!(v, Value::Iname(_)),
+                SyntaxType::ReferenceUuidN | SyntaxType::ReferenceUuid => {
+                    matches!(v, Value::Refer(_))
+                }
+                SyntaxType::Utf8StringInsensitiveN | SyntaxType::Utf8StringInsensitive => {
+                    matches!(v, Value::Iutf8(_))
+                }
+                SyntaxType::Utf8StringInameN | SyntaxType::Utf8StringIname => {
+                    matches!(v, Value::Iname(_))
+                }
                 SyntaxType::Utf8String => matches!(v, Value::Utf8(_)),
                 SyntaxType::JsonFilter => matches!(v, Value::JsonFilt(_)),
                 SyntaxType::Credential => matches!(v, Value::Cred(_, _)),
@@ -327,7 +333,7 @@ impl SchemaAttribute {
                 SyntaxType::NsUniqueId => matches!(v, Value::Nsuniqueid(_)),
                 SyntaxType::DateTime => matches!(v, Value::DateTime(_)),
                 SyntaxType::EmailAddress => matches!(v, Value::EmailAddress(_, _)),
-                SyntaxType::Url => matches!(v, Value::Url(_)),
+                SyntaxType::UrlN | SyntaxType::Url => matches!(v, Value::Url(_)),
                 SyntaxType::OauthScope => matches!(v, Value::OauthScope(_)),
                 SyntaxType::OauthScopeMap => matches!(v, Value::OauthScopeMap(_, _)),
                 SyntaxType::OauthClaimMap => {
@@ -358,12 +364,7 @@ impl SchemaAttribute {
                 SyntaxType::Json => matches!(v, Value::Json(_)),
                 SyntaxType::Sha256 => matches!(v, Value::Sha256(_)),
                 SyntaxType::EcKeyPrivate => matches!(v, Value::SecretValue(_)),
-                SyntaxType::UrlN
-                | SyntaxType::ReferenceUuidN
-                | SyntaxType::Utf8StringInsensitiveN
-                | SyntaxType::Utf8StringInameN
-                | SyntaxType::UuidN
-                | SyntaxType::Message => false,
+                SyntaxType::UuidN | SyntaxType::Message => false,
             };
         if r {
             Ok(())
@@ -1818,7 +1819,7 @@ mod tests {
             warn!("single: {:?}", x.single);
         }
 
-        // For now we assert we *FAIL* until we actually finish the job :)
-        assert!(!pass);
+        // Assert that no syntax type has both single or multivalue types! Yay!
+        assert!(pass);
     }
 }
