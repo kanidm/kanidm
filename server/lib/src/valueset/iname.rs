@@ -4,7 +4,7 @@ use crate::{
     utils::trigraph_iter,
     valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
 };
-use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::{client::ScimStrings, JsonValue};
 use std::cmp::Ordering;
 
 use std::collections::BTreeSet;
@@ -230,12 +230,15 @@ impl ValueSetInameN {
 
 impl ValueSetScimPut for ValueSetInameN {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let set: Vec<String> = serde_json::from_value(value).map_err(|err| {
+        let ScimStrings(values) = serde_json::from_value(value).map_err(|err| {
             error!(?err, "SCIM Iname Syntax Invalid");
             OperationError::SC0016InameSyntaxInvalid
         })?;
 
-        let set = set.into_iter().map(|value| value.to_lowercase()).collect();
+        let set = values
+            .into_iter()
+            .map(|value| value.to_lowercase())
+            .collect();
 
         Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetInameN {
             set,
@@ -344,8 +347,19 @@ impl ValueSetT for ValueSetInameN {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        // In future we'll make this array only in the response.
+        /*
         let arr = self.set.iter().cloned().collect::<Vec<_>>();
         Some(arr.into())
+        */
+        let mut iter = self.set.iter().cloned();
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -426,8 +440,8 @@ mod tests {
 
     #[test]
     fn test_scim_iname_multi() {
-        let vs: ValueSet = ValueSetInameN::new("stevo");
-        crate::valueset::scim_json_reflexive(&vs, r#"["stevo"]"#);
+        let vs: ValueSet = ValueSetInameN::from_iter(["stevo", "davo"]).unwrap();
+        crate::valueset::scim_json_reflexive(&vs, r#"["davo", "stevo"]"#);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetInameN>(&vs, &[])
