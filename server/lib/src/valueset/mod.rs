@@ -46,7 +46,7 @@ pub use self::{
     iname::{ValueSetIname, ValueSetInameN},
     index::ValueSetIndex,
     int64::ValueSetInt64,
-    iutf8::ValueSetIutf8,
+    iutf8::{ValueSetIutf8, ValueSetIutf8N},
     json::{ValueSetJson, ValueSetJsonFilter},
     jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256},
     key_internal::{KeyInternalData, ValueSetKeyInternal},
@@ -63,9 +63,9 @@ pub use self::{
     uihint::ValueSetUiHint,
     uint32::ValueSetUint32,
     uint64::ValueSetUint64,
-    url::ValueSetUrl,
+    url::{ValueSetUrl, ValueSetUrlN},
     utf8::ValueSetUtf8,
-    uuid::{ValueSetRefer, ValueSetUuid, ValueSetUuidN},
+    uuid::{ValueSetRefer, ValueSetReferN, ValueSetUuid, ValueSetUuidN},
 };
 use self::{apppwd::ValueSetApplicationPassword, image::ValueSetImage};
 
@@ -341,7 +341,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_url_set(&self) -> Option<&SmolSet<[Url; 1]>> {
+    fn as_url_set(&self) -> Option<&BTreeSet<Url>> {
         debug_assert!(false);
         None
     }
@@ -745,6 +745,7 @@ pub struct UnresolvedScimValueOauth2ScopeMap {
     pub scopes: BTreeSet<String>,
 }
 
+#[derive(Debug)]
 pub enum UnresolvedReferenceState {
     Uuid(Uuid),
     Value(String),
@@ -870,10 +871,10 @@ pub fn from_result_value_iter(
 
     let mut vs: ValueSet = match init {
         Value::Utf8(s) => ValueSetUtf8::new(s),
-        Value::Iutf8(s) => ValueSetIutf8::new(&s),
-        Value::Iname(s) => ValueSetIname::new(&s),
+        Value::Iutf8(s) => ValueSetIutf8N::new(&s),
+        Value::Iname(s) => ValueSetInameN::new(&s),
         Value::Uuid(u) => ValueSetUuid::new(u),
-        Value::Refer(u) => ValueSetRefer::new(u),
+        Value::Refer(u) => ValueSetReferN::new(u),
         Value::Bool(u) => ValueSetBool::new(u),
         Value::Uint32(u) => ValueSetUint32::new(u),
         Value::Int64(u) => ValueSetInt64::new(u),
@@ -885,7 +886,7 @@ pub fn from_result_value_iter(
         Value::Cid(u) => ValueSetCid::new(u),
         Value::JsonFilt(u) => ValueSetJsonFilter::new(u),
         Value::Nsuniqueid(u) => ValueSetNsUniqueId::new(u),
-        Value::Url(u) => ValueSetUrl::new(u),
+        Value::Url(u) => ValueSetUrlN::new(u),
         Value::DateTime(u) => ValueSetDateTime::new(u),
         Value::PrivateBinary(u) => ValueSetPrivateBinary::new(u),
         Value::OauthScope(u) => ValueSetOauthScope::new(u),
@@ -939,10 +940,10 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
 
     let mut vs: ValueSet = match init {
         Value::Utf8(s) => ValueSetUtf8::new(s),
-        Value::Iutf8(s) => ValueSetIutf8::new(&s),
-        Value::Iname(s) => ValueSetIname::new(&s),
+        Value::Iutf8(s) => ValueSetIutf8N::new(&s),
+        Value::Iname(s) => ValueSetInameN::new(&s),
         Value::Uuid(u) => ValueSetUuid::new(u),
-        Value::Refer(u) => ValueSetRefer::new(u),
+        Value::Refer(u) => ValueSetReferN::new(u),
         Value::Bool(u) => ValueSetBool::new(u),
         Value::Uint32(u) => ValueSetUint32::new(u),
         Value::Int64(u) => ValueSetInt64::new(u),
@@ -954,7 +955,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::Cid(u) => ValueSetCid::new(u),
         Value::JsonFilt(u) => ValueSetJsonFilter::new(u),
         Value::Nsuniqueid(u) => ValueSetNsUniqueId::new(u),
-        Value::Url(u) => ValueSetUrl::new(u),
+        Value::Url(u) => ValueSetUrlN::new(u),
         Value::DateTime(u) => ValueSetDateTime::new(u),
         Value::PrivateBinary(u) => ValueSetPrivateBinary::new(u),
         Value::OauthScope(u) => ValueSetOauthScope::new(u),

@@ -960,7 +960,13 @@ impl DbValueSetV2 {
             DbValueSetV2::Certificate(set) => set.len(),
             DbValueSetV2::ApplicationPassword(set) => set.len(),
             DbValueSetV2::Sha256(set) => set.len(),
-            DbValueSetV2::UuidSingle(_) | DbValueSetV2::Json(_) | DbValueSetV2::Message(_) => 1,
+            DbValueSetV2::Iutf8Single(_)
+            | DbValueSetV2::InameSingle(_)
+            | DbValueSetV2::ReferenceSingle(_)
+            | DbValueSetV2::UrlSingle(_)
+            | DbValueSetV2::UuidSingle(_)
+            | DbValueSetV2::Json(_)
+            | DbValueSetV2::Message(_) => 1,
         }
     }
 

@@ -4,6 +4,7 @@ use crate::{
     valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
 };
 use kanidm_proto::scim_v1::{client::ScimUrls, JsonValue};
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUrlN {
@@ -14,7 +15,7 @@ impl ValueSetUrlN {
     pub fn new(b: Url) -> Box<Self> {
         let mut set = BTreeSet::new();
         set.insert(b);
-        Box::new(ValueSetUrl { set })
+        Box::new(ValueSetUrlN { set })
     }
 
     pub fn push(&mut self, b: Url) -> bool {
@@ -23,7 +24,7 @@ impl ValueSetUrlN {
 
     pub fn from_dbvs2(data: Vec<Url>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
-        Ok(Box::new(ValueSetUrl { set }))
+        Ok(Box::new(ValueSetUrlN { set }))
     }
 
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
@@ -34,7 +35,7 @@ impl ValueSetUrlN {
         T: IntoIterator<Item = Url>,
     {
         let set = iter.into_iter().collect();
-        Some(Box::new(ValueSetUrl { set }))
+        Some(Box::new(ValueSetUrlN { set }))
     }
 }
 
@@ -47,7 +48,7 @@ impl ValueSetScimPut for ValueSetUrlN {
 
         let set = BTreeSet::from_iter(url_set);
 
-        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUrl {
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUrlN {
             set,
         })))
     }
@@ -119,7 +120,8 @@ impl ValueSetT for ValueSetUrlN {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        self.set
+        let arr = self
+            .set
             .iter()
             .map(|url| url.to_string())
             .collect::<Vec<_>>();
@@ -203,9 +205,9 @@ impl ValueSetT for ValueSetUrl {
             Value::Url(u) => {
                 if u != self.value {
                     self.value = u;
-                    true
+                    Ok(true)
                 } else {
-                    false
+                    Ok(false)
                 }
             }
             _ => {
@@ -219,14 +221,14 @@ impl ValueSetT for ValueSetUrl {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Url(u) => self.value == u,
+            PartialValue::Url(u) => self.value == *u,
             _ => false,
         }
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Url(u) => self.value == u,
+            PartialValue::Url(u) => self.value == *u,
             _ => false,
         }
     }
@@ -248,11 +250,11 @@ impl ValueSetT for ValueSetUrl {
     }
 
     fn len(&self) -> usize {
-        self.set.len()
+        1
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
-        std::iter::once(u.to_string()).collect()
+        std::iter::once(self.value.to_string()).collect()
     }
 
     fn syntax(&self) -> SyntaxType {
@@ -264,11 +266,11 @@ impl ValueSetT for ValueSetUrl {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(std::iter::once(u.to_string()))
+        Box::new(std::iter::once(self.value.to_string()))
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        Some(v.to_string().into())
+        Some(self.value.to_string().into())
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -285,30 +287,26 @@ impl ValueSetT for ValueSetUrl {
 
     fn equal(&self, other: &ValueSet) -> bool {
         if let Some(other) = other.to_url_single() {
-            &self.set == other
+            self.value == *other
         } else {
             debug_assert!(false);
             false
         }
     }
 
-    fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
+    fn merge(&mut self, _other: &ValueSet) -> Result<(), OperationError> {
         debug_assert!(false);
         Err(OperationError::InvalidValueState)
     }
 
     fn to_url_single(&self) -> Option<&Url> {
-        if self.set.len() == 1 {
-            self.set.iter().take(1).next()
-        } else {
-            None
-        }
+        Some(&self.value)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetUrl;
+    use super::{ValueSetUrl, ValueSetUrlN};
     use crate::prelude::{Url, ValueSet};
 
     #[test]

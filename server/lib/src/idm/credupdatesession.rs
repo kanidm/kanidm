@@ -3511,7 +3511,7 @@ mod tests {
         let test_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                ValueSetIutf8::from_iter([
+                ValueSetIutf8N::from_iter([
                     EntryClass::Object.into(),
                     EntryClass::Account.into(),
                     EntryClass::PosixAccount.into(),
@@ -3645,7 +3645,7 @@ mod tests {
         let test_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                ValueSetIutf8::from_iter([
+                ValueSetIutf8N::from_iter([
                     EntryClass::Object.into(),
                     EntryClass::Account.into(),
                     EntryClass::Person.into(),

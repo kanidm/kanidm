@@ -86,7 +86,8 @@ impl ScimCreateEvent {
             .collect::<Result<EntryInitNew, _>>()?;
 
         if !classes.is_empty() {
-            let classes = ValueSetIutf8::from_iter(classes.iter().map(|cls| cls.as_ref()));
+            let classes = ValueSetIutf8N::from_iter(classes.iter().map(|cls| cls.as_ref()))
+                .ok_or(OperationError::SC0027ClassSetInvalid)?;
             entry.set_ava_set(&Attribute::Class, classes);
         } else {
             return Err(OperationError::SC0027ClassSetInvalid);

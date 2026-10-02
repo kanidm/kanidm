@@ -1019,6 +1019,17 @@ pub trait QueryServerTransaction<'a> {
         scim_value_intermediate: ScimValueIntermediate,
     ) -> Result<Option<ScimValueKanidm>, OperationError> {
         match scim_value_intermediate {
+            ScimValueIntermediate::Reference(uuid) => {
+                let scim_reference = self
+                    .uuid_to_spn(uuid)
+                    .and_then(|maybe_value| maybe_value.ok_or(OperationError::InvalidValueState))
+                    .map(|value| ScimReference {
+                        uuid,
+                        value: value.to_proto_string_clone(),
+                    })?;
+                Ok(Some(ScimValueKanidm::EntryReference(scim_reference)))
+            }
+
             ScimValueIntermediate::References(uuids) => {
                 let scim_references = uuids
                     .into_iter()
@@ -1164,23 +1175,74 @@ pub trait QueryServerTransaction<'a> {
         vs_inter: ValueSetIntermediate,
     ) -> Result<ValueSet, OperationError> {
         match vs_inter {
-            ValueSetIntermediate::References {
-                mut resolved,
-                unresolved,
-            } => {
-                for value in unresolved {
-                    let un = self.name_to_uuid(value.as_str()).unwrap_or_else(|_| {
-                        warn!(
-                            ?value,
-                            "Value can not be resolved to a uuid - assuming it does not exist."
-                        );
-                        UUID_DOES_NOT_EXIST
-                    });
+            ValueSetIntermediate::Reference(reference) => {
+                let resolved = match reference {
+                            UnresolvedReferenceState::Uuid(uuid) => uuid,
+                            UnresolvedReferenceState::Value(value) => {
+                                self.name_to_uuid(value.as_str()).unwrap_or_else(|_| {
+                                    warn!(
+                                        ?value,
+                                        "Value can not be resolved to a uuid - assuming it does not exist."
+                                    );
+                                    UUID_DOES_NOT_EXIST
+                                })
+                            }
+                            UnresolvedReferenceState::Complete {
+                                uuid, value
+                            } => {
+                                self.name_to_uuid(value.as_str())
+                                    .inspect(|r_uuid| if *r_uuid != uuid {
+                                        warn!(?r_uuid, ?uuid, "Resolved uuid does not match provided uuid for value - this will become an error in future.");
+                                    })
+                                .unwrap_or_else(|_| {
+                                    warn!(
+                                        ?value,
+                                        "Value can not be resolved to a uuid - assuming it does not exist."
+                                    );
+                                    UUID_DOES_NOT_EXIST
+                                })
+                            }
+                        };
 
-                    resolved.insert(un);
-                }
+                let vs = ValueSetRefer::new(resolved);
+                Ok(vs)
+            }
 
-                let vs = ValueSetRefer::from_set(resolved);
+            ValueSetIntermediate::References { unresolved } => {
+                let resolved = unresolved.into_iter()
+                    .map(|value| {
+
+                        match value {
+                            UnresolvedReferenceState::Uuid(uuid) => uuid,
+                            UnresolvedReferenceState::Value(value) => {
+                                self.name_to_uuid(value.as_str()).unwrap_or_else(|_| {
+                                    warn!(
+                                        ?value,
+                                        "Value can not be resolved to a uuid - assuming it does not exist."
+                                    );
+                                    UUID_DOES_NOT_EXIST
+                                })
+                            }
+                            UnresolvedReferenceState::Complete {
+                                uuid, value
+                            } => {
+                                self.name_to_uuid(value.as_str())
+                                    .inspect(|r_uuid| if *r_uuid != uuid {
+                                        warn!(?r_uuid, ?uuid, "Resolved uuid does not match provided uuid for value - this will become an error in future.");
+                                    })
+                                .unwrap_or_else(|_| {
+                                    warn!(
+                                        ?value,
+                                        "Value can not be resolved to a uuid - assuming it does not exist."
+                                    );
+                                    UUID_DOES_NOT_EXIST
+                                })
+                            }
+                        }
+                    })
+                    .collect();
+
+                let vs = ValueSetReferN::from_set(resolved);
                 Ok(vs)
             }
 
