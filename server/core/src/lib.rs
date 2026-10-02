@@ -75,6 +75,8 @@ use tokio_rustls::TlsAcceptor;
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
 
+pub const KANIDM_PKG_VERSION: &str = env!("KANIDM_PKG_VERSION");
+
 // === internal setup helpers
 
 fn setup_backend(config: &Configuration, schema: &Schema) -> Result<Backend, OperationError> {
