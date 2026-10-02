@@ -412,18 +412,14 @@ impl QueryServerWriteTransaction<'_> {
     ) -> Result<ValueSet, OperationError> {
         let resolve_status = match schema_a.syntax {
             SyntaxType::Utf8String => ValueSetUtf8::from_scim_json_put(value),
-            SyntaxType::Utf8StringInsensitive => ValueSetIutf8::from_scim_json_put(value),
             SyntaxType::Uuid => ValueSetUuid::from_scim_json_put(value),
             SyntaxType::UuidN => ValueSetUuidN::from_scim_json_put(value),
             SyntaxType::Boolean => ValueSetBool::from_scim_json_put(value),
             SyntaxType::SyntaxId => ValueSetSyntax::from_scim_json_put(value),
             SyntaxType::IndexId => ValueSetIndex::from_scim_json_put(value),
-            SyntaxType::ReferenceUuid => ValueSetRefer::from_scim_json_put(value),
-            SyntaxType::Utf8StringIname => ValueSetIname::from_scim_json_put(value),
             SyntaxType::NsUniqueId => ValueSetNsUniqueId::from_scim_json_put(value),
             SyntaxType::DateTime => ValueSetDateTime::from_scim_json_put(value),
             SyntaxType::EmailAddress => ValueSetEmailAddress::from_scim_json_put(value),
-            SyntaxType::Url => ValueSetUrl::from_scim_json_put(value),
             SyntaxType::OauthScope => ValueSetOauthScope::from_scim_json_put(value),
             SyntaxType::OauthScopeMap => ValueSetOauthScopeMap::from_scim_json_put(value),
             SyntaxType::OauthClaimMap => ValueSetOauthClaimMap::from_scim_json_put(value),
@@ -436,9 +432,14 @@ impl QueryServerWriteTransaction<'_> {
             SyntaxType::Uint64 => ValueSetUint64::from_scim_json_put(value),
             SyntaxType::Sha256 => ValueSetSha256::from_scim_json_put(value),
 
+            // Temporary - use the multi-value versions for compatibility.
+            SyntaxType::Url => ValueSetUrlN::from_scim_json_put(value),
             SyntaxType::UrlN => ValueSetUrlN::from_scim_json_put(value),
+            SyntaxType::ReferenceUuid => ValueSetReferN::from_scim_json_put(value),
             SyntaxType::ReferenceUuidN => ValueSetReferN::from_scim_json_put(value),
+            SyntaxType::Utf8StringIname => ValueSetInameN::from_scim_json_put(value),
             SyntaxType::Utf8StringInameN => ValueSetInameN::from_scim_json_put(value),
+            SyntaxType::Utf8StringInsensitive => ValueSetIutf8N::from_scim_json_put(value),
             SyntaxType::Utf8StringInsensitiveN => ValueSetIutf8N::from_scim_json_put(value),
 
             // Not Yet ... if ever

@@ -1199,7 +1199,7 @@ pub trait QueryServerTransaction<'a> {
                                         ?value,
                                         "Value can not be resolved to a uuid - assuming it does not exist."
                                     );
-                                    UUID_DOES_NOT_EXIST
+                                    uuid
                                 })
                             }
                         };
@@ -1235,7 +1235,7 @@ pub trait QueryServerTransaction<'a> {
                                         ?value,
                                         "Value can not be resolved to a uuid - assuming it does not exist."
                                     );
-                                    UUID_DOES_NOT_EXIST
+                                    uuid
                                 })
                             }
                         }

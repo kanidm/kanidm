@@ -324,8 +324,19 @@ impl ValueSetT for ValueSetIutf8N {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        // In future we'll make this array only in the response.
+        /*
         let arr = self.set.iter().cloned().collect::<Vec<_>>();
         Some(arr.into())
+        */
+        let mut iter = self.set.iter().cloned();
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -399,8 +410,8 @@ mod tests {
 
     #[test]
     fn test_scim_iutf8_multi() {
-        let vs: ValueSet = ValueSetIutf8N::new("lowercase string");
-        crate::valueset::scim_json_reflexive(&vs, r#"["lowercase string"]"#);
+        let vs: ValueSet = ValueSetIutf8N::from_iter(["lowercase string", "more string"]).unwrap();
+        crate::valueset::scim_json_reflexive(&vs, r#"["lowercase string", "more string"]"#);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetIutf8N>(&vs, &[])
