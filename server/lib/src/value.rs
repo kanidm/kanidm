@@ -222,7 +222,18 @@ impl fmt::Display for IndexType {
 #[allow(non_camel_case_types)]
 #[allow(clippy::derived_hash_with_manual_eq)]
 #[derive(
-    Hash, Debug, Clone, Copy, Eq, PartialOrd, Ord, Deserialize, Serialize, TryFromPrimitive, Default,
+    Hash,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TryFromPrimitive,
+    Default,
 )]
 #[repr(u16)]
 pub enum SyntaxType {
@@ -461,19 +472,6 @@ impl SyntaxType {
             SyntaxType::Json => &[],
             SyntaxType::Message => &[],
             SyntaxType::Sha256 => &[IndexType::Equality],
-        }
-    }
-}
-
-// This exists to allow transition between the former syntax types and the
-// new single/multivalue types.
-impl PartialEq for SyntaxType {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            // This allows migration of existing Uuids into the new single
-            // type
-            (SyntaxType::Uuid, SyntaxType::UuidN) | (SyntaxType::UuidN, SyntaxType::Uuid) => true,
-            (a, b) => *a as u16 == *b as u16,
         }
     }
 }

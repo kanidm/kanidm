@@ -372,11 +372,22 @@ impl SchemaAttribute {
         // Check multivalue
         if !self.multivalue && ava.len() > 1 {
             // lrequest_error!("Ava len > 1 on single value attribute!");
-            admin_error!("Ava len > 1 on single value attribute!");
+            error!("Ava len > 1 on single value attribute!");
             return Err(SchemaError::InvalidAttributeSyntax(a.to_string()));
         };
         // If syntax, check the type is correct
-        let valid = self.syntax == ava.syntax();
+
+        // This exists to allow transition between the former syntax types and the
+        // new single/multivalue types.
+        let valid = match self.syntax {
+            // Allow the single value variant to temporarily deserialise into
+            // the multi value variant before it's converted.
+            SyntaxType::Uuid => {
+                SyntaxType::UuidN == ava.syntax() || SyntaxType::Uuid == ava.syntax()
+            }
+            _ => self.syntax == ava.syntax(),
+        };
+
         if valid && ava.validate(self) {
             Ok(())
         } else {
