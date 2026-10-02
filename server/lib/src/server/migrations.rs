@@ -1130,7 +1130,7 @@ mod tests {
             Attribute::Member,
             // This achieves both because this removes IDM_ADMIN from the group
             // while setting only anon as a member.
-            ValueSetRefer::new(UUID_ANONYMOUS),
+            ValueSetReferN::new(UUID_ANONYMOUS),
         );
         write_txn
             .internal_modify_uuid(UUID_IDM_ADMINS, &modlist)
@@ -1166,6 +1166,8 @@ mod tests {
         let idm_admins_entry = write_txn
             .internal_search_uuid(UUID_IDM_ADMINS)
             .expect("Unable to retrieve all persons");
+
+        debug!(?idm_admins_entry);
 
         let members = idm_admins_entry
             .get_ava_refer(Attribute::Member)

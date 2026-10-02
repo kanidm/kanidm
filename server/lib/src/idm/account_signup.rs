@@ -38,7 +38,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         let account_signup_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                ValueSetIutf8::new(EntryClass::AccountSignupRequest.into()) as ValueSet,
+                ValueSetIutf8N::new(EntryClass::AccountSignupRequest.into()) as ValueSet,
             ),
             (Attribute::Uuid, ValueSetUuid::new(account_signup_uuid)),
             (Attribute::Name, ValueSetIname::new(&username) as ValueSet),

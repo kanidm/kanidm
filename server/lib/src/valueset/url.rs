@@ -323,7 +323,7 @@ mod tests {
     fn test_scim_url_multi() {
         let u = Url::parse("https://idm.example.com").unwrap();
         let vs: ValueSet = ValueSetUrlN::new(u);
-        crate::valueset::scim_json_reflexive(&vs, r#""https://idm.example.com/""#);
+        crate::valueset::scim_json_reflexive(&vs, r#"["https://idm.example.com/"]"#);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetUrlN>(&vs, &[]);

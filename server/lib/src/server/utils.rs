@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    valueset::{ValueSetDateTime, ValueSetEmailAddress, ValueSetIutf8, ValueSetMessage},
+    valueset::{ValueSetDateTime, ValueSetEmailAddress, ValueSetIutf8N, ValueSetMessage},
 };
 use kanidm_proto::v1::OutboundMessage;
 
@@ -17,7 +17,7 @@ impl QueryServerWriteTransaction<'_> {
         let mut e_msg: EntryInitNew = Entry::new();
         e_msg.set_ava_set(
             &Attribute::Class,
-            ValueSetIutf8::new(EntryClass::OutboundMessage.into()),
+            ValueSetIutf8N::new(EntryClass::OutboundMessage.into()),
         );
         e_msg.set_ava_set(&Attribute::SendAfter, ValueSetDateTime::new(curtime_odt));
         e_msg.set_ava_set(

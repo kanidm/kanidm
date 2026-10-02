@@ -723,13 +723,22 @@ impl ValueSetT for ValueSetRefer {
         }
     }
 
-    fn merge(&mut self, _other: &ValueSet) -> Result<(), OperationError> {
-        debug_assert!(false);
-        Err(OperationError::InvalidValueState)
+    fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
+        if let Some(other) = other.to_refer_single() {
+            self.uuid = other;
+            Ok(())
+        } else {
+            debug_assert!(false);
+            Err(OperationError::InvalidValueState)
+        }
     }
 
     fn to_refer_single(&self) -> Option<Uuid> {
         Some(self.uuid)
+    }
+
+    fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
+        Some(Box::new(std::iter::once(self.uuid)))
     }
 }
 
