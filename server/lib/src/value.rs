@@ -285,7 +285,12 @@ pub enum SyntaxType {
     Sha256 = 44,
     Int64 = 45,
     Uint64 = 46,
+
     UuidN = 47,
+    Utf8StringInsensitiveN = 48,
+    ReferenceUuidN = 49,
+    Utf8StringInameN = 50,
+    UrlN = 51,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -342,6 +347,12 @@ impl TryFrom<&str> for SyntaxType {
             "SHA256" => Ok(SyntaxType::Sha256),
             "INT64" => Ok(SyntaxType::Int64),
             "UINT64" => Ok(SyntaxType::Uint64),
+
+            "UTF8STRING_INSENSITIVE_MULTI" => Ok(SyntaxType::Utf8StringInsensitiveN),
+            "REFERENCE_UUID_MULTI" => Ok(SyntaxType::ReferenceUuidN),
+            "UTF8STRING_INAME_MULTI" => Ok(SyntaxType::Utf8StringInameN),
+            "URL_MULTI" => Ok(SyntaxType::UrlN),
+
             _ => Err(()),
         }
     }
@@ -398,6 +409,11 @@ impl fmt::Display for SyntaxType {
             SyntaxType::Sha256 => "SHA256",
             SyntaxType::Int64 => "INT64",
             SyntaxType::Uint64 => "UINT64",
+
+            SyntaxType::Utf8StringInsensitiveN => "UTF8STRING_INSENSITIVE_MULTI",
+            SyntaxType::ReferenceUuidN => "REFERENCE_UUID_MULTI",
+            SyntaxType::Utf8StringInameN => "UTF8STRING_INAME_MULTI",
+            SyntaxType::UrlN => "URL_MULTI",
         })
     }
 }
@@ -408,7 +424,9 @@ impl SyntaxType {
             SyntaxType::Utf8String => &[IndexType::Equality, IndexType::Presence],
             // Used by classes, needs to change ...
             // Probably need an attrname syntax too
+            SyntaxType::Utf8StringInsensitiveN |
             SyntaxType::Utf8StringInsensitive => &[IndexType::Equality, IndexType::Presence],
+            SyntaxType::Utf8StringInameN |
             SyntaxType::Utf8StringIname => &[
                 IndexType::Equality,
                 IndexType::Presence,
@@ -416,6 +434,7 @@ impl SyntaxType {
             ],
             SyntaxType::Uuid | SyntaxType::UuidN => &[IndexType::Equality, IndexType::Presence],
             SyntaxType::Boolean => &[IndexType::Equality],
+            SyntaxType::ReferenceUuidN |
             SyntaxType::ReferenceUuid => &[IndexType::Equality, IndexType::Presence],
             SyntaxType::Credential => &[IndexType::Equality],
             SyntaxType::SshKey => &[IndexType::Equality, IndexType::Presence],
@@ -450,8 +469,10 @@ impl SyntaxType {
             SyntaxType::ApiToken => &[IndexType::Equality],
             SyntaxType::OauthClaimMap => &[IndexType::Equality],
             SyntaxType::ApplicationPassword => &[IndexType::Equality],
+            SyntaxType::Sha256 => &[IndexType::Equality],
             SyntaxType::SecretUtf8String => &[],
-            SyntaxType::Url => &[],
+            SyntaxType::UrlN => &[],
+            | SyntaxType::Url => &[],
             SyntaxType::OauthScope => &[],
             SyntaxType::PrivateBinary => &[],
             SyntaxType::JwsKeyEs256 => &[],
@@ -471,7 +492,6 @@ impl SyntaxType {
             SyntaxType::JsonFilter => &[],
             SyntaxType::Json => &[],
             SyntaxType::Message => &[],
-            SyntaxType::Sha256 => &[IndexType::Equality],
         }
     }
 }

@@ -228,8 +228,11 @@ impl SchemaAttribute {
             SyntaxType::Uuid | SyntaxType::UuidN => {
                 matches!(v, PartialValue::Uuid(_))
             }
+            SyntaxType::ReferenceUuidN |
             SyntaxType::ReferenceUuid => matches!(v, PartialValue::Refer(_)),
+            SyntaxType::Utf8StringInsensitiveN |
             SyntaxType::Utf8StringInsensitive => matches!(v, PartialValue::Iutf8(_)),
+            SyntaxType::Utf8StringInameN |
             SyntaxType::Utf8StringIname => matches!(v, PartialValue::Iname(_)),
             SyntaxType::Utf8String => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::JsonFilter => matches!(v, PartialValue::JsonFilt(_)),
@@ -244,6 +247,7 @@ impl SchemaAttribute {
             SyntaxType::NsUniqueId => matches!(v, PartialValue::Nsuniqueid(_)),
             SyntaxType::DateTime => matches!(v, PartialValue::DateTime(_)),
             SyntaxType::EmailAddress => matches!(v, PartialValue::EmailAddress(_)),
+            SyntaxType::UrlN |
             SyntaxType::Url => matches!(v, PartialValue::Url(_)),
             SyntaxType::OauthScope => matches!(v, PartialValue::OauthScope(_)),
             SyntaxType::OauthScopeMap => matches!(v, PartialValue::Refer(_)),
@@ -352,6 +356,7 @@ impl SchemaAttribute {
                 SyntaxType::Json => matches!(v, Value::Json(_)),
                 SyntaxType::Sha256 => matches!(v, Value::Sha256(_)),
                 SyntaxType::EcKeyPrivate => matches!(v, Value::SecretValue(_)),
+                SyntaxType::UrlN | SyntaxType::ReferenceUuidN | SyntaxType::Utf8StringInsensitiveN | SyntaxType::Utf8StringInameN |
                 SyntaxType::UuidN | SyntaxType::Message => false,
             };
         if r {
@@ -383,7 +388,8 @@ impl SchemaAttribute {
             // Allow the single value variant to temporarily deserialise into
             // the multi value variant before it's converted.
             SyntaxType::Uuid => {
-                SyntaxType::UuidN == ava.syntax() || SyntaxType::Uuid == ava.syntax()
+                SyntaxType::UuidN == ava.syntax() ||
+                SyntaxType::Uuid == ava.syntax()
             }
             _ => self.syntax == ava.syntax(),
         };
