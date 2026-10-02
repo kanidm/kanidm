@@ -874,8 +874,9 @@ pub trait QueryServerTransaction<'a> {
                     | SyntaxType::Utf8StringInsensitiveN
                     | SyntaxType::JwsKeyEs256
                     | SyntaxType::JwsKeyRs256 => Ok(PartialValue::new_iutf8(value)),
-                    SyntaxType::Utf8StringInameN |
-                    SyntaxType::Utf8StringIname => Ok(PartialValue::new_iname(value)),
+                    SyntaxType::Utf8StringInameN | SyntaxType::Utf8StringIname => {
+                        Ok(PartialValue::new_iname(value))
+                    }
                     SyntaxType::Boolean => PartialValue::new_bools(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid boolean syntax".to_string())
                     }),
@@ -946,12 +947,12 @@ pub trait QueryServerTransaction<'a> {
                         )
                     }),
                     SyntaxType::EmailAddress => Ok(PartialValue::new_email_address_s(value)),
-                    SyntaxType::UrlN |
-                    SyntaxType::Url => PartialValue::new_url_s(value).ok_or_else(|| {
-                        OperationError::InvalidAttribute(
-                            "Invalid Url (whatwg/url) syntax".to_string(),
-                        )
-                    }),
+                    SyntaxType::UrlN | SyntaxType::Url => PartialValue::new_url_s(value)
+                        .ok_or_else(|| {
+                            OperationError::InvalidAttribute(
+                                "Invalid Url (whatwg/url) syntax".to_string(),
+                            )
+                        }),
                     SyntaxType::OauthScope => Ok(PartialValue::new_oauthscope(value)),
                     SyntaxType::PrivateBinary => Ok(PartialValue::PrivateBinary),
                     SyntaxType::IntentToken => PartialValue::new_intenttoken_s(value.to_string())

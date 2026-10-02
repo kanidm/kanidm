@@ -14,7 +14,9 @@ pub struct ValueSetIutf8 {
 
 impl ValueSetIutf8 {
     pub fn new(s: &str) -> Box<Self> {
-        Box::new(ValueSetIutf8 { value: s.to_lowercase() })
+        Box::new(ValueSetIutf8 {
+            value: s.to_lowercase(),
+        })
     }
 
     pub fn from_dbvs2(value: String) -> Result<ValueSet, OperationError> {
@@ -28,7 +30,6 @@ impl ValueSetScimPut for ValueSetIutf8 {
             error!(?err, "SCIM Iutf8 Syntax Invalid");
             OperationError::SC0017Iutf8SyntaxInvalid
         })?;
-
 
         Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIutf8 {
             value: value.to_lowercase(),
@@ -54,12 +55,11 @@ impl ValueSetT for ValueSetIutf8 {
         }
     }
 
-    fn clear(&mut self) {
-    }
+    fn clear(&mut self) {}
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Iutf8(s) => { s == self.value }
+            PartialValue::Iutf8(s) => s == self.value,
             _ => {
                 debug_assert!(false);
                 true
@@ -69,7 +69,7 @@ impl ValueSetT for ValueSetIutf8 {
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Iutf8(s) => { s == self.value }
+            PartialValue::Iutf8(s) => s == self.value,
             _ => false,
         }
     }
@@ -132,10 +132,9 @@ impl ValueSetT for ValueSetIutf8 {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-            Value::validate_str_escapes(self.value) && Value::validate_singleline(self.value) &&
+        Value::validate_str_escapes(self.value) && Value::validate_singleline(self.value) &&
                 // I'm sure there is a better way ...
                 self.value.to_lowercase().as_str() == s.as_str()
-        })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -151,11 +150,11 @@ impl ValueSetT for ValueSetIutf8 {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(std::iter::once( PartialValue::Iutf8(self.value.clone())))
+        Box::new(std::iter::once(PartialValue::Iutf8(self.value.clone())))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(std::iter::once( Value::Iutf8(self.value.clone())))
+        Box::new(std::iter::once(Value::Iutf8(self.value.clone())))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {

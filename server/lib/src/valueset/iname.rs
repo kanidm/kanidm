@@ -16,7 +16,9 @@ pub struct ValueSetIname {
 
 impl ValueSetIname {
     pub fn new(s: &str) -> Box<Self> {
-        Box::new(ValueSetIname { value: s.to_lowercase() })
+        Box::new(ValueSetIname {
+            value: s.to_lowercase(),
+        })
     }
 
     pub fn from_dbvs2(value: String) -> Result<ValueSet, OperationError> {
@@ -34,7 +36,7 @@ impl ValueSetScimPut for ValueSetIname {
         let value = value.to_lowercase();
 
         Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIname {
-            value
+            value,
         })))
     }
 }
@@ -57,8 +59,7 @@ impl ValueSetT for ValueSetIname {
         }
     }
 
-    fn clear(&mut self) {
-    }
+    fn clear(&mut self) {}
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
@@ -122,7 +123,6 @@ impl ValueSetT for ValueSetIname {
     fn generate_idx_sub_keys(&self) -> Vec<String> {
         debug_assert!(self.value == s.to_lowercase());
 
-        let lower: Vec<_> = self.set.iter().map(|s| s.to_lowercase()).collect();
         let mut trigraphs: Vec<_> = trigraph_iter(v).collect();
 
         trigraphs.sort_unstable();
@@ -136,10 +136,9 @@ impl ValueSetT for ValueSetIname {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-            Value::validate_str_escapes(self.value)
-                && Value::validate_singleline(self.value)
-                && Value::validate_iname(self.value.as_str())
-        })
+        Value::validate_str_escapes(self.value)
+            && Value::validate_singleline(self.value)
+            && Value::validate_iname(self.value.as_str())
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -155,11 +154,11 @@ impl ValueSetT for ValueSetIname {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(std::iter::once( PartialValue::Iname(self.value.clone())))
+        Box::new(std::iter::once(PartialValue::Iname(self.value.clone())))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(std::iter::once( Value::Iname(self.value.clone())))
+        Box::new(std::iter::once(Value::Iname(self.value.clone())))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {
@@ -240,9 +239,7 @@ impl ValueSetScimPut for ValueSetInameN {
             OperationError::SC0016InameSyntaxInvalid
         })?;
 
-        let set = set.into_iter()
-            .map(|value| value.to_lowercase())
-            .collect();
+        let set = set.into_iter().map(|value| value.to_lowercase()).collect();
 
         Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIname {
             set,

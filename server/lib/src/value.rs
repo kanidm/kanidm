@@ -424,18 +424,19 @@ impl SyntaxType {
             SyntaxType::Utf8String => &[IndexType::Equality, IndexType::Presence],
             // Used by classes, needs to change ...
             // Probably need an attrname syntax too
-            SyntaxType::Utf8StringInsensitiveN |
-            SyntaxType::Utf8StringInsensitive => &[IndexType::Equality, IndexType::Presence],
-            SyntaxType::Utf8StringInameN |
-            SyntaxType::Utf8StringIname => &[
+            SyntaxType::Utf8StringInsensitiveN | SyntaxType::Utf8StringInsensitive => {
+                &[IndexType::Equality, IndexType::Presence]
+            }
+            SyntaxType::Utf8StringInameN | SyntaxType::Utf8StringIname => &[
                 IndexType::Equality,
                 IndexType::Presence,
                 IndexType::SubString,
             ],
             SyntaxType::Uuid | SyntaxType::UuidN => &[IndexType::Equality, IndexType::Presence],
             SyntaxType::Boolean => &[IndexType::Equality],
-            SyntaxType::ReferenceUuidN |
-            SyntaxType::ReferenceUuid => &[IndexType::Equality, IndexType::Presence],
+            SyntaxType::ReferenceUuidN | SyntaxType::ReferenceUuid => {
+                &[IndexType::Equality, IndexType::Presence]
+            }
             SyntaxType::Credential => &[IndexType::Equality],
             SyntaxType::SshKey => &[IndexType::Equality, IndexType::Presence],
             SyntaxType::SecurityPrincipalName => &[
@@ -472,7 +473,7 @@ impl SyntaxType {
             SyntaxType::Sha256 => &[IndexType::Equality],
             SyntaxType::SecretUtf8String => &[],
             SyntaxType::UrlN => &[],
-            | SyntaxType::Url => &[],
+            SyntaxType::Url => &[],
             SyntaxType::OauthScope => &[],
             SyntaxType::PrivateBinary => &[],
             SyntaxType::JwsKeyEs256 => &[],
