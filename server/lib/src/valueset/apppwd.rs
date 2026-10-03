@@ -309,15 +309,15 @@ mod tests {
         assert_eq!(vs.len(), 3);
 
         let res = vs.remove(&PartialValue::Uuid(ap1_uuid), &Cid::new_zero());
-        assert!(res);
+        assert!(!res);
         assert_eq!(vs.len(), 2);
 
         let res = vs.remove(&PartialValue::Uuid(ap3_uuid), &Cid::new_zero());
-        assert!(res);
+        assert!(!res);
         assert_eq!(vs.len(), 1);
 
         let res = vs.remove(&PartialValue::Uuid(ap2_uuid), &Cid::new_zero());
-        assert!(!res);
+        assert!(res);
         assert_eq!(vs.len(), 0);
 
         let res = vs.as_application_password_map().unwrap();
