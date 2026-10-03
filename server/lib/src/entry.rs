@@ -3279,8 +3279,7 @@ where
         self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
 
         let rm = if let Some(vs) = self.attrs.get_mut(attr_ref) {
-            vs.remove(value, &self.valid.cid);
-            vs.is_empty()
+            vs.remove(value, &self.valid.cid)
         } else {
             false
         };
@@ -3298,10 +3297,7 @@ where
         self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
 
         let rm = if let Some(vs) = self.attrs.get_mut(attr_ref) {
-            values.iter().for_each(|k| {
-                vs.remove(k, &self.valid.cid);
-            });
-            vs.is_empty()
+            values.iter().any(|k| vs.remove(k, &self.valid.cid))
         } else {
             false
         };

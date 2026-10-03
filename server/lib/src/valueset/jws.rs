@@ -80,12 +80,11 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Iutf8(kid) => {
-                let x = self.set.len();
                 self.set.retain(|k| k.get_kid() != kid);
-                x != self.set.len()
             }
-            _ => false,
+            _ => {}
         }
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -247,12 +246,11 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Iutf8(kid) => {
-                let x = self.set.len();
                 self.set.retain(|k| k.get_kid() != kid);
-                x != self.set.len()
             }
-            _ => false,
-        }
+            _ => {}
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, _pv: &PartialValue) -> bool {

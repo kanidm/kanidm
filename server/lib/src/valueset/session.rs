@@ -260,16 +260,12 @@ impl ValueSetT for ValueSetSession {
                 if let Some(session) = self.map.get_mut(u) {
                     if !matches!(session.state, SessionState::RevokedAt(_)) {
                         session.state = SessionState::RevokedAt(cid.clone());
-                        true
-                    } else {
-                        false
                     }
-                } else {
-                    false
                 }
             }
-            _ => false,
+            _ => {}
         }
+        self.map.is_empty()
     }
 
     fn purge(&mut self, cid: &Cid) -> bool {
@@ -758,9 +754,6 @@ impl ValueSetT for ValueSetOauth2Session {
                 if let Some(session) = self.map.get_mut(u) {
                     if !matches!(session.state, SessionState::RevokedAt(_)) {
                         session.state = SessionState::RevokedAt(cid.clone());
-                        true
-                    } else {
-                        false
                     }
                 } else {
                     // What if it's an rs_uuid?
@@ -775,15 +768,12 @@ impl ValueSetT for ValueSetOauth2Session {
                                 removed = true;
                             }
                         });
-                        removed
-                    } else {
-                        // It's not in the rs_filter or the map, false.
-                        false
                     }
                 }
             }
-            _ => false,
-        }
+            _ => {}
+        };
+        self.map.is_empty()
     }
 
     fn purge(&mut self, cid: &Cid) -> bool {
@@ -1163,9 +1153,12 @@ impl ValueSetT for ValueSetApiTokenSet {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Refer(u) => self.map.remove(u).is_some(),
-            _ => false,
-        }
+            PartialValue::Refer(u) => {
+                self.map.remove(u);
+            }
+            _ => {}
+        };
+        self.map.is_empty()
     }
 
     fn purge(&mut self, _cid: &Cid) -> bool {
@@ -1344,8 +1337,9 @@ mod tests {
         let zero_cid = Cid::new_zero();
 
         // Simulate session revocation.
-        vs.purge(&zero_cid);
+        let r = vs.purge(&zero_cid);
 
+        assert!(!r);
         assert_eq!(vs.len(), 1);
 
         let session = vs
@@ -1713,8 +1707,9 @@ mod tests {
         let zero_cid = Cid::new_zero();
 
         // Simulate session revocation.
-        vs.purge(&zero_cid);
+        let r = vs.purge(&zero_cid);
 
+        assert!(!r);
         assert_eq!(vs.len(), 1);
 
         let session = vs
