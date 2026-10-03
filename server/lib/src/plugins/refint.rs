@@ -321,6 +321,8 @@ impl Plugin for ReferentialIntegrity {
 
         let uuids = Self::cand_references_to_uuid_filter(qs, Some(pre_cand), cand)?;
 
+        trace!(?uuids);
+
         let all_exist_fast = Self::check_uuids_exist_fast(qs, uuids.as_slice())?;
 
         let mut missing_uuids = if !all_exist_fast {
