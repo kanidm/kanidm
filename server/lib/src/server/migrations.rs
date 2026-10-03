@@ -349,7 +349,8 @@ impl QueryServerWriteTransaction<'_> {
         mut e: Entry<EntryInit, EntryNew>,
         attrs: &[Attribute],
     ) -> Result<(), OperationError> {
-        trace!("operating on {:?}", e.get_uuid());
+        debug!("operating on {:?}", e.get_display_id());
+        trace!(?e, ?attrs);
 
         let Some(filt) = e.filter_from_attrs(&[Attribute::Uuid]) else {
             return Err(OperationError::FilterGeneration);

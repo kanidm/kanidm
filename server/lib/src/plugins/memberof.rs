@@ -761,17 +761,17 @@ impl MemberOf {
 mod tests {
     use crate::prelude::*;
 
-    const UUID_A: &str = "aaaaaaaa-f82e-4484-a407-181aa03bda5c";
-    const UUID_B: &str = "bbbbbbbb-2438-4384-9891-48f4c8172e9b";
-    const UUID_C: &str = "cccccccc-9b01-423f-9ba6-51aa4bbd5dd2";
-    const UUID_D: &str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
+    const UUID_A: Uuid = uuid::uuid!("aaaaaaaa-f82e-4484-a407-181aa03bda5c");
+    const UUID_B: Uuid = uuid::uuid!("bbbbbbbb-2438-4384-9891-48f4c8172e9b");
+    const UUID_C: Uuid = uuid::uuid!("cccccccc-9b01-423f-9ba6-51aa4bbd5dd2");
+    const UUID_D: Uuid = uuid::uuid!("dddddddd-2ab3-48e3-938d-1b4754cd2984");
 
     static EA: LazyLock<EntryInitNew> = LazyLock::new(|| {
         entry_init_fn([
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Class, EntryClass::MemberOf.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_A))),
+            (Attribute::Uuid, Value::Uuid(UUID_A)),
         ])
     });
     static EB: LazyLock<EntryInitNew> = LazyLock::new(|| {
@@ -779,7 +779,7 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Class, EntryClass::MemberOf.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_B))),
+            (Attribute::Uuid, Value::Uuid(UUID_B)),
         ])
     });
     static EC: LazyLock<EntryInitNew> = LazyLock::new(|| {
@@ -787,7 +787,7 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Class, EntryClass::MemberOf.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_c")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_C))),
+            (Attribute::Uuid, Value::Uuid(UUID_C)),
         ])
     });
     static ED: LazyLock<EntryInitNew> = LazyLock::new(|| {
@@ -795,7 +795,7 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Class, EntryClass::MemberOf.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_d")),
-            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_D))),
+            (Attribute::Uuid, Value::Uuid(UUID_D)),
         ])
     });
 
@@ -808,8 +808,8 @@ mod tests {
             $cand:expr
         ) => {{
             let filt = filter!(f_and!([
-                f_eq(Attribute::Uuid, PartialValue::new_uuid_s($ea).unwrap()),
-                f_eq($mo, PartialValue::new_refer_s($eb).unwrap())
+                f_eq(Attribute::Uuid, PartialValue::Uuid($ea)),
+                f_eq($mo, PartialValue::Refer($eb))
             ]));
             let cands = $qs.internal_search(filt).expect("Internal search failure");
             debug!("assert_mo_cands {:?}", cands);
@@ -863,7 +863,7 @@ mod tests {
         let mut ea = EA.clone();
         let eb = EB.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
 
         let preload = Vec::with_capacity(0);
         let create = vec![ea, eb];
@@ -893,8 +893,8 @@ mod tests {
 
         let ec = EC.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
 
         let preload = Vec::with_capacity(0);
         let create = vec![ea, eb, ec];
@@ -944,9 +944,9 @@ mod tests {
 
         let mut ec = EC.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
-        ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
+        ec.add_ava(Attribute::Member, Value::ReferN(UUID_A));
 
         let preload = Vec::with_capacity(0);
         let create = vec![ea, eb, ec];
@@ -998,13 +998,13 @@ mod tests {
 
         let mut ed = ED.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
 
-        ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
-        ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_D).unwrap());
+        ec.add_ava(Attribute::Member, Value::ReferN(UUID_A));
+        ec.add_ava(Attribute::Member, Value::ReferN(UUID_D));
 
-        ed.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
+        ed.add_ava(Attribute::Member, Value::ReferN(UUID_A));
 
         let preload = Vec::with_capacity(0);
         let create = vec![ea, eb, ec, ed];
@@ -1071,13 +1071,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_A).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_A))),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member,
-                Value::new_refer_s(UUID_B).unwrap()
+                Value::ReferN(UUID_B)
             )]),
             None,
             |_| {},
@@ -1102,19 +1099,16 @@ mod tests {
         let mut eb = EB.clone();
         let ec = EC.clone();
 
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_A).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_A))),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member,
-                Value::new_refer_s(UUID_B).unwrap()
+                Value::ReferN(UUID_B)
             )]),
             None,
             |_| {},
@@ -1157,19 +1151,16 @@ mod tests {
         let eb = EB.clone();
         let ec = EC.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_B).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_B))),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member,
-                Value::new_refer_s(UUID_C).unwrap()
+                Value::ReferN(UUID_C)
             )]),
             None,
             |_| {},
@@ -1214,20 +1205,17 @@ mod tests {
         let mut eb = EB.clone();
         let ec = EC.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_C).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_C))),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member,
-                Value::new_refer_s(UUID_A).unwrap()
+                Value::ReferN(UUID_A)
             )]),
             None,
             |_| {},
@@ -1277,21 +1265,21 @@ mod tests {
         let mut ec = EC.clone();
         let ed = ED.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
-        ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_D).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
+        ec.add_ava(Attribute::Member, Value::ReferN(UUID_D));
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
             Ok(()),
             preload,
             filter!(f_or!([
-                f_eq(Attribute::Uuid, PartialValue::new_uuid_s(UUID_C).unwrap()),
-                f_eq(Attribute::Uuid, PartialValue::new_uuid_s(UUID_D).unwrap()),
+                f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_C)),
+                f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_D)),
             ])),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member,
-                Value::new_refer_s(UUID_A).unwrap()
+                Value::ReferN(UUID_A)
             )]),
             None,
             |_| {},
@@ -1349,20 +1337,17 @@ mod tests {
         let mut ea = EA.clone();
         let mut eb = EB.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
         let preload = vec![ea, eb];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_A).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_A))),
             ModifyList::new_list(vec![Modify::Removed(
                 Attribute::Member,
-                PartialValue::new_refer_s(UUID_B).unwrap()
+                PartialValue::Refer(UUID_B)
             )]),
             None,
             |_| {},
@@ -1387,22 +1372,19 @@ mod tests {
         let mut eb = EB.clone();
         let mut ec = EC.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_A).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_A))),
             ModifyList::new_list(vec![Modify::Removed(
                 Attribute::Member,
-                PartialValue::new_refer_s(UUID_B).unwrap()
+                PartialValue::Refer(UUID_B)
             )]),
             None,
             |_| {},
@@ -1445,23 +1427,20 @@ mod tests {
         let mut eb = EB.clone();
         let mut ec = EC.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_B).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_B))),
             ModifyList::new_list(vec![Modify::Removed(
                 Attribute::Member,
-                PartialValue::new_refer_s(UUID_C).unwrap()
+                PartialValue::Refer(UUID_C)
             )]),
             None,
             |_| {},
@@ -1505,32 +1484,29 @@ mod tests {
         let mut eb = EB.clone();
         let mut ec = EC.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
-        ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava(Attribute::Member, Value::ReferN(UUID_A));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_C).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_C))),
             ModifyList::new_list(vec![Modify::Removed(
                 Attribute::Member,
-                PartialValue::new_refer_s(UUID_A).unwrap()
+                PartialValue::Refer(UUID_A)
             )]),
             None,
             |_| {},
@@ -1581,48 +1557,39 @@ mod tests {
         let mut ec = EC.clone();
         let mut ed = ED.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_D).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_D));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_D).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_D));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
-        ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
-        ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_D).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_D).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava(Attribute::Member, Value::ReferN(UUID_A));
+        ec.add_ava(Attribute::Member, Value::ReferN(UUID_D));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_D));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
-        ed.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
-        ed.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_D).unwrap());
-        ed.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        ed.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ed.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        ed.add_ava(Attribute::Member, Value::ReferN(UUID_A));
+        ed.add_ava(Attribute::MemberOf, Value::ReferN(UUID_D));
+        ed.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        ed.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ed.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_C).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_C))),
             ModifyList::new_list(vec![
-                Modify::Removed(
-                    Attribute::Member,
-                    PartialValue::new_refer_s(UUID_A).unwrap()
-                ),
-                Modify::Removed(
-                    Attribute::Member,
-                    PartialValue::new_refer_s(UUID_D).unwrap()
-                ),
+                Modify::Removed(Attribute::Member, PartialValue::Refer(UUID_A)),
+                Modify::Removed(Attribute::Member, PartialValue::Refer(UUID_D)),
             ]),
             None,
             |_| {},
@@ -1678,17 +1645,14 @@ mod tests {
         let mut ea = EA.clone();
         let mut eb = EB.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
         let preload = vec![ea, eb];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_A).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_A))),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1709,21 +1673,18 @@ mod tests {
         let mut eb = EB.clone();
         let mut ec = EC.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_A).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_A))),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1754,21 +1715,18 @@ mod tests {
         let mut eb = EB.clone();
         let mut ec = EC.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
 
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_B).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_B))),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1800,29 +1758,26 @@ mod tests {
         let mut eb = EB.clone();
         let mut ec = EC.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
 
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
 
-        ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
+        ec.add_ava(Attribute::Member, Value::ReferN(UUID_A));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_A).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_A))),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1856,39 +1811,36 @@ mod tests {
         let mut ec = EC.clone();
         let mut ed = ED.clone();
 
-        ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_D).unwrap());
+        ea.add_ava(Attribute::Member, Value::ReferN(UUID_B));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        ea.add_ava(Attribute::MemberOf, Value::ReferN(UUID_D));
 
-        eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_D).unwrap());
+        eb.add_ava(Attribute::Member, Value::ReferN(UUID_C));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        eb.add_ava(Attribute::MemberOf, Value::ReferN(UUID_D));
 
-        ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
-        ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_D).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        ec.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_D).unwrap());
+        ec.add_ava(Attribute::Member, Value::ReferN(UUID_A));
+        ec.add_ava(Attribute::Member, Value::ReferN(UUID_D));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        ec.add_ava(Attribute::MemberOf, Value::ReferN(UUID_D));
 
-        ed.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
-        ed.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
-        ed.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_B).unwrap());
-        ed.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
-        ed.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_D).unwrap());
+        ed.add_ava(Attribute::Member, Value::ReferN(UUID_A));
+        ed.add_ava(Attribute::MemberOf, Value::ReferN(UUID_A));
+        ed.add_ava(Attribute::MemberOf, Value::ReferN(UUID_B));
+        ed.add_ava(Attribute::MemberOf, Value::ReferN(UUID_C));
+        ed.add_ava(Attribute::MemberOf, Value::ReferN(UUID_D));
 
         let preload = vec![ea, eb, ec, ed];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq(
-                Attribute::Uuid,
-                PartialValue::new_uuid_s(UUID_B).unwrap()
-            )),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_B))),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is

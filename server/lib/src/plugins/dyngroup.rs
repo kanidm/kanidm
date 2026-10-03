@@ -231,7 +231,7 @@ impl DynGroup {
                     matches
                         .iter()
                         .copied()
-                        .for_each(|u| d_group.add_ava(Attribute::DynMember, Value::Refer(u)));
+                        .for_each(|u| d_group.add_ava(Attribute::DynMember, Value::ReferN(u)));
 
                     // The *dyn group* isn't changing, it's that a member OF the dyn group
                     // is being added. This means the dyngroup isn't part of the set that

@@ -311,7 +311,10 @@ impl SchemaAttribute {
                 SyntaxType::SyntaxId => matches!(v, Value::Syntax(_)),
                 SyntaxType::IndexId => matches!(v, Value::Index(_)),
                 SyntaxType::Uuid => matches!(v, Value::Uuid(_)),
-                SyntaxType::ReferenceUuidN | SyntaxType::ReferenceUuid => {
+                SyntaxType::ReferenceUuidN => {
+                    matches!(v, Value::ReferN(_))
+                }
+                SyntaxType::ReferenceUuid => {
                     matches!(v, Value::Refer(_))
                 }
                 SyntaxType::Utf8StringInsensitiveN | SyntaxType::Utf8StringInsensitive => {
@@ -401,10 +404,12 @@ impl SchemaAttribute {
                 SyntaxType::Utf8StringInsensitiveN == ava.syntax()
                     || SyntaxType::Utf8StringInsensitive == ava.syntax()
             }
+            /*
             SyntaxType::ReferenceUuid => {
                 SyntaxType::ReferenceUuidN == ava.syntax()
                     || SyntaxType::ReferenceUuid == ava.syntax()
             }
+            */
             SyntaxType::Utf8StringIname => {
                 SyntaxType::Utf8StringInameN == ava.syntax()
                     || SyntaxType::Utf8StringIname == ava.syntax()
