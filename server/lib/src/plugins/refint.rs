@@ -485,6 +485,7 @@ where
         });
 
         for vs in cand_ref_valuesets {
+            trace!(?vs);
             if let Some(uuid_iter) = vs.as_ref_uuid_iter() {
                 reference_set.extend(uuid_iter);
                 Ok(())
@@ -535,7 +536,7 @@ impl ReferentialIntegrity {
     fn cand_refers_to_target_uuid(post_cand: &[EntrySealedCommitted]) -> Vec<Uuid> {
         post_cand
             .iter()
-            .filter_map(|entry| entry.get_ava_single_refer(Attribute::Refers))
+            .filter_map(|entry| entry.get_ava_refer_single(Attribute::Refers))
             .collect()
     }
 
@@ -600,8 +601,8 @@ mod tests {
     use kanidm_proto::internal::Filter as ProtoFilter;
     use time::OffsetDateTime;
 
-    const TEST_TESTGROUP_A_UUID: &str = "d2b496bd-8493-47b7-8142-f568b5cf47ee";
-    const TEST_TESTGROUP_B_UUID: &str = "8cef42bc-2cac-43e4-96b3-8f54561885ca";
+    const TEST_TESTGROUP_A_UUID: Uuid = uuid::uuid!("aaa496bd-8493-47b7-8142-f568b5cf47ee");
+    const TEST_TESTGROUP_B_UUID: Uuid = uuid::uuid!("bbbf42bc-2cac-43e4-96b3-8f54561885ca");
 
     // The create references a uuid that doesn't exist - reject
     #[test]
@@ -610,10 +611,7 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (
-                Attribute::Member,
-                Value::Refer(Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap())
-            )
+            (Attribute::Member, Value::ReferN(TEST_TESTGROUP_B_UUID))
         );
 
         let create = vec![e];
@@ -636,19 +634,13 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
-            )
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_A_UUID))
         );
         let eb = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (
-                Attribute::Member,
-                Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
-            )
+            (Attribute::Member, Value::ReferN(TEST_TESTGROUP_A_UUID))
         );
 
         let preload = vec![ea];
@@ -682,7 +674,7 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Uuid, Value::Uuid(id)),
-            (Attribute::Member, Value::Refer(id))
+            (Attribute::Member, Value::ReferN(id))
         );
 
         let create = vec![e_group];
@@ -710,10 +702,7 @@ mod tests {
         let ea = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!(TEST_TESTGROUP_A_UUID))
-            )
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_A_UUID))
         );
 
         let eb = entry_init!(
@@ -732,7 +721,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member,
-                Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
+                Value::ReferN(TEST_TESTGROUP_A_UUID)
             )]),
             None,
             |_| {},
@@ -761,7 +750,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member,
-                Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
+                Value::ReferN(TEST_TESTGROUP_A_UUID)
             )]),
             None,
             |_| {},
@@ -776,10 +765,7 @@ mod tests {
         let ea = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!(TEST_TESTGROUP_A_UUID))
-            )
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_A_UUID))
         );
 
         let eb = entry_init!(
@@ -799,11 +785,8 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![
-                Modify::Present(
-                    Attribute::Member,
-                    Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
-                ),
-                Modify::Present(Attribute::Member, Value::Refer(UUID_DOES_NOT_EXIST)),
+                Modify::Present(Attribute::Member, Value::ReferN(TEST_TESTGROUP_A_UUID)),
+                Modify::Present(Attribute::Member, Value::ReferN(UUID_DOES_NOT_EXIST)),
             ]),
             None,
             |_| {},
@@ -817,19 +800,13 @@ mod tests {
         let ea = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!(TEST_TESTGROUP_A_UUID))
-            )
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_A_UUID))
         );
 
         let eb = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
-            (
-                Attribute::Member,
-                Value::Refer(uuid::uuid!(TEST_TESTGROUP_A_UUID))
-            )
+            (Attribute::Member, Value::ReferN(TEST_TESTGROUP_A_UUID))
         );
 
         let preload = vec![ea, eb];
@@ -854,10 +831,7 @@ mod tests {
         let ea = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!(TEST_TESTGROUP_A_UUID))
-            )
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_A_UUID))
         );
 
         let preload = vec![ea];
@@ -871,7 +845,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member,
-                Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
+                Value::ReferN(TEST_TESTGROUP_A_UUID)
             )]),
             None,
             |_| {},
@@ -885,10 +859,7 @@ mod tests {
         let ea = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!(TEST_TESTGROUP_A_UUID))
-            )
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_A_UUID))
         );
 
         let eb = entry_init!(
@@ -909,7 +880,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Member,
-                Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
+                Value::ReferN(TEST_TESTGROUP_A_UUID)
             )]),
             None,
             |qs: &mut QueryServerWriteTransaction| {
@@ -934,19 +905,13 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
-            )
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_A_UUID))
         );
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (
-                Attribute::Member,
-                Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
-            )
+            (Attribute::Member, Value::ReferN(TEST_TESTGROUP_A_UUID))
         );
 
         let preload = vec![ea, eb];
@@ -999,7 +964,7 @@ mod tests {
                 EntryClass::AccessControlTargetScope.to_value()
             ),
             (Attribute::Name, Value::new_iname("acp_referer")),
-            (Attribute::AcpReceiverGroup, Value::Refer(target_uuid)),
+            (Attribute::AcpReceiverGroup, Value::ReferN(target_uuid)),
             (
                 Attribute::AcpTargetScope,
                 Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
@@ -1029,19 +994,13 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
-            )
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_A_UUID))
         );
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (
-                Attribute::Member,
-                Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
-            )
+            (Attribute::Member, Value::ReferN(TEST_TESTGROUP_A_UUID))
         );
 
         let preload = vec![ea, eb];
@@ -1065,14 +1024,8 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
-            ),
-            (
-                Attribute::Member,
-                Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
-            )
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_A_UUID)),
+            (Attribute::Member, Value::ReferN(TEST_TESTGROUP_A_UUID))
         );
         let preload = vec![eb];
 
@@ -1113,7 +1066,7 @@ mod tests {
             (
                 Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
-                    Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap(),
+                    TEST_TESTGROUP_B_UUID,
                     btreeset![OAUTH2_SCOPE_READ.to_string()]
                 )
                 .expect("Invalid scope")
@@ -1123,10 +1076,7 @@ mod tests {
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap())
-            ),
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_B_UUID)),
             (Attribute::Description, Value::new_utf8s("testgroup"))
         );
 
@@ -1165,7 +1115,7 @@ mod tests {
         // Create a user
         let mut server_txn = server.write(curtime).await.unwrap();
 
-        let tuuid = Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap();
+        let tuuid = TEST_TESTGROUP_B_UUID;
         let rs_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
@@ -1320,7 +1270,7 @@ mod tests {
             (Attribute::Class, EntryClass::DynGroup.to_value()),
             (Attribute::Uuid, Value::Uuid(dyn_uuid)),
             (Attribute::Name, Value::new_iname("test_dyngroup")),
-            (Attribute::DynMember, Value::Refer(inv_mb_uuid)),
+            (Attribute::DynMember, Value::ReferN(inv_mb_uuid)),
             (
                 Attribute::DynGroupFilter,
                 Value::JsonFilt(ProtoFilter::Eq(
@@ -1335,7 +1285,7 @@ mod tests {
             (Attribute::Class, EntryClass::MemberOf.to_value()),
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Uuid, Value::Uuid(tgroup_uuid)),
-            (Attribute::MemberOf, Value::Refer(inv_mo_uuid))
+            (Attribute::MemberOf, Value::ReferN(inv_mo_uuid))
         );
 
         let ce = CreateEvent::new_internal(vec![e_dyn, e_group]);
@@ -1442,7 +1392,7 @@ mod tests {
                 Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_a".to_string(),
-                    Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap(),
+                    TEST_TESTGROUP_B_UUID,
                     btreeset!["value_a".to_string()],
                 )
             )
@@ -1451,10 +1401,7 @@ mod tests {
         let eb: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap())
-            ),
+            (Attribute::Uuid, Value::Uuid(TEST_TESTGROUP_B_UUID)),
             (Attribute::Description, Value::new_utf8s("testgroup"))
         );
 
@@ -1504,8 +1451,9 @@ mod tests {
         let curtime = duration_from_epoch_now();
         let mut server_txn = server.write(curtime).await.unwrap();
 
-        let user_uuid = Uuid::new_v4();
-        let ref_uuid = Uuid::new_v4();
+        let user_uuid = TEST_TESTGROUP_A_UUID;
+        let ref_uuid = TEST_TESTGROUP_B_UUID;
+
         let cert_data = Box::new(
             Certificate::from_pem(TEST_X509_CERT_DATA)
                 .expect("Unable to parse test X509 cert data"),
@@ -1549,8 +1497,11 @@ mod tests {
         let mut server_txn = server.write(curtime).await.unwrap();
 
         // You can't revive just the cert.
+        let result = server_txn.internal_revive_uuid(ref_uuid).unwrap_err();
+        debug!(?result);
+
         assert!(matches!(
-            server_txn.internal_revive_uuid(ref_uuid).unwrap_err(),
+            result,
             OperationError::Plugin(PluginError::ReferentialIntegrity(_))
         ));
 

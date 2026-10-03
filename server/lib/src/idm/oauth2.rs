@@ -3789,7 +3789,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
             (Attribute::Uuid, Value::Uuid(UUID_TESTGROUP)),
-            (Attribute::Member, Value::Refer(UUID_TESTPERSON_1),)
+            (Attribute::Member, Value::ReferN(UUID_TESTPERSON_1),)
         );
 
         let entry_rs: Entry<EntryInit, EntryNew> = entry_init!(
@@ -3961,7 +3961,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
             (Attribute::Uuid, Value::Uuid(UUID_TESTGROUP)),
-            (Attribute::Member, Value::Refer(UUID_TESTPERSON_1),)
+            (Attribute::Member, Value::ReferN(UUID_TESTPERSON_1),)
         );
 
         let entry_rs: Entry<EntryInit, EntryNew> = entry_init!(
@@ -8061,7 +8061,7 @@ mod tests {
                 &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTGROUP))),
                 &ModifyList::new_list(vec![Modify::Present(
                     Attribute::Member,
-                    Value::Refer(service_account_uuid),
+                    Value::ReferN(service_account_uuid),
                 )]),
             )
             .expect("Failed to add service account to scope group");
