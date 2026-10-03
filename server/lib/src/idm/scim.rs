@@ -21,6 +21,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     time::Duration,
 };
+use time::OffsetDateTime;
 
 // Internals of a Scim Sync token
 
@@ -824,16 +825,11 @@ impl IdmServerProxyWriteTransaction<'_> {
             })
     }
 
-    // TODO: Change to ValueSet - probably now william.
     fn scim_attr_to_values(
         &mut self,
         scim_attr_name: &Attribute,
         scim_attr: &ScimValue,
-    ) -> Result<Vec<Value>, OperationError> {
-        if false {
-            todo!()
-        };
-
+    ) -> Result<ValueSet, OperationError> {
         let schema = self.qs_write.get_schema();
 
         let attr_schema = schema.get_attributes().get(scim_attr_name).ok_or_else(|| {
@@ -847,17 +843,17 @@ impl IdmServerProxyWriteTransaction<'_> {
                 SyntaxType::Utf8StringIname,
                 false,
                 ScimValue::Simple(ScimAttr::String(value)),
-            ) => Ok(vec![Value::new_iname(value)]),
+            ) => Ok(ValueSetIname::new(value) as _),
             (
                 SyntaxType::Utf8String,
                 false,
                 ScimValue::Simple(ScimAttr::String(value)),
-            ) => Ok(vec![Value::new_utf8(value.clone())]),
+            ) => Ok(ValueSetUtf8::new(value.clone())),
             (
                 SyntaxType::Utf8StringInsensitive,
                 false,
                 ScimValue::Simple(ScimAttr::String(value)),
-            ) => Ok(vec![Value::new_iutf8(value)]),
+            ) => Ok(ValueSetIutf8::new(value)),
             (
                 SyntaxType::Uint32,
                 false,
@@ -868,7 +864,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                         "Out of bounds unsigned integer - {scim_attr_name}"
                     ))
                 })
-                .map(|value| vec![Value::Uint32(value)]),
+                .map(|v| ValueSetUint32::new(v) as ValueSet),
             (SyntaxType::ReferenceUuid, false,
                 ScimValue::Simple(ScimAttr::String(value)),
             ) => {
@@ -879,7 +875,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                     })?;
 
                 if let Some(uuid) = maybe_uuid {
-                    Ok(vec![Value::Refer(uuid)])
+                    Ok(ValueSetRefer::new(uuid) as ValueSet)
                 } else {
                     debug!("Could not convert external_id to reference - {}", value);
                     Err(OperationError::InvalidAttribute(format!(
@@ -922,12 +918,21 @@ impl IdmServerProxyWriteTransaction<'_> {
                         })?;
 
                     if let Some(uuid) = maybe_uuid {
-                        vs.push(Value::Refer(uuid))
+                        vs.push(uuid)
                     } else {
                         debug!("Could not convert external_id to reference - {}", value);
                     }
                 }
-                Ok(vs)
+
+                ValueSetReferN::from_iter(vs.into_iter())
+                    .map(|vs| vs as ValueSet)
+                    .ok_or_else(|| {
+                                error!("Unable to convert to valueset");
+                                OperationError::InvalidAttribute(format!(
+                                    "invalid reference set - {scim_attr_name}"
+                                ))
+                    })
+
             }
             (SyntaxType::TotpSecret, true, ScimValue::MultiComplex(values)) => {
                 // We have to break down each complex value into a totp.
@@ -1047,9 +1052,18 @@ impl IdmServerProxyWriteTransaction<'_> {
                         })?;
 
                     let totp = Totp::new(secret, step, algo, digits);
-                    vs.push(Value::TotpSecret(external_id, totp))
+                    vs.push((external_id, totp))
                 }
-                Ok(vs)
+
+                ValueSetTotpSecret::from_iter(vs.into_iter())
+                    .map(|vs| vs as ValueSet )
+                    .ok_or_else(|| {
+                                error!("Unable to convert to valueset");
+                                OperationError::InvalidAttribute(format!(
+                                    "invalid totp set - {scim_attr_name}"
+                                ))
+                    })
+
             }
             (SyntaxType::EmailAddress, true, ScimValue::MultiComplex(values)) => {
                 let mut vs = Vec::with_capacity(values.len());
@@ -1086,9 +1100,17 @@ impl IdmServerProxyWriteTransaction<'_> {
                         false
                     };
 
-                    vs.push(Value::EmailAddress(mail_addr, primary))
+                    vs.push((mail_addr, primary))
                 }
-                Ok(vs)
+
+                ValueSetEmailAddress::from_iter(vs.into_iter())
+                    .map(|vs| vs as ValueSet)
+                    .ok_or_else(|| {
+                                error!("Unable to convert to valueset");
+                                OperationError::InvalidAttribute(format!(
+                                    "invalid email set - {scim_attr_name}"
+                                ))
+                    })
             }
             (SyntaxType::SshKey, true, ScimValue::MultiComplex(values)) => {
                 let mut vs = Vec::with_capacity(values.len());
@@ -1133,17 +1155,28 @@ impl IdmServerProxyWriteTransaction<'_> {
                             }
                         })?;
 
-                    vs.push(Value::SshKey(label, value))
+                    vs.push((label, value))
                 }
-                Ok(vs)
+
+                ValueSetSshKey::from_iter(vs.into_iter())
+                    .map(|vs| vs as ValueSet)
+                    .ok_or_else(|| {
+                        error!("Unable to convert to valueset");
+                        OperationError::InvalidAttribute(format!(
+                            "value must be scim simple string - {scim_attr_name}"
+                        ))
+                    })
             }
             (
                 SyntaxType::DateTime,
                 false,
                 ScimValue::Simple(ScimAttr::String(value)),
             ) => {
-                Value::new_datetime_s(value)
-                    .map(|v| vec![v])
+                OffsetDateTime::parse(value, &Rfc3339)
+                    .ok()
+                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                    .map(ValueSetDateTime::new)
+                    .map(|vs| vs as ValueSet)
                     .ok_or_else(|| {
                         error!("Invalid value attribute - must be scim simple string with rfc3339 formatted datetime");
                         OperationError::InvalidAttribute(format!(
@@ -1268,8 +1301,8 @@ impl IdmServerProxyWriteTransaction<'_> {
                 return Err(OperationError::InvalidEntryState);
             }
 
-            // Convert each scim_attr to a set of values.
-            let values = self
+            // Convert each scim_attr to a set of valuesets.
+            let valueset = self
                 .scim_attr_to_values(&scim_attr_name, scim_attr)
                 .inspect_err(|err| {
                     error!(
@@ -1278,11 +1311,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                     );
                 })?;
 
-            mods.extend(
-                values
-                    .into_iter()
-                    .map(|val| Modify::Present(scim_attr_name.clone(), val)),
-            );
+            mods.push(Modify::Set(scim_attr_name.clone(), valueset));
         }
 
         trace!(?mods);

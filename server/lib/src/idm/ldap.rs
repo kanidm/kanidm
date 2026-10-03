@@ -1234,7 +1234,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -1355,7 +1355,7 @@ mod tests {
         assert!(res.unwrap().is_none());
 
         {
-            let ml = ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid));
+            let ml = ModifyList::new_append(Attribute::Member, Value::ReferN(usr_uuid));
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(idms_prox_write
                 .qs_write
@@ -1492,7 +1492,7 @@ mod tests {
                 (Attribute::Class, EntryClass::Group.to_value()),
                 (Attribute::Name, Value::new_iname(grp1_name)),
                 (Attribute::Uuid, Value::Uuid(grp1_uuid)),
-                (Attribute::Member, Value::Refer(usr_uuid))
+                (Attribute::Member, Value::ReferN(usr_uuid))
             );
 
             let e3 = entry_init!(
@@ -1585,7 +1585,7 @@ mod tests {
 
         // Add user to grp2
         {
-            let ml = ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid));
+            let ml = ModifyList::new_append(Attribute::Member, Value::ReferN(usr_uuid));
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(idms_prox_write
                 .qs_write
@@ -1698,7 +1698,7 @@ mod tests {
                 (Attribute::Class, EntryClass::Group.to_value()),
                 (Attribute::Name, Value::new_iname(grp1_name)),
                 (Attribute::Uuid, Value::Uuid(grp1_uuid)),
-                (Attribute::Member, Value::Refer(usr_uuid))
+                (Attribute::Member, Value::ReferN(usr_uuid))
             );
 
             let e3 = entry_init!(
@@ -1840,7 +1840,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2057,7 +2057,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_ACCOUNT_MAIL_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(sa_uuid)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(sa_uuid)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2066,7 +2066,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2251,7 +2251,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2331,7 +2331,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2529,7 +2529,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2647,7 +2647,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 

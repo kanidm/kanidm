@@ -3362,7 +3362,7 @@ mod tests {
 
         assert_eq!(
             r3,
-            Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")))
+            Ok(Value::ReferN(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")))
         );
 
         // test attr reference already resolved.
@@ -3374,7 +3374,7 @@ mod tests {
         debug!("{:?}", r4);
         assert_eq!(
             r4,
-            Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")))
+            Ok(Value::ReferN(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")))
         );
     }
 
