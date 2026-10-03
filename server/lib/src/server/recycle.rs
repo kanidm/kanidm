@@ -761,9 +761,12 @@ mod tests {
             ),
             (Attribute::Description, Value::new_utf8s("testgroup-entry"))
         );
-        members
-            .iter()
-            .for_each(|m| e1.add_ava(Attribute::Member, Value::new_refer_s(m).unwrap()));
+        members.iter().for_each(|m| {
+            e1.add_ava(
+                Attribute::Member,
+                Value::ReferN(Uuid::parse_str(m).unwrap()),
+            )
+        });
         e1
     }
 
