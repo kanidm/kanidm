@@ -824,11 +824,16 @@ impl IdmServerProxyWriteTransaction<'_> {
             })
     }
 
+    // TODO: Change to ValueSet - probably now william.
     fn scim_attr_to_values(
         &mut self,
         scim_attr_name: &Attribute,
         scim_attr: &ScimValue,
     ) -> Result<Vec<Value>, OperationError> {
+        if false {
+            todo!()
+        };
+
         let schema = self.qs_write.get_schema();
 
         let attr_schema = schema.get_attributes().get(scim_attr_name).ok_or_else(|| {
@@ -882,7 +887,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                     )))
                 }
             }
-            (SyntaxType::ReferenceUuid, true, ScimValue::MultiComplex(values)) => {
+            (SyntaxType::ReferenceUuidN, true, ScimValue::MultiComplex(values)) => {
                 // In this case, because it's a reference uuid only, despite the multicomplex structure, it's a list of
                 // "external_id" to external_ids. These *might* also be uuids. So we need to use sync_external_id_to_uuid
                 // here to resolve things.
