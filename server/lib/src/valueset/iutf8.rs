@@ -235,7 +235,7 @@ impl ValueSetT for ValueSetIutf8N {
 
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Iutf8(s) => Ok(self.set.insert(s)),
+            Value::Iutf8(s) | Value::Iutf8N(s) => Ok(self.set.insert(s)),
             _ => {
                 debug_assert!(false);
                 Err(OperationError::InvalidValueState)
