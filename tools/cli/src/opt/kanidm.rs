@@ -93,6 +93,23 @@ impl OutputMode {
             }
         }
     }
+
+    pub fn print_vec<T>(self, input: Vec<T>)
+    where
+        T: serde::Serialize + fmt::Debug + fmt::Display,
+    {
+        match self {
+            OutputMode::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string(&input).unwrap_or(format!("{input:?}"))
+                );
+            }
+            OutputMode::Text => {
+                input.iter().for_each(|ent| println!("{ent}"));
+            }
+        }
+    }
 }
 
 #[derive(Debug, Args, Clone)]
