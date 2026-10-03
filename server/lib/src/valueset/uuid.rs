@@ -61,7 +61,7 @@ impl ValueSetT for ValueSetUuidN {
 
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Uuid(u) => Ok(self.set.insert(u)),
+            Value::Uuid(u) | Value::UuidN(u) => Ok(self.set.insert(u)),
             _ => {
                 debug_assert!(false);
                 Err(OperationError::InvalidValueState)
@@ -437,7 +437,7 @@ impl ValueSetT for ValueSetReferN {
 
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Refer(u) => Ok(self.set.insert(u)),
+            Value::Refer(u) | Value::ReferN(u) => Ok(self.set.insert(u)),
             _ => {
                 debug_assert!(false);
                 Err(OperationError::InvalidValueState)

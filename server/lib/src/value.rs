@@ -1406,13 +1406,17 @@ pub enum Value {
     Utf8(String),
     /// Case insensitive string
     Iutf8(String),
+    Iutf8N(String),
     /// Case insensitive Name for a thing
     Iname(String),
+    InameN(String),
     Uuid(Uuid),
+    UuidN(Uuid),
     Bool(bool),
     Syntax(SyntaxType),
     Index(IndexType),
     Refer(Uuid),
+    ReferN(Uuid),
     JsonFilt(ProtoFilter),
     Cred(String, Credential),
     SshKey(String, SshPublicKey),
@@ -1428,6 +1432,7 @@ pub enum Value {
     PhoneNumber(String, bool),
     Address(Address),
     Url(Url),
+    UrlN(Url),
     OauthScope(String),
     OauthScopeMap(Uuid, BTreeSet<String>),
     PrivateBinary(Vec<u8>),
@@ -1477,7 +1482,9 @@ impl PartialEq for Value {
         match (self, other) {
             (Value::Utf8(a), Value::Utf8(b))
             | (Value::Iutf8(a), Value::Iutf8(b))
+            | (Value::Iutf8N(a), Value::Iutf8N(b))
             | (Value::Iname(a), Value::Iname(b))
+            | (Value::InameN(a), Value::InameN(b))
             | (Value::Cred(a, _), Value::Cred(b, _))
             | (Value::SshKey(a, _), Value::SshKey(b, _))
             | (Value::Nsuniqueid(a), Value::Nsuniqueid(b))
@@ -1489,7 +1496,10 @@ impl PartialEq for Value {
             // Spn - need to check both name and domain.
             (Value::Spn(a, c), Value::Spn(b, d)) => a.eq(b) && c.eq(d),
             // Uuid, Refer
-            (Value::Uuid(a), Value::Uuid(b)) | (Value::Refer(a), Value::Refer(b)) => a.eq(b),
+            (Value::Uuid(a), Value::Uuid(b))
+            | (Value::Refer(a), Value::Refer(b))
+            | (Value::UuidN(a), Value::UuidN(b))
+            | (Value::ReferN(a), Value::ReferN(b)) => a.eq(b),
             // Bool
             (Value::Bool(a), Value::Bool(b)) => a.eq(b),
             // Syntax
@@ -1639,6 +1649,10 @@ impl Value {
         Value::Iutf8(s.to_lowercase())
     }
 
+    pub fn new_iutf8n(s: &str) -> Self {
+        Value::Iutf8N(s.to_lowercase())
+    }
+
     pub fn is_iutf8(&self) -> bool {
         matches!(self, Value::Iutf8(_))
     }
@@ -1653,6 +1667,10 @@ impl Value {
 
     pub fn new_iname(s: &str) -> Self {
         Value::Iname(s.to_lowercase())
+    }
+
+    pub fn new_inamen(s: &str) -> Self {
+        Value::InameN(s.to_lowercase())
     }
 
     pub fn is_iname(&self) -> bool {
@@ -2017,7 +2035,7 @@ impl Value {
         // This has to clone due to how the backend works.
         match &self {
             Value::Spn(n, r) => DbIdentSpn::Spn(n.clone(), r.clone()),
-            Value::Iname(s) => DbIdentSpn::Iname(s.clone()),
+            Value::Iname(s) | Value::InameN(s) => DbIdentSpn::Iname(s.clone()),
             Value::Uuid(u) => DbIdentSpn::Uuid(*u),
             // Value::Iutf8(s) => DbValueV1::Iutf8(s.clone()),
             // Value::Utf8(s) => DbValueV1::Utf8(s.clone()),
@@ -2055,7 +2073,7 @@ impl Value {
     // in refint plugin.
     pub fn to_ref_uuid(&self) -> Option<Uuid> {
         match &self {
-            Value::Refer(u) => Some(*u),
+            Value::Refer(u) | Value::ReferN(u) => Some(*u),
             Value::OauthScopeMap(u, _) => Some(*u),
             // We need to assert that our reference to our rs exists.
             Value::Oauth2Session(_, m) => Some(m.rs_uuid),
@@ -2065,7 +2083,7 @@ impl Value {
 
     pub fn to_uuid(&self) -> Option<&Uuid> {
         match &self {
-            Value::Uuid(u) => Some(u),
+            Value::Uuid(u) | Value::UuidN(u) => Some(u),
             _ => None,
         }
     }
@@ -2238,8 +2256,8 @@ impl Value {
     #[allow(clippy::unreachable)]
     pub(crate) fn to_proto_string_clone(&self) -> String {
         match &self {
-            Value::Iname(s) => s.clone(),
-            Value::Uuid(u) => u.as_hyphenated().to_string(),
+            Value::Iname(s) | Value::InameN(s) => s.clone(),
+            Value::Uuid(u) | Value::UuidN(u) => u.as_hyphenated().to_string(),
             // We display the tag and fingerprint.
             Value::SshKey(tag, key) => format!("{tag}: {key}"),
             Value::Spn(n, r) => format!("{n}@{r}"),
@@ -2258,6 +2276,7 @@ impl Value {
             // String security is required here
             Value::Utf8(s)
             | Value::Iutf8(s)
+            | Value::Iutf8N(s)
             | Value::Cred(s, _)
             | Value::PublicBinary(s, _)
             | Value::IntentToken(s, _)
@@ -2274,7 +2293,7 @@ impl Value {
                     && Value::validate_singleline(b)
             }
             Value::Image(image) => image.validate_image().is_ok(),
-            Value::Iname(s) => {
+            Value::Iname(s) | Value::InameN(s) => {
                 Value::validate_str_escapes(s)
                     && Value::validate_iname(s)
                     && Value::validate_singleline(s)
@@ -2326,16 +2345,19 @@ impl Value {
             Value::Certificate(_) => true,
 
             Value::Uuid(_)
+            | Value::UuidN(_)
             | Value::Bool(_)
             | Value::Syntax(_)
             | Value::Index(_)
             | Value::Refer(_)
+            | Value::ReferN(_)
             | Value::JsonFilt(_)
             | Value::SecretValue(_)
             | Value::Uint32(_)
             | Value::Int64(_)
             | Value::Uint64(_)
             | Value::Url(_)
+            | Value::UrlN(_)
             | Value::Cid(_)
             | Value::PrivateBinary(_)
             | Value::RestrictedString(_)

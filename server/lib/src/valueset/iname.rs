@@ -257,7 +257,7 @@ impl ValueSetT for ValueSetInameN {
 
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Iname(s) => Ok(self.set.insert(s)),
+            Value::Iname(s) | Value::InameN(s) => Ok(self.set.insert(s)),
             _ => {
                 debug_assert!(false);
                 Err(OperationError::InvalidValueState)

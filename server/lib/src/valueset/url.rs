@@ -65,7 +65,7 @@ impl ValueSetT for ValueSetUrlN {
 
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Url(u) => Ok(self.set.insert(u)),
+            Value::Url(u) | Value::UrlN(u) => Ok(self.set.insert(u)),
             _ => {
                 debug_assert!(false);
                 Err(OperationError::InvalidValueState)
