@@ -2699,6 +2699,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.get_ava_set(attr).and_then(|vs| vs.as_refer_set())
     }
 
+    pub fn get_ava_refer_single<A: AsRef<Attribute>>(&self, attr: A) -> Option<Uuid> {
+        self.get_ava_set(attr).and_then(|vs| vs.to_refer_single())
+    }
+
     pub fn get_ava_as_iutf8_iter<A: AsRef<Attribute>>(
         &self,
         attr: A,
