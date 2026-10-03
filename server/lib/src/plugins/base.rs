@@ -270,7 +270,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("test_account_1")),
             (Attribute::DisplayName, Value::new_utf8s("test_account_1")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT)),
-            (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP)),
+            (Attribute::MemberOf, Value::ReferN(UUID_TEST_GROUP)),
         ])
     });
     pub static TEST_GROUP: LazyLock<EntryInitNew> = LazyLock::new(|| {
@@ -278,7 +278,7 @@ mod tests {
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("test_group_a")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_GROUP)),
-            (Attribute::Member, Value::Refer(UUID_TEST_ACCOUNT)),
+            (Attribute::Member, Value::ReferN(UUID_TEST_ACCOUNT)),
         ])
     });
     pub static ALLOW_ALL: LazyLock<EntryInitNew> = LazyLock::new(|| {
