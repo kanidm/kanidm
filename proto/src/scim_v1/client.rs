@@ -162,7 +162,7 @@ pub struct ScimEntryApplication {
     pub name: String,
     pub displayname: String,
 
-    pub linked_group: Vec<super::ScimReference>,
+    pub linked_group: super::ScimReference,
 
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, JsonValue>,

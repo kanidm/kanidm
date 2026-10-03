@@ -1211,7 +1211,7 @@ mod tests {
                 (Attribute::Class, EntryClass::Object.to_value()),
                 (Attribute::Name, Value::new_iname("test_account_1")),
                 (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
-                (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1))
+                (Attribute::MemberOf, Value::ReferN(UUID_TEST_GROUP_1))
             )
             .into_sealed_committed(),
         )
@@ -1222,7 +1222,7 @@ mod tests {
                 (Attribute::Class, EntryClass::Object.to_value()),
                 (Attribute::Name, Value::new_iname("test_account_1")),
                 (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_2)),
-                (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_2))
+                (Attribute::MemberOf, Value::ReferN(UUID_TEST_GROUP_2))
             )
             .into_sealed_committed(),
         )
@@ -1357,7 +1357,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1387,7 +1387,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1413,7 +1413,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1442,7 +1442,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1470,7 +1470,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1499,7 +1499,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1526,7 +1526,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1559,7 +1559,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1585,7 +1585,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1611,7 +1611,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1651,7 +1651,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1679,7 +1679,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1705,7 +1705,7 @@ mod tests {
                 ),
                 (
                     Attribute::AcpReceiverGroup,
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     Attribute::AcpTargetScope,
@@ -1743,7 +1743,7 @@ mod tests {
             ),
             (
                 Attribute::AcpReceiverGroup,
-                Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                Value::ReferN(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
                 Attribute::AcpTargetScope,
@@ -1791,36 +1791,34 @@ mod tests {
         }};
     }
 
-    macro_rules! test_acp_search_reduce {
-        (
-            $se:expr,
-            $controls:expr,
-            $entries:expr,
-            $expect:expr
-        ) => {{
-            let ac = AccessControls::default();
-            let mut acw = ac.write();
-            acw.update_search($controls).expect("Failed to update");
-            let acw = acw;
+    fn test_acp_search_reduce(
+        se: &SearchEvent,
+        controls: Vec<AccessControlSearch>,
+        entries: Vec<Arc<EntrySealedCommitted>>,
+        expect: Vec<EntrySealedCommitted>,
+    ) {
+        let ac = AccessControls::default();
+        let mut acw = ac.write();
+        acw.update_search(controls).expect("Failed to update");
+        let acw = acw;
 
-            // We still have to reduce the entries to be sure that we are good.
-            let res = acw
-                .search_filter_entries(&mut $se, $entries)
-                .expect("operation failed");
-            // Now on the reduced entries, reduce the entries attrs.
-            let reduced = acw
-                .search_filter_entry_attributes(&mut $se, res)
-                .expect("operation failed");
+        // We still have to reduce the entries to be sure that we are good.
+        let res = acw
+            .search_filter_entries(se, entries)
+            .expect("operation failed");
+        // Now on the reduced entries, reduce the entries attrs.
+        let reduced = acw
+            .search_filter_entry_attributes(se, res)
+            .expect("operation failed");
 
-            // Help the type checker for the expect set.
-            let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> =
-                $expect.into_iter().map(|e| e.into_reduced()).collect();
+        // Help the type checker for the expect set.
+        let expect_set: Vec<EntryReducedCommitted> =
+            expect.into_iter().map(|e| e.into_reduced()).collect();
 
-            debug!("expect --> {:?}", expect_set);
-            debug!("result --> {:?}", reduced);
-            // should be ok, and same as expect.
-            assert_eq!(reduced, expect_set);
-        }};
+        debug!("expect --> {:?}", expect_set);
+        debug!("result --> {:?}", reduced);
+        // should be ok, and same as expect.
+        assert_eq!(reduced, expect_set);
     }
 
     #[test]
@@ -1962,7 +1960,7 @@ mod tests {
         );
 
         // Finally test it!
-        test_acp_search_reduce!(&se_anon_ro, vec![acp], r_set, ex_anon_some);
+        test_acp_search_reduce(&se_anon_ro, vec![acp], r_set, ex_anon_some);
     }
 
     pub static E_TESTPERSON_1_REDUCED: LazyLock<EntryInitNew> =
@@ -2003,11 +2001,13 @@ mod tests {
         );
 
         // Finally test it!
-        test_acp_search_reduce!(&se_anon, vec![acp], r_set, ex_anon);
+        test_acp_search_reduce(&se_anon, vec![acp], r_set, ex_anon);
     }
 
     #[test]
     fn test_access_enforce_search_attrs_req() {
+        sketching::test_init();
+
         // Test that attributes are correctly limited by the request.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
@@ -2043,8 +2043,10 @@ mod tests {
             "name uuid",
         );
 
+        trace!(?acp);
+
         // Finally test it!
-        test_acp_search_reduce!(&se_anon, vec![acp], r_set, ex_anon);
+        test_acp_search_reduce(&se_anon, vec![acp], r_set, ex_anon);
     }
 
     macro_rules! test_acp_modify {
@@ -2182,7 +2184,7 @@ mod tests {
             )),
             modlist!([Modify::Set(
                 Attribute::Class,
-                ValueSetIutf8::from_iter([EntryClass::Account.into(), EntryClass::Object.into(),])
+                ValueSetIutf8N::from_iter([EntryClass::Account.into(), EntryClass::Object.into(),])
                     .unwrap()
             )]),
         );
@@ -3097,12 +3099,12 @@ mod tests {
         let ex_a_reduced = vec![ev1_reduced];
 
         test_acp_search!(&se_a, vec![], r_set.clone(), ex_a);
-        test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
+        test_acp_search_reduce(&se_a, vec![], r_set.clone(), ex_a_reduced);
 
         // Check that anonymous is denied even though it's a member of the group.
         let anon: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS.clone().into();
         let mut anon = anon.into_invalid_new();
-        anon.set_ava_set(&Attribute::MemberOf, ValueSetRefer::new(UUID_TEST_GROUP_1));
+        anon.set_ava_set(&Attribute::MemberOf, ValueSetReferN::new(UUID_TEST_GROUP_1));
 
         let anon = Arc::new(anon.into_sealed_committed());
 
@@ -3173,7 +3175,7 @@ mod tests {
                 (Attribute::Class, EntryClass::SyncObject.to_value()),
                 (Attribute::Name, Value::new_iname("test_account_1")),
                 (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
-                (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1)),
+                (Attribute::MemberOf, Value::ReferN(UUID_TEST_GROUP_1)),
                 (Attribute::SyncParentUuid, Value::Refer(sync_uuid))
             )
             .into_sealed_committed(),
@@ -3190,7 +3192,7 @@ mod tests {
         let ex_a_reduced = vec![ev1_reduced];
 
         test_acp_search!(&se_a, vec![], r_set.clone(), ex_a);
-        test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
+        test_acp_search_reduce(&se_a, vec![], r_set.clone(), ex_a_reduced);
 
         // Test a non-synced account aka the deny case
         let se_b = SearchEvent::new_impersonate_entry(
@@ -3433,7 +3435,7 @@ mod tests {
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Name, Value::new_iname("test_account_1")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
-            (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1)),
+            (Attribute::MemberOf, Value::ReferN(UUID_TEST_GROUP_1)),
             (Attribute::DirectMemberOf, Value::Refer(UUID_TEST_GROUP_1))
         )
         .into_sealed_committed();
@@ -3441,7 +3443,7 @@ mod tests {
 
         let exv1 = entry_init!(
             (Attribute::Name, Value::new_iname("test_account_1")),
-            (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1)),
+            (Attribute::MemberOf, Value::ReferN(UUID_TEST_GROUP_1)),
             (Attribute::DirectMemberOf, Value::Refer(UUID_TEST_GROUP_1))
         )
         .into_sealed_committed();
@@ -3469,7 +3471,7 @@ mod tests {
         );
 
         // Finally test it!
-        test_acp_search_reduce!(&se_anon_ro, vec![acp], r_set, ex_anon_some);
+        test_acp_search_reduce(&se_anon_ro, vec![acp], r_set, ex_anon_some);
     }
 
     #[test]

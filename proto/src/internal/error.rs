@@ -234,6 +234,8 @@ pub enum OperationError {
     SC0031Int64SyntaxInvalid,
     SC0032Uint64SyntaxInvalid,
     SC0033AssertionContainsDuplicateUuids,
+    SC0034UuidSyntaxInvalid,
+
     // Migration
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
@@ -639,6 +641,7 @@ impl OperationError {
             Self::SC0031Int64SyntaxInvalid => Some("A SCIM Int64 contained invalid syntax".into()),
             Self::SC0032Uint64SyntaxInvalid => Some("A SCIM Uint64 contained invalid syntax".into()),
             Self::SC0033AssertionContainsDuplicateUuids => Some("SCIM assertion contains duplicate entry ids, unable to proceed.".into()),
+            Self::SC0034UuidSyntaxInvalid => Some("A SCIM Uuid contained invalid syntax".into()),
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
             Self::UI0003InvalidOauth2Resume => Some("The server attempted to resume OAuth2, but no OAuth2 session is in progress.".into()),

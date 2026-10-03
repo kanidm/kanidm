@@ -1388,7 +1388,7 @@ impl KeyObjectT for KeyObjectInternal {
         Ok(vec![
             (
                 Attribute::Class,
-                ValueSetIutf8::new(EntryClass::KeyObjectInternal.into()) as ValueSet,
+                ValueSetIutf8N::new(EntryClass::KeyObjectInternal.into()) as ValueSet,
             ),
             (
                 Attribute::KeyProvider,

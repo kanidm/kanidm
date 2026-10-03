@@ -225,10 +225,18 @@ impl SchemaAttribute {
             SyntaxType::Boolean => matches!(v, PartialValue::Bool(_)),
             SyntaxType::SyntaxId => matches!(v, PartialValue::Syntax(_)),
             SyntaxType::IndexId => matches!(v, PartialValue::Index(_)),
-            SyntaxType::Uuid => matches!(v, PartialValue::Uuid(_)),
-            SyntaxType::ReferenceUuid => matches!(v, PartialValue::Refer(_)),
-            SyntaxType::Utf8StringInsensitive => matches!(v, PartialValue::Iutf8(_)),
-            SyntaxType::Utf8StringIname => matches!(v, PartialValue::Iname(_)),
+            SyntaxType::Uuid | SyntaxType::UuidN => {
+                matches!(v, PartialValue::Uuid(_))
+            }
+            SyntaxType::ReferenceUuidN | SyntaxType::ReferenceUuid => {
+                matches!(v, PartialValue::Refer(_))
+            }
+            SyntaxType::Utf8StringInsensitiveN | SyntaxType::Utf8StringInsensitive => {
+                matches!(v, PartialValue::Iutf8(_))
+            }
+            SyntaxType::Utf8StringInameN | SyntaxType::Utf8StringIname => {
+                matches!(v, PartialValue::Iname(_))
+            }
             SyntaxType::Utf8String => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::JsonFilter => matches!(v, PartialValue::JsonFilt(_)),
             SyntaxType::Credential => matches!(v, PartialValue::Cred(_)),
@@ -242,7 +250,7 @@ impl SchemaAttribute {
             SyntaxType::NsUniqueId => matches!(v, PartialValue::Nsuniqueid(_)),
             SyntaxType::DateTime => matches!(v, PartialValue::DateTime(_)),
             SyntaxType::EmailAddress => matches!(v, PartialValue::EmailAddress(_)),
-            SyntaxType::Url => matches!(v, PartialValue::Url(_)),
+            SyntaxType::UrlN | SyntaxType::Url => matches!(v, PartialValue::Url(_)),
             SyntaxType::OauthScope => matches!(v, PartialValue::OauthScope(_)),
             SyntaxType::OauthScopeMap => matches!(v, PartialValue::Refer(_)),
             SyntaxType::OauthClaimMap => {
@@ -303,9 +311,18 @@ impl SchemaAttribute {
                 SyntaxType::SyntaxId => matches!(v, Value::Syntax(_)),
                 SyntaxType::IndexId => matches!(v, Value::Index(_)),
                 SyntaxType::Uuid => matches!(v, Value::Uuid(_)),
-                SyntaxType::ReferenceUuid => matches!(v, Value::Refer(_)),
-                SyntaxType::Utf8StringInsensitive => matches!(v, Value::Iutf8(_)),
-                SyntaxType::Utf8StringIname => matches!(v, Value::Iname(_)),
+                SyntaxType::ReferenceUuidN => {
+                    matches!(v, Value::ReferN(_))
+                }
+                SyntaxType::ReferenceUuid => {
+                    matches!(v, Value::Refer(_))
+                }
+                SyntaxType::Utf8StringInsensitiveN | SyntaxType::Utf8StringInsensitive => {
+                    matches!(v, Value::Iutf8(_))
+                }
+                SyntaxType::Utf8StringInameN | SyntaxType::Utf8StringIname => {
+                    matches!(v, Value::Iname(_))
+                }
                 SyntaxType::Utf8String => matches!(v, Value::Utf8(_)),
                 SyntaxType::JsonFilter => matches!(v, Value::JsonFilt(_)),
                 SyntaxType::Credential => matches!(v, Value::Cred(_, _)),
@@ -319,7 +336,7 @@ impl SchemaAttribute {
                 SyntaxType::NsUniqueId => matches!(v, Value::Nsuniqueid(_)),
                 SyntaxType::DateTime => matches!(v, Value::DateTime(_)),
                 SyntaxType::EmailAddress => matches!(v, Value::EmailAddress(_, _)),
-                SyntaxType::Url => matches!(v, Value::Url(_)),
+                SyntaxType::UrlN | SyntaxType::Url => matches!(v, Value::Url(_)),
                 SyntaxType::OauthScope => matches!(v, Value::OauthScope(_)),
                 SyntaxType::OauthScopeMap => matches!(v, Value::OauthScopeMap(_, _)),
                 SyntaxType::OauthClaimMap => {
@@ -350,7 +367,7 @@ impl SchemaAttribute {
                 SyntaxType::Json => matches!(v, Value::Json(_)),
                 SyntaxType::Sha256 => matches!(v, Value::Sha256(_)),
                 SyntaxType::EcKeyPrivate => matches!(v, Value::SecretValue(_)),
-                SyntaxType::Message => false,
+                SyntaxType::UuidN | SyntaxType::Message => false,
             };
         if r {
             Ok(())
@@ -370,11 +387,37 @@ impl SchemaAttribute {
         // Check multivalue
         if !self.multivalue && ava.len() > 1 {
             // lrequest_error!("Ava len > 1 on single value attribute!");
-            admin_error!("Ava len > 1 on single value attribute!");
+            error!("Ava len > 1 on single value attribute!");
             return Err(SchemaError::InvalidAttributeSyntax(a.to_string()));
         };
         // If syntax, check the type is correct
-        let valid = self.syntax == ava.syntax();
+
+        // This exists to allow transition between the former syntax types and the
+        // new single/multivalue types.
+        let valid = match self.syntax {
+            // Allow the single value variant to temporarily deserialise into
+            // the multi value variant before it's converted.
+            SyntaxType::Uuid => {
+                SyntaxType::UuidN == ava.syntax() || SyntaxType::Uuid == ava.syntax()
+            }
+            SyntaxType::Utf8StringInsensitive => {
+                SyntaxType::Utf8StringInsensitiveN == ava.syntax()
+                    || SyntaxType::Utf8StringInsensitive == ava.syntax()
+            }
+            /*
+            SyntaxType::ReferenceUuid => {
+                SyntaxType::ReferenceUuidN == ava.syntax()
+                    || SyntaxType::ReferenceUuid == ava.syntax()
+            }
+            */
+            SyntaxType::Utf8StringIname => {
+                SyntaxType::Utf8StringInameN == ava.syntax()
+                    || SyntaxType::Utf8StringIname == ava.syntax()
+            }
+            SyntaxType::Url => SyntaxType::UrlN == ava.syntax() || SyntaxType::Url == ava.syntax(),
+            _ => self.syntax == ava.syntax(),
+        };
+
         if valid && ava.validate(self) {
             Ok(())
         } else {
@@ -713,6 +756,7 @@ impl SchemaWriteTransaction<'_> {
         attributetypes.for_each(|a| {
             // Update the unique and ref caches.
             if a.syntax == SyntaxType::ReferenceUuid ||
+                a.syntax == SyntaxType::ReferenceUuidN ||
                 a.syntax == SyntaxType::OauthScopeMap ||
                 a.syntax == SyntaxType::OauthClaimMap ||
                 // So that when an rs is removed we trigger removal of the sessions.
@@ -922,9 +966,8 @@ mod tests {
         prelude::*,
         schema::{Schema, SchemaAttribute, SchemaClass, SchemaTransaction, SyntaxType},
     };
+    use std::collections::BTreeMap;
     use uuid::Uuid;
-
-    // use crate::proto_v1::Filter as ProtoFilter;
 
     macro_rules! validate_schema {
         ($sch:ident) => {{
@@ -1728,5 +1771,61 @@ mod tests {
         .into_invalid_new();
 
         assert!(e_person_valid.validate(&schema).is_ok());
+    }
+
+    #[qs_test]
+    async fn test_schema_syntax_multivalue_unique(server: &QueryServer) {
+        #[derive(Default)]
+        struct X {
+            multi: Vec<Attribute>,
+            single: Vec<Attribute>,
+        }
+
+        // Get the schema.
+        let read_txn = server
+            .read()
+            .await
+            .expect("Failed to start read transaction");
+
+        let schema_txn = read_txn.get_schema();
+        let schema_attrs_txn = schema_txn.get_attributes();
+
+        let mut attr_set: BTreeMap<SyntaxType, X> = BTreeMap::new();
+
+        // Build up a set containing the syntaxes + multivalue.
+        for schema_attr in schema_attrs_txn.values() {
+            if schema_attr.phantom {
+                continue;
+            }
+
+            let s = attr_set.entry(schema_attr.syntax).or_default();
+
+            if schema_attr.multivalue {
+                s.multi.push(schema_attr.name.clone())
+            } else {
+                s.single.push(schema_attr.name.clone())
+            }
+        }
+
+        let mut pass = true;
+
+        for (syntax, x) in attr_set {
+            if x.multi.is_empty() && x.single.is_empty() {
+                error!("{} NOT USED", syntax);
+                pass = false;
+            } else if x.multi.is_empty() || x.single.is_empty() {
+                // One is empty, move on.
+                continue;
+            } else {
+                pass = false;
+            }
+
+            warn!("{}", syntax);
+            warn!("multi:  {:?}", x.multi);
+            warn!("single: {:?}", x.single);
+        }
+
+        // Assert that no syntax type has both single or multivalue types! Yay!
+        assert!(pass);
     }
 }

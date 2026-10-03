@@ -10,7 +10,7 @@ pub static SCHEMA_ATTR_CLASS: LazyLock<SchemaAttribute> = LazyLock::new(|| Schem
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: true,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
 });
 pub static SCHEMA_ATTR_UUID: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     name: Attribute::Uuid,
@@ -40,7 +40,7 @@ pub static SCHEMA_ATTR_SOURCE_UUID: LazyLock<SchemaAttribute> = LazyLock::new(||
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: true,
-    syntax: SyntaxType::Uuid,
+    syntax: SyntaxType::UuidN,
 });
 pub static SCHEMA_ATTR_CREATED_AT_CID: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
@@ -258,7 +258,7 @@ pub static SCHEMA_ATTR_SYSTEM_MAY: LazyLock<SchemaAttribute> = LazyLock::new(|| 
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: false,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
 });
 pub static SCHEMA_ATTR_MAY: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     name: Attribute::May,
@@ -272,7 +272,7 @@ pub static SCHEMA_ATTR_MAY: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaA
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: false,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
 });
 pub static SCHEMA_ATTR_SYSTEM_MUST: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     name: Attribute::SystemMust,
@@ -286,7 +286,7 @@ pub static SCHEMA_ATTR_SYSTEM_MUST: LazyLock<SchemaAttribute> = LazyLock::new(||
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: false,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
 });
 pub static SCHEMA_ATTR_MUST: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     name: Attribute::Must,
@@ -300,7 +300,7 @@ pub static SCHEMA_ATTR_MUST: LazyLock<SchemaAttribute> = LazyLock::new(|| Schema
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: false,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
 });
 pub static SCHEMA_ATTR_SYSTEM_SUPPLEMENTS: LazyLock<SchemaAttribute> = LazyLock::new(|| {
     SchemaAttribute {
@@ -315,7 +315,7 @@ pub static SCHEMA_ATTR_SYSTEM_SUPPLEMENTS: LazyLock<SchemaAttribute> = LazyLock:
                 sync_allowed: false,
                 replicated: Replicated::True,
                 indexed: false,
-                syntax: SyntaxType::Utf8StringInsensitive,
+                syntax: SyntaxType::Utf8StringInsensitiveN,
             }
 });
 pub static SCHEMA_ATTR_SUPPLEMENTS: LazyLock<SchemaAttribute> = LazyLock::new(|| {
@@ -331,7 +331,7 @@ pub static SCHEMA_ATTR_SUPPLEMENTS: LazyLock<SchemaAttribute> = LazyLock::new(||
                 sync_allowed: false,
                 replicated: Replicated::True,
                 indexed: false,
-                syntax: SyntaxType::Utf8StringInsensitive,
+                syntax: SyntaxType::Utf8StringInsensitiveN,
             }
 });
 pub static SCHEMA_ATTR_SYSTEM_EXCLUDES: LazyLock<SchemaAttribute> =
@@ -347,7 +347,7 @@ pub static SCHEMA_ATTR_SYSTEM_EXCLUDES: LazyLock<SchemaAttribute> =
         sync_allowed: false,
         replicated: Replicated::True,
         indexed: false,
-        syntax: SyntaxType::Utf8StringInsensitive,
+        syntax: SyntaxType::Utf8StringInsensitiveN,
     });
 pub static SCHEMA_ATTR_EXCLUDES: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     name: Attribute::Excludes,
@@ -361,7 +361,7 @@ pub static SCHEMA_ATTR_EXCLUDES: LazyLock<SchemaAttribute> = LazyLock::new(|| Sc
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: false,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
 });
 
 // SYSINFO attrs
@@ -405,7 +405,7 @@ pub static SCHEMA_ATTR_ACP_RECEIVER_GROUP: LazyLock<SchemaAttribute> =
         sync_allowed: false,
         replicated: Replicated::True,
         indexed: true,
-        syntax: SyntaxType::ReferenceUuid,
+        syntax: SyntaxType::ReferenceUuidN,
     });
 
 pub static SCHEMA_ATTR_ACP_TARGET_SCOPE: LazyLock<SchemaAttribute> =
@@ -436,7 +436,7 @@ pub static SCHEMA_ATTR_ACP_SEARCH_ATTR: LazyLock<SchemaAttribute> =
         sync_allowed: false,
         replicated: Replicated::True,
         indexed: true,
-        syntax: SyntaxType::Utf8StringInsensitive,
+        syntax: SyntaxType::Utf8StringInsensitiveN,
     });
 pub static SCHEMA_ATTR_ACP_CREATE_CLASS: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
@@ -449,7 +449,7 @@ pub static SCHEMA_ATTR_ACP_CREATE_CLASS: LazyLock<SchemaAttribute> =
         sync_allowed: false,
         replicated: Replicated::True,
         indexed: true,
-        syntax: SyntaxType::Utf8StringInsensitive,
+        syntax: SyntaxType::Utf8StringInsensitiveN,
     });
 pub static SCHEMA_ATTR_ACP_CREATE_ATTR: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
@@ -462,7 +462,7 @@ pub static SCHEMA_ATTR_ACP_CREATE_ATTR: LazyLock<SchemaAttribute> =
         sync_allowed: false,
         replicated: Replicated::True,
         indexed: true,
-        syntax: SyntaxType::Utf8StringInsensitive,
+        syntax: SyntaxType::Utf8StringInsensitiveN,
     });
 
 pub static SCHEMA_ATTR_ACP_MODIFY_REMOVED_ATTR: LazyLock<SchemaAttribute> =
@@ -478,7 +478,7 @@ pub static SCHEMA_ATTR_ACP_MODIFY_REMOVED_ATTR: LazyLock<SchemaAttribute> =
         sync_allowed: false,
         replicated: Replicated::True,
         indexed: true,
-        syntax: SyntaxType::Utf8StringInsensitive,
+        syntax: SyntaxType::Utf8StringInsensitiveN,
     });
 pub static SCHEMA_ATTR_ACP_MODIFY_PRESENT_ATTR: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
@@ -493,7 +493,7 @@ pub static SCHEMA_ATTR_ACP_MODIFY_PRESENT_ATTR: LazyLock<SchemaAttribute> =
         sync_allowed: false,
         replicated: Replicated::True,
         indexed: true,
-        syntax: SyntaxType::Utf8StringInsensitive,
+        syntax: SyntaxType::Utf8StringInsensitiveN,
     });
 pub static SCHEMA_ATTR_ACP_MODIFY_CLASS: LazyLock<SchemaAttribute> = LazyLock::new(|| {
     SchemaAttribute {
@@ -506,7 +506,7 @@ pub static SCHEMA_ATTR_ACP_MODIFY_CLASS: LazyLock<SchemaAttribute> = LazyLock::n
                 sync_allowed: false,
                 replicated: Replicated::True,
                 indexed: true,
-                syntax: SyntaxType::Utf8StringInsensitive,
+                syntax: SyntaxType::Utf8StringInsensitiveN,
             }
 });
 pub static SCHEMA_ATTR_ACP_MODIFY_PRESENT_CLASS: LazyLock<SchemaAttribute> = LazyLock::new(|| {
@@ -520,7 +520,7 @@ pub static SCHEMA_ATTR_ACP_MODIFY_PRESENT_CLASS: LazyLock<SchemaAttribute> = Laz
                     sync_allowed: false,
                     replicated: Replicated::True,
                     indexed: false,
-                    syntax: SyntaxType::Utf8StringInsensitive,
+                    syntax: SyntaxType::Utf8StringInsensitiveN,
                 }
 });
 pub static SCHEMA_ATTR_ACP_MODIFY_REMOVE_CLASS: LazyLock<SchemaAttribute> = LazyLock::new(|| {
@@ -534,7 +534,7 @@ pub static SCHEMA_ATTR_ACP_MODIFY_REMOVE_CLASS: LazyLock<SchemaAttribute> = Lazy
                     sync_allowed: false,
                     replicated: Replicated::True,
                     indexed: false,
-                    syntax: SyntaxType::Utf8StringInsensitive,
+                    syntax: SyntaxType::Utf8StringInsensitiveN,
                 }
 });
 pub static SCHEMA_ATTR_ENTRY_MANAGED_BY: LazyLock<SchemaAttribute> =
@@ -563,7 +563,7 @@ pub static SCHEMA_ATTR_MEMBER_OF: LazyLock<SchemaAttribute> = LazyLock::new(|| S
     sync_allowed: false,
     replicated: Replicated::False,
     indexed: true,
-    syntax: SyntaxType::ReferenceUuid,
+    syntax: SyntaxType::ReferenceUuidN,
 });
 pub static SCHEMA_ATTR_DIRECT_MEMBER_OF: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
@@ -576,7 +576,7 @@ pub static SCHEMA_ATTR_DIRECT_MEMBER_OF: LazyLock<SchemaAttribute> =
         sync_allowed: false,
         replicated: Replicated::False,
         indexed: true,
-        syntax: SyntaxType::ReferenceUuid,
+        syntax: SyntaxType::ReferenceUuidN,
     });
 pub static SCHEMA_ATTR_RECYCLED_DIRECT_MEMBER_OF: LazyLock<SchemaAttribute> = LazyLock::new(|| {
     SchemaAttribute {
@@ -593,7 +593,7 @@ pub static SCHEMA_ATTR_RECYCLED_DIRECT_MEMBER_OF: LazyLock<SchemaAttribute> = La
                 // and their group memberships as a best effort.
                 replicated: Replicated::True,
                 indexed: true,
-                syntax: SyntaxType::ReferenceUuid,
+                syntax: SyntaxType::ReferenceUuidN,
             }
 });
 pub static SCHEMA_ATTR_MEMBER: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
@@ -606,7 +606,7 @@ pub static SCHEMA_ATTR_MEMBER: LazyLock<SchemaAttribute> = LazyLock::new(|| Sche
     sync_allowed: true,
     replicated: Replicated::True,
     indexed: true,
-    syntax: SyntaxType::ReferenceUuid,
+    syntax: SyntaxType::ReferenceUuidN,
 });
 pub static SCHEMA_ATTR_DYN_MEMBER: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     name: Attribute::DynMember,
@@ -618,7 +618,7 @@ pub static SCHEMA_ATTR_DYN_MEMBER: LazyLock<SchemaAttribute> = LazyLock::new(|| 
     sync_allowed: true,
     replicated: Replicated::False,
     indexed: true,
-    syntax: SyntaxType::ReferenceUuid,
+    syntax: SyntaxType::ReferenceUuidN,
 });
 
 pub static SCHEMA_ATTR_REFERS: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
@@ -675,7 +675,7 @@ pub static SCHEMA_ATTR_DOMAIN: LazyLock<SchemaAttribute> = LazyLock::new(|| Sche
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: true,
-    syntax: SyntaxType::Utf8StringIname,
+    syntax: SyntaxType::Utf8StringInameN,
 });
 pub static SCHEMA_ATTR_CLAIM: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     name: Attribute::Claim,
@@ -741,7 +741,7 @@ pub static SCHEMA_ATTR_SYNC_CLASS: LazyLock<SchemaAttribute> = LazyLock::new(|| 
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: false,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
 });
 
 pub static SCHEMA_ATTR_PASSWORD_IMPORT: LazyLock<SchemaAttribute> =

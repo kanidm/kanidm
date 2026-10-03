@@ -118,7 +118,7 @@ impl From<BuiltinAcp> for EntryInitNew {
                     EntryClass::AccessControlReceiverGroup.to_value(),
                 );
                 for group in list {
-                    entry.set_ava(Attribute::AcpReceiverGroup, [Value::Refer(*group)]);
+                    entry.set_ava(Attribute::AcpReceiverGroup, [Value::ReferN(*group)]);
                 }
             }
             BuiltinAcpReceiver::EntryManager => {
