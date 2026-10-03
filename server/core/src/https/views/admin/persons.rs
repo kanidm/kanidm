@@ -123,6 +123,7 @@ pub(crate) async fn view_person_view_get(
 struct PersonEntryResponse {
     person_uuid: Uuid,
     person_name: String,
+    person_dname: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -172,6 +173,7 @@ pub(crate) async fn create_person(
             Ok((PersonEntryResponse {
                 person_uuid: uuid,
                 person_name: name,
+                person_dname: display_name,
             })
             .into_response())
         }
