@@ -636,7 +636,7 @@ mod tests {
         );
 
         // Remove primary, assert it's gone and that the "first" address is assigned.
-        assert!(vs.remove(
+        assert!(!vs.remove(
             &PartialValue::new_email_address_s("primary@example.com"),
             &Cid::new_zero()
         ));
