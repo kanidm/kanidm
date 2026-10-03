@@ -381,7 +381,7 @@ impl DynGroup {
 
                 if let Some((pre, mut d_group)) = work_set.pop() {
                     matches.iter().copied().for_each(|choice| match choice {
-                        Ok(u) => d_group.add_ava(Attribute::DynMember, Value::Refer(u)),
+                        Ok(u) => d_group.add_ava(Attribute::DynMember, Value::ReferN(u)),
                         Err(u) => d_group.remove_ava(Attribute::DynMember, &PartialValue::Refer(u)),
                     });
 
@@ -782,7 +782,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::DynMember,
-                Value::Refer(UUID_ADMIN)
+                Value::ReferN(UUID_ADMIN)
             )]),
             None,
             |_| {},

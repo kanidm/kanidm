@@ -788,8 +788,15 @@ pub trait QueryServerTransaction<'a> {
                             .unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(Value::Uuid(un))
                     }
-                    SyntaxType::ReferenceUuidN |
-                    SyntaxType::ReferenceUuid => {
+                    SyntaxType::ReferenceUuidN
+                    => {
+                        let un = self
+                            .name_to_uuid(value)
+                            .unwrap_or(UUID_DOES_NOT_EXIST);
+                        Ok(Value::ReferN(un))
+                    }
+                    SyntaxType::ReferenceUuid
+                    => {
                         let un = self
                             .name_to_uuid(value)
                             .unwrap_or(UUID_DOES_NOT_EXIST);

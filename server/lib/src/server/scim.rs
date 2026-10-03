@@ -435,7 +435,7 @@ impl QueryServerWriteTransaction<'_> {
             // Temporary - use the multi-value versions for compatibility.
             SyntaxType::Url => ValueSetUrlN::from_scim_json_put(value),
             SyntaxType::UrlN => ValueSetUrlN::from_scim_json_put(value),
-            SyntaxType::ReferenceUuid => ValueSetReferN::from_scim_json_put(value),
+            SyntaxType::ReferenceUuid => ValueSetRefer::from_scim_json_put(value),
             SyntaxType::ReferenceUuidN => ValueSetReferN::from_scim_json_put(value),
             SyntaxType::Utf8StringIname => ValueSetInameN::from_scim_json_put(value),
             SyntaxType::Utf8StringInameN => ValueSetInameN::from_scim_json_put(value),
