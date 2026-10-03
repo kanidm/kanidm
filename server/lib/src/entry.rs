@@ -2653,6 +2653,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .map(|vs| vs.to_proto_string_clone_iter())
             .or_else(|| {
                 self.attrs
+                    .get(&Attribute::Name)
+                    .map(|vs| vs.to_proto_string_clone_iter())
+            })
+            .or_else(|| {
+                self.attrs
                     .get(&Attribute::Uuid)
                     .map(|vs| vs.to_proto_string_clone_iter())
             })

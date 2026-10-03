@@ -524,7 +524,7 @@ impl ValueSetT for ValueSetReferN {
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().copied().map(Value::Refer))
+        Box::new(self.set.iter().copied().map(Value::ReferN))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {
