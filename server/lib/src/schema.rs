@@ -751,6 +751,7 @@ impl SchemaWriteTransaction<'_> {
         attributetypes.for_each(|a| {
             // Update the unique and ref caches.
             if a.syntax == SyntaxType::ReferenceUuid ||
+                a.syntax == SyntaxType::ReferenceUuidN ||
                 a.syntax == SyntaxType::OauthScopeMap ||
                 a.syntax == SyntaxType::OauthClaimMap ||
                 // So that when an rs is removed we trigger removal of the sessions.

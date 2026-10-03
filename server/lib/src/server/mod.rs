@@ -1121,19 +1121,19 @@ pub trait QueryServerTransaction<'a> {
                 };
                 Ok(PartialValue::Utf8(value.to_string()))
             }
-            SyntaxType::Utf8StringInsensitive => {
+            SyntaxType::Utf8StringInsensitive | SyntaxType::Utf8StringInsensitiveN => {
                 let JsonValue::String(value) = value else {
                     return Err(OperationError::InvalidAttribute(attr.to_string()));
                 };
                 Ok(PartialValue::new_iutf8(value))
             }
-            SyntaxType::Utf8StringIname => {
+            SyntaxType::Utf8StringIname | SyntaxType::Utf8StringInameN => {
                 let JsonValue::String(value) = value else {
                     return Err(OperationError::InvalidAttribute(attr.to_string()));
                 };
                 Ok(PartialValue::new_iname(value))
             }
-            SyntaxType::Uuid => {
+            SyntaxType::Uuid | SyntaxType::UuidN => {
                 let JsonValue::String(value) = value else {
                     return Err(OperationError::InvalidAttribute(attr.to_string()));
                 };
@@ -1157,6 +1157,7 @@ pub trait QueryServerTransaction<'a> {
                 Ok(PartialValue::Syntax(value))
             }
             SyntaxType::ReferenceUuid
+            | SyntaxType::ReferenceUuidN
             | SyntaxType::OauthScopeMap
             | SyntaxType::Session
             | SyntaxType::ApiToken
@@ -1170,7 +1171,10 @@ pub trait QueryServerTransaction<'a> {
                 Ok(PartialValue::Refer(un))
             }
 
-            _ => Err(OperationError::InvalidAttribute(attr.to_string())),
+            syntax => {
+                debug!(?attr, ?syntax, "resolve_scim_json_get not implemented");
+                Err(OperationError::InvalidAttribute(attr.to_string()))
+            }
         }
     }
 
@@ -1743,7 +1747,8 @@ impl QueryServerReadTransaction<'_> {
             filter
         };
 
-        let filter_intent = Filter::from_scim_ro(&ident, &filter, self)?;
+        let filter_intent = Filter::from_scim_ro(&ident, &filter, self)
+            .inspect_err(|err| error!(?err, "Unable to resolve scim filter"))?;
 
         self.scim_search_filter_ext(ident, &filter_intent, query)
     }
@@ -3575,9 +3580,9 @@ mod tests {
         // such as returning a new struct type for `members` attributes or `managed_by`
         let entry_managed_by_scim = scim_entry.attrs.get(&Attribute::EntryManagedBy).unwrap();
         match entry_managed_by_scim {
-            ScimValueKanidm::EntryReferences(managed_by) => {
+            ScimValueKanidm::EntryReference(managed_by) => {
                 assert_eq!(
-                    managed_by.first().unwrap().clone(),
+                    managed_by.clone(),
                     ScimReference {
                         uuid: UUID_IDM_ADMINS,
                         value: "idm_admins@example.com".to_string()
