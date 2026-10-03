@@ -75,13 +75,14 @@
         </div>
     </form>
     (% endif %)
-    <h4 class="mt-3">Members</h4>
+    <h4 class="mt-3">Direct Members</h4>
     (% if group.members.len() == 0 %)
-    <p>There are no members associated with this group.</p>
+    <p>There are no direct members associated with this group.</p>
     (% endif %)
     <ol class="list-group col-12 col-md-11 col-lg-8 mt-1" id="members">
         (% for member in group.members %)
             (% let member_name = member.value.clone() %)
+            (% let member_uuid = member.uuid.clone() %)
             (% let group_uuid = group.uuid.clone() %)
             (% include "admin_group_member_entry_partial.html" %)
         (% endfor %)
