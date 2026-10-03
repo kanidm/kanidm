@@ -79,9 +79,12 @@ impl ValueSetT for ValueSetUrlN {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Url(u) => self.set.remove(u),
-            _ => false,
-        }
+            PartialValue::Url(u) => {
+                self.set.remove(u);
+            }
+            _ => {}
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

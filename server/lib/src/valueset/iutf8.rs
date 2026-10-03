@@ -62,7 +62,7 @@ impl ValueSetT for ValueSetIutf8 {
             PartialValue::Iutf8(s) => *s == self.value,
             _ => {
                 debug_assert!(false);
-                true
+                false
             }
         }
     }
@@ -249,12 +249,14 @@ impl ValueSetT for ValueSetIutf8N {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Iutf8(s) => self.set.remove(s),
+            PartialValue::Iutf8(s) => {
+                self.set.remove(s);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

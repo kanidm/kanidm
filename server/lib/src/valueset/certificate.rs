@@ -163,13 +163,12 @@ impl ValueSetT for ValueSetCertificate {
             PartialValue::HexString(hs) => {
                 let mut buf = Sha256Output::default();
                 if hex::decode_to_slice(hs, &mut buf).is_ok() {
-                    self.map.remove(&buf).is_some()
-                } else {
-                    false
+                    self.map.remove(&buf);
                 }
             }
-            _ => false,
-        }
+            _ => {}
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

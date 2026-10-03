@@ -75,12 +75,14 @@ impl ValueSetT for ValueSetUuidN {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Uuid(u) => self.set.remove(u),
+            PartialValue::Uuid(u) => {
+                self.set.remove(u);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -451,12 +453,14 @@ impl ValueSetT for ValueSetReferN {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Refer(u) => self.set.remove(u),
+            PartialValue::Refer(u) => {
+                self.set.remove(u);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

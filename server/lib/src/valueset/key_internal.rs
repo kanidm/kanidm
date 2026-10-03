@@ -198,16 +198,12 @@ impl ValueSetT for ValueSetKeyInternal {
                     if !matches!(key_object.status, KeyStatus::Revoked) {
                         // Do we need to track the Cid like sessions?
                         key_object.status = KeyStatus::Revoked;
-                        true
-                    } else {
-                        false
                     }
-                } else {
-                    false
                 }
             }
-            _ => false,
+            _ => {}
         }
+        self.map.is_empty()
     }
 
     fn purge(&mut self, cid: &Cid) -> bool {
@@ -430,8 +426,9 @@ mod tests {
         let one_cid = Cid::new_count(1);
 
         // Simulate session revocation.
-        vs_a.purge(&one_cid);
+        let r = vs_a.purge(&one_cid);
 
+        assert!(!r);
         assert_eq!(vs_a.len(), 1);
 
         let key_internal = vs_a

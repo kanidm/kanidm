@@ -103,25 +103,21 @@ impl ValueSetT for ValueSetApplicationPassword {
         match pv {
             PartialValue::Refer(u) => {
                 // Deletes all passwords for the referred application
-                self.map.remove(u).is_some()
+                self.map.remove(u);
             }
             PartialValue::Uuid(u) => {
                 // Delete specific application password
                 // TODO Migrate to extract_if when available
-                let mut removed = false;
                 self.map.retain(|_, v| {
-                    let prev = v.len();
                     // Check the inner vec of passwords related to this application.
                     v.retain(|y| y.uuid != *u);
-                    let post = v.len();
-                    removed |= post < prev;
                     // Is the apppwd set for this application id now empty?
                     !v.is_empty()
                 });
-                removed
             }
-            _ => false,
+            _ => {}
         }
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

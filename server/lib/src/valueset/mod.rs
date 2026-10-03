@@ -119,8 +119,10 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn clear(&mut self);
 
-    fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool;
+    #[must_use]
+    fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool;
 
+    #[must_use]
     fn purge(&mut self, _cid: &Cid) -> bool {
         // Default handling is true.
         true

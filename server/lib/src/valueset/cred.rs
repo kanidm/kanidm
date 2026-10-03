@@ -82,9 +82,12 @@ impl ValueSetT for ValueSetCredential {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Cred(t) => self.map.remove(t.as_str()).is_some(),
-            _ => false,
-        }
+            PartialValue::Cred(t) => {
+                self.map.remove(t.as_str());
+            }
+            _ => {}
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -312,9 +315,12 @@ impl ValueSetT for ValueSetIntentToken {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::IntentToken(u) => self.map.remove(u).is_some(),
-            _ => false,
-        }
+            PartialValue::IntentToken(u) => {
+                self.map.remove(u);
+            }
+            _ => {}
+        };
+        self.map.is_empty()
     }
 
     fn purge(&mut self, _cid: &Cid) -> bool {
@@ -557,9 +563,12 @@ impl ValueSetT for ValueSetPasskey {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Passkey(u) => self.map.remove(u).is_some(),
-            _ => false,
-        }
+            PartialValue::Passkey(u) => {
+                self.map.remove(u);
+            }
+            _ => {}
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -730,9 +739,12 @@ impl ValueSetT for ValueSetAttestedPasskey {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::AttestedPasskey(u) => self.map.remove(u).is_some(),
-            _ => false,
-        }
+            PartialValue::AttestedPasskey(u) => {
+                self.map.remove(u);
+            }
+            _ => {}
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -920,12 +932,14 @@ impl ValueSetT for ValueSetCredentialType {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::CredentialType(u) => self.set.remove(u),
+            PartialValue::CredentialType(u) => {
+                self.set.remove(u);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

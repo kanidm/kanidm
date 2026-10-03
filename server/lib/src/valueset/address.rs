@@ -124,9 +124,9 @@ impl ValueSetT for ValueSetAddress {
             }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -386,17 +386,17 @@ impl ValueSetT for ValueSetEmailAddress {
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::EmailAddress(a) => {
-                let r = self.set.remove(a);
+                self.set.remove(a);
                 if &self.primary == a {
                     // if we can, inject another former address into primary.
                     if let Some(n) = self.set.iter().take(1).next().cloned() {
                         self.primary = n
                     }
                 }
-                r
             }
-            _ => false,
-        }
+            _ => {}
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

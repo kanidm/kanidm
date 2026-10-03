@@ -66,7 +66,7 @@ impl ValueSetT for ValueSetIname {
             PartialValue::Iname(s) => *s == self.value,
             _ => {
                 debug_assert!(false);
-                true
+                false
             }
         }
     }
@@ -271,12 +271,14 @@ impl ValueSetT for ValueSetInameN {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Iname(s) => self.set.remove(s),
+            PartialValue::Iname(s) => {
+                self.set.remove(s);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
