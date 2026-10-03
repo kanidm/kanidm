@@ -86,6 +86,7 @@ impl ReferentialIntegrity {
     /// remove dangling references from entries that are still alive. Importantly, we need to perform
     /// these actions in *order* so that reference entries that relate to something retain their
     /// references to their related entry, so that revival of those entries works as we expect.
+    #[instrument(level = "trace", skip_all)]
     fn remove_references(
         qs: &mut QueryServerWriteTransaction,
         uuids: Vec<Uuid>,
@@ -514,6 +515,9 @@ impl ReferentialIntegrity {
 
         let mut previous_reference_set = BTreeSet::new();
         let mut reference_set = BTreeSet::new();
+
+        trace!("{pre_cand:#?}");
+        trace!("{post_cand:#?}");
 
         if let Some(pre_cand) = pre_cand {
             update_reference_set(

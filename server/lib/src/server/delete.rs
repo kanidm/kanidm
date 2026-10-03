@@ -79,7 +79,7 @@ impl QueryServerWriteTransaction<'_> {
             assert!(candidate_uuids.is_disjoint(&ref_candidate_uuids));
         }
 
-        let mut cascade_delete_candidates: Vec<Entry<EntryInvalid, EntryCommitted>> =
+        let mut cascade_delete_candidates: Vec<EntryInvalidCommitted> =
             pre_cascade_delete_candidates
                 .iter()
                 // Invalidate and assign change id's
@@ -91,7 +91,7 @@ impl QueryServerWriteTransaction<'_> {
                 // These entries are the ones that are being deleted by cascade, so we mark them
                 // as such.
                 .map(|mut entry| {
-                    if let Some(refer_uuid) = entry.get_ava_single_refer(Attribute::Refers) {
+                    if let Some(refer_uuid) = entry.get_ava_refer_single(Attribute::Refers) {
                         // Stash the entry that triggered our deleted in this attribute. This
                         // allows us to restore this linkage on revive, and also being a uuid instead
                         // of a refers means that refint won't clean this linkage.
