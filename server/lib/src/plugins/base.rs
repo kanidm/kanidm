@@ -305,7 +305,7 @@ mod tests {
                 Value::new_iname("idm_admins_acp_allow_all_test"),
             ),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACP)),
-            (Attribute::AcpReceiverGroup, Value::Refer(UUID_TEST_GROUP)),
+            (Attribute::AcpReceiverGroup, Value::ReferN(UUID_TEST_GROUP)),
             (
                 Attribute::AcpTargetScope,
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter"),
