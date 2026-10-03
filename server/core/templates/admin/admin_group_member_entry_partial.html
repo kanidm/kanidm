@@ -1,13 +1,22 @@
-<li class="list-group-item d-flex flex-row justify-content-between" hx-target="this">
-    <form hx-post="/ui/api/admin/group/(( group_uuid ))/remove_member"
-          hx-swap="delete"
-          hx-confirm="Are you sure you wish to delete the group member &quot;((member_name))&quot;?"
-          class="d-flex align-items-center flex-grow-1">
-        <div class="flex-grow-1"><input readonly type="text" name="member" value="(( member_name ))" class="form-control-plaintext py-0"></div>
-        <div class="buttons float-end">
-            (% if can_edit_member %)
-            <button type="submit" class="btn btn btn-tiny btn-danger kanidm-remove-list-entry">Remove</button>
-            (% endif %)
-        </div>
-    </form>
+(% let is_default_member = member_uuid.as_u128() >> 80 == 0 %)
+<li hx-target="this" class="d-flex list-group-item(% if ! is_default_member %) list-group-item-action(% endif %)">
+    (% if ! is_default_member %)
+    <a class="flex-grow-1 text-decoration-none text-body text-break" href="/ui/admin/person/(( member_uuid ))/view">
+        <span class="me-1">&#128100;</span>(( member_name ))
+    </a>
+    (% else %)
+    <div class="flex-grow-1 text-break">
+        <span class="me-1">&#128100;</span><span class="text-secondary">(( member_name ))</span>
+    </div>
+    (% endif %)
+    <div class="d-flex align-items-center ">
+        <form hx-post="/ui/api/admin/group/(( group_uuid ))/remove_member"
+              hx-swap="delete"
+              hx-confirm="Are you sure you wish to delete the group member &quot;((member_name))&quot;?">
+        <input type="hidden" name="member" value="(( member_name ))">
+        (% if can_edit_member %)
+        <button type="submit" class="btn btn btn-tiny btn-danger kanidm-remove-list-entry">Remove</button>
+        (% endif %)
+        </form>
+    </div>
 </li>

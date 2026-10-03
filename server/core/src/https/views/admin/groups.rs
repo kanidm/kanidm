@@ -89,6 +89,7 @@ struct GroupViewPartial {
 struct GroupMemberEntryResponse {
     group_uuid: Uuid,
     member_name: String,
+    member_uuid: Uuid,
     can_edit_member: bool,
 }
 
@@ -482,10 +483,15 @@ pub(crate) async fn add_member(
             .into_response());
         };
 
+        let added_member_uuid = match added_member_scim.attrs.get(&Attribute::Uuid) {
+            Some(ScimValueKanidm::Uuid(uuid)) => *uuid,
+            _ => Uuid::default(),
+        };
         // New entry + saved toast.
         Ok((GroupMemberEntryResponse {
             group_uuid,
             member_name: added_member_spn.to_string(),
+            member_uuid: added_member_uuid,
             can_edit_member: true,
         })
         .into_response())

@@ -1,6 +1,11 @@
 <tr hx-target="this">
-    <td><a href="/ui/admin/group/(( group_uuid ))/view" hx-target="#main">(( group_name ))</a></td>
-    <td class="font-monospace text-secondary">(( group_uuid ))</td>
+    <td class="position-relative">
+        <span class="me-1">&#128101;</span>
+        <a href="/ui/admin/group/(( group_uuid ))/view" hx-target="#main" 
+        class="stretched-link text-decoration-none">(( group_name ))</a>
+        <br>&nbsp;
+    </td>
+    <td class="font-monospace text-secondary d-none d-md-table-cell">(( group_uuid ))</td>
     <td>
         <form hx-swap="delete"
                 hx-get="/ui/api/admin/group/(( group_uuid ))/remove"
