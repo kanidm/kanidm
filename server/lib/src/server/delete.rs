@@ -135,7 +135,7 @@ impl QueryServerWriteTransaction<'_> {
                     entry.set_ava_set(&Attribute::InMemoriam, ValueSetUuid::new(source_uuid));
                     entry.set_ava_set(
                         &Attribute::Class,
-                        vs_iutf8![EntryClass::Object.into(), EntryClass::Memorial.into()],
+                        vs_iutf8n![EntryClass::Object.into(), EntryClass::Memorial.into()],
                     );
                     // Now setup replication metadata so that we can put this entry
                     // into the invalid state.

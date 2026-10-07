@@ -1293,7 +1293,7 @@ mod tests {
             .validate_ava(&Attribute::from("single_value"), &(vs_iutf8!["test"] as _));
         assert_eq!(r1, Ok(()));
 
-        let rvs = vs_iutf8!["test1", "test2"] as _;
+        let rvs = ValueSetIutf8N::from_iter(["test1", "test2"]).unwrap() as _;
         let r2 = single_value_string.validate_ava(&Attribute::from("single_value"), &rvs);
         assert_eq!(
             r2,

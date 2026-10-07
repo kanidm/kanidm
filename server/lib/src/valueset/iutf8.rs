@@ -200,7 +200,7 @@ impl ValueSetIutf8N {
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and str is foreign.
     #[allow(clippy::should_implement_trait)]
-    pub fn from_iter<'a, T>(iter: T) -> Option<Box<Self>>
+    pub fn from_iter<'a, T>(iter: T) -> Option<ValueSet>
     where
         T: IntoIterator<Item = &'a str>,
     {

@@ -541,7 +541,7 @@ impl From<&SchemaAttribute> for EntryInitNew {
         attrs.insert(Attribute::Syntax, vs_syntax![s.syntax]);
         attrs.insert(
             Attribute::Class,
-            vs_iutf8![
+            vs_iutf8n![
                 EntryClass::Object.into(),
                 EntryClass::System.into(),
                 EntryClass::AttributeType.into()
@@ -573,7 +573,7 @@ impl From<&SchemaClass> for EntryInitNew {
         attrs.insert(Attribute::Uuid, vs_uuid![s.uuid]);
         attrs.insert(
             Attribute::Class,
-            vs_iutf8![
+            vs_iutf8n![
                 EntryClass::Object.into(),
                 EntryClass::System.into(),
                 EntryClass::ClassType.into()
@@ -1012,7 +1012,7 @@ impl Entry<EntryIncremental, EntryNew> {
                 // we just send the tombstone ecstate rather than attrs. Our
                 // db stub also lacks these attributes too.
                 let mut attrs_new: Eattrs = Map::new();
-                let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
+                let class_ava = vs_iutf8n![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![left_at.clone()];
                 let created_ava = vs_cid![left_at.clone()];
 
@@ -1063,7 +1063,7 @@ impl Entry<EntryIncremental, EntryNew> {
                 };
 
                 let mut attrs_new: Eattrs = Map::new();
-                let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
+                let class_ava = vs_iutf8n![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![at.clone()];
                 let created_ava = vs_cid![at.clone()];
 
@@ -1988,7 +1988,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         // Duplicate this to a tombstone entry
         let mut attrs_new: Eattrs = Map::new();
 
-        let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
+        let class_ava = vs_iutf8n![EntryClass::Object.into(), EntryClass::Tombstone.into()];
         let last_mod_ava = vs_cid![cid.clone()];
         let created_ava = vs_cid![cid.clone()];
 

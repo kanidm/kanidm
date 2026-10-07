@@ -533,6 +533,18 @@ macro_rules! vs_utf8 {
 #[macro_export]
 /// Takes EntryClass objects and makes a ValueSetIutf8
 macro_rules! vs_iutf8 {
+    () => {
+        compile_error!("ValueSetIutf8N needs at least 1 element")
+    };
+    ($e:expr) => {{
+        ValueSetIutf8::new($e) as ValueSet
+    }};
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+/// Takes EntryClass objects and makes a ValueSetIutf8
+macro_rules! vs_iutf8n {
     () => (
         compile_error!("ValueSetIutf8N needs at least 1 element")
     );

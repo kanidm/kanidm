@@ -108,7 +108,7 @@ impl QueryServerWriteTransaction<'_> {
                 let entry = EntryInitNew::from_iter([
                     (
                         Attribute::Class,
-                        vs_iutf8!(EntryClass::AssertionNonce.into()),
+                        ValueSetIutf8N::new(EntryClass::AssertionNonce.into()) as ValueSet,
                     ),
                     (Attribute::Uuid, ValueSetUuid::new(id) as ValueSet),
                     (Attribute::S256, ValueSetSha256::new(nonce) as ValueSet),
@@ -443,7 +443,10 @@ mod tests {
                 attrs: BTreeMap::from([
                     (
                         Attribute::Class,
-                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ValueSetIutf8N::from_iter([
+                            EntryClass::Person.into(),
+                            EntryClass::Account.into(),
+                        ]) as Option<ValueSet>,
                     ),
                     (Attribute::Name, vs_iname!("test_entry_a").into()),
                     (
@@ -522,7 +525,10 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
                         (Attribute::Name, vs_iname!("test_entry_b").into()),
                         (
@@ -536,7 +542,10 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
                         (Attribute::Name, vs_iname!("test_entry_d").into()),
                         (
@@ -567,7 +576,10 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
                         (Attribute::Name, vs_iname!("test_entry_b").into()),
                         (
@@ -581,7 +593,10 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
                         (Attribute::Name, vs_iname!("test_entry_c").into()),
                         (
@@ -595,7 +610,10 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
                         (Attribute::Name, vs_iname!("test_entry_d").into()),
                         (
@@ -630,7 +648,10 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
                         (Attribute::Name, vs_iname!("test_entry_c").into()),
                         (
@@ -686,7 +707,10 @@ mod tests {
                 attrs: BTreeMap::from([
                     (
                         Attribute::Class,
-                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ValueSetIutf8N::from_iter([
+                            EntryClass::Person.into(),
+                            EntryClass::Account.into(),
+                        ]) as Option<ValueSet>,
                     ),
                     (Attribute::Name, vs_iname!("test_entry_a").into()),
                     (
@@ -719,7 +743,10 @@ mod tests {
                 attrs: BTreeMap::from([
                     (
                         Attribute::Class,
-                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ValueSetIutf8N::from_iter([
+                            EntryClass::Person.into(),
+                            EntryClass::Account.into(),
+                        ]) as Option<ValueSet>,
                     ),
                     (Attribute::Name, vs_iname!("test_entry_a").into()),
                     (
@@ -756,7 +783,10 @@ mod tests {
                 attrs: BTreeMap::from([
                     (
                         Attribute::Class,
-                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ValueSetIutf8N::from_iter([
+                            EntryClass::Person.into(),
+                            EntryClass::Account.into(),
+                        ]),
                     ),
                     (Attribute::Name, vs_iname!("test_entry_a").into()),
                     (

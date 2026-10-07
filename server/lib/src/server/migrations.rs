@@ -1578,12 +1578,13 @@ mod tests {
         let oauth2_client_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                vs_iutf8!(
+                ValueSetIutf8N::from_iter([
                     EntryClass::Object.into(),
                     EntryClass::Account.into(),
                     EntryClass::OAuth2ResourceServer.into(),
-                    EntryClass::OAuth2ResourceServerBasic.into()
-                ),
+                    EntryClass::OAuth2ResourceServerBasic.into(),
+                ])
+                .unwrap() as _,
             ),
             (Attribute::Name, vs_iname!("test_oauth2_client")),
             (
