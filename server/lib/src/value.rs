@@ -568,13 +568,6 @@ impl From<CredentialType> for PartialValue {
     }
 }
 
-impl From<Attribute> for Value {
-    fn from(attr: Attribute) -> Value {
-        let s: &str = attr.as_str();
-        Value::new_iutf8n(s)
-    }
-}
-
 impl From<Attribute> for PartialValue {
     fn from(attr: Attribute) -> PartialValue {
         let s: &str = attr.as_str();

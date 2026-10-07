@@ -686,7 +686,7 @@ pub fn e_system_config_v1() -> EntryInitNew {
         "yuyuhakusho",
         "zonnebloem",
     ] {
-        entry.add_ava(Attribute::BadlistPassword, Value::new_iutf8(pw));
+        entry.add_ava(Attribute::BadlistPassword, Value::new_iutf8n(pw));
     }
     entry
 }
