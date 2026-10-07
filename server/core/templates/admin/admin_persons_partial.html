@@ -42,7 +42,7 @@
     <tbody id="persons">
     (% for (person, _) in persons %)
         (% let person_name = person.name.clone() %)
-        (% let person_mail = person.get_primary_mail().unwrap_or(String::from("N/A")) %)
+        (% let person_mail = person.get_primary_mail().clone() %)
         (% let person_uuid = person.uuid.clone() %)
         (% include "admin_person_entry_partial.html" %)
     (% endfor %)
