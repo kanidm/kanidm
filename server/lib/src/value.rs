@@ -1449,7 +1449,10 @@ impl PartialEq for Value {
             | (Value::Iutf8(a), Value::Iutf8(b))
             | (Value::Iutf8N(a), Value::Iutf8N(b))
             | (Value::Iname(a), Value::Iname(b))
+            // Needed during migratinos.
             | (Value::InameN(a), Value::InameN(b))
+            | (Value::InameN(a), Value::Iname(b))
+            // --
             | (Value::Cred(a, _), Value::Cred(b, _))
             | (Value::SshKey(a, _), Value::SshKey(b, _))
             | (Value::Nsuniqueid(a), Value::Nsuniqueid(b))

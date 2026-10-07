@@ -61,7 +61,7 @@ impl ValueSetT for ValueSetUuidN {
 
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Uuid(u) | Value::UuidN(u) => Ok(self.set.insert(u)),
+            Value::UuidN(u) => Ok(self.set.insert(u)),
             _ => {
                 debug_assert!(false);
                 Err(OperationError::InvalidValueState)
@@ -149,7 +149,7 @@ impl ValueSetT for ValueSetUuidN {
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().copied().map(Value::Uuid))
+        Box::new(self.set.iter().copied().map(Value::UuidN))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {
