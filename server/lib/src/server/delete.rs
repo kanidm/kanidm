@@ -351,6 +351,27 @@ impl QueryServerWriteTransaction<'_> {
         }
         Ok(())
     }
+
+    pub(crate) fn ident_delete_uuid(
+        &mut self,
+        ident: &Identity,
+        target_uuid: Uuid,
+    ) -> Result<(), OperationError> {
+        let filter = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
+
+        let filter_orig = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let filter = filter_orig.clone().into_ignore_hidden();
+
+        let de = DeleteEvent {
+            ident: ident.clone(),
+            filter,
+            filter_orig,
+        };
+        self.delete(&de)
+    }
 }
 
 #[cfg(test)]

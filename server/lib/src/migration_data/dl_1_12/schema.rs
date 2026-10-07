@@ -1076,7 +1076,7 @@ pub static SCHEMA_ATTR_S256: LazyLock<SchemaAttribute> = LazyLock::new(|| Schema
     description: "A Sha256 output.".to_string(),
     multivalue: true,
     unique: false,
-    indexed: false,
+    indexed: true,
     syntax: SyntaxType::Sha256,
     ..Default::default()
 });
@@ -1586,6 +1586,7 @@ pub static SCHEMA_CLASS_ACCOUNT_SIGNUP_REQUEST: LazyLock<SchemaClass> =
             Attribute::DisplayName,
             Attribute::Mail,
             Attribute::DeleteAfter,
+            Attribute::S256,
         ],
         ..Default::default()
     });

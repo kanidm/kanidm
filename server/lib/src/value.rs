@@ -591,12 +591,8 @@ pub enum PartialValue {
     // Can add other selectors later.
     Url(Url),
     OauthScope(String),
-    // OauthScopeMap(Uuid),
     PrivateBinary,
     PublicBinary(String),
-    // Enumeration(String),
-    // Float64(f64),
-    RestrictedString(String),
     IntentToken(String),
     UiHint(UiHint),
     Passkey(Uuid),
@@ -895,33 +891,12 @@ impl PartialValue {
         matches!(self, PartialValue::OauthScope(_))
     }
 
-    /*
-    pub fn new_oauthscopemap(u: Uuid) -> Self {
-        PartialValue::OauthScopeMap(u)
-    }
-
-    pub fn new_oauthscopemap_s(us: &str) -> Option<Self> {
-        match Uuid::parse_str(us) {
-            Ok(u) => Some(PartialValue::OauthScopeMap(u)),
-            Err(_) => None,
-        }
-    }
-
-    pub fn is_oauthscopemap(&self) -> bool {
-        matches!(self, PartialValue::OauthScopeMap(_))
-    }
-    */
-
     pub fn is_privatebinary(&self) -> bool {
         matches!(self, PartialValue::PrivateBinary)
     }
 
     pub fn new_publicbinary_tag_s(s: &str) -> Self {
         PartialValue::PublicBinary(s.to_string())
-    }
-
-    pub fn new_restrictedstring_s(s: &str) -> Self {
-        PartialValue::RestrictedString(s.to_string())
     }
 
     pub fn new_intenttoken_s(s: String) -> Option<Self> {
@@ -971,8 +946,7 @@ impl PartialValue {
             | PartialValue::Iutf8(s)
             | PartialValue::Iname(s)
             | PartialValue::Nsuniqueid(s)
-            | PartialValue::EmailAddress(s)
-            | PartialValue::RestrictedString(s) => s.clone(),
+            | PartialValue::EmailAddress(s) => s.clone(),
             PartialValue::Passkey(u)
             | PartialValue::AttestedPasskey(u)
             | PartialValue::Refer(u)
@@ -1025,8 +999,7 @@ impl PartialValue {
             | PartialValue::Iutf8(s)
             | PartialValue::Iname(s)
             // | PartialValue::Nsuniqueid(s)
-            | PartialValue::EmailAddress(s)
-            | PartialValue::RestrictedString(s) => Some(s.to_lowercase()),
+            | PartialValue::EmailAddress(s) => Some(s.to_lowercase()),
 
             PartialValue::Cred(tag)
             | PartialValue::PublicBinary(tag)
@@ -1407,7 +1380,6 @@ pub enum Value {
     OauthScopeMap(Uuid, BTreeSet<String>),
     PrivateBinary(Vec<u8>),
     PublicBinary(String, Vec<u8>),
-    RestrictedString(String),
     IntentToken(String, IntentTokenState),
     Passkey(Uuid, String, PasskeyV4),
     AttestedPasskey(Uuid, String, AttestedPasskeyV4),
@@ -1459,8 +1431,7 @@ impl PartialEq for Value {
             | (Value::EmailAddress(a, _), Value::EmailAddress(b, _))
             | (Value::PhoneNumber(a, _), Value::PhoneNumber(b, _))
             | (Value::OauthScope(a), Value::OauthScope(b))
-            | (Value::PublicBinary(a, _), Value::PublicBinary(b, _))
-            | (Value::RestrictedString(a), Value::RestrictedString(b)) => a.eq(b),
+            | (Value::PublicBinary(a, _), Value::PublicBinary(b, _)) => a.eq(b),
             // Spn - need to check both name and domain.
             (Value::Spn(a, c), Value::Spn(b, d)) => a.eq(b) && c.eq(d),
             // Uuid, Refer
@@ -1597,7 +1568,6 @@ impl From<DbIdentSpn> for Value {
 }
 
 impl Value {
-    // I get the feeling this will have a lot of matching ... sigh.
     pub fn new_utf8(s: String) -> Self {
         Value::Utf8(s)
     }
@@ -1974,10 +1944,6 @@ impl Value {
         Value::PublicBinary(tag, der)
     }
 
-    pub fn new_restrictedstring(s: String) -> Self {
-        Value::RestrictedString(s)
-    }
-
     pub fn new_webauthn_attestation_ca_list(s: &str) -> Option<Self> {
         serde_json::from_str(s)
             .map(Value::WebauthnAttestationCaList)
@@ -2109,15 +2075,6 @@ impl Value {
         }
     }
 
-    /*
-    pub(crate) fn to_sshkey(self) -> Option<(String, SshPublicKey)> {
-        match self {
-            Value::SshKey(tag, k) => Some((tag, k)),
-            _ => None,
-        }
-    }
-    */
-
     pub fn to_spn(self) -> Option<(String, String)> {
         match self {
             Value::Spn(n, d) => Some((n, d)),
@@ -2156,13 +2113,6 @@ impl Value {
     pub fn to_oauthscopemap(self) -> Option<(Uuid, BTreeSet<String>)> {
         match self {
             Value::OauthScopeMap(u, m) => Some((u, m)),
-            _ => None,
-        }
-    }
-
-    pub fn to_restrictedstring(self) -> Option<String> {
-        match self {
-            Value::RestrictedString(s) => Some(s),
             _ => None,
         }
     }
@@ -2313,7 +2263,6 @@ impl Value {
             | Value::Url(_)
             | Value::Cid(_)
             | Value::PrivateBinary(_)
-            | Value::RestrictedString(_)
             | Value::JwsKeyEs256(_)
             | Value::Session(_, _)
             | Value::Oauth2Session(_, _)
