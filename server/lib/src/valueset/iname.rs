@@ -257,7 +257,7 @@ impl ValueSetT for ValueSetInameN {
 
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Iname(s) | Value::InameN(s) => Ok(self.set.insert(s)),
+            Value::InameN(s) => Ok(self.set.insert(s)),
             _ => {
                 debug_assert!(false);
                 Err(OperationError::InvalidValueState)
@@ -381,7 +381,7 @@ impl ValueSetT for ValueSetInameN {
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().map(|i| Value::new_iname(i.as_str())))
+        Box::new(self.set.iter().cloned().map(Value::InameN))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {

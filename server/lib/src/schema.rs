@@ -317,10 +317,21 @@ impl SchemaAttribute {
                 SyntaxType::ReferenceUuid => {
                     matches!(v, Value::Refer(_))
                 }
-                SyntaxType::Utf8StringInsensitiveN | SyntaxType::Utf8StringInsensitive => {
+                SyntaxType::Utf8StringInsensitiveN => {
+                    matches!(v, Value::Iutf8N(_))
+                    /*
+                    let x = matches!(v, Value::Iutf8N(_));
+                    assert!(x);
+                    x
+                    */
+                }
+                SyntaxType::Utf8StringInsensitive => {
                     matches!(v, Value::Iutf8(_))
                 }
-                SyntaxType::Utf8StringInameN | SyntaxType::Utf8StringIname => {
+                SyntaxType::Utf8StringInameN => {
+                    matches!(v, Value::InameN(_))
+                }
+                SyntaxType::Utf8StringIname => {
                     matches!(v, Value::Iname(_))
                 }
                 SyntaxType::Utf8String => matches!(v, Value::Utf8(_)),
@@ -336,7 +347,8 @@ impl SchemaAttribute {
                 SyntaxType::NsUniqueId => matches!(v, Value::Nsuniqueid(_)),
                 SyntaxType::DateTime => matches!(v, Value::DateTime(_)),
                 SyntaxType::EmailAddress => matches!(v, Value::EmailAddress(_, _)),
-                SyntaxType::UrlN | SyntaxType::Url => matches!(v, Value::Url(_)),
+                SyntaxType::UrlN => matches!(v, Value::UrlN(_)),
+                SyntaxType::Url => matches!(v, Value::Url(_)),
                 SyntaxType::OauthScope => matches!(v, Value::OauthScope(_)),
                 SyntaxType::OauthScopeMap => matches!(v, Value::OauthScopeMap(_, _)),
                 SyntaxType::OauthClaimMap => {
@@ -397,6 +409,7 @@ impl SchemaAttribute {
         let valid = match self.syntax {
             // Allow the single value variant to temporarily deserialise into
             // the multi value variant before it's converted.
+            /*
             SyntaxType::Uuid => {
                 SyntaxType::UuidN == ava.syntax() || SyntaxType::Uuid == ava.syntax()
             }
@@ -404,17 +417,16 @@ impl SchemaAttribute {
                 SyntaxType::Utf8StringInsensitiveN == ava.syntax()
                     || SyntaxType::Utf8StringInsensitive == ava.syntax()
             }
-            /*
             SyntaxType::ReferenceUuid => {
                 SyntaxType::ReferenceUuidN == ava.syntax()
                     || SyntaxType::ReferenceUuid == ava.syntax()
             }
-            */
             SyntaxType::Utf8StringIname => {
                 SyntaxType::Utf8StringInameN == ava.syntax()
                     || SyntaxType::Utf8StringIname == ava.syntax()
             }
             SyntaxType::Url => SyntaxType::UrlN == ava.syntax() || SyntaxType::Url == ava.syntax(),
+            */
             _ => self.syntax == ava.syntax(),
         };
 

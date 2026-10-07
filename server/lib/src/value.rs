@@ -571,7 +571,7 @@ impl From<CredentialType> for PartialValue {
 impl From<Attribute> for Value {
     fn from(attr: Attribute) -> Value {
         let s: &str = attr.as_str();
-        Value::new_iutf8(s)
+        Value::new_iutf8n(s)
     }
 }
 
@@ -1918,6 +1918,10 @@ impl Value {
 
     pub fn new_url_s(s: &str) -> Option<Self> {
         Url::parse(s).ok().map(Value::Url)
+    }
+
+    pub fn new_urln_s(s: &str) -> Option<Self> {
+        Url::parse(s).ok().map(Value::UrlN)
     }
 
     pub fn new_url(u: Url) -> Self {

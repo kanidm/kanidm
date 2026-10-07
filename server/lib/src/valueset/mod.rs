@@ -873,7 +873,8 @@ pub fn from_result_value_iter(
 
     let mut vs: ValueSet = match init {
         Value::Utf8(s) => ValueSetUtf8::new(s),
-        Value::Iutf8(s) | Value::Iutf8N(s) => ValueSetIutf8N::new(&s),
+        Value::Iutf8(s) => ValueSetIutf8::new(&s),
+        Value::Iutf8N(s) => ValueSetIutf8N::new(&s),
         Value::Iname(s) => ValueSetIname::new(&s),
         Value::InameN(s) => ValueSetInameN::new(&s),
         Value::Uuid(u) | Value::UuidN(u) => ValueSetUuid::new(u),
@@ -890,7 +891,8 @@ pub fn from_result_value_iter(
         Value::Cid(u) => ValueSetCid::new(u),
         Value::JsonFilt(u) => ValueSetJsonFilter::new(u),
         Value::Nsuniqueid(u) => ValueSetNsUniqueId::new(u),
-        Value::Url(u) | Value::UrlN(u) => ValueSetUrlN::new(u),
+        Value::Url(u) => ValueSetUrl::new(u),
+        Value::UrlN(u) => ValueSetUrlN::new(u),
         Value::DateTime(u) => ValueSetDateTime::new(u),
         Value::PrivateBinary(u) => ValueSetPrivateBinary::new(u),
         Value::OauthScope(u) => ValueSetOauthScope::new(u),
@@ -944,7 +946,8 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
 
     let mut vs: ValueSet = match init {
         Value::Utf8(s) => ValueSetUtf8::new(s),
-        Value::Iutf8(s) | Value::Iutf8N(s) => ValueSetIutf8N::new(&s),
+        Value::Iutf8(s) => ValueSetIutf8::new(&s),
+        Value::Iutf8N(s) => ValueSetIutf8N::new(&s),
         Value::Iname(s) => ValueSetIname::new(&s),
         Value::InameN(s) => ValueSetInameN::new(&s),
         Value::Uuid(u) | Value::UuidN(u) => ValueSetUuid::new(u),
@@ -961,7 +964,8 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::Cid(u) => ValueSetCid::new(u),
         Value::JsonFilt(u) => ValueSetJsonFilter::new(u),
         Value::Nsuniqueid(u) => ValueSetNsUniqueId::new(u),
-        Value::Url(u) | Value::UrlN(u) => ValueSetUrlN::new(u),
+        Value::Url(u) => ValueSetUrl::new(u),
+        Value::UrlN(u) => ValueSetUrlN::new(u),
         Value::DateTime(u) => ValueSetDateTime::new(u),
         Value::PrivateBinary(u) => ValueSetPrivateBinary::new(u),
         Value::OauthScope(u) => ValueSetOauthScope::new(u),

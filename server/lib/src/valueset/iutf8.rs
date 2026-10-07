@@ -235,7 +235,7 @@ impl ValueSetT for ValueSetIutf8N {
 
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Iutf8(s) | Value::Iutf8N(s) => Ok(self.set.insert(s)),
+            Value::Iutf8N(s) => Ok(self.set.insert(s)),
             _ => {
                 debug_assert!(false);
                 Err(OperationError::InvalidValueState)
@@ -358,7 +358,7 @@ impl ValueSetT for ValueSetIutf8N {
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().map(|i| Value::new_iutf8(i.as_str())))
+        Box::new(self.set.iter().cloned().map(Value::Iutf8N))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {

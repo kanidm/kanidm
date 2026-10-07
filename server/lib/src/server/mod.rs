@@ -766,7 +766,7 @@ pub trait QueryServerTransaction<'a> {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::Utf8String => Ok(Value::new_utf8(value.to_string())),
-                    SyntaxType::Utf8StringInsensitiveN |
+                    SyntaxType::Utf8StringInsensitiveN => Ok(Value::new_iutf8n(value)),
                     SyntaxType::Utf8StringInsensitive => Ok(Value::new_iutf8(value)),
                     SyntaxType::Utf8StringInameN => Ok(Value::new_inamen(value)),
                     SyntaxType::Utf8StringIname => Ok(Value::new_iname(value)),
@@ -822,7 +822,9 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid DateTime (rfc3339) syntax".to_string())),
                     SyntaxType::EmailAddress => Value::new_email_address_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Email Address syntax".to_string())),
-                        SyntaxType::UrlN |
+
+                    SyntaxType::UrlN => Value::new_urln_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
                     SyntaxType::Url => Value::new_url_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
                     SyntaxType::OauthScope => Value::new_oauthscope(value)

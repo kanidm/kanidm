@@ -433,13 +433,13 @@ impl QueryServerWriteTransaction<'_> {
             SyntaxType::Sha256 => ValueSetSha256::from_scim_json_put(value),
 
             // Temporary - use the multi-value versions for compatibility.
-            SyntaxType::Url => ValueSetUrlN::from_scim_json_put(value),
+            SyntaxType::Url => ValueSetUrl::from_scim_json_put(value),
             SyntaxType::UrlN => ValueSetUrlN::from_scim_json_put(value),
             SyntaxType::ReferenceUuid => ValueSetRefer::from_scim_json_put(value),
             SyntaxType::ReferenceUuidN => ValueSetReferN::from_scim_json_put(value),
-            SyntaxType::Utf8StringIname => ValueSetInameN::from_scim_json_put(value),
+            SyntaxType::Utf8StringIname => ValueSetIname::from_scim_json_put(value),
             SyntaxType::Utf8StringInameN => ValueSetInameN::from_scim_json_put(value),
-            SyntaxType::Utf8StringInsensitive => ValueSetIutf8N::from_scim_json_put(value),
+            SyntaxType::Utf8StringInsensitive => ValueSetIutf8::from_scim_json_put(value),
             SyntaxType::Utf8StringInsensitiveN => ValueSetIutf8N::from_scim_json_put(value),
 
             // Not Yet ... if ever

@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use crate::{
     value::{PartialValue, Value},
-    valueset::{ValueSet, ValueSetIutf8},
+    valueset::{ValueSet, ValueSetIutf8N},
 };
 pub use kanidm_proto::attribute::Attribute;
 use kanidm_proto::{
@@ -180,7 +180,7 @@ impl From<EntryClass> for String {
 
 impl From<EntryClass> for Value {
     fn from(val: EntryClass) -> Self {
-        Value::new_iutf8(val.into())
+        Value::new_iutf8n(val.into())
     }
 }
 
@@ -206,12 +206,12 @@ impl Display for EntryClass {
 impl EntryClass {
     pub fn to_value(self) -> Value {
         let s: &'static str = self.into();
-        Value::new_iutf8(s)
+        Value::new_iutf8n(s)
     }
 
     pub fn to_valueset(self) -> ValueSet {
         let s: &'static str = self.into();
-        ValueSetIutf8::new(s)
+        ValueSetIutf8N::new(s)
     }
 
     pub fn to_partialvalue(self) -> PartialValue {
