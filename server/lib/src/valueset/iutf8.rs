@@ -204,8 +204,12 @@ impl ValueSetIutf8N {
     where
         T: IntoIterator<Item = &'a str>,
     {
-        let set = iter.into_iter().map(str::to_string).collect();
-        Some(Box::new(ValueSetIutf8N { set }))
+        let set: BTreeSet<_> = iter.into_iter().map(str::to_string).collect();
+        if set.is_empty() {
+            None
+        } else {
+            Some(Box::new(ValueSetIutf8N { set }))
+        }
     }
 }
 

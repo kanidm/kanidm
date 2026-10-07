@@ -3428,7 +3428,7 @@ mod tests {
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
             (Attribute::Description, Value::new_utf8s("Test Class")),
-            (Attribute::May, Value::from(Attribute::Name))
+            (Attribute::May, Value::new_iutf8n(Attribute::Name.as_str()))
         );
         let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Add a new class.
@@ -3499,7 +3499,10 @@ mod tests {
                 Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
-            (Attribute::AttributeName, Value::from(Attribute::TestAttr)),
+            (
+                Attribute::AttributeName,
+                Value::new_iutf8(Attribute::TestAttr.as_str())
+            ),
             (Attribute::Description, Value::new_utf8s("Test Attribute")),
             (Attribute::MultiValue, Value::new_bool(false)),
             (Attribute::Unique, Value::new_bool(false)),

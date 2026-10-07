@@ -144,41 +144,46 @@ impl From<BuiltinAcp> for EntryInitNew {
             }
         }
 
-        if let Some(vs) = ValueSetIutf8N::from_iter(value.search_attrs.map(|a| a.as_str())) {
-            entry.set_ava_set(Attribute::AcpSearchAttr, vs);
-        }
-
-        if let Some(vs) = ValueSetIutf8N::from_iter(value.modify_present_attrs.map(|a| a.as_str()))
-        {
-            entry.set_ava_set(Attribute::AcpModifyPresentAttr, vs);
-        }
-
-        if let Some(vs) = ValueSetIutf8N::from_iter(value.modify_removed_attrs.map(|a| a.as_str()))
-        {
-            entry.set_ava_set(Attribute::AcpModifyRemovedAttr, vs);
-        }
-
-        if let Some(vs) = ValueSetIutf8N::from_iter(value.modify_classes.map(|a| a.as_str())) {
-            entry.set_ava_set(Attribute::AcpModifyClass, vs);
+        if let Some(vs) = ValueSetIutf8N::from_iter(value.search_attrs.iter().map(|a| a.as_str())) {
+            entry.set_ava_set(&Attribute::AcpSearchAttr, vs);
         }
 
         if let Some(vs) =
-            ValueSetIutf8N::from_iter(value.modify_present_classes.map(|a| a.as_str()))
+            ValueSetIutf8N::from_iter(value.modify_present_attrs.iter().map(|a| a.as_str()))
         {
-            entry.set_ava_set(Attribute::AcpModifyPresentClass, vs);
+            entry.set_ava_set(&Attribute::AcpModifyPresentAttr, vs);
         }
 
-        if let Some(vs) = ValueSetIutf8N::from_iter(value.modify_remove_classes.map(|a| a.as_str()))
+        if let Some(vs) =
+            ValueSetIutf8N::from_iter(value.modify_removed_attrs.iter().map(|a| a.as_str()))
         {
-            entry.set_ava_set(Attribute::AcpModifyRemoveClass, vs);
+            entry.set_ava_set(&Attribute::AcpModifyRemovedAttr, vs);
         }
 
-        if let Some(vs) = ValueSetIutf8N::from_iter(value.create_classes.map(|a| a.as_str())) {
-            entry.set_ava_set(Attribute::AcpCreateClass, vs);
+        if let Some(vs) = ValueSetIutf8N::from_iter(value.modify_classes.iter().map(|a| a.as_str()))
+        {
+            entry.set_ava_set(&Attribute::AcpModifyClass, vs);
         }
 
-        if let Some(vs) = ValueSetIutf8N::from_iter(value.create_attrs.map(|a| a.as_str())) {
-            entry.set_ava_set(Attribute::AcpCreateAttr, vs);
+        if let Some(vs) =
+            ValueSetIutf8N::from_iter(value.modify_present_classes.iter().map(|a| a.as_str()))
+        {
+            entry.set_ava_set(&Attribute::AcpModifyPresentClass, vs);
+        }
+
+        if let Some(vs) =
+            ValueSetIutf8N::from_iter(value.modify_remove_classes.iter().map(|a| a.as_str()))
+        {
+            entry.set_ava_set(&Attribute::AcpModifyRemoveClass, vs);
+        }
+
+        if let Some(vs) = ValueSetIutf8N::from_iter(value.create_classes.iter().map(|a| a.as_str()))
+        {
+            entry.set_ava_set(&Attribute::AcpCreateClass, vs);
+        }
+
+        if let Some(vs) = ValueSetIutf8N::from_iter(value.create_attrs.iter().map(|a| a.as_str())) {
+            entry.set_ava_set(&Attribute::AcpCreateAttr, vs);
         }
 
         entry

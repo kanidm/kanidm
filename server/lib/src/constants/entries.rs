@@ -204,6 +204,10 @@ impl Display for EntryClass {
 }
 
 impl EntryClass {
+    pub fn as_str(&self) -> &str {
+        self.as_ref()
+    }
+
     pub fn to_value(self) -> Value {
         let s: &'static str = self.into();
         Value::new_iutf8n(s)

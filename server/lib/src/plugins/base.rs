@@ -310,50 +310,74 @@ mod tests {
                 Attribute::AcpTargetScope,
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter"),
             ),
-            (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
-            (Attribute::AcpSearchAttr, Value::from(Attribute::Class)),
-            (Attribute::AcpSearchAttr, Value::from(Attribute::Uuid)),
+            (
+                Attribute::AcpSearchAttr,
+                Value::new_iutf8n(Attribute::Name.as_str()),
+            ),
+            (
+                Attribute::AcpSearchAttr,
+                Value::new_iutf8n(Attribute::Class.as_str()),
+            ),
+            (
+                Attribute::AcpSearchAttr,
+                Value::new_iutf8n(Attribute::Uuid.as_str()),
+            ),
             (Attribute::AcpModifyClass, EntryClass::System.to_value()),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::from(Attribute::Class),
+                Value::new_iutf8n(Attribute::Class.as_str()),
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::from(Attribute::DisplayName),
+                Value::new_iutf8n(Attribute::DisplayName.as_str()),
             ),
-            (Attribute::AcpModifyRemovedAttr, Value::from(Attribute::May)),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::from(Attribute::Must),
+                Value::new_iutf8n(Attribute::May.as_str()),
+            ),
+            (
+                Attribute::AcpModifyRemovedAttr,
+                Value::new_iutf8n(Attribute::Must.as_str()),
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::from(Attribute::Class),
+                Value::new_iutf8n(Attribute::Class.as_str()),
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::from(Attribute::DisplayName),
+                Value::new_iutf8n(Attribute::DisplayName.as_str()),
             ),
-            (Attribute::AcpModifyPresentAttr, Value::from(Attribute::May)),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::from(Attribute::Must),
+                Value::new_iutf8n(Attribute::May.as_str()),
+            ),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::new_iutf8n(Attribute::Must.as_str()),
             ),
             (Attribute::AcpCreateClass, EntryClass::Object.to_value()),
             (Attribute::AcpCreateClass, EntryClass::Person.to_value()),
             (Attribute::AcpCreateClass, EntryClass::System.to_value()),
-            (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
-            (Attribute::AcpCreateAttr, Value::from(Attribute::Class)),
             (
                 Attribute::AcpCreateAttr,
-                Value::from(Attribute::Description),
+                Value::new_iutf8n(Attribute::Name.as_str()),
             ),
             (
                 Attribute::AcpCreateAttr,
-                Value::from(Attribute::DisplayName),
+                Value::new_iutf8n(Attribute::Class.as_str()),
             ),
-            (Attribute::AcpCreateAttr, Value::from(Attribute::Uuid)),
+            (
+                Attribute::AcpCreateAttr,
+                Value::new_iutf8n(Attribute::Description.as_str()),
+            ),
+            (
+                Attribute::AcpCreateAttr,
+                Value::new_iutf8n(Attribute::DisplayName.as_str()),
+            ),
+            (
+                Attribute::AcpCreateAttr,
+                Value::new_iutf8n(Attribute::Uuid.as_str()),
+            ),
         ])
     });
 

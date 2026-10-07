@@ -1448,8 +1448,14 @@ mod tests {
                     Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
-                (Attribute::AcpSearchAttr, Value::new_iutf8("class"))
+                (
+                    Attribute::AcpSearchAttr,
+                    Value::new_iutf8n(Attribute::Name.as_str())
+                ),
+                (
+                    Attribute::AcpSearchAttr,
+                    Value::new_iutf8n(Attribute::Class.as_str())
+                )
             ),
             AccessControlSearch
         );
@@ -1476,8 +1482,14 @@ mod tests {
                     Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
-                (Attribute::AcpSearchAttr, Value::new_iutf8("class"))
+                (
+                    Attribute::AcpSearchAttr,
+                    Value::new_iutf8n(Attribute::Name.as_str())
+                ),
+                (
+                    Attribute::AcpSearchAttr,
+                    Value::new_iutf8n(Attribute::Class.as_str())
+                )
             ),
             AccessControlSearch
         );
@@ -1532,8 +1544,14 @@ mod tests {
                     Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
-                (Attribute::AcpSearchAttr, Value::new_iutf8("class"))
+                (
+                    Attribute::AcpSearchAttr,
+                    Value::new_iutf8n(Attribute::Name.as_str())
+                ),
+                (
+                    Attribute::AcpSearchAttr,
+                    Value::new_iutf8n(Attribute::Class.as_str())
+                )
             ),
             AccessControlSearch
         );
@@ -1619,11 +1637,11 @@ mod tests {
                 ),
                 (
                     Attribute::AcpModifyRemovedAttr,
-                    Value::from(Attribute::Name)
+                    Value::new_iutf8n(Attribute::Name.as_str())
                 ),
                 (
                     Attribute::AcpModifyPresentAttr,
-                    Value::from(Attribute::Name)
+                    Value::new_iutf8n(Attribute::Name.as_str())
                 ),
                 (Attribute::AcpModifyClass, EntryClass::Object.to_value())
             ),
@@ -1657,7 +1675,10 @@ mod tests {
                     Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
+                (
+                    Attribute::AcpCreateAttr,
+                    Value::new_iutf8n(Attribute::Name.as_str())
+                ),
                 (Attribute::AcpCreateClass, EntryClass::Object.to_value())
             ),
             AccessControlCreate
@@ -1711,8 +1732,14 @@ mod tests {
                     Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
-                (Attribute::AcpCreateClass, EntryClass::Object.to_value())
+                (
+                    Attribute::AcpCreateAttr,
+                    Value::new_iutf8n(Attribute::Name.as_str())
+                ),
+                (
+                    Attribute::AcpCreateClass,
+                    Value::new_iutf8n(EntryClass::Object.as_str())
+                )
             ),
             AccessControlCreate
         );
@@ -1749,18 +1776,30 @@ mod tests {
                 Attribute::AcpTargetScope,
                 Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
             ),
-            (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
-            (Attribute::AcpCreateClass, EntryClass::Class.to_value()),
-            (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
+            (
+                Attribute::AcpSearchAttr,
+                Value::new_iutf8n(Attribute::Name.as_str())
+            ),
+            (
+                Attribute::AcpCreateClass,
+                Value::new_iutf8n(EntryClass::Class.as_str())
+            ),
+            (
+                Attribute::AcpCreateAttr,
+                Value::new_iutf8n(Attribute::Name.as_str())
+            ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Value::from(Attribute::Name)
+                Value::new_iutf8n(Attribute::Name.as_str())
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Value::from(Attribute::Name)
+                Value::new_iutf8n(Attribute::Name.as_str())
             ),
-            (Attribute::AcpModifyClass, EntryClass::Object.to_value())
+            (
+                Attribute::AcpModifyClass,
+                Value::new_iutf8n(EntryClass::Object.as_str())
+            )
         );
 
         acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlCreate);
