@@ -53,7 +53,6 @@ pub use self::{
     message::ValueSetMessage,
     nsuniqueid::ValueSetNsUniqueId,
     oauth::{OauthClaimMapping, ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap},
-    restricted::ValueSetRestricted,
     s256::ValueSetSha256,
     secret::ValueSetSecret,
     session::{ValueSetApiTokenSet, ValueSetOauth2Session, ValueSetSession},
@@ -91,7 +90,6 @@ mod key_internal;
 mod message;
 mod nsuniqueid;
 mod oauth;
-mod restricted;
 mod s256;
 mod secret;
 mod session;
@@ -877,7 +875,6 @@ pub fn from_result_value_iter(
         Value::Syntax(u) => ValueSetSyntax::new(u),
         Value::Index(u) => ValueSetIndex::new(u),
         Value::SecretValue(u) => ValueSetSecret::new(u),
-        Value::RestrictedString(u) => ValueSetRestricted::new(u),
         Value::Spn(n, d) => ValueSetSpn::new((n, d)),
         Value::Cid(u) => ValueSetCid::new(u),
         Value::JsonFilt(u) => ValueSetJsonFilter::new(u),
@@ -947,7 +944,6 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::Syntax(u) => ValueSetSyntax::new(u),
         Value::Index(u) => ValueSetIndex::new(u),
         Value::SecretValue(u) => ValueSetSecret::new(u),
-        Value::RestrictedString(u) => ValueSetRestricted::new(u),
         Value::Spn(n, d) => ValueSetSpn::new((n, d)),
         Value::Cid(u) => ValueSetCid::new(u),
         Value::JsonFilt(u) => ValueSetJsonFilter::new(u),
@@ -1028,7 +1024,6 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::SyntaxType(set) => ValueSetSyntax::from_dbvs2(set),
         DbValueSetV2::IndexType(set) => ValueSetIndex::from_dbvs2(set),
         DbValueSetV2::SecretValue(set) => ValueSetSecret::from_dbvs2(set),
-        DbValueSetV2::RestrictedString(set) => ValueSetRestricted::from_dbvs2(set),
         DbValueSetV2::Spn(set) => ValueSetSpn::from_dbvs2(set),
         DbValueSetV2::Cid(set) => ValueSetCid::from_dbvs2(set),
         DbValueSetV2::JsonFilter(set) => ValueSetJsonFilter::from_dbvs2(&set),
@@ -1071,7 +1066,11 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Json(object) => Ok(ValueSetJson::new(object)),
         DbValueSetV2::Sha256(set) => ValueSetSha256::from_dbvs2(set),
         DbValueSetV2::Message(object) => Ok(ValueSetMessage::new(object)),
-        DbValueSetV2::EcKeyPrivate(_key) => Err(OperationError::InvalidState),
+        DbValueSetV2::EcKeyPrivate(_) | DbValueSetV2::RestrictedString(_) => {
+            error!("Use of a deprecated database type");
+            debug_assert!(false);
+            Err(OperationError::InvalidState)
+        }
     }
 }
 

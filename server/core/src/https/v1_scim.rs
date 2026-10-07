@@ -857,7 +857,7 @@ async fn scim_person_id_message_send_test_get(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-) -> Result<Json<()>, WebError> {
+) -> Result<Json<Uuid>, WebError> {
     state
         .qe_w_ref
         .scim_person_message_send_test(client_auth_info, kopid.eventid, id)

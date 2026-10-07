@@ -15,7 +15,7 @@ impl QueryServerWriteV1 {
         &self,
         email: String,
         eventid: Uuid,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
 

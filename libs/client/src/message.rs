@@ -15,7 +15,7 @@ impl KanidmClient {
     }
 
     /// Queue a test message to be sent to a person.
-    pub async fn idm_message_send_test(&self, to: &str) -> Result<(), ClientError> {
+    pub async fn idm_message_send_test(&self, to: &str) -> Result<Uuid, ClientError> {
         self.perform_get_request(&format!("/scim/v1/Person/{to}/_message/_send_test"))
             .await
     }

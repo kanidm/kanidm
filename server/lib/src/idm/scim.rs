@@ -202,7 +202,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         &mut self,
         ident: &Identity,
         target: Uuid,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         // Get the target entry.
         let target_entry = self.qs_write.impersonate_search_uuid(target, ident)?;
 
