@@ -1,9 +1,9 @@
 (% macro string_attr(dispname, name, value, editable, attribute) %)
 (% if scim_effective_access.search.check(&attribute) %)
-<div class="row mt-3">
-    <label for="person(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
+<div class="row mt-2">
+    <label for="person(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label py-0">(( dispname ))</label>
     <div class="col-12 col-md-8 col-lg-6">
-        <input readonly class="form-control-plaintext py-0" id="person(( name ))" name="(( name ))" value="(( value ))">
+        <input readonly class="form-control-plaintext py-0(% if attribute == Attribute::Uuid %) font-monospace text-secondary(% endif %)" id="person(( name ))" name="(( name ))" value="(( value ))">
     </div>
 </div>
 (% endif %)

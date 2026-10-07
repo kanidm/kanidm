@@ -5,11 +5,11 @@
 (% block admin_page %)
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item active" aria-current="page">Group List</li>
+        <li class="breadcrumb-item active" aria-current="page">Groups</li>
     </ol>
 </nav>
 
-<h2>Create new group</h2>
+<h4>Create new group</h4>
 
 <form hx-boost="true"
         hx-post="/ui/api/admin/group/create"
@@ -25,7 +25,7 @@
     </div>
 </form>
 
-<h2 class="mt-5">Manage existing groups</h2>
+<h4 class="mt-3 mb-2">Overview</h4>
 
 <table class="table table-striped">
     <thead>

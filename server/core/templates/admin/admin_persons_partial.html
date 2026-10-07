@@ -5,11 +5,11 @@
 (% block admin_page %)
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item active" aria-current="page">Person Management</li>
+        <li class="breadcrumb-item active" aria-current="page">Persons</li>
     </ol>
 </nav>
 
-<h2>Create new user</h2>
+<h4>Create new person</h4>
 
 <form hx-boost="true"
         hx-post="/ui/api/admin/person/create"
@@ -28,7 +28,7 @@
     </div>
 </form>
 
-<h2 class="mt-5">Manage existing users</h2>
+<h4 class="mt-3 mb-2">Overview</h4>
 
 <table class="table table-striped">
     <thead>
@@ -42,7 +42,7 @@
     <tbody id="persons">
     (% for (person, _) in persons %)
         (% let person_name = person.name.clone() %)
-        (% let person_mail = person.get_primary_mail().unwrap_or(String::from("N/A")) %)
+        (% let person_mail = person.get_primary_mail().clone() %)
         (% let person_uuid = person.uuid.clone() %)
         (% include "admin_person_entry_partial.html" %)
     (% endfor %)
