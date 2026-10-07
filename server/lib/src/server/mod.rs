@@ -768,7 +768,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::Utf8String => Ok(Value::new_utf8(value.to_string())),
                     SyntaxType::Utf8StringInsensitiveN |
                     SyntaxType::Utf8StringInsensitive => Ok(Value::new_iutf8(value)),
-                    SyntaxType::Utf8StringInameN |
+                    SyntaxType::Utf8StringInameN => Ok(Value::new_inamen(value)),
                     SyntaxType::Utf8StringIname => Ok(Value::new_iname(value)),
                     SyntaxType::Boolean => Value::new_bools(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
@@ -779,7 +779,6 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::CredentialType => CredentialType::try_from(value)
                         .map(Value::CredentialType)
                         .map_err(|()| OperationError::InvalidAttribute("Invalid CredentialType syntax".to_string())),
-                    SyntaxType::UuidN |
                     SyntaxType::Uuid => {
                         // Attempt to resolve this name to a uuid. If it's already a uuid, then
                         // name to uuid will "do the right thing" and give us the Uuid back.
@@ -856,7 +855,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::Json => Err(OperationError::InvalidAttribute("Json values can not be supplied through modification".to_string())),
                     SyntaxType::Sha256 => Err(OperationError::InvalidAttribute("SHA256 values can not be supplied through modification".to_string())),
                     SyntaxType::Message => Err(OperationError::InvalidAttribute("Message values can not be supplied through modification".to_string())),
-
+                    SyntaxType::UuidN => Err(OperationError::InvalidAttribute("Uuid-Set values can not be supplied through modification".to_string())),
                 }
             }
             None => {

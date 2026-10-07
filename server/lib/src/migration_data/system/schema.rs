@@ -669,13 +669,13 @@ pub static SCHEMA_ATTR_DOMAIN: LazyLock<SchemaAttribute> = LazyLock::new(|| Sche
     name: Attribute::Domain,
     uuid: UUID_SCHEMA_ATTR_DOMAIN,
     description: String::from("A DNS Domain name entry."),
-    multivalue: true,
+    multivalue: false,
     unique: false,
     phantom: false,
     sync_allowed: false,
     replicated: Replicated::True,
     indexed: true,
-    syntax: SyntaxType::Utf8StringInameN,
+    syntax: SyntaxType::Utf8StringIname,
 });
 pub static SCHEMA_ATTR_CLAIM: LazyLock<SchemaAttribute> = LazyLock::new(|| SchemaAttribute {
     name: Attribute::Claim,
