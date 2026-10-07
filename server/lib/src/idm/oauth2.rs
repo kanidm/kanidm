@@ -3816,15 +3816,15 @@ mod tests {
             // Supplemental origins
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://demo.example.com/oauth2/result").unwrap()
+                Value::new_urln_s("https://demo.example.com/oauth2/result").unwrap()
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://portal.example.com/?custom=foo").unwrap()
+                Value::new_urln_s("https://portal.example.com/?custom=foo").unwrap()
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("app://cheese").unwrap()
+                Value::new_urln_s("app://cheese").unwrap()
             ),
             // System admins
             (
@@ -3987,7 +3987,7 @@ mod tests {
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://demo.example.com/oauth2/result").unwrap()
+                Value::new_urln_s("https://demo.example.com/oauth2/result").unwrap()
             ),
             // System admins
             (
@@ -7949,7 +7949,7 @@ mod tests {
 
         let modlist = ModifyList::new_list(vec![
             Modify::Present(Attribute::OAuth2AllowLocalhostRedirect, Value::Bool(true)),
-            Modify::Present(Attribute::OAuth2RsOrigin, Value::Url(redirect_uri.clone())),
+            Modify::Present(Attribute::OAuth2RsOrigin, Value::UrlN(redirect_uri.clone())),
         ]);
 
         assert!(idms_prox_write
