@@ -3595,8 +3595,8 @@ mod tests {
 
         // Assert present for multivalue
         let present_multivalue_mods = ModifyList::new_valid_list(vec![
-            Modify::Present(Attribute::Class, Value::new_iutf8("test")),
-            Modify::Present(Attribute::Class, Value::new_iutf8("multi_test")),
+            Modify::Present(Attribute::Class, Value::new_iutf8n("test")),
+            Modify::Present(Attribute::Class, Value::new_iutf8n("multi_test")),
         ]);
 
         assert!(e.apply_modlist(&present_multivalue_mods).is_ok());

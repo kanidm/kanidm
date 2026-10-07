@@ -100,7 +100,7 @@ mod tests {
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://demo.example.com").unwrap()
+                Value::new_urln_s("https://demo.example.com").unwrap()
             ),
             (
                 Attribute::OAuth2RsOriginLanding,

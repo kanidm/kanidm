@@ -15,7 +15,7 @@ pub struct ValueSetIname {
 }
 
 impl ValueSetIname {
-    pub fn new(s: &str) -> Box<Self> {
+    pub fn new(s: &str) -> ValueSet {
         Box::new(ValueSetIname {
             value: s.to_lowercase(),
         })

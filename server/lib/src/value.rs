@@ -2011,6 +2011,7 @@ impl Value {
         match &self {
             Value::Utf8(s) => Some(s.as_str()),
             Value::Iutf8(s) => Some(s.as_str()),
+            Value::Iutf8N(s) => Some(s.as_str()),
             Value::Iname(s) => Some(s.as_str()),
             _ => None,
         }

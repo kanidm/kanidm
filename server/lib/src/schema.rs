@@ -1212,7 +1212,7 @@ mod tests {
                     Attribute::Description,
                     Value::Utf8("class test".to_string())
                 ),
-                (Attribute::SystemMust, Value::new_iutf8("a"))
+                (Attribute::SystemMust, Value::new_iutf8n("a"))
             ),
             SchemaClass
         );
@@ -1230,7 +1230,7 @@ mod tests {
                     Attribute::Description,
                     Value::Utf8("class test".to_string())
                 ),
-                (Attribute::SystemMay, Value::new_iutf8("a"))
+                (Attribute::SystemMay, Value::new_iutf8n("a"))
             ),
             SchemaClass
         );
@@ -1248,8 +1248,8 @@ mod tests {
                     Attribute::Description,
                     Value::Utf8("class test".to_string())
                 ),
-                (Attribute::May, Value::new_iutf8("a")),
-                (Attribute::Must, Value::new_iutf8("b"))
+                (Attribute::May, Value::new_iutf8n("a")),
+                (Attribute::Must, Value::new_iutf8n("b"))
             ),
             SchemaClass
         );
@@ -1267,10 +1267,10 @@ mod tests {
                     Attribute::Description,
                     Value::Utf8("class test".to_string())
                 ),
-                (Attribute::May, Value::new_iutf8("a")),
-                (Attribute::Must, Value::new_iutf8("b")),
-                (Attribute::SystemMay, Value::new_iutf8("c")),
-                (Attribute::SystemMust, Value::new_iutf8("d"))
+                (Attribute::May, Value::new_iutf8n("a")),
+                (Attribute::Must, Value::new_iutf8n("b")),
+                (Attribute::SystemMay, Value::new_iutf8n("c")),
+                (Attribute::SystemMust, Value::new_iutf8n("d"))
             ),
             SchemaClass
         );
@@ -1417,7 +1417,7 @@ mod tests {
                 Attribute::Uuid,
                 Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             ),
-            (Attribute::Class, Value::new_iutf8("zzzzzz"))
+            (Attribute::Class, Value::new_iutf8n("zzzzzz"))
         )
         .into_invalid_new();
         assert_eq!(

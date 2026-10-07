@@ -623,10 +623,20 @@ pub trait AccessControlsTransaction<'a> {
         for modify in modlist.iter() {
             match modify {
                 Modify::Present(a, v) if a == Attribute::Class.as_ref() => {
-                    requested_pres_classes.extend(v.to_str())
+                    if let Some(s) = v.to_str() {
+                        requested_pres_classes.insert(s);
+                    } else {
+                        error!("invalid modify present state - class was unable to be determined");
+                        return false;
+                    }
                 }
                 Modify::Removed(a, v) if a == Attribute::Class.as_ref() => {
-                    requested_rem_classes.extend(v.to_str())
+                    if let Some(s) = v.to_str() {
+                        requested_rem_classes.insert(s);
+                    } else {
+                        error!("invalid modify removed state - class was unable to be determined");
+                        return false;
+                    }
                 }
                 Modify::Set(a, v) if a == Attribute::Class.as_ref() => {
                     // When we apply the set of classes, we base the access control decision
@@ -2402,6 +2412,8 @@ mod tests {
 
     #[test]
     fn test_access_enforce_create() {
+        sketching::test_init();
+
         let ev1 = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
@@ -2411,7 +2423,7 @@ mod tests {
 
         let ev2 = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::TestNotAllowed, Value::new_iutf8("notallowed")),
+            (Attribute::TestNotAllowed, Value::new_iutf8n("notallowed")),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
@@ -2420,7 +2432,7 @@ mod tests {
 
         let ev3 = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, Value::new_iutf8("notallowed")),
+            (Attribute::Class, Value::new_iutf8n("notallowed")),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
@@ -2596,6 +2608,7 @@ mod tests {
     #[test]
     fn test_access_enforce_scope_delete() {
         sketching::test_init();
+
         let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 

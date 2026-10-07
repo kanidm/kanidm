@@ -3422,7 +3422,10 @@ mod tests {
         let e_cd = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::ClassType.to_value()),
-            (Attribute::ClassName, EntryClass::TestClass.to_value()),
+            (
+                Attribute::ClassName,
+                Value::new_iutf8(EntryClass::TestClass.as_str())
+            ),
             (
                 Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))

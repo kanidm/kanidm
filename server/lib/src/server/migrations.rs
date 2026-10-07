@@ -1586,7 +1586,7 @@ mod tests {
                 ])
                 .unwrap() as _,
             ),
-            (Attribute::Name, vs_iname!("test_oauth2_client")),
+            (Attribute::Name, ValueSetIname::new("test_oauth2_client")),
             (
                 Attribute::DisplayName,
                 vs_utf8!("test_oauth2_client".to_string()),
@@ -1594,7 +1594,7 @@ mod tests {
             (Attribute::Uuid, vs_uuid!(oauth2_client_uuid)),
             (
                 Attribute::OAuth2RsOriginLanding,
-                vs_url!(Url::parse("https://demo.example.com").unwrap()),
+                ValueSetUrl::new(Url::parse("https://demo.example.com").unwrap()) as ValueSet,
             ),
         ]);
 
