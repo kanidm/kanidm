@@ -192,16 +192,13 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn remove(&mut self, pv: &crate::value::PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::HexString(kid) => {
-                if let Some(key_object) = self.map.get_mut(kid) {
-                    if !matches!(key_object.status, KeyStatus::Revoked) {
-                        // Do we need to track the Cid like sessions?
-                        key_object.status = KeyStatus::Revoked;
-                    }
+        if let PartialValue::HexString(kid) = pv {
+            if let Some(key_object) = self.map.get_mut(kid) {
+                if !matches!(key_object.status, KeyStatus::Revoked) {
+                    // Do we need to track the Cid like sessions?
+                    key_object.status = KeyStatus::Revoked;
                 }
             }
-            _ => {}
         }
         self.map.is_empty()
     }

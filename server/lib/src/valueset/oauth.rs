@@ -316,11 +316,8 @@ impl ValueSetT for ValueSetOauthScopeMap {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Refer(u) => {
-                self.map.remove(u);
-            }
-            _ => {}
+        if let PartialValue::Refer(u) = pv {
+            self.map.remove(u);
         };
         self.map.is_empty()
     }

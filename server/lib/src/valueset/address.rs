@@ -384,17 +384,14 @@ impl ValueSetT for ValueSetEmailAddress {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::EmailAddress(a) => {
-                self.set.remove(a);
-                if &self.primary == a {
-                    // if we can, inject another former address into primary.
-                    if let Some(n) = self.set.iter().take(1).next().cloned() {
-                        self.primary = n
-                    }
+        if let PartialValue::EmailAddress(a) = pv {
+            self.set.remove(a);
+            if &self.primary == a {
+                // if we can, inject another former address into primary.
+                if let Some(n) = self.set.iter().take(1).next().cloned() {
+                    self.primary = n
                 }
             }
-            _ => {}
         };
         self.set.is_empty()
     }

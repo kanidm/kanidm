@@ -67,11 +67,8 @@ impl ValueSetT for ValueSetTotpSecret {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Utf8(l) => {
-                self.map.remove(l.as_str());
-            }
-            _ => {}
+        if let PartialValue::Utf8(l) = pv {
+            self.map.remove(l.as_str());
         };
         self.map.is_empty()
     }

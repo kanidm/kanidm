@@ -206,11 +206,8 @@ impl ValueSetT for ValueSetPublicBinary {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::PublicBinary(t) => {
-                self.map.remove(t.as_str());
-            }
-            _ => {}
+        if let PartialValue::PublicBinary(t) = pv {
+            self.map.remove(t.as_str());
         };
         self.map.is_empty()
     }

@@ -255,15 +255,12 @@ impl ValueSetT for ValueSetSession {
     }
 
     fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Refer(u) => {
-                if let Some(session) = self.map.get_mut(u) {
-                    if !matches!(session.state, SessionState::RevokedAt(_)) {
-                        session.state = SessionState::RevokedAt(cid.clone());
-                    }
+        if let PartialValue::Refer(u) = pv {
+            if let Some(session) = self.map.get_mut(u) {
+                if !matches!(session.state, SessionState::RevokedAt(_)) {
+                    session.state = SessionState::RevokedAt(cid.clone());
                 }
             }
-            _ => {}
         }
         self.map.is_empty()
     }
@@ -749,29 +746,26 @@ impl ValueSetT for ValueSetOauth2Session {
     }
 
     fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Refer(u) => {
-                if let Some(session) = self.map.get_mut(u) {
-                    if !matches!(session.state, SessionState::RevokedAt(_)) {
-                        session.state = SessionState::RevokedAt(cid.clone());
-                    }
-                } else {
-                    // What if it's an rs_uuid?
-                    let u_int = u.as_u128();
-                    if self.rs_filter & u_int == u_int {
-                        // It's there, so we need to do a more costly revoke over the values
-                        // that are present.
-                        let mut removed = false;
-                        self.map.values_mut().for_each(|session| {
-                            if session.rs_uuid == *u {
-                                session.state = SessionState::RevokedAt(cid.clone());
-                                removed = true;
-                            }
-                        });
-                    }
+        if let PartialValue::Refer(u) = pv {
+            if let Some(session) = self.map.get_mut(u) {
+                if !matches!(session.state, SessionState::RevokedAt(_)) {
+                    session.state = SessionState::RevokedAt(cid.clone());
+                }
+            } else {
+                // What if it's an rs_uuid?
+                let u_int = u.as_u128();
+                if self.rs_filter & u_int == u_int {
+                    // It's there, so we need to do a more costly revoke over the values
+                    // that are present.
+                    let mut removed = false;
+                    self.map.values_mut().for_each(|session| {
+                        if session.rs_uuid == *u {
+                            session.state = SessionState::RevokedAt(cid.clone());
+                            removed = true;
+                        }
+                    });
                 }
             }
-            _ => {}
         };
         self.map.is_empty()
     }
@@ -1152,11 +1146,8 @@ impl ValueSetT for ValueSetApiTokenSet {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Refer(u) => {
-                self.map.remove(u);
-            }
-            _ => {}
+        if let PartialValue::Refer(u) = pv {
+            self.map.remove(u);
         };
         self.map.is_empty()
     }

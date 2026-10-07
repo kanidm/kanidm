@@ -924,7 +924,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                     }
                 }
 
-                ValueSetReferN::from_iter(vs.into_iter())
+                ValueSetReferN::from_iter(vs)
                     .map(|vs| vs as ValueSet)
                     .ok_or_else(|| {
                                 error!("Unable to convert to valueset");
@@ -1055,7 +1055,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                     vs.push((external_id, totp))
                 }
 
-                ValueSetTotpSecret::from_iter(vs.into_iter())
+                ValueSetTotpSecret::from_iter(vs)
                     .map(|vs| vs as ValueSet )
                     .ok_or_else(|| {
                                 error!("Unable to convert to valueset");
@@ -1103,7 +1103,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                     vs.push((mail_addr, primary))
                 }
 
-                ValueSetEmailAddress::from_iter(vs.into_iter())
+                ValueSetEmailAddress::from_iter(vs)
                     .map(|vs| vs as ValueSet)
                     .ok_or_else(|| {
                                 error!("Unable to convert to valueset");
@@ -1158,7 +1158,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                     vs.push((label, value))
                 }
 
-                ValueSetSshKey::from_iter(vs.into_iter())
+                ValueSetSshKey::from_iter(vs)
                     .map(|vs| vs as ValueSet)
                     .ok_or_else(|| {
                         error!("Unable to convert to valueset");

@@ -78,11 +78,8 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Iutf8(kid) => {
-                self.set.retain(|k| k.get_kid() != kid);
-            }
-            _ => {}
+        if let PartialValue::Iutf8(kid) = pv {
+            self.set.retain(|k| k.get_kid() != kid);
         }
         self.set.is_empty()
     }
@@ -244,11 +241,8 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Iutf8(kid) => {
-                self.set.retain(|k| k.get_kid() != kid);
-            }
-            _ => {}
+        if let PartialValue::Iutf8(kid) = pv {
+            self.set.retain(|k| k.get_kid() != kid);
         };
         self.set.is_empty()
     }

@@ -15,6 +15,7 @@ pub struct ValueSetIname {
 }
 
 impl ValueSetIname {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(s: &str) -> ValueSet {
         Box::new(ValueSetIname {
             value: s.to_lowercase(),
