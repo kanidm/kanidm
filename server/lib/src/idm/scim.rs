@@ -1234,11 +1234,11 @@ impl IdmServerProxyWriteTransaction<'_> {
         for req_class in requested_classes.keys() {
             mods.push(Modify::Present(
                 Attribute::SyncClass,
-                Value::new_iutf8(req_class),
+                Value::new_iutf8n(req_class),
             ));
             mods.push(Modify::Present(
                 Attribute::Class,
-                Value::new_iutf8(req_class),
+                Value::new_iutf8n(req_class),
             ));
         }
 
