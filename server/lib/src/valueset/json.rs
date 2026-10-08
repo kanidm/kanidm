@@ -59,12 +59,14 @@ impl ValueSetT for ValueSetJsonFilter {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::JsonFilt(u) => self.set.remove(u),
+            PartialValue::JsonFilt(u) => {
+                self.set.remove(u);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

@@ -43,10 +43,10 @@ pub use self::{
     },
     datetime::ValueSetDateTime,
     hexstring::ValueSetHexString,
-    iname::ValueSetIname,
+    iname::{ValueSetIname, ValueSetInameN},
     index::ValueSetIndex,
     int64::ValueSetInt64,
-    iutf8::ValueSetIutf8,
+    iutf8::{ValueSetIutf8, ValueSetIutf8N},
     json::{ValueSetJson, ValueSetJsonFilter},
     jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256},
     key_internal::{KeyInternalData, ValueSetKeyInternal},
@@ -63,9 +63,9 @@ pub use self::{
     uihint::ValueSetUiHint,
     uint32::ValueSetUint32,
     uint64::ValueSetUint64,
-    url::ValueSetUrl,
+    url::{ValueSetUrl, ValueSetUrlN},
     utf8::ValueSetUtf8,
-    uuid::{ValueSetRefer, ValueSetUuid},
+    uuid::{ValueSetRefer, ValueSetReferN, ValueSetUuid, ValueSetUuidN},
 };
 use self::{apppwd::ValueSetApplicationPassword, image::ValueSetImage};
 
@@ -117,8 +117,10 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn clear(&mut self);
 
-    fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool;
+    #[must_use]
+    fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool;
 
+    #[must_use]
     fn purge(&mut self, _cid: &Cid) -> bool {
         // Default handling is true.
         true
@@ -191,8 +193,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         self.len() == 0
     }
 
-    fn migrate_iutf8_iname(&self) -> Result<Option<ValueSet>, OperationError> {
-        debug_assert!(false);
+    fn migrate(&self) -> Result<Option<ValueSet>, OperationError> {
         Ok(None)
     }
 
@@ -269,7 +270,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_uuid_set(&self) -> Option<&SmolSet<[Uuid; 1]>> {
+    fn as_uuid_set(&self) -> Option<&BTreeSet<Uuid>> {
         None
     }
 
@@ -342,7 +343,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_url_set(&self) -> Option<&SmolSet<[Url; 1]>> {
+    fn as_url_set(&self) -> Option<&BTreeSet<Url>> {
         debug_assert!(false);
         None
     }
@@ -746,7 +747,15 @@ pub struct UnresolvedScimValueOauth2ScopeMap {
     pub scopes: BTreeSet<String>,
 }
 
+#[derive(Debug)]
+pub enum UnresolvedReferenceState {
+    Uuid(Uuid),
+    Value(String),
+    Complete { uuid: Uuid, value: String },
+}
+
 pub enum ScimValueIntermediate {
+    Reference(Uuid),
     References(Vec<Uuid>),
     Oauth2ClaimMap(Vec<UnresolvedScimValueOauth2ClaimMap>),
     Oauth2ScopeMap(Vec<UnresolvedScimValueOauth2ScopeMap>),
@@ -810,9 +819,9 @@ impl ValueSetResolveStatus {
 }
 
 pub enum ValueSetIntermediate {
+    Reference(UnresolvedReferenceState),
     References {
-        resolved: BTreeSet<Uuid>,
-        unresolved: Vec<String>,
+        unresolved: Vec<UnresolvedReferenceState>,
     },
     Oauth2ClaimMap {
         resolved: Vec<ResolvedValueSetOauth2ClaimMap>,
@@ -865,9 +874,12 @@ pub fn from_result_value_iter(
     let mut vs: ValueSet = match init {
         Value::Utf8(s) => ValueSetUtf8::new(s),
         Value::Iutf8(s) => ValueSetIutf8::new(&s),
+        Value::Iutf8N(s) => ValueSetIutf8N::new(&s),
         Value::Iname(s) => ValueSetIname::new(&s),
-        Value::Uuid(u) => ValueSetUuid::new(u),
+        Value::InameN(s) => ValueSetInameN::new(&s),
+        Value::Uuid(u) | Value::UuidN(u) => ValueSetUuid::new(u),
         Value::Refer(u) => ValueSetRefer::new(u),
+        Value::ReferN(u) => ValueSetReferN::new(u),
         Value::Bool(u) => ValueSetBool::new(u),
         Value::Uint32(u) => ValueSetUint32::new(u),
         Value::Int64(u) => ValueSetInt64::new(u),
@@ -880,6 +892,7 @@ pub fn from_result_value_iter(
         Value::JsonFilt(u) => ValueSetJsonFilter::new(u),
         Value::Nsuniqueid(u) => ValueSetNsUniqueId::new(u),
         Value::Url(u) => ValueSetUrl::new(u),
+        Value::UrlN(u) => ValueSetUrlN::new(u),
         Value::DateTime(u) => ValueSetDateTime::new(u),
         Value::PrivateBinary(u) => ValueSetPrivateBinary::new(u),
         Value::OauthScope(u) => ValueSetOauthScope::new(u),
@@ -934,9 +947,12 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
     let mut vs: ValueSet = match init {
         Value::Utf8(s) => ValueSetUtf8::new(s),
         Value::Iutf8(s) => ValueSetIutf8::new(&s),
+        Value::Iutf8N(s) => ValueSetIutf8N::new(&s),
         Value::Iname(s) => ValueSetIname::new(&s),
-        Value::Uuid(u) => ValueSetUuid::new(u),
+        Value::InameN(s) => ValueSetInameN::new(&s),
+        Value::Uuid(u) | Value::UuidN(u) => ValueSetUuid::new(u),
         Value::Refer(u) => ValueSetRefer::new(u),
+        Value::ReferN(u) => ValueSetReferN::new(u),
         Value::Bool(u) => ValueSetBool::new(u),
         Value::Uint32(u) => ValueSetUint32::new(u),
         Value::Int64(u) => ValueSetInt64::new(u),
@@ -949,6 +965,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::JsonFilt(u) => ValueSetJsonFilter::new(u),
         Value::Nsuniqueid(u) => ValueSetNsUniqueId::new(u),
         Value::Url(u) => ValueSetUrl::new(u),
+        Value::UrlN(u) => ValueSetUrlN::new(u),
         Value::DateTime(u) => ValueSetDateTime::new(u),
         Value::PrivateBinary(u) => ValueSetPrivateBinary::new(u),
         Value::OauthScope(u) => ValueSetOauthScope::new(u),
@@ -1013,10 +1030,15 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
 pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationError> {
     match dbvs {
         DbValueSetV2::Utf8(set) => ValueSetUtf8::from_dbvs2(set),
-        DbValueSetV2::Iutf8(set) => ValueSetIutf8::from_dbvs2(set),
-        DbValueSetV2::Iname(set) => ValueSetIname::from_dbvs2(set),
-        DbValueSetV2::Uuid(set) => ValueSetUuid::from_dbvs2(set),
-        DbValueSetV2::Reference(set) => ValueSetRefer::from_dbvs2(set),
+        DbValueSetV2::Iutf8(set) => ValueSetIutf8N::from_dbvs2(set),
+        DbValueSetV2::Iutf8Single(set) => ValueSetIutf8::from_dbvs2(set),
+        DbValueSetV2::Iname(set) => ValueSetInameN::from_dbvs2(set),
+        DbValueSetV2::InameSingle(set) => ValueSetIname::from_dbvs2(set),
+        DbValueSetV2::Uuid(set) => ValueSetUuidN::from_dbvs2(set),
+        DbValueSetV2::UuidSingle(uuid) => ValueSetUuid::from_dbvs2(uuid),
+
+        DbValueSetV2::Reference(set) => ValueSetReferN::from_dbvs2(set),
+        DbValueSetV2::ReferenceSingle(set) => ValueSetRefer::from_dbvs2(set),
         DbValueSetV2::Bool(set) => ValueSetBool::from_dbvs2(set),
         DbValueSetV2::Uint32(set) => ValueSetUint32::from_dbvs2(set),
         DbValueSetV2::Int64(set) => ValueSetInt64::from_dbvs2(set),
@@ -1028,7 +1050,8 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Cid(set) => ValueSetCid::from_dbvs2(set),
         DbValueSetV2::JsonFilter(set) => ValueSetJsonFilter::from_dbvs2(&set),
         DbValueSetV2::NsUniqueId(set) => ValueSetNsUniqueId::from_dbvs2(set),
-        DbValueSetV2::Url(set) => ValueSetUrl::from_dbvs2(set),
+        DbValueSetV2::Url(set) => ValueSetUrlN::from_dbvs2(set),
+        DbValueSetV2::UrlSingle(set) => ValueSetUrl::from_dbvs2(set),
         DbValueSetV2::DateTime(set) => ValueSetDateTime::from_dbvs2(set),
         DbValueSetV2::PrivateBinary(set) => ValueSetPrivateBinary::from_dbvs2(set),
         DbValueSetV2::OauthScope(set) => ValueSetOauthScope::from_dbvs2(set),

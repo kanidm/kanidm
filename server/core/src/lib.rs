@@ -1121,7 +1121,7 @@ pub async fn create_server_core(
         // movement.
         match idms_prox_write.qs_write.internal_modify_uuid(
             UUID_IDM_ADMINS,
-            &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ADMIN)),
+            &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ADMIN)),
         ) {
             Ok(_) => {}
             Err(e) => {

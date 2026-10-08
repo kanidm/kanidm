@@ -98,10 +98,10 @@ impl ValueSetT for ValueSetSshKey {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::SshKey(t) => self.map.remove(t.as_str()).is_some(),
-            _ => false,
-        }
+        if let PartialValue::SshKey(t) = pv {
+            self.map.remove(t.as_str());
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

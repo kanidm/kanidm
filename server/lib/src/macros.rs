@@ -533,14 +533,26 @@ macro_rules! vs_utf8 {
 #[macro_export]
 /// Takes EntryClass objects and makes a ValueSetIutf8
 macro_rules! vs_iutf8 {
+    () => {
+        compile_error!("ValueSetIutf8N needs at least 1 element")
+    };
+    ($e:expr) => {{
+        ValueSetIutf8::new($e) as ValueSet
+    }};
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+/// Takes EntryClass objects and makes a ValueSetIutf8
+macro_rules! vs_iutf8n {
     () => (
-        compile_error!("ValueSetIutf8 needs at least 1 element")
+        compile_error!("ValueSetIutf8N needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetIutf8::new($e) as ValueSet
+        ValueSetIutf8N::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
-        let mut x = ValueSetIutf8::new($e);
+        let mut x = ValueSetIutf8N::new($e);
         $(assert!(x.push($item));)*
         x as ValueSet
     });
@@ -553,10 +565,10 @@ macro_rules! vs_iname {
         compile_error!("ValueSetIname needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetIname::new($e) as ValueSet
+        ValueSetInameN::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
-        let mut x = ValueSetIname::new($e);
+        let mut x = ValueSetInameN::new($e);
         $(assert!(x.push($item));)*
         x as ValueSet
     });
@@ -601,10 +613,10 @@ macro_rules! vs_refer {
         compile_error!("ValueSetRefer needs at least 1 element")
     );
     ($e:expr) => ({
-        ValueSetRefer::new($e) as ValueSet
+        ValueSetReferN::new($e) as ValueSet
     });
     ($e:expr, $($item:expr),*) => ({
-        let mut x = ValueSetRefer::new($e);
+        let mut x = ValueSetReferN::new($e);
         $(assert!(x.push($item));)*
         x
     });
