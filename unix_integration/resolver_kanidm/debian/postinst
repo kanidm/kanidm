@@ -5,9 +5,41 @@
 
 set -e
 
+# ensures that the unix_chkpwd AppArmor profile allows access to the kanidm-unixd socket
+configure_unix_chkpwd_apparmor() {
+    profile="/etc/apparmor.d/unix-chkpwd"
+    local_profile="/etc/apparmor.d/local/unix-chkpwd"
+
+    # AppArmor may not be installed/enabled, and some distros may not ship this
+    # profile. Do nothing in that case.
+    [ -d /etc/apparmor.d/local ] || return 0
+    [ -f "$profile" ] || return 0
+
+    touch "$local_profile"
+
+    if ! grep -q '^# BEGIN kanidm-unixd$' "$local_profile"; then
+        echo "Configuring AppArmor profile for unix_chkpwd to allow access to kanidm-unixd socket"
+        echo "Creating backup of $local_profile at $local_profile.bak"
+        cp "$local_profile" "$local_profile.bak"
+        cat >> "$local_profile" <<'EOF'
+
+# BEGIN kanidm-unixd
+# Allow Ubuntu's confined unix_chkpwd helper to resolve Kanidm/NSS users
+# through kanidm-unixd.
+/run/kanidm-unixd/sock rw,
+/att/unix-chkpwd/run/kanidm-unixd/sock rw,
+# END kanidm-unixd
+EOF
+    fi
+
+    if command -v apparmor_parser >/dev/null 2>&1; then
+        apparmor_parser -r -W -T "$profile" || true
+    fi
+}
 
 case "$1" in
     configure)
+        configure_unix_chkpwd_apparmor
         echo "============================="
         echo "Thanks for installing Kanidm!"
         echo "============================="
