@@ -3392,8 +3392,10 @@ where
         attr: A,
     ) -> Result<(), OperationError> {
         let attr_ref = attr.as_ref();
-        // In theory we don't need to bump the CID here, but we do it out of correctness.
-        self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
+        // In theory we should update the change state, but this causes issues if we
+        // are altering a tombstone, which *may* happen.
+
+        // self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
 
         let maybe_vs = if let Some(vs) = self.attrs.get(attr_ref) {
             vs.migrate()?

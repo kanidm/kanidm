@@ -323,6 +323,7 @@ impl QueryServerWriteTransaction<'_> {
 
         // Before we can transform this, we have to resolve links that *may* exist
         // within this assertion.
+
         self.txn_name_to_uuid().extend(asserts.iter().filter_map(
             |scim_assert| match scim_assert {
                 ScimEntryAssertion::Present { id, attrs } => {
