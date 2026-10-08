@@ -159,17 +159,13 @@ impl ValueSetT for ValueSetCertificate {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::HexString(hs) => {
-                let mut buf = Sha256Output::default();
-                if hex::decode_to_slice(hs, &mut buf).is_ok() {
-                    self.map.remove(&buf).is_some()
-                } else {
-                    false
-                }
+        if let PartialValue::HexString(hs) = pv {
+            let mut buf = Sha256Output::default();
+            if hex::decode_to_slice(hs, &mut buf).is_ok() {
+                self.map.remove(&buf);
             }
-            _ => false,
-        }
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

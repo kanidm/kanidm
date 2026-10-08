@@ -137,14 +137,13 @@ pub(super) fn apply_modify_access<'a>(
                         // fetch it as a multivalue btreeset for future in case we allow
                         // multiple entry manager by in future.
                         {
-                            let entry_manager_uuids = entry.get_ava_refer(Attribute::EntryManagedBy)?;
+                            let entry_manager_uuid = entry.get_ava_refer_single(Attribute::EntryManagedBy)?;
                             let group_check = ident_memberof
                                 // Have at least one group allowed.
-                                .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
+                                .map(|imo| imo.contains(&entry_manager_uuid))
                                 .unwrap_or_default();
 
-                            let user_check =
-                                entry_manager_uuids.contains(&ident_uuid);
+                            let user_check = entry_manager_uuid == ident_uuid;
 
                             if !(group_check || user_check) {
                                 // Not the entry manager

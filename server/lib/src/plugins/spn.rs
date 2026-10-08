@@ -345,7 +345,7 @@ mod tests {
                     (Attribute::Class, EntryClass::Group.to_value()),
                     (Attribute::Name, Value::new_iname("testgroup")),
                     (Attribute::Uuid, Value::Uuid(g_uuid)),
-                    (Attribute::Member, Value::Refer(t_uuid))
+                    (Attribute::Member, Value::ReferN(t_uuid))
                 ),
             ])
             .is_ok());

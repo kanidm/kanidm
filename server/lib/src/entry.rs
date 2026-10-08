@@ -331,6 +331,9 @@ impl Entry<EntryInit, EntryNew> {
             .map(|(k, v)| {
                 trace!(?k, ?v, "attribute");
                 let attr_nk = Attribute::from(k.as_str());
+                // TODO: Make this look up the syntax, then use that
+                // to guide the Valueset.
+
                 let nv = valueset::from_result_value_iter(
                     v.iter().map(|vr| qs.clone_value(&attr_nk, vr)),
                 );
@@ -538,7 +541,7 @@ impl From<&SchemaAttribute> for EntryInitNew {
         attrs.insert(Attribute::Syntax, vs_syntax![s.syntax]);
         attrs.insert(
             Attribute::Class,
-            vs_iutf8![
+            vs_iutf8n![
                 EntryClass::Object.into(),
                 EntryClass::System.into(),
                 EntryClass::AttributeType.into()
@@ -570,30 +573,34 @@ impl From<&SchemaClass> for EntryInitNew {
         attrs.insert(Attribute::Uuid, vs_uuid![s.uuid]);
         attrs.insert(
             Attribute::Class,
-            vs_iutf8![
+            vs_iutf8n![
                 EntryClass::Object.into(),
                 EntryClass::System.into(),
                 EntryClass::ClassType.into()
             ],
         );
 
-        let vs_systemmay = ValueSetIutf8::from_iter(s.systemmay.iter().map(|sm| sm.as_str()));
-        // if let Some(vs) = vs_systemmay {
-        attrs.insert(Attribute::SystemMay, vs_systemmay);
+        let vs_systemmay = ValueSetIutf8N::from_iter(s.systemmay.iter().map(|sm| sm.as_str()));
+        if let Some(vs) = vs_systemmay {
+            attrs.insert(Attribute::SystemMay, vs);
+        }
 
-        let vs_systemmust = ValueSetIutf8::from_iter(s.systemmust.iter().map(|sm| sm.as_str()));
-        // if let Some(vs) = vs_systemmust {
-        attrs.insert(Attribute::SystemMust, vs_systemmust);
+        let vs_systemmust = ValueSetIutf8N::from_iter(s.systemmust.iter().map(|sm| sm.as_str()));
+        if let Some(vs) = vs_systemmust {
+            attrs.insert(Attribute::SystemMust, vs);
+        }
 
         let vs_systemexcludes =
-            ValueSetIutf8::from_iter(s.systemexcludes.iter().map(|sm| sm.as_str()));
-        // if let Some(vs) = vs_systemexcludes {
-        attrs.insert(Attribute::SystemExcludes, vs_systemexcludes);
+            ValueSetIutf8N::from_iter(s.systemexcludes.iter().map(|sm| sm.as_str()));
+        if let Some(vs) = vs_systemexcludes {
+            attrs.insert(Attribute::SystemExcludes, vs);
+        }
 
         let vs_systemsupplements =
-            ValueSetIutf8::from_iter(s.systemsupplements.iter().map(|sm| sm.as_str()));
-        // if let Some(vs) = vs_systemsupplements {
-        attrs.insert(Attribute::SystemSupplements, vs_systemsupplements);
+            ValueSetIutf8N::from_iter(s.systemsupplements.iter().map(|sm| sm.as_str()));
+        if let Some(vs) = vs_systemsupplements {
+            attrs.insert(Attribute::SystemSupplements, vs);
+        }
 
         Entry {
             valid: EntryInit,
@@ -766,7 +773,10 @@ impl Entry<EntryIncremental, EntryNew> {
                         };
 
                         // Move the current uuid to source_uuid
-                        cnf_ent.add_ava(Attribute::SourceUuid, Value::Uuid(db_ent.valid.uuid));
+                        cnf_ent.set_ava_set(
+                            &Attribute::SourceUuid,
+                            ValueSetUuidN::new(db_ent.valid.uuid),
+                        );
 
                         // We need to make a random uuid in the conflict gen process.
                         let new_uuid = Uuid::new_v4();
@@ -900,7 +910,6 @@ impl Entry<EntryIncremental, EntryNew> {
                             match (self.attrs.get(attr_name), db_ent.attrs.get(attr_name)) {
                                 (Some(vs_left), Some(vs_right)) if take_left => {
                                     changes.insert(attr_name.clone(), cid_left.clone());
-                                    #[allow(clippy::todo)]
                                     if let Some(merged_attr_state) =
                                         vs_left.repl_merge_valueset(vs_right, trim_cid)
                                     {
@@ -913,7 +922,6 @@ impl Entry<EntryIncremental, EntryNew> {
                                 }
                                 (Some(vs_left), Some(vs_right)) => {
                                     changes.insert(attr_name.clone(), cid_right.clone());
-                                    #[allow(clippy::todo)]
                                     if let Some(merged_attr_state) =
                                         vs_right.repl_merge_valueset(vs_left, trim_cid)
                                     {
@@ -1004,7 +1012,7 @@ impl Entry<EntryIncremental, EntryNew> {
                 // we just send the tombstone ecstate rather than attrs. Our
                 // db stub also lacks these attributes too.
                 let mut attrs_new: Eattrs = Map::new();
-                let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
+                let class_ava = vs_iutf8n![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![left_at.clone()];
                 let created_ava = vs_cid![left_at.clone()];
 
@@ -1055,7 +1063,7 @@ impl Entry<EntryIncremental, EntryNew> {
                 };
 
                 let mut attrs_new: Eattrs = Map::new();
-                let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
+                let class_ava = vs_iutf8n![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![at.clone()];
                 let created_ava = vs_cid![at.clone()];
 
@@ -1098,7 +1106,11 @@ impl Entry<EntryIncremental, EntryCommitted> {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
             ne.add_ava_int(Attribute::Class, EntryClass::Recycled.into());
             ne.add_ava_int(Attribute::Class, EntryClass::Conflict.into());
-            ne.add_ava_int(Attribute::SourceUuid, Value::Uuid(self.valid.uuid));
+
+            ne.set_ava_int(
+                Attribute::SourceUuid,
+                ValueSetUuidN::new(self.valid.uuid) as ValueSet,
+            );
         }
         ne
     }
@@ -1211,9 +1223,9 @@ impl Entry<EntryInvalid, EntryCommitted> {
         self.add_ava(Attribute::Class, EntryClass::Recycled.into());
         self.add_ava(Attribute::Class, EntryClass::Conflict.into());
         // Add all the source uuids we conflicted against.
-        for source_uuid in iter {
-            self.add_ava(Attribute::SourceUuid, Value::Uuid(source_uuid));
-        }
+        if let Some(vs) = ValueSetUuidN::from_iter(iter) {
+            self.set_ava_set(&Attribute::SourceUuid, vs as ValueSet)
+        };
     }
 
     /// Extract this entry from the recycle bin into a live state.
@@ -1976,7 +1988,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         // Duplicate this to a tombstone entry
         let mut attrs_new: Eattrs = Map::new();
 
-        let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
+        let class_ava = vs_iutf8n![EntryClass::Object.into(), EntryClass::Tombstone.into()];
         let last_mod_ava = vs_cid![cid.clone()];
         let created_ava = vs_cid![cid.clone()];
 
@@ -2601,6 +2613,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Doesn't matter if it already exists, equality will replace.
     }
 
+    fn set_ava_int(&mut self, attr: Attribute, vs: ValueSet) {
+        if let Some(existing_vs) = self.attrs.get_mut(&attr) {
+            // This is the suboptimal path. This can only exist in rare cases.
+            let _ = existing_vs.merge(&vs);
+        } else {
+            // Normally this is what's taken.
+            self.attrs.insert(attr, vs);
+        }
+    }
+
     /// Overwrite the current set of values for an attribute, with this new set.
     fn set_ava_iter_int<T>(&mut self, attr: Attribute, iter: T)
     where
@@ -2611,13 +2633,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             return;
         };
 
-        if let Some(existing_vs) = self.attrs.get_mut(&attr) {
-            // This is the suboptimal path. This can only exist in rare cases.
-            let _ = existing_vs.merge(&vs);
-        } else {
-            // Normally this is what's taken.
-            self.attrs.insert(attr, vs);
-        }
+        debug!(?attr, ?vs);
+
+        self.set_ava_int(attr, vs)
     }
 
     /// Update the last_changed flag of this entry to the given change identifier.
@@ -2633,6 +2651,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs
             .get(&Attribute::Spn)
             .map(|vs| vs.to_proto_string_clone_iter())
+            .or_else(|| {
+                self.attrs
+                    .get(&Attribute::Name)
+                    .map(|vs| vs.to_proto_string_clone_iter())
+            })
             .or_else(|| {
                 self.attrs
                     .get(&Attribute::Uuid)
@@ -2679,6 +2702,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub fn get_ava_refer<A: AsRef<Attribute>>(&self, attr: A) -> Option<&BTreeSet<Uuid>> {
         self.get_ava_set(attr).and_then(|vs| vs.as_refer_set())
+    }
+
+    pub fn get_ava_refer_single<A: AsRef<Attribute>>(&self, attr: A) -> Option<Uuid> {
+        self.get_ava_set(attr).and_then(|vs| vs.to_refer_single())
     }
 
     pub fn get_ava_as_iutf8_iter<A: AsRef<Attribute>>(
@@ -3252,8 +3279,7 @@ where
         self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
 
         let rm = if let Some(vs) = self.attrs.get_mut(attr_ref) {
-            vs.remove(value, &self.valid.cid);
-            vs.is_empty()
+            vs.remove(value, &self.valid.cid)
         } else {
             false
         };
@@ -3271,10 +3297,7 @@ where
         self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
 
         let rm = if let Some(vs) = self.attrs.get_mut(attr_ref) {
-            values.iter().for_each(|k| {
-                vs.remove(k, &self.valid.cid);
-            });
-            vs.is_empty()
+            values.iter().any(|k| vs.remove(k, &self.valid.cid))
         } else {
             false
         };
@@ -3356,11 +3379,35 @@ where
     pub fn merge_ava_set(&mut self, attr: &Attribute, vs: ValueSet) -> Result<(), OperationError> {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
         if let Some(existing_vs) = self.attrs.get_mut(attr) {
+            debug!(?attr, ?existing_vs, ?vs);
             existing_vs.merge(&vs)
         } else {
             self.attrs.insert(attr.clone(), vs);
             Ok(())
         }
+    }
+
+    pub(crate) fn migrate_ava<A: AsRef<Attribute>>(
+        &mut self,
+        attr: A,
+    ) -> Result<(), OperationError> {
+        let attr_ref = attr.as_ref();
+        // In theory we should update the change state, but this causes issues if we
+        // are altering a tombstone, which *may* happen.
+
+        // self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
+
+        let maybe_vs = if let Some(vs) = self.attrs.get(attr_ref) {
+            vs.migrate()?
+        } else {
+            None
+        };
+
+        if let Some(vs) = maybe_vs {
+            self.attrs.insert(attr_ref.clone(), vs);
+        }
+
+        Ok(())
     }
 
     /// Apply the content of this modlist to this entry, enforcing the expressed state.
@@ -3550,8 +3597,8 @@ mod tests {
 
         // Assert present for multivalue
         let present_multivalue_mods = ModifyList::new_valid_list(vec![
-            Modify::Present(Attribute::Class, Value::new_iutf8("test")),
-            Modify::Present(Attribute::Class, Value::new_iutf8("multi_test")),
+            Modify::Present(Attribute::Class, Value::new_iutf8n("test")),
+            Modify::Present(Attribute::Class, Value::new_iutf8n("multi_test")),
         ]);
 
         assert!(e.apply_modlist(&present_multivalue_mods).is_ok());
