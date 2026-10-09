@@ -79,8 +79,19 @@ fn delete_filter_entry<'a>(
                 return IResult::Deny;
             }
         }
-        IdentType::Internal(InternalRole::AccountRequest)
-        | IdentType::Internal(InternalRole::MessageQueue) => {
+        IdentType::Internal(InternalRole::AccountRequest) => {
+            let valid_account_request_class = entry
+                .get_ava_as_iutf8(Attribute::Class)
+                .map(|classes| classes.contains(&EntryClass::AccountSignupRequest.to_string()))
+                .unwrap_or(false);
+
+            if valid_account_request_class {
+                return IResult::Grant;
+            } else {
+                return IResult::Deny;
+            }
+        }
+        IdentType::Internal(InternalRole::MessageQueue) => {
             debug!("Blocking role from deletion");
             return IResult::Deny;
         }
@@ -119,13 +130,15 @@ fn delete_filter_entry<'a>(
                 // Note, while schema has this as single value, we currently
                 // fetch it as a multivalue btreeset for future in case we allow
                 // multiple entry manager by in future.
-                if let Some(entry_manager_uuids) = entry.get_ava_refer(Attribute::EntryManagedBy) {
+                if let Some(entry_manager_uuid) =
+                    entry.get_ava_refer_single(Attribute::EntryManagedBy)
+                {
                     let group_check = ident_memberof
                         // Have at least one group allowed.
-                        .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
+                        .map(|imo| imo.contains(&entry_manager_uuid))
                         .unwrap_or_default();
 
-                    let user_check = entry_manager_uuids.contains(&ident_uuid);
+                    let user_check = entry_manager_uuid == ident_uuid;
 
                     if !(group_check || user_check) {
                         // Not the entry manager
@@ -179,12 +192,10 @@ fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -
             security_access!("sync agreements may not directly delete entities");
             IResult::Deny
         }
-        IdentType::Internal(InternalRole::AccountRequest)
-        | IdentType::Internal(InternalRole::MessageQueue) => {
-            debug!("Internal Role may not delete entries");
-            IResult::Deny
-        }
-        IdentType::Internal(InternalRole::Migration) | IdentType::User(_) => {
+        IdentType::Internal(InternalRole::MessageQueue)
+        | IdentType::Internal(InternalRole::AccountRequest)
+        | IdentType::Internal(InternalRole::Migration)
+        | IdentType::User(_) => {
             // Prevent deletion of entries that exist in the system controlled entry range.
             if entry.get_uuid() <= UUID_ANONYMOUS {
                 security_access!("attempt to delete system builtin entry");

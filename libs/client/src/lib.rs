@@ -1720,7 +1720,7 @@ impl KanidmClient {
         id: &str,
         ttl: Option<u64>,
         email: Option<String>,
-    ) -> Result<(), ClientError> {
+    ) -> Result<Uuid, ClientError> {
         let req = CUIntentSend { ttl, email };
         self.perform_post_request(
             &format!("/v1/person/{id}/_credential/_update_intent_send"),

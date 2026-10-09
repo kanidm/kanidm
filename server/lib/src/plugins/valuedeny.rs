@@ -158,8 +158,8 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone())),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::DeniedName, Value::new_iname("tobias")),
-                Modify::Present(Attribute::DeniedName, Value::new_iname("ellie")),
+                Modify::Present(Attribute::DeniedName, Value::new_inamen("tobias")),
+                Modify::Present(Attribute::DeniedName, Value::new_inamen("ellie")),
             ]),
         );
         assert!(server_txn.modify(&me_inv_m).is_ok());
@@ -258,8 +258,8 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone())),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::DeniedName, Value::new_iname("admin")),
-                Modify::Present(Attribute::DeniedName, Value::new_iname("idm_admin")),
+                Modify::Present(Attribute::DeniedName, Value::new_inamen("admin")),
+                Modify::Present(Attribute::DeniedName, Value::new_inamen("idm_admin")),
             ]),
         );
         assert!(server_txn.modify(&me_inv_m).is_ok());

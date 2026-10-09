@@ -1,4 +1,8 @@
-use crate::{idm::server::IdmServerProxyWriteTransaction, prelude::*};
+use crate::{
+    idm::server::IdmServerProxyWriteTransaction, prelude::*, utils::readable_password_from_random,
+};
+use crypto_glue::{s256::Sha256, traits::Digest};
+use kanidm_proto::v1::OutboundMessage;
 
 pub struct AccountSignupRequestEvent {
     // Who initiated this? By default I think
@@ -7,6 +11,11 @@ pub struct AccountSignupRequestEvent {
     username: String,
     display_name: String,
     email: String,
+}
+
+pub struct AccountSignupVerifyEvent {
+    pub ident: Identity,
+    intent_id: String,
 }
 
 impl IdmServerProxyWriteTransaction<'_> {
@@ -33,14 +42,16 @@ impl IdmServerProxyWriteTransaction<'_> {
         let curtime_odt = self.qs_write.get_curtime_odt();
         let delete_after_odt = curtime_odt + DEFAULT_ACCOUNT_SIGNUP_RETENTION;
 
-        let account_signup_uuid = Uuid::new_v4();
+        let intent_id = readable_password_from_random();
+        // We treat this like pkce - we store a sha256, and the requestor has to present the plaintext
+        // code to accept the request.
+        let intent_sha256 = Sha256::digest(intent_id.as_bytes());
 
         let account_signup_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                ValueSetIutf8::new(EntryClass::AccountSignupRequest.into()) as ValueSet,
+                ValueSetIutf8N::new(EntryClass::AccountSignupRequest.into()) as ValueSet,
             ),
-            (Attribute::Uuid, ValueSetUuid::new(account_signup_uuid)),
             (Attribute::Name, ValueSetIname::new(&username) as ValueSet),
             (
                 Attribute::DisplayName,
@@ -48,11 +59,15 @@ impl IdmServerProxyWriteTransaction<'_> {
             ),
             (
                 Attribute::Mail,
-                ValueSetEmailAddress::new(email) as ValueSet,
+                ValueSetEmailAddress::new(email.clone()) as ValueSet,
             ),
             (
                 Attribute::DeleteAfter,
                 ValueSetDateTime::new(delete_after_odt),
+            ),
+            (
+                Attribute::S256,
+                ValueSetSha256::new(intent_sha256) as ValueSet,
             ),
         ]);
 
@@ -65,7 +80,15 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         self.qs_write.create(&ce)?;
 
-        // TODO: Perform the post process on the request.
+        let message = OutboundMessage::AccountSignupRequestV1 {
+            username,
+            intent_id,
+            expiry_time: delete_after_odt,
+        };
+
+        let mail_ident = Identity::message_queue();
+
+        let _message_id = self.qs_write.queue_message(&mail_ident, message, email)?;
 
         Ok(())
     }
@@ -73,6 +96,67 @@ impl IdmServerProxyWriteTransaction<'_> {
     // We need a post-process handler for any events on the signup request. In a way this
     // is kind of similar to a plugin but it doesn't have access to send emails via
     // the delayed event queue.
+
+    pub fn account_signup_request_verify(
+        &mut self,
+        asre: AccountSignupVerifyEvent,
+    ) -> Result<(), OperationError> {
+        // If the feature is not enabled, error.
+        if !self.qs_write.get_feature_account_signup_config().enabled {
+            warn!("Attempt to perform account signup while feature is disabled.");
+            return Err(OperationError::AS0001FeatureDisabled);
+        }
+
+        let AccountSignupVerifyEvent { ident, intent_id } = asre;
+
+        let intent_sha256 = Sha256::digest(intent_id.as_bytes());
+
+        let filter = filter_all!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::AccountSignupRequest.into()),
+            f_eq(Attribute::S256, intent_sha256.into())
+        ]));
+
+        let signup_entry = self.qs_write.ident_search_single(&ident, filter)?;
+
+        debug!(?signup_entry);
+
+        // Delete the signup request.
+        self.qs_write
+            .ident_delete_uuid(&ident, signup_entry.get_uuid())?;
+
+        // Create the account, with the values from the request.
+        let attr_iter = signup_entry.get_ava_iter().filter_map(|(a, vs)| match a {
+            Attribute::Name | Attribute::DisplayName | Attribute::Mail => {
+                Some((a.clone(), vs.clone()))
+            }
+            _ => None,
+        });
+
+        let account_entry = EntryInitNew::from_iter(
+            std::iter::once((
+                Attribute::Class,
+                vs_iutf8n!(
+                    EntryClass::Object.as_str(),
+                    EntryClass::Account.as_str(),
+                    EntryClass::Person.as_str()
+                ),
+            ))
+            .chain(attr_iter),
+        );
+
+        // Create
+        let ce = CreateEvent {
+            ident,
+            entries: vec![account_entry],
+            return_created_uuids: false,
+        };
+
+        self.qs_write.create(&ce)?;
+
+        // Initiate a credential update.
+
+        Ok(())
+    }
 
     /*
     fn account_signup_validate_request_state(
@@ -87,8 +171,9 @@ impl IdmServerProxyWriteTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::AccountSignupRequestEvent;
+    use super::{AccountSignupRequestEvent, AccountSignupVerifyEvent};
     use crate::prelude::*;
+    use kanidm_proto::v1::OutboundMessage;
 
     const TESTPERSON_NAME: &str = "testperson";
     const TESTPERSON_DISPLAY_NAME: &str = "Test Personington";
@@ -112,6 +197,19 @@ mod tests {
 
         let result = write_txn
             .account_signup_request(account_signup_req)
+            .unwrap_err();
+
+        assert_eq!(result, OperationError::AS0001FeatureDisabled);
+
+        // Even though we don't have a real intent id here, the feature
+        // check always denies first.
+        let account_signup_verify = AccountSignupVerifyEvent {
+            ident: Identity::account_request(),
+            intent_id: String::default(),
+        };
+
+        let result = write_txn
+            .account_signup_request_verify(account_signup_verify)
             .unwrap_err();
 
         assert_eq!(result, OperationError::AS0001FeatureDisabled);
@@ -156,5 +254,54 @@ mod tests {
         // Validate the person
 
         // TODO: Validate the message in the delayed queue
+        let idm_admin_identity = write_txn
+            .qs_write
+            .impersonate_uuid_as_readwrite_identity(UUID_IDM_ADMIN)
+            .expect("Failed to retrieve identity");
+
+        let filter = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::OutboundMessage.into()),
+            f_eq(
+                Attribute::MailDestination,
+                PartialValue::EmailAddress(TESTPERSON_EMAIL.into())
+            )
+        ]));
+
+        let mut entries = write_txn
+            .qs_write
+            .impersonate_search(filter.clone(), filter, &idm_admin_identity)
+            .expect("Unable to search message queue");
+
+        assert_eq!(entries.len(), 1);
+        let message_entry = entries.pop().unwrap();
+
+        let message = message_entry
+            .get_ava_set(Attribute::MessageTemplate)
+            .and_then(|vs| vs.as_message())
+            .unwrap();
+
+        let intent_id = match message {
+            OutboundMessage::AccountSignupRequestV1 {
+                username,
+                intent_id,
+                ..
+            } => {
+                assert_eq!(username, TESTPERSON_NAME);
+                intent_id.clone()
+            }
+            _ => panic!("Wrong message type!"),
+        };
+
+        let account_signup_verify = AccountSignupVerifyEvent {
+            ident: Identity::account_request(),
+            intent_id,
+        };
+
+        let _result = write_txn
+            .account_signup_request_verify(account_signup_verify)
+            .expect("Unable to process account signup verification");
+
+        // Now use the intent_id to complete the signup.
+        assert!(write_txn.commit().is_ok());
     }
 }
