@@ -3789,7 +3789,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
             (Attribute::Uuid, Value::Uuid(UUID_TESTGROUP)),
-            (Attribute::Member, Value::Refer(UUID_TESTPERSON_1),)
+            (Attribute::Member, Value::ReferN(UUID_TESTPERSON_1),)
         );
 
         let entry_rs: Entry<EntryInit, EntryNew> = entry_init!(
@@ -3816,15 +3816,15 @@ mod tests {
             // Supplemental origins
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://demo.example.com/oauth2/result").unwrap()
+                Value::new_urln_s("https://demo.example.com/oauth2/result").unwrap()
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://portal.example.com/?custom=foo").unwrap()
+                Value::new_urln_s("https://portal.example.com/?custom=foo").unwrap()
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("app://cheese").unwrap()
+                Value::new_urln_s("app://cheese").unwrap()
             ),
             // System admins
             (
@@ -3961,7 +3961,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
             (Attribute::Uuid, Value::Uuid(UUID_TESTGROUP)),
-            (Attribute::Member, Value::Refer(UUID_TESTPERSON_1),)
+            (Attribute::Member, Value::ReferN(UUID_TESTPERSON_1),)
         );
 
         let entry_rs: Entry<EntryInit, EntryNew> = entry_init!(
@@ -3987,7 +3987,7 @@ mod tests {
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://demo.example.com/oauth2/result").unwrap()
+                Value::new_urln_s("https://demo.example.com/oauth2/result").unwrap()
             ),
             // System admins
             (
@@ -7949,7 +7949,7 @@ mod tests {
 
         let modlist = ModifyList::new_list(vec![
             Modify::Present(Attribute::OAuth2AllowLocalhostRedirect, Value::Bool(true)),
-            Modify::Present(Attribute::OAuth2RsOrigin, Value::Url(redirect_uri.clone())),
+            Modify::Present(Attribute::OAuth2RsOrigin, Value::UrlN(redirect_uri.clone())),
         ]);
 
         assert!(idms_prox_write
@@ -8061,7 +8061,7 @@ mod tests {
                 &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTGROUP))),
                 &ModifyList::new_list(vec![Modify::Present(
                     Attribute::Member,
-                    Value::Refer(service_account_uuid),
+                    Value::ReferN(service_account_uuid),
                 )]),
             )
             .expect("Failed to add service account to scope group");

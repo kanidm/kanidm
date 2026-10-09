@@ -218,7 +218,7 @@ pub static SCHEMA_ATTR_BADLIST_PASSWORD: LazyLock<SchemaAttribute> = LazyLock::n
     name: Attribute::BadlistPassword,
     description: "A password that is badlisted meaning that it can not be set as a valid password by any user account".to_string(),
     multivalue: true,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
     ..Default::default()
 }
 });

@@ -50,7 +50,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         let account_signup_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                ValueSetIutf8::new(EntryClass::AccountSignupRequest.into()) as ValueSet,
+                ValueSetIutf8N::new(EntryClass::AccountSignupRequest.into()) as ValueSet,
             ),
             (Attribute::Name, ValueSetIname::new(&username) as ValueSet),
             (
@@ -135,11 +135,11 @@ impl IdmServerProxyWriteTransaction<'_> {
         let account_entry = EntryInitNew::from_iter(
             std::iter::once((
                 Attribute::Class,
-                ValueSetIutf8::from_iter([
-                    EntryClass::Object.into(),
-                    EntryClass::Account.into(),
-                    EntryClass::Person.into(),
-                ]) as ValueSet,
+                vs_iutf8n!(
+                    EntryClass::Object.as_str(),
+                    EntryClass::Account.as_str(),
+                    EntryClass::Person.as_str()
+                ),
             ))
             .chain(attr_iter),
         );

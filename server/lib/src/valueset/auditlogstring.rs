@@ -58,7 +58,7 @@ impl ValueSetT for ValueSetAuditLogString {
     }
 
     fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool {
-        false
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

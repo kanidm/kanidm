@@ -1224,7 +1224,7 @@ mod tests {
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("test_uihint_group")),
-            (Attribute::Member, Value::Refer(target_uuid)),
+            (Attribute::Member, Value::ReferN(target_uuid)),
             (
                 Attribute::GrantUiHint,
                 Value::UiHint(UiHint::ExperimentalFeatures)

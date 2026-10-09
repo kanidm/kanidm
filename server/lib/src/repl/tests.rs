@@ -2372,7 +2372,7 @@ async fn test_repl_increment_memberof_basic(server_a: &QueryServer, server_b: &Q
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup1")),
             (Attribute::Uuid, Value::Uuid(g_uuid)),
-            (Attribute::Member, Value::Refer(t_uuid))
+            (Attribute::Member, Value::ReferN(t_uuid))
         ),])
         .is_ok());
 
@@ -2469,7 +2469,7 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
             (Attribute::Name, Value::new_iname("testgroup1")),
             // This UUID is what will conflict
             (Attribute::Uuid, Value::Uuid(g_uuid)),
-            (Attribute::Member, Value::Refer(t_uuid))
+            (Attribute::Member, Value::ReferN(t_uuid))
         ),])
         .is_ok());
 
@@ -2604,7 +2604,7 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
     assert!(server_a_txn
         .internal_modify_uuid(
             g_uuid,
-            &ModifyList::new_purge_and_set(Attribute::Member, Value::Refer(t_uuid))
+            &ModifyList::new_purge_and_set(Attribute::Member, Value::ReferN(t_uuid))
         )
         .is_ok());
     server_a_txn.commit().expect("Failed to commit");
@@ -2700,7 +2700,7 @@ async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup1")),
             (Attribute::Uuid, Value::Uuid(g_uuid)),
-            (Attribute::Member, Value::Refer(t_uuid))
+            (Attribute::Member, Value::ReferN(t_uuid))
         ),])
         .is_ok());
 
@@ -2816,7 +2816,7 @@ async fn test_repl_increment_refint_delete_to_member_holder(
     assert!(server_a_txn
         .internal_modify_uuid(
             g_uuid,
-            &ModifyList::new_purge_and_set(Attribute::Member, Value::Refer(t_uuid))
+            &ModifyList::new_purge_and_set(Attribute::Member, Value::ReferN(t_uuid))
         )
         .is_ok());
     server_a_txn.commit().expect("Failed to commit");
@@ -2910,7 +2910,7 @@ async fn test_repl_increment_attrunique_conflict_basic(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_a")),
             (Attribute::Uuid, Value::Uuid(g_a_uuid)),
-            (Attribute::Member, Value::Refer(t_uuid))
+            (Attribute::Member, Value::ReferN(t_uuid))
         ),])
         .is_ok());
 
@@ -2921,7 +2921,7 @@ async fn test_repl_increment_attrunique_conflict_basic(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_b")),
             (Attribute::Uuid, Value::Uuid(g_b_uuid)),
-            (Attribute::Member, Value::Refer(t_uuid))
+            (Attribute::Member, Value::ReferN(t_uuid))
         ),])
         .is_ok());
 
@@ -2933,8 +2933,8 @@ async fn test_repl_increment_attrunique_conflict_basic(
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup_c")),
             (Attribute::Uuid, Value::Uuid(g_c_uuid)),
-            (Attribute::Member, Value::Refer(g_a_uuid)),
-            (Attribute::Member, Value::Refer(g_b_uuid))
+            (Attribute::Member, Value::ReferN(g_a_uuid)),
+            (Attribute::Member, Value::ReferN(g_b_uuid))
         ),])
         .is_ok());
 
