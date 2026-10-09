@@ -93,10 +93,6 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok(())
     }
 
-    // We need a post-process handler for any events on the signup request. In a way this
-    // is kind of similar to a plugin but it doesn't have access to send emails via
-    // the delayed event queue.
-
     pub fn account_signup_request_verify(
         &mut self,
         asre: AccountSignupVerifyEvent,
@@ -154,19 +150,8 @@ impl IdmServerProxyWriteTransaction<'_> {
         self.qs_write.create(&ce)?;
 
         // Initiate a credential update.
-
         Ok(())
     }
-
-    /*
-    fn account_signup_validate_request_state(
-        &mut self,
-
-    ) -> Result<(), OperationError> {
-        // This processes the request and determines if it has passed the needed steps and should
-        // be allowed to continue to a creation.
-    }
-    */
 }
 
 #[cfg(test)]
