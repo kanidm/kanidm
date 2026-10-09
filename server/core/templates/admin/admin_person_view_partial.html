@@ -27,7 +27,7 @@
         (% for mail in person.mails %)
         <a href="mailto:(( mail.value ))" id="personMail(( loop.index ))" 
         class="list-group-item list-group-item-action d-flex flex-row justify-content-between">
-            <span class="text-break"><span class="me-1">&#128231;</span> (( mail.value ))</span>
+            <span class="text-break"><span class="me-1">📧</span> (( mail.value ))</span>
             (% if mail.primary %)<span class="badge text-bg-info opacity-50 ms-1">primary</span>(% endif %)
         </a>
         (% endfor %)
@@ -45,7 +45,7 @@
         (% for group in person.groups %)
         <a href="/ui/admin/group/(( group.uuid ))/view" id="personGroup(( loop.index ))" 
         class="list-group-item list-group-item-action text-break">
-            <span class="me-1">&#128101;</span> (( group.value ))
+            <span class="me-1">👥</span> (( group.value ))
         </a>
         (% endfor %)
     </div>

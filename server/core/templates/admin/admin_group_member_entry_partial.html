@@ -2,11 +2,11 @@
 <li hx-target="this" class="d-flex list-group-item(% if ! is_default_member %) list-group-item-action(% endif %)">
     (% if ! is_default_member %)
     <a class="flex-grow-1 text-decoration-none text-body text-break" href="/ui/admin/person/(( member_uuid ))/view">
-        <span class="me-1">&#128100;</span>(( member_name ))
+        <span class="me-1">👤</span>(( member_name ))
     </a>
     (% else %)
     <div class="flex-grow-1 text-break">
-        <span class="me-1">&#128100;</span><span class="text-secondary">(( member_name ))</span>
+        <span class="me-1">👤</span><span class="text-secondary">(( member_name ))</span>
     </div>
     (% endif %)
     <div class="d-flex align-items-center ">
