@@ -53,6 +53,7 @@ impl AsRef<str> for Urls {
             Self::WellKnownPasskeyEndpoints => "/.well-known/passkey-endpoints",
             Self::Radius => "/ui/radius",
             Self::Recover => "/ui/recover",
+            Self::Signup => "/ui/signup",
             Self::Admin => "/ui/admin/persons",
         }
     }
