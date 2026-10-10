@@ -1,12 +1,16 @@
 <tr hx-target="this">
-  <td><a href="/ui/admin/person/(( person_uuid ))/view" hx-target="#main">(( person_name ))</a></td>
+  <td class="position-relative w-25">
+      <span class="me-1">👤</span>
+      <a href="/ui/admin/person/(( person_uuid ))/view" hx-target="#main" 
+      class="stretched-link text-decoration-none">(( person_name ))</a>
+      <br><span class="ms-4 small">(( person_dname ))</span>
+  </td>
   <td>(( person_mail | assigned_or("—") ))</td>
-  <td class="font-monospace text-secondary">(( person_uuid ))</td>
+  <td class="font-monospace text-secondary d-none d-md-table-cell">(( person_uuid ))</td>
   <td>
-    <form hx-target=""
+    <form hx-post="/ui/api/admin/person/(( person_uuid ))/remove"
           hx-swap="delete"
-          hx-get="/ui/api/admin/person/(( person_uuid ))/remove"
-          hx-confirm="Are you sure you wish to delete the user &quot;((person_name))&quot;?">
+          hx-confirm="Are you sure you wish to delete the person \"((person_name))\"?">
       <button class="btn btn-tiny btn-danger" id="delete-person-button">Delete</button>
     </form>
   </td>
