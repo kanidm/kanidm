@@ -35,6 +35,7 @@ pub(crate) enum Urls {
     WellKnownPasskeyEndpoints,
     Radius,
     Recover,
+    Signup,
     Admin,
 }
 
