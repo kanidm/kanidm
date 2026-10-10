@@ -12,7 +12,7 @@
     <div class="d-flex align-items-center ">
         <form hx-post="/ui/api/admin/group/(( group_uuid ))/remove_member"
               hx-swap="delete"
-              hx-confirm="Are you sure you wish to delete the group member &quot;((member_name))&quot;?">
+              hx-confirm="Are you sure you wish to delete the group member \"((member_name))\"?">
         <input type="hidden" name="member" value="(( member_name ))">
         (% if can_edit_member %)
         <button type="submit" class="btn btn btn-tiny btn-danger kanidm-remove-list-entry">Remove</button>
