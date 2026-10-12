@@ -55,7 +55,6 @@ ENV KANIDM_CONFIG_FILE="/data/radius.toml"
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked \
     zypper install -y --no-recommends \
-    freeradius-client \
     freeradius-server \
     freeradius-server-utils \
     openssl

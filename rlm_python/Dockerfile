@@ -14,7 +14,6 @@ EXPOSE 1812 1813
 ENV KANIDM_CONFIG_FILE="/data/radius.toml"
 
 RUN zypper install -y \
-    freeradius-client \
     freeradius-server \
     freeradius-server-python3 \
     freeradius-server-utils \
