@@ -243,6 +243,24 @@ impl IdmServerProxyWriteTransaction<'_> {
 
         self.qs_write.modify(&modify_event)
     }
+
+    pub fn scim_feature_enable(
+        &mut self,
+        ident: &Identity,
+        feature_id: Uuid,
+        enabled: bool,
+    ) -> Result<(), OperationError> {
+        let filter = filter_all!(f_and(vec![
+            f_eq(Attribute::Uuid, PartialValue::Uuid(feature_id)),
+            f_eq(Attribute::Class, EntryClass::Feature.into())
+        ]));
+
+        let modlist = ModifyList::new_set(Attribute::Enabled, ValueSetBool::new(enabled));
+        let modify_event =
+            ModifyEvent::from_internal_parts(ident.clone(), &modlist, &filter, &self.qs_write)?;
+
+        self.qs_write.modify(&modify_event)
+    }
 }
 
 pub struct ScimSyncFinaliseEvent {
