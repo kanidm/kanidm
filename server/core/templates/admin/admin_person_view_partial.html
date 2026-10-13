@@ -22,17 +22,16 @@
 <form hx-validate="true" hx-ext="bs-validation">
     (% if person.mails.len() == 0 %)
     <p>There are no email addresses associated with this person.</p>
-    (% else %)
-    <ol class="list-group col-12 col-md-8 col-lg-6">
-        (% for mail in person.mails %)
-        <li id="personMail(( loop.index ))" class="list-group-item d-flex flex-row justify-content-between">
-            <div class="d-flex align-items-center">(( mail.value ))</div>
-            <div class="buttons float-end">
-            </div>
-        </li>
-        (% endfor %)
-    </ol>
     (% endif %)
+    <div class="list-group col-12 col-md-8 col-lg-6">
+        (% for mail in person.mails %)
+        <a href="mailto:(( mail.value ))" id="personMail(( loop.index ))" 
+        class="list-group-item list-group-item-action d-flex flex-row justify-content-between">
+            <span class="text-break"><span class="me-1">📧</span> (( mail.value ))</span>
+            (% if mail.primary %)<span class="badge text-bg-info opacity-50 ms-1">primary</span>(% endif %)
+        </a>
+        (% endfor %)
+    </div>
 </form>
 (% endif %)
 
@@ -41,17 +40,15 @@
 <form hx-validate="true" hx-ext="bs-validation">
     (% if person.groups.len() == 0 %)
     <p>There are no groups this person is a direct member of.</p>
-    (% else %)
-    <ol class="list-group col-12 col-md-8 col-lg-6">
-        (% for group in person.groups %)
-        <li id="personGroup(( loop.index ))" class="list-group-item d-flex flex-row justify-content-between">
-            <div class="d-flex align-items-center">(( group.value ))</div>
-            <div class="buttons float-end">
-            </div>
-        </li>
-        (% endfor %)
-    </ol>
     (% endif %)
+    <div class="list-group col-12 col-md-8 col-lg-6">
+        (% for group in person.groups %)
+        <a href="/ui/admin/group/(( group.uuid ))/view" id="personGroup(( loop.index ))" 
+        class="list-group-item list-group-item-action text-break">
+            <span class="me-1">👥</span> (( group.value ))
+        </a>
+        (% endfor %)
+    </div>
 </form>
 (% endif %)
 
