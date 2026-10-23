@@ -18,7 +18,7 @@
     (% if let Some(description) = person.description %)
         (% call string_attr("Description", "description", description, true, Attribute::Description) %)(% endcall %)
     (% else %)
-        (% call string_attr("Description", "description", "none", true, Attribute::Description) %)(% endcall %)
+        (% call string_attr("Description", "description", "—", true, Attribute::Description) %)(% endcall %)
     (% endif %)
 
     (% if let Some(entry_managed_by) = person.managed_by %)
