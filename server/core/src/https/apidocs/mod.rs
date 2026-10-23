@@ -95,6 +95,9 @@ impl Modify for SecurityAddon {
         super::v1_scim::scim_message_ready_get,
         super::v1_scim::scim_message_id_sent_post,
 
+        super::v1_scim::scim_feature_get,
+        super::v1_scim::scim_feature_id_enable_post,
+
         super::v1::schema_get,
         super::v1::whoami,
         super::v1::whoami_uat,
