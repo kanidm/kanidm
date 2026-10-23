@@ -89,6 +89,7 @@ struct GroupViewPartial {
 struct GroupMemberEntryResponse {
     group_uuid: Uuid,
     member_name: String,
+    member_uuid: Uuid,
     can_edit_member: bool,
 }
 
@@ -472,8 +473,13 @@ pub(crate) async fn add_member(
             .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
             .await?;
 
-        let Some(ScimValueKanidm::String(added_member_spn)) =
-            added_member_scim.attrs.get(&Attribute::Spn)
+        let (
+            Some(ScimValueKanidm::String(added_member_spn)),
+            Some(ScimValueKanidm::Uuid(added_member_uuid)),
+        ) = (
+            added_member_scim.attrs.get(&Attribute::Spn),
+            added_member_scim.attrs.get(&Attribute::Uuid),
+        )
         else {
             return Ok((ErrorToastPartial {
                 err_code: OperationError::UI0004MemberAlreadyExists,
@@ -486,6 +492,7 @@ pub(crate) async fn add_member(
         Ok((GroupMemberEntryResponse {
             group_uuid,
             member_name: added_member_spn.to_string(),
+            member_uuid: added_member_uuid.clone(),
             can_edit_member: true,
         })
         .into_response())
