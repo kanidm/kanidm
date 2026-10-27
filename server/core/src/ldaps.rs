@@ -105,6 +105,7 @@ async fn client_process<STREAM>(
             // I'd really have liked to have put this near the [LdapResponseState::Bind] but due
             // to the handing of `audit` it isn't possible due to borrows, etc.
             Some(LdapResponseState::Unbind) => break,
+            Some(LdapResponseState::NoResponse) => continue,
             Some(LdapResponseState::Disconnect(rmsg)) => {
                 if w.send(rmsg).await.is_err() {
                     break;
