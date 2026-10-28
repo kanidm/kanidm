@@ -2,13 +2,13 @@ ARG BASE_IMAGE=opensuse/tumbleweed:latest
 
 FROM ${BASE_IMAGE} AS repos
 ADD scripts/zypper_fixing.sh /zypper_fixing.sh
-RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
+RUN --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked /zypper_fixing.sh
 
 # ======================
 FROM repos AS builder
 
 RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked \
     zypper install -y \
     libopenssl-devel \
     clang \
@@ -53,13 +53,12 @@ EXPOSE 1812 1813
 ENV KANIDM_CONFIG_FILE="/data/radius.toml"
 
 RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked \
     zypper install -y --no-recommends \
     freeradius-client \
     freeradius-server \
     freeradius-server-utils \
-    openssl && \
-    zypper clean -a
+    openssl
 
 ADD  rlm_kanidm/container/mods-available/ /etc/raddb/mods-available/
 COPY rlm_kanidm/container/sites-available/ /etc/raddb/sites-available/
