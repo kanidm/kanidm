@@ -29,6 +29,7 @@ use crate::{
 #[allow(clippy::large_enum_variant)]
 pub enum LdapResponseState {
     Unbind,
+    NoResponse,
     Disconnect(LdapMsg),
     Bind(LdapBoundToken, LdapMsg),
     BindFailed(LdapBoundToken, LdapMsg),
@@ -728,6 +729,10 @@ impl LdapServer {
                     wr.gen_operror(format!("Unbound Connection {eventid}").as_str()),
                 )),
             },
+            ServerOps::Abandon { msgid } => {
+                debug!(?msgid, "Ignoring abandon request");
+                Ok(LdapResponseState::NoResponse)
+            }
         } // end match server op
     }
 
