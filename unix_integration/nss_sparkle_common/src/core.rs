@@ -41,7 +41,17 @@ impl RequestOptions {
         // Fast path - is the client already setup?
         match CLIENT.read().map(|guard| guard.deref().clone()) {
             Ok(Some(client)) => {
-                return Source::Daemon(client);
+                // Perform a ping, only on success return.
+                let req = ClientRequest::Ping;
+                let working = client
+                    .clone()
+                    .call_and_wait(req, None)
+                    .map(|res| matches!(res, ClientResponse::Ok))
+                    .unwrap_or_default();
+
+                if working {
+                    return Source::Daemon(client);
+                }
             }
             Ok(None) => {
                 // Fall through, we need to setup.

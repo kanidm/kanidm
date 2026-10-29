@@ -200,6 +200,7 @@ async fn handle_client(
             debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
 
             let resp = match req {
+                ClientRequest::Ping => ClientResponse::Ok,
                 ClientRequest::SshKey(account_id) => cachelayer
                     .get_sshkeys(account_id.as_str())
                     .await
