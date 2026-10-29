@@ -112,12 +112,14 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
             "/recover",
             get(recover::view_recover_get).post(recover::view_recover_post),
         )
-        /*
         .route(
             "/signup",
             get(signup::view_signup_get).post(signup::view_signup_post),
         )
-        */
+        .route(
+            "/signup/verify",
+            get(signup::view_signup_verify_get), // .post(signup::view_signup_verify_post),
+        )
         .route(
             "/revoke",
             get(reset::view_revoke_get).post(reset::view_revoke_post),

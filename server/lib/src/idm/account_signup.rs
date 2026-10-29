@@ -1,5 +1,7 @@
 use crate::{
-    idm::server::IdmServerProxyWriteTransaction, prelude::*, utils::readable_password_from_random,
+    idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction},
+    prelude::*,
+    utils::readable_password_from_random,
 };
 use crypto_glue::{s256::Sha256, traits::Digest};
 use kanidm_proto::v1::OutboundMessage;
@@ -11,6 +13,17 @@ pub struct AccountSignupRequestEvent {
     username: String,
     display_name: String,
     email: String,
+}
+
+impl AccountSignupRequestEvent {
+    pub fn new(username: String, display_name: String, email: String) -> Self {
+        Self {
+            ident: Identity::account_request(),
+            username,
+            display_name,
+            email,
+        }
+    }
 }
 
 pub struct AccountSignupVerifyEvent {
@@ -100,7 +113,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         // If the feature is not enabled, error.
         if !self.qs_write.get_feature_account_signup_config().enabled {
             warn!("Attempt to perform account signup while feature is disabled.");
-            return Err(OperationError::AS0001FeatureDisabled);
+            return Err(OperationError::AS0002FeatureDisabled);
         }
 
         let AccountSignupVerifyEvent { ident, intent_id } = asre;
@@ -154,9 +167,77 @@ impl IdmServerProxyWriteTransaction<'_> {
     }
 }
 
+pub struct AccountSignupDisplayEvent {
+    pub ident: Identity,
+    intent_id: String,
+}
+
+#[derive(Debug)]
+pub struct AccountSignupDisplay {
+    pub username: String,
+    pub display_name: String,
+}
+
+impl AccountSignupDisplayEvent {
+    pub fn new(intent_id: String) -> Self {
+        Self {
+            ident: Identity::account_request(),
+            intent_id,
+        }
+    }
+}
+
+impl IdmServerProxyReadTransaction<'_> {
+    pub fn account_signup_display(
+        &mut self,
+        asde: AccountSignupDisplayEvent,
+    ) -> Result<AccountSignupDisplay, OperationError> {
+        // If the feature is not enabled, error.
+        if !self.qs_read.get_feature_account_signup_config().enabled {
+            warn!("Attempt to perform account signup while feature is disabled.");
+            return Err(OperationError::AS0003FeatureDisabled);
+        }
+
+        let AccountSignupDisplayEvent { ident, intent_id } = asde;
+
+        let intent_sha256 = Sha256::digest(intent_id.as_bytes());
+
+        let filter = filter_all!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::AccountSignupRequest.into()),
+            f_eq(Attribute::S256, intent_sha256.into())
+        ]));
+
+        let signup_entry = self.qs_read.ident_search_single(&ident, filter)?;
+
+        debug!(?signup_entry);
+
+        let username = signup_entry
+            .get_ava_single_iname(Attribute::Name)
+            .map(String::from)
+            .ok_or_else(|| {
+                error!("account signup request missing attribute Name");
+                OperationError::AS0004InvalidState
+            })?;
+
+        let display_name = signup_entry
+            .get_ava_single_utf8(Attribute::DisplayName)
+            .map(String::from)
+            .ok_or_else(|| {
+                error!("account signup request missing attribute DisplayName");
+                OperationError::AS0005InvalidState
+            })?;
+
+        // Return just the details needed
+        Ok(AccountSignupDisplay {
+            username,
+            display_name,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{AccountSignupRequestEvent, AccountSignupVerifyEvent};
+    use super::{AccountSignupDisplayEvent, AccountSignupRequestEvent, AccountSignupVerifyEvent};
     use crate::prelude::*;
     use kanidm_proto::v1::OutboundMessage;
 
@@ -197,7 +278,22 @@ mod tests {
             .account_signup_request_verify(account_signup_verify)
             .unwrap_err();
 
-        assert_eq!(result, OperationError::AS0001FeatureDisabled);
+        assert_eq!(result, OperationError::AS0002FeatureDisabled);
+
+        assert!(write_txn.commit().is_ok());
+
+        let mut read_txn = idms.proxy_read().await.unwrap();
+
+        let account_signup_display = AccountSignupDisplayEvent {
+            ident: Identity::account_request(),
+            intent_id: String::default(),
+        };
+
+        let result = read_txn
+            .account_signup_display(account_signup_display)
+            .unwrap_err();
+
+        assert_eq!(result, OperationError::AS0003FeatureDisabled);
     }
 
     #[idm_test]
@@ -277,6 +373,29 @@ mod tests {
             _ => panic!("Wrong message type!"),
         };
 
+        assert!(write_txn.commit().is_ok());
+
+        // Verify we can read the display information.
+
+        let mut read_txn = idms.proxy_read().await.unwrap();
+
+        let account_signup_display = AccountSignupDisplayEvent {
+            ident: Identity::account_request(),
+            intent_id: intent_id.clone(),
+        };
+
+        let account_details = read_txn
+            .account_signup_display(account_signup_display)
+            .expect("Failed to view signup request");
+
+        assert_eq!(&account_details.username, TESTPERSON_NAME);
+        assert_eq!(&account_details.display_name, TESTPERSON_DISPLAY_NAME);
+
+        drop(read_txn);
+
+        // Now use the intent_id to complete the signup.
+        let mut write_txn = idms.proxy_write(ct).await.unwrap();
+
         let account_signup_verify = AccountSignupVerifyEvent {
             ident: Identity::account_request(),
             intent_id,
@@ -286,7 +405,6 @@ mod tests {
             .account_signup_request_verify(account_signup_verify)
             .expect("Unable to process account signup verification");
 
-        // Now use the intent_id to complete the signup.
         assert!(write_txn.commit().is_ok());
     }
 }
