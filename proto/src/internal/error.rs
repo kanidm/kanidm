@@ -168,6 +168,7 @@ pub enum OperationError {
     AS0003FeatureDisabled,
     AS0004InvalidState,
     AS0005InvalidState,
+    AS0006InvalidState,
 
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
@@ -500,11 +501,12 @@ impl OperationError {
             Self::KG004UnknownFeatureUuid => None,
             Self::KG005HowDidYouEvenManageThis => Some("You have damaged the fabric of space time and managed to perform an impossible action.".into()),
             Self::KG006DatastructureCorruption => None,
-            Self::AS0001FeatureDisabled => None,
-            Self::AS0002FeatureDisabled => None,
-            Self::AS0003FeatureDisabled => None,
-            Self::AS0004InvalidState => None,
-            Self::AS0005InvalidState => None,
+            Self::AS0001FeatureDisabled
+            | Self::AS0002FeatureDisabled
+            | Self::AS0003FeatureDisabled
+            | Self::AS0004InvalidState
+            | Self::AS0005InvalidState
+            | Self::AS0006InvalidState => None,
 
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,

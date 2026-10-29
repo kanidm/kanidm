@@ -31,6 +31,15 @@ pub struct AccountSignupVerifyEvent {
     intent_id: String,
 }
 
+impl AccountSignupVerifyEvent {
+    pub fn new(intent_id: String) -> Self {
+        Self {
+            ident: Identity::account_request(),
+            intent_id,
+        }
+    }
+}
+
 impl IdmServerProxyWriteTransaction<'_> {
     pub fn account_signup_request(
         &mut self,
@@ -109,7 +118,7 @@ impl IdmServerProxyWriteTransaction<'_> {
     pub fn account_signup_request_verify(
         &mut self,
         asre: AccountSignupVerifyEvent,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         // If the feature is not enabled, error.
         if !self.qs_write.get_feature_account_signup_config().enabled {
             warn!("Attempt to perform account signup while feature is disabled.");
@@ -157,13 +166,14 @@ impl IdmServerProxyWriteTransaction<'_> {
         let ce = CreateEvent {
             ident,
             entries: vec![account_entry],
-            return_created_uuids: false,
+            return_created_uuids: true,
         };
 
-        self.qs_write.create(&ce)?;
+        let created_uuids = self.qs_write.create(&ce)?;
 
-        // Initiate a credential update.
-        Ok(())
+        created_uuids
+            .and_then(|v| v.first().copied())
+            .ok_or(OperationError::AS0006InvalidState)
     }
 }
 

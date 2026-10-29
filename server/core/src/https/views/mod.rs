@@ -118,7 +118,7 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
         )
         .route(
             "/signup/verify",
-            get(signup::view_signup_verify_get), // .post(signup::view_signup_verify_post),
+            get(signup::view_signup_verify_get).post(signup::view_signup_verify_post),
         )
         .route(
             "/revoke",

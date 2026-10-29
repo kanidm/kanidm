@@ -1,5 +1,8 @@
 #![allow(clippy::result_large_err)]
-use super::csrf::{self, CsrfData, CsrfSolution};
+use super::{
+    constants::Urls,
+    csrf::{self, CsrfData, CsrfSolution},
+};
 use crate::https::{
     extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
     middleware::KOpId,
@@ -10,7 +13,7 @@ use askama_web::WebTemplate;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
-    response::{ErrorResponse, IntoResponse, Response},
+    response::{ErrorResponse, IntoResponse, Redirect, Response},
     Extension, Form,
 };
 use axum_extra::extract::CookieJar;
@@ -54,7 +57,6 @@ struct SignupVerify {
     domain_info: DomainInfoRead,
     username: String,
     display_name: String,
-    intent_id: String,
 }
 
 pub(crate) async fn view_signup_get(
@@ -154,7 +156,7 @@ pub(crate) async fn view_signup_verify_get(
     // jar: CookieJar,
 ) -> axum::response::Result<Response> {
     if !domain_info.allow_account_signup() {
-        return Ok(SignupDisabledView { domain_info }.into_response());
+        return Err(StatusCode::FORBIDDEN.into());
     }
 
     if let Some(token) = params.token {
@@ -165,15 +167,40 @@ pub(crate) async fn view_signup_verify_get(
             .await
             .map_err(|_| ErrorResponse::from(StatusCode::FORBIDDEN))?;
 
-        // debug!(?display);
-
         Ok(SignupVerify {
             domain_info,
             username: display.username,
             display_name: display.display_name,
-            intent_id: token,
         }
         .into_response())
+    } else {
+        // Display an error
+        Err(StatusCode::FORBIDDEN.into())
+    }
+}
+
+pub(crate) async fn view_signup_verify_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
+    Query(params): Query<TokenParam>,
+    // jar: CookieJar,
+) -> axum::response::Result<Response> {
+    if !domain_info.allow_account_signup() {
+        return Err(StatusCode::FORBIDDEN.into());
+    }
+
+    if let Some(token) = params.token {
+        // Proceed with the verification form
+        let reset = state
+            .qe_w_ref
+            .action_account_signup_verify(token.clone(), kopid.eventid)
+            .await
+            .map_err(|_| ErrorResponse::from(StatusCode::FORBIDDEN))?;
+
+        let token_uri_string = format!("{}?token={}", Urls::CredReset, reset.token);
+        Ok((Redirect::to(&token_uri_string)).into_response())
     } else {
         // Display an error
         Err(StatusCode::FORBIDDEN.into())

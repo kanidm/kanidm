@@ -1,8 +1,9 @@
 use super::QueryServerWriteV1;
+use kanidm_proto::internal::CUIntentToken;
 use kanidmd_lib::{
     idm::{
-        account_signup::AccountSignupRequestEvent,
-        credupdatesession::CredentialUpdateAccountRecovery,
+        account_signup::{AccountSignupRequestEvent, AccountSignupVerifyEvent},
+        credupdatesession::{CredentialUpdateAccountRecovery, InitCredentialUpdateIntentEvent},
     },
     prelude::{duration_from_epoch_now, OperationError},
 };
@@ -57,6 +58,42 @@ impl QueryServerWriteV1 {
             .and_then(|()| idms_prox_write.commit())
             .inspect_err(|err| {
                 error!(?err, "Failed to process account_signup_request");
+            })
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub(crate) async fn action_account_signup_verify(
+        &self,
+        intent_id: String,
+        eventid: Uuid,
+    ) -> Result<CUIntentToken, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+
+        let event = AccountSignupVerifyEvent::new(intent_id);
+
+        let target_uuid = idms_prox_write
+            .account_signup_request_verify(event)
+            .inspect_err(|err| {
+                error!(?err, "Failed to process action_account_signup");
+            })?;
+
+        // Now reset token
+
+        idms_prox_write
+            .init_credential_update_intent(
+                &InitCredentialUpdateIntentEvent::new_ident_account_request(target_uuid),
+                ct,
+            )
+            .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+            .inspect_err(|err| error!(?err, "Failed to begin init_credential_update_intent"))
+            .map(|tok| CUIntentToken {
+                token: tok.intent_id,
+                expiry_time: tok.expiry_time,
             })
     }
 }
