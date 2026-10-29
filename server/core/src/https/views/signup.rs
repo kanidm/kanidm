@@ -10,7 +10,7 @@ use askama_web::WebTemplate;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{ErrorResponse, IntoResponse, Response},
     Extension, Form,
 };
 use axum_extra::extract::CookieJar;
@@ -52,6 +52,9 @@ struct SignupComplete {
 #[template(path = "signup_verify.html")]
 struct SignupVerify {
     domain_info: DomainInfoRead,
+    username: String,
+    display_name: String,
+    intent_id: String,
 }
 
 pub(crate) async fn view_signup_get(
@@ -143,16 +146,34 @@ pub(crate) struct TokenParam {
 }
 
 pub(crate) async fn view_signup_verify_get(
-    State(_state): State<ServerState>,
-    // Extension(kopid): Extension<KOpId>,
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
-    DomainInfo(_domain_info): DomainInfo,
+    DomainInfo(domain_info): DomainInfo,
     Query(params): Query<TokenParam>,
     // jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    if let Some(_token) = params.token {
+    if !domain_info.allow_account_signup() {
+        return Ok(SignupDisabledView { domain_info }.into_response());
+    }
+
+    if let Some(token) = params.token {
         // Proceed with the verification form
-        todo!();
+        let display = state
+            .qe_r_ref
+            .action_account_signup_display(token.clone(), kopid.eventid)
+            .await
+            .map_err(|_| ErrorResponse::from(StatusCode::FORBIDDEN))?;
+
+        // debug!(?display);
+
+        Ok(SignupVerify {
+            domain_info,
+            username: display.username,
+            display_name: display.display_name,
+            intent_id: token,
+        }
+        .into_response())
     } else {
         // Display an error
         Err(StatusCode::FORBIDDEN.into())

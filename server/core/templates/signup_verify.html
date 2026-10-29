@@ -2,7 +2,38 @@
 
 (% block content %)
 	<div class="alert alert-info" role="alert">
-		Account signup todo here
+		Complete account signup with the following details?
 	</div>
+        <form
+            id="form"
+            action="#"
+            method="post"
+            >
+            <input
+                type="hidden"
+                id="intent_id"
+                name="intent_id"
+                type="text"
+                value="(( intent_id ))"
+
+            />
+            <div class="input-group mb-3">
+                <div class="form-group">
+                    <label for="username">Login Name</label>
+                    <p>(( username ))</p>
+                <div>
+            </div>
+            <div class="input-group mb-3">
+                <div class="form-group">
+                    <label for="display_name">Display Name</label>
+                    <p>(( display_name ))</p>
+                </div>
+            </div>
+            <div class="input-group mb-3 justify-content-md-center">
+                <button id="form_submit"
+                    class="btn btn-primary"
+                    type="submit">Submit</button>
+            </div>
+        </form>
 (% endblock %)
 
