@@ -94,6 +94,7 @@ impl Modify for SecurityAddon {
         super::v1_scim::scim_message_id_get,
         super::v1_scim::scim_message_ready_get,
         super::v1_scim::scim_message_id_sent_post,
+        super::v1_scim::scim_message_id_resend_post,
 
         super::v1_scim::scim_feature_get,
         super::v1_scim::scim_feature_id_enable_post,

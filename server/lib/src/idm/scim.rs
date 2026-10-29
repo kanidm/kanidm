@@ -244,6 +244,23 @@ impl IdmServerProxyWriteTransaction<'_> {
         self.qs_write.modify(&modify_event)
     }
 
+    pub fn scim_message_mark_resend(
+        &mut self,
+        ident: &Identity,
+        message_id: Uuid,
+    ) -> Result<(), OperationError> {
+        let filter = filter_all!(f_and(vec![
+            f_eq(Attribute::Uuid, PartialValue::Uuid(message_id)),
+            f_eq(Attribute::Class, EntryClass::OutboundMessage.into())
+        ]));
+
+        let modlist = ModifyList::new_purge(Attribute::SentAt);
+        let modify_event =
+            ModifyEvent::from_internal_parts(ident.clone(), &modlist, &filter, &self.qs_write)?;
+
+        self.qs_write.modify(&modify_event)
+    }
+
     pub fn scim_feature_enable(
         &mut self,
         ident: &Identity,

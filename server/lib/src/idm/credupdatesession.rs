@@ -614,8 +614,10 @@ impl IdmServerProxyWriteTransaction<'_> {
         // The initiating identity must be in readwrite mode! Effective permission assumes you
         // are in rw.
         if ident.access_scope() != AccessScope::ReadWrite {
-            security_access!("identity access scope is not permitted to modify");
-            security_access!("denied ❌");
+            security_access!(
+                ?ident,
+                "denied ❌ - identity access scope is not permitted to modify"
+            );
             return Err(OperationError::AccessDenied);
         }
 

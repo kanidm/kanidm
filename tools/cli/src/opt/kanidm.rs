@@ -1304,6 +1304,12 @@ pub enum MessageOpt {
         message_id: Uuid
     },
 
+    #[clap(name = "resend")]
+    /// Mark the message with this message ID as requiring a retransmission.
+    Resend {
+        message_id: Uuid
+    },
+
     #[clap(name = "send-test-message")]
     SendTestMessage {
         /// The account name of the person who this message should be sent to.
