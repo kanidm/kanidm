@@ -26,8 +26,10 @@ Before upgrading you should review [our upgrade documentation]
 
 #### 1.11.0 Important Changes
 
-- Passwords now have a max length of 128 UTF-8 characters (512 bytes). This is to prevent a rare class of denial of service during authentication requests.
-- rlm_kanidm has been rewritten from python to rust. This greatly improves performance. No configuration changes are required for the container.
+- Passwords now have a max length of 128 UTF-8 characters (512 bytes). This is to prevent a rare class of denial of
+  service during authentication requests.
+- rlm_kanidm has been rewritten from python to rust. This greatly improves performance. No configuration changes are
+  required for the container.
 
 #### 1.11.0 Release Highlights
 
@@ -68,19 +70,29 @@ Before upgrading you should review [our upgrade documentation]
 
 #### 1.10.0 Important Changes
 
-- OpenSSL is no longer required as a dependency. All cryptographic paths have been replaced by RustCrypto or Rustls using aws-lc-rs.
+- OpenSSL is no longer required as a dependency. All cryptographic paths have been replaced by RustCrypto or Rustls
+  using aws-lc-rs.
 - Kanidm-unixd now supports bind mounts as an alternative to symlinks for home mapping.
-- Account recovery can be enabled as a feature allowing a user to prove knowledge of their own email, and then have a credential reset email sent to them.
+- Account recovery can be enabled as a feature allowing a user to prove knowledge of their own email, and then have a
+  credential reset email sent to them.
   - Administrators can also trigger account recovery emails to be sent to users.
 
 #### 1.10.0 Release Highlights
 
-- Security - High: SCIM Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur leading to Denial of Service by an unauthenticated user
-- Security - High: LDAP Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur leading to Denial of Service by an unauthenticated user
-- Security - Moderate: PNG Image validation did not correctly handle short images allowing a panic to occur in a worker thread. This may lead to system instability over time
-- Security - Low: HTML injection via user DisplayName in Passkey enrolment dialogs. This allows an admin to execute JS in the context of a users browser. Since the admin already can reset the users credentials, the impact of this is minimal.
-- Security - Low: non-constant time comparison of OAuth2 client secret may allow a remote attacker to remotely recovery the bytes of the secret. Due to the length of the secret (48 chars) this is infeasible practically.
-- Security - Low: incorrect handling of origin validation in Webauthn-RS allowed a malicious domain to collide with a valid one (badexample.com would match with example.com). This is mitigated by browsers detecting the forgery and preventing the authentication from proceeding.
+- Security - High: SCIM Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur
+  leading to Denial of Service by an unauthenticated user
+- Security - High: LDAP Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur
+  leading to Denial of Service by an unauthenticated user
+- Security - Moderate: PNG Image validation did not correctly handle short images allowing a panic to occur in a worker
+  thread. This may lead to system instability over time
+- Security - Low: HTML injection via user DisplayName in Passkey enrolment dialogs. This allows an admin to execute JS
+  in the context of a users browser. Since the admin already can reset the users credentials, the impact of this is
+  minimal.
+- Security - Low: non-constant time comparison of OAuth2 client secret may allow a remote attacker to remotely recovery
+  the bytes of the secret. Due to the length of the secret (48 chars) this is infeasible practically.
+- Security - Low: incorrect handling of origin validation in Webauthn-RS allowed a malicious domain to collide with a
+  valid one (badexample.com would match with example.com). This is mitigated by browsers detecting the forgery and
+  preventing the authentication from proceeding.
 - 20260331 send account recovery emails (#4259)
 - Invert incorrect thread count logic (#4294)
 - Allow modification of OAuth2 Refresh Expiry (#4276)

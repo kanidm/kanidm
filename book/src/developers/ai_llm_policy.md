@@ -51,4 +51,3 @@ your own words and be concise in the PR description.
 
 In general, you should not open PRs for new features without talking to us first. If you have ideas on how our software
 could change to accommodate your use-case, please share your own thoughts by opening an issue or discussion first.
-

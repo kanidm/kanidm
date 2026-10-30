@@ -2,8 +2,8 @@
 
 A Python module for interacting with Kanidm.
 
-Currently in very very very early beta, please [log an issue](https://github.com/kanidm/kanidm/issues/new) for
-feature requests and bugs.
+Currently in very very very early beta, please [log an issue](https://github.com/kanidm/kanidm/issues/new) for feature
+requests and bugs.
 
 ## Installation
 

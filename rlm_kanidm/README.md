@@ -6,9 +6,11 @@ This is VERY much designed to be used with the container, but we're happy to acc
 
 ## Configuring it
 
-This matches the existing configuration, reading Kanidm-specific configuration from `/data/radius.toml` in the container. The python module tried a load of different paths but this is the default going forward.
+This matches the existing configuration, reading Kanidm-specific configuration from `/data/radius.toml` in the
+container. The python module tried a load of different paths but this is the default going forward.
 
-Service account auth token (the `auth_token` field) is the only way we're doing auth now, username/password is deprecated.
+Service account auth token (the `auth_token` field) is the only way we're doing auth now, username/password is
+deprecated.
 
 ## Building it
 
@@ -16,12 +18,12 @@ You need libtalloc and freeradius development headers
 
 ### Ubuntu
 
-* `libtalloc-dev`
+- `libtalloc-dev`
 
 ### OpenSUSE
 
-* `libtalloc-devel`
-* `freeradius-server-devel`
+- `libtalloc-devel`
+- `freeradius-server-devel`
 
 ### Building
 
