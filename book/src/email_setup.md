@@ -2,22 +2,22 @@
 
 > "All services evolve to the point they eventually can send email" - some wise nerd, probably.
 
-Kanidm can be configured to optionally send messages to users. This is important for features such
-as sending credential reset links.
+Kanidm can be configured to optionally send messages to users. This is important for features such as sending credential
+reset links.
 
 ## Architecture
 
-Kanidm maintains a message queue in its database. This allows all servers to queue
-messages to be sent to users. Each queued message is sent *at least* once.
+Kanidm maintains a message queue in its database. This allows all servers to queue messages to be sent to users. Each
+queued message is sent _at least_ once.
 
-`kanidmd` itself does not send the messages, but relies on an external tool, `kanidm-mail-sender`
-to process the mail queue. It is recommended you only run a single instance of the `kanidm-mail-sender`
-to prevent duplicate mail transmission.
+`kanidmd` itself does not send the messages, but relies on an external tool, `kanidm-mail-sender` to process the mail
+queue. It is recommended you only run a single instance of the `kanidm-mail-sender` to prevent duplicate mail
+transmission.
 
 ## Install Kanidm Mail Sender
 
-`kanidm-mail-sender` is part of the `kanidm/tools` container. Alternately it should be provided by
-the `kanidm-server` package if you are using a distribution source.
+`kanidm-mail-sender` is part of the `kanidm/tools` container. Alternately it should be provided by the `kanidm-server`
+package if you are using a distribution source.
 
 ## Mail Sender Service Account
 
@@ -39,7 +39,8 @@ kanidm service-account api-token generate mail-sender "mail sender token" --read
 
 > [!WARNING]
 >
-> The mail-sender service account should only be a member of `idm_message_senders` - never add them to any other group - use another account for other purposes!
+> The mail-sender service account should only be a member of `idm_message_senders` - never add them to any other group -
+> use another account for other purposes!
 
 ## Configuration
 
@@ -71,8 +72,8 @@ docker start kanidm-mail-sender
 
 ## Message Queue Management
 
-The message queue can be managed by members of the group `idm_message_admins`. By default this
-privilege is inherited by `idm_admins`.
+The message queue can be managed by members of the group `idm_message_admins`. By default this privilege is inherited by
+`idm_admins`.
 
 You can insert a test message into the queue with:
 
@@ -82,7 +83,6 @@ kanidm system message-queue send-test-message ellie
 ```
 
 Once inserted, the message can be viewed in the queue.
-
 
 ```bash
 $ kanidm system message-queue list

@@ -33,4 +33,9 @@ impl KanidmClient {
         self.perform_post_request(&format!("/scim/v1/Message/{message_id}/_sent"), ())
             .await
     }
+
+    pub async fn idm_message_resend(&self, message_id: Uuid) -> Result<(), ClientError> {
+        self.perform_post_request(&format!("/scim/v1/Message/{message_id}/_resend"), ())
+            .await
+    }
 }

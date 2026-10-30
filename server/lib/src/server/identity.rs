@@ -223,7 +223,7 @@ impl Identity {
             origin: IdentType::Internal(InternalRole::AccountRequest),
             source: Source::Internal,
             session_id: UUID_INTERNAL_SESSION_ID,
-            scope: AccessScope::ReadOnly,
+            scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
             last_verified_at: None,
         }

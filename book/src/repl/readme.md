@@ -11,10 +11,10 @@ all nodes can accept writes and distribute them to all other nodes. This is impo
 Because replication is eventually consistent, this means that there can be small delays between different servers
 receiving a change. This may result in some users noticing discrepancies that are quickly resolved.
 
-To minimise this, when you operate replication in a highly available deployment you should use a load balancer
-which uses sticky sessions so that users are redirected to the same server unless a failover event occurs.
-Another option is an "active-passive" configuration where your load balancer targets a single node. 
-Since replication is eventually consistent, there is no need for a manual failover or failback procedure in Kanidm.
+To minimise this, when you operate replication in a highly available deployment you should use a load balancer which
+uses sticky sessions so that users are redirected to the same server unless a failover event occurs. Another option is
+an "active-passive" configuration where your load balancer targets a single node. Since replication is eventually
+consistent, there is no need for a manual failover or failback procedure in Kanidm.
 
 In this chapter we will cover the details of planning, deploying and maintaining replication between Kanidm servers.
 

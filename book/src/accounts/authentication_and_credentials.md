@@ -142,14 +142,13 @@ You can allow users to perform account recovery without support. This is disable
 kanidm system domain set-allow-account-recovery true
 ```
 
-When enabled, users will be able to follow the account recovery link from the login page and have
-a credential reset link sent to their email. Users must prove knowledge of one of their account email addresses
-to proceed.
+When enabled, users will be able to follow the account recovery link from the login page and have a credential reset
+link sent to their email. Users must prove knowledge of one of their account email addresses to proceed.
 
 > [!NOTE]
 >
-> The account recovery form requires a proof-of-work challenge to be completed by the clients browser
-> as a minimal anti-spam mechanism. Other anti-spam protections may be added in the future.
+> The account recovery form requires a proof-of-work challenge to be completed by the clients browser as a minimal
+> anti-spam mechanism. Other anti-spam protections may be added in the future.
 
 ## Credential Deletion
 
@@ -183,6 +182,9 @@ kanidm reauth -D william
 
 ## Password Changed Time
 
-kanidm keeps track of the last time a password (relevant to logging in via LDAP/POSIX) was changed. This follows the [PrimaryCredFallback](../account_policy#setting-primary-credential-fallback) Policy, so if no Unix Credential is present, the last changed time of the Primary Credential will be used (if applicable).
+kanidm keeps track of the last time a password (relevant to logging in via LDAP/POSIX) was changed. This follows the
+[PrimaryCredFallback](../account_policy#setting-primary-credential-fallback) Policy, so if no Unix Credential is
+present, the last changed time of the Primary Credential will be used (if applicable).
 
-This is credential will also be provided through LDAP via the `pwdChangedTime` attribute and is required for external applications to be informed on when a user has changed their credentials and needs to be re-authenticated.
+This is credential will also be provided through LDAP via the `pwdChangedTime` attribute and is required for external
+applications to be informed on when a user has changed their credentials and needs to be re-authenticated.

@@ -59,7 +59,22 @@ pub(super) fn apply_modify_access<'a>(
         AccessBasicResult::Ignore => {}
     }
 
-    // Check with protected if we should proceed.
+    match modify_account_request_attrs(ident, entry) {
+        AccessModResult::Deny => denied = true,
+        AccessModResult::Allow {
+            mut pres_attr,
+            mut rem_attr,
+            mut pres_class,
+            mut rem_class,
+        } => {
+            allow_pres.append(&mut pres_attr);
+            allow_rem.append(&mut rem_attr);
+            allow_pres_cls.append(&mut pres_class);
+            allow_rem_cls.append(&mut rem_class);
+        }
+        AccessModResult::Constrain { .. } | AccessModResult::Ignore => {}
+    }
+
     match modify_migration_attrs(ident, entry) {
         AccessModResult::Deny => denied = true,
         AccessModResult::Allow {
@@ -246,11 +261,11 @@ fn modify_ident_test(ident: &Identity) -> AccessBasicResult {
             // No need to check ACS
             return AccessBasicResult::Grant;
         }
-        IdentType::Internal(InternalRole::Migration) => {
+        IdentType::Internal(InternalRole::Migration)
+        | IdentType::Internal(InternalRole::AccountRequest) => {
             return AccessBasicResult::Ignore;
         }
-        IdentType::Internal(InternalRole::MessageQueue)
-        | IdentType::Internal(InternalRole::AccountRequest) => {
+        IdentType::Internal(InternalRole::MessageQueue) => {
             trace!("Deny internal role from modification");
             return AccessBasicResult::Deny;
         }
@@ -511,6 +526,34 @@ fn modify_migration_attrs<'a>(
                 }
             }
             AccessModResult::Deny
+        }
+        _ => {
+            // We don't constraint or influence these.
+            AccessModResult::Ignore
+        }
+    }
+}
+
+fn modify_account_request_attrs<'a>(
+    ident: &Identity,
+    _entry: &Arc<EntrySealedCommitted>,
+) -> AccessModResult<'a> {
+    match &ident.origin {
+        IdentType::Internal(InternalRole::AccountRequest) => {
+            let allow_attrs = BTreeSet::from_iter([
+                Attribute::PrimaryCredential,
+                Attribute::PassKeys,
+                Attribute::AttestedPasskeys,
+                Attribute::UnixPassword,
+                Attribute::SshPublicKey,
+            ]);
+
+            AccessModResult::Allow {
+                pres_attr: allow_attrs.clone(),
+                rem_attr: allow_attrs,
+                pres_class: Default::default(),
+                rem_class: Default::default(),
+            }
         }
         _ => {
             // We don't constraint or influence these.

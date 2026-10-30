@@ -96,6 +96,9 @@ pub struct DomainInfo {
     pub(crate) d_allow_account_recovery: bool,
     // In future this should be image reference instead of the image itself.
     d_image: Option<ImageValue>,
+
+    // Needs to be part of the domain structure so we can expose this to the UI.
+    feature_config: FeatureConfig,
 }
 
 impl DomainInfo {
@@ -127,6 +130,10 @@ impl DomainInfo {
         self.d_allow_account_recovery
     }
 
+    pub fn allow_account_signup(&self) -> bool {
+        self.feature_config.account_signup.enabled
+    }
+
     #[cfg(feature = "test")]
     pub fn new_test() -> CowCell<Self> {
         concread::cowcell::CowCell::new(Self {
@@ -140,6 +147,7 @@ impl DomainInfo {
             d_allow_easter_eggs: false,
             d_allow_account_recovery: false,
             d_image: None,
+            feature_config: FeatureConfig::default(),
         })
     }
 }
@@ -150,18 +158,18 @@ pub struct SystemConfig {
     pub(crate) pw_badlist: HashSet<String>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct HmacNameHistoryConfig {
     pub(crate) enabled: bool,
     pub(crate) key: HmacSha256Key,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AccountSignupConfig {
     pub(crate) enabled: bool,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FeatureConfig {
     pub(crate) hmac_name_history: HmacNameHistoryConfig,
     pub(crate) account_signup: AccountSignupConfig,
@@ -172,7 +180,6 @@ pub struct QueryServer {
     phase: Arc<CowCell<ServerPhase>>,
     pub(crate) d_info: Arc<CowCell<DomainInfo>>,
     system_config: Arc<CowCell<SystemConfig>>,
-    feature_config: Arc<CowCell<FeatureConfig>>,
     be: Backend,
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
@@ -191,7 +198,6 @@ pub struct QueryServerReadTransaction<'a> {
     // type, maybe others?
     pub(crate) d_info: CowCellReadTxn<DomainInfo>,
     system_config: CowCellReadTxn<SystemConfig>,
-    feature_config: CowCellReadTxn<FeatureConfig>,
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
     key_providers: KeyProvidersReadTransaction,
@@ -229,7 +235,6 @@ pub struct QueryServerWriteTransaction<'a> {
     phase: CowCellWriteTxn<'a, ServerPhase>,
     d_info: CowCellWriteTxn<'a, DomainInfo>,
     system_config: CowCellWriteTxn<'a, SystemConfig>,
-    feature_config: CowCellWriteTxn<'a, FeatureConfig>,
     curtime: Duration,
     cid: CowCellWriteTxn<'a, Cid>,
     trim_cid: Cid,
@@ -1558,11 +1563,11 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     }
 
     fn get_feature_hmac_name_history_config(&self) -> &HmacNameHistoryConfig {
-        &self.feature_config.hmac_name_history
+        &self.d_info.feature_config.hmac_name_history
     }
 
     fn get_feature_account_signup_config(&self) -> &AccountSignupConfig {
-        &self.feature_config.account_signup
+        &self.d_info.feature_config.account_signup
     }
 
     fn txn_name_to_uuid(&mut self) -> &mut BTreeMap<String, Uuid> {
@@ -1912,11 +1917,11 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     }
 
     fn get_feature_hmac_name_history_config(&self) -> &HmacNameHistoryConfig {
-        &self.feature_config.hmac_name_history
+        &self.d_info.feature_config.hmac_name_history
     }
 
     fn get_feature_account_signup_config(&self) -> &AccountSignupConfig {
-        &self.feature_config.account_signup
+        &self.d_info.feature_config.account_signup
     }
 
     fn txn_name_to_uuid(&mut self) -> &mut BTreeMap<String, Uuid> {
@@ -2016,6 +2021,7 @@ impl QueryServer {
             d_allow_easter_eggs: false,
             d_allow_account_recovery: false,
             d_image: None,
+            feature_config: FeatureConfig::default(),
         }));
 
         let cid = Cid::new_lamport(s_uuid, curtime, &ts_max);
@@ -2023,8 +2029,6 @@ impl QueryServer {
 
         // These default to empty, but they'll be populated shortly.
         let system_config = Arc::new(CowCell::new(SystemConfig::default()));
-
-        let feature_config = Arc::new(CowCell::new(FeatureConfig::default()));
 
         let dyngroup_cache = Arc::new(CowCell::new(DynGroupCache::default()));
 
@@ -2052,7 +2056,6 @@ impl QueryServer {
             phase,
             d_info,
             system_config,
-            feature_config,
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::default()),
@@ -2147,7 +2150,6 @@ impl QueryServer {
             schema,
             d_info: self.d_info.read(),
             system_config: self.system_config.read(),
-            feature_config: self.feature_config.read(),
             accesscontrols: self.accesscontrols.read(),
             key_providers: self.key_providers.read(),
             _db_ticket: db_ticket,
@@ -2228,7 +2230,6 @@ impl QueryServer {
         let schema_write = self.schema.write();
         let d_info = self.d_info.write();
         let system_config = self.system_config.write();
-        let feature_config = self.feature_config.write();
         let phase = self.phase.write();
 
         let mut cid = self.cid_max.write();
@@ -2248,7 +2249,6 @@ impl QueryServer {
             phase,
             d_info,
             system_config,
-            feature_config,
             curtime,
             cid,
             trim_cid,
@@ -2919,7 +2919,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .get_ava_single_bool(Attribute::Enabled)
                         .unwrap_or_default();
 
-                    let feature_config_txn = self.feature_config.get_mut();
+                    let feature_config_txn = &mut self.d_info.get_mut().feature_config;
 
                     hmac_name_history_fixup =
                         !feature_config_txn.hmac_name_history.enabled && new_feature_enabled_state;
@@ -2939,7 +2939,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .get_ava_single_bool(Attribute::Enabled)
                         .unwrap_or_default();
 
-                    let feature_config_txn = self.feature_config.get_mut();
+                    let feature_config_txn = &mut self.d_info.get_mut().feature_config;
 
                     feature_config_txn.account_signup.enabled = new_feature_enabled_state;
 
@@ -3148,7 +3148,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             phase,
             d_info,
             system_config,
-            feature_config,
             mut be_txn,
             schema,
             accesscontrols,
@@ -3193,7 +3192,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .commit()
             .map(|_| d_info.commit())
             .map(|_| system_config.commit())
-            .map(|_| feature_config.commit())
             .map(|_| phase.commit())
             .map(|_| dyngroup_cache.commit())
             .and_then(|_| key_providers.commit())

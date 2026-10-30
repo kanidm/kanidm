@@ -842,6 +842,31 @@ async fn scim_message_id_sent_post(
 }
 
 #[utoipa::path(
+    delete,
+    path = "/scim/v1/Message/{id}/_resend",
+    responses(
+        (status = 200, content_type=APPLICATION_JSON),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_message_id_resend_post"
+)]
+async fn scim_message_id_resend_post(
+    State(state): State<ServerState>,
+    Path(message_id): Path<Uuid>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<()>, WebError> {
+    state
+        .qe_w_ref
+        .scim_message_id_resend(client_auth_info, kopid.eventid, message_id)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
     get,
     path = "/scim/v1/Person/{id}/_messages/_send_test",
     responses(
@@ -861,6 +886,62 @@ async fn scim_person_id_message_send_test_get(
     state
         .qe_w_ref
         .scim_person_message_send_test(client_auth_info, kopid.eventid, id)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    get,
+    path = "/scim/v1/Feature",
+    responses(
+        (status = 200, content_type=APPLICATION_JSON, body=ScimListResponse),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_feature_get"
+)]
+async fn scim_feature_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Query(scim_entry_get_query): Query<ScimEntryGetQuery>,
+) -> Result<Json<ScimListResponse>, WebError> {
+    state
+        .qe_r_ref
+        .scim_entry_search(
+            client_auth_info,
+            kopid.eventid,
+            EntryClass::Feature.into(),
+            scim_entry_get_query,
+        )
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    delete,
+    path = "/scim/v1/Message/{id}/_sent",
+    responses(
+        (status = 200, content_type=APPLICATION_JSON),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_feature_id_enable_post"
+)]
+async fn scim_feature_id_enable_post(
+    State(state): State<ServerState>,
+    Path(account_id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(enabled): Json<bool>,
+) -> Result<Json<()>, WebError> {
+    state
+        .qe_w_ref
+        .scim_feature_id_enable(client_auth_info, kopid.eventid, account_id, enabled)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -1022,6 +1103,17 @@ pub fn route_setup() -> Router<ServerState> {
         .route(
             "/scim/v1/Message/{id}/_sent",
             post(scim_message_id_sent_post),
+        )
+        .route(
+            "/scim/v1/Message/{id}/_resend",
+            post(scim_message_id_resend_post),
+        )
+        //  Feature    /Feature          GET               List or query feature settings
+        .route("/scim/v1/Feature", get(scim_feature_get))
+        //  Message    /Feature/{id}/_enable     POST      Enable or disable the feature
+        .route(
+            "/scim/v1/Feature/{id}/_enable",
+            post(scim_feature_id_enable_post),
         )
         // Synchronisation routes.
         .route(

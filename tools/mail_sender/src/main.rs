@@ -136,7 +136,7 @@ msg_id: {message_id}
             expiry_time,
         } => {
             let mut reset_url = ctx.instance_url.clone();
-            reset_url.set_path("/ui/signup_verify");
+            reset_url.set_path("/ui/signup/verify");
             reset_url.query_pairs_mut().append_pair("token", intent_id);
 
             // TODO - local users timezone preference.
