@@ -9,7 +9,7 @@
     </ol>
 </nav>
 
-<h4>Create new person</h4>
+<h4 class="mb-3">Create new person</h4>
 
 <form hx-boost="true"
         hx-post="/ui/api/admin/person/create"
@@ -33,15 +33,16 @@
 <table class="table table-striped">
     <thead>
         <tr>
-            <th scope="col">Person</th>
+            <th scope="col"><span class="ms-4">Person</span></th>
             <th scope="col">Email</th>
-            <th scope="col">Uuid</th>
+            <th scope="col" class="d-none d-md-table-cell">UUID</th>
             <th scope="col">Actions</th>
         </tr>
     </thead>
     <tbody id="persons">
     (% for (person, _) in persons %)
         (% let person_name = person.name.clone() %)
+        (% let person_dname = person.displayname.clone() %)
         (% let person_mail = person.get_primary_mail().clone() %)
         (% let person_uuid = person.uuid.clone() %)
         (% include "admin_person_entry_partial.html" %)
