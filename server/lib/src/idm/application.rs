@@ -486,7 +486,7 @@ mod tests {
                 (Attribute::Class, EntryClass::Group.to_value()),
                 (Attribute::Name, Value::new_iname(test_grp_name)),
                 (Attribute::Uuid, Value::Uuid(test_grp_uuid)),
-                (Attribute::Member, Value::Refer(test_usr_uuid))
+                (Attribute::Member, Value::ReferN(test_usr_uuid))
             );
 
             let e3 = entry_init!(

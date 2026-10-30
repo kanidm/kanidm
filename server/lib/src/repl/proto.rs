@@ -238,7 +238,7 @@ impl ReplEntryV1 {
 
                 let mut eattrs = Eattrs::default();
 
-                let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
+                let class_ava = vs_iutf8n![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![at.clone()];
 
                 eattrs.insert(Attribute::Uuid, vs_uuid![self.uuid]);

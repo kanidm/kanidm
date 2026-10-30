@@ -1308,7 +1308,7 @@ pub async fn person_id_credential_update_intent_send_post(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
     Json(cu_intent_send): Json<CUIntentSend>,
-) -> Result<Json<()>, WebError> {
+) -> Result<Json<Uuid>, WebError> {
     state
         .qe_w_ref
         .handle_idm_credential_update_intent_send(

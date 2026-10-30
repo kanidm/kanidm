@@ -28,7 +28,7 @@ impl ValueSetT for ValueSetMessage {
 
     fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool {
         debug_assert!(false);
-        false
+        true
     }
 
     fn contains(&self, _pv: &PartialValue) -> bool {

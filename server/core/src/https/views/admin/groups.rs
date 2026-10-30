@@ -52,6 +52,7 @@ pub const GROUP_ATTRIBUTES: [Attribute; 4] = [
 pub(crate) struct GroupsView {
     navbar_ctx: NavbarCtx,
     partial: GroupsPartialView,
+    title: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -65,6 +66,7 @@ struct GroupsPartialView {
 struct GroupView {
     partial: GroupViewPartial,
     navbar_ctx: NavbarCtx,
+    title: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -115,7 +117,7 @@ pub(crate) async fn view_group_view_get(
         .check_any(&std::collections::BTreeSet::from(GROUP_ATTRIBUTES));
 
     let group_partial = GroupViewPartial {
-        group,
+        group: group.clone(),
         can_rw,
         can_modify_any_attr,
         scim_effective_access,
@@ -131,6 +133,7 @@ pub(crate) async fn view_group_view_get(
             GroupView {
                 partial: group_partial,
                 navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
+                title: format!("Group - {}", group.name),
             },
         )
             .into_response()
@@ -159,6 +162,7 @@ pub(crate) async fn view_groups_get(
             GroupsView {
                 navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
                 partial: groups_partial,
+                title: "Groups".to_string(),
             },
         )
             .into_response()

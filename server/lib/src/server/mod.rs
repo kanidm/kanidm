@@ -96,6 +96,9 @@ pub struct DomainInfo {
     pub(crate) d_allow_account_recovery: bool,
     // In future this should be image reference instead of the image itself.
     d_image: Option<ImageValue>,
+
+    // Needs to be part of the domain structure so we can expose this to the UI.
+    feature_config: FeatureConfig,
 }
 
 impl DomainInfo {
@@ -127,6 +130,10 @@ impl DomainInfo {
         self.d_allow_account_recovery
     }
 
+    pub fn allow_account_signup(&self) -> bool {
+        self.feature_config.account_signup.enabled
+    }
+
     #[cfg(feature = "test")]
     pub fn new_test() -> CowCell<Self> {
         concread::cowcell::CowCell::new(Self {
@@ -140,6 +147,7 @@ impl DomainInfo {
             d_allow_easter_eggs: false,
             d_allow_account_recovery: false,
             d_image: None,
+            feature_config: FeatureConfig::default(),
         })
     }
 }
@@ -150,18 +158,18 @@ pub struct SystemConfig {
     pub(crate) pw_badlist: HashSet<String>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct HmacNameHistoryConfig {
     pub(crate) enabled: bool,
     pub(crate) key: HmacSha256Key,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AccountSignupConfig {
     pub(crate) enabled: bool,
 }
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FeatureConfig {
     pub(crate) hmac_name_history: HmacNameHistoryConfig,
     pub(crate) account_signup: AccountSignupConfig,
@@ -172,7 +180,6 @@ pub struct QueryServer {
     phase: Arc<CowCell<ServerPhase>>,
     pub(crate) d_info: Arc<CowCell<DomainInfo>>,
     system_config: Arc<CowCell<SystemConfig>>,
-    feature_config: Arc<CowCell<FeatureConfig>>,
     be: Backend,
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
@@ -191,7 +198,6 @@ pub struct QueryServerReadTransaction<'a> {
     // type, maybe others?
     pub(crate) d_info: CowCellReadTxn<DomainInfo>,
     system_config: CowCellReadTxn<SystemConfig>,
-    feature_config: CowCellReadTxn<FeatureConfig>,
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
     key_providers: KeyProvidersReadTransaction,
@@ -229,7 +235,6 @@ pub struct QueryServerWriteTransaction<'a> {
     phase: CowCellWriteTxn<'a, ServerPhase>,
     d_info: CowCellWriteTxn<'a, DomainInfo>,
     system_config: CowCellWriteTxn<'a, SystemConfig>,
-    feature_config: CowCellWriteTxn<'a, FeatureConfig>,
     curtime: Duration,
     cid: CowCellWriteTxn<'a, Cid>,
     trim_cid: Cid,
@@ -582,6 +587,33 @@ pub trait QueryServerTransaction<'a> {
         self.search_ext(&se)
     }
 
+    fn ident_search(
+        &mut self,
+        ident: &Identity,
+        filter: Filter<FilterInvalid>,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        let f_intent_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let f_valid = f_intent_valid.clone().into_ignore_hidden();
+
+        let se = SearchEvent::new_impersonate(ident, f_valid, f_intent_valid);
+        self.search(&se)
+    }
+
+    fn ident_search_single(
+        &mut self,
+        ident: &Identity,
+        filter: Filter<FilterInvalid>,
+    ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
+        let mut vs = self.ident_search(ident, filter)?;
+        match vs.pop() {
+            Some(entry) if vs.is_empty() => Ok(entry),
+            _ => Err(OperationError::NoMatchingEntries),
+        }
+    }
+
     // Who they are will go here
     fn impersonate_search(
         &mut self,
@@ -739,7 +771,9 @@ pub trait QueryServerTransaction<'a> {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::Utf8String => Ok(Value::new_utf8(value.to_string())),
+                    SyntaxType::Utf8StringInsensitiveN => Ok(Value::new_iutf8n(value)),
                     SyntaxType::Utf8StringInsensitive => Ok(Value::new_iutf8(value)),
+                    SyntaxType::Utf8StringInameN => Ok(Value::new_inamen(value)),
                     SyntaxType::Utf8StringIname => Ok(Value::new_iname(value)),
                     SyntaxType::Boolean => Value::new_bools(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
@@ -758,7 +792,15 @@ pub trait QueryServerTransaction<'a> {
                             .unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(Value::Uuid(un))
                     }
-                    SyntaxType::ReferenceUuid => {
+                    SyntaxType::ReferenceUuidN
+                    => {
+                        let un = self
+                            .name_to_uuid(value)
+                            .unwrap_or(UUID_DOES_NOT_EXIST);
+                        Ok(Value::ReferN(un))
+                    }
+                    SyntaxType::ReferenceUuid
+                    => {
                         let un = self
                             .name_to_uuid(value)
                             .unwrap_or(UUID_DOES_NOT_EXIST);
@@ -785,6 +827,9 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid DateTime (rfc3339) syntax".to_string())),
                     SyntaxType::EmailAddress => Value::new_email_address_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Email Address syntax".to_string())),
+
+                    SyntaxType::UrlN => Value::new_urln_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
                     SyntaxType::Url => Value::new_url_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
                     SyntaxType::OauthScope => Value::new_oauthscope(value)
@@ -817,6 +862,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::Json => Err(OperationError::InvalidAttribute("Json values can not be supplied through modification".to_string())),
                     SyntaxType::Sha256 => Err(OperationError::InvalidAttribute("SHA256 values can not be supplied through modification".to_string())),
                     SyntaxType::Message => Err(OperationError::InvalidAttribute("Message values can not be supplied through modification".to_string())),
+                    SyntaxType::UuidN => Err(OperationError::InvalidAttribute("Uuid-Set values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -842,9 +888,12 @@ pub trait QueryServerTransaction<'a> {
                         Ok(PartialValue::new_utf8(value.to_string()))
                     }
                     SyntaxType::Utf8StringInsensitive
+                    | SyntaxType::Utf8StringInsensitiveN
                     | SyntaxType::JwsKeyEs256
                     | SyntaxType::JwsKeyRs256 => Ok(PartialValue::new_iutf8(value)),
-                    SyntaxType::Utf8StringIname => Ok(PartialValue::new_iname(value)),
+                    SyntaxType::Utf8StringInameN | SyntaxType::Utf8StringIname => {
+                        Ok(PartialValue::new_iname(value))
+                    }
                     SyntaxType::Boolean => PartialValue::new_bools(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid boolean syntax".to_string())
                     }),
@@ -861,7 +910,7 @@ pub trait QueryServerTransaction<'a> {
                                 "Invalid credentialtype syntax".to_string(),
                             )
                         }),
-                    SyntaxType::Uuid => {
+                    SyntaxType::Uuid | SyntaxType::UuidN => {
                         let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(PartialValue::Uuid(un))
                     }
@@ -869,6 +918,7 @@ pub trait QueryServerTransaction<'a> {
                     // schema.rs for reference type / cache awareness during referential
                     // integrity processing. Exceptions are self-contained value types!
                     SyntaxType::ReferenceUuid
+                    | SyntaxType::ReferenceUuidN
                     | SyntaxType::OauthScopeMap
                     | SyntaxType::Session
                     | SyntaxType::ApiToken
@@ -914,11 +964,12 @@ pub trait QueryServerTransaction<'a> {
                         )
                     }),
                     SyntaxType::EmailAddress => Ok(PartialValue::new_email_address_s(value)),
-                    SyntaxType::Url => PartialValue::new_url_s(value).ok_or_else(|| {
-                        OperationError::InvalidAttribute(
-                            "Invalid Url (whatwg/url) syntax".to_string(),
-                        )
-                    }),
+                    SyntaxType::UrlN | SyntaxType::Url => PartialValue::new_url_s(value)
+                        .ok_or_else(|| {
+                            OperationError::InvalidAttribute(
+                                "Invalid Url (whatwg/url) syntax".to_string(),
+                            )
+                        }),
                     SyntaxType::OauthScope => Ok(PartialValue::new_oauthscope(value)),
                     SyntaxType::PrivateBinary => Ok(PartialValue::PrivateBinary),
                     SyntaxType::IntentToken => PartialValue::new_intenttoken_s(value.to_string())
@@ -985,6 +1036,17 @@ pub trait QueryServerTransaction<'a> {
         scim_value_intermediate: ScimValueIntermediate,
     ) -> Result<Option<ScimValueKanidm>, OperationError> {
         match scim_value_intermediate {
+            ScimValueIntermediate::Reference(uuid) => {
+                let scim_reference = self
+                    .uuid_to_spn(uuid)
+                    .and_then(|maybe_value| maybe_value.ok_or(OperationError::InvalidValueState))
+                    .map(|value| ScimReference {
+                        uuid,
+                        value: value.to_proto_string_clone(),
+                    })?;
+                Ok(Some(ScimValueKanidm::EntryReference(scim_reference)))
+            }
+
             ScimValueIntermediate::References(uuids) => {
                 let scim_references = uuids
                     .into_iter()
@@ -1072,19 +1134,19 @@ pub trait QueryServerTransaction<'a> {
                 };
                 Ok(PartialValue::Utf8(value.to_string()))
             }
-            SyntaxType::Utf8StringInsensitive => {
+            SyntaxType::Utf8StringInsensitive | SyntaxType::Utf8StringInsensitiveN => {
                 let JsonValue::String(value) = value else {
                     return Err(OperationError::InvalidAttribute(attr.to_string()));
                 };
                 Ok(PartialValue::new_iutf8(value))
             }
-            SyntaxType::Utf8StringIname => {
+            SyntaxType::Utf8StringIname | SyntaxType::Utf8StringInameN => {
                 let JsonValue::String(value) = value else {
                     return Err(OperationError::InvalidAttribute(attr.to_string()));
                 };
                 Ok(PartialValue::new_iname(value))
             }
-            SyntaxType::Uuid => {
+            SyntaxType::Uuid | SyntaxType::UuidN => {
                 let JsonValue::String(value) = value else {
                     return Err(OperationError::InvalidAttribute(attr.to_string()));
                 };
@@ -1108,6 +1170,7 @@ pub trait QueryServerTransaction<'a> {
                 Ok(PartialValue::Syntax(value))
             }
             SyntaxType::ReferenceUuid
+            | SyntaxType::ReferenceUuidN
             | SyntaxType::OauthScopeMap
             | SyntaxType::Session
             | SyntaxType::ApiToken
@@ -1121,7 +1184,10 @@ pub trait QueryServerTransaction<'a> {
                 Ok(PartialValue::Refer(un))
             }
 
-            _ => Err(OperationError::InvalidAttribute(attr.to_string())),
+            syntax => {
+                debug!(?attr, ?syntax, "resolve_scim_json_get not implemented");
+                Err(OperationError::InvalidAttribute(attr.to_string()))
+            }
         }
     }
 
@@ -1130,23 +1196,74 @@ pub trait QueryServerTransaction<'a> {
         vs_inter: ValueSetIntermediate,
     ) -> Result<ValueSet, OperationError> {
         match vs_inter {
-            ValueSetIntermediate::References {
-                mut resolved,
-                unresolved,
-            } => {
-                for value in unresolved {
-                    let un = self.name_to_uuid(value.as_str()).unwrap_or_else(|_| {
-                        warn!(
-                            ?value,
-                            "Value can not be resolved to a uuid - assuming it does not exist."
-                        );
-                        UUID_DOES_NOT_EXIST
-                    });
+            ValueSetIntermediate::Reference(reference) => {
+                let resolved = match reference {
+                            UnresolvedReferenceState::Uuid(uuid) => uuid,
+                            UnresolvedReferenceState::Value(value) => {
+                                self.name_to_uuid(value.as_str()).unwrap_or_else(|_| {
+                                    warn!(
+                                        ?value,
+                                        "Value can not be resolved to a uuid - assuming it does not exist."
+                                    );
+                                    UUID_DOES_NOT_EXIST
+                                })
+                            }
+                            UnresolvedReferenceState::Complete {
+                                uuid, value
+                            } => {
+                                self.name_to_uuid(value.as_str())
+                                    .inspect(|r_uuid| if *r_uuid != uuid {
+                                        warn!(?r_uuid, ?uuid, "Resolved uuid does not match provided uuid for value - this will become an error in future.");
+                                    })
+                                .unwrap_or_else(|_| {
+                                    warn!(
+                                        ?value,
+                                        "Value can not be resolved to a uuid - assuming it does not exist."
+                                    );
+                                    uuid
+                                })
+                            }
+                        };
 
-                    resolved.insert(un);
-                }
+                let vs = ValueSetRefer::new(resolved);
+                Ok(vs)
+            }
 
-                let vs = ValueSetRefer::from_set(resolved);
+            ValueSetIntermediate::References { unresolved } => {
+                let resolved = unresolved.into_iter()
+                    .map(|value| {
+
+                        match value {
+                            UnresolvedReferenceState::Uuid(uuid) => uuid,
+                            UnresolvedReferenceState::Value(value) => {
+                                self.name_to_uuid(value.as_str()).unwrap_or_else(|_| {
+                                    warn!(
+                                        ?value,
+                                        "Value can not be resolved to a uuid - assuming it does not exist."
+                                    );
+                                    UUID_DOES_NOT_EXIST
+                                })
+                            }
+                            UnresolvedReferenceState::Complete {
+                                uuid, value
+                            } => {
+                                self.name_to_uuid(value.as_str())
+                                    .inspect(|r_uuid| if *r_uuid != uuid {
+                                        warn!(?r_uuid, ?uuid, "Resolved uuid does not match provided uuid for value - this will become an error in future.");
+                                    })
+                                .unwrap_or_else(|_| {
+                                    warn!(
+                                        ?value,
+                                        "Value can not be resolved to a uuid - assuming it does not exist."
+                                    );
+                                    uuid
+                                })
+                            }
+                        }
+                    })
+                    .collect();
+
+                let vs = ValueSetReferN::from_set(resolved);
                 Ok(vs)
             }
 
@@ -1446,11 +1563,11 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     }
 
     fn get_feature_hmac_name_history_config(&self) -> &HmacNameHistoryConfig {
-        &self.feature_config.hmac_name_history
+        &self.d_info.feature_config.hmac_name_history
     }
 
     fn get_feature_account_signup_config(&self) -> &AccountSignupConfig {
-        &self.feature_config.account_signup
+        &self.d_info.feature_config.account_signup
     }
 
     fn txn_name_to_uuid(&mut self) -> &mut BTreeMap<String, Uuid> {
@@ -1643,7 +1760,8 @@ impl QueryServerReadTransaction<'_> {
             filter
         };
 
-        let filter_intent = Filter::from_scim_ro(&ident, &filter, self)?;
+        let filter_intent = Filter::from_scim_ro(&ident, &filter, self)
+            .inspect_err(|err| error!(?err, "Unable to resolve scim filter"))?;
 
         self.scim_search_filter_ext(ident, &filter_intent, query)
     }
@@ -1799,11 +1917,11 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     }
 
     fn get_feature_hmac_name_history_config(&self) -> &HmacNameHistoryConfig {
-        &self.feature_config.hmac_name_history
+        &self.d_info.feature_config.hmac_name_history
     }
 
     fn get_feature_account_signup_config(&self) -> &AccountSignupConfig {
-        &self.feature_config.account_signup
+        &self.d_info.feature_config.account_signup
     }
 
     fn txn_name_to_uuid(&mut self) -> &mut BTreeMap<String, Uuid> {
@@ -1903,6 +2021,7 @@ impl QueryServer {
             d_allow_easter_eggs: false,
             d_allow_account_recovery: false,
             d_image: None,
+            feature_config: FeatureConfig::default(),
         }));
 
         let cid = Cid::new_lamport(s_uuid, curtime, &ts_max);
@@ -1910,8 +2029,6 @@ impl QueryServer {
 
         // These default to empty, but they'll be populated shortly.
         let system_config = Arc::new(CowCell::new(SystemConfig::default()));
-
-        let feature_config = Arc::new(CowCell::new(FeatureConfig::default()));
 
         let dyngroup_cache = Arc::new(CowCell::new(DynGroupCache::default()));
 
@@ -1939,7 +2056,6 @@ impl QueryServer {
             phase,
             d_info,
             system_config,
-            feature_config,
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::default()),
@@ -2034,7 +2150,6 @@ impl QueryServer {
             schema,
             d_info: self.d_info.read(),
             system_config: self.system_config.read(),
-            feature_config: self.feature_config.read(),
             accesscontrols: self.accesscontrols.read(),
             key_providers: self.key_providers.read(),
             _db_ticket: db_ticket,
@@ -2115,7 +2230,6 @@ impl QueryServer {
         let schema_write = self.schema.write();
         let d_info = self.d_info.write();
         let system_config = self.system_config.write();
-        let feature_config = self.feature_config.write();
         let phase = self.phase.write();
 
         let mut cid = self.cid_max.write();
@@ -2135,7 +2249,6 @@ impl QueryServer {
             phase,
             d_info,
             system_config,
-            feature_config,
             curtime,
             cid,
             trim_cid,
@@ -2806,7 +2919,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .get_ava_single_bool(Attribute::Enabled)
                         .unwrap_or_default();
 
-                    let feature_config_txn = self.feature_config.get_mut();
+                    let feature_config_txn = &mut self.d_info.get_mut().feature_config;
 
                     hmac_name_history_fixup =
                         !feature_config_txn.hmac_name_history.enabled && new_feature_enabled_state;
@@ -2826,7 +2939,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .get_ava_single_bool(Attribute::Enabled)
                         .unwrap_or_default();
 
-                    let feature_config_txn = self.feature_config.get_mut();
+                    let feature_config_txn = &mut self.d_info.get_mut().feature_config;
 
                     feature_config_txn.account_signup.enabled = new_feature_enabled_state;
 
@@ -3035,7 +3148,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             phase,
             d_info,
             system_config,
-            feature_config,
             mut be_txn,
             schema,
             accesscontrols,
@@ -3080,7 +3192,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .commit()
             .map(|_| d_info.commit())
             .map(|_| system_config.commit())
-            .map(|_| feature_config.commit())
             .map(|_| phase.commit())
             .map(|_| dyngroup_cache.commit())
             .and_then(|_| key_providers.commit())
@@ -3277,7 +3388,7 @@ mod tests {
 
         assert_eq!(
             r3,
-            Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")))
+            Ok(Value::ReferN(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")))
         );
 
         // test attr reference already resolved.
@@ -3289,7 +3400,7 @@ mod tests {
         debug!("{:?}", r4);
         assert_eq!(
             r4,
-            Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")))
+            Ok(Value::ReferN(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")))
         );
     }
 
@@ -3309,13 +3420,16 @@ mod tests {
         let e_cd = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::ClassType.to_value()),
-            (Attribute::ClassName, EntryClass::TestClass.to_value()),
+            (
+                Attribute::ClassName,
+                Value::new_iutf8(EntryClass::TestClass.as_str())
+            ),
             (
                 Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
             (Attribute::Description, Value::new_utf8s("Test Class")),
-            (Attribute::May, Value::from(Attribute::Name))
+            (Attribute::May, Value::new_iutf8n(Attribute::Name.as_str()))
         );
         let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Add a new class.
@@ -3386,7 +3500,10 @@ mod tests {
                 Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
-            (Attribute::AttributeName, Value::from(Attribute::TestAttr)),
+            (
+                Attribute::AttributeName,
+                Value::new_iutf8(Attribute::TestAttr.as_str())
+            ),
             (Attribute::Description, Value::new_utf8s("Test Attribute")),
             (Attribute::MultiValue, Value::new_bool(false)),
             (Attribute::Unique, Value::new_bool(false)),
@@ -3475,9 +3592,9 @@ mod tests {
         // such as returning a new struct type for `members` attributes or `managed_by`
         let entry_managed_by_scim = scim_entry.attrs.get(&Attribute::EntryManagedBy).unwrap();
         match entry_managed_by_scim {
-            ScimValueKanidm::EntryReferences(managed_by) => {
+            ScimValueKanidm::EntryReference(managed_by) => {
                 assert_eq!(
-                    managed_by.first().unwrap().clone(),
+                    managed_by.clone(),
                     ScimReference {
                         uuid: UUID_IDM_ADMINS,
                         value: "idm_admins@example.com".to_string()

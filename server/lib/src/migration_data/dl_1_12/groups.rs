@@ -63,14 +63,14 @@ impl TryFrom<BuiltinGroup> for EntryInitNew {
             Attribute::Member,
             val.members
                 .into_iter()
-                .map(Value::Refer)
+                .map(Value::ReferN)
                 .collect::<Vec<Value>>(),
         );
         entry.set_ava(
             Attribute::MemberCreateOnce,
             val.member_create_once
                 .into_iter()
-                .map(Value::Refer)
+                .map(Value::ReferN)
                 .collect::<Vec<Value>>(),
         );
         // add any extra attributes

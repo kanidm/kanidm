@@ -70,12 +70,14 @@ impl ValueSetT for ValueSetUtf8 {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Utf8(s) => self.set.remove(s),
+            PartialValue::Utf8(s) => {
+                self.set.remove(s);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

@@ -336,7 +336,7 @@ impl QueryServerWriteV1 {
         client_auth_info: ClientAuthInfo,
         eventid: Uuid,
         uuid_or_name: String,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
         let ident = idms_prox_write
@@ -372,6 +372,56 @@ impl QueryServerWriteV1 {
 
         idms_prox_write
             .scim_message_mark_sent(&ident, message_id)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn scim_message_id_resend(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        message_id: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .inspect_err(|err| error!(?err, "Invalid identity"))?;
+
+        idms_prox_write
+            .scim_message_mark_resend(&ident, message_id)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn scim_feature_id_enable(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        uuid_or_name: String,
+        enabled: bool,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
+        let ident = idms_prox_write
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .inspect_err(|err| error!(?err, "Invalid identity"))?;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .inspect_err(|err| error!(?err, "Error resolving id to target"))?;
+
+        idms_prox_write
+            .scim_feature_enable(&ident, target, enabled)
             .and_then(|r| idms_prox_write.commit().map(|_| r))
     }
 

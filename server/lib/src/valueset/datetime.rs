@@ -79,10 +79,10 @@ impl ValueSetT for ValueSetDateTime {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::DateTime(u) => self.set.remove(u),
-            _ => false,
-        }
+        if let PartialValue::DateTime(u) = pv {
+            self.set.remove(u);
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

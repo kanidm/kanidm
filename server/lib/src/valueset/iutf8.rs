@@ -1,4 +1,3 @@
-use super::iname::ValueSetIname;
 use crate::{
     prelude::*,
     schema::SchemaAttribute,
@@ -10,14 +9,183 @@ use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetIutf8 {
-    set: BTreeSet<String>,
+    value: String,
 }
 
 impl ValueSetIutf8 {
     pub fn new(s: &str) -> Box<Self> {
+        Box::new(ValueSetIutf8 {
+            value: s.to_lowercase(),
+        })
+    }
+
+    pub fn from_dbvs2(value: String) -> Result<ValueSet, OperationError> {
+        Ok(Box::new(ValueSetIutf8 { value }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetIutf8 {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let value: String = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM Iutf8 Syntax Invalid");
+            OperationError::SC0017Iutf8SyntaxInvalid
+        })?;
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIutf8 {
+            value: value.to_lowercase(),
+        })))
+    }
+}
+
+impl ValueSetT for ValueSetIutf8 {
+    fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
+        match value {
+            Value::Iutf8(s) => {
+                if self.value != s {
+                    self.value = s;
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            _ => {
+                debug_assert!(false);
+                Err(OperationError::InvalidValueState)
+            }
+        }
+    }
+
+    fn clear(&mut self) {}
+
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
+        match pv {
+            PartialValue::Iutf8(s) => *s == self.value,
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
+    }
+
+    fn contains(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Iutf8(s) => *s == self.value,
+            _ => false,
+        }
+    }
+
+    fn substring(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Iutf8(s2) => self.value.contains(s2),
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
+    }
+
+    fn startswith(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Iutf8(s2) => self.value.starts_with(s2),
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
+    }
+
+    fn endswith(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Iutf8(s2) => self.value.ends_with(s2),
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
+    }
+
+    fn lessthan(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn len(&self) -> usize {
+        1
+    }
+
+    fn generate_idx_eq_keys(&self) -> Vec<String> {
+        std::iter::once(self.value.clone()).collect()
+    }
+
+    fn generate_idx_sub_keys(&self) -> Vec<String> {
+        debug_assert!(self.value == self.value.to_lowercase());
+
+        let mut trigraphs: Vec<_> = trigraph_iter(&self.value).collect();
+
+        trigraphs.sort_unstable();
+        trigraphs.dedup();
+
+        trigraphs.into_iter().map(String::from).collect()
+    }
+
+    fn syntax(&self) -> SyntaxType {
+        SyntaxType::Utf8StringInsensitive
+    }
+
+    fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
+        Value::validate_str_escapes(&self.value) && Value::validate_singleline(&self.value) &&
+                // I'm sure there is a better way ...
+                self.value.to_lowercase().as_str() == self.value.as_str()
+    }
+
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
+        Box::new(std::iter::once(self.value.clone()))
+    }
+
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(self.value.clone().into())
+    }
+
+    fn to_db_valueset_v2(&self) -> DbValueSetV2 {
+        DbValueSetV2::Iutf8Single(self.value.clone())
+    }
+
+    fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
+        Box::new(std::iter::once(PartialValue::Iutf8(self.value.clone())))
+    }
+
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
+        Box::new(std::iter::once(Value::Iutf8(self.value.clone())))
+    }
+
+    fn equal(&self, other: &ValueSet) -> bool {
+        if let Some(other) = other.to_iutf8_single() {
+            self.value == other
+        } else {
+            debug_assert!(false);
+            false
+        }
+    }
+
+    fn merge(&mut self, _other: &ValueSet) -> Result<(), OperationError> {
+        debug_assert!(false);
+        Err(OperationError::InvalidValueState)
+    }
+
+    fn to_iutf8_single(&self) -> Option<&str> {
+        Some(self.value.as_str())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ValueSetIutf8N {
+    set: BTreeSet<String>,
+}
+
+impl ValueSetIutf8N {
+    pub fn new(s: &str) -> Box<Self> {
         let mut set = BTreeSet::new();
         set.insert(s.to_lowercase());
-        Box::new(ValueSetIutf8 { set })
+        Box::new(ValueSetIutf8N { set })
     }
 
     pub fn push(&mut self, s: &str) -> bool {
@@ -26,22 +194,26 @@ impl ValueSetIutf8 {
 
     pub fn from_dbvs2(data: Vec<String>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
-        Ok(Box::new(ValueSetIutf8 { set }))
+        Ok(Box::new(ValueSetIutf8N { set }))
     }
 
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and str is foreign.
     #[allow(clippy::should_implement_trait)]
-    pub fn from_iter<'a, T>(iter: T) -> Option<Box<Self>>
+    pub fn from_iter<'a, T>(iter: T) -> Option<ValueSet>
     where
         T: IntoIterator<Item = &'a str>,
     {
-        let set = iter.into_iter().map(str::to_string).collect();
-        Some(Box::new(ValueSetIutf8 { set }))
+        let set: BTreeSet<_> = iter.into_iter().map(str::to_string).collect();
+        if set.is_empty() {
+            None
+        } else {
+            Some(Box::new(ValueSetIutf8N { set }))
+        }
     }
 }
 
-impl ValueSetScimPut for ValueSetIutf8 {
+impl ValueSetScimPut for ValueSetIutf8N {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         let ScimStrings(values) = serde_json::from_value(value).map_err(|err| {
             error!(?err, "SCIM Iutf8 Syntax Invalid");
@@ -50,16 +222,24 @@ impl ValueSetScimPut for ValueSetIutf8 {
 
         let set = values.iter().map(|s| s.to_lowercase()).collect();
 
-        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIutf8 {
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIutf8N {
             set,
         })))
     }
 }
 
-impl ValueSetT for ValueSetIutf8 {
+impl ValueSetT for ValueSetIutf8N {
+    fn migrate(&self) -> Result<Option<ValueSet>, OperationError> {
+        Ok(self.to_iutf8_single().map(|value| {
+            Box::new(ValueSetIutf8 {
+                value: value.to_string(),
+            }) as ValueSet
+        }))
+    }
+
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Iutf8(s) => Ok(self.set.insert(s)),
+            Value::Iutf8N(s) => Ok(self.set.insert(s)),
             _ => {
                 debug_assert!(false);
                 Err(OperationError::InvalidValueState)
@@ -73,12 +253,14 @@ impl ValueSetT for ValueSetIutf8 {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Iutf8(s) => self.set.remove(s),
+            PartialValue::Iutf8(s) => {
+                self.set.remove(s);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -140,7 +322,7 @@ impl ValueSetT for ValueSetIutf8 {
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::Utf8StringInsensitive
+        SyntaxType::Utf8StringInsensitiveN
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
@@ -156,6 +338,11 @@ impl ValueSetT for ValueSetIutf8 {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        // In future we'll make this array only in the response.
+        /*
+        let arr = self.set.iter().cloned().collect::<Vec<_>>();
+        Some(arr.into())
+        */
         let mut iter = self.set.iter().cloned();
         if self.len() == 1 {
             let v = iter.next().unwrap_or_default();
@@ -175,7 +362,7 @@ impl ValueSetT for ValueSetIutf8 {
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().map(|i| Value::new_iutf8(i.as_str())))
+        Box::new(self.set.iter().cloned().map(Value::Iutf8N))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {
@@ -212,24 +399,35 @@ impl ValueSetT for ValueSetIutf8 {
         Some(Box::new(self.set.iter().map(|s| s.as_str())))
     }
 
+    /*
     fn migrate_iutf8_iname(&self) -> Result<Option<ValueSet>, OperationError> {
         let vsi: Option<ValueSet> =
             ValueSetIname::from_iter(self.set.iter().map(|s| s.as_str())).map(|vs| vs as _);
         Ok(vsi)
     }
+    */
 }
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetIutf8;
+    use super::{ValueSetIutf8, ValueSetIutf8N};
     use crate::prelude::ValueSet;
 
     #[test]
-    fn test_scim_iutf8() {
+    fn test_scim_iutf8_single() {
         let vs: ValueSet = ValueSetIutf8::new("lowercase string");
         crate::valueset::scim_json_reflexive(&vs, r#""lowercase string""#);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetIutf8>(&vs, &[])
+    }
+
+    #[test]
+    fn test_scim_iutf8_multi() {
+        let vs: ValueSet = ValueSetIutf8N::from_iter(["lowercase string", "more string"]).unwrap();
+        crate::valueset::scim_json_reflexive(&vs, r#"["lowercase string", "more string"]"#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetIutf8N>(&vs, &[])
     }
 }

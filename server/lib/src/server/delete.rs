@@ -79,7 +79,7 @@ impl QueryServerWriteTransaction<'_> {
             assert!(candidate_uuids.is_disjoint(&ref_candidate_uuids));
         }
 
-        let mut cascade_delete_candidates: Vec<Entry<EntryInvalid, EntryCommitted>> =
+        let mut cascade_delete_candidates: Vec<EntryInvalidCommitted> =
             pre_cascade_delete_candidates
                 .iter()
                 // Invalidate and assign change id's
@@ -91,7 +91,7 @@ impl QueryServerWriteTransaction<'_> {
                 // These entries are the ones that are being deleted by cascade, so we mark them
                 // as such.
                 .map(|mut entry| {
-                    if let Some(refer_uuid) = entry.get_ava_single_refer(Attribute::Refers) {
+                    if let Some(refer_uuid) = entry.get_ava_refer_single(Attribute::Refers) {
                         // Stash the entry that triggered our deleted in this attribute. This
                         // allows us to restore this linkage on revive, and also being a uuid instead
                         // of a refers means that refint won't clean this linkage.
@@ -135,7 +135,7 @@ impl QueryServerWriteTransaction<'_> {
                     entry.set_ava_set(&Attribute::InMemoriam, ValueSetUuid::new(source_uuid));
                     entry.set_ava_set(
                         &Attribute::Class,
-                        vs_iutf8![EntryClass::Object.into(), EntryClass::Memorial.into()],
+                        vs_iutf8n![EntryClass::Object.into(), EntryClass::Memorial.into()],
                     );
                     // Now setup replication metadata so that we can put this entry
                     // into the invalid state.
@@ -350,6 +350,27 @@ impl QueryServerWriteTransaction<'_> {
             self.delete(&de)?;
         }
         Ok(())
+    }
+
+    pub(crate) fn ident_delete_uuid(
+        &mut self,
+        ident: &Identity,
+        target_uuid: Uuid,
+    ) -> Result<(), OperationError> {
+        let filter = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
+
+        let filter_orig = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let filter = filter_orig.clone().into_ignore_hidden();
+
+        let de = DeleteEvent {
+            ident: ident.clone(),
+            filter,
+            filter_orig,
+        };
+        self.delete(&de)
     }
 }
 

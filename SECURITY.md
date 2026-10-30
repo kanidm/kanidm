@@ -6,9 +6,12 @@ day grace period for resolution of any outstanding issues.
 
 ## AI Usage in Vulnerability Reports
 
-- Please review our projects [AI usage policy](https://github.com/kanidm/kanidm/blob/master/book/src/developers/ai_llm_policy.md) and avoid LLM outputs in issues.
+- Please review our projects
+  [AI usage policy](https://github.com/kanidm/kanidm/blob/master/book/src/developers/ai_llm_policy.md) and avoid LLM
+  outputs in issues.
 
-Importantly, note that while we allow AI/LLM usage to discover vulnerabilities, if you use AI/LLMs to generate the security report we will resolve the issue but will not grant you credit or publish the advisory to acknowledge you. 
+Importantly, note that while we allow AI/LLM usage to discover vulnerabilities, if you use AI/LLMs to generate the
+security report we will resolve the issue but will not grant you credit or publish the advisory to acknowledge you.
 
 ## Reporting a Vulnerability
 

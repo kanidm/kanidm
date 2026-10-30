@@ -13,6 +13,12 @@ pub enum OutboundMessage {
         #[serde(with = "time::serde::timestamp")]
         expiry_time: OffsetDateTime,
     },
+    AccountSignupRequestV1 {
+        username: String,
+        intent_id: String,
+        #[serde(with = "time::serde::timestamp")]
+        expiry_time: OffsetDateTime,
+    },
 }
 
 impl OutboundMessage {
@@ -20,6 +26,7 @@ impl OutboundMessage {
         match self {
             Self::TestMessageV1 { .. } => "test_message_v1",
             Self::CredentialResetV1 { .. } => "credential_reset_v1",
+            Self::AccountSignupRequestV1 { .. } => "account_signup_request_v1",
         }
     }
 }

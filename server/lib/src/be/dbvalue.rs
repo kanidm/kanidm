@@ -788,10 +788,20 @@ pub enum DbValueSetV2 {
     Utf8(Vec<String>),
     #[serde(rename = "I8")]
     Iutf8(Vec<String>),
+    #[serde(rename = "I8S")]
+    Iutf8Single(String),
     #[serde(rename = "N8")]
     Iname(Vec<String>),
+
+    #[serde(rename = "N8S")]
+    InameSingle(String),
+
     #[serde(rename = "UU")]
     Uuid(Vec<Uuid>),
+
+    #[serde(rename = "US")]
+    UuidSingle(Uuid),
+
     #[serde(rename = "BO")]
     Bool(Vec<bool>),
     #[serde(rename = "SY")]
@@ -800,6 +810,8 @@ pub enum DbValueSetV2 {
     IndexType(Vec<u16>),
     #[serde(rename = "RF")]
     Reference(Vec<Uuid>),
+    #[serde(rename = "RFS")]
+    ReferenceSingle(Uuid),
     #[serde(rename = "JF")]
     JsonFilter(Vec<String>),
     #[serde(rename = "CR")]
@@ -830,6 +842,10 @@ pub enum DbValueSetV2 {
     Address(Vec<DbValueAddressV1>),
     #[serde(rename = "UR")]
     Url(Vec<Url>),
+
+    #[serde(rename = "URS")]
+    UrlSingle(Url),
+
     #[serde(rename = "OS")]
     OauthScope(Vec<String>),
     #[serde(rename = "OM")]
@@ -944,7 +960,13 @@ impl DbValueSetV2 {
             DbValueSetV2::Certificate(set) => set.len(),
             DbValueSetV2::ApplicationPassword(set) => set.len(),
             DbValueSetV2::Sha256(set) => set.len(),
-            DbValueSetV2::Json(_) | DbValueSetV2::Message(_) => 1,
+            DbValueSetV2::Iutf8Single(_)
+            | DbValueSetV2::InameSingle(_)
+            | DbValueSetV2::ReferenceSingle(_)
+            | DbValueSetV2::UrlSingle(_)
+            | DbValueSetV2::UuidSingle(_)
+            | DbValueSetV2::Json(_)
+            | DbValueSetV2::Message(_) => 1,
         }
     }
 

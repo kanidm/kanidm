@@ -202,6 +202,10 @@ nav a.navbar-brand {
   transform: rotate(35deg);
 }
 
+[data-bs-theme="dark"] .ssh-list-icon {
+  filter: invert(1);
+}
+
 .cursor-pointer:hover {
   cursor: pointer;
 }

@@ -27,7 +27,10 @@ impl NameHistory {
                                 Attribute::NameHistory,
                                 Value::AuditLogString(cid.clone(), n),
                             ),
-                            _ => return Err(OperationError::InvalidValueState),
+                            value => {
+                                trace!(?value);
+                                return Err(OperationError::InvalidValueState);
+                            }
                         }
                     }
                 }
@@ -48,7 +51,10 @@ impl NameHistory {
                             Attribute::NameHistory,
                             Value::AuditLogString(cid.clone(), n),
                         ),
-                        _ => return Err(OperationError::InvalidValueState),
+                        value => {
+                            trace!(?value);
+                            return Err(OperationError::InvalidValueState);
+                        }
                     }
                 }
             }

@@ -1304,11 +1304,37 @@ pub enum MessageOpt {
         message_id: Uuid
     },
 
+    #[clap(name = "resend")]
+    /// Mark the message with this message ID as requiring a retransmission.
+    Resend {
+        message_id: Uuid
+    },
+
     #[clap(name = "send-test-message")]
     SendTestMessage {
         /// The account name of the person who this message should be sent to.
         to: String,
     }
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum FeatureOpt {
+    #[clap(name = "list")]
+    /// List all server features
+    List,
+
+    #[clap(name = "enable")]
+    /// Enable this named feature
+    Enable {
+        feature_name: String
+    },
+
+    #[clap(name = "disable")]
+    /// Disable this named feature
+    Disable {
+        feature_name: String
+    },
+
 }
 
 #[derive(Debug, Subcommand, Clone)]
@@ -1517,6 +1543,14 @@ pub enum SystemOpt {
         #[clap(subcommand)]
         commands: MessageOpt,
     },
+
+    #[clap(name = "feature")]
+    /// Manage server feature configuration
+    Feature {
+        #[clap(subcommand)]
+        commands: FeatureOpt,
+    },
+
     #[clap(name = "api")]
     /// API related things
     Api {

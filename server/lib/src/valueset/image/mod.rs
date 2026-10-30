@@ -307,21 +307,12 @@ impl ValueSetT for ValueSetImage {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Image(pv) => {
-                let imgset = self.set.clone();
-
-                let res: Vec<bool> = imgset
-                    .iter()
-                    .filter(|image| &image.hash_imagevalue() == pv)
-                    .map(|image| self.set.remove(image))
-                    .collect();
-                res.into_iter().any(|e| e)
-            }
+            PartialValue::Image(pv) => self.set.retain(|image| image.hash_imagevalue() != *pv),
             _ => {
                 debug_assert!(false);
-                false
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

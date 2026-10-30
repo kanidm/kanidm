@@ -261,20 +261,20 @@ mod tests {
 
         // We apply some member-of in the server now, so we add these before we seal.
         e.add_ava(Attribute::Class, EntryClass::MemberOf.into());
-        e.add_ava(Attribute::MemberOf, Value::Refer(UUID_IDM_ALL_PERSONS));
+        e.add_ava(Attribute::MemberOf, Value::ReferN(UUID_IDM_ALL_PERSONS));
         e.add_ava(
             Attribute::DirectMemberOf,
-            Value::Refer(UUID_IDM_ALL_PERSONS),
+            Value::ReferN(UUID_IDM_ALL_PERSONS),
         );
-        e.add_ava(Attribute::MemberOf, Value::Refer(UUID_IDM_ALL_ACCOUNTS));
+        e.add_ava(Attribute::MemberOf, Value::ReferN(UUID_IDM_ALL_ACCOUNTS));
         e.add_ava(
             Attribute::DirectMemberOf,
-            Value::Refer(UUID_IDM_ALL_ACCOUNTS),
+            Value::ReferN(UUID_IDM_ALL_ACCOUNTS),
         );
         // Indirectly via all persons
         e.add_ava(
             Attribute::MemberOf,
-            Value::Refer(UUID_IDM_PEOPLE_SELF_NAME_WRITE),
+            Value::ReferN(UUID_IDM_PEOPLE_SELF_NAME_WRITE),
         );
         // we also add the name_history ava!
         e.add_ava(

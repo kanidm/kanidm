@@ -1,5 +1,4 @@
 #![allow(clippy::result_large_err)]
-
 use super::csrf::{self, CsrfData, CsrfSolution};
 use crate::https::{
     extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},

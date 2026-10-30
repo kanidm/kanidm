@@ -89,7 +89,7 @@ impl DynGroup {
 
             trace!(entries_len = %entries.len());
 
-            let members = ValueSetRefer::from_iter(entries.iter().map(|e| e.get_uuid()));
+            let members = ValueSetReferN::from_iter(entries.iter().map(|e| e.get_uuid()));
             trace!(?members);
 
             if let Some(uuid_iter) = members.as_ref().and_then(|a| a.as_ref_uuid_iter()) {
@@ -231,7 +231,7 @@ impl DynGroup {
                     matches
                         .iter()
                         .copied()
-                        .for_each(|u| d_group.add_ava(Attribute::DynMember, Value::Refer(u)));
+                        .for_each(|u| d_group.add_ava(Attribute::DynMember, Value::ReferN(u)));
 
                     // The *dyn group* isn't changing, it's that a member OF the dyn group
                     // is being added. This means the dyngroup isn't part of the set that
@@ -381,7 +381,7 @@ impl DynGroup {
 
                 if let Some((pre, mut d_group)) = work_set.pop() {
                     matches.iter().copied().for_each(|choice| match choice {
-                        Ok(u) => d_group.add_ava(Attribute::DynMember, Value::Refer(u)),
+                        Ok(u) => d_group.add_ava(Attribute::DynMember, Value::ReferN(u)),
                         Err(u) => d_group.remove_ava(Attribute::DynMember, &PartialValue::Refer(u)),
                     });
 
@@ -782,7 +782,7 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::DynMember,
-                Value::Refer(UUID_ADMIN)
+                Value::ReferN(UUID_ADMIN)
             )]),
             None,
             |_| {},

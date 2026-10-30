@@ -86,6 +86,7 @@ pub static SCHEMA_ATTR_DOMAIN_NAME: LazyLock<SchemaAttribute> = LazyLock::new(||
     uuid: UUID_SCHEMA_ATTR_DOMAIN_NAME,
     name: Attribute::DomainName,
     description: "The domain's DNS name for webauthn and SPN generation purposes".to_string(),
+    multivalue: false,
     indexed: true,
     unique: true,
     syntax: SyntaxType::Utf8StringIname,
@@ -163,7 +164,7 @@ pub static SCHEMA_ATTR_DENIED_NAME_DL10: LazyLock<SchemaAttribute> =
         uuid: UUID_SCHEMA_ATTR_DENIED_NAME,
         name: Attribute::DeniedName,
         description: "Iname values that are not allowed to be used in 'name'.".to_string(),
-        syntax: SyntaxType::Utf8StringIname,
+        syntax: SyntaxType::Utf8StringInameN,
         multivalue: true,
         ..Default::default()
     });
@@ -206,7 +207,7 @@ pub static SCHEMA_ATTR_BADLIST_PASSWORD: LazyLock<SchemaAttribute> = LazyLock::n
     name: Attribute::BadlistPassword,
     description: "A password that is badlisted meaning that it can not be set as a valid password by any user account".to_string(),
     multivalue: true,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
     ..Default::default()
 }
 });
@@ -324,6 +325,7 @@ pub static SCHEMA_ATTR_OAUTH2_RS_NAME: LazyLock<SchemaAttribute> =
         uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_NAME,
         name: Attribute::OAuth2RsName,
         description: "The unique name of an external Oauth2 resource".to_string(),
+        multivalue: false,
         indexed: true,
         unique: true,
         syntax: SyntaxType::Utf8StringIname,
@@ -335,7 +337,7 @@ pub static SCHEMA_ATTR_OAUTH2_RS_ORIGIN_DL7: LazyLock<SchemaAttribute> =
         uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN,
         name: Attribute::OAuth2RsOrigin,
         description: "The origin domain of an OAuth2 client".to_string(),
-        syntax: SyntaxType::Url,
+        syntax: SyntaxType::UrlN,
         multivalue: true,
         ..Default::default()
     });
@@ -614,6 +616,7 @@ pub static SCHEMA_ATTR_SYNC_TOKEN_SESSION: LazyLock<SchemaAttribute> =
         description: "A session entry related to an issued sync token".to_string(),
         indexed: true,
         unique: true,
+        multivalue: true,
         syntax: SyntaxType::ApiToken,
         ..Default::default()
     });
@@ -655,7 +658,7 @@ pub static SCHEMA_ATTR_SYNC_YIELD_AUTHORITY: LazyLock<SchemaAttribute> =
             "A set of attributes that have their authority yielded to Kanidm in a sync agreement"
                 .to_string(),
         multivalue: true,
-        syntax: SyntaxType::Utf8StringInsensitive,
+        syntax: SyntaxType::Utf8StringInsensitiveN,
         ..Default::default()
     });
 
@@ -1076,7 +1079,7 @@ pub static SCHEMA_ATTR_S256: LazyLock<SchemaAttribute> = LazyLock::new(|| Schema
     description: "A Sha256 output.".to_string(),
     multivalue: true,
     unique: false,
-    indexed: false,
+    indexed: true,
     syntax: SyntaxType::Sha256,
     ..Default::default()
 });
@@ -1586,6 +1589,7 @@ pub static SCHEMA_CLASS_ACCOUNT_SIGNUP_REQUEST: LazyLock<SchemaClass> =
             Attribute::DisplayName,
             Attribute::Mail,
             Attribute::DeleteAfter,
+            Attribute::S256,
         ],
         ..Default::default()
     });

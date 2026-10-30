@@ -816,6 +816,10 @@ mod tests {
         );
         assert!(server_txn.modify(&me_sin).is_err());
 
+        /*
+        // No longer applies, since multi-value is a property of the syntax now so
+        // invalid Values won't work on inserts.
+
         // Add multivalue where not valid
         let me_sin = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
@@ -824,10 +828,11 @@ mod tests {
             )),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::Name,
-                Value::new_iname("testpersonx"),
+                Value::new_inamen("testpersonx"),
             )]),
         );
         assert!(server_txn.modify(&me_sin).is_err());
+        */
 
         // add class and valid values?
         let me_sin = ModifyEvent::new_internal_invalid(

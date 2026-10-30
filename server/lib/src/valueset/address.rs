@@ -124,9 +124,9 @@ impl ValueSetT for ValueSetAddress {
             }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -384,19 +384,16 @@ impl ValueSetT for ValueSetEmailAddress {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::EmailAddress(a) => {
-                let r = self.set.remove(a);
-                if &self.primary == a {
-                    // if we can, inject another former address into primary.
-                    if let Some(n) = self.set.iter().take(1).next().cloned() {
-                        self.primary = n
-                    }
+        if let PartialValue::EmailAddress(a) = pv {
+            self.set.remove(a);
+            if &self.primary == a {
+                // if we can, inject another former address into primary.
+                if let Some(n) = self.set.iter().take(1).next().cloned() {
+                    self.primary = n
                 }
-                r
             }
-            _ => false,
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -636,7 +633,7 @@ mod tests {
         );
 
         // Remove primary, assert it's gone and that the "first" address is assigned.
-        assert!(vs.remove(
+        assert!(!vs.remove(
             &PartialValue::new_email_address_s("primary@example.com"),
             &Cid::new_zero()
         ));

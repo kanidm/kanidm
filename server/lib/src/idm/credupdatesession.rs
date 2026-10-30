@@ -532,10 +532,18 @@ pub struct InitCredentialUpdateIntentEvent {
 
 impl InitCredentialUpdateIntentEvent {
     pub fn new(ident: Identity, target: Uuid, max_ttl: Option<Duration>) -> Self {
-        InitCredentialUpdateIntentEvent {
+        Self {
             ident,
             target,
             max_ttl,
+        }
+    }
+
+    pub fn new_ident_account_request(target: Uuid) -> Self {
+        Self {
+            ident: Identity::account_request(),
+            target,
+            max_ttl: Some(Duration::from_secs(60)),
         }
     }
 
@@ -546,7 +554,7 @@ impl InitCredentialUpdateIntentEvent {
         max_ttl: Duration,
     ) -> Self {
         let ident = Identity::from_impersonate_entry_readwrite(e);
-        InitCredentialUpdateIntentEvent {
+        Self {
             ident,
             target,
             max_ttl: Some(max_ttl),
@@ -606,8 +614,10 @@ impl IdmServerProxyWriteTransaction<'_> {
         // The initiating identity must be in readwrite mode! Effective permission assumes you
         // are in rw.
         if ident.access_scope() != AccessScope::ReadWrite {
-            security_access!("identity access scope is not permitted to modify");
-            security_access!("denied ❌");
+            security_access!(
+                ?ident,
+                "denied ❌ - identity access scope is not permitted to modify"
+            );
             return Err(OperationError::AccessDenied);
         }
 
@@ -1003,7 +1013,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         &mut self,
         event: CredentialUpdateAccountRecovery,
         ct: Duration,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         if !self.qs_write.domain_info().allow_account_recovery() {
             error!("Account Recovery is Disabled, Rejecting Attempt");
             return Err(OperationError::CU0010AccountRecoveryDisabled);
@@ -1053,7 +1063,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         &mut self,
         event: InitCredentialUpdateIntentSendEvent,
         ct: Duration,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         let (account, _resolved_account_policy, perms) =
             self.validate_init_credential_update(event.target, &event.ident)?;
 
@@ -1085,7 +1095,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         perms: CredUpdateSessionPerms,
         to_email: String,
         ct: Duration,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         // ==== AUTHORISATION CHECKED ===
         let (intent_id, expiry_time) =
             self.build_credential_update_intent(max_ttl, account, perms, ct)?;
@@ -3511,7 +3521,7 @@ mod tests {
         let test_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                ValueSetIutf8::from_iter([
+                ValueSetIutf8N::from_iter([
                     EntryClass::Object.into(),
                     EntryClass::Account.into(),
                     EntryClass::PosixAccount.into(),
@@ -3646,7 +3656,7 @@ mod tests {
         let test_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                ValueSetIutf8::from_iter([
+                ValueSetIutf8N::from_iter([
                     EntryClass::Object.into(),
                     EntryClass::Account.into(),
                     EntryClass::Person.into(),

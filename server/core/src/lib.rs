@@ -75,6 +75,8 @@ use tokio_rustls::TlsAcceptor;
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
 
+pub const KANIDM_PKG_VERSION: &str = env!("KANIDM_PKG_VERSION");
+
 // === internal setup helpers
 
 fn setup_backend(config: &Configuration, schema: &Schema) -> Result<Backend, OperationError> {
@@ -1119,7 +1121,7 @@ pub async fn create_server_core(
         // movement.
         match idms_prox_write.qs_write.internal_modify_uuid(
             UUID_IDM_ADMINS,
-            &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ADMIN)),
+            &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ADMIN)),
         ) {
             Ok(_) => {}
             Err(e) => {

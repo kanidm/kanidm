@@ -4,7 +4,7 @@ ARG BASE_IMAGE=opensuse/tumbleweed:latest
 
 FROM ${BASE_IMAGE} AS repos
 ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
-RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
+RUN --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked /zypper_fixing.sh
 
 FROM repos AS build_base
 ARG KANIDM_FEATURES
@@ -16,7 +16,7 @@ ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
 ENV RUSTFLAGS="-Clinker=clang"
 
 RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked \
     zypper install -y --no-recommends \
         sccache \
         cargo \
@@ -88,7 +88,7 @@ FROM repos
 ENV RUST_BACKTRACE=1
 
 RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked \
     zypper install -y \
         timezone \
         openssl-3

@@ -70,14 +70,8 @@ impl ValueSetT for ValueSetBool {
         self.set.clear();
     }
 
-    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Bool(u) => self.set.remove(u),
-            _ => {
-                debug_assert!(false);
-                true
-            }
-        }
+    fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool {
+        true
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

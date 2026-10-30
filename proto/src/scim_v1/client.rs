@@ -162,7 +162,7 @@ pub struct ScimEntryApplication {
     pub name: String,
     pub displayname: String,
 
-    pub linked_group: Vec<super::ScimReference>,
+    pub linked_group: super::ScimReference,
 
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, JsonValue>,
@@ -191,6 +191,33 @@ pub struct ScimEntryMessage {
     pub delete_after: ScimDateTime,
     pub sent_at: Option<ScimDateTime>,
     pub mail_destination: Vec<ScimMail>,
+
+    #[serde(flatten)]
+    pub attrs: BTreeMap<Attribute, JsonValue>,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimListFeature {
+    pub schemas: Vec<String>,
+    pub total_results: u64,
+    pub items_per_page: Option<NonZeroU64>,
+    pub start_index: Option<NonZeroU64>,
+    pub resources: Vec<ScimEntryFeature>,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct ScimEntryFeature {
+    #[serde(flatten)]
+    pub header: ScimEntryHeader,
+
+    pub name: String,
+    pub description: String,
+    #[serde(default)]
+    pub enabled: bool,
 
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, JsonValue>,

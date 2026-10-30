@@ -164,6 +164,11 @@ pub enum OperationError {
 
     // Account Signup Errors
     AS0001FeatureDisabled,
+    AS0002FeatureDisabled,
+    AS0003FeatureDisabled,
+    AS0004InvalidState,
+    AS0005InvalidState,
+    AS0006InvalidState,
 
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
@@ -234,6 +239,8 @@ pub enum OperationError {
     SC0031Int64SyntaxInvalid,
     SC0032Uint64SyntaxInvalid,
     SC0033AssertionContainsDuplicateUuids,
+    SC0034UuidSyntaxInvalid,
+
     // Migration
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
@@ -494,7 +501,13 @@ impl OperationError {
             Self::KG004UnknownFeatureUuid => None,
             Self::KG005HowDidYouEvenManageThis => Some("You have damaged the fabric of space time and managed to perform an impossible action.".into()),
             Self::KG006DatastructureCorruption => None,
-            Self::AS0001FeatureDisabled => None,
+            Self::AS0001FeatureDisabled
+            | Self::AS0002FeatureDisabled
+            | Self::AS0003FeatureDisabled
+            | Self::AS0004InvalidState
+            | Self::AS0005InvalidState
+            | Self::AS0006InvalidState => None,
+
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,
             Self::KP0003KeyProviderInvalidType => None,
@@ -639,6 +652,7 @@ impl OperationError {
             Self::SC0031Int64SyntaxInvalid => Some("A SCIM Int64 contained invalid syntax".into()),
             Self::SC0032Uint64SyntaxInvalid => Some("A SCIM Uint64 contained invalid syntax".into()),
             Self::SC0033AssertionContainsDuplicateUuids => Some("SCIM assertion contains duplicate entry ids, unable to proceed.".into()),
+            Self::SC0034UuidSyntaxInvalid => Some("A SCIM Uuid contained invalid syntax".into()),
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
             Self::UI0003InvalidOauth2Resume => Some("The server attempted to resume OAuth2, but no OAuth2 session is in progress.".into()),
