@@ -20,7 +20,9 @@ use axum_extra::extract::CookieJar;
 use kanidmd_lib::prelude::duration_from_epoch_now;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-// use tokio::time::{sleep_until, Duration, Instant};
+use tokio::time::{sleep_until, Duration, Instant};
+
+const CONSTANT_TIME_DEADLINE: Duration = Duration::from_millis(500);
 
 #[derive(Template, WebTemplate)]
 #[template(path = "signup_disabled.html")]
@@ -97,7 +99,7 @@ pub(crate) async fn view_signup_post(
     // This prevents a specific type of information leak where the
     // timing of the operation can yield if the email address
     // existed or not.
-    // let deadline = Instant::now() + CONSTANT_TIME_DEADLINE;
+    let deadline = Instant::now() + CONSTANT_TIME_DEADLINE;
 
     // Validate
     let current_time = duration_from_epoch_now();
@@ -133,7 +135,7 @@ pub(crate) async fn view_signup_post(
     };
 
     // Let the deadline pass.
-    // sleep_until(deadline).await;
+    sleep_until(deadline).await;
 
     // We always return a positive response so that we don't disclose email address presence
     // or other potential information to a potential attacker.
@@ -153,7 +155,6 @@ pub(crate) async fn view_signup_verify_get(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     Query(params): Query<TokenParam>,
-    // jar: CookieJar,
 ) -> axum::response::Result<Response> {
     if !domain_info.allow_account_signup() {
         return Err(StatusCode::FORBIDDEN.into());
@@ -185,7 +186,6 @@ pub(crate) async fn view_signup_verify_post(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     Query(params): Query<TokenParam>,
-    // jar: CookieJar,
 ) -> axum::response::Result<Response> {
     if !domain_info.allow_account_signup() {
         return Err(StatusCode::FORBIDDEN.into());

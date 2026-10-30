@@ -1,12 +1,5 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::scim_v1::{
-    client::{
-        // ScimEntryFeature,
-        ScimListFeature,
-    },
-    ScimEntryGetQuery,
-};
-// use uuid::Uuid;
+use kanidm_proto::scim_v1::{client::ScimListFeature, ScimEntryGetQuery};
 
 impl KanidmClient {
     pub async fn idm_feature_list(
@@ -21,7 +14,6 @@ impl KanidmClient {
         &self,
         account_id: P,
     ) -> Result<(), ClientError> {
-        // let account_id = account_id.as_ref();
         self.perform_post_request(&format!("/scim/v1/Feature/{account_id}/_enable"), true)
             .await
     }
@@ -30,7 +22,6 @@ impl KanidmClient {
         &self,
         account_id: P,
     ) -> Result<(), ClientError> {
-        // let account_id = account_id.as_ref();
         self.perform_post_request(&format!("/scim/v1/Feature/{account_id}/_enable"), false)
             .await
     }
