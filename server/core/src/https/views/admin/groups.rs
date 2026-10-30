@@ -492,7 +492,7 @@ pub(crate) async fn add_member(
         Ok((GroupMemberEntryResponse {
             group_uuid,
             member_name: added_member_spn.to_string(),
-            member_uuid: added_member_uuid.clone(),
+            member_uuid: *added_member_uuid,
             can_edit_member: true,
         })
         .into_response())
