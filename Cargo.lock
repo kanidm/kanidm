@@ -1405,7 +1405,7 @@ dependencies = [
 
 [[package]]
 name = "daemon"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "clap",
  "clap_complete",
@@ -3768,7 +3768,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ipa-sync"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "chrono",
  "clap",
@@ -3794,7 +3794,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ldap-sync"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "chrono",
  "clap",
@@ -3821,7 +3821,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-mail-sender"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "chrono",
  "clap",
@@ -3845,7 +3845,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_actors"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "pin-project-lite",
  "tokio",
@@ -3855,7 +3855,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_build_profiles"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "base64 0.23.1",
  "gix",
@@ -3866,7 +3866,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_client"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "compact_jwt",
  "http",
@@ -3889,7 +3889,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_lib_crypto"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "base64 0.23.1",
  "base64urlsafedata",
@@ -3908,14 +3908,14 @@ dependencies = [
 
 [[package]]
 name = "kanidm_lib_file_permissions"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "kanidm_utils_users",
 ]
 
 [[package]]
 name = "kanidm_proto"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "base32",
  "base64 0.23.1",
@@ -3944,7 +3944,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_radiusd"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "anyhow",
  "clap",
@@ -3954,7 +3954,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_templating"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "peg",
  "serde",
@@ -3965,7 +3965,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_tools"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "anyhow",
  "clap",
@@ -3995,7 +3995,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_int"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "clap",
  "clap_complete",
@@ -4006,14 +4006,14 @@ dependencies = [
 
 [[package]]
 name = "kanidm_utils_users"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "kanidmd_core"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "askama",
  "askama_web",
@@ -4075,7 +4075,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "base64 0.23.1",
  "base64urlsafedata",
@@ -4129,7 +4129,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib_macros"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4138,7 +4138,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_testkit"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "base64 0.23.1",
  "cidr",
@@ -4713,7 +4713,7 @@ dependencies = [
 
 [[package]]
 name = "nss_kanidm"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "cc",
  "libc",
@@ -4723,7 +4723,7 @@ dependencies = [
 
 [[package]]
 name = "nss_sparkle"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "cc",
  "libc",
@@ -4733,7 +4733,7 @@ dependencies = [
 
 [[package]]
 name = "nss_sparkle_common"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "libc",
  "libnss",
@@ -5039,7 +5039,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "orca"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5122,7 +5122,7 @@ dependencies = [
 
 [[package]]
 name = "pam_kanidm"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "pam_sparkle_common",
  "pkg-config",
@@ -5130,7 +5130,7 @@ dependencies = [
 
 [[package]]
 name = "pam_sparkle"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "pam_sparkle_common",
  "pkg-config",
@@ -5138,7 +5138,7 @@ dependencies = [
 
 [[package]]
 name = "pam_sparkle_common"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "libc",
  "sparkle_unix_common",
@@ -5993,7 +5993,7 @@ dependencies = [
 
 [[package]]
 name = "rlm_kanidm"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "bindgen 0.73.2",
  "cc",
@@ -6011,7 +6011,7 @@ dependencies = [
 
 [[package]]
 name = "rlm_kanidm_shared"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "serde",
  "toml",
@@ -6330,7 +6330,7 @@ dependencies = [
 
 [[package]]
 name = "scim_proto"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "base64urlsafedata",
  "peg",
@@ -6792,7 +6792,7 @@ checksum = "33f4fe9184a62d842c9ef383018f3306d8ba224fd9d836f56d7288308847c256"
 
 [[package]]
 name = "sketching"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "gethostname",
  "num_enum",
@@ -6857,7 +6857,7 @@ dependencies = [
 
 [[package]]
 name = "sparkle_resolver_common"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "async-trait",
  "clap",
@@ -6897,7 +6897,7 @@ dependencies = [
 
 [[package]]
 name = "sparkle_unix_common"
-version = "1.12.0-dev"
+version = "1.12.0-pre"
 dependencies = [
  "bytes",
  "csv",
