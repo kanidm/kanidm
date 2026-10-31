@@ -45,10 +45,12 @@ RUN \
     export CC="/usr/bin/clang"; \
     cargo auditable install \
         --git https://github.com/kanidm/webauthn-rs.git \
-        --rev 2ac5ff0e20f323cd904856a38a15899adf13fa5b \
+        --rev d10db2f90ee61198bba244b855d61d865fba76a6 \
         --root /out \
         --target-dir=/target \
-        fido-mds-tool
+        fido-mds-tool && \
+    /out/bin/fido-mds-tool fetch && \
+    /out/bin/fido-mds-tool list-fido2
 
 FROM build_base AS builder
 
@@ -90,14 +92,14 @@ ENV RUST_BACKTRACE=1
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked \
     zypper install -y \
-        timezone \
-        openssl-3
+        timezone
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ipa-sync /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ldap-sync /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-mail-sender /sbin/
 COPY --from=fido_mds_builder /out/bin/fido-mds-tool /sbin/
+COPY --from=fido_mds_builder /tmp/mds.blob.jwt /tmp/mds.blob.jwt
 
 RUN chmod +x /sbin/kanidm
 RUN chmod +x /sbin/kanidm-ipa-sync
