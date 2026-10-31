@@ -53,7 +53,7 @@ kanidm_build_profiles = { workspace = true }
 base64 = { workspace = true }
 cidr = { workspace = true }
 compact_jwt = { workspace = true, features = ["unsafe_release_without_verify"] }
-escargot = "0.5.15"
+escargot = "1.0.1"
 futures = { workspace = true }
 hex = { workspace = true }
 hyper = { workspace = true }
