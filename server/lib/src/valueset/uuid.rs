@@ -543,6 +543,9 @@ impl ValueSetT for ValueSetReferN {
     fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
         if let Some(b) = other.as_refer_set() {
             mergesets!(self.set, b)
+        } else if let Some(u) = other.to_refer_single() {
+            self.set.insert(u);
+            Ok(())
         } else {
             debug_assert!(false);
             Err(OperationError::InvalidValueState)

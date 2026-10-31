@@ -406,31 +406,33 @@ impl SchemaAttribute {
 
         // This exists to allow transition between the former syntax types and the
         // new single/multivalue types.
-        /*
-        let valid = match self.syntax {
-            // Allow the single value variant to temporarily deserialise into
-            // the multi value variant before it's converted.
-            SyntaxType::Uuid => {
-                SyntaxType::UuidN == ava.syntax() || SyntaxType::Uuid == ava.syntax()
+        let valid = if DOMAIN_TGT_LEVEL <= DOMAIN_LEVEL_1_12 {
+            match self.syntax {
+                // Allow the single value variant to temporarily deserialise into
+                // the multi value variant before it's converted.
+                SyntaxType::Uuid => {
+                    SyntaxType::UuidN == ava.syntax() || SyntaxType::Uuid == ava.syntax()
+                }
+                SyntaxType::Utf8StringInsensitive => {
+                    SyntaxType::Utf8StringInsensitiveN == ava.syntax()
+                        || SyntaxType::Utf8StringInsensitive == ava.syntax()
+                }
+                SyntaxType::ReferenceUuid => {
+                    SyntaxType::ReferenceUuidN == ava.syntax()
+                        || SyntaxType::ReferenceUuid == ava.syntax()
+                }
+                SyntaxType::Utf8StringIname => {
+                    SyntaxType::Utf8StringInameN == ava.syntax()
+                        || SyntaxType::Utf8StringIname == ava.syntax()
+                }
+                SyntaxType::Url => {
+                    SyntaxType::UrlN == ava.syntax() || SyntaxType::Url == ava.syntax()
+                }
+                _ => self.syntax == ava.syntax(),
             }
-            SyntaxType::Utf8StringInsensitive => {
-                SyntaxType::Utf8StringInsensitiveN == ava.syntax()
-                    || SyntaxType::Utf8StringInsensitive == ava.syntax()
-            }
-            SyntaxType::ReferenceUuid => {
-                SyntaxType::ReferenceUuidN == ava.syntax()
-                    || SyntaxType::ReferenceUuid == ava.syntax()
-            }
-            SyntaxType::Utf8StringIname => {
-                SyntaxType::Utf8StringInameN == ava.syntax()
-                    || SyntaxType::Utf8StringIname == ava.syntax()
-            }
-            SyntaxType::Url => SyntaxType::UrlN == ava.syntax() || SyntaxType::Url == ava.syntax(),
-            _ => self.syntax == ava.syntax(),
+        } else {
+            self.syntax == ava.syntax()
         };
-            */
-
-        let valid = self.syntax == ava.syntax();
 
         if valid && ava.validate(self) {
             Ok(())
