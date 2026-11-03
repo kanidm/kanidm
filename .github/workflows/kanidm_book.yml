@@ -4,7 +4,8 @@ name: GitHub Pages
 "on":
   push:
     branches:
-      - "master"
+      - master
+      - main
   pull_request:
 
 # yamllint disable-line rule:line-length
