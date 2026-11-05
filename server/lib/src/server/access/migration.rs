@@ -33,6 +33,7 @@ pub static MIGRATION_IGNORE_CLASSES: LazyLock<BTreeSet<String>> = LazyLock::new(
         EntryClass::KeyObjectJwtHs256,
         EntryClass::KeyObjectJwtRs256,
         EntryClass::KeyObjectJweA128GCM,
+        EntryClass::KeyObjectJweA256GCM,
     ];
 
     BTreeSet::from_iter(classes.into_iter().map(|ec| ec.into()))
