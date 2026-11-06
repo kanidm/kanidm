@@ -36,6 +36,17 @@ impl SynchOpt {
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
+            SynchOpt::GetCredentialPortal { account_id } => {
+                let client = opt.to_client(OpType::Read).await;
+                match client
+                    .idm_sync_account_get_credential_portal(account_id)
+                    .await
+                {
+                    Ok(Some(e)) => opt.output_mode.print_message(e),
+                    Ok(None) => opt.output_mode.print_message("No matching entries"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
             SynchOpt::Create {
                 account_id,
                 description,
@@ -73,6 +84,17 @@ impl SynchOpt {
                     .await
                 {
                     Ok(()) => opt.output_mode.print_message("Success"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
+            SynchOpt::GetYieldAttributes { account_id } => {
+                let client = opt.to_client(OpType::Read).await;
+                match client
+                    .idm_sync_account_get_yield_attributes(account_id)
+                    .await
+                {  
+                    Ok(Some(e)) => opt.output_mode.print_vec(e),
+                    Ok(None) => opt.output_mode.print_message("No attributes have their authority yielded from this sync account."),
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
