@@ -1,15 +1,15 @@
-use crate::error::Error;
-use crate::model::{ActorModel, ActorRole};
-use crate::models;
-use crate::profile::Profile;
+use crate::{
+    error::Error,
+    model::{ActorModel, ActorRole},
+    models,
+    profile::Profile,
+};
 use core::fmt::Display;
 use kanidm_client::KanidmClient;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
-use std::path::Path;
-use std::time::Duration;
+use std::{collections::BTreeSet, path::Path, time::Duration};
 /// A serialisable state representing the content of a kanidm database and potential
 /// test content that can be created and modified.
 ///

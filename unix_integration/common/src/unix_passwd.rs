@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
-use serde_with::formats::CommaSeparator;
-use serde_with::{serde_as, DefaultOnNull, StringWithSeparator};
-use std::fmt;
-use std::fs::File;
-use std::io::{BufRead, Read};
-use std::path::Path;
-use std::str::FromStr;
+use serde_with::{formats::CommaSeparator, serde_as, DefaultOnNull, StringWithSeparator};
+use std::{
+    fmt,
+    fs::File,
+    io::{BufRead, Read},
+    path::Path,
+    str::FromStr,
+};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct EtcDb {

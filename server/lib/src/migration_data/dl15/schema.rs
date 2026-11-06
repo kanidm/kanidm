@@ -206,7 +206,7 @@ pub static SCHEMA_ATTR_BADLIST_PASSWORD: LazyLock<SchemaAttribute> = LazyLock::n
     name: Attribute::BadlistPassword,
     description: "A password that is badlisted meaning that it can not be set as a valid password by any user account".to_string(),
     multivalue: true,
-    syntax: SyntaxType::Utf8StringInsensitive,
+    syntax: SyntaxType::Utf8StringInsensitiveN,
     ..Default::default()
 }
 });
@@ -958,6 +958,18 @@ pub static SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID: LazyLock<SchemaAttribute> 
         ..Default::default()
     });
 
+pub static SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_SUB: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_SUB,
+        name: Attribute::OAuth2AccountUniqueUserSub,
+        description:
+            "The unique user subject of this account as known by the remote OAuth2 provider."
+                .to_string(),
+        sync_allowed: true,
+        syntax: SyntaxType::Utf8String,
+        ..Default::default()
+    });
+
 pub static SCHEMA_ATTR_OAUTH2_CLIENT_ID: LazyLock<SchemaAttribute> =
     LazyLock::new(|| SchemaAttribute {
         uuid: UUID_SCHEMA_ATTR_OAUTH2_CLIENT_ID,
@@ -992,6 +1004,15 @@ pub static SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT: LazyLock<SchemaAttribute> =
         uuid: UUID_SCHEMA_ATTR_OAUTH2_TOKEN_ENDPOINT,
         name: Attribute::OAuth2TokenEndpoint,
         description: "The token url of the OAuth2 provider".to_string(),
+        syntax: SyntaxType::Url,
+        ..Default::default()
+    });
+
+pub static SCHEMA_ATTR_OAUTH2_TOKEN_INTROSPECT_ENDPOINT: LazyLock<SchemaAttribute> =
+    LazyLock::new(|| SchemaAttribute {
+        uuid: UUID_SCHEMA_ATTR_OAUTH2_TOKEN_INTROSPECT_ENDPOINT,
+        name: Attribute::OAuth2TokenIntrospectEndpoint,
+        description: "The rfc7662 token introspect url of the OAuth2 provider".to_string(),
         syntax: SyntaxType::Url,
         ..Default::default()
     });
@@ -1053,7 +1074,7 @@ pub static SCHEMA_ATTR_S256: LazyLock<SchemaAttribute> = LazyLock::new(|| Schema
     uuid: UUID_SCHEMA_ATTR_S256,
     name: Attribute::S256,
     description: "A Sha256 output.".to_string(),
-    multivalue: false,
+    multivalue: true,
     unique: false,
     indexed: false,
     syntax: SyntaxType::Sha256,
@@ -1098,6 +1119,7 @@ pub static SCHEMA_CLASS_OAUTH2_ACCOUNT: LazyLock<SchemaClass> = LazyLock::new(||
     systemmust: vec![
         Attribute::OAuth2AccountProvider,
         Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
         // This is the "credential id" that allows us to link this trust to a session.
         Attribute::OAuth2AccountCredentialUuid,
     ],
@@ -1356,7 +1378,9 @@ pub static SCHEMA_CLASS_OAUTH2_CLIENT: LazyLock<SchemaClass> = LazyLock::new(|| 
         Attribute::OAuth2TokenEndpoint,
         Attribute::OAuth2RequestScopes,
     ],
-    systemmay: vec![],
+    systemmay: vec![
+        Attribute::OAuth2TokenIntrospectEndpoint,
+    ],
     ..Default::default()
 }
 });

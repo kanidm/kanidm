@@ -96,6 +96,16 @@ impl MessageOpt {
                 }
             }
 
+            MessageOpt::Resend { message_id } => {
+                let client = opt.to_client(OpType::Write).await;
+
+                if let Err(e) = client.idm_message_resend(*message_id).await {
+                    crate::handle_client_error(e, opt.output_mode);
+                } else {
+                    opt.output_mode.print_message("Message Marked to be Resent");
+                }
+            }
+
             MessageOpt::SendTestMessage { to } => {
                 let client = opt.to_client(OpType::Write).await;
 

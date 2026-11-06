@@ -4,9 +4,9 @@ ARG BASE_IMAGE=opensuse/tumbleweed:latest
 
 FROM ${BASE_IMAGE} AS repos
 ADD ../scripts/zypper_fixing.sh /zypper_fixing.sh
-RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
+RUN --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked /zypper_fixing.sh
 
-FROM repos AS builder
+FROM repos AS build_base
 ARG KANIDM_FEATURES
 ARG KANIDM_BUILD_PROFILE
 ARG KANIDM_BUILD_OPTIONS=""
@@ -16,7 +16,7 @@ ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
 ENV RUSTFLAGS="-Clinker=clang"
 
 RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked \
     zypper install -y --no-recommends \
         sccache \
         cargo \
@@ -31,6 +31,29 @@ RUN \
         sqlite3-devel \
         rsync
 
+
+FROM build_base AS fido_mds_builder
+# doing this separately means the docker cache doesn't get polluted by the install of a thing being pulled from another repo, reducing build time on multiple runs
+
+RUN \
+    --mount=type=cache,id=fido-cargo,target=/cargo \
+    --mount=type=cache,id=fido-sccache,target=/sccache \
+    --mount=type=cache,id=fido-target,target=/target \
+    export CARGO_HOME=/cargo; \
+    export SCCACHE_DIR=/sccache; \
+    export RUSTC_WRAPPER=/usr/bin/sccache; \
+    export CC="/usr/bin/clang"; \
+    cargo auditable install \
+        --git https://github.com/kanidm/webauthn-rs.git \
+        --rev d10db2f90ee61198bba244b855d61d865fba76a6 \
+        --root /out \
+        --target-dir=/target \
+        fido-mds-tool && \
+    /out/bin/fido-mds-tool fetch && \
+    /out/bin/fido-mds-tool list-fido2
+
+FROM build_base AS builder
+
 COPY . /usr/src/kanidm
 
 WORKDIR /usr/src/kanidm/
@@ -40,8 +63,8 @@ RUN \
     --mount=type=cache,id=cargo,target=/cargo \
     --mount=type=cache,id=sccache,target=/sccache \
     export CARGO_HOME=/cargo; \
+    export RUSTC_WRAPPER="$(which sccache)"; \
     export SCCACHE_DIR=/sccache; \
-    export RUSTC_WRAPPER=/usr/bin/sccache; \
     export CC="/usr/bin/clang"; \
     cargo auditable build --locked -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
         --target-dir="/usr/src/kanidm/target/" \
@@ -59,11 +82,6 @@ RUN \
         --target-dir="/usr/src/kanidm/target/" \
         --features="${KANIDM_FEATURES}" \
         --release && \
-    cargo auditable install \
-        --git https://github.com/kanidm/webauthn-rs.git \
-        --rev 2ac5ff0e20f323cd904856a38a15899adf13fa5b \
-        --force fido-mds-tool \
-        --target-dir="/usr/src/kanidm/target/" && \
     sccache -s
 
 # == Construct the tools container
@@ -72,16 +90,17 @@ FROM repos
 ENV RUST_BACKTRACE=1
 
 RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp,sharing=locked \
     zypper install -y \
-        timezone \
-        openssl-3
+        timezone
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ipa-sync /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ldap-sync /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-mail-sender /sbin/
-COPY --from=builder /usr/src/kanidm/target/release/fido-mds-tool /sbin/
+COPY --from=fido_mds_builder /out/bin/fido-mds-tool /sbin/
+COPY --from=fido_mds_builder /tmp/mds.blob.jwt /tmp/mds.blob.jwt
+
 RUN chmod +x /sbin/kanidm
 RUN chmod +x /sbin/kanidm-ipa-sync
 RUN chmod +x /sbin/kanidm-ldap-sync
@@ -92,3 +111,4 @@ RUN mkdir /etc/kanidm && \
     touch /etc/kanidm/config
 
 CMD [ "/sbin/kanidm", "-h" ]
+

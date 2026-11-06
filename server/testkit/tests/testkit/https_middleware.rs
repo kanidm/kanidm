@@ -1,5 +1,4 @@
-use kanidm_client::http::header;
-use kanidm_client::KanidmClient;
+use kanidm_client::{http::header, KanidmClient};
 use kanidmd_core::config::ServerRole;
 
 #[kanidmd_testkit::test(role = ServerRole::WriteReplica)]

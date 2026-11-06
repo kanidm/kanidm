@@ -76,7 +76,8 @@
 
 # For Developers
 
-- [Developer Guide](./developers/readme.md)
+- [Developer Guide](developers/readme.md)
+- [AI/LLM Policy](developers/ai_llm_policy.md)
 - [Developer Ethics](developers/developer_ethics.md)
 - [Frequently Asked Questions](developers/faq.md)
 - [Design Documents]()
@@ -100,3 +101,4 @@
 - [Packages](packaging/packaging.md)
   - [Debian/Ubuntu Packaging](packaging/debian_ubuntu_packaging.md)
   - [PPA Packages](packaging/ppa_packages.md)
+  - [FreeBSD Port Update](packaging/freebsd_port.md)

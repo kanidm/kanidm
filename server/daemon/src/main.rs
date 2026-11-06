@@ -10,10 +10,6 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-#[cfg(all(not(feature = "dhat-heap"), target_os = "linux"))]
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -31,25 +27,22 @@ use std::fs::{metadata, File};
 // This works on both unix and windows.
 use clap::{Args, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
-use kanidmd_core::admin::{
-    AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
-    ProtoDomainUpgradeCheckReport, ProtoDomainUpgradeCheckStatus,
-};
-use kanidmd_core::config::{Configuration, ServerConfigUntagged};
 use kanidmd_core::{
-    backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
-    dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
-    dbscan_list_indexes_core, dbscan_list_quarantined_core, dbscan_quarantine_id2entry_core,
-    dbscan_restore_quarantined_core, domain_rename_core, reindex_server_core, restore_server_core,
-    vacuum_server_core, verify_server_core, CoreAction,
+    admin::{
+        AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
+        ProtoDomainUpgradeCheckReport, ProtoDomainUpgradeCheckStatus,
+    },
+    backup_server_core, cert_generate_core,
+    config::{Configuration, ServerConfigUntagged},
+    create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
+    dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
+    dbscan_list_quarantined_core, dbscan_quarantine_id2entry_core, dbscan_restore_quarantined_core,
+    domain_rename_core, reindex_server_core, restore_server_core, vacuum_server_core,
+    verify_server_core, CoreAction,
 };
 use serde::Serialize;
-use sketching::pipeline::TracingPipelineGuard;
-use sketching::tracing_forest::util::*;
-use std::fmt;
-use std::io::Read;
-use std::path::PathBuf;
-use std::process::ExitCode;
+use sketching::{pipeline::TracingPipelineGuard, tracing_forest::util::*};
+use std::{fmt, io::Read, path::PathBuf, process::ExitCode};
 use tokio::net::UnixStream;
 use tokio_util::codec::Framed;
 
@@ -763,7 +756,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                 info!("Running in server mode ...");
             };
 
-            // Verify the TLs configs.
+            // Verify the TLS configs.
             if let Some(tls_config) = config.tls_config.as_ref() {
                 {
                     let i_meta = match metadata(&tls_config.chain) {
@@ -850,96 +843,97 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
                 }
             }
 
-            let sctx = create_server_core(config, config_test).await;
-            if !config_test {
-                // On linux, notify systemd.
-                #[cfg(target_os = "linux")]
-                unsafe {
-                    let _ = sd_notify::notify_and_unset_env(&[sd_notify::NotifyState::Ready]);
-                    let _ = sd_notify::notify_and_unset_env(&[sd_notify::NotifyState::Status(
-                        "Started Kanidm 🦀",
-                    )]);
-                }
+            let sctx_result = create_server_core(config, config_test).await;
 
-                match sctx {
-                    Ok(mut sctx) => {
-                        loop {
-                            #[cfg(target_family = "unix")]
-                            {
-                                let mut listener = sctx.subscribe();
-                                tokio::select! {
-                                    Ok(()) = tokio::signal::ctrl_c() => {
-                                        break
-                                    }
-                                    Some(()) = async move {
-                                        let sigterm = tokio::signal::unix::SignalKind::terminate();
-                                        #[allow(clippy::unwrap_used)]
-                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                    } => {
-                                        break
-                                    }
-                                    Some(()) = async move {
-                                        let sigterm = tokio::signal::unix::SignalKind::alarm();
-                                        #[allow(clippy::unwrap_used)]
-                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                    } => {
-                                        // Ignore
-                                    }
-                                    Some(()) = async move {
-                                        let sigterm = tokio::signal::unix::SignalKind::hangup();
-                                        #[allow(clippy::unwrap_used)]
-                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                    } => {
-                                        // Initiate a reload of server components.
-                                        sctx.reload().await;
-                                        info!("Reload complete");
-                                    }
-                                    Some(()) = async move {
-                                        let sigterm = tokio::signal::unix::SignalKind::user_defined1();
-                                        #[allow(clippy::unwrap_used)]
-                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                    } => {
-                                        // Ignore
-                                    }
-                                    Some(()) = async move {
-                                        let sigterm = tokio::signal::unix::SignalKind::user_defined2();
-                                        #[allow(clippy::unwrap_used)]
-                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                    } => {
-                                        // Ignore
-                                    }
-                                    // we got a message on thr broadcast from somewhere else
-                                    Ok(msg) = async move {
-                                        listener.recv().await
-                                    } =>
-                                        match msg {
-                                            CoreAction::Shutdown => break,
-                                            CoreAction::Reload => {}
-                                        },
-                                }
-                            }
-                            #[cfg(target_family = "windows")]
-                            {
-                                tokio::select! {
-                                    Ok(()) = tokio::signal::ctrl_c() => {
-                                        break
-                                    }
-                                }
-                            }
+            let Ok(mut sctx) = sctx_result else {
+                error!("Failed to start server core!");
+                return ExitCode::FAILURE;
+            };
+
+            if config_test {
+                // Config test is done and we didn't hit any errors, lets go.
+                return ExitCode::SUCCESS;
+            }
+
+            // On linux, notify systemd.
+            #[cfg(target_os = "linux")]
+            unsafe {
+                let _ = sd_notify::notify_and_unset_env(&[sd_notify::NotifyState::Ready]);
+                let _ = sd_notify::notify_and_unset_env(&[sd_notify::NotifyState::Status(
+                    "Started Kanidm 🦀",
+                )]);
+            }
+
+            loop {
+                #[cfg(target_family = "unix")]
+                {
+                    let mut listener = sctx.subscribe();
+                    tokio::select! {
+                        Ok(()) = tokio::signal::ctrl_c() => {
+                            break
                         }
-                        info!("Signal received, shutting down");
-                        // Send a broadcast that we are done.
-                        sctx.shutdown().await;
-                    }
-                    Err(_) => {
-                        error!("Failed to start server core!");
-                        // We may need to return an exit code here, but that may take some re-architecting
-                        // to ensure we drop everything cleanly.
-                        return ExitCode::FAILURE;
+                        Some(()) = async move {
+                            let sigterm = tokio::signal::unix::SignalKind::terminate();
+                            #[allow(clippy::unwrap_used)]
+                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                        } => {
+                            break
+                        }
+                        Some(()) = async move {
+                            let sigterm = tokio::signal::unix::SignalKind::alarm();
+                            #[allow(clippy::unwrap_used)]
+                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                        } => {
+                            // Ignore
+                        }
+                        Some(()) = async move {
+                            let sigterm = tokio::signal::unix::SignalKind::hangup();
+                            #[allow(clippy::unwrap_used)]
+                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                        } => {
+                            // Initiate a reload of server components.
+                            sctx.reload().await;
+                            info!("Reload complete");
+                        }
+                        Some(()) = async move {
+                            let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                            #[allow(clippy::unwrap_used)]
+                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                        } => {
+                            // Ignore
+                        }
+                        Some(()) = async move {
+                            let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                            #[allow(clippy::unwrap_used)]
+                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                        } => {
+                            // Ignore
+                        }
+                        // we got a message on thr broadcast from somewhere else
+                        Ok(msg) = async move {
+                            listener.recv().await
+                        } =>
+                            match msg {
+                                CoreAction::Shutdown => break,
+                                CoreAction::Reload => {}
+                            },
                     }
                 }
-                info!("Stopped 🛑 ");
+                #[cfg(target_family = "windows")]
+                {
+                    tokio::select! {
+                        Ok(()) = tokio::signal::ctrl_c() => {
+                            break
+                        }
+                    }
+                }
             }
+
+            info!("Signal received, shutting down");
+            // Send a broadcast that we are done.
+            sctx.shutdown().await;
+
+            info!("Stopped 🛑 ");
         }
         KanidmdOpt::CertGenerate => {
             info!("Running in certificate generate mode ...");

@@ -1,8 +1,10 @@
 use std::collections::BTreeMap;
 
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_ENTRY_MANAGED_BY, ATTR_MAIL, ATTR_NAME};
-use kanidm_proto::internal::{ApiToken, CredentialStatus};
-use kanidm_proto::v1::{AccountUnixExtend, ApiTokenGenerate, Entry};
+use kanidm_proto::{
+    constants::{ATTR_DISPLAYNAME, ATTR_ENTRY_MANAGED_BY, ATTR_MAIL, ATTR_NAME},
+    internal::{ApiToken, CredentialStatus},
+    v1::{AccountUnixExtend, ApiTokenGenerate, Entry},
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -250,12 +252,7 @@ impl KanidmClient {
         token_id: Uuid,
     ) -> Result<(), ClientError> {
         self.perform_delete_request(
-            format!(
-                "/v1/service_account/{}/_api_token/{}",
-                id,
-                &token_id.to_string()
-            )
-            .as_str(),
+            format!("/v1/service_account/{}/_api_token/{}", id, token_id).as_str(),
         )
         .await
     }

@@ -119,8 +119,7 @@ mod tests {
 
     use std::path::PathBuf;
 
-    use crate::build_configured_client;
-    use crate::SshAuthorizedOpt;
+    use crate::{build_configured_client, SshAuthorizedOpt};
     #[test]
     fn test_build_configured_client() {
         let opt = SshAuthorizedOpt {

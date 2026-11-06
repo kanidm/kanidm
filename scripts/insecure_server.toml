@@ -17,10 +17,12 @@ tls_key = "/tmp/kanidm/key.pem"
 # log_level = "debug"
 # log_level = "trace"
 
-# otel_grpc_url = "http://localhost:4317"
+# otel_grpc_endpoint = "http://localhost:4317"
 
 domain = "localhost"
 origin = "https://localhost:8443"
+
+# http_server_versions = "1"
 
 [online_backup]
 # defaults to db_path

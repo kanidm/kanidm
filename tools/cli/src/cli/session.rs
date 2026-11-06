@@ -1,22 +1,25 @@
-use crate::common::prompt_for_username_get_username;
-use crate::common::ToClientError;
-use crate::OpType;
-use crate::{KanidmClientParser, LoginOpt, LogoutOpt, SessionOpt};
+use crate::{
+    common::{prompt_for_username_get_username, ToClientError},
+    KanidmClientParser, LoginOpt, LogoutOpt, OpType, SessionOpt,
+};
 use compact_jwt::{
     traits::JwsVerifiable, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError,
 };
-use dialoguer::theme::ColorfulTheme;
-use dialoguer::Select;
+use dialoguer::{theme::ColorfulTheme, Select};
 use kanidm_client::{ClientError, KanidmClient};
-use kanidm_proto::internal::UserAuthToken;
-use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState};
+use kanidm_proto::{
+    internal::UserAuthToken,
+    v1::{AuthAllowed, AuthResponse, AuthState},
+};
 use serde::{Deserialize, Serialize};
-use std::cmp::Reverse;
-use std::collections::BTreeMap;
-use std::fs::{create_dir, File};
-use std::io::{self, BufReader, BufWriter, ErrorKind, IsTerminal, Write};
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{
+    cmp::Reverse,
+    collections::BTreeMap,
+    fs::{create_dir, File},
+    io::{self, BufReader, BufWriter, ErrorKind, IsTerminal, Write},
+    path::PathBuf,
+    str::FromStr,
+};
 use webauthn_authenticator_rs::prelude::RequestChallengeResponse;
 
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]

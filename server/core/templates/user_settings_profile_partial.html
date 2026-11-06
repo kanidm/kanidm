@@ -30,7 +30,7 @@ Profile
       novalidate>
     (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)(% endcall %)
 
-    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)(% endcall %)
+    (% call string_attr("Display Name", "displayname", person.displayname, true, Attribute::DisplayName) %)(% endcall %)
 
     (% let can_edit_email = rw_active && scim_effective_access.modify_present.check(&Attribute::Mail) %)
     <div class="mb-2">

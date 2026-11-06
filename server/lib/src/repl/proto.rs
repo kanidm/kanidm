@@ -1,14 +1,16 @@
-use super::cid::Cid;
-use super::entry::EntryChangeState;
-use super::entry::State;
-use crate::be::dbvalue::DbValueSetV2;
-use crate::entry::Eattrs;
-use crate::prelude::*;
-use crate::schema::{SchemaReadTransaction, SchemaTransaction};
-use crate::valueset;
+use super::{
+    cid::Cid,
+    entry::{EntryChangeState, State},
+};
+use crate::{
+    be::dbvalue::DbValueSetV2,
+    entry::Eattrs,
+    prelude::*,
+    schema::{SchemaReadTransaction, SchemaTransaction},
+    valueset,
+};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 
 pub enum ConsumerState {
     Ok,
@@ -236,7 +238,7 @@ impl ReplEntryV1 {
 
                 let mut eattrs = Eattrs::default();
 
-                let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
+                let class_ava = vs_iutf8n![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![at.clone()];
 
                 eattrs.insert(Attribute::Uuid, vs_uuid![self.uuid]);

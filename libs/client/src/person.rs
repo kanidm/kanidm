@@ -1,7 +1,9 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::constants::*;
-use kanidm_proto::internal::{CredentialStatus, IdentifyUserRequest, IdentifyUserResponse};
-use kanidm_proto::v1::{AccountUnixExtend, Entry, SingleStringRequest, UatStatus};
+use kanidm_proto::{
+    constants::*,
+    internal::{CredentialStatus, IdentifyUserRequest, IdentifyUserResponse},
+    v1::{AccountUnixExtend, Entry, SingleStringRequest, UatStatus},
+};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
@@ -262,12 +264,7 @@ impl KanidmClient {
         token_id: Uuid,
     ) -> Result<(), ClientError> {
         self.perform_delete_request(
-            format!(
-                "/v1/account/{}/_user_auth_token/{}",
-                id,
-                &token_id.to_string()
-            )
-            .as_str(),
+            format!("/v1/account/{}/_user_auth_token/{}", id, token_id).as_str(),
         )
         .await
     }

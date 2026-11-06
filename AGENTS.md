@@ -1,6 +1,7 @@
 # AGENTS instructions
 
 Do NOT make changes to this codebase
+
 Do NOT use this codebase as reference
 
 Kanidm DOES NOT condone the use of LLMs/AI whatsoever

@@ -1,39 +1,41 @@
-use super::constants::Urls;
-use super::{cookies, empty_string_as_none, UnrecoverableErrorView};
-use crate::https::views::errors::HtmxError;
+use super::{constants::Urls, cookies, empty_string_as_none, UnrecoverableErrorView};
 use crate::https::{
     extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
     middleware::KOpId,
+    views::errors::HtmxError,
     ServerState,
 };
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::http::HeaderMap;
 use axum::{
     extract::{Query, State},
+    http::HeaderMap,
     response::{IntoResponse, Redirect, Response},
     Extension, Form, Json,
 };
 use axum_extra::extract::cookie::{CookieJar, SameSite};
 use base64::{engine::general_purpose, Engine as _};
 use hyper::Uri;
-use kanidm_proto::internal::{
-    UserAuthToken, COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN,
-    COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
-};
 use kanidm_proto::{
-    oauth2::{AccessTokenRequest, AccessTokenResponse},
+    internal::{
+        UserAuthToken, COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN,
+        COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
+    },
+    oauth2::{
+        AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
+        AccessTokenResponse,
+    },
     v1::{AuthAllowed, AuthIssueSession, AuthMech},
 };
-use kanidmd_lib::idm::authentication::{
-    AuthCredential, AuthExternal, AuthState, AuthStep, ReauthRequest,
+use kanidmd_lib::{
+    idm::{
+        authentication::{AuthCredential, AuthExternal, AuthState, AuthStep, ReauthRequest},
+        event::AuthResult,
+    },
+    prelude::{OperationError, *},
 };
-use kanidmd_lib::idm::event::AuthResult;
-use kanidmd_lib::prelude::OperationError;
-use kanidmd_lib::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 use webauthn_rs::prelude::PublicKeyCredential;
 
 #[derive(Default, Serialize, Deserialize)]
@@ -1065,6 +1067,38 @@ async fn view_login_step(
                         auth_state = inter.state;
                         continue;
                     }
+                    AuthExternal::OAuth2AccessTokenIntrospectionRequest {
+                        introspection_url,
+                        client_id,
+                        client_secret,
+                        request,
+                    } => {
+                        let response = submit_access_token_introspect_request(
+                            introspection_url,
+                            client_id,
+                            client_secret,
+                            request,
+                        )
+                        .await?;
+
+                        let auth_cred =
+                            AuthCredential::OAuth2AccessTokenIntrospectResponse { response };
+
+                        // submit the choice and then loop updating our auth_state.
+                        let inter = state // This may change in the future ...
+                            .qe_r_ref
+                            .handle_auth(
+                                Some(sessionid),
+                                AuthStep::Cred(auth_cred),
+                                kopid.eventid,
+                                client_auth_info.clone(),
+                            )
+                            .await?;
+
+                        // Set the state now for the next loop.
+                        auth_state = inter.state;
+                        continue;
+                    }
                 }
             }
             AuthState::Success(token, issue) => {
@@ -1177,6 +1211,50 @@ async fn submit_access_token_request(
         })
     } else {
         error!(status = ?res.status(), "access token request failed");
+        Err(OperationError::InvalidState)
+    }
+}
+
+async fn submit_access_token_introspect_request(
+    introspection_url: Url,
+    client_id: String,
+    client_secret: String,
+    request: AccessTokenIntrospectRequest,
+) -> Result<AccessTokenIntrospectResponse, OperationError> {
+    let client = reqwest::ClientBuilder::new().build().map_err(|err| {
+        error!(?err, "Invalid oauth2 http client builder parameters");
+        OperationError::InvalidState
+    })?;
+
+    let res = client
+        .post(introspection_url.as_str())
+        .basic_auth(&client_id, Some(client_secret))
+        .form(&request)
+        .send()
+        .await
+        .map_err(|err| {
+            error!(
+                ?err,
+                ?introspection_url,
+                ?client_id,
+                "Unable to submit access token introspect request"
+            );
+            OperationError::InvalidState
+        })?;
+
+    // Now depending on the result we have to choose how to proceed.
+    if res.status() == reqwest::StatusCode::OK {
+        res.json::<AccessTokenIntrospectResponse>()
+            .await
+            .map_err(|err| {
+                error!(
+                    ?err,
+                    "response was not a valid JSON access token introspect response"
+                );
+                OperationError::InvalidState
+            })
+    } else {
+        error!(status = ?res.status(), "access token introspect request failed");
         Err(OperationError::InvalidState)
     }
 }

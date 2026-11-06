@@ -1,5 +1,4 @@
-use base64::prelude::BASE64_STANDARD;
-use base64::{engine::general_purpose, Engine as _};
+use base64::{engine::general_purpose, prelude::BASE64_STANDARD, Engine as _};
 use serde::Deserialize;
 use sha2::Digest;
 use std::env;
@@ -66,6 +65,8 @@ struct ProfileConfig {
     server_config_path: String,
     server_migration_path: String,
     server_ui_pkg_path: String,
+    #[serde(default)]
+    server_ui_pkg_path_make_absolute: bool,
     client_config_path: String,
     resolver_config_path: String,
     resolver_unix_shell_path: String,
@@ -136,10 +137,22 @@ pub fn apply_profile() {
     }
     println!("cargo:rustc-env=KANIDM_PROFILE_NAME={profile}");
     println!("cargo:rustc-env=KANIDM_CPU_FLAGS={}", profile_cfg.cpu_flags);
+
+    let server_ui_pkg_path = if profile_cfg.server_ui_pkg_path_make_absolute {
+        std::path::absolute(profile_cfg.server_ui_pkg_path)
+            .map(|pkg_path| pkg_path.to_string_lossy().into_owned())
+            .unwrap_or_else(|_| {
+                panic!("Failed to make server_ui_pkg_path absolute - {profile} - {contents}")
+            })
+    } else {
+        profile_cfg.server_ui_pkg_path
+    };
+
     println!(
         "cargo:rustc-env=KANIDM_SERVER_UI_PKG_PATH={}",
-        profile_cfg.server_ui_pkg_path
+        server_ui_pkg_path
     );
+
     println!(
         "cargo:rustc-env=KANIDM_SERVER_ADMIN_BIND_PATH={}",
         profile_cfg.server_admin_bind_path

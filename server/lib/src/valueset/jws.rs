@@ -1,7 +1,8 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 use base64urlsafedata::Base64UrlSafeData;
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer, JwsSigner};
 use crypto_glue::traits::Zeroizing;
@@ -77,14 +78,10 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Iutf8(kid) => {
-                let x = self.set.len();
-                self.set.retain(|k| k.get_kid() != kid);
-                x != self.set.len()
-            }
-            _ => false,
+        if let PartialValue::Iutf8(kid) = pv {
+            self.set.retain(|k| k.get_kid() != kid);
         }
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -244,14 +241,10 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Iutf8(kid) => {
-                let x = self.set.len();
-                self.set.retain(|k| k.get_kid() != kid);
-                x != self.set.len()
-            }
-            _ => false,
-        }
+        if let PartialValue::Iutf8(kid) = pv {
+            self.set.retain(|k| k.get_kid() != kid);
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, _pv: &PartialValue) -> bool {

@@ -1,5 +1,8 @@
-use crate::https::views::admin::{admin_api_router, admin_router};
-use crate::https::{middleware, ServerState};
+use crate::https::{
+    middleware,
+    views::admin::{admin_api_router, admin_router},
+    ServerState,
+};
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
@@ -30,6 +33,7 @@ mod radius;
 mod reauth;
 mod recover;
 mod reset;
+mod signup;
 
 #[derive(Template, WebTemplate)]
 #[template(path = "unrecoverable_error.html")]
@@ -109,6 +113,14 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
             get(recover::view_recover_get).post(recover::view_recover_post),
         )
         .route(
+            "/signup",
+            get(signup::view_signup_get).post(signup::view_signup_post),
+        )
+        .route(
+            "/signup/verify",
+            get(signup::view_signup_verify_get).post(signup::view_signup_verify_post),
+        )
+        .route(
             "/revoke",
             get(reset::view_revoke_get).post(reset::view_revoke_post),
         )
@@ -139,6 +151,10 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
             post(reset::view_add_ssh_publickey),
         )
         .route("/radius/generate", post(radius::view_radius_post))
+        .route(
+            "/api/check_password_strength",
+            post(reset::check_pwd_strength),
+        )
         .route("/api/delete_alt_creds", post(reset::remove_alt_creds))
         .route("/api/delete_unixcred", post(reset::remove_unixcred))
         .route("/api/add_totp", post(reset::add_totp))

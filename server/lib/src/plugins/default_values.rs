@@ -5,8 +5,7 @@ use std::iter::once;
 use std::sync::Arc;
 
 // use crate::event::{CreateEvent, ModifyEvent};
-use crate::plugins::Plugin;
-use crate::prelude::*;
+use crate::{plugins::Plugin, prelude::*};
 
 pub struct DefaultValues {}
 

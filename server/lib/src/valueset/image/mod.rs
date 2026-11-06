@@ -1,16 +1,17 @@
-use crate::be::dbvalue::DbValueImage;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    be::dbvalue::DbValueImage,
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 use crypto_glue::{s256::Sha256, traits::Digest};
 use hashbrown::HashSet;
-use image::codecs::gif::GifDecoder;
-use image::codecs::webp::WebPDecoder;
-use image::ImageDecoder;
+use image::{
+    codecs::{gif::GifDecoder, webp::WebPDecoder},
+    ImageDecoder,
+};
 use kanidm_proto::internal::{ImageType, ImageValue};
-use std::fmt::Display;
-use std::io::Cursor;
+use std::{fmt::Display, io::Cursor};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetImage {
@@ -306,21 +307,12 @@ impl ValueSetT for ValueSetImage {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Image(pv) => {
-                let imgset = self.set.clone();
-
-                let res: Vec<bool> = imgset
-                    .iter()
-                    .filter(|image| &image.hash_imagevalue() == pv)
-                    .map(|image| self.set.remove(image))
-                    .collect();
-                res.into_iter().any(|e| e)
-            }
+            PartialValue::Image(pv) => self.set.retain(|image| image.hash_imagevalue() != *pv),
             _ => {
                 debug_assert!(false);
-                false
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

@@ -14,6 +14,10 @@ in a position to contact us to ask for changes and help.
 
 If you have not already, please see our documentation on [rights and ethics](developer_ethics.md)
 
+### AI / LLM Policy
+
+If you have not already, please see our policy on [AI/LLM usage](ai_llm_policy.md)
+
 ### Humans First
 
 We must at all times make decisions that put humans first. We must respect all cultures, languages and identities and
@@ -323,14 +327,13 @@ You can now build and run the server with the commands below. It will use a data
 Start the server
 
 ```bash
-cd server/daemon
-./run_insecure_dev_server.sh
+scripts/run_insecure_dev_server.sh
 ```
 
 While the server is running, you can use the admin socket to generate an `admin` password:
 
 ```bash
-./run_insecure_dev_server.sh recover-account admin
+scripts/run_insecure_dev_server.sh recover-account admin
 ```
 
 Record the password above.

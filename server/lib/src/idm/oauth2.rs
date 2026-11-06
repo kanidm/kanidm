@@ -4,29 +4,33 @@
 //! integrations, which are then able to be used an accessed from the IDM layer
 //! for operations involving OAuth2 authentication processing.
 
-use crate::idm::account::Account;
-use crate::idm::server::{
-    IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction, Token,
+use crate::{
+    idm::{
+        account::Account,
+        server::{
+            IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
+            Token,
+        },
+    },
+    prelude::*,
+    server::keys::{KeyId, KeyObject, KeyProvidersTransaction, KeyProvidersWriteTransaction},
+    utils,
+    value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE},
 };
-use crate::prelude::*;
-use crate::server::keys::{
-    KeyId, KeyObject, KeyProvidersTransaction, KeyProvidersWriteTransaction,
-};
-use crate::utils;
-use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 use base64::{engine::general_purpose, Engine as _};
 pub use compact_jwt::{compact::JwkKeySet, OidcToken};
 use compact_jwt::{
-    crypto::{JweA128GCMEncipher, JweA128KWEncipher},
+    crypto::{JweA256GCMEncipher, JweA256KWEncipher},
     jwe::JweBuilder,
     jws::JwsBuilder,
     JweCompact, JwsCompact, OidcClaims, OidcSubject,
 };
 use concread::cowcell::*;
-use crypto_glue::{s256::Sha256, traits::Digest};
-use hashbrown::HashMap;
-use hashbrown::HashSet;
-use kanidm_proto::constants::*;
+use crypto_glue::{
+    s256::{Sha256, Sha256Output},
+    traits::Digest,
+};
+use hashbrown::{HashMap, HashSet};
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AccessTokenType, AuthorisationRequest, ClaimType, ClientAuth,
@@ -36,15 +40,19 @@ pub use kanidm_proto::oauth2::{
     OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, PkceRequest, ResponseMode, ResponseType,
     SubjectType, TokenRevokeRequest, OAUTH2_TOKEN_TYPE_ACCESS_TOKEN,
 };
-use kanidm_proto::oauth2::{IssuedTokenType, Prompt};
+use kanidm_proto::{
+    constants::*,
+    oauth2::{IssuedTokenType, Prompt},
+};
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    collections::{btree_map::Entry as BTreeEntry, BTreeMap, BTreeSet},
+    fmt,
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
+};
 use subtle::ConstantTimeEq;
 use time::OffsetDateTime;
 use tracing::trace;
@@ -99,9 +107,9 @@ pub enum Oauth2Error {
     ExpiredToken,
 }
 
-impl std::fmt::Display for Oauth2Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
+impl AsRef<str> for Oauth2Error {
+    fn as_ref(&self) -> &'static str {
+        match self {
             Oauth2Error::AuthenticationRequired => "authentication_required",
             Oauth2Error::InvalidClientId => "invalid_client_id",
             Oauth2Error::InvalidOrigin => "invalid_origin",
@@ -122,10 +130,17 @@ impl std::fmt::Display for Oauth2Error {
             Oauth2Error::SlowDown => "slow_down",
             Oauth2Error::AuthorizationPending => "authorization_pending",
             Oauth2Error::ExpiredToken => "expired_token",
-        })
+        }
     }
 }
 
+impl std::fmt::Display for Oauth2Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())
+    }
+}
+
+#[derive(Clone)]
 pub struct PkceS256Secret {
     secret: String,
 }
@@ -145,10 +160,14 @@ impl From<String> for PkceS256Secret {
 }
 
 impl PkceS256Secret {
-    pub fn to_request(&self) -> PkceRequest {
+    pub fn to_challenge(&self) -> Sha256Output {
         let mut hasher = Sha256::new();
         hasher.update(self.secret.as_bytes());
-        let code_challenge = hasher.finalize();
+        hasher.finalize()
+    }
+
+    pub fn to_request(&self) -> PkceRequest {
+        let code_challenge = self.to_challenge();
 
         PkceRequest {
             code_challenge: code_challenge.to_vec(),
@@ -165,10 +184,7 @@ impl PkceS256Secret {
     }
 
     pub fn verify<V: AsRef<[u8]>>(&self, challenge: V) -> bool {
-        let mut hasher = Sha256::new();
-        hasher.update(self.secret.as_bytes());
-        let code_challenge = hasher.finalize();
-
+        let code_challenge = self.to_challenge();
         challenge.as_ref() == code_challenge.as_slice()
     }
 }
@@ -311,6 +327,8 @@ pub enum AuthoriseResponse {
         consent_token: String,
     },
     Permitted(AuthorisePermitSuccess),
+
+    Reject(AuthoriseReject),
 }
 
 #[derive(Debug)]
@@ -367,6 +385,10 @@ impl AuthorisePermitSuccess {
 pub struct AuthoriseReject {
     // Where the client wants us to go back to.
     pub redirect_uri: Url,
+    // The CSRF as a string
+    pub state: Option<String>,
+    /// The error we are returning.
+    pub error: Oauth2Error,
     /// The format the response should be returned to the application in.
     response_mode: SupportedResponseMode,
 }
@@ -383,8 +405,7 @@ impl AuthoriseReject {
 
         // We can't set query pairs on fragments, only query.
         let encoded = url::form_urlencoded::Serializer::new(String::new())
-            .append_pair("error", "access_denied")
-            .append_pair("error_description", "authorisation rejected")
+            .append_pair("error", self.error.as_ref())
             .finish();
 
         match self.response_mode {
@@ -518,7 +539,6 @@ pub struct Oauth2RS {
     opaque_origins: HashSet<Url>,
     redirect_uris: HashSet<Url>,
     origin_secure_required: bool,
-    strict_redirect_uri: bool,
 
     claim_map: BTreeMap<Uuid, Vec<(String, ClaimValue)>>,
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
@@ -610,7 +630,7 @@ impl std::fmt::Debug for Oauth2RS {
 #[derive(Clone)]
 struct Oauth2RSInner {
     origin: Url,
-    consent_key: JweA128KWEncipher,
+    consent_key: JweA256KWEncipher,
     private_rs_set: HashMap<String, Oauth2RS>,
     private_key_map: HashMap<KeyId, String>,
 }
@@ -641,7 +661,7 @@ pub struct Oauth2ResourceServersWriteTransaction<'a> {
 
 impl Oauth2ResourceServers {
     pub fn new(origin: Url) -> Result<Self, OperationError> {
-        let consent_key = JweA128KWEncipher::generate_ephemeral()
+        let consent_key = JweA256KWEncipher::generate_ephemeral()
             .map_err(|_| OperationError::CryptographyError)?;
 
         Ok(Oauth2ResourceServers {
@@ -778,13 +798,6 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     .and_then(|s| s.as_url_set());
 
                 let len_uris = maybe_extra_urls.map(|s| s.len() + 1).unwrap_or(1);
-
-                // If we are DL8, then strict enforcement is always required.
-                let strict_redirect_uri = cfg!(test)
-                    || domain_level >= DOMAIN_LEVEL_8
-                    || ent
-                        .get_ava_single_bool(Attribute::OAuth2StrictRedirectUri)
-                        .unwrap_or(false);
 
                 // The reason we have to allocate this is that we need to do some processing on these
                 // urls to determine if they are opaque or not.
@@ -936,12 +949,21 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                 };
 
                 // We also need the encryption keyids
-                kid_map.extend(
-                    key_object
-                        .jwe_a128gcm_kid()
-                        .into_iter()
-                        .map(|kid| (kid.clone(), client_id.clone())),
-                );
+                if domain_level >= DOMAIN_LEVEL_1_12 {
+                    kid_map.extend(
+                        key_object
+                            .jwe_a256gcm_kid()
+                            .into_iter()
+                            .map(|kid| (kid.clone(), client_id.clone())),
+                    );
+                } else {
+                    kid_map.extend(
+                        key_object
+                            .jwe_a128gcm_kid()
+                            .into_iter()
+                            .map(|kid| (kid.clone(), client_id.clone())),
+                    );
+                }
 
                 let prefer_short_username = ent
                     .get_ava_single_bool(Attribute::OAuth2PreferShortUsername)
@@ -1009,7 +1031,6 @@ impl Oauth2ResourceServersWriteTransaction<'_> {
                     opaque_origins,
                     redirect_uris,
                     origin_secure_required,
-                    strict_redirect_uri,
                     scope_maps,
                     sup_scope_maps,
                     client_scopes,
@@ -1446,14 +1467,25 @@ impl IdmServerProxyWriteTransaction<'_> {
                 OperationError::SerdeJsonError
             })?;
 
-        let code = o2rs
-            .key_object
-            .jwe_a128gcm_encrypt(&code_data_jwe, ct)
-            .map(|code| code.to_string())
-            .map_err(|err| {
-                error!(?err, "Unable to encrypt xchg_code");
-                OperationError::CryptographyError
-            })?;
+        let domain_level = self.qs_write.get_domain_version();
+
+        let code = if domain_level >= DOMAIN_LEVEL_1_12 {
+            o2rs.key_object
+                .jwe_a256gcm_encrypt(&code_data_jwe, ct)
+                .map(|code| code.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encrypt xchg_code");
+                    OperationError::CryptographyError
+                })?
+        } else {
+            o2rs.key_object
+                .jwe_a128gcm_encrypt(&code_data_jwe, ct)
+                .map(|code| code.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encrypt xchg_code");
+                    OperationError::CryptographyError
+                })?
+        };
 
         // Everything is DONE! Now submit that it's all happy and the user consented correctly.
         // this will let them bypass consent steps in the future.
@@ -1918,14 +1950,25 @@ impl IdmServerProxyWriteTransaction<'_> {
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
             })?;
 
-        let access_token = o2rs
-            .key_object
-            .jwe_a128gcm_encrypt(&access_token_data, ct)
-            .map(|jwe| jwe.to_string())
-            .map_err(|err| {
-                error!(?err, "Unable to encode token data");
-                Oauth2Error::ServerError(OperationError::CryptographyError)
-            })?;
+        let domain_level = self.qs_write.get_domain_version();
+
+        let access_token = if domain_level >= DOMAIN_LEVEL_1_12 {
+            o2rs.key_object
+                .jwe_a256gcm_encrypt(&access_token_data, ct)
+                .map(|jwe| jwe.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encode token data");
+                    Oauth2Error::ServerError(OperationError::CryptographyError)
+                })?
+        } else {
+            o2rs.key_object
+                .jwe_a128gcm_encrypt(&access_token_data, ct)
+                .map(|jwe| jwe.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encode token data");
+                    Oauth2Error::ServerError(OperationError::CryptographyError)
+                })?
+        };
 
         // Write the session to the db
         let session = Value::Oauth2Session(
@@ -2131,14 +2174,25 @@ impl IdmServerProxyWriteTransaction<'_> {
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
             })?;
 
-        let refresh_token = o2rs
-            .key_object
-            .jwe_a128gcm_encrypt(&refresh_token_data, ct)
-            .map(|jwe| jwe.to_string())
-            .map_err(|err| {
-                error!(?err, "Unable to encrypt token data");
-                Oauth2Error::ServerError(OperationError::CryptographyError)
-            })?;
+        let domain_level = self.qs_write.get_domain_version();
+
+        let refresh_token = if domain_level >= DOMAIN_LEVEL_1_12 {
+            o2rs.key_object
+                .jwe_a256gcm_encrypt(&refresh_token_data, ct)
+                .map(|jwe| jwe.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encrypt token data");
+                    Oauth2Error::ServerError(OperationError::CryptographyError)
+                })?
+        } else {
+            o2rs.key_object
+                .jwe_a128gcm_encrypt(&refresh_token_data, ct)
+                .map(|jwe| jwe.to_string())
+                .map_err(|err| {
+                    error!(?err, "Unable to encrypt token data");
+                    Oauth2Error::ServerError(OperationError::CryptographyError)
+                })?
+        };
 
         // Write the session to the db even with the refresh path, we need to do
         // this to update the "not issued before" time.
@@ -2324,13 +2378,8 @@ impl IdmServerProxyReadTransaction<'_> {
         // This allows loopback uri's that are *not* part of the origin/redirect_uri configurations.
         let loopback_uri_matched = auth_req_uri_is_loopback && type_allows_localhost_redirect;
 
-        // The legacy origin match is in use.
-        let origin_uri_matched =
-            !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
-
         // Strict uri validation is in use, must be an exact match.
-        let strict_redirect_uri_matched =
-            o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
+        let strict_redirect_uri_matched = o2rs.redirect_uris.contains(&auth_req.redirect_uri);
 
         // Allow opaque origins such as app uris.
         let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
@@ -2341,15 +2390,12 @@ impl IdmServerProxyReadTransaction<'_> {
             || auth_req.redirect_uri.scheme() == "https";
 
         // We must assert that *AT LEAST* one of the above match conditions holds true to proceed.
-        let valid_match_condition_asserted = loopback_uri_matched
-            || origin_uri_matched
-            || strict_redirect_uri_matched
-            || opaque_origin_matched;
+        let valid_match_condition_asserted =
+            loopback_uri_matched || strict_redirect_uri_matched || opaque_origin_matched;
 
         if valid_match_condition_asserted {
             debug!(
                 ?loopback_uri_matched,
-                ?origin_uri_matched,
                 ?strict_redirect_uri_matched,
                 ?opaque_origin_matched,
                 "valid redirect uri match condition met."
@@ -2370,17 +2416,10 @@ impl IdmServerProxyReadTransaction<'_> {
                 warn!(redirect_uri = %auth_req.redirect_uri, "OAuth2 redirect_uri returns to localhost, but localhost redirection is not allowed. See 'kanidm system oauth2 enable-localhost-redirects'");
             } else {
                 // Not localhost - must be missing the redirect uri then, which is why strict/origin/opaque all failed to assert
-                if o2rs.strict_redirect_uri {
-                    warn!(
-                        "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {} from client but configured uris do not match (check oauth2_rs_origin entries)",
-                        auth_req.redirect_uri.as_str()
-                    );
-                } else {
-                    warn!(
-                        "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?} from client but configured uris differ (compare oauth2_rs_origin_landing with oauth2_rs_origin entries)",
-                        auth_req.redirect_uri.origin()
-                    );
-                }
+                warn!(
+                    "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {} from client but configured uris do not match (check oauth2_rs_origin entries)",
+                    auth_req.redirect_uri.as_str()
+                );
             }
 
             // All roads lead to error.
@@ -2438,14 +2477,20 @@ impl IdmServerProxyReadTransaction<'_> {
         // TODO: id_token_hint - a past token which can be used as a hint.
 
         let Some(ident) = maybe_ident else {
-            debug!("No identity available, assume authentication required");
-
             // OIDC Core 1.0 §3.1.2.1
             // prompt=none - The Authorization Server MUST NOT display any authentication or consent user interface pages
             if auth_req.prompt.contains(&Prompt::None) {
-                debug!("prompt=none was requested, but no identity is available, returning error");
-                return Err(Oauth2Error::LoginRequired);
+                warn!("prompt=none was requested by the client, but no authenticated identity is available, returning authorise reject.");
+
+                return Ok(AuthoriseResponse::Reject(AuthoriseReject {
+                    redirect_uri: auth_req.redirect_uri.clone(),
+                    error: Oauth2Error::LoginRequired,
+                    state: auth_req.state.clone(),
+                    response_mode,
+                }));
             } else {
+                debug!("No identity available, assume authentication required");
+
                 return Ok(AuthoriseResponse::AuthenticationRequired {
                     client_name: o2rs.displayname.clone(),
                     login_hint: auth_req.oidc_ext.login_hint.clone(),
@@ -2528,7 +2573,23 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let session_id = ident.get_session_id();
 
-        if consent_previously_granted || !o2rs.enable_consent_prompt() {
+        let consent_required = (
+                // consent was NOT previously granted, we SHOULD request it.
+                !consent_previously_granted
+                // OR
+                ||
+                // client is NOT basic AND is localhost
+                // - This prevents a malicious localhost client hijacking an existing localhost
+                // - consent that was granted.
+                (!o2rs.is_basic() && loopback_uri_matched)
+                // Future - if we add DCR then we will always force TRUE here.
+            )
+            // AND
+            &&
+            // consent prompt is enabled. This can only be false on confidential clients.
+            o2rs.enable_consent_prompt();
+
+        if !consent_required {
             if event_enabled!(tracing::Level::DEBUG) {
                 let pretty_scopes: Vec<String> =
                     granted_scopes.iter().map(|s| s.to_owned()).collect();
@@ -2563,14 +2624,25 @@ impl IdmServerProxyReadTransaction<'_> {
                     Oauth2Error::ServerError(OperationError::SerdeJsonError)
                 })?;
 
-            let code = o2rs
-                .key_object
-                .jwe_a128gcm_encrypt(&code_data_jwe, ct)
-                .map(|jwe| jwe.to_string())
-                .map_err(|err| {
-                    error!(?err, "Unable to encrypt xchg_code data");
-                    Oauth2Error::ServerError(OperationError::CryptographyError)
-                })?;
+            let domain_level = self.qs_read.get_domain_version();
+
+            let code = if domain_level >= DOMAIN_LEVEL_1_12 {
+                o2rs.key_object
+                    .jwe_a256gcm_encrypt(&code_data_jwe, ct)
+                    .map(|jwe| jwe.to_string())
+                    .map_err(|err| {
+                        error!(?err, "Unable to encrypt xchg_code data");
+                        Oauth2Error::ServerError(OperationError::CryptographyError)
+                    })?
+            } else {
+                o2rs.key_object
+                    .jwe_a128gcm_encrypt(&code_data_jwe, ct)
+                    .map(|jwe| jwe.to_string())
+                    .map_err(|err| {
+                        error!(?err, "Unable to encrypt xchg_code data");
+                        Oauth2Error::ServerError(OperationError::CryptographyError)
+                    })?
+            };
 
             Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {
                 redirect_uri: auth_req.redirect_uri.clone(),
@@ -2584,7 +2656,12 @@ impl IdmServerProxyReadTransaction<'_> {
             // consent user interface pages.
             if auth_req.prompt.contains(&Prompt::None) {
                 debug!("prompt=none was requested, but consent is required, returning error");
-                return Err(Oauth2Error::InteractionRequired);
+                return Ok(AuthoriseResponse::Reject(AuthoriseReject {
+                    redirect_uri: auth_req.redirect_uri.clone(),
+                    error: Oauth2Error::InteractionRequired,
+                    state: auth_req.state.clone(),
+                    response_mode,
+                }));
             }
 
             //  Check that the scopes are the same as a previous consent (if any)
@@ -2645,7 +2722,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 .oauth2rs
                 .inner
                 .consent_key
-                .encipher::<JweA128GCMEncipher>(&consent_jwe)
+                .encipher::<JweA256GCMEncipher>(&consent_jwe)
                 .map(|jwe_compact| jwe_compact.to_string())
                 .map_err(|err| {
                     error!(?err, "Unable to encrypt jwe");
@@ -2721,6 +2798,8 @@ impl IdmServerProxyReadTransaction<'_> {
         // All good, now confirm the rejection to the client application.
         Ok(AuthoriseReject {
             redirect_uri: consent_req.redirect_uri,
+            error: Oauth2Error::AccessDenied,
+            state: consent_req.state,
             response_mode: consent_req.response_mode,
         })
     }
@@ -3080,12 +3159,20 @@ impl IdmServerProxyReadTransaction<'_> {
         let scopes_supported = Some(o2rs.scopes_supported.iter().cloned().collect());
         let response_types_supported = vec![ResponseType::Code];
         let response_modes_supported = vec![ResponseMode::Query, ResponseMode::Fragment];
-        let grant_types_supported = vec![GrantType::AuthorisationCode, GrantType::TokenExchange];
-
-        let token_endpoint_auth_methods_supported = vec![
-            EndpointAuthMethod::ClientSecretBasic,
-            EndpointAuthMethod::ClientSecretPost,
+        let grant_types_supported = vec![
+            GrantType::AuthorisationCode,
+            GrantType::TokenExchange,
+            GrantType::RefreshToken,
         ];
+
+        let token_endpoint_auth_methods_supported = if o2rs.is_basic() {
+            vec![
+                EndpointAuthMethod::ClientSecretBasic,
+                EndpointAuthMethod::ClientSecretPost,
+            ]
+        } else {
+            vec![EndpointAuthMethod::None]
+        };
 
         let revocation_endpoint_auth_methods_supported = vec![EndpointAuthMethod::None];
 
@@ -3146,7 +3233,11 @@ impl IdmServerProxyReadTransaction<'_> {
 
         // TODO: add device code if the rs supports it per <https://www.rfc-editor.org/rfc/rfc8628#section-4>
         // `urn:ietf:params:oauth:grant-type:device_code`
-        let grant_types_supported = vec![GrantType::AuthorisationCode, GrantType::TokenExchange];
+        let grant_types_supported = vec![
+            GrantType::AuthorisationCode,
+            GrantType::TokenExchange,
+            GrantType::RefreshToken,
+        ];
 
         let subject_types_supported = vec![SubjectType::Public];
 
@@ -3156,10 +3247,16 @@ impl IdmServerProxyReadTransaction<'_> {
         };
 
         let userinfo_signing_alg_values_supported = None;
-        let token_endpoint_auth_methods_supported = vec![
-            EndpointAuthMethod::ClientSecretBasic,
-            EndpointAuthMethod::ClientSecretPost,
-        ];
+
+        let token_endpoint_auth_methods_supported = if o2rs.is_basic() {
+            vec![
+                EndpointAuthMethod::ClientSecretBasic,
+                EndpointAuthMethod::ClientSecretPost,
+            ]
+        } else {
+            vec![EndpointAuthMethod::None]
+        };
+
         let display_values_supported = Some(vec![DisplayValue::Page]);
         let claim_types_supported = vec![ClaimType::Normal];
         // What claims can we offer?
@@ -3599,16 +3696,20 @@ mod tests {
         AuthorisationRequestContext, CtSecret, Oauth2TokenType, PkceS256Secret,
         TOKEN_EXCHANGE_SUBJECT_TOKEN_TYPE_ACCESS,
     };
-    use crate::credential::Credential;
-    use crate::idm::accountpolicy::ResolvedAccountPolicy;
-    use crate::idm::oauth2::{
-        host_is_local, parse_basic_authz, AuthoriseResponse, Oauth2Error, OauthRSType,
+    use crate::{
+        credential::Credential,
+        idm::{
+            accountpolicy::ResolvedAccountPolicy,
+            oauth2::{
+                host_is_local, parse_basic_authz, AuthoriseResponse, Oauth2Error, OauthRSType,
+            },
+            server::{IdmServer, IdmServerTransaction},
+            serviceaccount::GenerateApiTokenEvent,
+        },
+        prelude::*,
+        value::{AuthType, OauthClaimMapJoin, SessionState},
+        valueset::{ValueSetOauthScopeMap, ValueSetSshKey, ValueSetUint32},
     };
-    use crate::idm::server::{IdmServer, IdmServerTransaction};
-    use crate::idm::serviceaccount::GenerateApiTokenEvent;
-    use crate::prelude::*;
-    use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
-    use crate::valueset::{ValueSetOauthScopeMap, ValueSetSshKey, ValueSetUint32};
     use base64::{engine::general_purpose, Engine as _};
     use compact_jwt::{
         compact::JwkUse, crypto::JwsRs256Verifier, dangernoverify::JwsDangerReleaseWithoutVerify,
@@ -3616,13 +3717,17 @@ mod tests {
         OidcUnverified,
     };
     use kanidm_lib_crypto::CryptoPolicy;
-    use kanidm_proto::constants::*;
-    use kanidm_proto::internal::{SshPublicKey, UserAuthToken};
-    use kanidm_proto::oauth2::*;
-    use std::collections::{BTreeMap, BTreeSet};
-    use std::convert::TryFrom;
-    use std::str::FromStr;
-    use std::time::Duration;
+    use kanidm_proto::{
+        constants::*,
+        internal::{SshPublicKey, UserAuthToken},
+        oauth2::*,
+    };
+    use std::{
+        collections::{BTreeMap, BTreeSet},
+        convert::TryFrom,
+        str::FromStr,
+        time::Duration,
+    };
     use time::OffsetDateTime;
     use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 
@@ -3684,7 +3789,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
             (Attribute::Uuid, Value::Uuid(UUID_TESTGROUP)),
-            (Attribute::Member, Value::Refer(UUID_TESTPERSON_1),)
+            (Attribute::Member, Value::ReferN(UUID_TESTPERSON_1),)
         );
 
         let entry_rs: Entry<EntryInit, EntryNew> = entry_init!(
@@ -3711,15 +3816,15 @@ mod tests {
             // Supplemental origins
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://demo.example.com/oauth2/result").unwrap()
+                Value::new_urln_s("https://demo.example.com/oauth2/result").unwrap()
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://portal.example.com/?custom=foo").unwrap()
+                Value::new_urln_s("https://portal.example.com/?custom=foo").unwrap()
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("app://cheese").unwrap()
+                Value::new_urln_s("app://cheese").unwrap()
             ),
             // System admins
             (
@@ -3856,7 +3961,7 @@ mod tests {
             (Attribute::Name, Value::new_iname("testgroup")),
             (Attribute::Description, Value::new_utf8s("testgroup")),
             (Attribute::Uuid, Value::Uuid(UUID_TESTGROUP)),
-            (Attribute::Member, Value::Refer(UUID_TESTPERSON_1),)
+            (Attribute::Member, Value::ReferN(UUID_TESTPERSON_1),)
         );
 
         let entry_rs: Entry<EntryInit, EntryNew> = entry_init!(
@@ -3882,7 +3987,7 @@ mod tests {
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://demo.example.com/oauth2/result").unwrap()
+                Value::new_urln_s("https://demo.example.com/oauth2/result").unwrap()
             ),
             // System admins
             (
@@ -5447,7 +5552,11 @@ mod tests {
         );
         assert_eq!(
             discovery.grant_types_supported,
-            vec![GrantType::AuthorisationCode, GrantType::TokenExchange]
+            vec![
+                GrantType::AuthorisationCode,
+                GrantType::TokenExchange,
+                GrantType::RefreshToken
+            ]
         );
         assert!(
             discovery.token_endpoint_auth_methods_supported
@@ -5600,7 +5709,11 @@ mod tests {
         );
         assert_eq!(
             discovery.grant_types_supported,
-            vec![GrantType::AuthorisationCode, GrantType::TokenExchange]
+            vec![
+                GrantType::AuthorisationCode,
+                GrantType::TokenExchange,
+                GrantType::RefreshToken
+            ]
         );
         assert_eq!(discovery.subject_types_supported, vec![SubjectType::Public]);
         assert_eq!(
@@ -7836,7 +7949,7 @@ mod tests {
 
         let modlist = ModifyList::new_list(vec![
             Modify::Present(Attribute::OAuth2AllowLocalhostRedirect, Value::Bool(true)),
-            Modify::Present(Attribute::OAuth2RsOrigin, Value::Url(redirect_uri.clone())),
+            Modify::Present(Attribute::OAuth2RsOrigin, Value::UrlN(redirect_uri.clone())),
         ]);
 
         assert!(idms_prox_write
@@ -7948,7 +8061,7 @@ mod tests {
                 &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTGROUP))),
                 &ModifyList::new_list(vec![Modify::Present(
                     Attribute::Member,
-                    Value::Refer(service_account_uuid),
+                    Value::ReferN(service_account_uuid),
                 )]),
             )
             .expect("Failed to add service account to scope group");
@@ -8574,11 +8687,15 @@ mod tests {
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // No identity provided (None) - user is not authenticated.
-        let result = idms_prox_read.check_oauth2_authorisation(None, &auth_req, &auth_req_ctx, ct);
+        let result = idms_prox_read
+            .check_oauth2_authorisation(None, &auth_req, &auth_req_ctx, ct)
+            .unwrap();
+
+        let result = matches!(result, AuthoriseResponse::Reject(rejection) if rejection.error == Oauth2Error::LoginRequired);
 
         assert!(
-            result.unwrap_err() == Oauth2Error::LoginRequired,
-            "prompt=none without authentication must return login_required"
+            result,
+            "prompt=none without authentication must return a rejection for login_required"
         );
     }
 
@@ -8606,11 +8723,14 @@ mod tests {
         let auth_req = auth_req_with_prompt(pkce_secret.to_request(), Vec::from([Prompt::None]));
 
         // Ident is authenticated but has never granted consent.
-        let result =
-            idms_prox_read.check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct);
+        let result = idms_prox_read
+            .check_oauth2_authorisation(Some(&ident), &auth_req, &auth_req_ctx, ct)
+            .unwrap();
+
+        let result = matches!(result, AuthoriseResponse::Reject(rejection) if rejection.error == Oauth2Error::InteractionRequired);
 
         assert!(
-            result.unwrap_err() == Oauth2Error::InteractionRequired,
+            result,
             "prompt=none with authenticated user but no prior consent must return interaction_required"
         );
     }

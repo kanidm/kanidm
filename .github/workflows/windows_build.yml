@@ -3,9 +3,6 @@ name: Windows Build and Test
 
 # Trigger the workflow on push to master or pull request
 "on":
-  push:
-    branches:
-      - master
   pull_request:
   workflow_dispatch:  # so you can run it manually
 env:
@@ -31,7 +28,7 @@ jobs:
           toolchain: stable
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
       - run: cargo build --locked -p kanidm_client -p kanidm_tools --bin kanidm
       # yamllint disable-line rule:line-length
       - run: cargo test -p kanidm_client -p kanidm_tools

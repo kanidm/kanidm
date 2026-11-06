@@ -416,13 +416,15 @@ eap {
 			#  If "enable = no" below, you CANNOT enable resumption for just one
 			#  user by setting the above attribute to "yes".
 			#
-			enable = no
+			enable = yes
 
 			#
 			#  Lifetime of the cached entries, in hours. The sessions will be
 			#  deleted/invalidated after this time.
 			#
 			lifetime = 24 # hours
+
+            max_entries = 255 # default value
 
 			#
 			#  Internal "name" of the session cache. Used to
@@ -454,7 +456,8 @@ eap {
 			#
 			#  This feature REQUIRES "name" option be set above.
 			#
-			persist_dir = "${logdir}/tlscache"
+			# persist_dir = "${logdir}/tlscache"
+			persist_dir = "/dev/shm/tlscache"
 		}
 
 		#

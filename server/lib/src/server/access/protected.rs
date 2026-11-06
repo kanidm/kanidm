@@ -1,6 +1,5 @@
 use crate::prelude::EntryClass;
-use std::collections::BTreeSet;
-use std::sync::LazyLock;
+use std::{collections::BTreeSet, sync::LazyLock};
 
 /// These entry classes may not be created or deleted, and may invoke some protection rules
 /// if on an entry.

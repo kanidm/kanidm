@@ -4,17 +4,19 @@
 
 use std::slice;
 
-use kanidm_proto::internal::{
-    Modify as ProtoModify, ModifyList as ProtoModifyList, OperationError, SchemaError,
+use kanidm_proto::{
+    internal::{Modify as ProtoModify, ModifyList as ProtoModifyList, OperationError, SchemaError},
+    v1::Entry as ProtoEntry,
 };
-use kanidm_proto::v1::Entry as ProtoEntry;
 // Should this be std?
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use crate::prelude::*;
-use crate::schema::SchemaTransaction;
-use crate::value::{PartialValue, Value};
+use crate::{
+    prelude::*,
+    schema::SchemaTransaction,
+    value::{PartialValue, Value},
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModifyValid;
@@ -234,9 +236,9 @@ impl ModifyList<ModifyInvalid> {
     }
 }
 
-impl From<BTreeMap<Attribute, Option<ValueSet>>> for ModifyList<ModifyInvalid> {
-    fn from(attrs: BTreeMap<Attribute, Option<ValueSet>>) -> Self {
-        let mods = attrs
+impl FromIterator<(Attribute, Option<ValueSet>)> for ModifyList<ModifyInvalid> {
+    fn from_iter<I: IntoIterator<Item = (Attribute, Option<ValueSet>)>>(iter: I) -> Self {
+        let mods = iter
             .into_iter()
             .map(|(attr, maybe_valueset)| {
                 if let Some(valueset) = maybe_valueset {
@@ -251,6 +253,12 @@ impl From<BTreeMap<Attribute, Option<ValueSet>>> for ModifyList<ModifyInvalid> {
             valid: ModifyInvalid,
             mods,
         }
+    }
+}
+
+impl From<BTreeMap<Attribute, Option<ValueSet>>> for ModifyList<ModifyInvalid> {
+    fn from(attrs: BTreeMap<Attribute, Option<ValueSet>>) -> Self {
+        Self::from_iter(attrs)
     }
 }
 

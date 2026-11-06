@@ -1,10 +1,8 @@
-use crate::https::ServerState;
-use crate::https::{extractors::ClientConnInfo, LoggerType};
+use crate::https::{extractors::ClientConnInfo, LoggerType, ServerState};
 use axum::{
     body::Body,
     extract::{connect_info::ConnectInfo, State},
-    http::{header::HeaderName, StatusCode},
-    http::{HeaderValue, Request},
+    http::{header::HeaderName, HeaderValue, Request, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
     RequestExt,
@@ -18,7 +16,6 @@ const X_FORWARDED_FOR_HEADER: HeaderName = HeaderName::from_static(X_FORWARDED_F
 
 pub(crate) mod caching;
 pub(crate) mod compression;
-pub(crate) mod hsts_header;
 pub(crate) mod security_headers;
 
 // the version middleware injects

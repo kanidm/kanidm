@@ -1,11 +1,13 @@
 use anyhow::{anyhow, bail, Context, Result};
 use rlm_kanidm_shared::config::KanidmRadiusConfig;
-use std::ffi::OsString;
-use std::fs;
-use std::io::{Read, Write};
-use std::os::unix::process::CommandExt;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    ffi::OsString,
+    fs,
+    io::{Read, Write},
+    os::unix::process::CommandExt,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 const CONTAINER_CONFIG_FILE_PATH: &str = "/data/radius.toml";
 
@@ -14,6 +16,7 @@ const CA_DIR_PATH: &str = "/etc/raddb/certs";
 const CERT_CA_DEST_PATH: &str = "/etc/raddb/certs/ca.pem";
 const CERT_SERVER_DEST_PATH: &str = "/etc/raddb/certs/server.pem";
 const FREERADIUS_EXEC: &str = "/usr/sbin/radiusd";
+const FREERADIUS_TLS_CACHE_PATH: &str = "/dev/shm/tlscache";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BootstrapLayout {
@@ -227,6 +230,14 @@ pub fn run(config_override: Option<&Path>, debug: bool) -> Result<()> {
     })?;
 
     prepare_certs(&config, &layout)?;
+
+    // Create the tlscache dir.
+    let cache_path: &Path = FREERADIUS_TLS_CACHE_PATH.as_ref();
+    if !cache_path.exists() {
+        fs::create_dir(cache_path).with_context(|| {
+            format!("failed to create tls cache directory {FREERADIUS_TLS_CACHE_PATH}")
+        })?;
+    }
 
     eprintln!("Configuration set up, starting FreeRADIUS");
     exec_radiusd(debug)

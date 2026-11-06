@@ -1,8 +1,8 @@
-use crate::prelude::*;
-use crate::server::batch_modify::ModSetValid;
+use crate::{prelude::*, server::batch_modify::ModSetValid};
 use crypto_glue::s256::Sha256Output;
 use std::collections::{BTreeMap, BTreeSet};
 
+#[derive(Debug)]
 pub enum AttributeAssertion {
     // The ValueSet must look exactly like this.
     Set(ValueSet),
@@ -17,6 +17,7 @@ impl From<ValueSet> for AttributeAssertion {
     }
 }
 
+#[derive(Debug)]
 pub enum EntryAssertion {
     // Could do an assert variant to make an entry look *exactly* like this, but that
     // has a lot of potential risks with internal attributes.
@@ -30,7 +31,7 @@ pub enum EntryAssertion {
     },
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub enum AssertOnce {
     #[default]
     No,
@@ -40,17 +41,20 @@ pub enum AssertOnce {
     },
 }
 
+#[derive(Debug)]
 pub struct AssertEvent {
     pub ident: Identity,
     pub asserts: Vec<EntryAssertion>,
     pub once: AssertOnce,
 }
 
+#[derive(Debug)]
 struct Assertion {
     target: Uuid,
     attrs: BTreeMap<Attribute, Option<ValueSet>>,
 }
 
+#[derive(Debug)]
 enum AssertionInner {
     None,
     Create { asserts: Vec<Assertion> },
@@ -109,7 +113,7 @@ impl QueryServerWriteTransaction<'_> {
                 let entry = EntryInitNew::from_iter([
                     (
                         Attribute::Class,
-                        vs_iutf8!(EntryClass::AssertionNonce.into()),
+                        ValueSetIutf8N::new(EntryClass::AssertionNonce.into()) as ValueSet,
                     ),
                     (Attribute::Uuid, ValueSetUuid::new(id) as ValueSet),
                     (Attribute::S256, ValueSetSha256::new(nonce) as ValueSet),
@@ -269,6 +273,7 @@ impl QueryServerWriteTransaction<'_> {
 
         // Finally push the last working assert
         assert_batches.push(working_assert);
+        trace!("{:#?}", assert_batches);
 
         // Now we can finally actually do the work.
         // Loop and apply!
@@ -366,8 +371,7 @@ impl QueryServerWriteTransaction<'_> {
 mod tests {
     use super::{AssertEvent, AssertOnce, EntryAssertion};
     use crate::prelude::*;
-    use crypto_glue::s256::Sha256;
-    use crypto_glue::traits::*;
+    use crypto_glue::{s256::Sha256, traits::*};
     use std::collections::BTreeMap;
     // use std::sync::Arc;
 
@@ -445,9 +449,12 @@ mod tests {
                 attrs: BTreeMap::from([
                     (
                         Attribute::Class,
-                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ValueSetIutf8N::from_iter([
+                            EntryClass::Person.into(),
+                            EntryClass::Account.into(),
+                        ]) as Option<ValueSet>,
                     ),
-                    (Attribute::Name, vs_iname!("test_entry_a").into()),
+                    (Attribute::Name, Some(ValueSetIname::new("test_entry_a"))),
                     (
                         Attribute::DisplayName,
                         vs_utf8!("Test Entry A".into()).into(),
@@ -524,9 +531,12 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
-                        (Attribute::Name, vs_iname!("test_entry_b").into()),
+                        (Attribute::Name, Some(ValueSetIname::new("test_entry_b"))),
                         (
                             Attribute::DisplayName,
                             vs_utf8!("Test Entry B".into()).into(),
@@ -538,9 +548,12 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
-                        (Attribute::Name, vs_iname!("test_entry_d").into()),
+                        (Attribute::Name, Some(ValueSetIname::new("test_entry_d"))),
                         (
                             Attribute::DisplayName,
                             vs_utf8!("Test Entry D".into()).into(),
@@ -569,9 +582,12 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
-                        (Attribute::Name, vs_iname!("test_entry_b").into()),
+                        (Attribute::Name, Some(ValueSetIname::new("test_entry_b"))),
                         (
                             Attribute::DisplayName,
                             vs_utf8!("Test Entry B".into()).into(),
@@ -583,9 +599,12 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
-                        (Attribute::Name, vs_iname!("test_entry_c").into()),
+                        (Attribute::Name, Some(ValueSetIname::new("test_entry_c"))),
                         (
                             Attribute::DisplayName,
                             vs_utf8!("Test Entry C".into()).into(),
@@ -597,9 +616,12 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
-                        (Attribute::Name, vs_iname!("test_entry_d").into()),
+                        (Attribute::Name, Some(ValueSetIname::new("test_entry_d"))),
                         (
                             Attribute::DisplayName,
                             vs_utf8!("Test Entry D".into()).into(),
@@ -632,9 +654,12 @@ mod tests {
                     attrs: BTreeMap::from([
                         (
                             Attribute::Class,
-                            vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                            ValueSetIutf8N::from_iter([
+                                EntryClass::Person.into(),
+                                EntryClass::Account.into(),
+                            ]) as Option<ValueSet>,
                         ),
-                        (Attribute::Name, vs_iname!("test_entry_c").into()),
+                        (Attribute::Name, Some(ValueSetIname::new("test_entry_c"))),
                         (
                             Attribute::DisplayName,
                             vs_utf8!("Test Entry C".into()).into(),
@@ -688,9 +713,12 @@ mod tests {
                 attrs: BTreeMap::from([
                     (
                         Attribute::Class,
-                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ValueSetIutf8N::from_iter([
+                            EntryClass::Person.into(),
+                            EntryClass::Account.into(),
+                        ]) as Option<ValueSet>,
                     ),
-                    (Attribute::Name, vs_iname!("test_entry_a").into()),
+                    (Attribute::Name, Some(ValueSetIname::new("test_entry_a"))),
                     (
                         Attribute::DisplayName,
                         vs_utf8!("Test Entry A".into()).into(),
@@ -721,9 +749,12 @@ mod tests {
                 attrs: BTreeMap::from([
                     (
                         Attribute::Class,
-                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ValueSetIutf8N::from_iter([
+                            EntryClass::Person.into(),
+                            EntryClass::Account.into(),
+                        ]) as Option<ValueSet>,
                     ),
-                    (Attribute::Name, vs_iname!("test_entry_a").into()),
+                    (Attribute::Name, Some(ValueSetIname::new("test_entry_a"))),
                     (
                         Attribute::DisplayName,
                         // =============================
@@ -758,9 +789,12 @@ mod tests {
                 attrs: BTreeMap::from([
                     (
                         Attribute::Class,
-                        vs_iutf8!(EntryClass::Person.into(), EntryClass::Account.into()).into(),
+                        ValueSetIutf8N::from_iter([
+                            EntryClass::Person.into(),
+                            EntryClass::Account.into(),
+                        ]),
                     ),
-                    (Attribute::Name, vs_iname!("test_entry_a").into()),
+                    (Attribute::Name, Some(ValueSetIname::new("test_entry_a"))),
                     (
                         Attribute::DisplayName,
                         // =============================

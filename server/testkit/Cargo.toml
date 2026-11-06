@@ -50,18 +50,16 @@ url = { workspace = true, features = ["serde"] }
 kanidm_build_profiles = { workspace = true }
 
 [dev-dependencies]
+base64 = { workspace = true }
 cidr = { workspace = true }
 compact_jwt = { workspace = true, features = ["unsafe_release_without_verify"] }
-escargot = "0.5.15"
+escargot = "1.0"
 futures = { workspace = true }
 hex = { workspace = true }
 hyper = { workspace = true }
 http-body-util = { workspace = true }
 hyper-util = { workspace = true }
 ldap3_client = { workspace = true }
-oauth2_ext = { workspace = true, default-features = false, features = [
-    "reqwest",
-] }
 serde_json = { workspace = true }
 time = { workspace = true }
 kanidm_lib_crypto = { workspace = true }

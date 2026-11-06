@@ -14,6 +14,92 @@ We value your feedback! First, please see our [code of conduct]. If you have que
 
 ## Release Notes
 
+### 2026-11-01 - Kanidm 1.12.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
+
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
+
+Before upgrading you should review [our upgrade documentation]
+
+#### 1.12.0 Important Changes
+
+- Account Signup is now possible. Refer to the [kanidm book] for steps to enable this feature.
+
+#### 1.12.0 Release Highlights
+
+- Add account signup feature (#4625)
+- Handle dead unix sockets better. (#4658)
+- Fix bind-mount not mounting user home on Debian (#4634)
+- Support LDAP abandon request (#4654)
+- Detect if schema attrs are multivalue and split them (#4438)
+- Show Kanidm version in Web UI (#4603)
+- Various admin UI & layout improvements. (#4601)
+- Improve Credentials UI when a UNIX password is set (#4600)
+- Update OAuth2 documentation with key rotation section (#4588)
+- Update OAuth2 to use AES256GCM over AES128GCM
+- Allow setting the provided http protocol versions (#4543)
+- Add example & description of max_ber_size opt for ldap-sync (#4544)
+- Resolve new database index creation issue (#4539)
+- Fix pam.h constants for FreeBSD/MacOS (#4568)
+- Security: medium - ldap bind state reset on failure (#4569)
+- OAuth2 authorisation response error should redirect in some cases (#4549)
+- Extend HTTP security headers (#4541)
+- ldap-sync: Add usage example of mail and ssh person_attr opts (#4547)
+- Enable webauthn on freebsd cli (#4531)
+- Resolve renew-cert timeout issue (#4524)
+- Enforce consent on localhost redirections to protect against malicious clients (#4516)
+- Resolve incorrect URN in access token type response (#4526)
+- Correct a default in some OAuth2 Error handling responses (#4515)
+- Expand the allowed characters in OAuth2 scope names (#4506)
+- Return correct OAuth2 HTTP Code on invalid token responses (#4504)
+
+### 2026-08-01 - Kanidm 1.11.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
+community and we appreciate their invaluable contributions, comments, questions, feedback and support.
+
+You should review our [support documentation] as this may have important effects on your distribution or upgrades in
+future.
+
+Before upgrading you should review [our upgrade documentation]
+
+#### 1.11.0 Important Changes
+
+- Passwords now have a max length of 128 UTF-8 characters (512 bytes). This is to prevent a rare class of denial of
+  service during authentication requests.
+- rlm_kanidm has been rewritten from python to rust. This greatly improves performance. No configuration changes are
+  required for the container.
+
+#### 1.11.0 Release Highlights
+
+- Refactor early server startup logic to better handle early server shutdowns (#4468)
+- Properly use Json types in some responses so that mime types are set correctly (#4480)
+- Minor internal attribute syntax tidying (#4439)
+- Improve credential update sessions to better indicate when a save is required (#4338)
+- Add missing service-account manager attributes for search (#4381)
+- Allow custom radius attributes in rlm_kanidm (#4370)
+- Add live password feedback in forms (#4348)
+- Limit password max length (#4442)
+- Fix incorrect processing in bindmount logic that would cause errors when the mount already existed (#4433)
+- Add missing attributes for the migration access checks (#4387)
+- Add a missing alias for bindmount in unixd tasks (#4398)
+- OAuth2 security hardening (#4380)
+- Return unique ldap attributes even if requested multiple times (#4364)
+- Move schema from the DB to memory (#4315)
+- Add support for oidc max-age and prompt=login (#4336)
+- Resolve an incorrect handling of commit flags in unixd transactions
+- Prevent double deletes in some migration use cases
+- Refactor of access control paths to remove some code duplication
+- Revert OAuth2 JWT ClientID header which broke some clients (#4334)
+- Allow SMTP urls in mail-sender (#4335)
+- Remove debug symbols in release builds (#4319)
+- Replace rlm_python with rlm_kanidm (#4179)
+- Fix copy-paste of TOTP removal prompt (#4314)
+- Resolve a mishandling of some webauthn fields being encoded with the wrong base64 padding options (#4312)
+
 ### 2026-05-01 - Kanidm 1.10.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the combined effort of our
@@ -26,19 +112,29 @@ Before upgrading you should review [our upgrade documentation]
 
 #### 1.10.0 Important Changes
 
-- OpenSSL is no longer required as a dependency. All cryptographic paths have been replaced by RustCrypto or Rustls using aws-lc-rs.
+- OpenSSL is no longer required as a dependency. All cryptographic paths have been replaced by RustCrypto or Rustls
+  using aws-lc-rs.
 - Kanidm-unixd now supports bind mounts as an alternative to symlinks for home mapping.
-- Account recovery can be enabled as a feature allowing a user to prove knowledge of their own email, and then have a credential reset email sent to them.
+- Account recovery can be enabled as a feature allowing a user to prove knowledge of their own email, and then have a
+  credential reset email sent to them.
   - Administrators can also trigger account recovery emails to be sent to users.
 
 #### 1.10.0 Release Highlights
 
-- Security - High: SCIM Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur leading to Denial of Service by an unauthenticated user
-- Security - High: LDAP Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur leading to Denial of Service by an unauthenticated user
-- Security - Moderate: PNG Image validation did not correctly handle short images allowing a panic to occur in a worker thread. This may lead to system instability over time
-- Security - Low: HTML injection via user DisplayName in Passkey enrolment dialogs. This allows an admin to execute JS in the context of a users browser. Since the admin already can reset the users credentials, the impact of this is minimal.
-- Security - Low: non-constant time comparison of OAuth2 client secret may allow a remote attacker to remotely recovery the bytes of the secret. Due to the length of the secret (48 chars) this is infeasible practically.
-- Security - Low: incorrect handling of origin validation in Webauthn-RS allowed a malicious domain to collide with a valid one (badexample.com would match with example.com). This is mitigated by browsers detecting the forgery and preventing the authentication from proceeding.
+- Security - High: SCIM Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur
+  leading to Denial of Service by an unauthenticated user
+- Security - High: LDAP Filters did not contain a bound on their parsing depth allowing stack exhaustion to occur
+  leading to Denial of Service by an unauthenticated user
+- Security - Moderate: PNG Image validation did not correctly handle short images allowing a panic to occur in a worker
+  thread. This may lead to system instability over time
+- Security - Low: HTML injection via user DisplayName in Passkey enrolment dialogs. This allows an admin to execute JS
+  in the context of a users browser. Since the admin already can reset the users credentials, the impact of this is
+  minimal.
+- Security - Low: non-constant time comparison of OAuth2 client secret may allow a remote attacker to remotely recovery
+  the bytes of the secret. Due to the length of the secret (48 chars) this is infeasible practically.
+- Security - Low: incorrect handling of origin validation in Webauthn-RS allowed a malicious domain to collide with a
+  valid one (badexample.com would match with example.com). This is mitigated by browsers detecting the forgery and
+  preventing the authentication from proceeding.
 - 20260331 send account recovery emails (#4259)
 - Invert incorrect thread count logic (#4294)
 - Allow modification of OAuth2 Refresh Expiry (#4276)

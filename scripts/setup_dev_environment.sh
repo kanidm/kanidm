@@ -9,8 +9,8 @@
 
 set -e
 
-if [ -z "${BUILD_MODE}" ]; then
-    BUILD_MODE=""
+if [ -z "$KANI_CARGO_OPTS" ]; then
+    KANI_CARGO_OPTS="--profile dev"
 fi
 
 # if they passed --help then output the help
@@ -18,31 +18,12 @@ if [ "${1}" == "--help" ]; then
     echo "Usage: $0 [--remove-db]"
     echo "  --remove-db: remove the existing DB before running"
     echo "  Env vars:"
-    echo " BUILD_MODE - default=--debug, set to '--release' to build binaries in release mode"
+    echo " {KANI_CARGO_OPTS} - default=--debug, set to '--release' to build binaries in release mode"
     exit 0
 fi
-if [ ! -f run_insecure_dev_server.sh ]; then
-    if [ "$(basename "$(pwd)")" == "kanidm" ]; then
-        cd server/daemon || exit 1
-    else
-        echo "Please run from the server/daemon dir, I can't tell where you are..."
-        exit 1
-    fi
-fi
-
-
-# if --remove-db is in the command line args then remove the DB
-if [ -z "${REMOVE_TEST_DB}" ]; then
-    if [ "${1}" == "--remove-db" ]; then
-        REMOVE_TEST_DB=1
-    else
-        REMOVE_TEST_DB=0
-    fi
-fi
-
 
 # defaults
-KANIDM_CONFIG_FILE="./insecure_server.toml"
+KANIDM_CONFIG_FILE="./scripts/insecure_server.toml"
 KANIDM_URL="$(grep -E 'origin.*https' "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
@@ -73,20 +54,18 @@ OAUTH2_RP_ID="test_oauth2"
 OAUTH2_RP_DISPLAY="test_oauth2"
 
 # commands to run things
-KANIDM="cargo run ${BUILD_MODE} --manifest-path ../../Cargo.toml --bin kanidm -- "
-KANIDMD="cargo run ${BUILD_MODE} -p daemon --bin kanidmd -- "
+KANIDM="cargo run ${KANI_CARGO_OPTS} --bin kanidm -- "
+KANIDMD="cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- "
 
-if [ "${REMOVE_TEST_DB}" -eq 1 ]; then
-    echo "Removing the existing DB!"
-    rm /tmp/kanidm/kanidm.db || true
-fi
-
-export KANIDM_CONFIG="./insecure_server.toml"
 IDM_ADMIN_USER="idm_admin@localhost"
 
 echo "Resetting the idm_admin user..."
+
+${KANIDMD} scripting recover-account idm_admin
+
 IDM_ADMIN_PASS_RAW="$(${KANIDMD} scripting recover-account idm_admin 2>&1)"
 IDM_ADMIN_PASS="$(echo "${IDM_ADMIN_PASS_RAW}" | grep output | jq -r .output)"
+
 if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null" ]; then
     echo "Failed to reset idm_admin password!"
     echo "Raw output:"

@@ -5,14 +5,11 @@ mod key_providers;
 pub(crate) mod schema;
 mod system_config;
 
-use self::access::*;
-use self::accounts::*;
-use self::groups::*;
-use self::key_providers::e_key_provider_internal_dl6;
-use self::schema::*;
-use self::system_config::*;
-use crate::constants::UUID_SCHEMA_ATTR_EC_KEY_PRIVATE;
-use crate::prelude::*;
+use self::{
+    access::*, accounts::*, groups::*, key_providers::e_key_provider_internal_dl6, schema::*,
+    system_config::*,
+};
+use crate::{constants::UUID_SCHEMA_ATTR_EC_KEY_PRIVATE, prelude::*};
 use kanidm_proto::internal::OperationError;
 use uuid::Uuid;
 
@@ -129,6 +126,9 @@ pub fn phase_1_schema_attrs() -> Vec<SchemaAttribute> {
         SCHEMA_ATTR_PASSWORD_CHANGED_TIME.clone(),
         SCHEMA_ATTR_OAUTH2_REFRESH_TOKEN_EXPIRY.clone(),
         SCHEMA_ATTR_DOMAIN_ALLOW_ACCOUNT_RECOVERY.clone(),
+        // DL15
+        SCHEMA_ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_SUB.clone(),
+        SCHEMA_ATTR_OAUTH2_TOKEN_INTROSPECT_ENDPOINT.clone(),
     ]
 }
 

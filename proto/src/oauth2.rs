@@ -1,14 +1,18 @@
 //! Oauth2 RFC protocol definitions.
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::Display;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Display,
+};
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
-use serde_with::base64::{Base64, UrlSafe};
-use serde_with::formats::SpaceSeparator;
 use serde_with::{
-    formats, rust::deserialize_ignore_any, serde_as, skip_serializing_none, StringWithSeparator,
+    base64::{Base64, UrlSafe},
+    formats,
+    formats::SpaceSeparator,
+    rust::deserialize_ignore_any,
+    serde_as, skip_serializing_none, StringWithSeparator,
 };
 use url::Url;
 use uuid::Uuid;
@@ -254,10 +258,15 @@ pub struct OAuth2RFC9068TokenExtensions {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum IssuedTokenType {
+    #[serde(rename = "urn:ietf:params:oauth:token-type:access_token")]
     AccessToken,
+    #[serde(rename = "urn:ietf:params:oauth:token-type:refresh_token")]
     RefreshToken,
+    #[serde(rename = "urn:ietf:params:oauth:token-type:id_token")]
     IdToken,
+    #[serde(rename = "urn:ietf:params:oauth:token-type:saml1")]
     Saml1,
+    #[serde(rename = "urn:ietf:params:oauth:token-type:saml2")]
     Saml2,
 }
 
@@ -378,11 +387,21 @@ pub struct AccessTokenIntrospectRequest {
     pub client_post_auth: ClientPostAuth,
 }
 
+impl From<String> for AccessTokenIntrospectRequest {
+    fn from(token: String) -> Self {
+        Self {
+            token,
+            token_type_hint: None,
+            client_post_auth: ClientPostAuth::default(),
+        }
+    }
+}
+
 /// Response to an introspection request. If the token is inactive or revoked, only
 /// `active` will be set to the value of `false`.
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct AccessTokenIntrospectResponse {
     pub active: bool,
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
@@ -500,6 +519,10 @@ pub enum GrantType {
     Implicit,
     #[serde(rename = "urn:ietf:params:oauth:grant-type:token-exchange")]
     TokenExchange,
+    ClientCredentials,
+    RefreshToken,
+    #[serde(rename = "urn:ietf:params:oauth:grant-type:jwt-bearer")]
+    JwtBearer,
 }
 
 fn grant_types_supported_default() -> Vec<GrantType> {

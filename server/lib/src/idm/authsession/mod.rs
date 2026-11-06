@@ -3,27 +3,31 @@
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
 use self::handler_oauth2_client::CredHandlerOAuth2Client;
-use crate::credential::totp::Totp;
-use crate::credential::{BackupCodes, Credential, CredentialType, Password};
-use crate::idm::account::Account;
-use crate::idm::accountpolicy::ResolvedAccountPolicy;
-use crate::idm::audit::AuditEvent;
-use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState, ReauthRequest};
-use crate::idm::delayed::{
-    AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
+use crate::{
+    credential::{totp::Totp, BackupCodes, Credential, CredentialType, Password},
+    idm::{
+        account::Account,
+        accountpolicy::ResolvedAccountPolicy,
+        audit::AuditEvent,
+        authentication::{AuthCredential, AuthExternal, AuthState, ReauthRequest},
+        delayed::{
+            AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade,
+            WebauthnCounterIncrement,
+        },
+        oauth2_client::OAuth2ClientProvider,
+    },
+    prelude::*,
+    server::keys::KeyObject,
+    value::{AuthType, Session, SessionExtMetadata, SessionState},
 };
-use crate::idm::oauth2_client::OAuth2ClientProvider;
-use crate::prelude::*;
-use crate::server::keys::KeyObject;
-use crate::value::{AuthType, Session, SessionExtMetadata, SessionState};
 use compact_jwt::Jws;
 use hashbrown::HashSet;
-use kanidm_proto::internal::UserAuthToken;
-use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+use kanidm_proto::{
+    internal::UserAuthToken,
+    v1::{AuthAllowed, AuthIssueSession, AuthMech},
+};
 use nonempty::NonEmpty;
-use std::collections::BTreeMap;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 use time::OffsetDateTime;
 use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
@@ -50,6 +54,8 @@ const BAD_CREDENTIALS: &str = "invalid credential message";
 const ACCOUNT_EXPIRED: &str = "account expired";
 const PW_BADLIST_MSG: &str = "password is in badlist";
 const BAD_OAUTH2_CSRF_STATE_MSG: &str = "invalid oauth2 csrf state";
+const BAD_OAUTH2_SUBJECT_MSG: &str = "invalid oauth2 token subject";
+const BAD_OAUTH2_SESSION_MSG: &str = "oauth2 session expired";
 
 #[derive(Debug, Clone)]
 enum AuthIntent {
@@ -994,7 +1000,7 @@ impl CredHandler {
                 async_tx,
                 att_ca_list,
             ),
-            CredHandler::OAuth2Trust { handler } => handler.validate(cred, ts),
+            CredHandler::OAuth2Trust { handler } => Arc::make_mut(handler).validate(cred, ts),
         }
     }
 
@@ -1762,33 +1768,42 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
-    use crate::credential::{BackupCodes, Credential};
-    use crate::idm::account::Account;
-    use crate::idm::accountpolicy::ResolvedAccountPolicy;
-    use crate::idm::audit::AuditEvent;
-    use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState};
-    use crate::idm::authsession::{
-        AuthSession, AuthSessionData, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG,
-        BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
+    use crate::{
+        credential::{
+            totp::{Totp, TOTP_DEFAULT_STEP},
+            BackupCodes, Credential,
+        },
+        idm::{
+            account::Account,
+            accountpolicy::ResolvedAccountPolicy,
+            audit::AuditEvent,
+            authentication::{AuthCredential, AuthExternal, AuthState},
+            authsession::{
+                AuthSession, AuthSessionData, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG,
+                BAD_PASSWORD_MSG, BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
+            },
+            delayed::DelayedAction,
+            oauth2_client::OAuth2ClientProvider,
+        },
+        migration_data::{BUILTIN_ACCOUNT_ANONYMOUS, BUILTIN_ACCOUNT_TEST_PERSON},
+        prelude::*,
+        server::keys::KeyObjectInternal,
+        utils::readable_password_from_random,
     };
-    use crate::idm::delayed::DelayedAction;
-    use crate::idm::oauth2_client::OAuth2ClientProvider;
-    use crate::migration_data::{BUILTIN_ACCOUNT_ANONYMOUS, BUILTIN_ACCOUNT_TEST_PERSON};
-    use crate::prelude::*;
-    use crate::server::keys::KeyObjectInternal;
-    use crate::utils::readable_password_from_random;
     use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
     use hashbrown::HashSet;
     use kanidm_lib_crypto::CryptoPolicy;
-    use kanidm_proto::internal::{UatPurpose, UserAuthToken};
-    use kanidm_proto::oauth2::{AccessTokenResponse, AccessTokenType, IssuedTokenType};
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+    use kanidm_proto::{
+        internal::{UatPurpose, UserAuthToken},
+        oauth2::{
+            AccessTokenIntrospectResponse, AccessTokenResponse, AccessTokenType, IssuedTokenType,
+        },
+        v1::{AuthAllowed, AuthIssueSession, AuthMech},
+    };
     use std::time::Duration;
     use time::OffsetDateTime;
     use tokio::sync::mpsc::unbounded_channel as unbounded;
-    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
-    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
     use webauthn_rs::prelude::{RequestChallengeResponse, Webauthn};
 
     fn create_pw_badlist_cache() -> HashSet<String> {
@@ -3457,12 +3472,18 @@ mod tests {
         let privileged = false;
 
         // create the trust provider
-        let oauth2_client_provider =
-            OAuth2ClientProvider::new_test("test_trust_client", "https://localhost", ["openid"]);
+        let oauth2_client_provider = OAuth2ClientProvider::new_test(
+            "test_trust_client",
+            "https://localhost",
+            ["openid"],
+            "https://localhost",
+        );
 
         // Configure the account to use it.
         let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
         account.setup_oauth2_client_provider(&oauth2_client_provider);
+
+        let account_subject = account.uuid().to_string();
 
         // Start an auth session.
         let asd = AuthSessionData {
@@ -3552,6 +3573,103 @@ mod tests {
         let state = session
             .validate_creds(
                 &AuthCredential::OAuth2AccessTokenResponse { response },
+                current_time,
+                &async_tx,
+                &audit_tx,
+                &webauthn,
+                &pw_badlist_cache,
+            )
+            .expect("Failed to perform credential validation step.");
+
+        let AuthState::External(AuthExternal::OAuth2AccessTokenIntrospectionRequest {
+            introspection_url: _,
+            client_id: _,
+            client_secret: _,
+            request: _token_request,
+        }) = state
+        else {
+            unreachable!()
+        };
+
+        // Store the session state so we can come back to it.
+        let valid_session_state = session;
+
+        // Send back an invalid token.
+        // Roll back to the good state
+        let mut session = valid_session_state.clone();
+
+        let response = AccessTokenIntrospectResponse {
+            active: false,
+            ..Default::default()
+        };
+
+        let state = session
+            .validate_creds(
+                &AuthCredential::OAuth2AccessTokenIntrospectResponse { response },
+                current_time,
+                &async_tx,
+                &audit_tx,
+                &webauthn,
+                &pw_badlist_cache,
+            )
+            .expect("Failed to perform credential validation step.");
+
+        // At this point the authentication is denied!!!
+        match state {
+            AuthState::Denied(_) => {}
+            _ => unreachable!(),
+        }
+
+        match audit_rx.try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => panic!("Oh no"),
+        }
+
+        // Send back an invalid subject
+        // Roll back to the good state
+        let mut session = valid_session_state.clone();
+
+        let response = AccessTokenIntrospectResponse {
+            active: true,
+            sub: Some("tobias the hacker".to_string()),
+            ..Default::default()
+        };
+
+        let state = session
+            .validate_creds(
+                &AuthCredential::OAuth2AccessTokenIntrospectResponse { response },
+                current_time,
+                &async_tx,
+                &audit_tx,
+                &webauthn,
+                &pw_badlist_cache,
+            )
+            .expect("Failed to perform credential validation step.");
+
+        // At this point the authentication is denied!!!
+        match state {
+            AuthState::Denied(_) => {}
+            _ => unreachable!(),
+        }
+
+        match audit_rx.try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => panic!("Oh no"),
+        }
+
+        // Now we do a "verification" of the token.
+        // Roll back to the good state
+        let mut session = valid_session_state.clone();
+
+        let response = AccessTokenIntrospectResponse {
+            active: true,
+            sub: Some(account_subject),
+            ..Default::default()
+        };
+
+        let state = session
+            .validate_creds(
+                &AuthCredential::OAuth2AccessTokenIntrospectResponse { response },
                 current_time,
                 &async_tx,
                 &audit_tx,

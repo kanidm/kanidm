@@ -146,20 +146,28 @@ kanidm group account-policy privilege-expiry my_admin_group 86400 # NB: will be 
 ### Setting Webauthn Attestation CA Lists
 
 To verify Webauthn authenticators with attestation, Kanidm needs an allowlist of authenticators to trust. Generate this
-list with the `fido-mds-tool` from the [webauthn-rs project](https://github.com/kanidm/webauthn-rs). If you have a Rust
-toolchain installed, it can built and installed from source with
+list with the `fido-mds-tool` from the [webauthn-rs project](https://github.com/kanidm/webauthn-rs).
+
+We recommend using `fido-mds-tool` from the [tools container](../installing_client_tools.md#tools-container) to work
+around issues with the FIDO Alliance's MDS publishing behaviours.
+
+> [!WARNING]
+>
+> The FIDO Alliance commonly update and change the content of the MDS without prior warning, which can cause
+> fido-mds-tool to fail to parse the latest data. We supply a known-working copy of the MDS within the
+> tools-container which is known to parse and work. This is updated with Kanidm releases.
+
+<details>
+<summary>Install from source</summary>
+
+If you have a Rust toolchain installed, it can built and installed from source. The MDS can then be fetched from
+the FIDO alliance post build.
 
 ```bash
 cargo install fido-mds-tool
-```
-
-Alternatively, `fido-mds-tool` is available in the [tools container](../installing_client_tools.md#tools-container).
-
-First, fetch the MDS data provided by the FIDO Alliance:
-
-```bash
 fido-mds-tool fetch
 ```
+</details>
 
 Then, query the MDS data to generate your allowlist of authenticators. For example, to trust all authenticators made by
 Yubico, run

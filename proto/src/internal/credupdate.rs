@@ -1,12 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use webauthn_rs_proto::CreationChallengeResponse;
-use webauthn_rs_proto::RegisterPublicKeyCredential;
+use webauthn_rs_proto::{CreationChallengeResponse, RegisterPublicKeyCredential};
 
 pub use sshkey_attest::proto::PublicKey as SshPublicKey;
 
@@ -187,6 +185,7 @@ pub struct CUStatus {
     // Display hints + The credential details.
     pub can_commit: bool,
     pub warnings: Vec<CURegWarning>,
+    pub dirty: bool,
     pub primary: Option<CredentialDetail>,
     pub primary_state: CUCredState,
     pub passkeys: Vec<PasskeyDetail>,
@@ -302,7 +301,7 @@ pub struct BackupCodesView {
     pub backup_codes: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, ToSchema, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Serialize, Deserialize, Debug, ToSchema, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum PasswordFeedback {
     // https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Suggestion.html

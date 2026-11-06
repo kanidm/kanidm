@@ -1,23 +1,32 @@
-use super::accountpolicy::ResolvedAccountPolicy;
-use super::group::{load_account_policy, load_all_groups_from_account, Group, Unix};
-use crate::constants::UUID_ANONYMOUS;
-use crate::credential::softlock::CredSoftLockPolicy;
-use crate::credential::{apppwd::ApplicationPassword, Credential};
-use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
-use crate::event::SearchEvent;
-use crate::idm::application::Application;
-use crate::idm::ldap::{LdapBoundToken, LdapSession};
-use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
-use crate::modify::{ModifyInvalid, ModifyList};
-use crate::prelude::*;
-use crate::schema::SchemaTransaction;
-use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
+use super::{
+    accountpolicy::ResolvedAccountPolicy,
+    group::{load_account_policy, load_all_groups_from_account, Group, Unix},
+};
+use crate::{
+    constants::UUID_ANONYMOUS,
+    credential::{apppwd::ApplicationPassword, softlock::CredSoftLockPolicy, Credential},
+    entry::{Entry, EntryCommitted, EntryReduced, EntrySealed},
+    event::SearchEvent,
+    idm::{
+        application::Application,
+        ldap::{LdapBoundToken, LdapSession},
+        server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction},
+    },
+    modify::{ModifyInvalid, ModifyList},
+    prelude::*,
+    schema::SchemaTransaction,
+    value::{IntentTokenState, PartialValue, SessionState, Value},
+};
 use kanidm_lib_crypto::CryptoPolicy;
-use kanidm_proto::internal::{CredentialStatus, UatPurpose, UiHint, UserAuthToken};
-use kanidm_proto::v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken};
+use kanidm_proto::{
+    internal::{CredentialStatus, UatPurpose, UiHint, UserAuthToken},
+    v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken},
+};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::collections::{BTreeMap, BTreeSet};
-use std::time::Duration;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    time::Duration,
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -43,6 +52,7 @@ pub struct OAuth2AccountCredential {
     pub(crate) provider: Uuid,
     pub(crate) cred_id: Uuid,
     pub(crate) user_id: String,
+    pub(crate) user_sub: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -217,19 +227,26 @@ macro_rules! try_from_entry {
         let maybe_account_unique_user_id =
             $value.get_ava_single_utf8(Attribute::OAuth2AccountUniqueUserId);
 
+        let maybe_account_unique_user_sub =
+            $value.get_ava_single_utf8(Attribute::OAuth2AccountUniqueUserSub);
+
         let maybe_account_credential_id =
             $value.get_ava_single_uuid(Attribute::OAuth2AccountCredentialUuid);
 
         let oauth2_client_provider = match (
             maybe_account_provider,
             maybe_account_unique_user_id,
+            maybe_account_unique_user_sub,
             maybe_account_credential_id,
         ) {
-            (Some(provider), Some(user_id), Some(cred_id)) => Some(OAuth2AccountCredential {
-                provider,
-                cred_id,
-                user_id: user_id.to_string(),
-            }),
+            (Some(provider), Some(user_id), Some(user_sub), Some(cred_id)) => {
+                Some(OAuth2AccountCredential {
+                    provider,
+                    cred_id,
+                    user_id: user_id.to_string(),
+                    user_sub: user_sub.to_string(),
+                })
+            }
             _ => None,
         };
 
@@ -276,6 +293,10 @@ impl Account {
 
     pub(crate) fn sshkeys(&self) -> &BTreeMap<String, SshPublicKey> {
         &self.sshkeys
+    }
+
+    pub(crate) fn uuid(&self) -> Uuid {
+        self.uuid
     }
 
     pub(crate) fn spn(&self) -> &str {
@@ -901,6 +922,7 @@ impl Account {
             provider: client_provider.uuid,
             cred_id: Uuid::new_v4(),
             user_id: self.spn.clone(),
+            user_sub: self.uuid.to_string(),
         });
     }
 }
@@ -1124,8 +1146,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::idm::accountpolicy::ResolvedAccountPolicy;
-    use crate::prelude::*;
+    use crate::{idm::accountpolicy::ResolvedAccountPolicy, prelude::*};
     use kanidm_proto::internal::UiHint;
 
     #[idm_test]
@@ -1203,7 +1224,7 @@ mod tests {
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("test_uihint_group")),
-            (Attribute::Member, Value::Refer(target_uuid)),
+            (Attribute::Member, Value::ReferN(target_uuid)),
             (
                 Attribute::GrantUiHint,
                 Value::UiHint(UiHint::ExperimentalFeatures)

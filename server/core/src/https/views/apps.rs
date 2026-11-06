@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
@@ -9,11 +11,12 @@ use axum_htmx::HxPushUrl;
 
 use kanidm_proto::internal::{AppLink, UserAuthToken};
 
-use super::constants::Urls;
-use super::navbar::NavbarCtx;
-use crate::https::views::errors::HtmxError;
+use super::{constants::Urls, navbar::NavbarCtx};
 use crate::https::{
-    extractors::DomainInfo, extractors::VerifiedClientInformation, middleware::KOpId, ServerState,
+    extractors::{DomainInfo, VerifiedClientInformation},
+    middleware::KOpId,
+    views::errors::HtmxError,
+    ServerState,
 };
 
 #[derive(Template, WebTemplate)]
@@ -49,7 +52,7 @@ pub(crate) async fn view_apps_get(
 
     let apps_partial = AppsPartialView { apps: app_links };
 
-    println!("{:?}", &uat.ui_hints);
+    println!("{:?}", uat.ui_hints);
     Ok({
         let apps_view = AppsView {
             navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),

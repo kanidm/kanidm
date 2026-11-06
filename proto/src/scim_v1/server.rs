@@ -1,17 +1,14 @@
-use super::ScimMail;
-use super::ScimOauth2ClaimMapJoinChar;
-use super::ScimSshPublicKey;
-use crate::attribute::Attribute;
-use crate::internal::UiHint;
-use crate::v1::OutboundMessage;
+use super::{ScimMail, ScimOauth2ClaimMapJoinChar, ScimSshPublicKey};
+use crate::{attribute::Attribute, internal::UiHint, v1::OutboundMessage};
 use crypto_glue::s256::Sha256Output;
 use scim_proto::{ScimEntry, ScimEntryHeader};
 use serde::Serialize;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
-use std::collections::{BTreeMap, BTreeSet};
-use std::num::NonZeroU64;
-use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    num::NonZeroU64,
+};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -321,6 +318,15 @@ pub struct ScimPerson {
     pub mails: Vec<ScimMail>,
     pub managed_by: Option<ScimReference>,
     pub groups: Vec<ScimReference>,
+}
+
+impl ScimPerson {
+    pub fn get_primary_mail(&self) -> Option<String> {
+        self.mails
+            .iter()
+            .find(|m| m.primary)
+            .map(|primary_mail| primary_mail.value.clone())
+    }
 }
 
 impl TryFrom<ScimEntryKanidm> for ScimPerson {

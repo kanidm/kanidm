@@ -4,12 +4,16 @@
 // both change approaches.
 //
 //
-use crate::event::{CreateEvent, ModifyEvent};
-use crate::plugins::Plugin;
-use crate::prelude::*;
-use crate::schema::SchemaTransaction;
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use crate::{
+    event::{CreateEvent, ModifyEvent},
+    plugins::Plugin,
+    prelude::*,
+    schema::SchemaTransaction,
+};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 use tracing::trace;
 
 pub struct AttrUnique;

@@ -4,9 +4,7 @@ pub mod entries;
 pub mod uuids;
 pub mod values;
 
-pub use self::entries::*;
-pub use self::uuids::*;
-pub use self::values::*;
+pub use self::{entries::*, uuids::*, values::*};
 
 use std::time::Duration;
 
@@ -44,17 +42,8 @@ pub type DomainVersion = u32;
 /// previously.
 pub const DOMAIN_LEVEL_0: DomainVersion = 0;
 
-/// Domain Level introduced with 1.3.0.
-/// Deprecated as of 1.5.0
-pub const DOMAIN_LEVEL_7: DomainVersion = 7;
-
-/// Domain Level introduced with 1.4.0.
-/// Deprecated as of 1.6.0
-pub const DOMAIN_LEVEL_8: DomainVersion = 8;
-
-/// Domain Level introduced with 1.5.0.
-/// Deprecated as of 1.7.0
-pub const DOMAIN_LEVEL_9: DomainVersion = 9;
+/// The domain's patch level - this is used for emergency migrations
+/// within a release cycle, and should not be changed otherwise.
 pub const PATCH_LEVEL_2: u32 = 2;
 
 /// Domain Level introduced with 1.6.0.
@@ -85,22 +74,30 @@ pub const DOMAIN_LEVEL_1_11: DomainVersion = 15;
 /// Deprecated as of 1.14.0
 pub const DOMAIN_LEVEL_1_12: DomainVersion = 16;
 
+/// Domain Level introduced with 1.13.0.
+/// Deprecated as of 1.15.0
+pub const DOMAIN_LEVEL_1_13: DomainVersion = 17;
+
+/// Domain Level introduced with 1.14.0.
+/// Deprecated as of 1.16.0
+pub const DOMAIN_LEVEL_1_14: DomainVersion = 18;
+
 // The target supported domain functional level. During development this is
 // the NEXT level that users will upgrade too. In other words if we are
 // developing 1.6.0-dev, then we need to set TGT_LEVEL to 10 which is
 // the corresponding level.
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_1_11;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_1_13;
 // The current patch level if any out of band fixes are required.
 pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_2;
 
 // The maximum supported domain functional level. This generally
 // represents a *future* version of the server which doesn't exist
 // yet.
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_1_12;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_1_14;
 
 // This is the LOWEST level of database we can recreate. This is important for testing,
 // but we don't actually expect it to be used.
-pub const DOMAIN_MIN_CREATION_LEVEL: DomainVersion = DOMAIN_LEVEL_10;
+pub const DOMAIN_MIN_CREATION_LEVEL: DomainVersion = DOMAIN_LEVEL_11;
 
 // The previous releases domain functional level
 pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL - 1;
@@ -143,6 +140,10 @@ pub const PURGE_FREQUENCY: u64 = 600;
 /// The duration for which messages will be retained after their send_after time. Defaults to
 /// 7 days
 pub const DEFAULT_MESSAGE_RETENTION: Duration = Duration::from_secs(86400 * 7);
+
+/// The duration for an account signup request to be processed before it is removed. Defaults
+/// to 1 day
+pub const DEFAULT_ACCOUNT_SIGNUP_RETENTION: Duration = Duration::from_secs(86400);
 
 /// The number of delayed actions to consider per write transaction. Higher
 /// values allow more coalescing to occur, but may consume more ram and cause

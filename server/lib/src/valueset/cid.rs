@@ -1,8 +1,10 @@
-use crate::be::dbvalue::DbCidV1;
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
+use crate::{
+    be::dbvalue::DbCidV1,
+    prelude::*,
+    repl::cid::Cid,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 
 use smolset::SmolSet;
 
@@ -61,12 +63,14 @@ impl ValueSetT for ValueSetCid {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Cid(u) => self.set.remove(u),
+            PartialValue::Cid(u) => {
+                self.set.remove(u);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

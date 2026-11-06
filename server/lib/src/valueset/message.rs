@@ -1,7 +1,8 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 use kanidm_proto::v1::OutboundMessage;
 
 #[derive(Debug, Clone)]
@@ -27,7 +28,7 @@ impl ValueSetT for ValueSetMessage {
 
     fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool {
         debug_assert!(false);
-        false
+        true
     }
 
     fn contains(&self, _pv: &PartialValue) -> bool {

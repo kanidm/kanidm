@@ -1,9 +1,10 @@
 use super::cid::Cid;
-use crate::be::dbrepl::DbEntryChangeState;
-use crate::be::dbvalue::DbCidV1;
-use crate::entry::Eattrs;
-use crate::prelude::*;
-use crate::schema::SchemaTransaction;
+use crate::{
+    be::{dbrepl::DbEntryChangeState, dbvalue::DbCidV1},
+    entry::Eattrs,
+    prelude::*,
+    schema::SchemaTransaction,
+};
 
 use std::collections::BTreeMap;
 

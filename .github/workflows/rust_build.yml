@@ -2,14 +2,15 @@
 name: "Linux Build and Test"
 # Trigger the workflow on push to master or pull request
 "on":
-  push:
-    branches:
-      - master
   pull_request:
+    paths:
+      - '**.rs'
 
 env:
   SCCACHE_GHA_ENABLED: "true"
   RUSTC_WRAPPER: "sccache"
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,53 +18,10 @@ concurrency:
 jobs:
   rust_build:
     runs-on: ubuntu-latest
-    env:
-      SCCACHE_GHA_ENABLED: true
-      RUSTC_WRAPPER: sccache
-      CARGO_INCREMENTAL: 0
-      CARGO_TERM_COLOR: always
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-      - name: Install dependencies
-        run: |
-          sudo apt-get update && \
-          sudo apt-get install -y \
-            libpam0g-dev \
-            libudev-dev \
-            libssl-dev \
-            libsystemd-dev
-
-      - name: "Build the workspace"
-        run: cargo build --locked --workspace
-      - name: "Check disk space and size of target, then clean it"
-        run: |
-          df -h
-          echo "Checking base dir"
-          du -shc *
-          echo "Checking target dir"
-          du -shc target/*
-          rm -rf target/*
-
-      - name: "Run cargo test"
-        run: cargo test
-      - name: "Check disk space at the end"
-        run: du -shc *
-  rust_build_next:
-    # build future versions to find possible next-version bugs
-    runs-on: ubuntu-latest
     continue-on-error: true
-    env:
-      SCCACHE_GHA_ENABLED: true
-      RUSTC_WRAPPER: sccache
-      CARGO_INCREMENTAL: 0
-      CARGO_TERM_COLOR: always
     strategy:
       matrix:
-        rust_version: ["beta", "nightly"]
+        rust_version: ["stable", "nightly"]
     steps:
       - uses: actions/checkout@v7
       - name: Install Rust
@@ -71,46 +29,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust_version }}
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-      - name: Install dependencies
-        run: |
-          sudo apt-get update && \
-          sudo apt-get install -y \
-            libpam0g-dev \
-            libudev-dev \
-            libssl-dev \
-            libsystemd-dev
-
-      - name: "Build the workspace"
-        run: cargo build --locked --workspace
-      - name: "Check disk space and size of target, then clean it"
-        run: |
-          df -h
-          echo "Checking base dir"
-          du -shc *
-          echo "Checking target dir"
-          du -shc target/*
-          rm -rf target/*
-
-      - name: "Run cargo test"
-        run: cargo test
-      - name: "Check disk space at the end"
-        run: du -shc *
-
-  run_release:
-    runs-on: ubuntu-latest
-    env:
-      SCCACHE_GHA_ENABLED: true
-      RUSTC_WRAPPER: sccache
-      CARGO_INCREMENTAL: 0
-      CARGO_TERM_COLOR: always
-      MALLOC_CONF: "thp:always,metadata_thp:always"
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
       - name: Install dependencies
         run: |
           sudo apt-get update && \
@@ -120,9 +39,15 @@ jobs:
             libssl-dev \
             libsystemd-dev \
             ripgrep
+
+      - name: "Run cargo test"
+        run: cargo test
+
+      - name: "Build the workspace"
+        run: cargo build --locked --workspace
+
       - name: "Run the release build test script"
-        env:
-          BUILD_MODE: --release
         run: |
           python -m pip install uv
           ./scripts/test_run_release_server.sh
+

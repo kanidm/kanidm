@@ -1,6 +1,4 @@
-use crate::error::Error;
-use crate::kani;
-use crate::state::*;
+use crate::{error::Error, kani, state::*};
 use std::collections::VecDeque;
 
 use std::sync::atomic::{AtomicU32, Ordering};

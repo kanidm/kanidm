@@ -1,14 +1,14 @@
-use crate::be::dbvalue::DbValueAddressV1;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::utils::trigraph_iter;
-use crate::value::{Address, VALIDATE_EMAIL_RE};
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+use crate::{
+    be::dbvalue::DbValueAddressV1,
+    prelude::*,
+    schema::SchemaAttribute,
+    utils::trigraph_iter,
+    value::{Address, VALIDATE_EMAIL_RE},
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
 };
-use kanidm_proto::scim_v1::client::ScimAddress as ScimAddressClient;
-use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::{server::ScimAddress, ScimMail};
+use kanidm_proto::scim_v1::{
+    client::ScimAddress as ScimAddressClient, server::ScimAddress, JsonValue, ScimMail,
+};
 use smolset::SmolSet;
 use std::collections::BTreeSet;
 
@@ -124,9 +124,9 @@ impl ValueSetT for ValueSetAddress {
             }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -384,19 +384,16 @@ impl ValueSetT for ValueSetEmailAddress {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::EmailAddress(a) => {
-                let r = self.set.remove(a);
-                if &self.primary == a {
-                    // if we can, inject another former address into primary.
-                    if let Some(n) = self.set.iter().take(1).next().cloned() {
-                        self.primary = n
-                    }
+        if let PartialValue::EmailAddress(a) = pv {
+            self.set.remove(a);
+            if &self.primary == a {
+                // if we can, inject another former address into primary.
+                if let Some(n) = self.set.iter().take(1).next().cloned() {
+                    self.primary = n
                 }
-                r
             }
-            _ => false,
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -583,9 +580,11 @@ pub struct ValueSetPhoneNumber {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetAddress, ValueSetEmailAddress};
-    use crate::repl::cid::Cid;
-    use crate::value::{Address, PartialValue, Value};
-    use crate::valueset::{self, ValueSet};
+    use crate::{
+        repl::cid::Cid,
+        value::{Address, PartialValue, Value},
+        valueset::{self, ValueSet},
+    };
 
     #[test]
     fn test_valueset_emailaddress() {
@@ -634,7 +633,7 @@ mod tests {
         );
 
         // Remove primary, assert it's gone and that the "first" address is assigned.
-        assert!(vs.remove(
+        assert!(!vs.remove(
             &PartialValue::new_email_address_s("primary@example.com"),
             &Cid::new_zero()
         ));

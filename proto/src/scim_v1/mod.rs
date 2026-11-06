@@ -18,14 +18,11 @@
 
 use crate::attribute::{Attribute, SubAttribute};
 use serde::{Deserialize, Serialize};
-use serde_with::formats::CommaSeparator;
-use serde_with::{serde_as, skip_serializing_none, DisplayFromStr, StringWithSeparator};
+use serde_with::{
+    formats::CommaSeparator, serde_as, skip_serializing_none, DisplayFromStr, StringWithSeparator,
+};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::collections::BTreeMap;
-use std::fmt;
-use std::num::NonZeroU64;
-use std::ops::Not;
-use std::str::FromStr;
+use std::{collections::BTreeMap, fmt, num::NonZeroU64, ops::Not, str::FromStr};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -269,9 +266,10 @@ peg::parser! {
             f:parse_depth(SCIM_FILTER_MAX_DEPTH) { f }
 
         pub(crate) rule parse_depth(max_depth: usize) -> ScimFilter =
-            a:parse_inner(max_depth.saturating_sub(1)) {?
-                if max_depth == 0 { Err("too deeply nested") } else { Ok(a) }
-            }
+            limiter(max_depth) a:parse_inner(max_depth.saturating_sub(1)) { a }
+
+        rule limiter(max_depth: usize) -> () =
+            {? if max_depth == 0 { Err("too deeply nested") } else { Ok(()) } }
 
         rule parse_inner(max_depth: usize) -> ScimFilter = precedence!{
             a:(@) separator()+ "or" separator()+ b:@ {
@@ -307,9 +305,7 @@ peg::parser! {
             f:parse_complex_depth(SCIM_FILTER_MAX_DEPTH) { f }
 
         pub(crate) rule parse_complex_depth(max_depth: usize) -> ScimComplexFilter =
-            a:parse_complex_inner(max_depth.saturating_sub(1)) {?
-                if max_depth == 0 { Err("too deeply nested") } else { Ok(a) }
-            }
+            limiter(max_depth) a:parse_complex_inner(max_depth.saturating_sub(1)) { a }
 
         rule parse_complex_inner(max_depth: usize) -> ScimComplexFilter = precedence!{
             a:(@) separator()+ "or" separator()+ b:@ {
@@ -1052,5 +1048,13 @@ mod tests {
 
         scimfilter::parse_depth("name pr and (name pr and (name pr and name pr))", 3)
             .expect("Must pass");
+
+        scimfilter::parse_depth("((name pr and name pr))", 0).expect_err("Must fail");
+
+        scimfilter::parse_depth("((name pr and name pr))", 1).expect_err("Must fail");
+
+        scimfilter::parse_depth("((name pr and name pr))", 2).expect_err("Must fail");
+
+        scimfilter::parse_depth("((name pr and name pr))", 3).expect("Must pass");
     }
 }

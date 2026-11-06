@@ -17,8 +17,7 @@ use self::totp::TOTP_DEFAULT_STEP;
 
 use kanidm_lib_crypto::CryptoPolicy;
 
-use crate::credential::softlock::CredSoftLockPolicy;
-use crate::credential::totp::Totp;
+use crate::credential::{softlock::CredSoftLockPolicy, totp::Totp};
 
 // These are in order of "relative" strength.
 /*
@@ -595,13 +594,6 @@ impl Credential {
         }))
     }
 
-    pub(crate) fn has_securitykey(&self) -> bool {
-        match &self.type_ {
-            CredentialType::PasswordMfa(_, _, map, _) => !map.is_empty(),
-            _ => false,
-        }
-    }
-
     /// Get a reference to the contained webuthn credentials, if any.
     pub fn securitykey_ref(&self) -> Result<&HashMap<String, SecurityKey>, OperationError> {
         match &self.type_ {
@@ -898,8 +890,10 @@ impl CredentialType {
 mod tests {
     use std::time::Duration;
 
-    use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
-    use crate::credential::Credential;
+    use crate::credential::{
+        totp::{Totp, TOTP_DEFAULT_STEP},
+        Credential,
+    };
     use kanidm_lib_crypto::{CryptoPolicy, Password};
     use time::OffsetDateTime;
 

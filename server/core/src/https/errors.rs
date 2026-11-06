@@ -1,10 +1,11 @@
 //! Where we hide the error handling widgets
 //!
 
-use axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN;
-use axum::http::{HeaderValue, StatusCode};
-use axum::response::{IntoResponse, Response};
-use axum::Json;
+use axum::{
+    http::{header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue, StatusCode},
+    response::{IntoResponse, Response},
+    Json,
+};
 
 use hyper::header::WWW_AUTHENTICATE;
 use kanidm_proto::oauth2::ErrorResponse;
@@ -50,38 +51,37 @@ impl WebError {
 impl IntoResponse for WebError {
     fn into_response(self) -> Response {
         match self {
-            WebError::OAuth2(error) => {
-                if let Oauth2Error::AuthenticationRequired = error {
-                    (
-                        StatusCode::UNAUTHORIZED,
-                        [
-                            (WWW_AUTHENTICATE, "Bearer"),
-                            (ACCESS_CONTROL_ALLOW_ORIGIN, "*"),
-                        ],
-                    )
-                        .into_response()
-                } else {
-                    let err = ErrorResponse {
+            WebError::OAuth2(error) => match error {
+                Oauth2Error::AuthenticationRequired => (
+                    StatusCode::UNAUTHORIZED,
+                    [
+                        (WWW_AUTHENTICATE, "Bearer"),
+                        (ACCESS_CONTROL_ALLOW_ORIGIN, "*"),
+                    ],
+                )
+                    .into_response(),
+                Oauth2Error::InvalidToken => (
+                    StatusCode::UNAUTHORIZED,
+                    [
+                        (WWW_AUTHENTICATE, "Bearer"),
+                        (ACCESS_CONTROL_ALLOW_ORIGIN, "*"),
+                    ],
+                    Json(ErrorResponse {
                         error: error.to_string(),
                         ..Default::default()
-                    };
-
-                    let body = match serde_json::to_string(&err) {
-                        Ok(val) => val,
-                        Err(e) => {
-                            warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", err, e);
-                            format!("{err:?}")
-                        }
-                    };
-
-                    (
-                        StatusCode::BAD_REQUEST,
-                        [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
-                        body,
-                    )
-                        .into_response()
-                }
-            }
+                    }),
+                )
+                    .into_response(),
+                _ => (
+                    StatusCode::BAD_REQUEST,
+                    [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+                    Json(ErrorResponse {
+                        error: error.to_string(),
+                        ..Default::default()
+                    }),
+                )
+                    .into_response(),
+            },
             WebError::InternalServerError(inner) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, inner).into_response()
             }
@@ -118,12 +118,10 @@ impl IntoResponse for WebError {
                     }
                     _ => (StatusCode::INTERNAL_SERVER_ERROR, None),
                 };
-                let body = serde_json::to_string(&inner).unwrap_or(inner.to_string());
-                debug!(?body);
 
                 match headers {
-                    Some(headers) => (code, headers, body).into_response(),
-                    None => (code, body).into_response(),
+                    Some(headers) => (code, headers, Json(inner)).into_response(),
+                    None => (code, Json(inner)).into_response(),
                 }
             }
         }

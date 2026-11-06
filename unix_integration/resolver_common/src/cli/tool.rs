@@ -1,15 +1,16 @@
-use crate::check::check_nsswitch_has_module;
-use crate::opt::tool::{KanidmUnixOpt, KanidmUnixParser};
-use crate::SparkleFlavour;
-use clap::Parser;
-use sparkle_unix_common::client::DaemonClient;
-use sparkle_unix_common::constants::DEFAULT_CONFIG_PATH;
-use sparkle_unix_common::unix_config::PamNssConfig;
-use sparkle_unix_common::unix_proto::{
-    ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo,
+use crate::{
+    check::check_nsswitch_has_module,
+    opt::tool::{KanidmUnixOpt, KanidmUnixParser},
+    SparkleFlavour,
 };
-use std::path::PathBuf;
-use std::process::ExitCode;
+use clap::Parser;
+use sparkle_unix_common::{
+    client::DaemonClient,
+    constants::DEFAULT_CONFIG_PATH,
+    unix_config::PamNssConfig,
+    unix_proto::{ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo},
+};
+use std::{path::PathBuf, process::ExitCode};
 
 macro_rules! setup_client {
     () => {{
@@ -79,13 +80,15 @@ pub async fn main<F: SparkleFlavour>(flavour: F) -> ExitCode {
 
             info!("Sending request for user {}", &account_id);
 
+            let pam_info = PamServiceInfo {
+                service: "kanidm-unix".to_string(),
+                tty: None,
+                rhost: None,
+            };
+
             let mut req = ClientRequest::PamAuthenticateInit {
                 account_id: account_id.clone(),
-                info: PamServiceInfo {
-                    service: "kanidm-unix".to_string(),
-                    tty: None,
-                    rhost: None,
-                },
+                info: pam_info.clone(),
             };
             loop {
                 match daemon_client.call(req, None).await {
@@ -160,7 +163,10 @@ pub async fn main<F: SparkleFlavour>(flavour: F) -> ExitCode {
                 }
             }
 
-            let sereq = ClientRequest::PamAccountAllowed(account_id);
+            let sereq = ClientRequest::PamAccountAllowed {
+                account_id,
+                info: pam_info,
+            };
 
             match daemon_client.call(sereq, None).await {
                 Ok(r) => match r {

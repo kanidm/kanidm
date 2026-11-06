@@ -1,7 +1,6 @@
 use super::KeyId;
 use crate::prelude::*;
-use compact_jwt::{compact::JweCompact, jwe::Jwe};
-use compact_jwt::{Jwk, JwkKeySet, Jws, JwsCompact};
+use compact_jwt::{compact::JweCompact, jwe::Jwe, Jwk, JwkKeySet, Jws, JwsCompact};
 use smolset::SmolSet;
 use std::collections::BTreeSet;
 use uuid::Uuid;
@@ -75,6 +74,17 @@ pub trait KeyObjectT {
     ) -> Result<JweCompact, OperationError>;
 
     fn jwe_a128gcm_kid(&self) -> Vec<&KeyId>;
+
+    fn jwe_a256gcm_assert(&mut self, valid_from: Duration, cid: &Cid)
+        -> Result<(), OperationError>;
+
+    fn jwe_a256gcm_encrypt(
+        &self,
+        jwe: &Jwe,
+        current_time: Duration,
+    ) -> Result<JweCompact, OperationError>;
+
+    fn jwe_a256gcm_kid(&self) -> Vec<&KeyId>;
 
     fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError>;
 

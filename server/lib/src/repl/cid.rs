@@ -1,9 +1,7 @@
-use std::fmt;
-use std::time::Duration;
+use std::{fmt, time::Duration};
 use time::OffsetDateTime;
 
-use crate::be::dbvalue::DbCidV1;
-use crate::prelude::*;
+use crate::{be::dbvalue::DbCidV1, prelude::*};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
@@ -90,8 +88,7 @@ impl Cid {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use std::cmp::Ordering;
-    use std::time::Duration;
+    use std::{cmp::Ordering, time::Duration};
 
     use crate::repl::cid::Cid;
 

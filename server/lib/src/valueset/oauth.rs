@@ -1,21 +1,26 @@
 use crate::valueset::ScimResolveStatus;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{btree_map::Entry as BTreeEntry, BTreeMap, BTreeSet};
 
-use crate::be::dbvalue::{DbValueOauthClaimMap, DbValueOauthScopeMapV1};
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE, OAUTH_CLAIMNAME_RE};
-use crate::valueset::{
-    uuid_to_proto_string, DbValueSetV2, ResolvedValueSetOauth2ClaimMap,
-    ResolvedValueSetOauth2ScopeMap, ScimValueIntermediate, UnresolvedScimValueOauth2ClaimMap,
-    UnresolvedScimValueOauth2ScopeMap, UnresolvedValueSetOauth2ClaimMap,
-    UnresolvedValueSetOauth2ScopeMap, ValueSet, ValueSetIntermediate, ValueSetResolveStatus,
-    ValueSetScimPut,
+use crate::{
+    be::dbvalue::{DbValueOauthClaimMap, DbValueOauthScopeMapV1},
+    prelude::*,
+    schema::SchemaAttribute,
+    value::{OauthClaimMapJoin, OAUTHSCOPE_RE, OAUTH_CLAIMNAME_RE},
+    valueset::{
+        uuid_to_proto_string, DbValueSetV2, ResolvedValueSetOauth2ClaimMap,
+        ResolvedValueSetOauth2ScopeMap, ScimValueIntermediate, UnresolvedScimValueOauth2ClaimMap,
+        UnresolvedScimValueOauth2ScopeMap, UnresolvedValueSetOauth2ClaimMap,
+        UnresolvedValueSetOauth2ScopeMap, ValueSet, ValueSetIntermediate, ValueSetResolveStatus,
+        ValueSetScimPut,
+    },
 };
-use kanidm_proto::scim_v1::client::ScimOAuth2ClaimMap as ClientScimOAuth2ClaimMap;
-use kanidm_proto::scim_v1::client::ScimOAuth2ScopeMap as ClientScimOAuth2ScopeMap;
-use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::{
+    client::{
+        ScimOAuth2ClaimMap as ClientScimOAuth2ClaimMap,
+        ScimOAuth2ScopeMap as ClientScimOAuth2ScopeMap,
+    },
+    JsonValue,
+};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetOauthScope {
@@ -80,12 +85,14 @@ impl ValueSetT for ValueSetOauthScope {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::OauthScope(s) => self.set.remove(s.as_str()),
+            PartialValue::OauthScope(s) => {
+                self.set.remove(s.as_str());
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -309,10 +316,10 @@ impl ValueSetT for ValueSetOauthScopeMap {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Refer(u) => self.map.remove(u).is_some(),
-            _ => false,
-        }
+        if let PartialValue::Refer(u) = pv {
+            self.map.remove(u);
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -660,44 +667,38 @@ impl ValueSetT for ValueSetOauthClaimMap {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        let res = match pv {
+        match pv {
             // Remove this claim as a whole
-            PartialValue::Iutf8(s) => self.map.remove(s).is_some(),
+            PartialValue::Iutf8(s) => {
+                self.map.remove(s);
+            }
             // Remove all references to this group from this claim map.
             PartialValue::Refer(u) => {
-                let mut contained = false;
                 for mapping_mut in self.map.values_mut() {
-                    contained |= mapping_mut.values.remove(u).is_some();
+                    mapping_mut.values.remove(u);
                 }
-                contained
             }
             PartialValue::OauthClaim(s, u) => {
                 // Remove a uuid from this claim type.
                 if let Some(mapping_mut) = self.map.get_mut(s) {
-                    mapping_mut.values.remove(u).is_some()
-                } else {
-                    false
+                    mapping_mut.values.remove(u);
                 }
             }
             PartialValue::OauthClaimValue(s, u, v) => {
                 // Remove a value from this uuid, associated to this claim name.
                 if let Some(mapping_mut) = self.map.get_mut(s) {
                     if let Some(claim_mut) = mapping_mut.values.get_mut(u) {
-                        claim_mut.remove(v)
-                    } else {
-                        false
+                        claim_mut.remove(v);
                     }
-                } else {
-                    false
                 }
             }
-            _ => false,
+            _ => {}
         };
 
         // Trim anything that is now empty.
         self.trim();
 
-        res
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

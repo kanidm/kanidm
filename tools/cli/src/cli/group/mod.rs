@@ -1,5 +1,4 @@
-use crate::OpType;
-use crate::{handle_client_error, GroupOpt, GroupPosix, KanidmClientParser, OutputMode};
+use crate::{handle_client_error, GroupOpt, GroupPosix, KanidmClientParser, OpType, OutputMode};
 use kanidm_proto::constants::ATTR_GIDNUMBER;
 
 mod account_policy;
@@ -114,7 +113,7 @@ impl GroupOpt {
                 {
                     Ok(_) => opt.output_mode.print_message(format!(
                         "Successfully added {:?} to group \"{}\"",
-                        &new_members,
+                        new_members,
                         gcopt.name.as_str()
                     )),
                     Err(e) => handle_client_error(e, opt.output_mode),

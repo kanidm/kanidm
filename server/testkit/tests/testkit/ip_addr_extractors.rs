@@ -201,13 +201,10 @@ async fn proxy_v2_make_request(
     http_sock_addr: SocketAddr,
     hdr: &[u8],
 ) -> Result<IpAddr, ProxyV2Error> {
-    use http_body_util::BodyExt;
-    use http_body_util::Empty;
-    use hyper::body::Bytes;
-    use hyper::Request;
+    use http_body_util::{BodyExt, Empty};
+    use hyper::{body::Bytes, Request};
     use hyper_util::rt::TokioIo;
-    use tokio::io::AsyncWriteExt as _;
-    use tokio::net::TcpStream;
+    use tokio::{io::AsyncWriteExt as _, net::TcpStream};
 
     let url = format!("http://{http_sock_addr}/v1/debug/ipinfo")
         .as_str()

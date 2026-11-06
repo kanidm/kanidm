@@ -1,10 +1,11 @@
-use crate::be::dbvalue::DbTotpV1;
-use crate::credential::totp::Totp;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
+use crate::{
+    be::dbvalue::DbTotpV1,
+    credential::totp::Totp,
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
+use std::collections::{btree_map::Entry as BTreeEntry, BTreeMap};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetTotpSecret {
@@ -66,10 +67,10 @@ impl ValueSetT for ValueSetTotpSecret {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Utf8(l) => self.map.remove(l.as_str()).is_some(),
-            _ => false,
-        }
+        if let PartialValue::Utf8(l) = pv {
+            self.map.remove(l.as_str());
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

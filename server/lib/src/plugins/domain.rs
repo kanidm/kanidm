@@ -4,15 +4,16 @@
 // The primary point of this is to generate a unique domain UUID on startup
 // which is importart for management of the replication topo and trust
 // relationships.
-use std::iter::once;
-use std::sync::Arc;
+use std::{iter::once, sync::Arc};
 
 use regex::Regex;
 use tracing::trace;
 
-use crate::event::{CreateEvent, ModifyEvent};
-use crate::plugins::Plugin;
-use crate::prelude::*;
+use crate::{
+    event::{CreateEvent, ModifyEvent},
+    plugins::Plugin,
+    prelude::*,
+};
 
 pub static DOMAIN_LDAP_BASEDN_RE: LazyLock<Regex> = LazyLock::new(|| {
     #[allow(clippy::expect_used)]

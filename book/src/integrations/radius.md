@@ -113,12 +113,6 @@ The configuration file (which you should mount at `/data/radius.toml`, or specif
 {{#rustdoc_include ../../../examples/radius.toml}}
 ```
 
-## A fully configured example
-
-```toml
-{{#rustdoc_include ../../../examples/radius_full.toml}}
-```
-
 ## Moving to Production
 
 To expose this to your infrastructure, add your Access Point (AP) or Network Access Server (NAS) in the configuration:

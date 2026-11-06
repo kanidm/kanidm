@@ -108,7 +108,7 @@ impl From<BuiltinAcp> for EntryInitNew {
         match &value.receiver {
             #[allow(clippy::panic)]
             BuiltinAcpReceiver::None => {
-                panic!("Builtin ACP has no receiver! {:?}", &value);
+                panic!("Builtin ACP has no receiver! {:?}", value);
             }
             BuiltinAcpReceiver::Group(list) => {
                 entry.add_ava(
@@ -116,7 +116,7 @@ impl From<BuiltinAcp> for EntryInitNew {
                     EntryClass::AccessControlReceiverGroup.to_value(),
                 );
                 for group in list {
-                    entry.set_ava(Attribute::AcpReceiverGroup, [Value::Refer(*group)]);
+                    entry.set_ava(Attribute::AcpReceiverGroup, [Value::ReferN(*group)]);
                 }
             }
             BuiltinAcpReceiver::EntryManager => {
@@ -130,7 +130,7 @@ impl From<BuiltinAcp> for EntryInitNew {
         match &value.target {
             #[allow(clippy::panic)]
             BuiltinAcpTarget::None => {
-                panic!("Builtin ACP has no target! {:?}", &value);
+                panic!("Builtin ACP has no target! {:?}", value);
             }
             BuiltinAcpTarget::Filter(proto_filter) => {
                 entry.add_ava(
@@ -144,39 +144,48 @@ impl From<BuiltinAcp> for EntryInitNew {
             }
         }
 
-        entry.set_ava(
-            Attribute::AcpSearchAttr,
-            value
-                .search_attrs
-                .into_iter()
-                .map(Value::from)
-                .collect::<Vec<Value>>(),
-        );
-        value.modify_present_attrs.into_iter().for_each(|attr| {
-            entry.add_ava(Attribute::AcpModifyPresentAttr, Value::from(attr));
-        });
-        value.modify_removed_attrs.into_iter().for_each(|attr| {
-            entry.add_ava(Attribute::AcpModifyRemovedAttr, Value::from(attr));
-        });
+        if let Some(vs) = ValueSetIutf8N::from_iter(value.search_attrs.iter().map(|a| a.as_str())) {
+            entry.set_ava_set(&Attribute::AcpSearchAttr, vs);
+        }
 
-        value.modify_classes.into_iter().for_each(|class| {
-            entry.add_ava(Attribute::AcpModifyClass, Value::from(class));
-        });
+        if let Some(vs) =
+            ValueSetIutf8N::from_iter(value.modify_present_attrs.iter().map(|a| a.as_str()))
+        {
+            entry.set_ava_set(&Attribute::AcpModifyPresentAttr, vs);
+        }
 
-        value.modify_present_classes.into_iter().for_each(|class| {
-            entry.add_ava(Attribute::AcpModifyPresentClass, Value::from(class));
-        });
+        if let Some(vs) =
+            ValueSetIutf8N::from_iter(value.modify_removed_attrs.iter().map(|a| a.as_str()))
+        {
+            entry.set_ava_set(&Attribute::AcpModifyRemovedAttr, vs);
+        }
 
-        value.modify_remove_classes.into_iter().for_each(|class| {
-            entry.add_ava(Attribute::AcpModifyRemoveClass, Value::from(class));
-        });
+        if let Some(vs) = ValueSetIutf8N::from_iter(value.modify_classes.iter().map(|a| a.as_str()))
+        {
+            entry.set_ava_set(&Attribute::AcpModifyClass, vs);
+        }
 
-        value.create_classes.into_iter().for_each(|class| {
-            entry.add_ava(Attribute::AcpCreateClass, Value::from(class));
-        });
-        value.create_attrs.into_iter().for_each(|attr| {
-            entry.add_ava(Attribute::AcpCreateAttr, Value::from(attr));
-        });
+        if let Some(vs) =
+            ValueSetIutf8N::from_iter(value.modify_present_classes.iter().map(|a| a.as_str()))
+        {
+            entry.set_ava_set(&Attribute::AcpModifyPresentClass, vs);
+        }
+
+        if let Some(vs) =
+            ValueSetIutf8N::from_iter(value.modify_remove_classes.iter().map(|a| a.as_str()))
+        {
+            entry.set_ava_set(&Attribute::AcpModifyRemoveClass, vs);
+        }
+
+        if let Some(vs) = ValueSetIutf8N::from_iter(value.create_classes.iter().map(|a| a.as_str()))
+        {
+            entry.set_ava_set(&Attribute::AcpCreateClass, vs);
+        }
+
+        if let Some(vs) = ValueSetIutf8N::from_iter(value.create_attrs.iter().map(|a| a.as_str())) {
+            entry.set_ava_set(&Attribute::AcpCreateAttr, vs);
+        }
+
         entry
     }
 }
@@ -1624,6 +1633,7 @@ pub static IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1: LazyLock<BuiltinAcp> = LazyLock::n
         EntryClass::Object,
         EntryClass::AccessControlProfile,
         EntryClass::AccessControlModify,
+        EntryClass::AccessControlSearch,
     ],
     name: "idm_acp_service_account_manage",
     uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1,
@@ -1634,6 +1644,20 @@ pub static IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1: LazyLock<BuiltinAcp> = LazyLock::n
         match_class_filter!(EntryClass::Account).clone(),
         FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
     ])),
+    search_attrs: vec![
+        Attribute::Class,
+        Attribute::Name,
+        Attribute::Spn,
+        Attribute::Uuid,
+        Attribute::EntryManagedBy,
+        Attribute::DisplayName,
+        Attribute::SshPublicKey,
+        Attribute::UnixPassword,
+        Attribute::PrimaryCredential,
+        Attribute::ApiTokenSession,
+        Attribute::UserAuthTokenSession,
+        Attribute::Mail,
+    ],
     modify_removed_attrs: vec![
         Attribute::Name,
         Attribute::DisplayName,
@@ -1643,6 +1667,7 @@ pub static IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1: LazyLock<BuiltinAcp> = LazyLock::n
         Attribute::PrimaryCredential,
         Attribute::ApiTokenSession,
         Attribute::UserAuthTokenSession,
+        Attribute::Mail,
     ],
     modify_present_attrs: vec![Attribute::Name, Attribute::DisplayName, Attribute::Mail],
     ..Default::default()
@@ -2048,6 +2073,7 @@ pub static IDM_ACP_OAUTH2_CLIENT_ADMIN: LazyLock<BuiltinAcp> = LazyLock::new(|| 
         Attribute::OAuth2ClientSecret,
         Attribute::OAuth2AuthorisationEndpoint,
         Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
         Attribute::OAuth2RequestScopes,
     ],
     modify_present_attrs: vec![
@@ -2056,6 +2082,7 @@ pub static IDM_ACP_OAUTH2_CLIENT_ADMIN: LazyLock<BuiltinAcp> = LazyLock::new(|| 
         Attribute::OAuth2ClientSecret,
         Attribute::OAuth2AuthorisationEndpoint,
         Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
         Attribute::OAuth2RequestScopes,
     ],
     modify_removed_attrs: vec![
@@ -2064,6 +2091,7 @@ pub static IDM_ACP_OAUTH2_CLIENT_ADMIN: LazyLock<BuiltinAcp> = LazyLock::new(|| 
         Attribute::OAuth2ClientSecret,
         Attribute::OAuth2AuthorisationEndpoint,
         Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
         Attribute::OAuth2RequestScopes,
     ],
     create_attrs: vec![
@@ -2073,6 +2101,7 @@ pub static IDM_ACP_OAUTH2_CLIENT_ADMIN: LazyLock<BuiltinAcp> = LazyLock::new(|| 
         Attribute::OAuth2ClientSecret,
         Attribute::OAuth2AuthorisationEndpoint,
         Attribute::OAuth2TokenEndpoint,
+        Attribute::OAuth2TokenIntrospectEndpoint,
         Attribute::OAuth2RequestScopes,
     ],
     create_classes: vec![EntryClass::OAuth2Client],
@@ -2102,18 +2131,21 @@ pub static IDM_ACP_OAUTH2_ACCOUNT_ENROL: LazyLock<BuiltinAcp> = LazyLock::new(||
         Attribute::Uuid,
         Attribute::OAuth2AccountProvider,
         Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
         Attribute::OAuth2AccountCredentialUuid,
     ],
     modify_removed_attrs: vec![
         Attribute::Class,
         Attribute::OAuth2AccountProvider,
         Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
         Attribute::OAuth2AccountCredentialUuid,
     ],
     modify_present_attrs: vec![
         Attribute::Class,
         Attribute::OAuth2AccountProvider,
         Attribute::OAuth2AccountUniqueUserId,
+        Attribute::OAuth2AccountUniqueUserSub,
         Attribute::OAuth2AccountCredentialUuid,
     ],
     modify_classes: vec![EntryClass::OAuth2Account],

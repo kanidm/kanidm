@@ -1,25 +1,29 @@
-use super::constants::Urls;
-use super::navbar::NavbarCtx;
-use super::UnrecoverableErrorView;
-use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
-use crate::https::views::constants::ProfileMenuItems;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::login::ReauthPurpose;
-use crate::https::views::reauth::{
-    render_readonly, render_reauth, uat_privilege_decision, PrivilegeDecision,
+#![allow(clippy::result_large_err)]
+
+use super::{constants::Urls, navbar::NavbarCtx, UnrecoverableErrorView};
+use crate::https::{
+    extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
+    middleware::KOpId,
+    views::{
+        constants::ProfileMenuItems,
+        cookies,
+        errors::HtmxError,
+        login::ReauthPurpose,
+        reauth::{render_readonly, render_reauth, uat_privilege_decision, PrivilegeDecision},
+        KanidmHxEventName,
+    },
+    ServerState,
 };
-use crate::https::views::{cookies, KanidmHxEventName};
-use crate::https::ServerState;
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::body::Bytes;
-use axum::extract::{Query, RawForm, State};
-use axum::http::StatusCode;
-use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
-use axum::{Extension, Form};
-use axum_extra::extract::cookie::SameSite;
-use axum_extra::extract::CookieJar;
+use axum::{
+    body::Bytes,
+    extract::{Query, RawForm, State},
+    http::StatusCode,
+    response::{ErrorResponse, IntoResponse, Redirect, Response},
+    Extension, Form,
+};
+use axum_extra::extract::{cookie::SameSite, CookieJar};
 use axum_htmx::{
     HxEvent, HxLocation, HxPushUrl, HxRequest, HxReselect, HxResponseTrigger, HxReswap, HxRetarget,
     SwapOption,
@@ -32,14 +36,15 @@ use kanidm_proto::internal::{
     UserAuthToken, COOKIE_CU_SESSION_TOKEN,
 };
 use kanidmd_lib::prelude::ClientAuthInfo;
-use qrcode::render::svg;
-use qrcode::QrCode;
+use qrcode::{render::svg, QrCode};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::str::FromStr;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+    fmt::{Display, Formatter},
+    str::FromStr,
+};
 use uuid::Uuid;
 
 pub use sshkey_attest::proto::PublicKey as SshPublicKey;
@@ -95,6 +100,7 @@ struct CredResetPartialView {
     ext_cred_portal: CUExtPortal,
     can_commit: bool,
     warnings: Vec<CURegWarning>,
+    dirty: bool,
     attested_passkeys_state: CUCredState,
     passkeys_state: CUCredState,
     primary_state: CUCredState,
@@ -117,13 +123,39 @@ pub(crate) struct ResetTokenParam {
 #[derive(Template, WebTemplate)]
 #[template(path = "credential_update_add_password_partial.html")]
 struct AddPasswordPartial {
-    check_res: PwdCheckResult,
+    warnings: Vec<PasswordFeedback>,
+    pwd_equal: bool,
+}
+
+impl From<PwdCheckResult> for AddPasswordPartial {
+    fn from(value: PwdCheckResult) -> Self {
+        let warnings = value.warnings().to_vec();
+        let pwd_equal = value.pwd_equal();
+
+        AddPasswordPartial {
+            warnings,
+            pwd_equal,
+        }
+    }
 }
 
 #[derive(Template, WebTemplate)]
 #[template(path = "credential_update_set_unixcred_partial.html")]
 struct SetUnixCredPartial {
-    check_res: PwdCheckResult,
+    warnings: Vec<PasswordFeedback>,
+    pwd_equal: bool,
+}
+
+impl From<PwdCheckResult> for SetUnixCredPartial {
+    fn from(value: PwdCheckResult) -> Self {
+        let warnings = value.warnings().to_vec();
+        let pwd_equal = value.pwd_equal();
+
+        SetUnixCredPartial {
+            warnings,
+            pwd_equal,
+        }
+    }
 }
 
 #[derive(Template, WebTemplate)]
@@ -137,18 +169,47 @@ struct AddSshPublicKeyPartial {
 
 #[derive(Serialize, Deserialize, Debug)]
 enum PwdCheckResult {
-    Success,
-    Init,
+    // Init or success state
+    Ok,
+    // Used on password creation.
     Failure {
         pwd_equal: bool,
         warnings: Vec<PasswordFeedback>,
     },
+    // Used for live password strength checks.
+    Warnings {
+        warnings: Vec<PasswordFeedback>,
+    },
+}
+
+impl PwdCheckResult {
+    fn pwd_equal(&self) -> bool {
+        match self {
+            PwdCheckResult::Ok => true,
+            PwdCheckResult::Failure { pwd_equal, .. } => *pwd_equal,
+            PwdCheckResult::Warnings { .. } => true,
+        }
+    }
+
+    fn warnings(&self) -> &[PasswordFeedback] {
+        match self {
+            PwdCheckResult::Ok => &[],
+            PwdCheckResult::Failure { warnings, .. } | PwdCheckResult::Warnings { warnings } => {
+                warnings
+            }
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct NewPassword {
     new_password: String,
     new_password_check: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct PasswordStrengthCheck {
+    new_password: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -706,9 +767,7 @@ pub(crate) async fn view_new_pwd(
         None => {
             return Ok((
                 swapped_handler_trigger,
-                AddPasswordPartial {
-                    check_res: PwdCheckResult::Init,
-                },
+                AddPasswordPartial::from(PwdCheckResult::Ok),
             )
                 .into_response());
         }
@@ -751,7 +810,66 @@ pub(crate) async fn view_new_pwd(
         status,
         swapped_handler_trigger,
         HxPushUrl("/ui/reset/change_password".to_string()),
-        AddPasswordPartial { check_res },
+        AddPasswordPartial::from(check_res),
+    )
+        .into_response())
+}
+
+pub(crate) async fn check_pwd_strength(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
+    jar: CookieJar,
+    RawForm(raw_form_bytes): RawForm,
+) -> axum::response::Result<Response> {
+    let opt_form: Option<PasswordStrengthCheck> = raw_form_opt(&raw_form_bytes)?;
+
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
+    let swapped_handler_trigger =
+        HxResponseTrigger::after_swap([HxEvent::from(KanidmHxEventName::AddPasswordSwapped)]);
+
+    let password_to_check = match opt_form {
+        None => {
+            return Ok((
+                swapped_handler_trigger,
+                AddPasswordPartial::from(PwdCheckResult::Ok),
+            )
+                .into_response());
+        }
+        Some(new_passwords) => new_passwords,
+    };
+
+    let (warnings, status) = match state
+        .qe_r_ref
+        .handle_idmcredentialupdate(
+            cu_session_token,
+            CURequest::PasswordQualityCheck(password_to_check.new_password),
+            kopid.eventid,
+        )
+        .await
+    {
+        Ok(_) => (vec![], StatusCode::OK),
+        Err(OperationError::PasswordQuality(password_feedback)) => {
+            (password_feedback, StatusCode::UNPROCESSABLE_ENTITY)
+        }
+        Err(operr) => {
+            return Err(ErrorResponse::from(HtmxError::new(
+                &kopid,
+                operr,
+                domain_info,
+            )))
+        }
+    };
+
+    let check_res = PwdCheckResult::Warnings { warnings };
+
+    Ok((
+        status,
+        swapped_handler_trigger,
+        HxPushUrl("/ui/reset/change_password".to_string()),
+        AddPasswordPartial::from(check_res),
     )
         .into_response())
 }
@@ -833,9 +951,7 @@ pub(crate) async fn view_set_unixcred(
         None => {
             return Ok((
                 swapped_handler_trigger,
-                SetUnixCredPartial {
-                    check_res: PwdCheckResult::Init,
-                },
+                SetUnixCredPartial::from(PwdCheckResult::Ok),
             )
                 .into_response());
         }
@@ -878,7 +994,7 @@ pub(crate) async fn view_set_unixcred(
         status,
         swapped_handler_trigger,
         HxPushUrl("/ui/reset/set_unixcred".to_string()),
-        SetUnixCredPartial { check_res },
+        SetUnixCredPartial::from(check_res),
     )
         .into_response())
 }
@@ -1124,6 +1240,7 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         ext_cred_portal,
         can_commit,
         warnings,
+        dirty,
         passkeys_state,
         attested_passkeys_state,
         attested_passkeys,
@@ -1155,6 +1272,7 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         ext_cred_portal,
         can_commit,
         warnings,
+        dirty,
         attested_passkeys_state,
         passkeys_state,
         attested_passkeys,
@@ -1240,7 +1358,7 @@ where
     Ok(opt_form)
 }
 
-async fn get_cu_session(jar: &CookieJar) -> Result<CUSessionToken, Response> {
+async fn get_cu_session(jar: &CookieJar) -> axum::response::Result<CUSessionToken> {
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     if let Some(cookie) = cookie {
         let cu_session_token = cookie.value();
@@ -1253,6 +1371,6 @@ async fn get_cu_session(jar: &CookieJar) -> Result<CUSessionToken, Response> {
             StatusCode::FORBIDDEN,
             Redirect::to(Urls::CredReset.as_ref()),
         )
-            .into_response())
+            .into())
     }
 }

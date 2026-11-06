@@ -3,8 +3,9 @@ name: Linting checks
 
 # Trigger the workflow on push
 "on":
-  push:
   pull_request:
+    paths:
+      - '**.rs'
 
 env:
   SCCACHE_GHA_ENABLED: "true"
@@ -19,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
       - name: Install dependencies
         run: |
           sudo apt-get update && \
@@ -42,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
       - name: "Run cargo fmt"
         run: |
           rustup component add rustfmt

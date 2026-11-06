@@ -1,12 +1,14 @@
 use super::ldap::{LdapBoundToken, LdapSession};
-use crate::credential::apppwd::ApplicationPassword;
-use crate::idm::account::Account;
-use crate::idm::event::LdapApplicationAuthEvent;
-use crate::idm::server::{
-    IdmServerAuthTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
+use crate::{
+    credential::apppwd::ApplicationPassword,
+    idm::{
+        account::Account,
+        event::LdapApplicationAuthEvent,
+        server::{IdmServerAuthTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction},
+    },
+    prelude::*,
+    utils::readable_password_from_random,
 };
-use crate::prelude::*;
-use crate::utils::readable_password_from_random;
 use concread::cowcell::*;
 use hashbrown::HashMap;
 use kanidm_proto::internal::OperationError;
@@ -313,13 +315,16 @@ impl IdmServerProxyWriteTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::event::CreateEvent;
-    use crate::idm::account::Account;
-    use crate::idm::application::Application;
-    use crate::idm::application::GenerateApplicationPasswordEvent;
-    use crate::idm::server::IdmServerTransaction;
-    use crate::idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent};
-    use crate::prelude::*;
+    use crate::{
+        event::CreateEvent,
+        idm::{
+            account::Account,
+            application::{Application, GenerateApplicationPasswordEvent},
+            server::IdmServerTransaction,
+            serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent},
+        },
+        prelude::*,
+    };
     use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
     use kanidm_proto::internal::ApiToken as ProtoApiToken;
     use std::time::Duration;
@@ -481,7 +486,7 @@ mod tests {
                 (Attribute::Class, EntryClass::Group.to_value()),
                 (Attribute::Name, Value::new_iname(test_grp_name)),
                 (Attribute::Uuid, Value::Uuid(test_grp_uuid)),
-                (Attribute::Member, Value::Refer(test_usr_uuid))
+                (Attribute::Member, Value::ReferN(test_usr_uuid))
             );
 
             let e3 = entry_init!(

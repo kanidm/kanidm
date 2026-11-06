@@ -7,16 +7,17 @@
 //! specification which will be parsed by the tools, then the configuration as
 //! relevant to that tool.
 
-use crate::constants::*;
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use crate::selinux_util;
-use crate::unix_passwd::UnixIntegrationError;
+use crate::{constants::*, unix_passwd::UnixIntegrationError};
 use serde::Deserialize;
-use std::env;
-use std::fmt::{Display, Formatter};
-use std::fs::{read_to_string, File};
-use std::io::{ErrorKind, Read};
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    fmt::{Display, Formatter},
+    fs::{read_to_string, File},
+    io::{ErrorKind, Read},
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Copy, Clone)]
 pub enum HomeAttr {
@@ -238,7 +239,7 @@ impl Default for UnixdConfig {
 
 impl Display for UnixdConfig {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "cache_db_path: {}", &self.cache_db_path)?;
+        writeln!(f, "cache_db_path: {}", self.cache_db_path)?;
         writeln!(f, "sock_path: {}", self.sock_path)?;
         writeln!(f, "task_sock_path: {}", self.task_sock_path)?;
         writeln!(f, "unix_sock_timeout: {}", self.unix_sock_timeout)?;

@@ -1,7 +1,8 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 use kanidm_proto::internal::Filter as ProtoFilter;
 use smolset::SmolSet;
 
@@ -58,12 +59,14 @@ impl ValueSetT for ValueSetJsonFilter {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::JsonFilt(u) => self.set.remove(u),
+            PartialValue::JsonFilt(u) => {
+                self.set.remove(u);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

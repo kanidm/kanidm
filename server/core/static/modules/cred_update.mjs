@@ -64,6 +64,7 @@ function onPasskeyCreated(assertion) {
             true
         );
         creationData.response.clientDataJSON = Base64.fromUint8Array(new Uint8Array(assertion.response.clientDataJSON), true);
+        creationData.response.transports = assertion.response.getTransports();
         creationData.type = assertion.type;
         creationData.extensions = assertion.getClientExtensionResults();
         creationData.extensions.uvm = undefined;
@@ -133,6 +134,14 @@ function updateSubmitButtonVisibility(event) {
 
 function beforeUnloadHandler(event) {
     console.debug("credupdate: beforeUnloadHandler");
+
+    try {
+        const form = document.getElementById("credentialUpdateStatusForm");
+        if (form.dataset.dirty == "false") {
+            return
+        }
+    } catch (e) { };
+
     const confirmationMessage = "Unsaved changes will be lost.";
 
     (event || window.event).returnValue = confirmationMessage;

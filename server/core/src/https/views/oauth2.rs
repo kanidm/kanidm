@@ -1,12 +1,15 @@
-use super::login::{LoginDisplayCtx, Oauth2Ctx};
-use super::{cookies, UnrecoverableErrorView};
-use crate::https::views::{
-    errors::HtmxError,
-    login::{Reauth, ReauthPurpose},
+use super::{
+    cookies,
+    login::{LoginDisplayCtx, Oauth2Ctx},
+    UnrecoverableErrorView,
 };
 use crate::https::{
     extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
     middleware::KOpId,
+    views::{
+        errors::HtmxError,
+        login::{Reauth, ReauthPurpose},
+    },
     ServerState,
 };
 use askama::Template;
@@ -19,12 +22,13 @@ use axum::{
 };
 use axum_extra::extract::cookie::{CookieJar, SameSite};
 use axum_htmx::HX_REDIRECT;
-use kanidm_proto::internal::UserAuthToken;
-use kanidm_proto::internal::COOKIE_OAUTH2_REQ;
-use kanidmd_lib::idm::oauth2::{
-    AuthorisationRequest, AuthorisationRequestContext, AuthoriseResponse, Oauth2Error,
+use kanidm_proto::internal::{UserAuthToken, COOKIE_OAUTH2_REQ};
+use kanidmd_lib::{
+    idm::oauth2::{
+        AuthorisationRequest, AuthorisationRequestContext, AuthoriseResponse, Oauth2Error,
+    },
+    prelude::*,
 };
-use kanidmd_lib::prelude::*;
 use serde::Deserialize;
 use std::collections::BTreeSet;
 
@@ -267,6 +271,21 @@ async fn oauth2_auth_req(
                 )
                     .into_response(),
             }
+        }
+        Ok(AuthoriseResponse::Reject(rejection)) => {
+            let redirect_uri = rejection.build_redirect_uri();
+            (
+                jar,
+                [
+                    (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                    (
+                        ACCESS_CONTROL_ALLOW_ORIGIN,
+                        redirect_uri.origin().ascii_serialization(),
+                    ),
+                ],
+                Redirect::to(redirect_uri.as_str()),
+            )
+                .into_response()
         }
         Err(Oauth2Error::AccessDenied) => {
             // If scopes are not available for this account.

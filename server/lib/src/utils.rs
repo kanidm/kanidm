@@ -2,8 +2,10 @@
 
 use crate::prelude::*;
 use hashbrown::HashSet;
-use rand::distr::{Distribution, Uniform};
-use rand::{rng, Rng, RngExt};
+use rand::{
+    distr::{Distribution, Uniform},
+    rng, Rng, RngExt,
+};
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -119,8 +121,6 @@ impl<'a> GraphemeClusterIter<'a> {
 
         let window_max = char_bounds.len().saturating_sub(window);
         let range = 0..window_max;
-
-        eprintln!("{:?} {}", char_bounds, window_max);
 
         GraphemeClusterIter {
             value,

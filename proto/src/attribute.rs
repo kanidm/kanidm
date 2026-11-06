@@ -1,9 +1,6 @@
-use crate::constants::*;
-use crate::internal::OperationError;
+use crate::{constants::*, internal::OperationError};
 use serde::{Deserialize, Serialize};
-use std::convert::Infallible;
-use std::fmt;
-use std::str::FromStr;
+use std::{convert::Infallible, fmt, str::FromStr};
 use utoipa::ToSchema;
 
 pub use smartstring::alias::String as AttrString;
@@ -149,9 +146,11 @@ pub enum Attribute {
     OAuth2Session,
     OAuth2StrictRedirectUri,
     OAuth2TokenEndpoint,
+    OAuth2TokenIntrospectEndpoint,
     OAuth2AccountCredentialUuid,
     OAuth2AccountProvider,
     OAuth2AccountUniqueUserId,
+    OAuth2AccountUniqueUserSub,
     OAuth2ConsentPromptEnable,
     ObjectClass,
     OtherNoIndex,
@@ -426,9 +425,11 @@ impl Attribute {
             Attribute::OAuth2Session => ATTR_OAUTH2_SESSION,
             Attribute::OAuth2StrictRedirectUri => ATTR_OAUTH2_STRICT_REDIRECT_URI,
             Attribute::OAuth2TokenEndpoint => ATTR_OAUTH2_TOKEN_ENDPOINT,
+            Attribute::OAuth2TokenIntrospectEndpoint => ATTR_OAUTH2_TOKEN_INTROSPECT_ENDPOINT,
             Attribute::OAuth2AccountCredentialUuid => ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID,
             Attribute::OAuth2AccountProvider => ATTR_OAUTH2_ACCOUNT_PROVIDER,
             Attribute::OAuth2AccountUniqueUserId => ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID,
+            Attribute::OAuth2AccountUniqueUserSub => ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_SUB,
             Attribute::OAuth2ConsentPromptEnable => ATTR_OAUTH2_CONSENT_PROMPT_ENABLE,
             Attribute::ObjectClass => ATTR_OBJECTCLASS,
             Attribute::OtherNoIndex => ATTR_OTHER_NO_INDEX,
@@ -650,9 +651,11 @@ impl Attribute {
             ATTR_OAUTH2_SESSION => Attribute::OAuth2Session,
             ATTR_OAUTH2_STRICT_REDIRECT_URI => Attribute::OAuth2StrictRedirectUri,
             ATTR_OAUTH2_TOKEN_ENDPOINT => Attribute::OAuth2TokenEndpoint,
+            ATTR_OAUTH2_TOKEN_INTROSPECT_ENDPOINT => Attribute::OAuth2TokenIntrospectEndpoint,
             ATTR_OAUTH2_ACCOUNT_CREDENTIAL_UUID => Attribute::OAuth2AccountCredentialUuid,
             ATTR_OAUTH2_ACCOUNT_PROVIDER => Attribute::OAuth2AccountProvider,
             ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_ID => Attribute::OAuth2AccountUniqueUserId,
+            ATTR_OAUTH2_ACCOUNT_UNIQUE_USER_SUB => Attribute::OAuth2AccountUniqueUserSub,
             ATTR_OAUTH2_CONSENT_PROMPT_ENABLE => Attribute::OAuth2ConsentPromptEnable,
             ATTR_OBJECTCLASS => Attribute::ObjectClass,
             ATTR_OTHER_NO_INDEX => Attribute::OtherNoIndex,

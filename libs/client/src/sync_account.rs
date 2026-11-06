@@ -1,6 +1,8 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::constants::{ATTR_DESCRIPTION, ATTR_NAME};
-use kanidm_proto::v1::Entry;
+use kanidm_proto::{
+    constants::{ATTR_DESCRIPTION, ATTR_NAME},
+    v1::Entry,
+};
 use std::collections::BTreeMap;
 use url::Url;
 

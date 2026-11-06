@@ -43,22 +43,18 @@ function passkey_login() {
         });
 }
 
-try {
-    const myButton = document.getElementById("start-passkey-button");
-    myButton.addEventListener("click", () => {
+const passkeyButton = document.getElementById("start-passkey-button");
+if (passkeyButton) {
+    passkeyButton.addEventListener("click", () => {
         passkey_login();
     });
-} catch (error) {
-    console.error(`Failed to add button event listener for passkey authentication: ${error}`);
 }
 
-try {
-    const myButton = document.getElementById("start-seckey-button");
-    myButton.addEventListener("click", () => {
+const seckeyButton = document.getElementById("start-seckey-button");
+if (seckeyButton) {
+    seckeyButton.addEventListener("click", () => {
         passkey_login();
     });
-} catch (error) {
-    console.error(`Failed to add button event listener for security key authentication: ${error}`);
 }
 
 try {

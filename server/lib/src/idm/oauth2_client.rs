@@ -1,12 +1,16 @@
-use crate::idm::server::IdmServerProxyWriteTransaction;
-use crate::prelude::*;
-use std::collections::BTreeSet;
-use std::fmt;
+use crate::{idm::server::IdmServerProxyWriteTransaction, prelude::*};
+use std::{collections::BTreeSet, fmt};
 
 // TODO: Move to constants once we have a good path here. Will probably need to be part
 // of the axum config etc.
 // I'm pretty sure this can preserve query strings if we wanted to stash info or flag things?
 pub const OAUTH2_CLIENT_AUTHORISATION_RESPONSE_PATH: &str = "/ui/login/oauth2_landing";
+
+#[derive(Clone)]
+pub enum OAuth2SubjectVerifier {
+    None,
+    Rfc7662TokenIntrospection { endpoint: Url },
+}
 
 #[derive(Clone)]
 pub struct OAuth2ClientProvider {
@@ -19,6 +23,7 @@ pub struct OAuth2ClientProvider {
     pub(crate) request_scopes: BTreeSet<String>,
     pub(crate) authorisation_endpoint: Url,
     pub(crate) token_endpoint: Url,
+    pub(crate) user_sub_verifier: OAuth2SubjectVerifier,
 }
 
 impl fmt::Debug for OAuth2ClientProvider {
@@ -37,6 +42,7 @@ impl OAuth2ClientProvider {
         client_id: &str,
         domain: &str,
         request_scopes: I,
+        introspect_url: &str,
     ) -> Self {
         // In prod will be build from our true origin + the actual landing pad.
         let mut client_redirect_uri =
@@ -55,6 +61,9 @@ impl OAuth2ClientProvider {
 
         let request_scopes = request_scopes.into_iter().map(String::from).collect();
 
+        let endpoint = Url::parse(introspect_url).expect("invalid test data");
+        let user_sub_verifier = OAuth2SubjectVerifier::Rfc7662TokenIntrospection { endpoint };
+
         Self {
             name: "test_client_provider".to_string(),
             uuid: Uuid::new_v4(),
@@ -64,6 +73,7 @@ impl OAuth2ClientProvider {
             request_scopes,
             authorisation_endpoint,
             token_endpoint,
+            user_sub_verifier,
         }
     }
 }
@@ -118,6 +128,15 @@ impl IdmServerProxyWriteTransaction<'_> {
                 .map(str::to_string)
                 .collect();
 
+            let maybe_rfc7662_endpoint = provider_entry
+                .get_ava_single_url(Attribute::OAuth2TokenIntrospectEndpoint)
+                .cloned();
+
+            let user_sub_verifier = match maybe_rfc7662_endpoint {
+                Some(endpoint) => OAuth2SubjectVerifier::Rfc7662TokenIntrospection { endpoint },
+                None => OAuth2SubjectVerifier::None,
+            };
+
             let provider = OAuth2ClientProvider {
                 name,
                 uuid,
@@ -127,6 +146,7 @@ impl IdmServerProxyWriteTransaction<'_> {
                 request_scopes,
                 authorisation_endpoint,
                 token_endpoint,
+                user_sub_verifier,
             };
 
             oauth2_client_provider_structs.push((uuid, provider));

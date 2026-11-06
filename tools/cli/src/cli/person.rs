@@ -1,33 +1,32 @@
-use crate::common::try_expire_at_from_string;
-use crate::OpType;
 use crate::{
-    handle_client_error, password_prompt, AccountCertificate, AccountCredential, AccountRadius,
-    AccountSsh, AccountUserAuthToken, AccountValidity, KanidmClientParser, OutputMode, PersonOpt,
-    PersonPosix,
+    common::try_expire_at_from_string, handle_client_error, password_prompt, AccountCertificate,
+    AccountCredential, AccountRadius, AccountSsh, AccountUserAuthToken, AccountValidity,
+    KanidmClientParser, OpType, OutputMode, PersonApplicationOpt, PersonOpt, PersonPosix,
 };
-use dialoguer::theme::ColorfulTheme;
-use dialoguer::{Confirm, Input, Password, Select};
+use dialoguer::{theme::ColorfulTheme, Confirm, Input, Password, Select};
 use kanidm_client::{ClientError, KanidmClient};
-use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{
-    ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_SOFTLOCK_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER,
+use kanidm_proto::{
+    attribute::Attribute,
+    constants::{
+        ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_SOFTLOCK_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER,
+    },
+    internal::{
+        CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CUSessionToken,
+        CUStatus, CredentialDetail, CredentialDetailType,
+        OperationError::{
+            DuplicateKey, DuplicateLabel, InvalidLabel, NoMatchingEntries, PasswordQuality,
+        },
+        SshPublicKey, TotpSecret,
+    },
+    messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus},
+    scim_v1::{client::ScimSshPublicKeys, ScimApplicationPasswordCreate, ScimEntryGetQuery},
 };
-use kanidm_proto::internal::OperationError::{
-    DuplicateKey, DuplicateLabel, InvalidLabel, NoMatchingEntries, PasswordQuality,
+use qrcode::{render::unicode, QrCode};
+use std::{
+    fmt::{self, Debug},
+    str::FromStr,
 };
-use kanidm_proto::internal::{
-    CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CUSessionToken, CUStatus,
-    SshPublicKey, TotpSecret,
-};
-use kanidm_proto::internal::{CredentialDetail, CredentialDetailType};
-use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
-use kanidm_proto::scim_v1::{client::ScimSshPublicKeys, ScimEntryGetQuery};
-use qrcode::render::unicode;
-use qrcode::QrCode;
-use std::fmt::{self, Debug};
-use std::str::FromStr;
-use time::format_description::well_known::Rfc3339;
-use time::{OffsetDateTime, UtcOffset};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
@@ -40,6 +39,7 @@ impl PersonOpt {
         match self {
             // id/cred/primary/set
             PersonOpt::Credential { commands } => commands.exec(opt).await,
+            PersonOpt::Application { commands } => commands.exec(opt).await,
             PersonOpt::Radius { commands } => match commands {
                 AccountRadius::Show(aopt) => {
                     let client = opt.to_client(OpType::Read).await;
@@ -725,6 +725,58 @@ impl AccountCredential {
     }
 }
 
+impl PersonApplicationOpt {
+    pub async fn exec(&self, opt: KanidmClientParser) {
+        match self {
+            Self::Create {
+                name,
+                application_uuid,
+                label,
+            } => {
+                let client = opt.to_client(OpType::Write).await;
+
+                let request = ScimApplicationPasswordCreate {
+                    application_uuid: *application_uuid,
+                    label: label.clone(),
+                };
+
+                match client
+                    .idm_person_application_password_create(name, &request)
+                    .await
+                {
+                    Ok(app_password) => match opt.output_mode {
+                        OutputMode::Json => {
+                            println!(
+                                "{}",
+                                serde_json::to_string(&app_password)
+                                    .expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => {
+                            println!("id:     {}", app_password.uuid);
+                            println!("label:  {}", app_password.label);
+                            println!("secret: {}", app_password.secret);
+                            println!("This secret will only be shown ONCE!");
+                        }
+                    },
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
+            Self::Delete { name, password_id } => {
+                let client = opt.to_client(OpType::Write).await;
+
+                match client
+                    .idm_person_application_password_delete(name, *password_id)
+                    .await
+                {
+                    Ok(_) => opt.output_mode.print_message("Success"),
+                    Err(e) => handle_client_error(e, opt.output_mode),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 enum CUAction {
     Help,
@@ -1325,6 +1377,7 @@ fn display_status(status: CUStatus) {
         ext_cred_portal,
         mfaregstate: _,
         can_commit,
+        dirty,
         warnings,
         primary,
         primary_state,
@@ -1499,6 +1552,7 @@ fn display_status(status: CUStatus) {
     display_warnings(&warnings);
 
     println!("Can Commit: {can_commit}");
+    println!("Session Has Changes: {dirty}");
 }
 
 /// This is the REPL for updating a credential for a given account
