@@ -32,8 +32,6 @@ Leave:
 > 3. Role engine removes all resources
 > 4. Resources are deprovisioned in target system.
 
-Please notice that a move can simply be implemented as a leave and join in quick succession.
-
 ## Role Engine
 
 ## Manual resources
