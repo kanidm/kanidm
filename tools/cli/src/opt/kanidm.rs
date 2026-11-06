@@ -93,6 +93,23 @@ impl OutputMode {
             }
         }
     }
+
+    pub fn print_vec<T>(self, input: Vec<T>)
+    where
+        T: serde::Serialize + fmt::Debug + fmt::Display,
+    {
+        match self {
+            OutputMode::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string(&input).unwrap_or(format!("{input:?}"))
+                );
+            }
+            OutputMode::Text => {
+                input.iter().for_each(|ent| println!("{ent}"));
+            }
+        }
+    }
 }
 
 #[derive(Debug, Args, Clone)]
@@ -1355,6 +1372,11 @@ pub enum SynchOpt {
         #[clap(name = "url")]
         url: Option<Url>,
     },
+    /// Get the url to the external credential portal.
+    GetCredentialPortal {
+        #[clap()]
+        account_id: String,
+    },
     /// Create a new IDM sync account
     #[clap(name = "create")]
     Create {
@@ -1389,6 +1411,11 @@ pub enum SynchOpt {
 
         #[clap(name = "attributes")]
         attrs: Vec<String>,
+    },
+    /// Get the list of attributes that have their authority yielded from the sync account.
+    GetYieldAttributes {
+        #[clap()]
+        account_id: String,
     },
     /// Reset the sync cookie of this connector, so that on the next operation of the sync tool
     /// a full refresh of the provider is requested. Kanidm attributes that have been granted
