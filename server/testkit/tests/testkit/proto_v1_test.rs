@@ -1,28 +1,31 @@
 #![deny(warnings)]
-use compact_jwt::dangernoverify::JwsDangerReleaseWithoutVerify;
-use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
+use compact_jwt::{
+    dangernoverify::JwsDangerReleaseWithoutVerify, traits::JwsVerifiable, JwsCompact,
+    JwsEs256Verifier, JwsVerifier,
+};
 use hyper::header::CONTENT_TYPE;
 use kanidm_client::{ClientError, KanidmClient};
-use kanidm_proto::constants::{ATTR_GIDNUMBER, KSESSIONID};
-use kanidm_proto::internal::{
-    ApiToken, CURegState, Filter, ImageValue, Modify, ModifyList, UatPurpose, UserAuthToken,
-};
-use kanidm_proto::v1::{
-    AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
-    Entry,
+use kanidm_proto::{
+    constants::{ATTR_GIDNUMBER, KSESSIONID},
+    internal::{
+        ApiToken, CURegState, Filter, ImageValue, Modify, ModifyList, UatPurpose, UserAuthToken,
+    },
+    v1::{
+        AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
+        Entry,
+    },
 };
 use kanidmd_core::config::ServerRole;
-use kanidmd_lib::constants::{NAME_IDM_ADMINS, NAME_SYSTEM_ADMINS};
-use kanidmd_lib::credential::totp::Totp;
-use kanidmd_lib::prelude::{Attribute, APPLICATION_JSON};
+use kanidmd_lib::{
+    constants::{NAME_IDM_ADMINS, NAME_SYSTEM_ADMINS},
+    credential::totp::Totp,
+    prelude::{Attribute, APPLICATION_JSON},
+};
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
-use std::path::Path;
-use std::str::FromStr;
-use std::time::SystemTime;
+use std::{path::Path, str::FromStr, time::SystemTime};
 use time::OffsetDateTime;
 use tracing::{debug, trace};
-use webauthn_authenticator_rs::softpasskey::SoftPasskey;
-use webauthn_authenticator_rs::WebauthnAuthenticator;
+use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
 
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 

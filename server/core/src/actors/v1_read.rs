@@ -1,45 +1,52 @@
 use compact_jwt::{JweCompact, Jwk, JwsCompact};
-use kanidm_proto::backup::BackupCompression;
-use kanidm_proto::internal::{
-    ApiToken, AppLink, CURequest, CUSessionToken, CUStatus, CredentialStatus, IdentifyUserRequest,
-    IdentifyUserResponse, ImageValue, OperationError, RadiusAuthToken, SearchRequest,
-    SearchResponse, UserAuthToken,
+use kanidm_proto::{
+    backup::BackupCompression,
+    internal::{
+        ApiToken, AppLink, CURequest, CUSessionToken, CUStatus, CredentialStatus,
+        IdentifyUserRequest, IdentifyUserResponse, ImageValue, OperationError, RadiusAuthToken,
+        SearchRequest, SearchResponse, UserAuthToken,
+    },
+    oauth2::OidcWebfingerResponse,
+    v1::{
+        AuthIssueSession, Entry as ProtoEntry, UatStatus, UnixGroupToken, UnixUserToken,
+        WhoamiResponse,
+    },
 };
-use kanidm_proto::oauth2::OidcWebfingerResponse;
-use kanidm_proto::v1::{
-    AuthIssueSession, Entry as ProtoEntry, UatStatus, UnixGroupToken, UnixUserToken, WhoamiResponse,
-};
-use kanidmd_lib::be::BackendTransaction;
-use kanidmd_lib::idm::identityverification::{
-    IdentifyUserDisplayCodeEvent, IdentifyUserStartEvent, IdentifyUserSubmitCodeEvent,
-};
-use kanidmd_lib::prelude::*;
 use kanidmd_lib::{
+    be::BackendTransaction,
     event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
-    idm::account::ListUserAuthTokenEvent,
-    idm::authentication::{AuthStep, ReauthRequest},
-    idm::credupdatesession::CredentialUpdateSessionToken,
-    idm::event::{
-        AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, UnixGroupTokenEvent,
-        UnixUserAuthEvent, UnixUserTokenEvent,
+    idm::{
+        account::ListUserAuthTokenEvent,
+        authentication::{AuthStep, ReauthRequest},
+        credupdatesession::CredentialUpdateSessionToken,
+        event::{
+            AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent,
+            UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+        },
+        identityverification::{
+            IdentifyUserDisplayCodeEvent, IdentifyUserStartEvent, IdentifyUserSubmitCodeEvent,
+        },
+        ldap::{LdapBoundToken, LdapResponseState},
+        oauth2::{
+            AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
+            AuthorisationRequestContext, AuthoriseReject, AuthoriseResponse, JwkKeySet,
+            Oauth2Error, Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, OidcToken,
+        },
+        server::{DomainInfoRead, IdmServerTransaction},
+        serviceaccount::ListApiTokenEvent,
     },
-    idm::ldap::{LdapBoundToken, LdapResponseState},
-    idm::oauth2::{
-        AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
-        AuthorisationRequestContext, AuthoriseReject, AuthoriseResponse, JwkKeySet, Oauth2Error,
-        Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, OidcToken,
-    },
-    idm::server::{DomainInfoRead, IdmServerTransaction},
-    idm::serviceaccount::ListApiTokenEvent,
+    prelude::*,
 };
 use ldap3_proto::simple::*;
 use regex::Regex;
-use std::convert::TryFrom;
-use std::fs;
-use std::net::IpAddr;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::{
+    convert::TryFrom,
+    fs,
+    net::IpAddr,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 use tracing::{error, info, instrument, trace};
 use uuid::Uuid;
 

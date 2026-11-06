@@ -1,70 +1,73 @@
-use crate::be::dbvalue::DbValueSetV2;
-use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::schema::SchemaAttribute;
-use crate::server::keys::KeyId;
-use crate::value::{
-    Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, OauthClaimMapJoin, Session,
+use crate::{
+    be::dbvalue::DbValueSetV2,
+    credential::{apppwd::ApplicationPassword, totp::Totp, Credential},
+    prelude::*,
+    repl::cid::Cid,
+    schema::SchemaAttribute,
+    server::keys::KeyId,
+    value::{
+        Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, OauthClaimMapJoin,
+        Session,
+    },
 };
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use crypto_glue::{s256::Sha256Output, x509::Certificate};
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
-use kanidm_proto::internal::ImageValue;
-use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
-use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
-use kanidm_proto::v1::OutboundMessage;
+use kanidm_proto::{
+    internal::{Filter as ProtoFilter, ImageValue, UiHint},
+    scim_v1::{JsonValue, ScimOauth2ClaimMapJoinChar},
+    v1::OutboundMessage,
+};
 use smolset::SmolSet;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+};
 use time::OffsetDateTime;
-use webauthn_rs::prelude::AttestationCaList;
-use webauthn_rs::prelude::AttestedPasskey as AttestedPasskeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
 
-pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
-use self::apppwd::ValueSetApplicationPassword;
-pub use self::auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
-pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
-pub use self::bool::ValueSetBool;
-pub use self::certificate::ValueSetCertificate;
-pub use self::cid::ValueSetCid;
-pub use self::cred::{
-    ValueSetAttestedPasskey, ValueSetCredential, ValueSetCredentialType, ValueSetIntentToken,
-    ValueSetPasskey, ValueSetWebauthnAttestationCaList,
+pub use self::{
+    address::{ValueSetAddress, ValueSetEmailAddress},
+    auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY},
+    binary::{ValueSetPrivateBinary, ValueSetPublicBinary},
+    bool::ValueSetBool,
+    certificate::ValueSetCertificate,
+    cid::ValueSetCid,
+    cred::{
+        ValueSetAttestedPasskey, ValueSetCredential, ValueSetCredentialType, ValueSetIntentToken,
+        ValueSetPasskey, ValueSetWebauthnAttestationCaList,
+    },
+    datetime::ValueSetDateTime,
+    hexstring::ValueSetHexString,
+    iname::{ValueSetIname, ValueSetInameN},
+    index::ValueSetIndex,
+    int64::ValueSetInt64,
+    iutf8::{ValueSetIutf8, ValueSetIutf8N},
+    json::{ValueSetJson, ValueSetJsonFilter},
+    jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256},
+    key_internal::{KeyInternalData, ValueSetKeyInternal},
+    message::ValueSetMessage,
+    nsuniqueid::ValueSetNsUniqueId,
+    oauth::{OauthClaimMapping, ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap},
+    s256::ValueSetSha256,
+    secret::ValueSetSecret,
+    session::{ValueSetApiTokenSet, ValueSetOauth2Session, ValueSetSession},
+    spn::ValueSetSpn,
+    ssh::ValueSetSshKey,
+    syntax::ValueSetSyntax,
+    totp::ValueSetTotpSecret,
+    uihint::ValueSetUiHint,
+    uint32::ValueSetUint32,
+    uint64::ValueSetUint64,
+    url::{ValueSetUrl, ValueSetUrlN},
+    utf8::ValueSetUtf8,
+    uuid::{ValueSetRefer, ValueSetReferN, ValueSetUuid, ValueSetUuidN},
 };
-pub use self::datetime::ValueSetDateTime;
-pub use self::hexstring::ValueSetHexString;
-use self::image::ValueSetImage;
-pub use self::iname::ValueSetIname;
-pub use self::index::ValueSetIndex;
-pub use self::int64::ValueSetInt64;
-pub use self::iutf8::ValueSetIutf8;
-pub use self::json::{ValueSetJson, ValueSetJsonFilter};
-pub use self::jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256};
-pub use self::key_internal::{KeyInternalData, ValueSetKeyInternal};
-pub use self::message::ValueSetMessage;
-pub use self::nsuniqueid::ValueSetNsUniqueId;
-pub use self::oauth::{
-    OauthClaimMapping, ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap,
-};
-pub use self::restricted::ValueSetRestricted;
-pub use self::s256::ValueSetSha256;
-pub use self::secret::ValueSetSecret;
-pub use self::session::{ValueSetApiTokenSet, ValueSetOauth2Session, ValueSetSession};
-pub use self::spn::ValueSetSpn;
-pub use self::ssh::ValueSetSshKey;
-pub use self::syntax::ValueSetSyntax;
-pub use self::totp::ValueSetTotpSecret;
-pub use self::uihint::ValueSetUiHint;
-pub use self::uint32::ValueSetUint32;
-pub use self::uint64::ValueSetUint64;
-pub use self::url::ValueSetUrl;
-pub use self::utf8::ValueSetUtf8;
-pub use self::uuid::{ValueSetRefer, ValueSetUuid};
+use self::{apppwd::ValueSetApplicationPassword, image::ValueSetImage};
 
 mod address;
 mod apppwd;
@@ -87,7 +90,6 @@ mod key_internal;
 mod message;
 mod nsuniqueid;
 mod oauth;
-mod restricted;
 mod s256;
 mod secret;
 mod session;
@@ -115,8 +117,10 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn clear(&mut self);
 
-    fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool;
+    #[must_use]
+    fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool;
 
+    #[must_use]
     fn purge(&mut self, _cid: &Cid) -> bool {
         // Default handling is true.
         true
@@ -189,8 +193,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         self.len() == 0
     }
 
-    fn migrate_iutf8_iname(&self) -> Result<Option<ValueSet>, OperationError> {
-        debug_assert!(false);
+    fn migrate(&self) -> Result<Option<ValueSet>, OperationError> {
         Ok(None)
     }
 
@@ -267,7 +270,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_uuid_set(&self) -> Option<&SmolSet<[Uuid; 1]>> {
+    fn as_uuid_set(&self) -> Option<&BTreeSet<Uuid>> {
         None
     }
 
@@ -340,7 +343,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_url_set(&self) -> Option<&SmolSet<[Url; 1]>> {
+    fn as_url_set(&self) -> Option<&BTreeSet<Url>> {
         debug_assert!(false);
         None
     }
@@ -744,7 +747,15 @@ pub struct UnresolvedScimValueOauth2ScopeMap {
     pub scopes: BTreeSet<String>,
 }
 
+#[derive(Debug)]
+pub enum UnresolvedReferenceState {
+    Uuid(Uuid),
+    Value(String),
+    Complete { uuid: Uuid, value: String },
+}
+
 pub enum ScimValueIntermediate {
+    Reference(Uuid),
     References(Vec<Uuid>),
     Oauth2ClaimMap(Vec<UnresolvedScimValueOauth2ClaimMap>),
     Oauth2ScopeMap(Vec<UnresolvedScimValueOauth2ScopeMap>),
@@ -808,9 +819,9 @@ impl ValueSetResolveStatus {
 }
 
 pub enum ValueSetIntermediate {
+    Reference(UnresolvedReferenceState),
     References {
-        resolved: BTreeSet<Uuid>,
-        unresolved: Vec<String>,
+        unresolved: Vec<UnresolvedReferenceState>,
     },
     Oauth2ClaimMap {
         resolved: Vec<ResolvedValueSetOauth2ClaimMap>,
@@ -863,9 +874,12 @@ pub fn from_result_value_iter(
     let mut vs: ValueSet = match init {
         Value::Utf8(s) => ValueSetUtf8::new(s),
         Value::Iutf8(s) => ValueSetIutf8::new(&s),
+        Value::Iutf8N(s) => ValueSetIutf8N::new(&s),
         Value::Iname(s) => ValueSetIname::new(&s),
-        Value::Uuid(u) => ValueSetUuid::new(u),
+        Value::InameN(s) => ValueSetInameN::new(&s),
+        Value::Uuid(u) | Value::UuidN(u) => ValueSetUuid::new(u),
         Value::Refer(u) => ValueSetRefer::new(u),
+        Value::ReferN(u) => ValueSetReferN::new(u),
         Value::Bool(u) => ValueSetBool::new(u),
         Value::Uint32(u) => ValueSetUint32::new(u),
         Value::Int64(u) => ValueSetInt64::new(u),
@@ -873,12 +887,12 @@ pub fn from_result_value_iter(
         Value::Syntax(u) => ValueSetSyntax::new(u),
         Value::Index(u) => ValueSetIndex::new(u),
         Value::SecretValue(u) => ValueSetSecret::new(u),
-        Value::RestrictedString(u) => ValueSetRestricted::new(u),
         Value::Spn(n, d) => ValueSetSpn::new((n, d)),
         Value::Cid(u) => ValueSetCid::new(u),
         Value::JsonFilt(u) => ValueSetJsonFilter::new(u),
         Value::Nsuniqueid(u) => ValueSetNsUniqueId::new(u),
         Value::Url(u) => ValueSetUrl::new(u),
+        Value::UrlN(u) => ValueSetUrlN::new(u),
         Value::DateTime(u) => ValueSetDateTime::new(u),
         Value::PrivateBinary(u) => ValueSetPrivateBinary::new(u),
         Value::OauthScope(u) => ValueSetOauthScope::new(u),
@@ -933,9 +947,12 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
     let mut vs: ValueSet = match init {
         Value::Utf8(s) => ValueSetUtf8::new(s),
         Value::Iutf8(s) => ValueSetIutf8::new(&s),
+        Value::Iutf8N(s) => ValueSetIutf8N::new(&s),
         Value::Iname(s) => ValueSetIname::new(&s),
-        Value::Uuid(u) => ValueSetUuid::new(u),
+        Value::InameN(s) => ValueSetInameN::new(&s),
+        Value::Uuid(u) | Value::UuidN(u) => ValueSetUuid::new(u),
         Value::Refer(u) => ValueSetRefer::new(u),
+        Value::ReferN(u) => ValueSetReferN::new(u),
         Value::Bool(u) => ValueSetBool::new(u),
         Value::Uint32(u) => ValueSetUint32::new(u),
         Value::Int64(u) => ValueSetInt64::new(u),
@@ -943,12 +960,12 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::Syntax(u) => ValueSetSyntax::new(u),
         Value::Index(u) => ValueSetIndex::new(u),
         Value::SecretValue(u) => ValueSetSecret::new(u),
-        Value::RestrictedString(u) => ValueSetRestricted::new(u),
         Value::Spn(n, d) => ValueSetSpn::new((n, d)),
         Value::Cid(u) => ValueSetCid::new(u),
         Value::JsonFilt(u) => ValueSetJsonFilter::new(u),
         Value::Nsuniqueid(u) => ValueSetNsUniqueId::new(u),
         Value::Url(u) => ValueSetUrl::new(u),
+        Value::UrlN(u) => ValueSetUrlN::new(u),
         Value::DateTime(u) => ValueSetDateTime::new(u),
         Value::PrivateBinary(u) => ValueSetPrivateBinary::new(u),
         Value::OauthScope(u) => ValueSetOauthScope::new(u),
@@ -1013,10 +1030,15 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
 pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationError> {
     match dbvs {
         DbValueSetV2::Utf8(set) => ValueSetUtf8::from_dbvs2(set),
-        DbValueSetV2::Iutf8(set) => ValueSetIutf8::from_dbvs2(set),
-        DbValueSetV2::Iname(set) => ValueSetIname::from_dbvs2(set),
-        DbValueSetV2::Uuid(set) => ValueSetUuid::from_dbvs2(set),
-        DbValueSetV2::Reference(set) => ValueSetRefer::from_dbvs2(set),
+        DbValueSetV2::Iutf8(set) => ValueSetIutf8N::from_dbvs2(set),
+        DbValueSetV2::Iutf8Single(set) => ValueSetIutf8::from_dbvs2(set),
+        DbValueSetV2::Iname(set) => ValueSetInameN::from_dbvs2(set),
+        DbValueSetV2::InameSingle(set) => ValueSetIname::from_dbvs2(set),
+        DbValueSetV2::Uuid(set) => ValueSetUuidN::from_dbvs2(set),
+        DbValueSetV2::UuidSingle(uuid) => ValueSetUuid::from_dbvs2(uuid),
+
+        DbValueSetV2::Reference(set) => ValueSetReferN::from_dbvs2(set),
+        DbValueSetV2::ReferenceSingle(set) => ValueSetRefer::from_dbvs2(set),
         DbValueSetV2::Bool(set) => ValueSetBool::from_dbvs2(set),
         DbValueSetV2::Uint32(set) => ValueSetUint32::from_dbvs2(set),
         DbValueSetV2::Int64(set) => ValueSetInt64::from_dbvs2(set),
@@ -1024,12 +1046,12 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::SyntaxType(set) => ValueSetSyntax::from_dbvs2(set),
         DbValueSetV2::IndexType(set) => ValueSetIndex::from_dbvs2(set),
         DbValueSetV2::SecretValue(set) => ValueSetSecret::from_dbvs2(set),
-        DbValueSetV2::RestrictedString(set) => ValueSetRestricted::from_dbvs2(set),
         DbValueSetV2::Spn(set) => ValueSetSpn::from_dbvs2(set),
         DbValueSetV2::Cid(set) => ValueSetCid::from_dbvs2(set),
         DbValueSetV2::JsonFilter(set) => ValueSetJsonFilter::from_dbvs2(&set),
         DbValueSetV2::NsUniqueId(set) => ValueSetNsUniqueId::from_dbvs2(set),
-        DbValueSetV2::Url(set) => ValueSetUrl::from_dbvs2(set),
+        DbValueSetV2::Url(set) => ValueSetUrlN::from_dbvs2(set),
+        DbValueSetV2::UrlSingle(set) => ValueSetUrl::from_dbvs2(set),
         DbValueSetV2::DateTime(set) => ValueSetDateTime::from_dbvs2(set),
         DbValueSetV2::PrivateBinary(set) => ValueSetPrivateBinary::from_dbvs2(set),
         DbValueSetV2::OauthScope(set) => ValueSetOauthScope::from_dbvs2(set),
@@ -1067,7 +1089,11 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Json(object) => Ok(ValueSetJson::new(object)),
         DbValueSetV2::Sha256(set) => ValueSetSha256::from_dbvs2(set),
         DbValueSetV2::Message(object) => Ok(ValueSetMessage::new(object)),
-        DbValueSetV2::EcKeyPrivate(_key) => Err(OperationError::InvalidState),
+        DbValueSetV2::EcKeyPrivate(_) | DbValueSetV2::RestrictedString(_) => {
+            error!("Use of a deprecated database type");
+            debug_assert!(false);
+            Err(OperationError::InvalidState)
+        }
     }
 }
 

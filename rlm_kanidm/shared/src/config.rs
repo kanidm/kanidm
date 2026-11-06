@@ -1,7 +1,5 @@
 use serde::Deserialize;
-use std::collections::BTreeMap;
-use std::fs;
-use std::path::Path;
+use std::{collections::BTreeMap, fs, path::Path};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RadiusGroupConfig {

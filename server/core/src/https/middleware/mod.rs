@@ -1,10 +1,8 @@
-use crate::https::ServerState;
-use crate::https::{extractors::ClientConnInfo, LoggerType};
+use crate::https::{extractors::ClientConnInfo, LoggerType, ServerState};
 use axum::{
     body::Body,
     extract::{connect_info::ConnectInfo, State},
-    http::{header::HeaderName, StatusCode},
-    http::{HeaderValue, Request},
+    http::{header::HeaderName, HeaderValue, Request, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
     RequestExt,

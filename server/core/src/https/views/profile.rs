@@ -1,33 +1,45 @@
 #![allow(clippy::result_large_err)]
 
-use super::constants::{ProfileMenuItems, Urls};
-use super::errors::HtmxError;
-use super::navbar::NavbarCtx;
-use crate::https::errors::WebError;
-use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
-use crate::https::views::reauth::{uat_privileges_active, uat_privileges_possible};
-use crate::https::views::KanidmHxEventName;
-use crate::https::ServerState;
+use super::{
+    constants::{ProfileMenuItems, Urls},
+    errors::HtmxError,
+    navbar::NavbarCtx,
+};
+use crate::https::{
+    errors::WebError,
+    extractors::{DomainInfo, VerifiedClientInformation},
+    middleware::KOpId,
+    views::{
+        reauth::{uat_privileges_active, uat_privileges_possible},
+        KanidmHxEventName,
+    },
+    ServerState,
+};
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::extract::{Query, State};
-use axum::response::{IntoResponse, Redirect, Response};
-use axum::Extension;
+use axum::{
+    extract::{Query, State},
+    response::{IntoResponse, Redirect, Response},
+    Extension,
+};
 use axum_extra::extract::Form;
 use axum_htmx::{HxEvent, HxPushUrl, HxResponseTrigger};
 use futures_util::TryFutureExt;
-use kanidm_proto::attribute::Attribute;
-use kanidm_proto::internal::{OperationError, UserAuthToken};
-use kanidm_proto::scim_v1::client::ScimEntryPutKanidm;
-use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimPerson, ScimValueKanidm};
-use kanidm_proto::scim_v1::ScimMail;
-use serde::Deserialize;
-use serde::Serialize;
-use std::collections::BTreeMap;
-use std::fmt;
-use std::fmt::Display;
-use std::fmt::Formatter;
+use kanidm_proto::{
+    attribute::Attribute,
+    internal::{OperationError, UserAuthToken},
+    scim_v1::{
+        client::ScimEntryPutKanidm,
+        server::{ScimEffectiveAccess, ScimPerson, ScimValueKanidm},
+        ScimMail,
+    },
+};
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::BTreeMap,
+    fmt,
+    fmt::{Display, Formatter},
+};
 
 #[derive(Template, WebTemplate)]
 #[template(path = "user_settings.html")]

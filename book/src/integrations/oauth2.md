@@ -414,16 +414,63 @@ kanidm system oauth2 warning-enable-legacy-crypto <client name>
 
 In this mode, Kanidm will not offer `ES256` support for the client at all.
 
-## Resetting Client Security Material
+## Resetting a Basic Client Secret
 
-In the case of disclosure of the basic secret or some other security event where you may wish to invalidate a services
-active sessions/tokens. You can reset the secret material of the server with:
+In the case of disclosure of the basic secret or some other security event where you may wish to invalidate the basic
+secret, you can reset it with.
 
 ```bash
-kanidm system oauth2 reset-secrets
+kanidm system oauth2 reset-basic-secret
 ```
 
-Each client has unique signing keys and access secrets, so this is limited to each service.
+Each client has unique access secrets, so this is limited to each oauth2 client.
+
+## Cryptographic Key Management
+
+Each client has unique cryptographic keys for signing and encryption. These keys are uniquely identifier by a key
+identifier. You can view the keys of an OAuth2 client when you show that client.
+
+```
+kanidm system oauth2 get <client name>
+
+---
+class: oauth2_resource_server
+class: oauth2_resource_server_public
+...
+key_internal_data: 56f8e5344e08: retained jws_es256 1745462028
+key_internal_data: 5c80e8470d91: valid jwe_a128gcm 0
+key_internal_data: 8ba2fba530a3: valid jws_es256 0
+```
+
+The `key_internal_data` fields list the available keys of the client. Here we see that there is a valid `jwe_a128gcm`
+and `jws_es256` key, and a rotated `jws_es256` which has be retained for signature validation.
+
+All active keys can be scheduled for rotation if your security requirements necesitate this.
+
+```
+kanidm system oauth2 rotate-cryptographic-keys <client name> <rotation time>
+kanidm system oauth2 rotate-cryptographic-keys my_client "2020-09-25T11:22:02+10:00"
+```
+
+When a key is rotated it will be retained and considered valid for signature validation and decryption, but will not be
+used for new operations.
+
+If you believe a key has been compromised you can revoke it.
+
+```
+kanidm system oauth2 revoke-cryptographic-key <client name> <key id>
+kanidm system oauth2 revoke-cryptographic-key my_client 56f8e5344e08
+```
+
+```
+kanidm system oauth2 get <client name>
+
+---
+class: oauth2_resource_server
+class: oauth2_resource_server_public
+...
+key_internal_data: 56f8e5344e08: revoked jws_es256 1745462028
+```
 
 ## WebFinger
 

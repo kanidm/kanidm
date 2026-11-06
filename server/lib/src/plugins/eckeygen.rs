@@ -1,6 +1,5 @@
 use super::Plugin;
-use crate::prelude::*;
-use crate::valueset::ValueSetSecret;
+use crate::{prelude::*, valueset::ValueSetSecret};
 use std::sync::Arc;
 
 pub struct EcdhKeyGen {}

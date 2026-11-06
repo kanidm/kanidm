@@ -1,15 +1,15 @@
-use libnss::group::Group;
-use libnss::interop::Response;
-use libnss::passwd::Passwd;
-use sparkle_unix_common::client_sync::DaemonClientBlocking;
-use sparkle_unix_common::constants::{SYSTEM_GROUP_PATH, SYSTEM_PASSWD_PATH};
-use sparkle_unix_common::unix_config::PamNssConfig;
-use sparkle_unix_common::unix_passwd::{
-    read_etc_group_file, read_etc_passwd_file, EtcGroup, EtcUser,
+use libnss::{group::Group, interop::Response, passwd::Passwd};
+use sparkle_unix_common::{
+    client_sync::DaemonClientBlocking,
+    constants::{SYSTEM_GROUP_PATH, SYSTEM_PASSWD_PATH},
+    unix_config::PamNssConfig,
+    unix_passwd::{read_etc_group_file, read_etc_passwd_file, EtcGroup, EtcUser},
+    unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser},
 };
-use sparkle_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser};
-use std::ops::{Deref, DerefMut};
-use std::sync::RwLock;
+use std::{
+    ops::{Deref, DerefMut},
+    sync::RwLock,
+};
 
 #[cfg(test)]
 use sparkle_unix_common::client_sync::UnixStream;
@@ -41,7 +41,17 @@ impl RequestOptions {
         // Fast path - is the client already setup?
         match CLIENT.read().map(|guard| guard.deref().clone()) {
             Ok(Some(client)) => {
-                return Source::Daemon(client);
+                // Perform a ping, only on success return.
+                let req = ClientRequest::Ping;
+                let working = client
+                    .clone()
+                    .call_and_wait(req, None)
+                    .map(|res| matches!(res, ClientResponse::Ok))
+                    .unwrap_or_default();
+
+                if working {
+                    return Source::Daemon(client);
+                }
             }
             Ok(None) => {
                 // Fall through, we need to setup.

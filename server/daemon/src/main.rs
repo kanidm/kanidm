@@ -27,25 +27,22 @@ use std::fs::{metadata, File};
 // This works on both unix and windows.
 use clap::{Args, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
-use kanidmd_core::admin::{
-    AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
-    ProtoDomainUpgradeCheckReport, ProtoDomainUpgradeCheckStatus,
-};
-use kanidmd_core::config::{Configuration, ServerConfigUntagged};
 use kanidmd_core::{
-    backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
-    dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
-    dbscan_list_indexes_core, dbscan_list_quarantined_core, dbscan_quarantine_id2entry_core,
-    dbscan_restore_quarantined_core, domain_rename_core, reindex_server_core, restore_server_core,
-    vacuum_server_core, verify_server_core, CoreAction,
+    admin::{
+        AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
+        ProtoDomainUpgradeCheckReport, ProtoDomainUpgradeCheckStatus,
+    },
+    backup_server_core, cert_generate_core,
+    config::{Configuration, ServerConfigUntagged},
+    create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
+    dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
+    dbscan_list_quarantined_core, dbscan_quarantine_id2entry_core, dbscan_restore_quarantined_core,
+    domain_rename_core, reindex_server_core, restore_server_core, vacuum_server_core,
+    verify_server_core, CoreAction,
 };
 use serde::Serialize;
-use sketching::pipeline::TracingPipelineGuard;
-use sketching::tracing_forest::util::*;
-use std::fmt;
-use std::io::Read;
-use std::path::PathBuf;
-use std::process::ExitCode;
+use sketching::{pipeline::TracingPipelineGuard, tracing_forest::util::*};
+use std::{fmt, io::Read, path::PathBuf, process::ExitCode};
 use tokio::net::UnixStream;
 use tokio_util::codec::Framed;
 

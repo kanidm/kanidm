@@ -1,42 +1,41 @@
-use super::constants::Urls;
-use super::{cookies, empty_string_as_none, UnrecoverableErrorView};
-use crate::https::views::errors::HtmxError;
+use super::{constants::Urls, cookies, empty_string_as_none, UnrecoverableErrorView};
 use crate::https::{
     extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
     middleware::KOpId,
+    views::errors::HtmxError,
     ServerState,
 };
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::http::HeaderMap;
 use axum::{
     extract::{Query, State},
+    http::HeaderMap,
     response::{IntoResponse, Redirect, Response},
     Extension, Form, Json,
 };
 use axum_extra::extract::cookie::{CookieJar, SameSite};
 use base64::{engine::general_purpose, Engine as _};
 use hyper::Uri;
-use kanidm_proto::internal::{
-    UserAuthToken, COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN,
-    COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
-};
 use kanidm_proto::{
+    internal::{
+        UserAuthToken, COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN,
+        COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
+    },
     oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
         AccessTokenResponse,
     },
     v1::{AuthAllowed, AuthIssueSession, AuthMech},
 };
-use kanidmd_lib::idm::authentication::{
-    AuthCredential, AuthExternal, AuthState, AuthStep, ReauthRequest,
+use kanidmd_lib::{
+    idm::{
+        authentication::{AuthCredential, AuthExternal, AuthState, AuthStep, ReauthRequest},
+        event::AuthResult,
+    },
+    prelude::{OperationError, *},
 };
-use kanidmd_lib::idm::event::AuthResult;
-use kanidmd_lib::prelude::OperationError;
-use kanidmd_lib::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 use webauthn_rs::prelude::PublicKeyCredential;
 
 #[derive(Default, Serialize, Deserialize)]

@@ -24,27 +24,35 @@
 //! a Linux system.  That means that it might take some work to get this library
 //! to work on other platforms.
 
-pub mod constants;
+#[cfg(target_os = "linux")]
+pub mod constants_linux;
+#[cfg(target_os = "linux")]
+pub use constants_linux as constants;
+
+#[cfg(any(target_os = "macos", target_os = "freebsd"))]
+pub mod constants_openpam;
+#[cfg(any(target_os = "macos", target_os = "freebsd"))]
+pub use constants_openpam as constants;
+
 pub mod conv;
 pub mod items;
 #[doc(hidden)]
 pub mod macros;
 pub mod module;
 
-use crate::core::{self, RequestOptions};
-use crate::pam::constants::*;
-use crate::pam::module::{PamHandle, PamHooks};
+use crate::{
+    core::{self, RequestOptions},
+    pam::{
+        constants::*,
+        module::{PamHandle, PamHooks},
+    },
+};
 use constants::PamResultCode;
-use sparkle_unix_common::constants::DEFAULT_CONFIG_PATH;
-use sparkle_unix_common::unix_config::PamNssConfig;
-use std::collections::BTreeSet;
-use std::convert::TryFrom;
-use std::ffi::CStr;
+use sparkle_unix_common::{constants::DEFAULT_CONFIG_PATH, unix_config::PamNssConfig};
+use std::{collections::BTreeSet, convert::TryFrom, ffi::CStr};
 use time::OffsetDateTime;
 use tracing::debug;
-use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::fmt;
-use tracing_subscriber::prelude::*;
+use tracing_subscriber::{filter::LevelFilter, fmt, prelude::*};
 
 pub fn get_cfg() -> Result<PamNssConfig, PamResultCode> {
     PamNssConfig::new()

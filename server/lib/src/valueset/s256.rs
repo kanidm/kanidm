@@ -1,9 +1,8 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::ValueSetResolveStatus;
-use crate::valueset::ValueSetScimPut;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
+};
 use crypto_glue::s256::Sha256Output;
 use serde::Deserialize;
 use serde_with::serde_as;
@@ -45,7 +44,7 @@ impl ValueSetScimPut for ValueSetSha256 {
             .set
             .into_iter()
             .map(|bytes| {
-                Sha256Output::from_exact_iter(bytes).ok_or_else(|| {
+                Sha256Output::try_from_iter(bytes).map_err(|_| {
                     error!("SCIM SHA256 Syntax Invalid");
                     OperationError::SC0030Sha256SyntaxInvalid
                 })
@@ -73,12 +72,14 @@ impl ValueSetT for ValueSetSha256 {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Sha256(s) => self.set.remove(s),
+            PartialValue::Sha256(s) => {
+                self.set.remove(s);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

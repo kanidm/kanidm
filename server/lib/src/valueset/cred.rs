@@ -1,19 +1,20 @@
-use crate::be::dbvalue::{
-    DbValueAttestedPasskeyV1, DbValueCredV1, DbValueIntentTokenStateV1, DbValuePasskeyV1,
+use crate::{
+    be::dbvalue::{
+        DbValueAttestedPasskeyV1, DbValueCredV1, DbValueIntentTokenStateV1, DbValuePasskeyV1,
+    },
+    credential::Credential,
+    prelude::*,
+    schema::SchemaAttribute,
+    utils::trigraph_iter,
+    value::{CredUpdateSessionPerms, CredentialType, IntentTokenState},
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
 };
-use crate::credential::Credential;
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::utils::trigraph_iter;
-use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+use kanidm_proto::scim_v1::{
+    server::{ScimIntentToken, ScimIntentTokenState},
+    JsonValue,
 };
-use kanidm_proto::scim_v1::server::{ScimIntentToken, ScimIntentTokenState};
-use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry as BTreeEntry, BTreeMap};
 use time::OffsetDateTime;
 use webauthn_rs::prelude::{
     AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
@@ -80,10 +81,10 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Cred(t) => self.map.remove(t.as_str()).is_some(),
-            _ => false,
-        }
+        if let PartialValue::Cred(t) = pv {
+            self.map.remove(t.as_str());
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -310,10 +311,10 @@ impl ValueSetT for ValueSetIntentToken {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::IntentToken(u) => self.map.remove(u).is_some(),
-            _ => false,
-        }
+        if let PartialValue::IntentToken(u) = pv {
+            self.map.remove(u);
+        };
+        self.map.is_empty()
     }
 
     fn purge(&mut self, _cid: &Cid) -> bool {
@@ -555,10 +556,10 @@ impl ValueSetT for ValueSetPasskey {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Passkey(u) => self.map.remove(u).is_some(),
-            _ => false,
-        }
+        if let PartialValue::Passkey(u) = pv {
+            self.map.remove(u);
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -728,10 +729,10 @@ impl ValueSetT for ValueSetAttestedPasskey {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::AttestedPasskey(u) => self.map.remove(u).is_some(),
-            _ => false,
-        }
+        if let PartialValue::AttestedPasskey(u) = pv {
+            self.map.remove(u);
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -919,12 +920,14 @@ impl ValueSetT for ValueSetCredentialType {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::CredentialType(u) => self.set.remove(u),
+            PartialValue::CredentialType(u) => {
+                self.set.remove(u);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

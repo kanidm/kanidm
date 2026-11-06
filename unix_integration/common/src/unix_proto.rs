@@ -124,6 +124,7 @@ impl Default for PamServiceInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientRequest {
+    Ping,
     SshKey(String),
     NssAccounts,
     NssAccountByUid(u32),
@@ -156,6 +157,7 @@ impl ClientRequest {
     /// Get a safe display version of the request, without credentials.
     pub fn as_safe_string(&self) -> String {
         match self {
+            ClientRequest::Ping => "Ping".into(),
             ClientRequest::SshKey(id) => format!("SshKey({id})"),
             ClientRequest::NssAccounts => "NssAccounts".to_string(),
             ClientRequest::NssAccountByUid(id) => format!("NssAccountByUid({id})"),

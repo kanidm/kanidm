@@ -164,6 +164,11 @@ pub enum OperationError {
 
     // Account Signup Errors
     AS0001FeatureDisabled,
+    AS0002FeatureDisabled,
+    AS0003FeatureDisabled,
+    AS0004InvalidState,
+    AS0005InvalidState,
+    AS0006InvalidState,
 
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
@@ -234,6 +239,8 @@ pub enum OperationError {
     SC0031Int64SyntaxInvalid,
     SC0032Uint64SyntaxInvalid,
     SC0033AssertionContainsDuplicateUuids,
+    SC0034UuidSyntaxInvalid,
+
     // Migration
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
@@ -332,6 +339,15 @@ pub enum OperationError {
 
     KP0080KeyProviderNoSuchKey,
 
+    KP0081KeyObjectImportJweA256GCMInvalid,
+    KP0082KeyObjectImportJweA256GCMInvalid,
+    KP0083KeyObjectJweNotAssociated,
+    KP0084KeyObjectJweInvalid,
+    KP0085KeyObjectJweRevoked,
+    KP0086KeyObjectNoActiveEncryptionKeys,
+    KP0087KeyObjectJweA256GCMEncryption,
+    KP0088KeyProviderNoSuchKey,
+
     // Plugins
     PL0001GidOverlapsSystemRange,
 
@@ -340,6 +356,13 @@ pub enum OperationError {
     UI0002InvalidState,
     UI0003InvalidOauth2Resume,
     UI0004MemberAlreadyExists,
+    UI0005PersonAlreadyExists,
+    UI0006MissingDisplayName,
+    UI0007DuplicateEmail,
+    UI0008InvalidUserName,
+    UI0009GroupAlreadyExists,
+    UI0010MissingGroupName,
+    UI0011InvalidGroupName,
 
     // Unixd Things
     KU001InitWhileSessionActive,
@@ -478,7 +501,13 @@ impl OperationError {
             Self::KG004UnknownFeatureUuid => None,
             Self::KG005HowDidYouEvenManageThis => Some("You have damaged the fabric of space time and managed to perform an impossible action.".into()),
             Self::KG006DatastructureCorruption => None,
-            Self::AS0001FeatureDisabled => None,
+            Self::AS0001FeatureDisabled
+            | Self::AS0002FeatureDisabled
+            | Self::AS0003FeatureDisabled
+            | Self::AS0004InvalidState
+            | Self::AS0005InvalidState
+            | Self::AS0006InvalidState => None,
+
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,
             Self::KP0003KeyProviderInvalidType => None,
@@ -562,6 +591,15 @@ impl OperationError {
             Self::KP0079KeyObjectNotFound => None,
             Self::KP0080KeyProviderNoSuchKey => None,
 
+            Self::KP0081KeyObjectImportJweA256GCMInvalid => None,
+            Self::KP0082KeyObjectImportJweA256GCMInvalid => None,
+            Self::KP0083KeyObjectJweNotAssociated => None,
+            Self::KP0084KeyObjectJweInvalid => None,
+            Self::KP0085KeyObjectJweRevoked => None,
+            Self::KP0086KeyObjectNoActiveEncryptionKeys => None,
+            Self::KP0087KeyObjectJweA256GCMEncryption => None,
+            Self::KP0088KeyProviderNoSuchKey => None,
+
             Self::KU001InitWhileSessionActive => Some("The session was active when the init function was called.".into()),
             Self::KU002ContinueWhileSessionInActive => Some("Attempted to continue auth session while current session is inactive".into()),
             Self::KU003PamAuthFailed => Some("Failed PAM account authentication step".into()),
@@ -614,10 +652,18 @@ impl OperationError {
             Self::SC0031Int64SyntaxInvalid => Some("A SCIM Int64 contained invalid syntax".into()),
             Self::SC0032Uint64SyntaxInvalid => Some("A SCIM Uint64 contained invalid syntax".into()),
             Self::SC0033AssertionContainsDuplicateUuids => Some("SCIM assertion contains duplicate entry ids, unable to proceed.".into()),
+            Self::SC0034UuidSyntaxInvalid => Some("A SCIM Uuid contained invalid syntax".into()),
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
             Self::UI0003InvalidOauth2Resume => Some("The server attempted to resume OAuth2, but no OAuth2 session is in progress.".into()),
             Self::UI0004MemberAlreadyExists => Some("The target is already a member.".into()),
+            Self::UI0005PersonAlreadyExists => Some("A person with this username already exists.".into()),
+            Self::UI0006MissingDisplayName => Some("A display name is required for every user.".into()),
+            Self::UI0007DuplicateEmail => Some("Another user with the same email address already exists.".into()),
+            Self::UI0008InvalidUserName => Some("Invalid username.".into()),
+            Self::UI0009GroupAlreadyExists => Some("A group with this name already exists.".into()),
+            Self::UI0010MissingGroupName => Some("A name is required for every group.".into()),
+            Self::UI0011InvalidGroupName => Some("Invalid group name.".into()),
             Self::VL0001ValueSshPublicKeyString => None,
             Self::VS0001IncomingReplSshPublicKey => None,
             Self::VS0002CertificatePublicKeyDigest |

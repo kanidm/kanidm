@@ -1,18 +1,18 @@
-use super::migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES};
-use super::profiles::{
-    AccessControlModify, AccessControlModifyResolved, AccessControlReceiverCondition,
-    AccessControlTargetCondition,
+use super::{
+    migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES},
+    profiles::{
+        AccessControlModify, AccessControlModifyResolved, AccessControlReceiverCondition,
+        AccessControlTargetCondition,
+    },
+    protected::{
+        LOCKED_ENTRY_CLASSES, PROTECTED_MOD_ENTRY_CLASSES, PROTECTED_MOD_PRES_ENTRY_CLASSES,
+        PROTECTED_MOD_REM_ENTRY_CLASSES,
+    },
+    AccessBasicResult, AccessModResult,
 };
-use super::protected::{
-    LOCKED_ENTRY_CLASSES, PROTECTED_MOD_ENTRY_CLASSES, PROTECTED_MOD_PRES_ENTRY_CLASSES,
-    PROTECTED_MOD_REM_ENTRY_CLASSES,
-};
-use super::{AccessBasicResult, AccessModResult};
 use crate::prelude::*;
 use hashbrown::HashMap;
-use std::collections::BTreeSet;
-use std::ops::Sub;
-use std::sync::Arc;
+use std::{collections::BTreeSet, ops::Sub, sync::Arc};
 
 pub(super) enum ModifyResult<'a> {
     Deny,
@@ -59,7 +59,22 @@ pub(super) fn apply_modify_access<'a>(
         AccessBasicResult::Ignore => {}
     }
 
-    // Check with protected if we should proceed.
+    match modify_account_request_attrs(ident, entry) {
+        AccessModResult::Deny => denied = true,
+        AccessModResult::Allow {
+            mut pres_attr,
+            mut rem_attr,
+            mut pres_class,
+            mut rem_class,
+        } => {
+            allow_pres.append(&mut pres_attr);
+            allow_rem.append(&mut rem_attr);
+            allow_pres_cls.append(&mut pres_class);
+            allow_rem_cls.append(&mut rem_class);
+        }
+        AccessModResult::Constrain { .. } | AccessModResult::Ignore => {}
+    }
+
     match modify_migration_attrs(ident, entry) {
         AccessModResult::Deny => denied = true,
         AccessModResult::Allow {
@@ -137,14 +152,13 @@ pub(super) fn apply_modify_access<'a>(
                         // fetch it as a multivalue btreeset for future in case we allow
                         // multiple entry manager by in future.
                         {
-                            let entry_manager_uuids = entry.get_ava_refer(Attribute::EntryManagedBy)?;
+                            let entry_manager_uuid = entry.get_ava_refer_single(Attribute::EntryManagedBy)?;
                             let group_check = ident_memberof
                                 // Have at least one group allowed.
-                                .map(|imo| imo.intersection(entry_manager_uuids).next().is_some())
+                                .map(|imo| imo.contains(&entry_manager_uuid))
                                 .unwrap_or_default();
 
-                            let user_check =
-                                entry_manager_uuids.contains(&ident_uuid);
+                            let user_check = entry_manager_uuid == ident_uuid;
 
                             if !(group_check || user_check) {
                                 // Not the entry manager
@@ -247,15 +261,16 @@ fn modify_ident_test(ident: &Identity) -> AccessBasicResult {
             // No need to check ACS
             return AccessBasicResult::Grant;
         }
-        IdentType::Internal(InternalRole::Migration) => {
-            return AccessBasicResult::Grant;
-        }
-        IdentType::Internal(InternalRole::MessageQueue)
+        IdentType::Internal(InternalRole::Migration)
         | IdentType::Internal(InternalRole::AccountRequest) => {
+            return AccessBasicResult::Ignore;
+        }
+        IdentType::Internal(InternalRole::MessageQueue) => {
+            trace!("Deny internal role from modification");
             return AccessBasicResult::Deny;
         }
         IdentType::Synch(_) => {
-            security_critical!("Blocking sync check");
+            warn!("Blocking sync account from modifying entries.");
             return AccessBasicResult::Deny;
         }
         IdentType::User(_) => {}
@@ -395,6 +410,7 @@ fn modify_protected_entry_attrs<'a>(classes: &BTreeSet<String>) -> AccessModResu
     // First check for the hard-deny rules.
     if !classes.is_disjoint(&LOCKED_ENTRY_CLASSES) {
         // Hard deny attribute modifications to these types.
+        info!("Denying attempt to modify a locked entry class");
         return AccessModResult::Deny;
     }
 
@@ -466,9 +482,14 @@ fn modify_protected_entry_attrs<'a>(classes: &BTreeSet<String>) -> AccessModResu
         ]);
     }
 
+    if classes.contains(EntryClass::Feature.into()) {
+        constrain_attrs.extend([Attribute::Enabled]);
+    }
+
     // If we don't constrain the attributes at all, we have to deny the change
     // from proceeding.
     if constrain_attrs.is_empty() {
+        warn!("Unable to constrain attributes, denying request");
         AccessModResult::Deny
     } else {
         AccessModResult::Constrain {
@@ -505,6 +526,34 @@ fn modify_migration_attrs<'a>(
                 }
             }
             AccessModResult::Deny
+        }
+        _ => {
+            // We don't constraint or influence these.
+            AccessModResult::Ignore
+        }
+    }
+}
+
+fn modify_account_request_attrs<'a>(
+    ident: &Identity,
+    _entry: &Arc<EntrySealedCommitted>,
+) -> AccessModResult<'a> {
+    match &ident.origin {
+        IdentType::Internal(InternalRole::AccountRequest) => {
+            let allow_attrs = BTreeSet::from_iter([
+                Attribute::PrimaryCredential,
+                Attribute::PassKeys,
+                Attribute::AttestedPasskeys,
+                Attribute::UnixPassword,
+                Attribute::SshPublicKey,
+            ]);
+
+            AccessModResult::Allow {
+                pres_attr: allow_attrs.clone(),
+                rem_attr: allow_attrs,
+                pres_class: Default::default(),
+                rem_class: Default::default(),
+            }
         }
         _ => {
             // We don't constraint or influence these.

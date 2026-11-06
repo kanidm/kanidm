@@ -15,7 +15,7 @@ impl KanidmClient {
     }
 
     /// Queue a test message to be sent to a person.
-    pub async fn idm_message_send_test(&self, to: &str) -> Result<(), ClientError> {
+    pub async fn idm_message_send_test(&self, to: &str) -> Result<Uuid, ClientError> {
         self.perform_get_request(&format!("/scim/v1/Person/{to}/_message/_send_test"))
             .await
     }
@@ -31,6 +31,11 @@ impl KanidmClient {
 
     pub async fn idm_message_mark_sent(&self, message_id: Uuid) -> Result<(), ClientError> {
         self.perform_post_request(&format!("/scim/v1/Message/{message_id}/_sent"), ())
+            .await
+    }
+
+    pub async fn idm_message_resend(&self, message_id: Uuid) -> Result<(), ClientError> {
+        self.perform_post_request(&format!("/scim/v1/Message/{message_id}/_resend"), ())
             .await
     }
 }

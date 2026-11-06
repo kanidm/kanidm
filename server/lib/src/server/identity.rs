@@ -3,15 +3,10 @@
 //! and this provides the set of `Limits` to confine how many resources that the
 //! identity may consume during operations to prevent denial-of-service.
 
-use crate::be::Limits;
-use crate::prelude::*;
-use crate::value::Session;
+use crate::{be::Limits, prelude::*, value::Session};
 use kanidm_proto::internal::{ApiTokenPurpose, UatPurpose};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
-use std::hash::Hash;
-use std::net::IpAddr;
-use std::sync::Arc;
+use std::{collections::BTreeSet, hash::Hash, net::IpAddr, sync::Arc};
 use time::OffsetDateTime;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -228,7 +223,7 @@ impl Identity {
             origin: IdentType::Internal(InternalRole::AccountRequest),
             source: Source::Internal,
             session_id: UUID_INTERNAL_SESSION_ID,
-            scope: AccessScope::ReadOnly,
+            scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
             last_verified_at: None,
         }

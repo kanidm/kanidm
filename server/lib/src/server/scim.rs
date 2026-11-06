@@ -1,14 +1,18 @@
-use crate::prelude::*;
-use crate::schema::{SchemaAttribute, SchemaTransaction};
-use crate::server::assert::{AssertEvent, AssertOnce, EntryAssertion};
-use crate::server::batch_modify::{BatchModifyEvent, ModSetValid};
-use crate::server::ValueSetResolveStatus;
-use crate::valueset::*;
-use crypto_glue::s256::Sha256Output;
-use kanidm_proto::scim_v1::client::{
-    ScimEntryAssertion, ScimEntryPostGeneric, ScimEntryPutGeneric,
+use crate::{
+    prelude::*,
+    schema::{SchemaAttribute, SchemaTransaction},
+    server::{
+        assert::{AssertEvent, AssertOnce, EntryAssertion},
+        batch_modify::{BatchModifyEvent, ModSetValid},
+        ValueSetResolveStatus,
+    },
+    valueset::*,
 };
-use kanidm_proto::scim_v1::JsonValue;
+use crypto_glue::s256::Sha256Output;
+use kanidm_proto::scim_v1::{
+    client::{ScimEntryAssertion, ScimEntryPostGeneric, ScimEntryPutGeneric},
+    JsonValue,
+};
 use std::collections::{
     // BTreeSet,
     BTreeMap,
@@ -82,10 +86,11 @@ impl ScimCreateEvent {
             .collect::<Result<EntryInitNew, _>>()?;
 
         if !classes.is_empty() {
-            let classes = ValueSetIutf8::from_iter(classes.iter().map(|cls| cls.as_ref()))
+            let classes = ValueSetIutf8N::from_iter(classes.iter().map(|cls| cls.as_ref()))
                 .ok_or(OperationError::SC0027ClassSetInvalid)?;
-
             entry.set_ava_set(&Attribute::Class, classes);
+        } else {
+            return Err(OperationError::SC0027ClassSetInvalid);
         }
 
         Ok(ScimCreateEvent { ident, entry })
@@ -318,6 +323,7 @@ impl QueryServerWriteTransaction<'_> {
 
         // Before we can transform this, we have to resolve links that *may* exist
         // within this assertion.
+
         self.txn_name_to_uuid().extend(asserts.iter().filter_map(
             |scim_assert| match scim_assert {
                 ScimEntryAssertion::Present { id, attrs } => {
@@ -407,17 +413,14 @@ impl QueryServerWriteTransaction<'_> {
     ) -> Result<ValueSet, OperationError> {
         let resolve_status = match schema_a.syntax {
             SyntaxType::Utf8String => ValueSetUtf8::from_scim_json_put(value),
-            SyntaxType::Utf8StringInsensitive => ValueSetIutf8::from_scim_json_put(value),
             SyntaxType::Uuid => ValueSetUuid::from_scim_json_put(value),
+            SyntaxType::UuidN => ValueSetUuidN::from_scim_json_put(value),
             SyntaxType::Boolean => ValueSetBool::from_scim_json_put(value),
             SyntaxType::SyntaxId => ValueSetSyntax::from_scim_json_put(value),
             SyntaxType::IndexId => ValueSetIndex::from_scim_json_put(value),
-            SyntaxType::ReferenceUuid => ValueSetRefer::from_scim_json_put(value),
-            SyntaxType::Utf8StringIname => ValueSetIname::from_scim_json_put(value),
             SyntaxType::NsUniqueId => ValueSetNsUniqueId::from_scim_json_put(value),
             SyntaxType::DateTime => ValueSetDateTime::from_scim_json_put(value),
             SyntaxType::EmailAddress => ValueSetEmailAddress::from_scim_json_put(value),
-            SyntaxType::Url => ValueSetUrl::from_scim_json_put(value),
             SyntaxType::OauthScope => ValueSetOauthScope::from_scim_json_put(value),
             SyntaxType::OauthScopeMap => ValueSetOauthScopeMap::from_scim_json_put(value),
             SyntaxType::OauthClaimMap => ValueSetOauthClaimMap::from_scim_json_put(value),
@@ -429,6 +432,16 @@ impl QueryServerWriteTransaction<'_> {
             SyntaxType::Int64 => ValueSetInt64::from_scim_json_put(value),
             SyntaxType::Uint64 => ValueSetUint64::from_scim_json_put(value),
             SyntaxType::Sha256 => ValueSetSha256::from_scim_json_put(value),
+
+            // Temporary - use the multi-value versions for compatibility.
+            SyntaxType::Url => ValueSetUrl::from_scim_json_put(value),
+            SyntaxType::UrlN => ValueSetUrlN::from_scim_json_put(value),
+            SyntaxType::ReferenceUuid => ValueSetRefer::from_scim_json_put(value),
+            SyntaxType::ReferenceUuidN => ValueSetReferN::from_scim_json_put(value),
+            SyntaxType::Utf8StringIname => ValueSetIname::from_scim_json_put(value),
+            SyntaxType::Utf8StringInameN => ValueSetInameN::from_scim_json_put(value),
+            SyntaxType::Utf8StringInsensitive => ValueSetIutf8::from_scim_json_put(value),
+            SyntaxType::Utf8StringInsensitiveN => ValueSetIutf8N::from_scim_json_put(value),
 
             // Not Yet ... if ever
             // SyntaxType::JsonFilter => ValueSetJsonFilter::from_scim_json_put(value),
@@ -532,11 +545,11 @@ impl QueryServerWriteTransaction<'_> {
 mod tests {
     use super::{ScimAssertEvent, ScimEntryPutEvent};
     use crate::prelude::*;
-    use kanidm_proto::scim_v1::client::{
-        ScimEntryAssertion, ScimEntryPutKanidm, ScimReference as ScimClientReference,
+    use kanidm_proto::scim_v1::{
+        client::{ScimEntryAssertion, ScimEntryPutKanidm, ScimReference as ScimClientReference},
+        server::ScimReference,
+        ScimMail,
     };
-    use kanidm_proto::scim_v1::server::ScimReference;
-    use kanidm_proto::scim_v1::ScimMail;
     use std::collections::BTreeMap;
 
     #[qs_test]

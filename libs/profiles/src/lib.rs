@@ -1,5 +1,4 @@
-use base64::prelude::BASE64_STANDARD;
-use base64::{engine::general_purpose, Engine as _};
+use base64::{engine::general_purpose, prelude::BASE64_STANDARD, Engine as _};
 use serde::Deserialize;
 use sha2::Digest;
 use std::env;

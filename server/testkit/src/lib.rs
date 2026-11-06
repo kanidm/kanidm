@@ -11,17 +11,20 @@
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::internal::{CURegState, Filter, Modify, ModifyList};
-use kanidmd_core::config::{Configuration, IntegrationTestConfig};
-use kanidmd_core::{create_server_core, CoreHandle};
+use kanidmd_core::{
+    config::{Configuration, IntegrationTestConfig},
+    create_server_core, CoreHandle,
+};
 use kanidmd_lib::prelude::{Attribute, NAME_SYSTEM_ADMINS};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
-use std::str::FromStr;
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
+    str::FromStr,
+    sync::atomic::{AtomicU16, Ordering},
+};
 use tokio::task;
 use tracing::error;
 use url::Url;
-use webauthn_authenticator_rs::softpasskey::SoftPasskey;
-use webauthn_authenticator_rs::WebauthnAuthenticator;
+use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
 
 pub const ADMIN_TEST_USER: &str = "admin";
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -200,6 +203,43 @@ pub async fn setup_account_passkey(rsclient: &KanidmClient, account_name: &str) 
     let _ = rsclient.logout().await;
 
     wa
+}
+
+pub async fn login_account_passkey(
+    rsclient: &KanidmClient,
+    account_name: &str,
+    soft_passkey: &mut SoftPasskey,
+) {
+    rsclient.logout().await.expect("Failed to logout");
+
+    let res = rsclient
+        .auth_passkey_begin(account_name)
+        .await
+        .expect("Failed to start passkey auth");
+
+    let pkc = soft_passkey
+        .do_authentication(rsclient.get_origin().clone(), res)
+        .map(Box::new)
+        .expect("Failed to authentication with soft passkey");
+
+    let res = rsclient.auth_passkey_complete(pkc).await;
+    assert!(res.is_ok());
+}
+
+pub async fn reauth_account_passkey(rsclient: &KanidmClient, soft_passkey: &mut SoftPasskey) {
+    // We need RW privs, elevate now.
+    let res = rsclient
+        .reauth_passkey_begin()
+        .await
+        .expect("Failed to start passkey reauth");
+
+    let pkc = soft_passkey
+        .do_authentication(rsclient.get_origin().clone(), res)
+        .map(Box::new)
+        .expect("Failed to authentication with soft passkey");
+
+    let res = rsclient.reauth_passkey_complete(pkc).await;
+    assert!(res.is_ok());
 }
 
 /// creates a user (username: `id`) and puts them into a group, creating it if need be.

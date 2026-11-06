@@ -2,8 +2,7 @@
 //! components to conduct operations. These are separated based on protocol versions and
 //! if they are read or write transactions internally.
 
-use kanidmd_lib::idm::ldap::LdapServer;
-use kanidmd_lib::idm::server::IdmServer;
+use kanidmd_lib::idm::{ldap::LdapServer, server::IdmServer};
 use std::sync::Arc;
 
 pub struct QueryServerReadV1 {
@@ -44,6 +43,7 @@ impl QueryServerWriteV1 {
 }
 
 pub mod internal;
+pub mod read_action;
 pub mod v1_read;
 pub mod v1_scim;
 pub mod v1_write;

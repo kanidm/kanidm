@@ -20,8 +20,10 @@ use std::os::android::fs::MetadataExt;
 
 use kanidm_utils_users::{get_current_gid, get_current_uid};
 
-use std::fmt;
-use std::path::{Path, PathBuf};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
 
 /// Check a given file's metadata is read-only for the current user (true = read-only)
 pub fn readonly(meta: &Metadata) -> bool {

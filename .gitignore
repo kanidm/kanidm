@@ -9,6 +9,7 @@ tools/oauth2-tester/Cargo.lock
 test.db
 cargo_vendor_config
 /vendor
+/raw_templates
 rlm_python/test_data/certs/
 rlm_python/test_data/ca.pem
 scripts/loc.sh

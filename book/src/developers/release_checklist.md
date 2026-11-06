@@ -53,7 +53,6 @@ cargo install  --force \
 - [ ] Final inspect of the branch
 - [ ] run `scripts/pre_release_branch_tag.sh` which creates a tag/branch for the `-pre` version and pushes them up.
 
-
 - [ ] github -> Ensure release branch is protected
 
 ### Follow up

@@ -1,12 +1,16 @@
 use std::collections::BTreeSet;
 
-use kanidm_proto::internal::{Group as ProtoGroup, UiHint};
-use kanidm_proto::v1::UnixGroupToken;
+use kanidm_proto::{
+    internal::{Group as ProtoGroup, UiHint},
+    v1::UnixGroupToken,
+};
 use uuid::Uuid;
 
-use crate::entry::{Committed, Entry, EntryCommitted, EntrySealed, GetUuid};
-use crate::prelude::*;
-use crate::value::PartialValue;
+use crate::{
+    entry::{Committed, Entry, EntryCommitted, EntrySealed, GetUuid},
+    prelude::*,
+    value::PartialValue,
+};
 
 use super::accountpolicy::{AccountPolicy, ResolvedAccountPolicy};
 

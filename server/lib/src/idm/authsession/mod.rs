@@ -3,27 +3,31 @@
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
 use self::handler_oauth2_client::CredHandlerOAuth2Client;
-use crate::credential::totp::Totp;
-use crate::credential::{BackupCodes, Credential, CredentialType, Password};
-use crate::idm::account::Account;
-use crate::idm::accountpolicy::ResolvedAccountPolicy;
-use crate::idm::audit::AuditEvent;
-use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState, ReauthRequest};
-use crate::idm::delayed::{
-    AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
+use crate::{
+    credential::{totp::Totp, BackupCodes, Credential, CredentialType, Password},
+    idm::{
+        account::Account,
+        accountpolicy::ResolvedAccountPolicy,
+        audit::AuditEvent,
+        authentication::{AuthCredential, AuthExternal, AuthState, ReauthRequest},
+        delayed::{
+            AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade,
+            WebauthnCounterIncrement,
+        },
+        oauth2_client::OAuth2ClientProvider,
+    },
+    prelude::*,
+    server::keys::KeyObject,
+    value::{AuthType, Session, SessionExtMetadata, SessionState},
 };
-use crate::idm::oauth2_client::OAuth2ClientProvider;
-use crate::prelude::*;
-use crate::server::keys::KeyObject;
-use crate::value::{AuthType, Session, SessionExtMetadata, SessionState};
 use compact_jwt::Jws;
 use hashbrown::HashSet;
-use kanidm_proto::internal::UserAuthToken;
-use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+use kanidm_proto::{
+    internal::UserAuthToken,
+    v1::{AuthAllowed, AuthIssueSession, AuthMech},
+};
 use nonempty::NonEmpty;
-use std::collections::BTreeMap;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 use time::OffsetDateTime;
 use tokio::sync::mpsc::UnboundedSender;
 use uuid::Uuid;
@@ -1764,35 +1768,42 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
-    use crate::credential::{BackupCodes, Credential};
-    use crate::idm::account::Account;
-    use crate::idm::accountpolicy::ResolvedAccountPolicy;
-    use crate::idm::audit::AuditEvent;
-    use crate::idm::authentication::{AuthCredential, AuthExternal, AuthState};
-    use crate::idm::authsession::{
-        AuthSession, AuthSessionData, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG,
-        BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
+    use crate::{
+        credential::{
+            totp::{Totp, TOTP_DEFAULT_STEP},
+            BackupCodes, Credential,
+        },
+        idm::{
+            account::Account,
+            accountpolicy::ResolvedAccountPolicy,
+            audit::AuditEvent,
+            authentication::{AuthCredential, AuthExternal, AuthState},
+            authsession::{
+                AuthSession, AuthSessionData, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG,
+                BAD_PASSWORD_MSG, BAD_TOTP_MSG, BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
+            },
+            delayed::DelayedAction,
+            oauth2_client::OAuth2ClientProvider,
+        },
+        migration_data::{BUILTIN_ACCOUNT_ANONYMOUS, BUILTIN_ACCOUNT_TEST_PERSON},
+        prelude::*,
+        server::keys::KeyObjectInternal,
+        utils::readable_password_from_random,
     };
-    use crate::idm::delayed::DelayedAction;
-    use crate::idm::oauth2_client::OAuth2ClientProvider;
-    use crate::migration_data::{BUILTIN_ACCOUNT_ANONYMOUS, BUILTIN_ACCOUNT_TEST_PERSON};
-    use crate::prelude::*;
-    use crate::server::keys::KeyObjectInternal;
-    use crate::utils::readable_password_from_random;
     use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
     use hashbrown::HashSet;
     use kanidm_lib_crypto::CryptoPolicy;
-    use kanidm_proto::internal::{UatPurpose, UserAuthToken};
-    use kanidm_proto::oauth2::{
-        AccessTokenIntrospectResponse, AccessTokenResponse, AccessTokenType, IssuedTokenType,
+    use kanidm_proto::{
+        internal::{UatPurpose, UserAuthToken},
+        oauth2::{
+            AccessTokenIntrospectResponse, AccessTokenResponse, AccessTokenType, IssuedTokenType,
+        },
+        v1::{AuthAllowed, AuthIssueSession, AuthMech},
     };
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
     use std::time::Duration;
     use time::OffsetDateTime;
     use tokio::sync::mpsc::unbounded_channel as unbounded;
-    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
-    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
     use webauthn_rs::prelude::{RequestChallengeResponse, Webauthn};
 
     fn create_pw_badlist_cache() -> HashSet<String> {

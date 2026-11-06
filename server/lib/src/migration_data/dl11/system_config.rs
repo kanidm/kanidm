@@ -1,5 +1,4 @@
-use crate::prelude::*;
-use crate::value::Value;
+use crate::{prelude::*, value::Value};
 
 // Default entries for system_config
 // This is separated because the password badlist section may become very long
@@ -687,7 +686,7 @@ pub fn e_system_config_v1() -> EntryInitNew {
         "yuyuhakusho",
         "zonnebloem",
     ] {
-        entry.add_ava(Attribute::BadlistPassword, Value::new_iutf8(pw));
+        entry.add_ava(Attribute::BadlistPassword, Value::new_iutf8n(pw));
     }
     entry
 }

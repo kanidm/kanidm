@@ -18,14 +18,11 @@
 
 use crate::attribute::{Attribute, SubAttribute};
 use serde::{Deserialize, Serialize};
-use serde_with::formats::CommaSeparator;
-use serde_with::{serde_as, skip_serializing_none, DisplayFromStr, StringWithSeparator};
+use serde_with::{
+    formats::CommaSeparator, serde_as, skip_serializing_none, DisplayFromStr, StringWithSeparator,
+};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::collections::BTreeMap;
-use std::fmt;
-use std::num::NonZeroU64;
-use std::ops::Not;
-use std::str::FromStr;
+use std::{collections::BTreeMap, fmt, num::NonZeroU64, ops::Not, str::FromStr};
 use utoipa::ToSchema;
 use uuid::Uuid;
 

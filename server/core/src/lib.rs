@@ -38,39 +38,44 @@ mod repl;
 mod tcp;
 mod utils;
 
-use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use crate::admin::AdminActor;
-use crate::config::{Configuration, ServerRole};
-use crate::interval::IntervalActor;
-use crate::repl::ReplicationServerHandles;
-use crate::utils::touch_file_or_quit;
+use crate::{
+    actors::{QueryServerReadV1, QueryServerWriteV1},
+    admin::AdminActor,
+    config::{Configuration, ServerRole},
+    interval::IntervalActor,
+    repl::ReplicationServerHandles,
+    utils::touch_file_or_quit,
+};
 use crypto_glue::{
     s256::{Sha256, Sha256Output},
     traits::Digest,
 };
-use kanidm_proto::backup::BackupCompression;
-use kanidm_proto::internal::OperationError;
-use kanidm_proto::scim_v1::client::ScimAssertGeneric;
-use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
-use kanidmd_lib::idm::ldap::LdapServer;
-use kanidmd_lib::prelude::*;
-use kanidmd_lib::schema::Schema;
-use kanidmd_lib::status::StatusActor;
-use kanidmd_lib::value::CredentialType;
+use kanidm_proto::{
+    backup::BackupCompression, internal::OperationError, scim_v1::client::ScimAssertGeneric,
+};
+use kanidmd_lib::{
+    be::{Backend, BackendConfig, BackendTransaction},
+    idm::ldap::LdapServer,
+    prelude::*,
+    schema::Schema,
+    status::StatusActor,
+    value::CredentialType,
+};
 use regex::Regex;
 use sketching::LoggerType;
-use std::collections::BTreeSet;
-use std::fmt::{Display, Formatter};
-use std::path::Path;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::LazyLock;
-use tokio::sync::broadcast;
-use tokio::task;
+use std::{
+    collections::BTreeSet,
+    fmt::{Display, Formatter},
+    path::{Path, PathBuf},
+    sync::{Arc, LazyLock},
+};
+use tokio::{sync::broadcast, task};
 use tokio_rustls::TlsAcceptor;
 
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
+
+pub const KANIDM_PKG_VERSION: &str = env!("KANIDM_PKG_VERSION");
 
 // === internal setup helpers
 
@@ -480,7 +485,6 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &Path) {
 }
 
 pub async fn reindex_server_core(config: &Configuration) {
-    info!("Start Index Phase 1 ...");
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
     let schema = match Schema::new() {
         Ok(s) => s,
@@ -504,6 +508,7 @@ pub async fn reindex_server_core(config: &Configuration) {
 }
 
 async fn reindex_inner(be: Backend, schema: Schema, config: &Configuration) {
+    info!("Start Index Phase 1 ...");
     // Reindex only the core schema attributes to bootstrap the process.
     let mut be_wr_txn = match be.write() {
         Ok(txn) => txn,
@@ -525,7 +530,7 @@ async fn reindex_inner(be: Backend, schema: Schema, config: &Configuration) {
     }
     info!("Index Phase 1 Success!");
 
-    info!("Attempting to init query server ...");
+    debug!("Attempting to init query server ...");
 
     let (qs, _idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
@@ -534,7 +539,7 @@ async fn reindex_inner(be: Backend, schema: Schema, config: &Configuration) {
             return;
         }
     };
-    info!("Init Query Server Success!");
+    debug!("Init Query Server Success!");
 
     info!("Start Index Phase 2 ...");
 
@@ -1116,7 +1121,7 @@ pub async fn create_server_core(
         // movement.
         match idms_prox_write.qs_write.internal_modify_uuid(
             UUID_IDM_ADMINS,
-            &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ADMIN)),
+            &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ADMIN)),
         ) {
             Ok(_) => {}
             Err(e) => {
@@ -1425,7 +1430,7 @@ async fn launch_server_tasks(
                 server_read_ref,
                 broadcast_tx,
                 &tls_acceptor_reload_tx,
-                config.ldap_client_address_info.trusted_tcp_info(),
+                Arc::new(config.ldap_client_address_info.trusted_tcp_info()),
                 logging_pipeline,
             )
             .await?;

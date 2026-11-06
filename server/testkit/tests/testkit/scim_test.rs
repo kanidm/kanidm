@@ -1,9 +1,7 @@
 use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
 use kanidm_client::KanidmClient;
-use kanidm_proto::internal::ScimSyncToken;
-use kanidm_proto::scim_v1::ScimEntryGetQuery;
-use kanidmd_lib::constants::NAME_IDM_ADMINS;
-use kanidmd_lib::prelude::Attribute;
+use kanidm_proto::{internal::ScimSyncToken, scim_v1::ScimEntryGetQuery};
+use kanidmd_lib::{constants::NAME_IDM_ADMINS, prelude::Attribute};
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 use std::str::FromStr;
 use url::Url;

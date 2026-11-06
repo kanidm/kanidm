@@ -1,13 +1,15 @@
 //! Constant Entries for the IDM
 use std::fmt::Display;
 
-use crate::value::PartialValue;
-use crate::value::Value;
-use crate::valueset::{ValueSet, ValueSetIutf8};
+use crate::{
+    value::{PartialValue, Value},
+    valueset::{ValueSet, ValueSetIutf8N},
+};
 pub use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::*;
-use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::ScimFilter;
+use kanidm_proto::{
+    constants::*,
+    scim_v1::{JsonValue, ScimFilter},
+};
 
 //TODO: This would do well in the proto lib
 // together with all the other definitions.
@@ -48,6 +50,7 @@ pub enum EntryClass {
     KeyObjectJwtHs256,
     KeyObjectJwtRs256,
     KeyObjectJweA128GCM,
+    KeyObjectJweA256GCM,
     KeyObjectInternal,
     MemberOf,
     Memorial,
@@ -118,6 +121,7 @@ impl From<EntryClass> for &'static str {
             EntryClass::KeyObjectJwtHs256 => ENTRYCLASS_KEY_OBJECT_JWT_HS256,
             EntryClass::KeyObjectJwtRs256 => ENTRYCLASS_KEY_OBJECT_JWT_RS256,
             EntryClass::KeyObjectJweA128GCM => ENTRYCLASS_KEY_OBJECT_JWE_A128GCM,
+            EntryClass::KeyObjectJweA256GCM => ENTRYCLASS_KEY_OBJECT_JWE_A256GCM,
             EntryClass::KeyObjectInternal => ENTRYCLASS_KEY_OBJECT_INTERNAL,
             EntryClass::MemberOf => ENTRYCLASS_MEMBER_OF,
             EntryClass::Memorial => ENTRYCLASS_MEMORIAL,
@@ -176,7 +180,7 @@ impl From<EntryClass> for String {
 
 impl From<EntryClass> for Value {
     fn from(val: EntryClass) -> Self {
-        Value::new_iutf8(val.into())
+        Value::new_iutf8n(val.into())
     }
 }
 
@@ -200,14 +204,18 @@ impl Display for EntryClass {
 }
 
 impl EntryClass {
+    pub fn as_str(&self) -> &str {
+        self.as_ref()
+    }
+
     pub fn to_value(self) -> Value {
         let s: &'static str = self.into();
-        Value::new_iutf8(s)
+        Value::new_iutf8n(s)
     }
 
     pub fn to_valueset(self) -> ValueSet {
         let s: &'static str = self.into();
-        ValueSetIutf8::new(s)
+        ValueSetIutf8N::new(s)
     }
 
     pub fn to_partialvalue(self) -> PartialValue {

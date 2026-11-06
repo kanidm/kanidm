@@ -5,14 +5,8 @@ mod key_providers;
 mod schema;
 mod system_config;
 
-use self::access::*;
-use self::accounts::*;
-use self::groups::*;
-use self::key_providers::*;
-use self::schema::*;
-use self::system_config::*;
-use crate::constants::UUID_SCHEMA_ATTR_EC_KEY_PRIVATE;
-use crate::prelude::EntryInitNew;
+use self::{access::*, accounts::*, groups::*, key_providers::*, schema::*, system_config::*};
+use crate::{constants::UUID_SCHEMA_ATTR_EC_KEY_PRIVATE, prelude::EntryInitNew};
 use kanidm_proto::internal::OperationError;
 use uuid::Uuid;
 

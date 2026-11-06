@@ -49,12 +49,13 @@ MemoryDenyWriteExecute=true
 #
 # CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH CAP_SYS_ADMIN
 # ProtectSystem=false
-# ReadWritePaths=/
+# ReadWritePaths=
 # RestrictAddressFamilies=AF_UNIX
 # NoNewPrivileges=false
 # PrivateTmp=false
 # PrivateDevices=false
 # PrivateNetwork=false
+# PrivateMounts=false
 # ProtectHostname=false
 # ProtectClock=false
 # ProtectKernelTunables=false

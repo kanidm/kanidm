@@ -1,19 +1,23 @@
 #![allow(clippy::result_large_err)]
 
-use crate::https::middleware::KOpId;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
-use crate::https::views::Urls;
-use crate::https::ServerState;
+use crate::https::{
+    middleware::KOpId,
+    views::{
+        errors::HtmxError,
+        login::{LoginDisplayCtx, Reauth, ReauthPurpose},
+        Urls,
+    },
+    ServerState,
+};
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::response::IntoResponse;
-use axum::response::Response;
+use axum::response::{IntoResponse, Response};
 use axum_extra::extract::cookie::CookieJar;
 use kanidm_proto::internal::{PrivilegesActive, UserAuthToken};
-use kanidmd_lib::idm::authentication::ReauthRequest;
-use kanidmd_lib::idm::server::DomainInfoRead;
-use kanidmd_lib::prelude::ClientAuthInfo;
+use kanidmd_lib::{
+    idm::{authentication::ReauthRequest, server::DomainInfoRead},
+    prelude::ClientAuthInfo,
+};
 use uuid::Uuid;
 
 const READ_WRITE_REAUTH_WINDOW_SECONDS: i64 = 60;

@@ -1,31 +1,41 @@
 #![allow(clippy::result_large_err)]
 
-use crate::https::errors::WebError;
-use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::navbar::NavbarCtx;
-use crate::https::views::reauth::uat_privileges_active;
-use crate::https::views::{ErrorToastPartial, Urls};
-use crate::https::ServerState;
+use crate::https::{
+    errors::WebError,
+    extractors::{DomainInfo, VerifiedClientInformation},
+    middleware::KOpId,
+    views::{
+        errors::HtmxError, navbar::NavbarCtx, reauth::uat_privileges_active, ErrorToastPartial,
+        Urls,
+    },
+    ServerState,
+};
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::extract::{Path, State};
-use axum::response::{IntoResponse, Response};
-use axum::Extension;
+use axum::{
+    extract::{Path, State},
+    response::{IntoResponse, Response},
+    Extension,
+};
 use axum_extra::extract::Form;
 use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
-use kanidm_proto::attribute::Attribute;
-use kanidm_proto::internal::{OperationError, UserAuthToken};
-use kanidm_proto::scim_v1::server::{
-    ScimEffectiveAccess, ScimEntryKanidm, ScimGroup, ScimListResponse, ScimValueKanidm,
+use kanidm_proto::{
+    attribute::Attribute,
+    internal::{OperationError, SchemaError, UserAuthToken},
+    scim_v1::{
+        client::{ScimEntryPostGeneric, ScimEntryPutKanidm},
+        server::{
+            ScimEffectiveAccess, ScimEntryKanidm, ScimGroup, ScimListResponse, ScimValueKanidm,
+        },
+        JsonValue, ScimEntryGetQuery, ScimFilter,
+    },
 };
-use kanidm_proto::scim_v1::ScimEntryGetQuery;
-use kanidm_proto::scim_v1::{client::ScimEntryPutKanidm, ScimFilter};
-use kanidmd_lib::constants::EntryClass;
-use kanidmd_lib::filter::{f_eq, Filter};
-use kanidmd_lib::idm::authentication::ClientAuthInfo;
+use kanidmd_lib::{
+    constants::EntryClass,
+    filter::{f_eq, Filter},
+    idm::authentication::ClientAuthInfo,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
@@ -42,6 +52,7 @@ pub const GROUP_ATTRIBUTES: [Attribute; 4] = [
 pub(crate) struct GroupsView {
     navbar_ctx: NavbarCtx,
     partial: GroupsPartialView,
+    title: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -55,6 +66,7 @@ struct GroupsPartialView {
 struct GroupView {
     partial: GroupViewPartial,
     navbar_ctx: NavbarCtx,
+    title: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -105,7 +117,7 @@ pub(crate) async fn view_group_view_get(
         .check_any(&std::collections::BTreeSet::from(GROUP_ATTRIBUTES));
 
     let group_partial = GroupViewPartial {
-        group,
+        group: group.clone(),
         can_rw,
         can_modify_any_attr,
         scim_effective_access,
@@ -121,6 +133,7 @@ pub(crate) async fn view_group_view_get(
             GroupView {
                 partial: group_partial,
                 navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
+                title: format!("Group - {}", group.name),
             },
         )
             .into_response()
@@ -149,6 +162,7 @@ pub(crate) async fn view_groups_get(
             GroupsView {
                 navbar_ctx: NavbarCtx::new(domain_info, &uat.ui_hints),
                 partial: groups_partial,
+                title: "Groups".to_string(),
             },
         )
             .into_response()
@@ -264,6 +278,96 @@ pub(crate) async fn edit_group(
         .await?;
 
     // return floating notification: saved/failed
+    Ok((SavedToast {}).into_response())
+}
+
+#[derive(Template, WebTemplate)]
+#[template(path = "admin/admin_group_entry_partial.html")]
+struct GroupEntryResponse {
+    group_uuid: Uuid,
+    group_name: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct AddGroupForm {
+    name: String,
+}
+
+pub(crate) async fn create_group(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    DomainInfo(domain_info): DomainInfo,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Form(query): Form<AddGroupForm>,
+) -> axum::response::Result<Response> {
+    let name = query.name.to_string();
+
+    let entry = ScimEntryPostGeneric {
+        attrs: BTreeMap::from([(Attribute::Name, JsonValue::String(name.clone()))]),
+    };
+
+    info!("Attempting to create group '{name}'");
+
+    // Try creating the user
+    let creation_result = state
+        .qe_w_ref
+        .scim_entry_create(
+            client_auth_info.clone(),
+            kopid.eventid,
+            &[EntryClass::Group],
+            entry,
+        )
+        .await;
+
+    match creation_result {
+        Ok(scim_entry) => {
+            info!("Creation of group '{name}' successful.");
+
+            Ok((GroupEntryResponse {
+                group_uuid: scim_entry.header.id,
+                group_name: name,
+            })
+            .into_response())
+        }
+
+        Err(OperationError::AttributeUniqueness(ref attributes))
+            if attributes.contains(&Attribute::Name) =>
+        {
+            Ok((ErrorToastPartial {
+                err_code: OperationError::UI0009GroupAlreadyExists,
+                operation_id: kopid.eventid,
+            })
+            .into_response())
+        }
+        Err(OperationError::SchemaViolation(SchemaError::InvalidAttributeSyntax(details)))
+            if details == "name" =>
+        {
+            Ok((ErrorToastPartial {
+                err_code: OperationError::UI0011InvalidGroupName,
+                operation_id: kopid.eventid,
+            })
+            .into_response())
+        }
+        Err(err) => Err(HtmxError::new(&kopid, err, domain_info.clone()).into()),
+    }
+}
+
+// TODO: Is rehook_string_list_removers from server/core/static/external/forms.js relevant?
+pub(crate) async fn remove_group(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(group_id): Path<String>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> axum::response::Result<Response> {
+    let _operation_result = state
+        .qe_w_ref
+        .scim_entry_id_delete(
+            client_auth_info.clone(),
+            kopid.eventid,
+            group_id,
+            EntryClass::Group,
+        )
+        .await;
     Ok((SavedToast {}).into_response())
 }
 

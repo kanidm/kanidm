@@ -5,14 +5,11 @@ mod key_providers;
 pub(crate) mod schema;
 mod system_config;
 
-use self::access::*;
-use self::accounts::*;
-use self::groups::*;
-use self::key_providers::e_key_provider_internal_dl6;
-use self::schema::*;
-use self::system_config::*;
-use crate::constants::UUID_SCHEMA_ATTR_EC_KEY_PRIVATE;
-use crate::prelude::*;
+use self::{
+    access::*, accounts::*, groups::*, key_providers::e_key_provider_internal_dl6, schema::*,
+    system_config::*,
+};
+use crate::{constants::UUID_SCHEMA_ATTR_EC_KEY_PRIVATE, prelude::*};
 use kanidm_proto::internal::OperationError;
 use uuid::Uuid;
 
@@ -183,6 +180,7 @@ pub fn phase_2_schema_classes() -> Vec<SchemaClass> {
         SCHEMA_CLASS_ASSERTION_NONCE.clone(),
         // DL_1_12
         SCHEMA_CLASS_ACCOUNT_SIGNUP_REQUEST.clone(),
+        SCHEMA_CLASS_KEY_OBJECT_JWE_A256GCM.clone(),
     ]
 }
 
@@ -324,6 +322,8 @@ pub fn phase_7_builtin_access_control_profiles() -> Vec<EntryInitNew> {
         IDM_ACP_OAUTH2_ACCOUNT_ENROL.clone().into(),
         // DL13
         IDM_ACP_OAUTH2_MANAGE_BASIC.clone().into(),
+        // DL_1_12
+        IDM_ACP_FEATURE_MANAGE.clone().into(),
     ]
 }
 

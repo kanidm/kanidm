@@ -1,16 +1,19 @@
 //! Functions for use in pam modules.
 
-use crate::core::PamHandler;
-use crate::pam::constants::{
-    PamFlag, PamItemType, PamResultCode, PAM_PROMPT_ECHO_OFF, PAM_TEXT_INFO,
+use crate::{
+    core::PamHandler,
+    pam::{
+        constants::{PamFlag, PamItemType, PamResultCode, PAM_PROMPT_ECHO_OFF, PAM_TEXT_INFO},
+        conv::PamConv,
+        items::{PamAuthTok, PamRHost, PamService, PamTty},
+    },
 };
-use crate::pam::conv::PamConv;
-use crate::pam::items::{PamAuthTok, PamRHost, PamService, PamTty};
 use libc::{c_char, c_void};
-use sparkle_unix_common::unix_proto::DeviceAuthorizationResponse;
-use sparkle_unix_common::unix_proto::PamServiceInfo;
-use std::ffi::{CStr, CString};
-use std::{mem, ptr};
+use sparkle_unix_common::unix_proto::{DeviceAuthorizationResponse, PamServiceInfo};
+use std::{
+    ffi::{CStr, CString},
+    mem, ptr,
+};
 
 /// Opaque type, used as a pointer when making pam API calls.
 ///

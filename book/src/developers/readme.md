@@ -327,14 +327,13 @@ You can now build and run the server with the commands below. It will use a data
 Start the server
 
 ```bash
-cd server/daemon
-./run_insecure_dev_server.sh
+scripts/run_insecure_dev_server.sh
 ```
 
 While the server is running, you can use the admin socket to generate an `admin` password:
 
 ```bash
-./run_insecure_dev_server.sh recover-account admin
+scripts/run_insecure_dev_server.sh recover-account admin
 ```
 
 Record the password above.

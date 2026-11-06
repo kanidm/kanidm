@@ -1,10 +1,11 @@
 use futures::{SinkExt, StreamExt};
-use std::error::Error;
-use std::io::Error as IoError;
+use std::{error::Error, io::Error as IoError};
 use tokio::net::UnixStream;
 // use tokio::runtime::Builder;
-use crate::json_codec::JsonCodec;
-use crate::unix_proto::{ClientRequest, ClientResponse};
+use crate::{
+    json_codec::JsonCodec,
+    unix_proto::{ClientRequest, ClientResponse},
+};
 use tokio::time::{self, Duration};
 use tokio_util::codec::Framed;
 

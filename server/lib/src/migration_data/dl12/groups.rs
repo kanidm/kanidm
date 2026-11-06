@@ -1,6 +1,4 @@
-use crate::entry::EntryInitNew;
-use crate::prelude::*;
-use crate::value::CredentialType;
+use crate::{entry::EntryInitNew, prelude::*, value::CredentialType};
 
 use kanidm_proto::internal::{Filter, OperationError, UiHint};
 
@@ -64,7 +62,7 @@ impl TryFrom<BuiltinGroup> for EntryInitNew {
             Attribute::Member,
             val.members
                 .into_iter()
-                .map(Value::Refer)
+                .map(Value::ReferN)
                 .collect::<Vec<Value>>(),
         );
         // add any extra attributes

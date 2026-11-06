@@ -1,8 +1,9 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::value::NSUNIQUEID_RE;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    value::NSUNIQUEID_RE,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
+};
 use kanidm_proto::scim_v1::JsonValue;
 
 use smolset::SmolSet;
@@ -73,12 +74,14 @@ impl ValueSetT for ValueSetNsUniqueId {
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
-            PartialValue::Nsuniqueid(u) => self.set.remove(u),
+            PartialValue::Nsuniqueid(u) => {
+                self.set.remove(u);
+            }
             _ => {
                 debug_assert!(false);
-                true
             }
-        }
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

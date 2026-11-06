@@ -1,7 +1,5 @@
 use super::modify::ModifyPartial;
-use crate::event::ReviveRecycledEvent;
-use crate::prelude::*;
-use crate::server::Plugins;
+use crate::{event::ReviveRecycledEvent, prelude::*, server::Plugins};
 use std::collections::BTreeMap;
 
 impl QueryServerWriteTransaction<'_> {
@@ -310,11 +308,11 @@ impl QueryServerWriteTransaction<'_> {
                     dm_mods
                         .entry(g_uuid)
                         .and_modify(|mlist| {
-                            let m = Modify::Present(Attribute::Member, Value::Refer(u));
+                            let m = Modify::Present(Attribute::Member, Value::ReferN(u));
                             mlist.push_mod(m);
                         })
                         .or_insert({
-                            let m = Modify::Present(Attribute::Member, Value::Refer(u));
+                            let m = Modify::Present(Attribute::Member, Value::ReferN(u));
                             ModifyList::new_list(vec![m])
                         });
                 }
@@ -359,11 +357,11 @@ impl QueryServerWriteTransaction<'_> {
 #[cfg(test)]
 mod tests {
     use super::ReviveRecycledEvent;
-    use crate::event::{CreateEvent, DeleteEvent};
-    use crate::prelude::*;
-    use crate::server::ModifyEvent;
-    use crate::server::SearchEvent;
-    use crate::server::ValueSetMessage;
+    use crate::{
+        event::{CreateEvent, DeleteEvent},
+        prelude::*,
+        server::{ModifyEvent, SearchEvent, ValueSetMessage},
+    };
     use kanidm_proto::v1::OutboundMessage;
     use time::OffsetDateTime;
 
@@ -763,9 +761,12 @@ mod tests {
             ),
             (Attribute::Description, Value::new_utf8s("testgroup-entry"))
         );
-        members
-            .iter()
-            .for_each(|m| e1.add_ava(Attribute::Member, Value::new_refer_s(m).unwrap()));
+        members.iter().for_each(|m| {
+            e1.add_ava(
+                Attribute::Member,
+                Value::ReferN(Uuid::parse_str(m).unwrap()),
+            )
+        });
         e1
     }
 

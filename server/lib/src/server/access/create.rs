@@ -1,11 +1,12 @@
-use super::migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES};
-use super::profiles::{
-    AccessControlCreateResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
+use super::{
+    migration::{migration_entry_attrs, MIGRATION_ENTRY_CLASSES, MIGRATION_IGNORE_CLASSES},
+    profiles::{
+        AccessControlCreateResolved, AccessControlReceiverCondition, AccessControlTargetCondition,
+    },
+    protected::{PROTECTED_ENTRY_CLASSES, PROTECTED_MOD_PRES_ENTRY_CLASSES},
 };
-use super::protected::{PROTECTED_ENTRY_CLASSES, PROTECTED_MOD_PRES_ENTRY_CLASSES};
 use crate::prelude::*;
-use std::collections::BTreeSet;
-use std::ops::Sub;
+use std::{collections::BTreeSet, ops::Sub};
 
 pub(super) enum CreateResult<'a> {
     Deny,
@@ -138,14 +139,18 @@ fn create_filter_entry<'a>(
             let pres = BTreeSet::from([
                 Attribute::Class,
                 Attribute::DeleteAfter,
-                Attribute::Name,
                 Attribute::DisplayName,
                 Attribute::Mail,
+                Attribute::Name,
+                Attribute::S256,
+                Attribute::Uuid,
             ]);
 
             let pres_cls = BTreeSet::from([
                 EntryClass::Object.into(),
                 EntryClass::AccountSignupRequest.into(),
+                EntryClass::Account.into(),
+                EntryClass::Person.into(),
             ]);
 
             // We may create account signup requests.
@@ -347,6 +352,7 @@ fn message_queue<'a>(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IR
                         Attribute::MailDestination,
                         Attribute::MessageTemplate,
                         Attribute::SendAfter,
+                        Attribute::Uuid,
                     ]);
 
                     let allow_cls = BTreeSet::from([

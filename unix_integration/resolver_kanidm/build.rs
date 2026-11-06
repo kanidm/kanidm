@@ -1,6 +1,5 @@
 #![allow(dead_code)]
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use clap::CommandFactory;
 use clap_complete::{generate_to, Shell};

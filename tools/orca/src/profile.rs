@@ -1,11 +1,13 @@
-use crate::error::Error;
-use crate::state::{GroupName, Model};
+use crate::{
+    error::Error,
+    state::{GroupName, Model},
+};
 use rand::{rng, RngExt};
-use serde::de::{value, IntoDeserializer};
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::path::Path;
-use std::time::Duration;
+use serde::{
+    de::{value, IntoDeserializer},
+    Deserialize, Serialize,
+};
+use std::{collections::BTreeMap, path::Path, time::Duration};
 
 // Sorry nerds, capping this at 40 bits.
 const ITEM_UPPER_BOUND: u64 = 1 << 40;

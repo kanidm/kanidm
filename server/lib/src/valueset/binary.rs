@@ -1,13 +1,13 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::utils::trigraph_iter;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    utils::trigraph_iter,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 use base64urlsafedata::Base64UrlSafeData;
 use kanidm_proto::scim_v1::server::ScimBinary;
 use smolset::SmolSet;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry as BTreeEntry, BTreeMap};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetPrivateBinary {
@@ -206,10 +206,10 @@ impl ValueSetT for ValueSetPublicBinary {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::PublicBinary(t) => self.map.remove(t.as_str()).is_some(),
-            _ => false,
-        }
+        if let PartialValue::PublicBinary(t) = pv {
+            self.map.remove(t.as_str());
+        };
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

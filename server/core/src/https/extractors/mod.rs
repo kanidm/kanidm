@@ -7,8 +7,10 @@ use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::JwsCompact;
 use kanidm_proto::internal::COOKIE_BEARER_TOKEN;
 use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
-use std::net::{IpAddr, SocketAddr};
-use std::str::FromStr;
+use std::{
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+};
 
 // Re-export
 pub use kanidmd_lib::idm::server::DomainInfoRead;

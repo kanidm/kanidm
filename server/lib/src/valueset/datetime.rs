@@ -1,7 +1,7 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+use crate::{
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut},
 };
 use kanidm_proto::scim_v1::{client::ScimDateTime, JsonValue};
 use smolset::SmolSet;
@@ -79,10 +79,10 @@ impl ValueSetT for ValueSetDateTime {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::DateTime(u) => self.set.remove(u),
-            _ => false,
-        }
+        if let PartialValue::DateTime(u) = pv {
+            self.set.remove(u);
+        };
+        self.set.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {

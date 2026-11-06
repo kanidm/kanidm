@@ -1,25 +1,27 @@
 #![allow(clippy::result_large_err)]
 
-use super::constants::Urls;
-use super::navbar::NavbarCtx;
-use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
-use crate::https::middleware::KOpId;
-use crate::https::views::constants::ProfileMenuItems;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::login::ReauthPurpose;
-use crate::https::views::reauth::{
-    render_readonly, render_reauth, uat_privilege_decision, PrivilegeDecision,
+use super::{constants::Urls, navbar::NavbarCtx};
+use crate::https::{
+    extractors::{DomainInfo, VerifiedClientInformation},
+    middleware::KOpId,
+    views::{
+        constants::ProfileMenuItems,
+        errors::HtmxError,
+        login::ReauthPurpose,
+        reauth::{render_readonly, render_reauth, uat_privilege_decision, PrivilegeDecision},
+    },
+    ServerState,
 };
-use crate::https::ServerState;
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::extract::State;
-use axum::response::{IntoResponse, Response};
-use axum::Extension;
+use axum::{
+    extract::State,
+    response::{IntoResponse, Response},
+    Extension,
+};
 use axum_extra::extract::CookieJar;
 use kanidm_proto::internal::UserAuthToken;
-use qrcode::render::svg;
-use qrcode::QrCode;
+use qrcode::{render::svg, QrCode};
 use std::time::Duration;
 use url::Url;
 

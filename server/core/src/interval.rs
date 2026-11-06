@@ -1,23 +1,22 @@
 //! This contains scheduled tasks/interval tasks that are run inside of the server on a schedule
 //! as background operations.
 
-use std::fs;
-use std::path::Path;
-use std::str::FromStr;
+use std::{fs, path::Path, str::FromStr};
 
 use chrono::Utc;
 use cron::Schedule;
 
-use tokio::sync::broadcast;
-use tokio::time::{interval, sleep, Duration, MissedTickBehavior};
+use tokio::{
+    sync::broadcast,
+    time::{interval, sleep, Duration, MissedTickBehavior},
+};
 
-use crate::config::OnlineBackup;
-use crate::CoreAction;
+use crate::{config::OnlineBackup, CoreAction};
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use kanidmd_lib::constants::PURGE_FREQUENCY;
-use kanidmd_lib::event::{
-    OnlineBackupEvent, PurgeDeleteAfterEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
+use kanidmd_lib::{
+    constants::PURGE_FREQUENCY,
+    event::{OnlineBackupEvent, PurgeDeleteAfterEvent, PurgeRecycledEvent, PurgeTombstoneEvent},
 };
 
 pub(crate) struct IntervalActor;

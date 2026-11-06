@@ -1,18 +1,15 @@
-use crate::constants::PamResultCode;
-use crate::module::PamResult;
-use crate::pam::ModuleOptions;
-use sparkle_unix_common::client_sync::DaemonClientBlocking;
-use sparkle_unix_common::constants::{SYSTEM_PASSWD_PATH, SYSTEM_SHADOW_PATH};
-use sparkle_unix_common::unix_config::PamNssConfig;
-use sparkle_unix_common::unix_passwd::{
-    read_etc_passwd_file, read_etc_shadow_file, EtcShadow, EtcUser,
+use crate::{constants::PamResultCode, module::PamResult, pam::ModuleOptions};
+use sparkle_unix_common::{
+    client_sync::DaemonClientBlocking,
+    constants::{SYSTEM_PASSWD_PATH, SYSTEM_SHADOW_PATH},
+    unix_config::PamNssConfig,
+    unix_passwd::{read_etc_passwd_file, read_etc_shadow_file, EtcShadow, EtcUser},
+    unix_proto::{
+        ClientRequest, ClientResponse, DeviceAuthorizationResponse, PamAuthRequest,
+        PamAuthResponse, PamServiceInfo,
+    },
 };
-use sparkle_unix_common::unix_proto::{ClientRequest, ClientResponse};
-use sparkle_unix_common::unix_proto::{
-    DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo,
-};
-use std::cell::RefCell;
-use std::time::Duration;
+use std::{cell::RefCell, time::Duration};
 use time::OffsetDateTime;
 use tracing::{debug, error};
 

@@ -1,29 +1,36 @@
 use super::accountpolicy::ResolvedAccountPolicy;
-use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
-use crate::credential::{BackupCodes, Credential};
-use crate::idm::account::Account;
-use crate::idm::server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTransaction};
-use crate::prelude::*;
-use crate::server::access::Access;
-use crate::utils::{
-    backup_code_from_random, readable_password_from_random, utf8_len, uuid_from_duration,
+use crate::{
+    credential::{
+        totp::{Totp, TOTP_DEFAULT_STEP},
+        BackupCodes, Credential,
+    },
+    idm::{
+        account::Account,
+        server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTransaction},
+    },
+    prelude::*,
+    server::access::Access,
+    utils::{backup_code_from_random, readable_password_from_random, utf8_len, uuid_from_duration},
+    value::{CredUpdateSessionPerms, CredentialType, IntentTokenState, LABEL_RE},
 };
-use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState, LABEL_RE};
-use compact_jwt::compact::JweCompact;
-use compact_jwt::jwe::JweBuilder;
+use compact_jwt::{compact::JweCompact, jwe::JweBuilder};
 use core::ops::Deref;
 use hashbrown::HashSet;
-use kanidm_proto::internal::{
-    CUCredState, CUExtPortal, CURegState, CURegWarning, CUStatus, CredentialDetail, PasskeyDetail,
-    PasswordFeedback, TotpSecret,
+use kanidm_proto::{
+    internal::{
+        CUCredState, CUExtPortal, CURegState, CURegWarning, CUStatus, CredentialDetail,
+        PasskeyDetail, PasswordFeedback, TotpSecret,
+    },
+    v1::OutboundMessage,
 };
-use kanidm_proto::v1::OutboundMessage;
 use serde::{Deserialize, Serialize};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::collections::BTreeMap;
-use std::fmt::{self, Display};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::{
+    collections::BTreeMap,
+    fmt::{self, Display},
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use time::OffsetDateTime;
 use webauthn_rs::prelude::{
     AttestedPasskey as AttestedPasskeyV4, AttestedPasskeyRegistration, CreationChallengeResponse,
@@ -525,10 +532,18 @@ pub struct InitCredentialUpdateIntentEvent {
 
 impl InitCredentialUpdateIntentEvent {
     pub fn new(ident: Identity, target: Uuid, max_ttl: Option<Duration>) -> Self {
-        InitCredentialUpdateIntentEvent {
+        Self {
             ident,
             target,
             max_ttl,
+        }
+    }
+
+    pub fn new_ident_account_request(target: Uuid) -> Self {
+        Self {
+            ident: Identity::account_request(),
+            target,
+            max_ttl: Some(Duration::from_secs(60)),
         }
     }
 
@@ -539,7 +554,7 @@ impl InitCredentialUpdateIntentEvent {
         max_ttl: Duration,
     ) -> Self {
         let ident = Identity::from_impersonate_entry_readwrite(e);
-        InitCredentialUpdateIntentEvent {
+        Self {
             ident,
             target,
             max_ttl: Some(max_ttl),
@@ -599,8 +614,10 @@ impl IdmServerProxyWriteTransaction<'_> {
         // The initiating identity must be in readwrite mode! Effective permission assumes you
         // are in rw.
         if ident.access_scope() != AccessScope::ReadWrite {
-            security_access!("identity access scope is not permitted to modify");
-            security_access!("denied ❌");
+            security_access!(
+                ?ident,
+                "denied ❌ - identity access scope is not permitted to modify"
+            );
             return Err(OperationError::AccessDenied);
         }
 
@@ -996,7 +1013,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         &mut self,
         event: CredentialUpdateAccountRecovery,
         ct: Duration,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         if !self.qs_write.domain_info().allow_account_recovery() {
             error!("Account Recovery is Disabled, Rejecting Attempt");
             return Err(OperationError::CU0010AccountRecoveryDisabled);
@@ -1046,7 +1063,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         &mut self,
         event: InitCredentialUpdateIntentSendEvent,
         ct: Duration,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         let (account, _resolved_account_policy, perms) =
             self.validate_init_credential_update(event.target, &event.ident)?;
 
@@ -1078,7 +1095,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         perms: CredUpdateSessionPerms,
         to_email: String,
         ct: Duration,
-    ) -> Result<(), OperationError> {
+    ) -> Result<Uuid, OperationError> {
         // ==== AUTHORISATION CHECKED ===
         let (intent_id, expiry_time) =
             self.build_credential_update_intent(max_ttl, account, perms, ct)?;
@@ -1923,12 +1940,9 @@ impl IdmServerCredUpdateTransaction<'_> {
         if entropy.score() < Score::Four {
             // The password is too week as per:
             // https://docs.rs/zxcvbn/2.0.0/zxcvbn/struct.Entropy.html
-            let feedback: zxcvbn::feedback::Feedback = entropy
-                .feedback()
-                .ok_or(OperationError::InvalidState)
-                .cloned()
-                .map_err(|e| {
-                    security_info!("zxcvbn returned no feedback when score < 3 -> {:?}", e);
+            let feedback: zxcvbn::feedback::Feedback =
+                entropy.feedback().cloned().ok_or_else(|| {
+                    security_info!("zxcvbn returned no feedback when score < 3");
                     // Return some generic feedback when the password is this bad.
                     PasswordQuality::Feedback(vec![
                         PasswordFeedback::UseAFewWordsAvoidCommonPhrases,
@@ -2899,31 +2913,36 @@ mod tests {
         InitCredentialUpdateIntentSendEvent, MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL,
         MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
-    use crate::credential::totp::Totp;
-    use crate::event::CreateEvent;
-    use crate::idm::audit::AuditEvent;
-    use crate::idm::authentication::AuthState;
-    use crate::idm::delayed::DelayedAction;
-    use crate::idm::event::{
-        AuthEvent, AuthResult, RegenerateRadiusSecretEvent, UnixUserAuthEvent,
+    use crate::{
+        credential::totp::Totp,
+        event::CreateEvent,
+        idm::{
+            audit::AuditEvent,
+            authentication::AuthState,
+            delayed::DelayedAction,
+            event::{AuthEvent, AuthResult, RegenerateRadiusSecretEvent, UnixUserAuthEvent},
+            server::{IdmServer, IdmServerCredUpdateTransaction, IdmServerDelayed},
+        },
+        prelude::*,
+        utils::{password_from_random_len, readable_password_from_random},
+        value::CredentialType,
+        valueset::ValueSetEmailAddress,
     };
-    use crate::idm::server::{IdmServer, IdmServerCredUpdateTransaction, IdmServerDelayed};
-    use crate::prelude::*;
-    use crate::utils::{password_from_random_len, readable_password_from_random};
-    use crate::value::CredentialType;
-    use crate::valueset::ValueSetEmailAddress;
     use compact_jwt::JwsCompact;
     use kanidm_lib_crypto::{PW_MAX_LENGTH_NIST, PW_SFA_MIN_LENGTH_NIST};
-    use kanidm_proto::internal::{CUExtPortal, CredentialDetailType, PasswordFeedback};
-    use kanidm_proto::v1::OutboundMessage;
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, UnixUserToken};
+    use kanidm_proto::{
+        internal::{CUExtPortal, CredentialDetailType, PasswordFeedback},
+        v1::{AuthAllowed, AuthIssueSession, AuthMech, OutboundMessage, UnixUserToken},
+    };
     use sshkey_attest::proto::PublicKey as SshPublicKey;
     use std::time::Duration;
     use time::OffsetDateTime;
     use uuid::uuid;
-    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
-    use webauthn_authenticator_rs::softtoken::{self, SoftToken};
-    use webauthn_authenticator_rs::WebauthnAuthenticator;
+    use webauthn_authenticator_rs::{
+        softpasskey::SoftPasskey,
+        softtoken::{self, SoftToken},
+        WebauthnAuthenticator,
+    };
     use webauthn_rs::prelude::AttestationCaListBuilder;
 
     const TEST_CURRENT_TIME: u64 = 6000;
@@ -3502,7 +3521,7 @@ mod tests {
         let test_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                ValueSetIutf8::from_iter([
+                ValueSetIutf8N::from_iter([
                     EntryClass::Object.into(),
                     EntryClass::Account.into(),
                     EntryClass::PosixAccount.into(),
@@ -3637,7 +3656,7 @@ mod tests {
         let test_entry = EntryInitNew::from_iter([
             (
                 Attribute::Class,
-                ValueSetIutf8::from_iter([
+                ValueSetIutf8N::from_iter([
                     EntryClass::Object.into(),
                     EntryClass::Account.into(),
                     EntryClass::Person.into(),

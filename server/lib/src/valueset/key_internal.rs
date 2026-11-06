@@ -1,13 +1,13 @@
-use crate::be::dbvalue::{DbValueKeyInternal, DbValueKeyStatus, DbValueKeyUsage};
-use crate::prelude::*;
-use crate::server::keys::KeyId;
-use crate::value::{KeyStatus, KeyUsage};
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::{
+    be::dbvalue::{DbValueKeyInternal, DbValueKeyStatus, DbValueKeyUsage},
+    prelude::*,
+    server::keys::KeyId,
+    value::{KeyStatus, KeyUsage},
+    valueset::{DbValueSetV2, ScimResolveStatus, ValueSet},
+};
 use crypto_glue::traits::Zeroizing;
 use kanidm_proto::scim_v1::server::ScimKeyInternal;
-use std::collections::BTreeMap;
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 use time::OffsetDateTime;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -87,6 +87,7 @@ impl ValueSetKeyInternal {
                             DbValueKeyUsage::JwsHs256 => KeyUsage::JwsHs256,
                             DbValueKeyUsage::JwsRs256 => KeyUsage::JwsRs256,
                             DbValueKeyUsage::JweA128GCM => KeyUsage::JweA128GCM,
+                            DbValueKeyUsage::JweA256GCM => KeyUsage::JweA256GCM,
                             DbValueKeyUsage::HkdfS256 => KeyUsage::HkdfS256,
                         };
                         let status_cid = status_cid.into();
@@ -138,6 +139,7 @@ impl ValueSetKeyInternal {
                         KeyUsage::JwsHs256 => DbValueKeyUsage::JwsHs256,
                         KeyUsage::JwsRs256 => DbValueKeyUsage::JwsRs256,
                         KeyUsage::JweA128GCM => DbValueKeyUsage::JweA128GCM,
+                        KeyUsage::JweA256GCM => DbValueKeyUsage::JweA256GCM,
                         KeyUsage::HkdfS256 => DbValueKeyUsage::HkdfS256,
                     };
                     let status_cid = status_cid.into();
@@ -190,22 +192,15 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn remove(&mut self, pv: &crate::value::PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::HexString(kid) => {
-                if let Some(key_object) = self.map.get_mut(kid) {
-                    if !matches!(key_object.status, KeyStatus::Revoked) {
-                        // Do we need to track the Cid like sessions?
-                        key_object.status = KeyStatus::Revoked;
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
+        if let PartialValue::HexString(kid) = pv {
+            if let Some(key_object) = self.map.get_mut(kid) {
+                if !matches!(key_object.status, KeyStatus::Revoked) {
+                    // Do we need to track the Cid like sessions?
+                    key_object.status = KeyStatus::Revoked;
                 }
             }
-            _ => false,
         }
+        self.map.is_empty()
     }
 
     fn purge(&mut self, cid: &Cid) -> bool {
@@ -410,9 +405,7 @@ impl ValueSetT for ValueSetKeyInternal {
 #[cfg(test)]
 mod tests {
     use super::{KeyInternalData, ValueSetKeyInternal};
-    use crate::prelude::*;
-    use crate::server::keys::KeyId;
-    use crate::value::*;
+    use crate::{prelude::*, server::keys::KeyId, value::*};
     use crypto_glue::traits::Zeroizing;
 
     #[test]
@@ -430,8 +423,9 @@ mod tests {
         let one_cid = Cid::new_count(1);
 
         // Simulate session revocation.
-        vs_a.purge(&one_cid);
+        let r = vs_a.purge(&one_cid);
 
+        assert!(!r);
         assert_eq!(vs_a.len(), 1);
 
         let key_internal = vs_a

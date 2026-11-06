@@ -1,5 +1,4 @@
-use crate::plugins::Plugin;
-use crate::prelude::*;
+use crate::{plugins::Plugin, prelude::*};
 use std::sync::Arc;
 
 pub struct KeyObjectManagement {}
@@ -247,6 +246,12 @@ impl KeyObjectManagement {
                     .attribute_equality(Attribute::Class, &EntryClass::KeyObjectJweA128GCM.into())
                 {
                     key_object.jwe_a128gcm_assert(Duration::ZERO, &txn_cid)?;
+                }
+
+                if entry
+                    .attribute_equality(Attribute::Class, &EntryClass::KeyObjectJweA256GCM.into())
+                {
+                    key_object.jwe_a256gcm_assert(Duration::ZERO, &txn_cid)?;
                 }
 
                 // Turn that object into it's entry template to create. I think we need to make this

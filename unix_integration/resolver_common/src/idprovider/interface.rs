@@ -5,9 +5,7 @@ use serde_json::Value;
 use sparkle_unix_common::unix_proto::{
     DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse,
 };
-use std::collections::BTreeMap;
-use std::fmt;
-use std::time::SystemTime;
+use std::{collections::BTreeMap, fmt, time::SystemTime};
 use tokio::sync::broadcast;
 use uuid::Uuid;
 

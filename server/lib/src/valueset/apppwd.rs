@@ -1,8 +1,10 @@
-use crate::be::dbvalue::{DbValueApplicationPassword, DbValueSetV2};
-use crate::credential::{apppwd::ApplicationPassword, Password};
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
+use crate::{
+    be::dbvalue::{DbValueApplicationPassword, DbValueSetV2},
+    credential::{apppwd::ApplicationPassword, Password},
+    prelude::*,
+    schema::SchemaAttribute,
+    valueset::ScimResolveStatus,
+};
 use std::collections::BTreeMap;
 
 use kanidm_proto::scim_v1::server::ScimApplicationPasswordReference;
@@ -101,25 +103,21 @@ impl ValueSetT for ValueSetApplicationPassword {
         match pv {
             PartialValue::Refer(u) => {
                 // Deletes all passwords for the referred application
-                self.map.remove(u).is_some()
+                self.map.remove(u);
             }
             PartialValue::Uuid(u) => {
                 // Delete specific application password
                 // TODO Migrate to extract_if when available
-                let mut removed = false;
                 self.map.retain(|_, v| {
-                    let prev = v.len();
                     // Check the inner vec of passwords related to this application.
                     v.retain(|y| y.uuid != *u);
-                    let post = v.len();
-                    removed |= post < prev;
                     // Is the apppwd set for this application id now empty?
                     !v.is_empty()
                 });
-                removed
             }
-            _ => false,
+            _ => {}
         }
+        self.map.is_empty()
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -250,9 +248,11 @@ impl ValueSetT for ValueSetApplicationPassword {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::{apppwd::ApplicationPassword, Password};
-    use crate::prelude::*;
-    use crate::valueset::ValueSetApplicationPassword;
+    use crate::{
+        credential::{apppwd::ApplicationPassword, Password},
+        prelude::*,
+        valueset::ValueSetApplicationPassword,
+    };
     use kanidm_lib_crypto::CryptoPolicy;
 
     // Test the remove operation, removing all application passwords for an
@@ -309,11 +309,11 @@ mod tests {
         assert_eq!(vs.len(), 3);
 
         let res = vs.remove(&PartialValue::Uuid(ap1_uuid), &Cid::new_zero());
-        assert!(res);
+        assert!(!res);
         assert_eq!(vs.len(), 2);
 
         let res = vs.remove(&PartialValue::Uuid(ap3_uuid), &Cid::new_zero());
-        assert!(res);
+        assert!(!res);
         assert_eq!(vs.len(), 1);
 
         let res = vs.remove(&PartialValue::Uuid(ap2_uuid), &Cid::new_zero());

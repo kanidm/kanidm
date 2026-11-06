@@ -1,18 +1,18 @@
 //! These are types that a client will send to the server.
 use super::{ScimEntryGeneric, ScimEntryGetQuery, ScimMail, ScimOauth2ClaimMapJoinChar};
-use crate::attribute::Attribute;
-use crate::v1::OutboundMessage;
+use crate::{attribute::Attribute, v1::OutboundMessage};
 use scim_proto::ScimEntryHeader;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use serde_with::formats::PreferMany;
-use serde_with::OneOrMany;
-use serde_with::{base64, formats, serde_as, skip_serializing_none};
+use serde_with::{
+    base64, formats, formats::PreferMany, serde_as, skip_serializing_none, OneOrMany,
+};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::collections::{BTreeMap, BTreeSet};
-use std::num::NonZeroU64;
-use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    num::NonZeroU64,
+};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -162,7 +162,7 @@ pub struct ScimEntryApplication {
     pub name: String,
     pub displayname: String,
 
-    pub linked_group: Vec<super::ScimReference>,
+    pub linked_group: super::ScimReference,
 
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, JsonValue>,
@@ -191,6 +191,33 @@ pub struct ScimEntryMessage {
     pub delete_after: ScimDateTime,
     pub sent_at: Option<ScimDateTime>,
     pub mail_destination: Vec<ScimMail>,
+
+    #[serde(flatten)]
+    pub attrs: BTreeMap<Attribute, JsonValue>,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimListFeature {
+    pub schemas: Vec<String>,
+    pub total_results: u64,
+    pub items_per_page: Option<NonZeroU64>,
+    pub start_index: Option<NonZeroU64>,
+    pub resources: Vec<ScimEntryFeature>,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct ScimEntryFeature {
+    #[serde(flatten)]
+    pub header: ScimEntryHeader,
+
+    pub name: String,
+    pub description: String,
+    #[serde(default)]
+    pub enabled: bool,
 
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, JsonValue>,

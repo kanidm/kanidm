@@ -1,14 +1,14 @@
 // Transform password import requests into proper kanidm credentials.
-use std::convert::TryFrom;
-use std::iter::once;
-use std::sync::Arc;
+use std::{convert::TryFrom, iter::once, sync::Arc};
 
 use time::OffsetDateTime;
 
-use crate::credential::{Credential, Password};
-use crate::event::{CreateEvent, ModifyEvent};
-use crate::plugins::Plugin;
-use crate::prelude::*;
+use crate::{
+    credential::{Credential, Password},
+    event::{CreateEvent, ModifyEvent},
+    plugins::Plugin,
+    prelude::*,
+};
 
 pub struct CredImport {}
 
@@ -163,9 +163,13 @@ impl CredImport {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
-    use crate::credential::{Credential, CredentialType};
-    use crate::prelude::*;
+    use crate::{
+        credential::{
+            totp::{Totp, TOTP_DEFAULT_STEP},
+            Credential, CredentialType,
+        },
+        prelude::*,
+    };
     use kanidm_lib_crypto::CryptoPolicy;
     use time::OffsetDateTime;
 

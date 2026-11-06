@@ -1,7 +1,5 @@
-use crate::idm::server::IdmServerProxyWriteTransaction;
-use crate::prelude::*;
-use std::collections::BTreeSet;
-use std::fmt;
+use crate::{idm::server::IdmServerProxyWriteTransaction, prelude::*};
+use std::{collections::BTreeSet, fmt};
 
 // TODO: Move to constants once we have a good path here. Will probably need to be part
 // of the axum config etc.

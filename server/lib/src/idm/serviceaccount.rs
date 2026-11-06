@@ -1,15 +1,18 @@
-use crate::credential::Credential;
-use crate::event::SearchEvent;
-use crate::idm::account::Account;
-use crate::idm::event::GeneratePasswordEvent;
-use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
-use crate::prelude::*;
-use crate::utils::password_from_random;
-use crate::value::ApiToken;
+use crate::{
+    credential::Credential,
+    event::SearchEvent,
+    idm::{
+        account::Account,
+        event::GeneratePasswordEvent,
+        server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction},
+    },
+    prelude::*,
+    utils::password_from_random,
+    value::ApiToken,
+};
 use compact_jwt::{jws::JwsBuilder, Jws, JwsCompact};
 use kanidm_proto::internal::ApiToken as ProtoApiToken;
-use std::collections::BTreeMap;
-use std::time::Duration;
+use std::{collections::BTreeMap, time::Duration};
 use time::OffsetDateTime;
 
 macro_rules! try_from_entry {
@@ -406,8 +409,7 @@ mod tests {
     use kanidm_proto::internal::ApiToken;
 
     use super::{DestroyApiTokenEvent, GenerateApiTokenEvent};
-    use crate::idm::server::IdmServerTransaction;
-    use crate::prelude::*;
+    use crate::{idm::server::IdmServerTransaction, prelude::*};
 
     const TEST_CURRENT_TIME: u64 = 6000;
 

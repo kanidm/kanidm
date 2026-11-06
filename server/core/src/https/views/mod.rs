@@ -1,5 +1,8 @@
-use crate::https::views::admin::{admin_api_router, admin_router};
-use crate::https::{middleware, ServerState};
+use crate::https::{
+    middleware,
+    views::admin::{admin_api_router, admin_router},
+    ServerState,
+};
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
@@ -30,6 +33,7 @@ mod radius;
 mod reauth;
 mod recover;
 mod reset;
+mod signup;
 
 #[derive(Template, WebTemplate)]
 #[template(path = "unrecoverable_error.html")]
@@ -107,6 +111,14 @@ pub fn view_router(state: ServerState) -> Router<ServerState> {
         .route(
             "/recover",
             get(recover::view_recover_get).post(recover::view_recover_post),
+        )
+        .route(
+            "/signup",
+            get(signup::view_signup_get).post(signup::view_signup_post),
+        )
+        .route(
+            "/signup/verify",
+            get(signup::view_signup_verify_get).post(signup::view_signup_verify_post),
         )
         .route(
             "/revoke",

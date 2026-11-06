@@ -1,32 +1,38 @@
 //! LDAP specific operations handling components. This is where LDAP operations
 //! are sent to for processing.
 
-use std::collections::BTreeSet;
-use std::iter;
-use std::str::FromStr;
+use std::{collections::BTreeSet, iter, str::FromStr};
 
 use compact_jwt::JwsCompact;
 use itertools::Itertools;
-use kanidm_proto::constants::*;
-use kanidm_proto::internal::{ApiToken, UserAuthToken};
+use kanidm_proto::{
+    constants::*,
+    internal::{ApiToken, UserAuthToken},
+};
 use ldap3_proto::simple::*;
 use regex::{Regex, RegexBuilder};
 use std::net::IpAddr;
 use tracing::trace;
 use uuid::Uuid;
 
-use crate::event::SearchEvent;
-use crate::idm::event::{LdapApplicationAuthEvent, LdapAuthEvent, LdapTokenAuthEvent};
-use crate::idm::server::{IdmServer, IdmServerAuthTransaction, IdmServerTransaction};
-use crate::prelude::*;
+use crate::{
+    event::SearchEvent,
+    idm::{
+        event::{LdapApplicationAuthEvent, LdapAuthEvent, LdapTokenAuthEvent},
+        server::{IdmServer, IdmServerAuthTransaction, IdmServerTransaction},
+    },
+    prelude::*,
+};
 
 // Clippy doesn't like Bind here. But proto needs unboxed ldapmsg,
 // and ldapboundtoken is moved. Really, it's not too bad, every message here is pretty sucky.
 #[allow(clippy::large_enum_variant)]
 pub enum LdapResponseState {
     Unbind,
+    NoResponse,
     Disconnect(LdapMsg),
     Bind(LdapBoundToken, LdapMsg),
+    BindFailed(LdapBoundToken, LdapMsg),
     Respond(LdapMsg),
     MultiPartResponse(Vec<LdapMsg>),
     BindMultiPartResponse(LdapBoundToken, Vec<LdapMsg>),
@@ -617,17 +623,32 @@ impl LdapServer {
         let source = Source::Ldaps(ip_addr);
 
         match server_op {
-            ServerOps::SimpleBind(sbr) => self
-                .do_bind(idms, sbr.dn.as_str(), sbr.pw.as_str())
-                .await
-                .map(|r| match r {
-                    Some(lbt) => LdapResponseState::Bind(lbt, sbr.gen_success()),
-                    None => LdapResponseState::Respond(sbr.gen_invalid_cred()),
-                })
-                .or_else(|e| {
-                    let (rc, msg) = operationerr_to_ldapresultcode(e);
-                    Ok(LdapResponseState::Respond(sbr.gen_error(rc, msg)))
-                }),
+            ServerOps::SimpleBind(sbr) => {
+                let result = self.do_bind(idms, sbr.dn.as_str(), sbr.pw.as_str()).await;
+
+                let err = match result {
+                    Ok(Some(lbt)) => return Ok(LdapResponseState::Bind(lbt, sbr.gen_success())),
+                    Ok(None) => {
+                        // On a failed bind, move to anonymous.
+                        // Important that if anonymous is locked/expired this will FAIL which is
+                        // what we want!
+                        match self.do_bind(idms, "", "").await {
+                            Ok(Some(lbt)) => {
+                                return Ok(LdapResponseState::BindFailed(
+                                    lbt,
+                                    sbr.gen_invalid_cred(),
+                                ))
+                            }
+                            _ => OperationError::InvalidRequestState,
+                        }
+                    }
+                    Err(err) => err,
+                };
+
+                let (rc, msg) = operationerr_to_ldapresultcode(err);
+                // Unable to proceed, we are in an invalid state now. Disconnect the client.
+                Ok(LdapResponseState::Disconnect(sbr.gen_error(rc, msg)))
+            }
             ServerOps::Search(sr) => match uat {
                 Some(u) => self
                     .do_search(idms, &sr, &u, source)
@@ -708,6 +729,10 @@ impl LdapServer {
                     wr.gen_operror(format!("Unbound Connection {eventid}").as_str()),
                 )),
             },
+            ServerOps::Abandon { msgid } => {
+                debug!(?msgid, "Ignoring abandon request");
+                Ok(LdapResponseState::NoResponse)
+            }
         } // end match server op
     }
 
@@ -868,15 +893,19 @@ mod tests {
     use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
     use hashbrown::HashSet;
     use kanidm_proto::internal::ApiToken;
-    use ldap3_proto::proto::{
-        LdapFilter, LdapMsg, LdapOp, LdapResultCode, LdapSearchScope, LdapSubstringFilter,
+    use ldap3_proto::{
+        proto::{
+            LdapFilter, LdapMsg, LdapOp, LdapResultCode, LdapSearchScope, LdapSubstringFilter,
+        },
+        simple::*,
     };
-    use ldap3_proto::simple::*;
 
     use super::{LdapServer, LdapSession};
-    use crate::idm::application::GenerateApplicationPasswordEvent;
-    use crate::idm::event::{LdapApplicationAuthEvent, UnixPasswordChangeEvent};
-    use crate::idm::serviceaccount::GenerateApiTokenEvent;
+    use crate::idm::{
+        application::GenerateApplicationPasswordEvent,
+        event::{LdapApplicationAuthEvent, UnixPasswordChangeEvent},
+        serviceaccount::GenerateApiTokenEvent,
+    };
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
 
@@ -1210,7 +1239,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -1331,7 +1360,7 @@ mod tests {
         assert!(res.unwrap().is_none());
 
         {
-            let ml = ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid));
+            let ml = ModifyList::new_append(Attribute::Member, Value::ReferN(usr_uuid));
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(idms_prox_write
                 .qs_write
@@ -1468,7 +1497,7 @@ mod tests {
                 (Attribute::Class, EntryClass::Group.to_value()),
                 (Attribute::Name, Value::new_iname(grp1_name)),
                 (Attribute::Uuid, Value::Uuid(grp1_uuid)),
-                (Attribute::Member, Value::Refer(usr_uuid))
+                (Attribute::Member, Value::ReferN(usr_uuid))
             );
 
             let e3 = entry_init!(
@@ -1561,7 +1590,7 @@ mod tests {
 
         // Add user to grp2
         {
-            let ml = ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid));
+            let ml = ModifyList::new_append(Attribute::Member, Value::ReferN(usr_uuid));
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(idms_prox_write
                 .qs_write
@@ -1674,7 +1703,7 @@ mod tests {
                 (Attribute::Class, EntryClass::Group.to_value()),
                 (Attribute::Name, Value::new_iname(grp1_name)),
                 (Attribute::Uuid, Value::Uuid(grp1_uuid)),
-                (Attribute::Member, Value::Refer(usr_uuid))
+                (Attribute::Member, Value::ReferN(usr_uuid))
             );
 
             let e3 = entry_init!(
@@ -1816,7 +1845,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2033,7 +2062,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_ACCOUNT_MAIL_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(sa_uuid)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(sa_uuid)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2042,7 +2071,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2227,7 +2256,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2307,7 +2336,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2505,7 +2534,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 
@@ -2623,7 +2652,7 @@ mod tests {
                 .qs_write
                 .internal_modify_uuid(
                     UUID_IDM_UNIX_AUTHENTICATION_READ,
-                    &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ANONYMOUS)),
+                    &ModifyList::new_append(Attribute::Member, Value::ReferN(UUID_ANONYMOUS)),
                 )
                 .expect("Unable to modify UNIX_AUTHENTICATION_READ group");
 

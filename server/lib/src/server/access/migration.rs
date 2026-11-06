@@ -1,6 +1,5 @@
 use crate::prelude::{Attribute, EntryClass};
-use std::collections::BTreeSet;
-use std::sync::LazyLock;
+use std::{collections::BTreeSet, sync::LazyLock};
 
 /// These entry classes can be modified by migrations. All protection rules still
 /// apply.
@@ -34,6 +33,7 @@ pub static MIGRATION_IGNORE_CLASSES: LazyLock<BTreeSet<String>> = LazyLock::new(
         EntryClass::KeyObjectJwtHs256,
         EntryClass::KeyObjectJwtRs256,
         EntryClass::KeyObjectJweA128GCM,
+        EntryClass::KeyObjectJweA256GCM,
     ];
 
     BTreeSet::from_iter(classes.into_iter().map(|ec| ec.into()))

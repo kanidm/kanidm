@@ -1,11 +1,12 @@
 // Generate and manage spn's for all entries in the domain. Also deals with
 // the infrequent - but possible - case where a domain is renamed.
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
-use crate::event::{CreateEvent, ModifyEvent};
-use crate::plugins::Plugin;
-use crate::prelude::*;
-use std::collections::BTreeSet;
-use std::sync::Arc;
+use crate::{
+    entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed},
+    event::{CreateEvent, ModifyEvent},
+    plugins::Plugin,
+    prelude::*,
+};
+use std::{collections::BTreeSet, sync::Arc};
 
 pub struct Spn {}
 
@@ -344,7 +345,7 @@ mod tests {
                     (Attribute::Class, EntryClass::Group.to_value()),
                     (Attribute::Name, Value::new_iname("testgroup")),
                     (Attribute::Uuid, Value::Uuid(g_uuid)),
-                    (Attribute::Member, Value::Refer(t_uuid))
+                    (Attribute::Member, Value::ReferN(t_uuid))
                 ),
             ])
             .is_ok());

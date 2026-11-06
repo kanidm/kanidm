@@ -1,21 +1,20 @@
-use crate::be::dbvalue::{
-    DbCidV1, DbValueAccessScopeV1, DbValueApiToken, DbValueApiTokenScopeV1, DbValueAuthTypeV1,
-    DbValueIdentityId, DbValueOauth2Session, DbValueSession, DbValueSessionExtMetadataV1,
-    DbValueSessionStateV1,
+use crate::{
+    be::dbvalue::{
+        DbCidV1, DbValueAccessScopeV1, DbValueApiToken, DbValueApiTokenScopeV1, DbValueAuthTypeV1,
+        DbValueIdentityId, DbValueOauth2Session, DbValueSession, DbValueSessionExtMetadataV1,
+        DbValueSessionStateV1,
+    },
+    prelude::*,
+    repl::cid::Cid,
+    schema::SchemaAttribute,
+    value::{
+        ApiToken, ApiTokenScope, AuthType, Oauth2Session, Session, SessionExtMetadata,
+        SessionScope, SessionState,
+    },
+    valueset::{uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ValueSet},
 };
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use crate::schema::SchemaAttribute;
-use crate::value::{
-    ApiToken, ApiTokenScope, AuthType, Oauth2Session, Session, SessionExtMetadata, SessionScope,
-    SessionState,
-};
-use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ValueSet};
-use kanidm_proto::scim_v1::server::ScimApiToken;
-use kanidm_proto::scim_v1::server::ScimAuthSession;
-use kanidm_proto::scim_v1::server::ScimOAuth2Session;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
+use kanidm_proto::scim_v1::server::{ScimApiToken, ScimAuthSession, ScimOAuth2Session};
+use std::collections::{btree_map::Entry as BTreeEntry, BTreeMap};
 use time::OffsetDateTime;
 
 #[derive(Debug, Clone)]
@@ -256,21 +255,14 @@ impl ValueSetT for ValueSetSession {
     }
 
     fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Refer(u) => {
-                if let Some(session) = self.map.get_mut(u) {
-                    if !matches!(session.state, SessionState::RevokedAt(_)) {
-                        session.state = SessionState::RevokedAt(cid.clone());
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
+        if let PartialValue::Refer(u) = pv {
+            if let Some(session) = self.map.get_mut(u) {
+                if !matches!(session.state, SessionState::RevokedAt(_)) {
+                    session.state = SessionState::RevokedAt(cid.clone());
                 }
             }
-            _ => false,
         }
+        self.map.is_empty()
     }
 
     fn purge(&mut self, cid: &Cid) -> bool {
@@ -754,37 +746,28 @@ impl ValueSetT for ValueSetOauth2Session {
     }
 
     fn remove(&mut self, pv: &PartialValue, cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Refer(u) => {
-                if let Some(session) = self.map.get_mut(u) {
-                    if !matches!(session.state, SessionState::RevokedAt(_)) {
-                        session.state = SessionState::RevokedAt(cid.clone());
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    // What if it's an rs_uuid?
-                    let u_int = u.as_u128();
-                    if self.rs_filter & u_int == u_int {
-                        // It's there, so we need to do a more costly revoke over the values
-                        // that are present.
-                        let mut removed = false;
-                        self.map.values_mut().for_each(|session| {
-                            if session.rs_uuid == *u {
-                                session.state = SessionState::RevokedAt(cid.clone());
-                                removed = true;
-                            }
-                        });
-                        removed
-                    } else {
-                        // It's not in the rs_filter or the map, false.
-                        false
-                    }
+        if let PartialValue::Refer(u) = pv {
+            if let Some(session) = self.map.get_mut(u) {
+                if !matches!(session.state, SessionState::RevokedAt(_)) {
+                    session.state = SessionState::RevokedAt(cid.clone());
+                }
+            } else {
+                // What if it's an rs_uuid?
+                let u_int = u.as_u128();
+                if self.rs_filter & u_int == u_int {
+                    // It's there, so we need to do a more costly revoke over the values
+                    // that are present.
+                    let mut removed = false;
+                    self.map.values_mut().for_each(|session| {
+                        if session.rs_uuid == *u {
+                            session.state = SessionState::RevokedAt(cid.clone());
+                            removed = true;
+                        }
+                    });
                 }
             }
-            _ => false,
-        }
+        };
+        self.map.is_empty()
     }
 
     fn purge(&mut self, cid: &Cid) -> bool {
@@ -1163,10 +1146,10 @@ impl ValueSetT for ValueSetApiTokenSet {
     }
 
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
-        match pv {
-            PartialValue::Refer(u) => self.map.remove(u).is_some(),
-            _ => false,
-        }
+        if let PartialValue::Refer(u) = pv {
+            self.map.remove(u);
+        };
+        self.map.is_empty()
     }
 
     fn purge(&mut self, _cid: &Cid) -> bool {
@@ -1316,9 +1299,11 @@ impl ValueSetT for ValueSetApiTokenSet {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetOauth2Session, ValueSetSession, SESSION_MAXIMUM};
-    use crate::prelude::{IdentityId, SessionScope, Uuid, ValueSet, UUID_SYSTEM};
-    use crate::repl::cid::Cid;
-    use crate::value::{AuthType, Oauth2Session, Session, SessionState};
+    use crate::{
+        prelude::{IdentityId, SessionScope, Uuid, ValueSet, UUID_SYSTEM},
+        repl::cid::Cid,
+        value::{AuthType, Oauth2Session, Session, SessionState},
+    };
     use time::OffsetDateTime;
 
     #[test]
@@ -1343,8 +1328,9 @@ mod tests {
         let zero_cid = Cid::new_zero();
 
         // Simulate session revocation.
-        vs.purge(&zero_cid);
+        let r = vs.purge(&zero_cid);
 
+        assert!(!r);
         assert_eq!(vs.len(), 1);
 
         let session = vs
@@ -1712,8 +1698,9 @@ mod tests {
         let zero_cid = Cid::new_zero();
 
         // Simulate session revocation.
-        vs.purge(&zero_cid);
+        let r = vs.purge(&zero_cid);
 
+        assert!(!r);
         assert_eq!(vs.len(), 1);
 
         let session = vs

@@ -16,30 +16,31 @@ use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
 use hashbrown::HashSet;
-use kanidm_client::KanidmClient;
-use kanidm_client::KanidmClientBuilder;
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 use kanidm_proto::v1::OutboundMessage;
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use lettre::{
-    address::Address, message::header::ContentType, message::Mailbox,
-    transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message,
-    Tokio1Executor,
+    address::Address,
+    message::{header::ContentType, Mailbox},
+    transport::smtp::authentication::Credentials,
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
 };
-use std::fs::metadata;
-use std::fs::File;
-use std::io::Read;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use std::time::Duration;
+use std::{
+    fs::{metadata, File},
+    io::Read,
+    path::{Path, PathBuf},
+    str::FromStr,
+    time::Duration,
+};
 use time::format_description::well_known::Rfc2822;
-use tokio::runtime;
-use tokio::sync::broadcast;
-use tokio::sync::mpsc;
-use tokio::time::sleep;
+use tokio::{
+    runtime,
+    sync::{broadcast, mpsc},
+    time::sleep,
+};
 use tracing::{debug, error, info, warn};
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 use url::Url;
 use uuid::Uuid;
 
@@ -122,6 +123,42 @@ If you did not request this message, please revoke the reset using the following
 
 {revoke_url}
 
+
+msg_id: {message_id}
+            "#,
+                    message_id = ctx.message_id,
+                ),
+            )
+        }
+        OutboundMessage::AccountSignupRequestV1 {
+            username,
+            intent_id,
+            expiry_time,
+        } => {
+            let mut reset_url = ctx.instance_url.clone();
+            reset_url.set_path("/ui/signup/verify");
+            reset_url.query_pairs_mut().append_pair("token", intent_id);
+
+            // TODO - local users timezone preference.
+            let pretty_expiry_time = expiry_time
+                .format(&Rfc2822)
+                .unwrap_or("ERROR - invalid expiration time".into());
+
+            (
+                format!(
+                    "{0}: Account Signup Verification",
+                    ctx.instance_display_name
+                ),
+                format!(
+                    r#"Hi,
+
+A request was made to create an account "{username}" associated with this email address.
+
+If this was you then you can verify your email by following this link:
+
+{reset_url}
+
+This link will expire at {pretty_expiry_time}
 
 msg_id: {message_id}
             "#,

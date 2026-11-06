@@ -101,3 +101,4 @@
 - [Packages](packaging/packaging.md)
   - [Debian/Ubuntu Packaging](packaging/debian_ubuntu_packaging.md)
   - [PPA Packages](packaging/ppa_packages.md)
+  - [FreeBSD Port Update](packaging/freebsd_port.md)

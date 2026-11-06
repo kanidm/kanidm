@@ -1,21 +1,20 @@
-use crate::actors::QueryServerReadV1;
-use crate::config::TcpAddressInfo;
-use crate::tcp::process_client_addr;
-use crate::CoreAction;
-use futures_util::sink::SinkExt;
-use futures_util::stream::StreamExt;
-use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};
-use kanidmd_lib::prelude::*;
-use ldap3_proto::proto::LdapMsg;
-use ldap3_proto::LdapCodec;
+use crate::{
+    actors::QueryServerReadV1, config::TcpAddressInfo, tcp::process_client_addr, CoreAction,
+};
+use futures_util::{sink::SinkExt, stream::StreamExt};
+use kanidmd_lib::{
+    idm::ldap::{LdapBoundToken, LdapResponseState},
+    prelude::*,
+};
+use ldap3_proto::{proto::LdapMsg, LdapCodec};
 use sketching::LoggerType;
-use std::net::SocketAddr;
-use std::str::FromStr;
-use std::sync::Arc;
-use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::broadcast;
-use tokio::time::timeout;
+use std::{net::SocketAddr, str::FromStr, sync::Arc};
+use tokio::{
+    io::{AsyncRead, AsyncWrite, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+    sync::broadcast,
+    time::timeout,
+};
 use tokio_rustls::TlsAcceptor;
 use tokio_util::codec::{FramedRead, FramedWrite};
 
@@ -106,6 +105,7 @@ async fn client_process<STREAM>(
             // I'd really have liked to have put this near the [LdapResponseState::Bind] but due
             // to the handing of `audit` it isn't possible due to borrows, etc.
             Some(LdapResponseState::Unbind) => break,
+            Some(LdapResponseState::NoResponse) => continue,
             Some(LdapResponseState::Disconnect(rmsg)) => {
                 if w.send(rmsg).await.is_err() {
                     break;
@@ -113,6 +113,15 @@ async fn client_process<STREAM>(
                 break;
             }
             Some(LdapResponseState::Bind(uat, rmsg)) => {
+                session.uat = Some(uat);
+                if w.send(rmsg).await.is_err() {
+                    break;
+                }
+            }
+            Some(LdapResponseState::BindFailed(uat, rmsg)) => {
+                // RFC 4513 Section 4 - if a bind fails, move to
+                // the anonymous bind state. This is provided in the returned
+                // uat here.
                 session.uat = Some(uat);
                 if w.send(rmsg).await.is_err() {
                     break;
@@ -171,7 +180,7 @@ async fn client_tls_accept(
         stream,
         connection_addr,
         LDAP_CLIENT_CONN_TIMEOUT,
-        trusted_tcp_info_ips,
+        trusted_tcp_info_ips.as_ref(),
     )
     .await
     else {

@@ -1,8 +1,10 @@
-use crate::event::{CreateEvent, ModifyEvent};
-use crate::plugins::Plugin;
-use crate::prelude::*;
-use crate::utils::password_from_random;
-use crate::valueset::ValueSetUuid;
+use crate::{
+    event::{CreateEvent, ModifyEvent},
+    plugins::Plugin,
+    prelude::*,
+    utils::password_from_random,
+    valueset::ValueSetUuid,
+};
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use std::sync::Arc;
 
@@ -90,6 +92,9 @@ impl OAuth2 {
                 entry.add_ava(Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value());
                 if has_rs256 {
                     entry.add_ava(Attribute::Class, EntryClass::KeyObjectJwtRs256.to_value());
+                }
+                if domain_level >= DOMAIN_LEVEL_1_12 {
+                    entry.add_ava(Attribute::Class, EntryClass::KeyObjectJweA256GCM.to_value());
                 }
             } else {
                 if !entry.attribute_pres(Attribute::OAuth2RsTokenKey) {

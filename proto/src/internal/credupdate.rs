@@ -1,12 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use webauthn_rs_proto::CreationChallengeResponse;
-use webauthn_rs_proto::RegisterPublicKeyCredential;
+use webauthn_rs_proto::{CreationChallengeResponse, RegisterPublicKeyCredential};
 
 pub use sshkey_attest::proto::PublicKey as SshPublicKey;
 

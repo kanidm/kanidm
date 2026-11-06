@@ -4,8 +4,9 @@ name: GitHub Pages
 "on":
   push:
     branches:
-      - "master"
-  pull_request:
+      - master
+      - main
+      - 1.*
 
 # yamllint disable-line rule:line-length
 # permissions list: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
@@ -41,7 +42,7 @@ jobs:
             | awk '{print $1}' \
             | sort -t. -k3n,3 -k4n,4 \
             | awk -F'/' '{print $NF}' \
-            | grep -E '^[[:digit:]]\.[[:digit:]]\.[[:digit:]]' \
+            | grep -E '^[[:digit:]]\.[[:digit:]][[:digit:]]\.[[:digit:]]$' \
             | sort -t. \
             | tail -n1)" >> $GITHUB_OUTPUT
         id: branchname
@@ -69,6 +70,7 @@ jobs:
     with:
       tag: ${{ matrix.tag }}
       parent_id: ${{ github.ref }}
+
   docs_master:
     uses: './.github/workflows/kanidm_individual_book.yml'
     with:

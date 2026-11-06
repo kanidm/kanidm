@@ -1,13 +1,14 @@
-use crate::constants::PamResultCode;
-use crate::core::PamHandler;
-use crate::core::{self, RequestOptions};
-use crate::module::PamResult;
-use crate::pam::ModuleOptions;
-use sparkle_unix_common::unix_passwd::{CryptPw, EtcShadow, EtcUser};
-use sparkle_unix_common::unix_proto::{DeviceAuthorizationResponse, PamServiceInfo};
-use std::collections::VecDeque;
-use std::str::FromStr;
-use std::sync::Mutex;
+use crate::{
+    constants::PamResultCode,
+    core::{self, PamHandler, RequestOptions},
+    module::PamResult,
+    pam::ModuleOptions,
+};
+use sparkle_unix_common::{
+    unix_passwd::{CryptPw, EtcShadow, EtcUser},
+    unix_proto::{DeviceAuthorizationResponse, PamServiceInfo},
+};
+use std::{collections::VecDeque, str::FromStr, sync::Mutex};
 use time::OffsetDateTime;
 
 impl RequestOptions {
