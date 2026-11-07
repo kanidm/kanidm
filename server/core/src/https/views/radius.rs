@@ -22,7 +22,11 @@ use axum::{
     Extension,
 };
 use axum_extra::extract::CookieJar;
-use kanidm_proto::internal::UserAuthToken;
+use kanidm_proto::{attribute::Attribute, internal::UserAuthToken};
+use kanidmd_lib::{
+    constants::EntryClass,
+    filter::{f_eq, Filter},
+};
 
 #[derive(Template, WebTemplate)]
 #[template(path = "user_settings.html")]
@@ -102,6 +106,38 @@ pub(crate) async fn view_radius_post(
     Ok(RadiusPartialView {
         menu_active_item: ProfileMenuItems::Radius,
         radius_password: Some(radius_password),
+    }
+    .into_response())
+}
+
+pub(crate) async fn view_radius_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
+) -> axum::response::Result<Response> {
+    let uat_client_auth_info = client_auth_info.clone();
+    let uat: &UserAuthToken = uat_client_auth_info
+        .pre_validated_uat()
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
+
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Account.into()));
+
+    state
+        .qe_w_ref
+        .handle_purgeattribute(
+            client_auth_info,
+            uat.uuid.to_string(),
+            Attribute::RadiusSecret.to_string(),
+            filter,
+            kopid.eventid,
+        )
+        .await
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
+
+    Ok(RadiusPartialView {
+        menu_active_item: ProfileMenuItems::Radius,
+        radius_password: None,
     }
     .into_response())
 }
