@@ -6,26 +6,64 @@ RADIUS
 
 (% block settings_window %)
 <div id="radiusUpdateDynamicSection">
-    <div>
-        (% if let Some(radius_password) = radius_password %)
-        <p><strong>RADIUS Password:</strong> (( radius_password )) </p>
-        <p>
-            <button type="button" class="btn btn-primary"
-                hx-post="/ui/radius/generate"
-                hx-target="div#main">
-                Regenerate RADIUS password
-            </button>
-        </p>
-        (% else %)
-        <p>RADIUS password not generated</p>
-        <p>
-            <button type="button" class="btn btn-primary"
-                hx-post="/ui/radius/generate"
-                hx-target="div#main">
-                Generate RADIUS password
-            </button>
-        </p>
-        (% endif %)
-    </div>
+	<p class="text-body-secondary">
+		This password is only for Wi‑Fi / VPN (RADIUS). It is separate from your
+		Kanidm login password, and you can view it again anytime.
+	</p>
+
+	(% if let Some(radius_password) = radius_password %)
+	<div class="mb-3" style="max-width: 36rem;">
+		<label for="radiusPassword" class="form-label">RADIUS password</label>
+		<div class="input-group">
+			<input
+				type="text"
+				class="form-control font-monospace"
+				id="radiusPassword"
+				value="(( radius_password ))"
+				readonly
+				autocomplete="off"
+				spellcheck="false"
+			>
+			<button
+				type="button"
+				class="btn btn-outline-secondary"
+				id="radiusCopyBtn"
+				onclick="(function(btn){ navigator.clipboard.writeText(document.getElementById('radiusPassword').value).then(function(){ var t = btn.textContent; btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = t; }, 1500); }); })(this)"
+			>
+				Copy
+			</button>
+		</div>
+	</div>
+	<div class="d-flex flex-wrap gap-2">
+		<button
+			type="button"
+			class="btn btn-primary"
+			hx-post="/ui/radius/generate"
+			hx-target="div#main"
+			hx-confirm="Regenerate your RADIUS password? Devices using the current password will stop working until you update them."
+		>
+			Regenerate RADIUS password
+		</button>
+		<button
+			type="button"
+			class="btn btn-outline-danger"
+			hx-post="/ui/radius/delete"
+			hx-target="div#main"
+			hx-confirm="Delete your RADIUS password? Devices using it will no longer be able to authenticate."
+		>
+			Delete RADIUS password
+		</button>
+	</div>
+	(% else %)
+	<p>No RADIUS password has been generated yet.</p>
+	<button
+		type="button"
+		class="btn btn-primary"
+		hx-post="/ui/radius/generate"
+		hx-target="div#main"
+	>
+		Generate RADIUS password
+	</button>
+	(% endif %)
 </div>
 (% endblock %)
