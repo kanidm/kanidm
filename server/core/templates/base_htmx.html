@@ -2,8 +2,15 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="theme-color" content="white" />
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="white" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#212529" />
 		<meta name="viewport" content="width=device-width" />
+		<script>
+			document.documentElement.setAttribute(
+				"data-bs-theme",
+				window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+			);
+		</script>
 		<!-- https://htmx.org/docs/#response-handling -->
 		<meta name="htmx-config" content='{
 	        "includeIndicatorStyles": false,
