@@ -7,7 +7,7 @@ use kanidm_hsm_crypto::structures::{LoadableHmacS256Key, LoadableStorageKey};
 use libc::umask;
 use rusqlite::{Connection, OptionalExtension};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{convert::TryFrom, fmt};
+use std::{convert::TryFrom, fmt, path::Path};
 use tokio::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
 
@@ -62,7 +62,8 @@ pub enum DbError {
 }
 
 impl Db {
-    pub fn new(path: &str) -> Result<Self, DbError> {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, DbError> {
+        let path: &Path = path.as_ref();
         let before = unsafe { umask(0o0027) };
         let conn = Connection::open(path).map_err(|e| {
             error!(err = ?e, "rusqulite error");
@@ -75,7 +76,8 @@ impl Db {
             .map_err(|error| {
                 error!(
                     "sqlite journal_mode=WAL error: {:?} db_path={:?}",
-                    error, path
+                    error,
+                    path.display()
                 );
                 DbError::Sqlite
             })?;
@@ -85,7 +87,8 @@ impl Db {
             .map_err(|error| {
                 error!(
                     "sqlite synchronous=NORMAL error: {:?} db_path={:?}",
-                    error, path
+                    error,
+                    path.display()
                 );
                 DbError::Sqlite
             })?;
@@ -94,7 +97,9 @@ impl Db {
             .map_err(|error| {
                 error!(
                     "sqlite cache_size={} error: {:?} db_path={:?}",
-                    CACHE_SIZE, error, path
+                    CACHE_SIZE,
+                    error,
+                    path.display()
                 );
                 DbError::Sqlite
             })?;

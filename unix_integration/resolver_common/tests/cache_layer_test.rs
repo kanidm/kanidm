@@ -518,6 +518,9 @@ async fn test_cache_account_delete() {
 async fn test_cache_account_password() {
     #[allow(clippy::disallowed_methods)]
     let current_time = OffsetDateTime::now_utc();
+
+    let current_time_st = SystemTime::now();
+
     let (cachelayer, async_refresh_rx, adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
     // Test authentication failure.
@@ -563,6 +566,16 @@ async fn test_cache_account_password() {
         .await
         .expect("failed to authenticate");
     assert_eq!(a4, Some(true));
+
+    // Has to be online
+
+    assert!(cachelayer.invalidate().await.is_ok());
+
+    let ut = cachelayer
+        .get_nssaccount_name_time("testaccount1", current_time_st + Duration::from_secs(3600))
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_some());
 
     // Go offline.
     cachelayer.mark_offline().await;

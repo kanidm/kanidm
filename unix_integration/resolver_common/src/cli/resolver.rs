@@ -525,6 +525,87 @@ fn open_tpm_if_possible(_tcti_name: &str) -> BoxedDynTpm {
     BoxedDynTpm::new(SoftTpm::default())
 }
 
+async fn setup_db(db_path: &str) -> Result<Db, ()> {
+    // Check the db path will be okay.
+    let db_path = PathBuf::from(db_path);
+    // We only need to check the parent folder path permissions as the db itself may not exist yet.
+    if let Some(db_parent_path) = db_path.parent() {
+        if !db_parent_path.exists() {
+            error!(
+                "Refusing to run, DB folder {} does not exist",
+                db_parent_path
+                    .to_str()
+                    .unwrap_or("<db_parent_path invalid>")
+            );
+            let diag = diagnose_path(db_path.as_ref());
+            info!(%diag);
+            return Err(());
+        }
+
+        let db_par_path_buf = db_parent_path.to_path_buf();
+
+        let i_meta = metadata(&db_par_path_buf).map_err(|err| {
+            error!(
+                ?err,
+                "Unable to read metadata for {}",
+                db_par_path_buf.display()
+            );
+        })?;
+
+        if !i_meta.is_dir() {
+            error!(
+                "Refusing to run - DB folder {} may not be a directory",
+                db_par_path_buf.display()
+            );
+            return Err(());
+        }
+
+        if kanidm_lib_file_permissions::readonly(&i_meta) {
+            warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.display());
+        }
+
+        if i_meta.mode() & 0o007 != 0 {
+            warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.display());
+        }
+    }
+
+    // check to see if the db's already there
+    if db_path.exists() {
+        if !db_path.is_file() {
+            error!(
+                "Refusing to run - DB path {} already exists and is not a file.",
+                db_path.to_str().unwrap_or("<db_path invalid>")
+            );
+            let diag = diagnose_path(db_path.as_ref());
+            info!(%diag);
+            return Err(());
+        };
+
+        let _d_meta = metadata(&db_path).map_err(|err| {
+            error!(?err, "Unable to read metadata for {}", db_path.display());
+            let diag = diagnose_path(db_path.as_ref());
+            info!(%diag);
+        })?;
+    };
+
+    let db = match Db::new(db_path) {
+        Ok(db) => db,
+        Err(_err) => {
+            error!("Failed to create database");
+            return Err(());
+        }
+    };
+
+    // perform any db migrations.
+    let mut dbtxn = db.write().await;
+    if dbtxn.migrate().and_then(|_| dbtxn.commit()).is_err() {
+        error!("Failed to migrate database");
+        return Err(());
+    }
+
+    Ok(db)
+}
+
 async fn main_inner<F: SparkleFlavour>(clap_args: clap::ArgMatches, flavour: F) -> ExitCode {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
@@ -666,103 +747,13 @@ async fn main_inner<F: SparkleFlavour>(clap_args: clap::ArgMatches, flavour: F) 
     rm_if_exist(&cfg.task_sock_path);
 
     // Check the db path will be okay.
-    if !cfg.cache_db_path.is_empty() {
-        let cache_db_path = PathBuf::from(cfg.cache_db_path.as_str());
-        // We only need to check the parent folder path permissions as the db itself may not exist yet.
-        if let Some(db_parent_path) = cache_db_path.parent() {
-            if !db_parent_path.exists() {
-                error!(
-                    "Refusing to run, DB folder {} does not exist",
-                    db_parent_path
-                        .to_str()
-                        .unwrap_or("<db_parent_path invalid>")
-                );
-                let diag = diagnose_path(cache_db_path.as_ref());
-                info!(%diag);
-                return ExitCode::FAILURE;
-            }
-
-            let db_par_path_buf = db_parent_path.to_path_buf();
-
-            let i_meta = match metadata(&db_par_path_buf) {
-                Ok(v) => v,
-                Err(e) => {
-                    error!(
-                        "Unable to read metadata for {} - {:?}",
-                        db_par_path_buf
-                            .to_str()
-                            .unwrap_or("<db_par_path_buf invalid>"),
-                        e
-                    );
-                    return ExitCode::FAILURE;
-                }
-            };
-
-            if !i_meta.is_dir() {
-                error!(
-                    "Refusing to run - DB folder {} may not be a directory",
-                    db_par_path_buf
-                        .to_str()
-                        .unwrap_or("<db_par_path_buf invalid>")
-                );
-                return ExitCode::FAILURE;
-            }
-            if kanidm_lib_file_permissions::readonly(&i_meta) {
-                warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
-                        .unwrap_or("<db_par_path_buf invalid>")
-                        );
-            }
-
-            if i_meta.mode() & 0o007 != 0 {
-                warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
-                        .unwrap_or("<db_par_path_buf invalid>")
-                        );
-            }
-        }
-
-        // check to see if the db's already there
-        if cache_db_path.exists() {
-            if !cache_db_path.is_file() {
-                error!(
-                    "Refusing to run - DB path {} already exists and is not a file.",
-                    cache_db_path.to_str().unwrap_or("<cache_db_path invalid>")
-                );
-                let diag = diagnose_path(cache_db_path.as_ref());
-                info!(%diag);
-                return ExitCode::FAILURE;
-            };
-
-            match metadata(&cache_db_path) {
-                Ok(v) => v,
-                Err(e) => {
-                    error!(
-                        "Unable to read metadata for {} - {:?}",
-                        cache_db_path.to_str().unwrap_or("<cache_db_path invalid>"),
-                        e
-                    );
-                    let diag = diagnose_path(cache_db_path.as_ref());
-                    info!(%diag);
-                    return ExitCode::FAILURE;
-                }
-            };
-            // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
-        };
-    }
-
-    let db = match Db::new(cfg.cache_db_path.as_str()) {
+    let db = match setup_db(cfg.cache_db_path.as_str()).await {
         Ok(db) => db,
-        Err(_e) => {
+        Err(()) => {
             error!("Failed to create database");
             return ExitCode::FAILURE;
         }
     };
-
-    // perform any db migrations.
-    let mut dbtxn = db.write().await;
-    if dbtxn.migrate().and_then(|_| dbtxn.commit()).is_err() {
-        error!("Failed to migrate database");
-        return ExitCode::FAILURE;
-    }
 
     // Check for and create the hsm pin if required.
     if let Err(err) = write_hsm_pin(cfg.hsm_pin_path.as_str()).await {
