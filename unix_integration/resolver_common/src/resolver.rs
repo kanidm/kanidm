@@ -13,7 +13,7 @@ use crate::idprovider::interface::{
     UserTokenState,
 };
 use crate::{
-    db::{Cache, CacheWriteTxn, Db},
+    db::{Cache, CacheReadTxn, CacheWriteTxn, Db},
     errors::Error,
     idprovider::system::{
         Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit, SystemProviderSession,
@@ -233,13 +233,13 @@ impl Resolver {
 
     #[instrument(level = "debug", skip_all)]
     async fn get_cached_usertokens(&self) -> Result<Vec<UserToken>, Error> {
-        let mut dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.read().await;
         dbtxn.get_accounts()
     }
 
     #[instrument(level = "debug", skip_all)]
     async fn get_cached_grouptokens(&self) -> Result<Vec<GroupToken>, Error> {
-        let mut dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.read().await;
         dbtxn.get_groups()
     }
 
@@ -295,7 +295,7 @@ impl Resolver {
         //  * spn
         //  * uuid
         //  Attempt to search these in the db.
-        let mut dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.read().await;
         let r = dbtxn.get_account(account_id).inspect_err(|err| {
             debug!(?err, "get_cached_usertoken");
         })?;
@@ -353,7 +353,7 @@ impl Resolver {
         //  * spn
         //  * uuid
         //  Attempt to search these in the db.
-        let mut dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.read().await;
         let r = dbtxn.get_group(grp_id).inspect_err(|err| {
             debug!(?err, "get_cached_grouptoken");
         })?;
@@ -729,7 +729,7 @@ impl Resolver {
     }
 
     async fn get_groupmembers(&self, g_uuid: Uuid) -> Vec<String> {
-        let mut dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.read().await;
 
         dbtxn
             .get_group_members(g_uuid)

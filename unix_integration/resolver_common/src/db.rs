@@ -17,12 +17,6 @@ const DBV_MAIN: &str = "main";
 const SQLITE_PAGE_SIZE: i64 = 4096;
 const CACHE_SIZE: i64 = 32_i64.saturating_mul((1024 * 1024) / SQLITE_PAGE_SIZE);
 
-pub trait CacheWriteTxn {
-    fn set_db_version(&self, key: &str, v: i64) -> Result<(), Error>;
-
-    fn commit(self) -> Result<(), Error>;
-}
-
 #[async_trait]
 pub trait Cache {
     type WriteTxn<'db>
@@ -36,6 +30,49 @@ pub trait Cache {
     async fn write<'db>(&'db self) -> Self::WriteTxn<'db>;
 
     async fn read<'db>(&'db self) -> Self::ReadTxn<'db>;
+}
+
+pub trait CacheWriteTxn {
+    fn migrate(&mut self) -> Result<(), Error>;
+
+    fn invalidate(&mut self) -> Result<(), Error>;
+
+    fn clear(&mut self) -> Result<(), Error>;
+
+    fn clear_hsm(&mut self) -> Result<(), Error>;
+
+    fn get_hsm_root_storage_key(&mut self) -> Result<Option<LoadableStorageKey>, Error>;
+
+    fn insert_hsm_root_storage_key(
+        &mut self,
+        machine_key: &LoadableStorageKey,
+    ) -> Result<(), Error>;
+
+    fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacS256Key>, Error>;
+
+    fn insert_hsm_hmac_key(&mut self, hmac_key: &LoadableHmacS256Key) -> Result<(), Error>;
+
+    fn update_account(&mut self, account: &UserToken, expire: u64) -> Result<(), Error>;
+
+    fn delete_account(&mut self, a_uuid: Uuid) -> Result<(), Error>;
+
+    fn update_group(&mut self, grp: &GroupToken, expire: u64) -> Result<(), Error>;
+
+    fn delete_group(&mut self, g_uuid: Uuid) -> Result<(), Error>;
+
+    fn commit(self) -> Result<(), Error>;
+}
+
+pub trait CacheReadTxn {
+    fn get_account(&mut self, account_id: &Id) -> Result<Option<(UserToken, u64)>, Error>;
+
+    fn get_accounts(&mut self) -> Result<Vec<UserToken>, Error>;
+
+    fn get_group(&mut self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, Error>;
+
+    fn get_group_members(&mut self, g_uuid: Uuid) -> Result<Vec<UserToken>, Error>;
+
+    fn get_groups(&mut self) -> Result<Vec<GroupToken>, Error>;
 }
 
 #[async_trait]
@@ -54,6 +91,12 @@ pub struct Db {
 pub struct DbWriteTxn<'a> {
     conn: MutexGuard<'a, Connection>,
     committed: bool,
+}
+
+impl fmt::Debug for DbWriteTxn<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "DbWriteTxn {{}}")
+    }
 }
 
 pub struct KeyStoreTxn<'a, 'b> {
@@ -267,9 +310,7 @@ impl<'a> DbWriteTxn<'a> {
             .collect();
         data
     }
-}
 
-impl<'a> CacheWriteTxn for DbWriteTxn<'a> {
     fn set_db_version(&self, key: &str, v: i64) -> Result<(), Error> {
         self.conn
             .execute(
@@ -282,103 +323,10 @@ impl<'a> CacheWriteTxn for DbWriteTxn<'a> {
             .map(|_| ())
             .map_err(|e| self.sqlite_error("set db_version_t", &e))
     }
-
-    #[instrument(level = "debug", skip_all)]
-    fn commit(mut self) -> Result<(), Error> {
-        if self.committed {
-            error!("Invalid state, SQL transaction was already committed!");
-            return Err(Error::TransactionInvalidState);
-        }
-
-        self.conn
-            .execute("COMMIT TRANSACTION", [])
-            .map(|_| {
-                self.committed = true;
-            })
-            .map_err(|e| self.sqlite_error("commit", &e))
-    }
 }
 
-impl KeyStoreTxn<'_, '_> {
-    pub fn get_tagged_hsm_key<K: DeserializeOwned>(
-        &mut self,
-        tag: &str,
-    ) -> Result<Option<K>, Error> {
-        self.db.get_tagged_hsm_key(tag)
-    }
-
-    pub fn insert_tagged_hsm_key<K: Serialize>(&mut self, tag: &str, key: &K) -> Result<(), Error> {
-        self.db.insert_tagged_hsm_key(tag, key)
-    }
-
-    pub fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), Error> {
-        self.db.delete_tagged_hsm_key(tag)
-    }
-}
-
-impl DbWriteTxn<'_> {
-    fn get_tagged_hsm_key<K: DeserializeOwned>(&mut self, tag: &str) -> Result<Option<K>, Error> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT value FROM hsm_data_t WHERE key = :key")
-            .map_err(|e| self.sqlite_error("select prepare", &e))?;
-
-        let data: Option<Vec<u8>> = stmt
-            .query_row(
-                named_params! {
-                    ":key": tag
-                },
-                |row| row.get(0),
-            )
-            .optional()
-            .map_err(|e| self.sqlite_error("query_row", &e))?;
-
-        match data {
-            Some(d) => Ok(serde_json::from_slice(d.as_slice())
-                .map_err(|e| {
-                    error!("json error -> {:?}", e);
-                })
-                .ok()),
-            None => Ok(None),
-        }
-    }
-
-    fn insert_tagged_hsm_key<K: Serialize>(&mut self, tag: &str, key: &K) -> Result<(), Error> {
-        let data = serde_json::to_vec(key).map_err(|e| {
-            error!("json error -> {:?}", e);
-            Error::SerdeJson
-        })?;
-
-        let mut stmt = self
-            .conn
-            .prepare("INSERT OR REPLACE INTO hsm_data_t (key, value) VALUES (:key, :value)")
-            .map_err(|e| self.sqlite_error("prepare", &e))?;
-
-        stmt.execute(named_params! {
-            ":key": tag,
-            ":value": &data,
-        })
-        .map(|r| {
-            trace!("insert -> {:?}", r);
-        })
-        .map_err(|e| self.sqlite_error("execute", &e))
-    }
-
-    fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), Error> {
-        self.conn
-            .execute(
-                "DELETE FROM hsm_data_t where key = :key",
-                named_params! {
-                    ":key": tag,
-                },
-            )
-            .map(|_| ())
-            .map_err(|e| self.sqlite_error("delete hsm_data_t", &e))
-    }
-}
-
-impl DbWriteTxn<'_> {
-    pub fn migrate(&mut self) -> Result<(), Error> {
+impl<'a> CacheWriteTxn for DbWriteTxn<'a> {
+    fn migrate(&mut self) -> Result<(), Error> {
         // This definition can never change.
         self.conn
             .execute(
@@ -551,7 +499,7 @@ impl DbWriteTxn<'_> {
         Ok(())
     }
 
-    pub fn invalidate(&mut self) -> Result<(), Error> {
+    fn invalidate(&mut self) -> Result<(), Error> {
         self.conn
             .execute("UPDATE group_t SET expiry = 0", [])
             .map_err(|e| self.sqlite_error("update group_t", &e))?;
@@ -563,7 +511,7 @@ impl DbWriteTxn<'_> {
         Ok(())
     }
 
-    pub fn clear(&mut self) -> Result<(), Error> {
+    fn clear(&mut self) -> Result<(), Error> {
         self.conn
             .execute("DELETE FROM memberof_t", [])
             .map_err(|e| self.sqlite_error("delete memberof_t", &e))?;
@@ -579,7 +527,7 @@ impl DbWriteTxn<'_> {
         Ok(())
     }
 
-    pub fn clear_hsm(&mut self) -> Result<(), Error> {
+    fn clear_hsm(&mut self) -> Result<(), Error> {
         self.clear()?;
 
         self.conn
@@ -593,7 +541,7 @@ impl DbWriteTxn<'_> {
         Ok(())
     }
 
-    pub fn get_hsm_root_storage_key(&mut self) -> Result<Option<LoadableStorageKey>, Error> {
+    fn get_hsm_root_storage_key(&mut self) -> Result<Option<LoadableStorageKey>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_int_t WHERE key = 'mk'")
@@ -614,7 +562,7 @@ impl DbWriteTxn<'_> {
         }
     }
 
-    pub fn insert_hsm_root_storage_key(
+    fn insert_hsm_root_storage_key(
         &mut self,
         machine_key: &LoadableStorageKey,
     ) -> Result<(), Error> {
@@ -638,7 +586,7 @@ impl DbWriteTxn<'_> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    pub fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacS256Key>, Error> {
+    fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacS256Key>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_int_t WHERE key = 'hmac'")
@@ -659,7 +607,7 @@ impl DbWriteTxn<'_> {
         }
     }
 
-    pub fn insert_hsm_hmac_key(&mut self, hmac_key: &LoadableHmacS256Key) -> Result<(), Error> {
+    fn insert_hsm_hmac_key(&mut self, hmac_key: &LoadableHmacS256Key) -> Result<(), Error> {
         let data = serde_json::to_vec(hmac_key).map_err(|e| {
             error!("insert_hsm_hmac_key json error -> {:?}", e);
             Error::SerdeJson
@@ -681,72 +629,7 @@ impl DbWriteTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn get_account(&mut self, account_id: &Id) -> Result<Option<(UserToken, u64)>, Error> {
-        let data = match account_id {
-            Id::Name(n) => self.get_account_data_name(n.as_str()),
-            Id::Gid(g) => self.get_account_data_gid(*g),
-        }?;
-
-        // Assert only one result?
-        if data.len() >= 2 {
-            error!("invalid db state, multiple entries matched query?");
-            return Err(Error::TooManyResults);
-        }
-
-        if let Some((token, expiry)) = data.first() {
-            // token convert with json.
-            // If this errors, we specifically return Ok(None) because that triggers
-            // the cache to refetch the token.
-            match serde_json::from_slice(token.as_slice()) {
-                Ok(t) => {
-                    let e = u64::try_from(*expiry).map_err(|e| {
-                        error!("u64 convert error -> {:?}", e);
-                        Error::Parse
-                    })?;
-                    Ok(Some((t, e)))
-                }
-                Err(e) => {
-                    warn!("recoverable - json error -> {:?}", e);
-                    Ok(None)
-                }
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn get_accounts(&mut self) -> Result<Vec<UserToken>, Error> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT token FROM account_t")
-            .map_err(|e| self.sqlite_error("select prepare", &e))?;
-
-        let data_iter = stmt
-            .query_map([], |row| row.get(0))
-            .map_err(|e| self.sqlite_error("query_map", &e))?;
-        let data: Result<Vec<Vec<u8>>, _> = data_iter
-            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
-            .collect();
-
-        let data = data?;
-
-        Ok(data
-            .iter()
-            // We filter map here so that anything invalid is skipped.
-            .filter_map(|token| {
-                // token convert with json.
-                serde_json::from_slice(token.as_slice())
-                    .map_err(|e| {
-                        warn!("get_accounts json error -> {:?}", e);
-                    })
-                    .ok()
-            })
-            .collect())
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn update_account(&mut self, account: &UserToken, expire: u64) -> Result<(), Error> {
+    fn update_account(&mut self, account: &UserToken, expire: u64) -> Result<(), Error> {
         let data = serde_json::to_vec(account).map_err(|e| {
             error!("update_account json error -> {:?}", e);
             Error::SerdeJson
@@ -843,7 +726,7 @@ impl DbWriteTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn delete_account(&mut self, a_uuid: Uuid) -> Result<(), Error> {
+    fn delete_account(&mut self, a_uuid: Uuid) -> Result<(), Error> {
         let account_uuid = a_uuid.as_hyphenated().to_string();
 
         self.conn
@@ -864,7 +747,150 @@ impl DbWriteTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn get_group(&mut self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, Error> {
+    fn update_group(&mut self, grp: &GroupToken, expire: u64) -> Result<(), Error> {
+        let data = serde_json::to_vec(grp).map_err(|e| {
+            error!("json error -> {:?}", e);
+            Error::SerdeJson
+        })?;
+        let expire = i64::try_from(expire).map_err(|e| {
+            error!("i64 convert error -> {:?}", e);
+            Error::Parse
+        })?;
+
+        let mut stmt = self.conn
+            .prepare("INSERT OR REPLACE INTO group_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry)")
+            .map_err(|e| {
+                self.sqlite_error("prepare", &e)
+            })?;
+
+        // We have to to-str uuid as the sqlite impl makes it a blob which breaks our selects in get.
+        stmt.execute(named_params! {
+            ":uuid": &grp.uuid.as_hyphenated().to_string(),
+            ":name": &grp.name,
+            ":spn": &grp.spn,
+            ":gidnumber": &grp.gidnumber,
+            ":token": &data,
+            ":expiry": &expire,
+        })
+        .map(|r| {
+            trace!("insert -> {:?}", r);
+        })
+        .map_err(|e| self.sqlite_error("execute", &e))
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn delete_group(&mut self, g_uuid: Uuid) -> Result<(), Error> {
+        let group_uuid = g_uuid.as_hyphenated().to_string();
+        self.conn
+            .execute(
+                "DELETE FROM memberof_t WHERE g_uuid = :g_uuid",
+                [&group_uuid],
+            )
+            .map(|_| ())
+            .map_err(|e| self.sqlite_error("group_t memberof_t cascade delete", &e))?;
+        self.conn
+            .execute("DELETE FROM group_t WHERE uuid = :g_uuid", [&group_uuid])
+            .map(|_| ())
+            .map_err(|e| self.sqlite_error("group_t delete", &e))
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn commit(mut self) -> Result<(), Error> {
+        if self.committed {
+            error!("Invalid state, SQL transaction was already committed!");
+            return Err(Error::TransactionInvalidState);
+        }
+
+        self.conn
+            .execute("COMMIT TRANSACTION", [])
+            .map(|_| {
+                self.committed = true;
+            })
+            .map_err(|e| self.sqlite_error("commit", &e))
+    }
+}
+
+impl Drop for DbWriteTxn<'_> {
+    // Abort
+    fn drop(&mut self) {
+        if !self.committed {
+            // trace!("Aborting BE WR txn");
+            #[allow(clippy::expect_used)]
+            self.conn
+                .execute("ROLLBACK TRANSACTION", [])
+                .expect("Unable to rollback transaction! Can not proceed!!!");
+        }
+    }
+}
+
+impl<'a> CacheReadTxn for DbWriteTxn<'a> {
+    #[instrument(level = "debug", skip_all)]
+    fn get_account(&mut self, account_id: &Id) -> Result<Option<(UserToken, u64)>, Error> {
+        let data = match account_id {
+            Id::Name(n) => self.get_account_data_name(n.as_str()),
+            Id::Gid(g) => self.get_account_data_gid(*g),
+        }?;
+
+        // Assert only one result?
+        if data.len() >= 2 {
+            error!("invalid db state, multiple entries matched query?");
+            return Err(Error::TooManyResults);
+        }
+
+        if let Some((token, expiry)) = data.first() {
+            // token convert with json.
+            // If this errors, we specifically return Ok(None) because that triggers
+            // the cache to refetch the token.
+            match serde_json::from_slice(token.as_slice()) {
+                Ok(t) => {
+                    let e = u64::try_from(*expiry).map_err(|e| {
+                        error!("u64 convert error -> {:?}", e);
+                        Error::Parse
+                    })?;
+                    Ok(Some((t, e)))
+                }
+                Err(e) => {
+                    warn!("recoverable - json error -> {:?}", e);
+                    Ok(None)
+                }
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn get_accounts(&mut self) -> Result<Vec<UserToken>, Error> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT token FROM account_t")
+            .map_err(|e| self.sqlite_error("select prepare", &e))?;
+
+        let data_iter = stmt
+            .query_map([], |row| row.get(0))
+            .map_err(|e| self.sqlite_error("query_map", &e))?;
+        let data: Result<Vec<Vec<u8>>, _> = data_iter
+            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
+            .collect();
+
+        let data = data?;
+
+        Ok(data
+            .iter()
+            // We filter map here so that anything invalid is skipped.
+            .filter_map(|token| {
+                // token convert with json.
+                serde_json::from_slice(token.as_slice())
+                    .map_err(|e| {
+                        warn!("get_accounts json error -> {:?}", e);
+                    })
+                    .ok()
+            })
+            .collect())
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn get_group(&mut self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, Error> {
         let data = match grp_id {
             Id::Name(n) => self.get_group_data_name(n.as_str()),
             Id::Gid(g) => self.get_group_data_gid(*g),
@@ -899,7 +925,7 @@ impl DbWriteTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn get_group_members(&mut self, g_uuid: Uuid) -> Result<Vec<UserToken>, Error> {
+    fn get_group_members(&mut self, g_uuid: Uuid) -> Result<Vec<UserToken>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid")
@@ -929,7 +955,7 @@ impl DbWriteTxn<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn get_groups(&mut self) -> Result<Vec<GroupToken>, Error> {
+    fn get_groups(&mut self) -> Result<Vec<GroupToken>, Error> {
         let mut stmt = self
             .conn
             .prepare("SELECT token FROM group_t")
@@ -957,32 +983,66 @@ impl DbWriteTxn<'_> {
             })
             .collect())
     }
+}
 
-    #[instrument(level = "debug", skip_all)]
-    pub fn update_group(&mut self, grp: &GroupToken, expire: u64) -> Result<(), Error> {
-        let data = serde_json::to_vec(grp).map_err(|e| {
+impl KeyStoreTxn<'_, '_> {
+    pub fn get_tagged_hsm_key<K: DeserializeOwned>(
+        &mut self,
+        tag: &str,
+    ) -> Result<Option<K>, Error> {
+        self.db.get_tagged_hsm_key(tag)
+    }
+
+    pub fn insert_tagged_hsm_key<K: Serialize>(&mut self, tag: &str, key: &K) -> Result<(), Error> {
+        self.db.insert_tagged_hsm_key(tag, key)
+    }
+
+    pub fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), Error> {
+        self.db.delete_tagged_hsm_key(tag)
+    }
+}
+
+impl DbWriteTxn<'_> {
+    fn get_tagged_hsm_key<K: DeserializeOwned>(&mut self, tag: &str) -> Result<Option<K>, Error> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT value FROM hsm_data_t WHERE key = :key")
+            .map_err(|e| self.sqlite_error("select prepare", &e))?;
+
+        let data: Option<Vec<u8>> = stmt
+            .query_row(
+                named_params! {
+                    ":key": tag
+                },
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| self.sqlite_error("query_row", &e))?;
+
+        match data {
+            Some(d) => Ok(serde_json::from_slice(d.as_slice())
+                .map_err(|e| {
+                    error!("json error -> {:?}", e);
+                })
+                .ok()),
+            None => Ok(None),
+        }
+    }
+
+    fn insert_tagged_hsm_key<K: Serialize>(&mut self, tag: &str, key: &K) -> Result<(), Error> {
+        let data = serde_json::to_vec(key).map_err(|e| {
             error!("json error -> {:?}", e);
             Error::SerdeJson
         })?;
-        let expire = i64::try_from(expire).map_err(|e| {
-            error!("i64 convert error -> {:?}", e);
-            Error::Parse
-        })?;
 
-        let mut stmt = self.conn
-            .prepare("INSERT OR REPLACE INTO group_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry)")
-            .map_err(|e| {
-                self.sqlite_error("prepare", &e)
-            })?;
+        let mut stmt = self
+            .conn
+            .prepare("INSERT OR REPLACE INTO hsm_data_t (key, value) VALUES (:key, :value)")
+            .map_err(|e| self.sqlite_error("prepare", &e))?;
 
-        // We have to to-str uuid as the sqlite impl makes it a blob which breaks our selects in get.
         stmt.execute(named_params! {
-            ":uuid": &grp.uuid.as_hyphenated().to_string(),
-            ":name": &grp.name,
-            ":spn": &grp.spn,
-            ":gidnumber": &grp.gidnumber,
-            ":token": &data,
-            ":expiry": &expire,
+            ":key": tag,
+            ":value": &data,
         })
         .map(|r| {
             trace!("insert -> {:?}", r);
@@ -990,45 +1050,22 @@ impl DbWriteTxn<'_> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    #[instrument(level = "debug", skip_all)]
-    pub fn delete_group(&mut self, g_uuid: Uuid) -> Result<(), Error> {
-        let group_uuid = g_uuid.as_hyphenated().to_string();
+    fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), Error> {
         self.conn
             .execute(
-                "DELETE FROM memberof_t WHERE g_uuid = :g_uuid",
-                [&group_uuid],
+                "DELETE FROM hsm_data_t where key = :key",
+                named_params! {
+                    ":key": tag,
+                },
             )
             .map(|_| ())
-            .map_err(|e| self.sqlite_error("group_t memberof_t cascade delete", &e))?;
-        self.conn
-            .execute("DELETE FROM group_t WHERE uuid = :g_uuid", [&group_uuid])
-            .map(|_| ())
-            .map_err(|e| self.sqlite_error("group_t delete", &e))
-    }
-}
-
-impl fmt::Debug for DbWriteTxn<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DbWriteTxn {{}}")
-    }
-}
-
-impl Drop for DbWriteTxn<'_> {
-    // Abort
-    fn drop(&mut self) {
-        if !self.committed {
-            // trace!("Aborting BE WR txn");
-            #[allow(clippy::expect_used)]
-            self.conn
-                .execute("ROLLBACK TRANSACTION", [])
-                .expect("Unable to rollback transaction! Can not proceed!!!");
-        }
+            .map_err(|e| self.sqlite_error("delete hsm_data_t", &e))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Cache, CacheWriteTxn, Db};
+    use super::{Cache, CacheReadTxn, CacheWriteTxn, Db};
     use crate::idprovider::interface::{GroupToken, Id, ProviderOrigin, UserToken};
 
     #[tokio::test]
