@@ -404,6 +404,7 @@ impl AuthResponse {
         })?;
 
         if let Some(tunnel_private_group_id) = tunnel_private_group_id {
+            // Only update the vlan if it's set.
             vp_add_pair(
                 talloc_ctx,
                 reply_vp,
