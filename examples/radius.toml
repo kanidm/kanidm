@@ -14,17 +14,47 @@ radius_default_vlan = 1
 # must be a member of at least one of these groups.
 radius_required_groups = ["radius_access_allowed@idm.example.com"]
 
-# A mapping between Kanidm groups and VLANS
-radius_groups = [{ spn = "radius_access_allowed@idm.example.com", vlan = 10 }]
-
-# A mapping of RADIUS NAS (clients) and their authentication secrets
-radius_clients = [
-    { name = "test", ipaddr = "127.0.0.1", secret = "testing123" },
-    { name = "docker", ipaddr = "172.17.0.0/16", secret = "testing123" },
-]
-
 # radius_cert_path = "/data/cert.pem"
 # radius_key_path = "/data/key.pem"
 # radius_ca_path = "/data/ca.pem"
 
 # radius_ca_dir = "/data/ca"
+
+# # This allows insertion of vendor specific attributes to replys
+# # for all users of radius
+# # WARNING: Vendor Attributes that are UNKNOWN to FreeRADIUS will
+# # cause your radius server to fail to start
+# #
+# reply_attributes = {
+#     "Vendor-Attribute" = "value"
+# }
+
+# A mapping of RADIUS NAS (clients) and their authentication secrets
+[[radius_clients]]
+name = "test"
+ipaddr = "127.0.0.1"
+secret = "testing123"
+
+[[radius_clients]]
+name = "docker"
+ipaddr = "172.17.0.0/16"
+secret = "testing123"
+
+# A mapping between Kanidm groups and VLANS that they are assigned.
+[[radius_groups]]
+spn = "radius_access_allowed@idm.example.com"
+vlan = 10
+
+[[radius_groups]]
+spn = "my_admin_group@idm.example.com"
+vlan = 20
+# # This allows insertion of vendor specific attributes to replys
+# # when someone is a member of this specific group.
+# # WARNING: Vendor Attributes that are UNKNOWN to FreeRADIUS will
+# # cause your radius server to fail to start
+# #
+# reply_attributes = {
+#     "Vendor-Attribute" = "value"
+# }
+
+
