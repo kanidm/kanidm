@@ -41,7 +41,7 @@ search for your group name:
 Also, ensure the target user is in the group by running:
 
 ```bash
->  kanidm group list_members example_group
+>  kanidm group list-members example_group
 ```
 
 ## Increase Logging
