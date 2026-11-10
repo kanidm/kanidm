@@ -90,6 +90,7 @@ pub struct Db {
 
 pub struct DbWriteTxn<'a> {
     conn: MutexGuard<'a, Connection>,
+    can_write: bool,
     committed: bool,
 }
 
@@ -175,12 +176,28 @@ impl Cache for Db {
 
     async fn write<'db>(&'db self) -> Self::WriteTxn<'db> {
         let conn = self.conn.lock().await;
-        DbWriteTxn::new(conn)
+        // Start the transaction
+        #[allow(clippy::expect_used)]
+        conn.execute("BEGIN IMMEDIATE TRANSACTION", [])
+            .expect("Unable to begin transaction!");
+        DbWriteTxn {
+            committed: false,
+            can_write: true,
+            conn,
+        }
     }
 
     async fn read<'db>(&'db self) -> Self::ReadTxn<'db> {
         let conn = self.conn.lock().await;
-        DbWriteTxn::new(conn)
+        // Start the transaction
+        #[allow(clippy::expect_used)]
+        conn.execute("BEGIN IMMEDIATE TRANSACTION", [])
+            .expect("Unable to begin transaction!");
+        DbWriteTxn {
+            committed: false,
+            can_write: false,
+            conn,
+        }
     }
 }
 
@@ -191,17 +208,6 @@ impl fmt::Debug for Db {
 }
 
 impl<'a> DbWriteTxn<'a> {
-    fn new(conn: MutexGuard<'a, Connection>) -> Self {
-        // Start the transaction
-        #[allow(clippy::expect_used)]
-        conn.execute("BEGIN IMMEDIATE TRANSACTION", [])
-            .expect("Unable to begin transaction!");
-        DbWriteTxn {
-            committed: false,
-            conn,
-        }
-    }
-
     /// This handles an error coming back from an sqlite event and dumps more information from it
     fn sqlite_error(&self, msg: &str, error: &rusqlite::Error) -> Error {
         error!(
@@ -796,6 +802,11 @@ impl<'a> CacheWriteTxn for DbWriteTxn<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn commit(mut self) -> Result<(), Error> {
+        if !self.can_write {
+            error!("Invalid state, SQL transaction is read-only!");
+            return Err(Error::TransactionInvalidState);
+        }
+
         if self.committed {
             error!("Invalid state, SQL transaction was already committed!");
             return Err(Error::TransactionInvalidState);
@@ -805,6 +816,7 @@ impl<'a> CacheWriteTxn for DbWriteTxn<'a> {
             .execute("COMMIT TRANSACTION", [])
             .map(|_| {
                 self.committed = true;
+                self.can_write = true;
             })
             .map_err(|e| self.sqlite_error("commit", &e))
     }
