@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, fs, path::Path};
 #[derive(Debug, Clone, Deserialize)]
 pub struct RadiusGroupConfig {
     pub spn: String,
-    pub vlan: u32,
+    pub vlan: Option<u32>,
     #[serde(default)]
     pub reply_attributes: BTreeMap<String, String>,
 }
@@ -30,9 +30,8 @@ pub struct KanidmRadiusConfig {
 
     #[serde(default)]
     pub radius_required_groups: Vec<String>,
-    #[serde(default = "default_vlan")]
     /// Defaults to 1, which is the default VLAN for "no VLAN" in many RADIUS setups, but can be set to 0 if the setup expects that for "no VLAN". Any user in a group that doesn't have a specific VLAN mapping will get this VLAN.
-    pub radius_default_vlan: u32,
+    pub radius_default_vlan: Option<u32>,
     #[serde(default)]
     pub radius_groups: Vec<RadiusGroupConfig>,
     #[serde(default)]
@@ -59,7 +58,7 @@ impl Default for KanidmRadiusConfig {
             verify_certificate: default_bool_true(),
             ca_path: None,
             radius_required_groups: Vec::new(),
-            radius_default_vlan: default_vlan(),
+            radius_default_vlan: None,
             radius_groups: Vec::new(),
             radius_clients: Vec::new(),
             radius_cert_path: default_radius_cert_path(),
@@ -73,10 +72,6 @@ impl Default for KanidmRadiusConfig {
 
 fn default_bool_true() -> bool {
     true
-}
-
-fn default_vlan() -> u32 {
-    1
 }
 
 fn default_connect_timeout_secs() -> u64 {
