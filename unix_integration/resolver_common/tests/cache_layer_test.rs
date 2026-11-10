@@ -11,7 +11,7 @@ use kanidmd_core::{
 };
 use kanidmd_testkit::{is_free_port, PORT_ALLOC};
 use sparkle_resolver_common::{
-    db::{Cache, Db},
+    db::{Cache, CacheWriteTxn, Db},
     idprovider::{interface::Id, kanidm::KanidmProvider, system::SystemProvider},
     resolver::Resolver,
 };

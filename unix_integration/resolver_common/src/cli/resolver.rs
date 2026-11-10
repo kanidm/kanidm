@@ -1,6 +1,6 @@
 use crate::{
     check::check_nsswitch_has_module,
-    db::{Cache, Db},
+    db::{Cache, CacheWriteTxn, Db},
     idprovider::{interface::IdProvider, kanidm::KanidmProvider, system::SystemProvider},
     resolver::{AuthSession, Resolver},
     SparkleFlavour,

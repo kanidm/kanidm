@@ -17,13 +17,25 @@ const DBV_MAIN: &str = "main";
 const SQLITE_PAGE_SIZE: i64 = 4096;
 const CACHE_SIZE: i64 = 32_i64.saturating_mul((1024 * 1024) / SQLITE_PAGE_SIZE);
 
+pub trait CacheWriteTxn {
+    fn set_db_version(&self, key: &str, v: i64) -> Result<(), Error>;
+
+    fn commit(self) -> Result<(), Error>;
+}
+
 #[async_trait]
 pub trait Cache {
-    type Txn<'db>
+    type WriteTxn<'db>
     where
         Self: 'db;
 
-    async fn write<'db>(&'db self) -> Self::Txn<'db>;
+    type ReadTxn<'db>
+    where
+        Self: 'db;
+
+    async fn write<'db>(&'db self) -> Self::WriteTxn<'db>;
+
+    async fn read<'db>(&'db self) -> Self::ReadTxn<'db>;
 }
 
 #[async_trait]
@@ -39,17 +51,17 @@ pub struct Db {
     conn: Mutex<Connection>,
 }
 
-pub struct DbTxn<'a> {
+pub struct DbWriteTxn<'a> {
     conn: MutexGuard<'a, Connection>,
     committed: bool,
 }
 
 pub struct KeyStoreTxn<'a, 'b> {
-    db: &'b mut DbTxn<'a>,
+    db: &'b mut DbWriteTxn<'a>,
 }
 
-impl<'a, 'b> From<&'b mut DbTxn<'a>> for KeyStoreTxn<'a, 'b> {
-    fn from(db: &'b mut DbTxn<'a>) -> Self {
+impl<'a, 'b> From<&'b mut DbWriteTxn<'a>> for KeyStoreTxn<'a, 'b> {
+    fn from(db: &'b mut DbWriteTxn<'a>) -> Self {
         Self { db }
     }
 }
@@ -114,12 +126,18 @@ impl Db {
 
 #[async_trait]
 impl Cache for Db {
-    type Txn<'db> = DbTxn<'db>;
+    type WriteTxn<'db> = DbWriteTxn<'db>;
 
-    #[allow(clippy::expect_used)]
-    async fn write<'db>(&'db self) -> Self::Txn<'db> {
+    type ReadTxn<'db> = DbWriteTxn<'db>;
+
+    async fn write<'db>(&'db self) -> Self::WriteTxn<'db> {
         let conn = self.conn.lock().await;
-        DbTxn::new(conn)
+        DbWriteTxn::new(conn)
+    }
+
+    async fn read<'db>(&'db self) -> Self::ReadTxn<'db> {
+        let conn = self.conn.lock().await;
+        DbWriteTxn::new(conn)
     }
 }
 
@@ -129,14 +147,13 @@ impl fmt::Debug for Db {
     }
 }
 
-impl<'a> DbTxn<'a> {
+impl<'a> DbWriteTxn<'a> {
     fn new(conn: MutexGuard<'a, Connection>) -> Self {
         // Start the transaction
-        // trace!("Starting db WR txn ...");
         #[allow(clippy::expect_used)]
-        conn.execute("BEGIN TRANSACTION", [])
+        conn.execute("BEGIN IMMEDIATE TRANSACTION", [])
             .expect("Unable to begin transaction!");
-        DbTxn {
+        DbWriteTxn {
             committed: false,
             conn,
         }
@@ -179,19 +196,6 @@ impl<'a> DbTxn<'a> {
                 // The value is missing, default to 0.
                 0
             })
-    }
-
-    fn set_db_version(&self, key: &str, v: i64) -> Result<(), Error> {
-        self.conn
-            .execute(
-                "INSERT OR REPLACE INTO db_version_t (id, version) VALUES(:id, :dbv)",
-                named_params! {
-                    ":id": &key,
-                    ":dbv": v,
-                },
-            )
-            .map(|_| ())
-            .map_err(|e| self.sqlite_error("set db_version_t", &e))
     }
 
     fn get_account_data_name(&mut self, account_id: &str) -> Result<Vec<(Vec<u8>, i64)>, Error> {
@@ -265,6 +269,36 @@ impl<'a> DbTxn<'a> {
     }
 }
 
+impl<'a> CacheWriteTxn for DbWriteTxn<'a> {
+    fn set_db_version(&self, key: &str, v: i64) -> Result<(), Error> {
+        self.conn
+            .execute(
+                "INSERT OR REPLACE INTO db_version_t (id, version) VALUES(:id, :dbv)",
+                named_params! {
+                    ":id": &key,
+                    ":dbv": v,
+                },
+            )
+            .map(|_| ())
+            .map_err(|e| self.sqlite_error("set db_version_t", &e))
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn commit(mut self) -> Result<(), Error> {
+        if self.committed {
+            error!("Invalid state, SQL transaction was already committed!");
+            return Err(Error::TransactionInvalidState);
+        }
+
+        self.conn
+            .execute("COMMIT TRANSACTION", [])
+            .map(|_| {
+                self.committed = true;
+            })
+            .map_err(|e| self.sqlite_error("commit", &e))
+    }
+}
+
 impl KeyStoreTxn<'_, '_> {
     pub fn get_tagged_hsm_key<K: DeserializeOwned>(
         &mut self,
@@ -282,7 +316,7 @@ impl KeyStoreTxn<'_, '_> {
     }
 }
 
-impl DbTxn<'_> {
+impl DbWriteTxn<'_> {
     fn get_tagged_hsm_key<K: DeserializeOwned>(&mut self, tag: &str) -> Result<Option<K>, Error> {
         let mut stmt = self
             .conn
@@ -343,7 +377,7 @@ impl DbTxn<'_> {
     }
 }
 
-impl DbTxn<'_> {
+impl DbWriteTxn<'_> {
     pub fn migrate(&mut self) -> Result<(), Error> {
         // This definition can never change.
         self.conn
@@ -515,21 +549,6 @@ impl DbTxn<'_> {
         self.set_db_version(DBV_MAIN, 2)?;
 
         Ok(())
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn commit(mut self) -> Result<(), Error> {
-        if self.committed {
-            error!("Invalid state, SQL transaction was already committed!");
-            return Err(Error::TransactionInvalidState);
-        }
-
-        self.conn
-            .execute("COMMIT TRANSACTION", [])
-            .map(|_| {
-                self.committed = true;
-            })
-            .map_err(|e| self.sqlite_error("commit", &e))
     }
 
     pub fn invalidate(&mut self) -> Result<(), Error> {
@@ -988,13 +1007,13 @@ impl DbTxn<'_> {
     }
 }
 
-impl fmt::Debug for DbTxn<'_> {
+impl fmt::Debug for DbWriteTxn<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DbTxn {{}}")
+        write!(f, "DbWriteTxn {{}}")
     }
 }
 
-impl Drop for DbTxn<'_> {
+impl Drop for DbWriteTxn<'_> {
     // Abort
     fn drop(&mut self) {
         if !self.committed {
@@ -1009,7 +1028,7 @@ impl Drop for DbTxn<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Cache, Db};
+    use super::{Cache, CacheWriteTxn, Db};
     use crate::idprovider::interface::{GroupToken, Id, ProviderOrigin, UserToken};
 
     #[tokio::test]

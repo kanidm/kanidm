@@ -13,7 +13,7 @@ use crate::idprovider::interface::{
     UserTokenState,
 };
 use crate::{
-    db::{Cache, Db},
+    db::{Cache, CacheWriteTxn, Db},
     errors::Error,
     idprovider::system::{
         Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit, SystemProviderSession,
