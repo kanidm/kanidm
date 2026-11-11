@@ -101,7 +101,6 @@ impl KanidmProvider {
                 IdpError::Tpm
             })?;
 
-        // Default to NIST standards now that we HMAC bind everything.
         let crypto_policy = CryptoPolicy::minimum();
 
         let pam_allow_groups = config.pam_allowed_login_groups.iter().cloned().collect();
