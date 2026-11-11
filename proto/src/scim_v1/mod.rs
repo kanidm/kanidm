@@ -271,24 +271,28 @@ peg::parser! {
         rule limiter(max_depth: usize) -> () =
             {? if max_depth == 0 { Err("too deeply nested") } else { Ok(()) } }
 
+        // WARNING: We specifically break infix precedency rules to allow recursion
+        // limits to function correctly.
         rule parse_inner(max_depth: usize) -> ScimFilter = precedence!{
-            a:(@) separator()+ "or" separator()+ b:@ {
+            "not" separator()+ "(" e:parse_depth(max_depth) ")" {
+                ScimFilter::Not(Box::new(e))
+            }
+            --
+            a:parse_inner_attr(max_depth) separator()+ "or" separator()+ b:parse_depth(max_depth) {
                 ScimFilter::Or(
                     Box::new(a),
                     Box::new(b)
                 )
             }
             --
-            a:(@) separator()+ "and" separator()+ b:@ {
+            a:parse_inner_attr(max_depth) separator()+ "and" separator()+ b:parse_depth(max_depth) {
                 ScimFilter::And(
                     Box::new(a),
                     Box::new(b)
                 )
             }
             --
-            "not" separator()+ "(" e:parse_depth(max_depth) ")" {
-                ScimFilter::Not(Box::new(e))
-            }
+            "(" e:parse_depth(max_depth) ")" { e }
             --
             a:attrname()"[" e:parse_complex_depth(max_depth) "]" {
                 ScimFilter::Complex(
@@ -297,8 +301,18 @@ peg::parser! {
                 )
             }
             --
+            a:parse_inner_attr(max_depth) { a }
+        }
+
+        rule parse_inner_attr(max_depth: usize) -> ScimFilter = precedence!{
+            a:attrname()"[" e:parse_complex_depth(max_depth) "]" {
+                ScimFilter::Complex(
+                    a,
+                    Box::new(e)
+                )
+            }
+            --
             a:attrexp() { a }
-            "(" e:parse_depth(max_depth) ")" { e }
         }
 
         pub rule parse_complex() -> ScimComplexFilter =
@@ -308,14 +322,14 @@ peg::parser! {
             limiter(max_depth) a:parse_complex_inner(max_depth.saturating_sub(1)) { a }
 
         rule parse_complex_inner(max_depth: usize) -> ScimComplexFilter = precedence!{
-            a:(@) separator()+ "or" separator()+ b:@ {
+            a:complex_attrexp() separator()+ "or" separator()+ b:parse_complex_depth(max_depth) {
                 ScimComplexFilter::Or(
                     Box::new(a),
                     Box::new(b)
                 )
             }
             --
-            a:(@) separator()+ "and" separator()+ b:@ {
+            a:complex_attrexp() separator()+ "and" separator()+ b:parse_complex_depth(max_depth) {
                 ScimComplexFilter::And(
                     Box::new(a),
                     Box::new(b)
@@ -326,8 +340,8 @@ peg::parser! {
                 ScimComplexFilter::Not(Box::new(e))
             }
             --
-            a:complex_attrexp() { a }
             "(" e:parse_complex_depth(max_depth) ")" { e }
+            a:complex_attrexp() { a }
         }
 
         pub(crate) rule attrexp() -> ScimFilter =
@@ -874,6 +888,8 @@ mod tests {
         );
     }
 
+    // Due to the changes to protect from recursion attacks, we no longer uphold the standard precedence rules.
+    /*
     #[test]
     fn test_scimfilter_precedence_1() {
         let f =
@@ -1003,6 +1019,7 @@ mod tests {
             ))
         );
     }
+    */
 
     #[test]
     fn test_scimfilter_quoted_values() {
@@ -1043,18 +1060,30 @@ mod tests {
         scimfilter::parse_depth("name pr and (name pr and (name pr and name pr))", 1)
             .expect_err("Must fail");
 
-        scimfilter::parse_depth("name pr and (name pr and (name pr and name pr))", 2)
+        scimfilter::parse_depth("name pr and (name pr and (name pr and name pr))", 5)
             .expect_err("Must fail");
 
-        scimfilter::parse_depth("name pr and (name pr and (name pr and name pr))", 3)
+        scimfilter::parse_depth("name pr and (name pr and (name pr and name pr))", 6)
             .expect("Must pass");
 
         scimfilter::parse_depth("((name pr and name pr))", 0).expect_err("Must fail");
 
         scimfilter::parse_depth("((name pr and name pr))", 1).expect_err("Must fail");
 
-        scimfilter::parse_depth("((name pr and name pr))", 2).expect_err("Must fail");
+        scimfilter::parse_depth("((name pr and name pr))", 3).expect_err("Must fail");
 
-        scimfilter::parse_depth("((name pr and name pr))", 3).expect("Must pass");
+        scimfilter::parse_depth("((name pr and name pr))", 4).expect("Must pass");
+
+        scimfilter::parse_depth("name pr and name pr and name pr and name pr", 0)
+            .expect_err("Must fail");
+
+        scimfilter::parse_depth("name pr and name pr and name pr and name pr", 1)
+            .expect_err("Must fail");
+
+        scimfilter::parse_depth("name pr and name pr and name pr and name pr", 3)
+            .expect_err("Must fail");
+
+        scimfilter::parse_depth("name pr and name pr and name pr and name pr", 4)
+            .expect("Must pass");
     }
 }
