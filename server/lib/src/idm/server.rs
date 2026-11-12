@@ -159,9 +159,7 @@ impl IdmServer {
         let crypto_policy = if cfg!(test) || is_integration_test {
             CryptoPolicy::danger_test_minimum()
         } else {
-            // This is calculated back from:
-            //  100 password auths / thread -> 0.010 sec per op
-            CryptoPolicy::time_target(Duration::from_millis(10))
+            CryptoPolicy::minimum()
         };
 
         let (async_tx, async_rx) = unbounded_channel();

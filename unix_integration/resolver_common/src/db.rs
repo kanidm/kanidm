@@ -826,7 +826,7 @@ impl Drop for DbWriteTxn<'_> {
     // Abort
     fn drop(&mut self) {
         if !self.committed {
-            // trace!("Aborting BE WR txn");
+            warn!("Aborting BE WR txn");
             #[allow(clippy::expect_used)]
             self.conn
                 .execute("ROLLBACK TRANSACTION", [])

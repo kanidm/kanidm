@@ -630,7 +630,7 @@ impl Resolver {
     where
         T: CacheWriteTxn,
     {
-        let mut hsm_lock = self.hsm.lock().await;
+        let mut hsm_lock = self.hsm_lock(dbtxn).await;
 
         let group_get_result = if let Some(tok) = token.as_ref() {
             // Re-use the provider that the token is from.
@@ -943,14 +943,19 @@ impl Resolver {
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, Error> {
         let mut dbtxn = self.db.write().await;
 
-        let result = self.get_nssgroup_txn(&mut dbtxn, grp_id)?;
+        let result = self.get_nssgroup_txn(&mut dbtxn, grp_id).await?;
 
         dbtxn.commit().map(|_| result)
     }
 
     #[instrument(level = "trace", skip_all)]
-    async fn get_nssgroup_txn<T>(&self, dbtxn: &mut T, grp_id: Id) -> Result<Option<NssGroup>, Error>
-    where T: CacheWriteTxn + CacheReadTxn
+    async fn get_nssgroup_txn<T>(
+        &self,
+        dbtxn: &mut T,
+        grp_id: Id,
+    ) -> Result<Option<NssGroup>, Error>
+    where
+        T: CacheWriteTxn + CacheReadTxn,
     {
         if let Some(mut nss_group) = self.system_provider.get_nssgroup(&grp_id).await {
             debug!("system provider satisfied request");
@@ -958,10 +963,10 @@ impl Resolver {
             for client in self.clients.iter() {
                 if let Some(extend_group_id) = client.has_map_group(&nss_group.name) {
                     let token = self
-                        .get_grouptoken(&mut dbtxn, extend_group_id.clone(), SystemTime::now())
+                        .get_grouptoken(dbtxn, extend_group_id.clone(), SystemTime::now())
                         .await?;
                     if let Some(token) = token {
-                        let members = self.get_groupmembers(&mut dbtxn, token.uuid).await;
+                        let members = self.get_groupmembers(dbtxn, token.uuid).await;
                         nss_group.members.extend(members);
                         debug!(
                             "extended group {} with members from {}",
@@ -978,12 +983,12 @@ impl Resolver {
         }
 
         let token = self
-            .get_grouptoken(&mut dbtxn, grp_id, SystemTime::now())
+            .get_grouptoken(dbtxn, grp_id, SystemTime::now())
             .await?;
         // Get members set.
         match token {
             Some(tok) => {
-                let members = self.get_groupmembers(&mut dbtxn, tok.uuid).await;
+                let members = self.get_groupmembers(dbtxn, tok.uuid).await;
                 Ok(Some(NssGroup {
                     name: self.token_gidattr(&tok),
                     gid: tok.gidnumber,
@@ -1243,7 +1248,7 @@ impl Resolver {
     ) -> Result<PamAuthResponse, Error> {
         let current_time = SystemTime::now();
         let mut dbtxn = self.db.write().await;
-        let mut hsm_lock = self.hsm.lock().await;
+        let mut hsm_lock = self.hsm_lock(&mut dbtxn).await;
 
         let maybe_err = match &mut *auth_session {
             &mut AuthSession::Online {
