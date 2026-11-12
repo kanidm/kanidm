@@ -4,6 +4,7 @@ use std::{collections::BTreeMap, fs, path::Path};
 #[derive(Debug, Clone, Deserialize)]
 pub struct RadiusGroupConfig {
     pub spn: String,
+    #[serde(default)]
     pub vlan: Option<u32>,
     #[serde(default)]
     pub reply_attributes: BTreeMap<String, String>,
