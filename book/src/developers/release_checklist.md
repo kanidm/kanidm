@@ -51,7 +51,9 @@ cargo install  --force \
 - [ ] update version to set pre tag in ./Cargo.toml
 - [ ] update Makefile to set docker image to rc
 - [ ] Final inspect of the branch
-- [ ] run `scripts/pre_release_branch_tag.sh` which creates a tag/branch for the `-pre` version and pushes them up.
+- [ ] git commit -a -m -S 'Release 1.x.0-pre'
+- [ ] git tag v1.x.0
+- [ ] git push upstream 1.x.0 --tags
 
 - [ ] github -> Ensure release branch is protected
 
@@ -59,23 +61,29 @@ cargo install  --force \
 
 - [ ] git checkout master
 - [ ] git pull
-- [ ] git checkout -b YYYYMMDD-dev-version
+- [ ] `git checkout -b "$(date +%Y%m%d)-dev-version"`
 - [ ] update version to +1 and add dev tag in ./Cargo.toml
 - [ ] update `DOMAIN_*_LEVEL` in server/lib/src/constants/mod.rs
 - [ ] update and add new migrations
+- [ ] git commit -a -m -S 'Release 1.x.0-dev'
+- [ ] Merge PR
+- [ ] git checkout master
+- [ ] git pull
+- [ ] git tag v1.x.0-dev
+- [ ] git push upstream master --tags
 
 ## Final Release Check List
 
 ### Git Management Part Deux
 
 - [ ] git checkout 1.x.0
-- [ ] git pull origin 1.x.0
+- [ ] git pull upstream 1.x.0
 
 - [ ] update version to remove pre tag in ./Cargo.toml
 - [ ] update Makefile to set docker image to latest
-- [ ] git commit -a -m 'Release 1.x.0'
+- [ ] git commit -a -m -S 'Release 1.x.0'
 - [ ] git tag v1.x.0
-- [ ] git push origin 1.x.0 --tags
+- [ ] git push upstream 1.x.0 --tags
 
 - [ ] github -> create new release based on tag (not branch) - use tag because then tools will get the tag + patches we
       apply.
@@ -93,6 +101,9 @@ cargo install  --force \
 - [ ] docker buildx use cluster
 - [ ] `make buildx`
 - [ ] Update the readme on docker <https://hub.docker.com/repository/docker/kanidm/server>
+
+- [ ] Sign artefacts
+- [ ] `make cosign`
 
 ### Distro
 

@@ -12,6 +12,7 @@ CONTAINER_BUILDX_ACTION ?= --push
 # CONTAINER_IMAGE_ARCH is used to specify the architectures for multi-arch docker builds
 CONTAINER_IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 BUILDKIT_PROGRESS ?= plain
+COSIGN_CMD = cosign sign --recursive=true
 
 KANIDM_FEATURES ?= ""
 
@@ -110,6 +111,11 @@ buildx/radiusd_rust:
 
 .PHONY: buildx
 buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd_rust
+
+.PHONE: cosign
+cosign:
+	$(COSIGN_CMD) $(CONTAINER_IMAGE_BASE)/server:$(CONTAINER_IMAGE_VERSION)
+	# $(COSIGN_CMD) $(CONTAINER_IMAGE_BASE)/server:$(CONTAINER_IMAGE_EXT_VERSION)
 
 .PHONY: build/kanidmd
 build/kanidmd:	## Build the kanidmd docker image locally
