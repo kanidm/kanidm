@@ -943,6 +943,15 @@ impl Resolver {
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, Error> {
         let mut dbtxn = self.db.write().await;
 
+        let result = self.get_nssgroup_txn(&mut dbtxn, grp_id)?;
+
+        dbtxn.commit().map(|_| result)
+    }
+
+    #[instrument(level = "trace", skip_all)]
+    async fn get_nssgroup_txn<T>(&self, dbtxn: &mut T, grp_id: Id) -> Result<Option<NssGroup>, Error>
+    where T: CacheWriteTxn + CacheReadTxn
+    {
         if let Some(mut nss_group) = self.system_provider.get_nssgroup(&grp_id).await {
             debug!("system provider satisfied request");
 
