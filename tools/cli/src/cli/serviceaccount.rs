@@ -56,7 +56,7 @@ impl ServiceAccountOpt {
                             if tokens.is_empty() {
                                 opt.output_mode.print_message("No API tokens found");
                             } else {
-                                opt.output_mode.print_vec(tokens);
+                                opt.output_mode.print_vec(&tokens);
                             }
                         }
                         Err(e) => {
@@ -187,9 +187,9 @@ impl ServiceAccountOpt {
                             if tokens.is_empty() {
                                 opt.output_mode.print_message("No sessions exist");
                             } else {
-                                opt.output_mode.print_vec(tokens);
+                                opt.output_mode.print_vec(&tokens);
                             }
-                        },
+                        }
                         Err(e) => {
                             error!("Error listing sessions -> {:?}", e);
                         }
@@ -219,7 +219,9 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        Ok(pkeys) => opt.output_mode.print_vec(pkeys.iter().flatten().collect::<Vec<&String>>()),
+                        Ok(pkeys) => opt
+                            .output_mode
+                            .print_vec(&pkeys.iter().flatten().collect::<Vec<&String>>()),
                         // Ok(pkeys) => pkeys.iter().flatten().for_each(|pkey| println!("{pkey}")),
                         Err(e) => handle_client_error(e, opt.output_mode),
                     }
@@ -257,7 +259,7 @@ impl ServiceAccountOpt {
                         if r.is_empty() {
                             opt.output_mode.print_message("No service accounts found");
                         } else {
-                            opt.output_mode.print_vec(r);
+                            opt.output_mode.print_vec(&r);
                         }
                     }
                     Err(e) => handle_client_error(e, opt.output_mode),

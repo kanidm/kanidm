@@ -42,9 +42,7 @@ impl KanidmClient {
             format!("/v1/sync_account/{id}/_attr/sync_credential_portal").as_str(),
         )
         .await
-        .map(|values: Option<Vec<Url>>| {
-            values.and_then(|values| values.into_iter().next())
-        })
+        .map(|values: Option<Vec<Url>>| values.and_then(|values| values.into_iter().next()))
     }
 
     pub async fn idm_sync_account_set_yield_attributes(
@@ -59,8 +57,11 @@ impl KanidmClient {
         )
         .await
     }
- 
-    pub async fn idm_sync_account_get_yield_attributes(&self, id: &str) -> Result<Option<Vec<String>>, ClientError> {
+
+    pub async fn idm_sync_account_get_yield_attributes(
+        &self,
+        id: &str,
+    ) -> Result<Option<Vec<String>>, ClientError> {
         self.perform_get_request(
             format!("/v1/sync_account/{id}/_attr/sync_yield_authority").as_str(),
         )

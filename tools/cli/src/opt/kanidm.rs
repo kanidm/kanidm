@@ -94,7 +94,7 @@ impl OutputMode {
         }
     }
 
-    pub fn print_vec<T>(self, input: Vec<T>)
+    pub fn print_vec<T>(self, input: &[T])
     where
         T: serde::Serialize + fmt::Debug + fmt::Display,
     {

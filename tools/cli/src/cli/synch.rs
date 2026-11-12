@@ -11,9 +11,9 @@ impl SynchOpt {
                         if r.is_empty() {
                             opt.output_mode.print_message("No sync accounts found");
                         } else {
-                            opt.output_mode.print_vec(r);
+                            opt.output_mode.print_vec(&r);
                         }
-                    },
+                    }
 
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
@@ -92,9 +92,11 @@ impl SynchOpt {
                 match client
                     .idm_sync_account_get_yield_attributes(account_id)
                     .await
-                {  
-                    Ok(Some(e)) => opt.output_mode.print_vec(e),
-                    Ok(None) => opt.output_mode.print_message("No attributes have their authority yielded from this sync account."),
+                {
+                    Ok(Some(e)) => opt.output_mode.print_vec(&e),
+                    Ok(None) => opt.output_mode.print_message(
+                        "No attributes have their authority yielded from this sync account.",
+                    ),
                     Err(e) => handle_client_error(e, opt.output_mode),
                 }
             }
