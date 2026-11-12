@@ -13,7 +13,7 @@ use crate::idprovider::interface::{
     UserTokenState,
 };
 use crate::{
-    db::{Cache, Db},
+    db::{Cache, CacheReadTxn, CacheWriteTxn, Db},
     errors::Error,
     idprovider::system::{
         Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit, SystemProviderSession,
@@ -201,6 +201,13 @@ impl Resolver {
         ))
     }
 
+    async fn hsm_lock<T>(&self, _dbtxn: &mut T) -> tokio::sync::MutexGuard<'_, BoxedDynTpm>
+    where
+        T: CacheWriteTxn,
+    {
+        self.hsm.lock().await
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub async fn mark_next_check_now(&self, now: SystemTime) {
         for c in self.clients.iter() {
@@ -233,13 +240,15 @@ impl Resolver {
 
     #[instrument(level = "debug", skip_all)]
     async fn get_cached_usertokens(&self) -> Result<Vec<UserToken>, Error> {
-        let mut dbtxn = self.db.write().await;
+        let mut dbtxn = self.db.read().await;
         dbtxn.get_accounts()
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn get_cached_grouptokens(&self) -> Result<Vec<GroupToken>, Error> {
-        let mut dbtxn = self.db.write().await;
+    async fn get_cached_grouptokens<T>(&self, dbtxn: &mut T) -> Result<Vec<GroupToken>, Error>
+    where
+        T: CacheReadTxn,
+    {
         dbtxn.get_groups()
     }
 
@@ -271,11 +280,15 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn get_cached_usertoken(
+    async fn get_cached_usertoken<T>(
         &self,
+        dbtxn: &mut T,
         account_id: &Id,
         current_time: SystemTime,
-    ) -> Result<(ExpiryState, Option<UserToken>), Error> {
+    ) -> Result<(ExpiryState, Option<UserToken>), Error>
+    where
+        T: CacheReadTxn,
+    {
         // Is it in the nxcache?
         if let Some(ex_time) = self.check_nxcache(account_id).await {
             if current_time >= ex_time {
@@ -295,12 +308,9 @@ impl Resolver {
         //  * spn
         //  * uuid
         //  Attempt to search these in the db.
-        let mut dbtxn = self.db.write().await;
         let r = dbtxn.get_account(account_id).inspect_err(|err| {
             debug!(?err, "get_cached_usertoken");
         })?;
-
-        drop(dbtxn);
 
         match r {
             Some((ut, ex)) => {
@@ -330,10 +340,14 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn get_cached_grouptoken(
+    async fn get_cached_grouptoken<T>(
         &self,
+        dbtxn: &mut T,
         grp_id: &Id,
-    ) -> Result<(bool, Option<GroupToken>), Error> {
+    ) -> Result<(bool, Option<GroupToken>), Error>
+    where
+        T: CacheReadTxn,
+    {
         let current_time = SystemTime::now();
         // Is it in the nxcache?
         if let Some(ex_time) = self.check_nxcache(grp_id).await {
@@ -353,12 +367,9 @@ impl Resolver {
         //  * spn
         //  * uuid
         //  Attempt to search these in the db.
-        let mut dbtxn = self.db.write().await;
         let r = dbtxn.get_group(grp_id).inspect_err(|err| {
             debug!(?err, "get_cached_grouptoken");
         })?;
-
-        drop(dbtxn);
 
         match r {
             Some((ut, ex)) => {
@@ -380,12 +391,10 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn set_cache_usertoken(
-        &self,
-        token: &mut UserToken,
-        // This is just for proof that only one write can occur at a time.
-        _tpm: &mut BoxedDynTpm,
-    ) -> Result<(), Error> {
+    async fn set_cache_usertoken<T>(&self, mut dbtxn: T, token: &mut UserToken) -> Result<(), Error>
+    where
+        T: CacheWriteTxn,
+    {
         // Set an expiry
         // To try and prevent too many requests occuring all at the same time, we subtract a small
         // amount of "jitter" from expiry values so that we space out refreshes.
@@ -474,7 +483,6 @@ impl Resolver {
             token.shell = Some(self.default_shell.clone())
         }
 
-        let mut dbtxn = self.db.write().await;
         token
             .groups
             .iter()
@@ -488,7 +496,18 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn set_cache_grouptoken(&self, token: &GroupToken) -> Result<(), Error> {
+    async fn delete_cache_usertoken<T>(&self, mut dbtxn: T, a_uuid: Uuid) -> Result<(), Error>
+    where
+        T: CacheWriteTxn,
+    {
+        dbtxn.delete_account(a_uuid).and_then(|_| dbtxn.commit())
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    async fn set_cache_grouptoken<T>(&self, dbtxn: &mut T, token: &GroupToken) -> Result<(), Error>
+    where
+        T: CacheWriteTxn,
+    {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
         let offset = ex_time
@@ -498,22 +517,15 @@ impl Resolver {
                 Error::TimeConversion
             })?;
 
-        let mut dbtxn = self.db.write().await;
-        dbtxn
-            .update_group(token, offset.as_secs())
-            .and_then(|_| dbtxn.commit())
+        dbtxn.update_group(token, offset.as_secs())
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn delete_cache_usertoken(&self, a_uuid: Uuid) -> Result<(), Error> {
-        let mut dbtxn = self.db.write().await;
-        dbtxn.delete_account(a_uuid).and_then(|_| dbtxn.commit())
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    async fn delete_cache_grouptoken(&self, g_uuid: Uuid) -> Result<(), Error> {
-        let mut dbtxn = self.db.write().await;
-        dbtxn.delete_group(g_uuid).and_then(|_| dbtxn.commit())
+    async fn delete_cache_grouptoken<T>(&self, dbtxn: &mut T, g_uuid: Uuid) -> Result<(), Error>
+    where
+        T: CacheWriteTxn,
+    {
+        dbtxn.delete_group(g_uuid)
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -522,14 +534,15 @@ impl Resolver {
         account_id: &Id,
         current_time: SystemTime,
     ) -> Result<Option<UserToken>, Error> {
-        let mut hsm_lock = self.hsm.lock().await;
+        let mut dbtxn = self.db.write().await;
+        let mut hsm_lock = self.hsm_lock(&mut dbtxn).await;
 
         // We need to re-acquire the token now behind the hsmlock - this is so that
         // we know that as we write the updated token, we know that no one else has
         // written to this token, since we are now the only task that is allowed
         // to be in a write phase.
         let token = self
-            .get_cached_usertoken(account_id, current_time)
+            .get_cached_usertoken(&mut dbtxn, account_id, current_time)
             .await
             .map(|(_expired, option_token)| option_token)
             .inspect_err(|err| {
@@ -584,14 +597,13 @@ impl Resolver {
         match user_get_result {
             Ok(UserTokenState::Update(mut n_tok)) => {
                 // We have the token!
-                self.set_cache_usertoken(&mut n_tok, hsm_lock.deref_mut())
-                    .await?;
+                self.set_cache_usertoken(dbtxn, &mut n_tok).await?;
                 Ok(Some(n_tok))
             }
             Ok(UserTokenState::NotFound) => {
                 // It previously existed, so now purge it.
                 if let Some(tok) = token {
-                    self.delete_cache_usertoken(tok.uuid).await?;
+                    self.delete_cache_usertoken(dbtxn, tok.uuid).await?;
                 };
                 // Cache the NX here.
                 self.set_nxcache(account_id).await;
@@ -608,13 +620,17 @@ impl Resolver {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn refresh_grouptoken(
+    async fn refresh_grouptoken<T>(
         &self,
+        dbtxn: &mut T,
         grp_id: &Id,
         token: Option<GroupToken>,
         current_time: SystemTime,
-    ) -> Result<Option<GroupToken>, Error> {
-        let mut hsm_lock = self.hsm.lock().await;
+    ) -> Result<Option<GroupToken>, Error>
+    where
+        T: CacheWriteTxn,
+    {
+        let mut hsm_lock = self.hsm_lock(dbtxn).await;
 
         let group_get_result = if let Some(tok) = token.as_ref() {
             // Re-use the provider that the token is from.
@@ -654,12 +670,12 @@ impl Resolver {
 
         match group_get_result {
             Ok(GroupTokenState::Update(n_tok)) => {
-                self.set_cache_grouptoken(&n_tok).await?;
+                self.set_cache_grouptoken(dbtxn, &n_tok).await?;
                 Ok(Some(n_tok))
             }
             Ok(GroupTokenState::NotFound) => {
                 if let Some(tok) = token {
-                    self.delete_cache_grouptoken(tok.uuid).await?;
+                    self.delete_cache_grouptoken(dbtxn, tok.uuid).await?;
                 };
                 // Cache the NX here.
                 self.set_nxcache(grp_id).await;
@@ -680,13 +696,17 @@ impl Resolver {
         account_id: &Id,
         current_time: SystemTime,
     ) -> Result<Option<UserToken>, Error> {
+        let mut dbtxn = self.db.read().await;
+
         // get the item from the cache
         let (expiry_state, item) = self
-            .get_cached_usertoken(account_id, current_time)
+            .get_cached_usertoken(&mut dbtxn, account_id, current_time)
             .await
             .inspect_err(|err| {
                 debug!(?err, "get_usertoken error");
             })?;
+
+        drop(dbtxn);
 
         // If the token isn't found, get_cached will set expired = true.
         if expiry_state == ExpiryState::Expired {
@@ -707,18 +727,26 @@ impl Resolver {
         })
     }
 
-    #[instrument(level = "trace", skip(self))]
-    async fn get_grouptoken(
+    #[instrument(level = "trace", skip(self, dbtxn))]
+    async fn get_grouptoken<T>(
         &self,
+        dbtxn: &mut T,
         grp_id: Id,
         current_time: SystemTime,
-    ) -> Result<Option<GroupToken>, Error> {
-        let (expired, item) = self.get_cached_grouptoken(&grp_id).await.inspect_err(|e| {
-            debug!("get_grouptoken error -> {:?}", e);
-        })?;
+    ) -> Result<Option<GroupToken>, Error>
+    where
+        T: CacheReadTxn + CacheWriteTxn,
+    {
+        let (expired, item) = self
+            .get_cached_grouptoken(dbtxn, &grp_id)
+            .await
+            .inspect_err(|e| {
+                debug!("get_grouptoken error -> {:?}", e);
+            })?;
 
         if expired {
-            self.refresh_grouptoken(&grp_id, item, current_time).await
+            self.refresh_grouptoken(dbtxn, &grp_id, item, current_time)
+                .await
         } else {
             // Still valid, return the cached entry.
             Ok(item)
@@ -728,9 +756,10 @@ impl Resolver {
         })
     }
 
-    async fn get_groupmembers(&self, g_uuid: Uuid) -> Vec<String> {
-        let mut dbtxn = self.db.write().await;
-
+    async fn get_groupmembers<T>(&self, dbtxn: &mut T, g_uuid: Uuid) -> Vec<String>
+    where
+        T: CacheReadTxn,
+    {
         dbtxn
             .get_group_members(g_uuid)
             .unwrap_or_else(|_| Vec::new())
@@ -874,15 +903,19 @@ impl Resolver {
 
     #[instrument(level = "debug", skip_all)]
     pub async fn get_nssgroups(&self) -> Result<Vec<NssGroup>, Error> {
+        let mut dbtxn = self.db.read().await;
+
         let mut r = self.system_provider.get_nssgroups().await;
 
         // Extend all the local groups if maps exist.
         for nss_group in r.iter_mut() {
             for client in self.clients.iter() {
                 if let Some(extend_group_id) = client.has_map_group(&nss_group.name) {
-                    let (_, token) = self.get_cached_grouptoken(extend_group_id).await?;
+                    let (_, token) = self
+                        .get_cached_grouptoken(&mut dbtxn, extend_group_id)
+                        .await?;
                     if let Some(token) = token {
-                        let members = self.get_groupmembers(token.uuid).await;
+                        let members = self.get_groupmembers(&mut dbtxn, token.uuid).await;
                         nss_group.members.extend(members);
                         debug!(
                             "extended group {} with members from {}",
@@ -893,10 +926,10 @@ impl Resolver {
             }
         }
 
-        let l = self.get_cached_grouptokens().await?;
+        let l = self.get_cached_grouptokens(&mut dbtxn).await?;
         r.reserve(l.len());
         for tok in l.into_iter() {
-            let members = self.get_groupmembers(tok.uuid).await;
+            let members = self.get_groupmembers(&mut dbtxn, tok.uuid).await;
             r.push(NssGroup {
                 name: self.token_gidattr(&tok),
                 gid: tok.gidnumber,
@@ -908,16 +941,32 @@ impl Resolver {
 
     #[instrument(level = "trace", skip_all)]
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, Error> {
+        let mut dbtxn = self.db.write().await;
+
+        let result = self.get_nssgroup_txn(&mut dbtxn, grp_id).await?;
+
+        dbtxn.commit().map(|_| result)
+    }
+
+    #[instrument(level = "trace", skip_all)]
+    async fn get_nssgroup_txn<T>(
+        &self,
+        dbtxn: &mut T,
+        grp_id: Id,
+    ) -> Result<Option<NssGroup>, Error>
+    where
+        T: CacheWriteTxn + CacheReadTxn,
+    {
         if let Some(mut nss_group) = self.system_provider.get_nssgroup(&grp_id).await {
             debug!("system provider satisfied request");
 
             for client in self.clients.iter() {
                 if let Some(extend_group_id) = client.has_map_group(&nss_group.name) {
                     let token = self
-                        .get_grouptoken(extend_group_id.clone(), SystemTime::now())
+                        .get_grouptoken(dbtxn, extend_group_id.clone(), SystemTime::now())
                         .await?;
                     if let Some(token) = token {
-                        let members = self.get_groupmembers(token.uuid).await;
+                        let members = self.get_groupmembers(dbtxn, token.uuid).await;
                         nss_group.members.extend(members);
                         debug!(
                             "extended group {} with members from {}",
@@ -933,11 +982,13 @@ impl Resolver {
             return Ok(Some(nss_group));
         }
 
-        let token = self.get_grouptoken(grp_id, SystemTime::now()).await?;
+        let token = self
+            .get_grouptoken(dbtxn, grp_id, SystemTime::now())
+            .await?;
         // Get members set.
         match token {
             Some(tok) => {
-                let members = self.get_groupmembers(tok.uuid).await;
+                let members = self.get_groupmembers(dbtxn, tok.uuid).await;
                 Ok(Some(NssGroup {
                     name: self.token_gidattr(&tok),
                     gid: tok.gidnumber,
@@ -1196,7 +1247,8 @@ impl Resolver {
         pam_next_req: PamAuthRequest,
     ) -> Result<PamAuthResponse, Error> {
         let current_time = SystemTime::now();
-        let mut hsm_lock = self.hsm.lock().await;
+        let mut dbtxn = self.db.write().await;
+        let mut hsm_lock = self.hsm_lock(&mut dbtxn).await;
 
         let maybe_err = match &mut *auth_session {
             &mut AuthSession::Online {
@@ -1211,7 +1263,7 @@ impl Resolver {
                 // requests an update. Since we hold the hsm_lock, no other task can
                 // update this token between now and completion of the fn.
                 let current_token = self
-                    .get_cached_usertoken(id, current_time)
+                    .get_cached_usertoken(&mut dbtxn, id, current_time)
                     .await
                     .map(|(_expired, option_token)| option_token)
                     .inspect_err(|err| {
@@ -1256,7 +1308,7 @@ impl Resolver {
                 // requests an update. Since we hold the hsm_lock, no other task can
                 // update this token between now and completion of the fn.
                 let current_token = self
-                    .get_cached_usertoken(id, current_time)
+                    .get_cached_usertoken(&mut dbtxn, id, current_time)
                     .await
                     .map(|(_expired, option_token)| option_token)
                     .inspect_err(|err| {
@@ -1332,8 +1384,7 @@ impl Resolver {
                 Ok(PamAuthResponse::Success)
             }
             Ok(AuthResult::SuccessUpdate { mut new_token }) => {
-                self.set_cache_usertoken(&mut new_token, hsm_lock.deref_mut())
-                    .await?;
+                self.set_cache_usertoken(dbtxn, &mut new_token).await?;
                 *auth_session = AuthSession::Success;
 
                 Ok(PamAuthResponse::Success)
