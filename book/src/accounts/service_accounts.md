@@ -23,6 +23,9 @@ kanidm service-account get demo_service --name idm_admin
 By delegating the administration of this service account to `demo_group` this allows our `demo_user` to administer the
 service account.
 
+> NOTE: `admin` and `idm_admin` accounts are not permitted to run `api-token generate` for service accounts so `demo_group`
+> must have at least one user in it to enable token generation.
+
 ## Generating API Tokens For Service Accounts
 
 Service accounts can have API tokens generated and associated with them. These tokens can be used for identification of
