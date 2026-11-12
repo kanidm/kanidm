@@ -112,6 +112,7 @@ enum HomeStrategyV2 {
 /// This is the version 2 of the JSON configuration specification for the unixd suite.
 struct ConfigV2 {
     cache_db_path: Option<String>,
+    db_path: Option<String>,
     sock_path: Option<String>,
     task_sock_path: Option<String>,
 
@@ -211,6 +212,7 @@ pub enum HomeStrategy {
 /// This is the parsed configuration for the Unixd resolver.
 pub struct UnixdConfig {
     pub cache_db_path: String,
+    pub db_path: String,
     pub sock_path: String,
     pub task_sock_path: String,
     pub cache_timeout: u64,
@@ -288,6 +290,10 @@ impl UnixdConfig {
             Ok(val) => val,
             Err(_) => DEFAULT_CACHE_DB_PATH.into(),
         };
+        let db_path = match env::var("KANIDM_DB_PATH") {
+            Ok(val) => val,
+            Err(_) => DEFAULT_PERSISTENT_DB_PATH.into(),
+        };
         let hsm_pin_path = match env::var("KANIDM_HSM_PIN_PATH") {
             Ok(val) => val,
             Err(_) => DEFAULT_HSM_PIN_PATH.into(),
@@ -295,6 +301,7 @@ impl UnixdConfig {
 
         UnixdConfig {
             cache_db_path,
+            db_path,
             sock_path: DEFAULT_SOCK_PATH.to_string(),
             task_sock_path: DEFAULT_TASK_SOCK_PATH.to_string(),
             unix_sock_timeout: DEFAULT_CONN_TIMEOUT * 2,
@@ -396,6 +403,7 @@ impl UnixdConfig {
 
         // Now map the values into our config.
         Ok(UnixdConfig {
+            db_path: self.db_path,
             cache_db_path: config.db_path.unwrap_or(self.cache_db_path),
             sock_path: config.sock_path.unwrap_or(self.sock_path),
             task_sock_path: config.task_sock_path.unwrap_or(self.task_sock_path),
@@ -539,6 +547,7 @@ impl UnixdConfig {
         // Now map the values into our config.
         Ok(UnixdConfig {
             cache_db_path: config.cache_db_path.unwrap_or(self.cache_db_path),
+            db_path: config.db_path.unwrap_or(self.db_path),
             sock_path: config.sock_path.unwrap_or(self.sock_path),
             task_sock_path: config.task_sock_path.unwrap_or(self.task_sock_path),
             unix_sock_timeout: DEFAULT_CONN_TIMEOUT * 2,
