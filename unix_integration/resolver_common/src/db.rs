@@ -248,9 +248,12 @@ impl<'a> DbWriteTxn<'a> {
     }
 
     fn get_account_data_name(&mut self, account_id: &str) -> Result<Vec<(Vec<u8>, i64)>, Error> {
+        // IMPORTANT: Note that we search name, spn and gidnumber here. This is because some poorly coded
+        // applications use the gidnumber in nss name calls (rather than id calls). As a result we have to
+        // look this up here too to prevent confusion
         let mut stmt = self.conn
             .prepare(
-        "SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id"
+        "SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id OR gidnumber = :account_id"
             )
             .map_err(|e| {
                 self.sqlite_error("select prepare", &e)
@@ -285,7 +288,7 @@ impl<'a> DbWriteTxn<'a> {
     fn get_group_data_name(&mut self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, Error> {
         let mut stmt = self.conn
             .prepare(
-                "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
+                "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id OR gidnumber = :grp_id"
             )
             .map_err(|e| {
                 self.sqlite_error("select prepare", &e)
