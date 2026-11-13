@@ -8,7 +8,6 @@ authors = { workspace = true }
 rust-version = { workspace = true }
 edition = { workspace = true }
 license = { workspace = true }
-homepage = { workspace = true }
 repository = { workspace = true }
 
 [[bin]]
@@ -42,10 +41,6 @@ kanidmd_lib = { workspace = true }
 
 [target.'cfg(target_family = "unix")'.dependencies]
 kanidm_utils_users = { workspace = true }
-
-[build-dependencies]
-clap = { workspace = true, features = ["derive"] }
-clap_complete = { workspace = true }
 
 [package.metadata.cargo-machete]
 ignored = ["clap_complete"]
