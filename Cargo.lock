@@ -3772,7 +3772,6 @@ version = "1.13.0-dev"
 dependencies = [
  "chrono",
  "clap",
- "clap_complete",
  "cron",
  "kanidm_client",
  "kanidm_lib_crypto",
@@ -3798,7 +3797,6 @@ version = "1.13.0-dev"
 dependencies = [
  "chrono",
  "clap",
- "clap_complete",
  "cron",
  "kanidm_client",
  "kanidm_lib_file_permissions",
@@ -3825,7 +3823,6 @@ version = "1.13.0-dev"
 dependencies = [
  "chrono",
  "clap",
- "clap_complete",
  "cron",
  "hashbrown 0.17.1",
  "kanidm_client",

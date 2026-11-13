@@ -8,7 +8,6 @@ authors = { workspace = true }
 rust-version = { workspace = true }
 edition = { workspace = true }
 license = { workspace = true }
-homepage = { workspace = true }
 repository = { workspace = true }
 
 [features]
@@ -76,7 +75,6 @@ kanidmd_core = { workspace = true }
 kanidmd_testkit = { workspace = true }
 
 [build-dependencies]
-clap = { workspace = true, features = ["derive"] }
 kanidm_build_profiles = { workspace = true }
 
 [package.metadata.cargo-machete]
