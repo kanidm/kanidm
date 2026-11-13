@@ -8,7 +8,7 @@ use kanidmd_lib::{
 };
 use ldap3_proto::{proto::LdapMsg, LdapCodec};
 use sketching::LoggerType;
-use std::{net::SocketAddr, str::FromStr, sync::Arc};
+use std::{io::ErrorKind, net::SocketAddr, str::FromStr, sync::Arc};
 use tokio::{
     io::{AsyncRead, AsyncWrite, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -203,7 +203,12 @@ async fn client_tls_accept(
     let tlsstream = match timeout(LDAP_CLIENT_CONN_TIMEOUT, tls_acceptor.accept(stream)).await {
         Ok(Ok(ta)) => ta,
         Ok(Err(err)) => {
-            error!(?err, %client_addr, %connection_addr, "LDAP TLS setup error");
+            match err.kind() {
+                ErrorKind::ConnectionReset => {
+                    debug!(%client_addr, %connection_addr, "Connection reset before we setup TLS")
+                }
+                _ => error!(?err, %client_addr, %connection_addr, "LDAP TLS setup error"),
+            }
             return;
         }
         Err(_) => {
