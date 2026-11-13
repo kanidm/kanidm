@@ -380,15 +380,16 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                     name: name.to_owned(),
                 },
             )
-            .await;
+            .await
         }
 
         ScriptingCommand::Backup { path } => {
             backup_server_core(&config, path.as_deref());
+            ExitCode::SUCCESS
         }
 
         ScriptingCommand::Reload => {
-            submit_admin_req_json(config.adminbindpath.as_str(), AdminTaskRequest::Reload).await;
+            submit_admin_req_json(config.adminbindpath.as_str(), AdminTaskRequest::Reload).await
         }
 
         ScriptingCommand::HealthCheck {
@@ -485,10 +486,9 @@ async fn scripting_command(cmd: ScriptingCommand, config: Configuration) -> Exit
                 }
             };
             display_json_success();
+            ExitCode::SUCCESS
         }
     }
-
-    ExitCode::SUCCESS
 }
 
 // We have to do this because we can't use tracing until we've started the logging pipeline, and we can't start the logging pipeline until the tokio runtime's doing its thing.
@@ -960,7 +960,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         }
         KanidmdOpt::ShowReplicationCertificate => {
             info!("Running show replication certificate ...");
-            submit_admin_req_human(
+            return submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::ShowReplicationCertificate,
             )
@@ -968,7 +968,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         }
         KanidmdOpt::ShowReplicationCertificateMetadata => {
             info!("Running show replication certificate metadata ...");
-            submit_admin_req_human(
+            return submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::ShowReplicationCertificateMetadata,
             )
@@ -977,7 +977,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
 
         KanidmdOpt::RenewReplicationCertificate => {
             info!("Running renew replication certificate ...");
-            submit_admin_req_human(
+            return submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::RenewReplicationCertificate,
             )
@@ -988,7 +988,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
             if !proceed {
                 error!("Unwilling to proceed. Check --help.");
             } else {
-                submit_admin_req_human(
+                return submit_admin_req_human(
                     config.adminbindpath.as_str(),
                     AdminTaskRequest::RefreshReplicationConsumer,
                 )
@@ -998,7 +998,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         KanidmdOpt::RecoverAccount { name } => {
             info!("Running account recovery ...");
 
-            submit_admin_req_human(
+            return submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::RecoverAccount {
                     name: name.to_owned(),
@@ -1009,7 +1009,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         KanidmdOpt::DisableAccount { name } => {
             info!("Running account disable ...");
 
-            submit_admin_req_human(
+            return submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DisableAccount {
                     name: name.to_owned(),
@@ -1087,8 +1087,11 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running domain show ...");
 
-            submit_admin_req_human(config.adminbindpath.as_str(), AdminTaskRequest::DomainShow)
-                .await;
+            return submit_admin_req_human(
+                config.adminbindpath.as_str(),
+                AdminTaskRequest::DomainShow,
+            )
+            .await;
         }
 
         KanidmdOpt::DomainSettings {
@@ -1096,7 +1099,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running domain upgrade check ...");
 
-            submit_admin_req_human(
+            return submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainUpgradeCheck,
             )
@@ -1108,8 +1111,11 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("Running domain raise ...");
 
-            submit_admin_req_human(config.adminbindpath.as_str(), AdminTaskRequest::DomainRaise)
-                .await;
+            return submit_admin_req_human(
+                config.adminbindpath.as_str(),
+                AdminTaskRequest::DomainRaise,
+            )
+            .await;
         }
 
         KanidmdOpt::DomainSettings {
@@ -1117,7 +1123,7 @@ async fn kanidm_main(config: Configuration, opt: KanidmdParser) -> ExitCode {
         } => {
             info!("⚠️  Running domain remigrate ...");
 
-            submit_admin_req_human(
+            return submit_admin_req_human(
                 config.adminbindpath.as_str(),
                 AdminTaskRequest::DomainRemigrate { level: *level },
             )
