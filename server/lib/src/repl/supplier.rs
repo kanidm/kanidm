@@ -60,11 +60,12 @@ impl QueryServerWriteTransaction<'_> {
         let validity = Validity::new(not_before, not_after);
 
         let serial_number = x509::uuid_to_serial(s_uuid);
-        let subject =
-            x509::Name::from_str(&format!("CN={s_uuid},O=Kanidm Replication")).map_err(|err| {
-                error!(?err, "Unable to parse subject dn");
-                OperationError::CryptographyError
-            })?;
+        // Important - for some reason O= here doesn't propogate to issuer, I suspect
+        // due to being a CAB profile.
+        let subject = x509::Name::from_str(&format!("CN={s_uuid}")).map_err(|err| {
+            error!(?err, "Unable to parse subject dn");
+            OperationError::CryptographyError
+        })?;
 
         // Subject Alt Name
         // We need to understand how rustls treats this to issue the correct SAN value.
