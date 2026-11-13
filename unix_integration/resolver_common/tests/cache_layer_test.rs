@@ -577,6 +577,14 @@ async fn test_cache_account_password() {
         .expect("Failed to get from cache");
     assert!(ut.is_some());
 
+    // Because this is a "number" inside of the name field, this can trip up the cache
+    // as it thinks that this is the *name* of the account, not it's Gid.
+    let ut = cachelayer
+        .get_nssaccount_name_time("20000", current_time_st + Duration::from_secs(3600))
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_some());
+
     // Go offline.
     cachelayer.mark_offline().await;
 
