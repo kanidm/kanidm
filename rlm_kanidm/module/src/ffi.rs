@@ -376,48 +376,57 @@ impl AuthResponse {
                 request,
             );
         })?;
-        vp_add_pair(talloc_ctx, reply_vp, REPLY_TUNNEL_TYPE, tunnel_type).inspect_err(|_| {
-            rerror(
-                format!(
-                    "populate_request: failed to add reply_attribute: {}",
-                    REPLY_TUNNEL_TYPE
-                )
-                .as_str(),
-                request,
-            );
-        })?;
-        vp_add_pair(
-            talloc_ctx,
-            reply_vp,
-            REPLY_TUNNEL_MEDIUM_TYPE,
-            tunnel_medium_type,
-        )
-        .inspect_err(|_| {
-            rerror(
-                format!(
-                    "populate_request: failed to add reply_attribute: {}",
-                    REPLY_TUNNEL_MEDIUM_TYPE
-                )
-                .as_str(),
-                request,
-            );
-        })?;
-        vp_add_pair(
-            talloc_ctx,
-            reply_vp,
-            REPLY_TUNNEL_PRIVATE_GROUP_ID,
-            tunnel_private_group_id.as_str(),
-        )
-        .inspect_err(|_| {
-            rerror(
-                format!(
-                    "populate_request: failed to add reply_attribute: {}",
-                    REPLY_TUNNEL_PRIVATE_GROUP_ID
-                )
-                .as_str(),
-                request,
-            );
-        })?;
+
+        if let Some(tunnel_private_group_id) = tunnel_private_group_id {
+            // Only update the vlan if it's set.
+
+            vp_add_pair(talloc_ctx, reply_vp, REPLY_TUNNEL_TYPE, tunnel_type).inspect_err(
+                |_| {
+                    rerror(
+                        format!(
+                            "populate_request: failed to add reply_attribute: {}",
+                            REPLY_TUNNEL_TYPE
+                        )
+                        .as_str(),
+                        request,
+                    );
+                },
+            )?;
+
+            vp_add_pair(
+                talloc_ctx,
+                reply_vp,
+                REPLY_TUNNEL_MEDIUM_TYPE,
+                tunnel_medium_type,
+            )
+            .inspect_err(|_| {
+                rerror(
+                    format!(
+                        "populate_request: failed to add reply_attribute: {}",
+                        REPLY_TUNNEL_MEDIUM_TYPE
+                    )
+                    .as_str(),
+                    request,
+                );
+            })?;
+
+            vp_add_pair(
+                talloc_ctx,
+                reply_vp,
+                REPLY_TUNNEL_PRIVATE_GROUP_ID,
+                tunnel_private_group_id.as_str(),
+            )
+            .inspect_err(|_| {
+                rerror(
+                    format!(
+                        "populate_request: failed to add reply_attribute: {}",
+                        REPLY_TUNNEL_PRIVATE_GROUP_ID
+                    )
+                    .as_str(),
+                    request,
+                );
+            })?;
+        }
 
         Ok(())
     }
