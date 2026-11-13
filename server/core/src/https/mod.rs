@@ -607,7 +607,12 @@ async fn handle_tls_conn(
     let tls_stream = match timeout(HTTPS_CLIENT_CONN_TIMEOUT, acceptor.accept(stream)).await {
         Ok(Ok(tls_stream)) => tls_stream,
         Ok(Err(err)) => {
-            error!(?err, "Failed to create TLS stream");
+            match err.kind() {
+                ErrorKind::ConnectionReset => {
+                    debug!(%client_addr, %connection_addr, "Connection reset before we setup TLS")
+                }
+                _ => error!(?err, "Failed to create TLS stream"),
+            }
             return Err(std::io::Error::from(ErrorKind::ConnectionAborted));
         }
         Err(_) => {
