@@ -7,7 +7,6 @@ authors = [
 rust-version = "1.96"
 edition = "2021"
 license = "MPL-2.0"
-homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
 [workspace]
@@ -156,7 +155,7 @@ sketching = { path = "./libs/sketching", version = "=1.12.0" }
 kanidm-hsm-crypto = { version = "^0.4.0" }
 
 anyhow = { version = "1.0.102" }
-argon2 = { version = "0.5.3", features = ["alloc"] }
+# argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.16.0" }
 askama_web = { version = "0.16.0", features = ["axum-0.8"] }
 async-trait = "^0.1.89"
@@ -193,9 +192,9 @@ dialoguer = "0.12.0"
 dhat = "0.3.3"
 dyn-clone = "^1.0.20"
 enum-iterator = "2.3.0"
-fantoccini = "0.22.0"
+# fantoccini = "0.22.0"
 filetime = "^0.2.29"
-fs4 = "^1.0.2"
+# fs4 = "^1.0.2"
 futures = "^0.3.32"
 futures-util = { version = "^0.3.32", features = ["sink"] }
 gethostname = "1.1.0"
@@ -316,6 +315,6 @@ webauthn-rs-core = "0.6.2"
 webauthn-rs-proto = "0.6.2"
 whoami = "^2.1.1"
 walkdir = "2"
-x509-cert = "0.2.5"
+# x509-cert = "0.2.5"
 yescrypt = "0.1.0-rc.5"
 zxcvbn = "3.1.1"
