@@ -37,7 +37,7 @@ pub struct ResponseReplyAttributes {
     pub message: String,
     pub tunnel_type: &'static str,
     pub tunnel_medium_type: &'static str,
-    pub tunnel_private_group_id: String,
+    pub tunnel_private_group_id: Option<String>,
     pub reply_attributes: BTreeMap<String, String>,
 }
 
@@ -104,7 +104,7 @@ impl<'a> AuthRequest<'a> {
 }
 
 struct GroupConfig {
-    vlan: u32,
+    vlan: Option<u32>,
     reply_attributes: BTreeMap<String, String>,
 }
 
@@ -212,7 +212,7 @@ impl Module {
             message: format!("Kanidm-Uuid: {}", token.uuid),
             tunnel_type: TUNNEL_TYPE_VLAN,
             tunnel_medium_type: TUNNEL_MEDIUM_TYPE_IEEE_802,
-            tunnel_private_group_id: vlan.to_string(),
+            tunnel_private_group_id: vlan.map(|v| v.to_string()),
             reply_attributes,
         };
 
@@ -237,7 +237,10 @@ impl Module {
 
         for group in user_groups {
             if let Some(group_config) = self.group_configs.get(&group.spn) {
-                vlan = group_config.vlan;
+                // Only update if there actually is a vlan assigned to the group.
+                if group_config.vlan.is_some() {
+                    vlan = group_config.vlan;
+                }
                 reply_attributes.extend(group_config.reply_attributes.clone());
             }
         }
@@ -286,16 +289,16 @@ mod tests {
             auth_token: "token".to_string(),
             ca_path: None,
             radius_required_groups: vec!["allow".to_string()],
-            radius_default_vlan: 1,
+            radius_default_vlan: Some(1),
             radius_groups: vec![
                 RadiusGroupConfig {
                     spn: "g1".to_string(),
-                    vlan: 10,
+                    vlan: Some(10),
                     reply_attributes: BTreeMap::from_iter([("group".to_string(), "1".to_string())]),
                 },
                 RadiusGroupConfig {
                     spn: "g2".to_string(),
-                    vlan: 20,
+                    vlan: Some(20),
                     reply_attributes: BTreeMap::from_iter([("group".to_string(), "2".to_string())]),
                 },
             ],
@@ -320,7 +323,7 @@ mod tests {
             reply_attributes,
         } = module.resolve_group_configs(&groups);
 
-        assert_eq!(vlan, 20);
+        assert_eq!(vlan, Some(20));
         assert_eq!(
             reply_attributes,
             BTreeMap::from_iter([("group".to_string(), "2".to_string())]),
@@ -456,7 +459,7 @@ mod tests {
         assert_eq!(result.reply.user_name, "testuser");
         assert_eq!(result.reply.tunnel_type, "13");
         assert_eq!(result.reply.tunnel_medium_type, "6");
-        assert_eq!(result.reply.tunnel_private_group_id, "1");
+        assert_eq!(result.reply.tunnel_private_group_id, None);
         assert!(!result.reply.message.is_empty());
 
         assert_eq!(result.control.cleartext_password, Some(secret));

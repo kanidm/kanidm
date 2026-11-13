@@ -6,7 +6,8 @@ uri = "https://example.com" # URL to the Kanidm server
 auth_token = "ABC..." # Auth token for the service account
 # See: kanidm service-account api-token generate
 
-# Default vlans for groups that don't specify one.
+# Default vlans for groups that don't specify one. If commented out, no
+# vlan will be issued in replies.
 radius_default_vlan = 1
 
 # A list of Kanidm groups which must be a member
@@ -43,11 +44,13 @@ secret = "testing123"
 # A mapping between Kanidm groups and VLANS that they are assigned.
 [[radius_groups]]
 spn = "radius_access_allowed@idm.example.com"
-vlan = 10
+# If commented out, the default vlan will apply (or none if disabled)
+# vlan = 10
 
 [[radius_groups]]
 spn = "my_admin_group@idm.example.com"
 vlan = 20
+
 # # This allows insertion of vendor specific attributes to replys
 # # when someone is a member of this specific group.
 # # WARNING: Vendor Attributes that are UNKNOWN to FreeRADIUS will
