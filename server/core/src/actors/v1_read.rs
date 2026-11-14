@@ -7,6 +7,7 @@ use kanidm_proto::{
         SearchRequest, SearchResponse, UserAuthToken,
     },
     oauth2::OidcWebfingerResponse,
+    scim_v1::server::ScimOAuth2Session,
     v1::{
         AuthIssueSession, Entry as ProtoEntry, UatStatus, UnixGroupToken, UnixUserToken,
         WhoamiResponse,
@@ -17,7 +18,7 @@ use kanidmd_lib::{
     event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
     idm::{
-        account::ListUserAuthTokenEvent,
+        account::{ListUserAuthTokenEvent, ListUserOAuth2SessionsEvent},
         authentication::{AuthStep, ReauthRequest},
         credupdatesession::CredentialUpdateSessionToken,
         event::{
@@ -1035,6 +1036,44 @@ impl QueryServerReadV1 {
                     ct,
                 ),
         }
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_user_session_retrieval(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        user_id: String,
+    ) -> Result<Vec<ScimOAuth2Session>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await?;
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                error!("Invalid identity: {:?}", e);
+                e
+            })?;
+
+        let target = idms_prox_read.qs_read.name_to_uuid(&user_id).map_err(|e| {
+            error!("No user found with the provided ID: {:?}", e);
+            e
+        })?;
+
+        let sessions = idms_prox_read
+            .account_list_active_user_oauth2_sessions(&ListUserOAuth2SessionsEvent {
+                ident,
+                target,
+            })
+            .map_err(|e| {
+                error!("Failed to retrieve user oauth2 sessions {:?}", e);
+                e
+            })?;
+
+        Ok(sessions)
     }
 
     #[instrument(

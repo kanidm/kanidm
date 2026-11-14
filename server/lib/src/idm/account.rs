@@ -20,6 +20,7 @@ use crate::{
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_proto::{
     internal::{CredentialStatus, UatPurpose, UiHint, UserAuthToken},
+    scim_v1::server::ScimOAuth2Session,
     v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken},
 };
 use sshkey_attest::proto::PublicKey as SshPublicKey;
@@ -1078,6 +1079,13 @@ pub struct ListUserAuthTokenEvent {
     pub target: Uuid,
 }
 
+pub struct ListUserOAuth2SessionsEvent {
+    // Who initiated this?
+    pub ident: Identity,
+    // Who is it targeting?
+    pub target: Uuid,
+}
+
 impl IdmServerProxyReadTransaction<'_> {
     pub fn account_list_user_auth_tokens(
         &mut self,
@@ -1141,6 +1149,39 @@ impl IdmServerProxyReadTransaction<'_> {
             }
             Err(e) => Err(e),
         }
+    }
+
+    pub fn account_list_active_user_oauth2_sessions(
+        &mut self,
+        lse: &ListUserOAuth2SessionsEvent,
+    ) -> Result<Vec<ScimOAuth2Session>, OperationError> {
+        // Make an event from the request
+        let srch = match SearchEvent::from_target_uuid_request(
+            lse.ident.clone(),
+            lse.target,
+            &self.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin account list user auth tokens: {:?}", e);
+                return Err(e);
+            }
+        };
+
+        let mut entries = self.qs_read.search_ext(&srch)?;
+        debug_assert!(entries.len() == 1);
+        let entry = entries.pop().ok_or(OperationError::InvalidEntryId)?;
+
+        Ok(
+            // From the entry, turn it into the value
+            entry
+                .get_ava_as_skim_values(Attribute::OAuth2Session)
+                .and_then(|scim_values| match scim_values.resolved() {
+                    Some(ScimValueKanidm::OAuth2Session(sessions)) => Some(sessions),
+                    _ => None,
+                })
+                .unwrap_or_else(|| Vec::with_capacity(0)),
+        )
     }
 }
 
