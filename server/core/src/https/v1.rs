@@ -30,6 +30,7 @@ use kanidm_proto::{
         ModifyRequest, RadiusAuthToken, SearchRequest, SearchResponse, UserAuthToken,
         COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN,
     },
+    scim_v1::server::ScimOAuth2Session,
     v1::{
         AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
         AuthState as ProtoAuthState, Entry as ProtoEntry, GroupUnixExtend, SingleStringRequest,
@@ -2215,6 +2216,31 @@ pub async fn person_identify_user_post(
 }
 
 #[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_sessions",
+    responses(
+        (status=200, body=Vec<ScimOAuth2Session>, content_type=APPLICATION_JSON),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "person",
+    operation_id = "person_sessions_get"
+)]
+pub async fn person_id_sessions_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(id): Path<String>,
+) -> Result<Json<Vec<ScimOAuth2Session>>, WebError> {
+    state
+        .qe_r_ref
+        .handle_user_session_retrieval(client_auth_info, kopid.eventid, id)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
     get,
     path = "/v1/group",
     responses(
@@ -3299,6 +3325,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
             "/v1/person/{id}/_identify_user",
             post(person_identify_user_post),
         )
+        .route("/v1/person/{id}/_sessions", get(person_id_sessions_get))
         // Service accounts
         .route(
             "/v1/service_account",

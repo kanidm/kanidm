@@ -141,6 +141,7 @@ impl Modify for SecurityAddon {
         super::v1::person_id_radius_post,
         super::v1::person_id_radius_delete,
         super::v1::person_id_radius_token_get,
+        super::v1::person_id_sessions_get,
 
         super::v1::account_id_ssh_pubkeys_get,
         // super::v1::account_id_radius_token_post,
