@@ -1169,7 +1169,6 @@ impl IdmServerProxyReadTransaction<'_> {
         };
 
         let mut entries = self.qs_read.search_ext(&srch)?;
-        debug_assert!(entries.len() == 1);
         let entry = entries.pop().ok_or(OperationError::InvalidEntryId)?;
 
         Ok(
