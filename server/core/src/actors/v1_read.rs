@@ -1094,7 +1094,10 @@ impl QueryServerReadV1 {
             })
             .collect::<Result<BTreeMap<_, _>, OperationError>>()?;
 
-        #[expect(clippy::indexing_slicing, reason = "client_id is always present in clients; see above")]
+        #[expect(
+            clippy::indexing_slicing,
+            reason = "client_id is always present in clients; see above"
+        )]
         Ok(sessions
             .into_iter()
             .map(|s| OAuth2Session {
