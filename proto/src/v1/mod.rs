@@ -6,8 +6,9 @@
 #![allow(non_upper_case_globals)]
 
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::{collections::BTreeMap, fmt, fmt::Display};
-use time::OffsetDateTime;
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -125,28 +126,18 @@ impl fmt::Display for Entry {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
-pub enum OAuth2SessionState {
-    ExpiresAt(OffsetDateTime),
-    NeverExpires,
-}
-
-impl Display for OAuth2SessionState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NeverExpires => write!(f, "expires (never)"),
-            Self::ExpiresAt(odt) => write!(f, "expires ({})", odt),
-        }
-    }
-}
-
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub struct OAuth2Session {
     pub id: Uuid,
     pub parent: Option<Uuid>,
-    pub state: OAuth2SessionState,
+    #[serde_as(as = "Option<Rfc3339>")]
+    pub expires: Option<OffsetDateTime>,
+    #[serde_as(as = "Option<Rfc3339>")]
+    pub revoked: Option<OffsetDateTime>,
+    #[serde_as(as = "Rfc3339")]
     pub issued_at: OffsetDateTime,
-    pub rs_uuid: Uuid,
+    pub oauth_client: String,
 }
 
 impl fmt::Display for OAuth2Session {
@@ -155,9 +146,14 @@ impl fmt::Display for OAuth2Session {
         if let Some(parent_id) = self.parent {
             writeln!(f, "parent_id: {}", parent_id)?;
         }
-        writeln!(f, "state: {}", self.state)?;
+        if let Some(expires) = self.expires {
+            writeln!(f, "expires: {}", expires)?;
+        }
+        if let Some(revoked) = self.revoked {
+            writeln!(f, "revoked: {}", revoked)?;
+        }
         writeln!(f, "issued_at: {}", self.issued_at)?;
-        writeln!(f, "resource_server_id: {}", self.rs_uuid)?;
+        writeln!(f, "oauth2_client_name: {}", self.oauth_client)?;
         Ok(())
     }
 }
