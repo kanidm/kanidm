@@ -7,10 +7,9 @@ use kanidm_proto::{
         SearchRequest, SearchResponse, UserAuthToken,
     },
     oauth2::OidcWebfingerResponse,
-    scim_v1::server::ScimOAuth2Session,
     v1::{
-        AuthIssueSession, Entry as ProtoEntry, UatStatus, UnixGroupToken, UnixUserToken,
-        WhoamiResponse,
+        AuthIssueSession, Entry as ProtoEntry, OAuth2Session, UatStatus, UnixGroupToken,
+        UnixUserToken, WhoamiResponse,
     },
 };
 use kanidmd_lib::{
@@ -42,6 +41,7 @@ use kanidmd_lib::{
 use ldap3_proto::simple::*;
 use regex::Regex;
 use std::{
+    collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
     fs,
     net::IpAddr,
@@ -1048,7 +1048,8 @@ impl QueryServerReadV1 {
         client_auth_info: ClientAuthInfo,
         eventid: Uuid,
         user_id: String,
-    ) -> Result<Vec<ScimOAuth2Session>, OperationError> {
+        include_inactive: bool,
+    ) -> Result<Vec<OAuth2Session>, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
@@ -1063,7 +1064,7 @@ impl QueryServerReadV1 {
             e
         })?;
 
-        let sessions = idms_prox_read
+        let mut sessions = idms_prox_read
             .account_list_active_user_oauth2_sessions(&ListUserOAuth2SessionsEvent {
                 ident,
                 target,
@@ -1073,7 +1074,38 @@ impl QueryServerReadV1 {
                 e
             })?;
 
-        Ok(sessions)
+        if sessions.is_empty() {
+            return Ok(Vec::with_capacity(0));
+        }
+
+        // Filter out all expired sessions
+        if !include_inactive {
+            sessions.retain(|s| s.revoked.is_none());
+        }
+
+        let clients: BTreeSet<_> = sessions.iter().map(|s| s.client_id).collect();
+
+        let clients = clients
+            .into_iter()
+            .map(|c| {
+                idms_prox_read
+                    .get_oauth2_rs_by_id(&c)
+                    .map(|rs| (c, rs.name()))
+            })
+            .collect::<Result<BTreeMap<_, _>, OperationError>>()?;
+
+        #[expect(clippy::indexing_slicing, reason = "client_id is always present in clients; see above")]
+        Ok(sessions
+            .into_iter()
+            .map(|s| OAuth2Session {
+                id: s.id,
+                expires: s.expires,
+                revoked: s.revoked,
+                issued_at: s.issued_at,
+                parent: s.parent_id,
+                oauth_client: clients[&s.client_id].clone(),
+            })
+            .collect())
     }
 
     #[instrument(

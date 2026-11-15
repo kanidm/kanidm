@@ -970,6 +970,7 @@ pub static IDM_ACP_SELF_READ_DL8: LazyLock<BuiltinAcp> = LazyLock::new(|| Builti
         Attribute::UnixPassword,
         Attribute::LastModifiedCid,
         Attribute::PasswordChangedTime,
+        Attribute::OAuth2Session,
     ],
     ..Default::default()
 });
@@ -1430,7 +1431,11 @@ pub static IDM_ACP_PEOPLE_MANAGE_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| Bui
         match_class_filter!(EntryClass::Account),
         FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
     ])),
-    modify_removed_attrs: vec![Attribute::AccountExpire, Attribute::AccountValidFrom],
+    modify_removed_attrs: vec![
+        Attribute::AccountExpire,
+        Attribute::AccountValidFrom,
+        Attribute::OAuth2Session,
+    ],
     modify_present_attrs: vec![Attribute::AccountExpire, Attribute::AccountValidFrom],
     ..Default::default()
 });
@@ -1466,6 +1471,7 @@ pub static IDM_ACP_PEOPLE_READ_V1: LazyLock<BuiltinAcp> = LazyLock::new(|| Built
         Attribute::Uuid,
         Attribute::AccountExpire,
         Attribute::AccountValidFrom,
+        Attribute::OAuth2Session,
     ],
     ..Default::default()
 });
