@@ -6,7 +6,9 @@
 #![allow(non_upper_case_globals)]
 
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::{collections::BTreeMap, fmt, fmt::Display};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -121,6 +123,38 @@ impl fmt::Display for Entry {
         self.attrs
             .iter()
             .try_for_each(|(k, vs)| vs.iter().try_for_each(|v| writeln!(f, "{k}: {v}")))
+    }
+}
+
+#[serde_as]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
+pub struct OAuth2Session {
+    pub id: Uuid,
+    pub parent: Option<Uuid>,
+    #[serde_as(as = "Option<Rfc3339>")]
+    pub expires: Option<OffsetDateTime>,
+    #[serde_as(as = "Option<Rfc3339>")]
+    pub revoked: Option<OffsetDateTime>,
+    #[serde_as(as = "Rfc3339")]
+    pub issued_at: OffsetDateTime,
+    pub oauth_client: String,
+}
+
+impl fmt::Display for OAuth2Session {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "id: {}", self.id)?;
+        if let Some(parent_id) = self.parent {
+            writeln!(f, "parent_id: {}", parent_id)?;
+        }
+        if let Some(expires) = self.expires {
+            writeln!(f, "expires: {}", expires)?;
+        }
+        if let Some(revoked) = self.revoked {
+            writeln!(f, "revoked: {}", revoked)?;
+        }
+        writeln!(f, "issued_at: {}", self.issued_at)?;
+        writeln!(f, "oauth2_client_name: {}", self.oauth_client)?;
+        Ok(())
     }
 }
 

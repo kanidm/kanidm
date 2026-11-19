@@ -8,8 +8,8 @@ use kanidm_proto::{
     },
     oauth2::OidcWebfingerResponse,
     v1::{
-        AuthIssueSession, Entry as ProtoEntry, UatStatus, UnixGroupToken, UnixUserToken,
-        WhoamiResponse,
+        AuthIssueSession, Entry as ProtoEntry, OAuth2Session, UatStatus, UnixGroupToken,
+        UnixUserToken, WhoamiResponse,
     },
 };
 use kanidmd_lib::{
@@ -17,7 +17,7 @@ use kanidmd_lib::{
     event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
     idm::{
-        account::ListUserAuthTokenEvent,
+        account::{ListUserAuthTokenEvent, ListUserOAuth2SessionsEvent},
         authentication::{AuthStep, ReauthRequest},
         credupdatesession::CredentialUpdateSessionToken,
         event::{
@@ -41,6 +41,7 @@ use kanidmd_lib::{
 use ldap3_proto::simple::*;
 use regex::Regex;
 use std::{
+    collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
     fs,
     net::IpAddr,
@@ -1035,6 +1036,79 @@ impl QueryServerReadV1 {
                     ct,
                 ),
         }
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_user_session_retrieval(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        user_id: String,
+        include_inactive: bool,
+    ) -> Result<Vec<OAuth2Session>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await?;
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                error!("Invalid identity: {:?}", e);
+                e
+            })?;
+
+        let target = idms_prox_read.qs_read.name_to_uuid(&user_id).map_err(|e| {
+            error!("No user found with the provided ID: {:?}", e);
+            e
+        })?;
+
+        let mut sessions = idms_prox_read
+            .account_list_active_user_oauth2_sessions(&ListUserOAuth2SessionsEvent {
+                ident,
+                target,
+            })
+            .map_err(|e| {
+                error!("Failed to retrieve user oauth2 sessions {:?}", e);
+                e
+            })?;
+
+        if sessions.is_empty() {
+            return Ok(Vec::with_capacity(0));
+        }
+
+        // Filter out all expired sessions
+        if !include_inactive {
+            sessions.retain(|s| s.revoked.is_none());
+        }
+
+        let clients: BTreeSet<_> = sessions.iter().map(|s| s.client_id).collect();
+
+        let clients = clients
+            .into_iter()
+            .map(|c| {
+                idms_prox_read
+                    .get_oauth2_rs_by_id(&c)
+                    .map(|rs| (c, rs.name()))
+            })
+            .collect::<Result<BTreeMap<_, _>, OperationError>>()?;
+
+        #[expect(
+            clippy::indexing_slicing,
+            reason = "client_id is always present in clients; see above"
+        )]
+        Ok(sessions
+            .into_iter()
+            .map(|s| OAuth2Session {
+                id: s.id,
+                expires: s.expires,
+                revoked: s.revoked,
+                issued_at: s.issued_at,
+                parent: s.parent_id,
+                oauth_client: clients[&s.client_id].clone(),
+            })
+            .collect())
     }
 
     #[instrument(

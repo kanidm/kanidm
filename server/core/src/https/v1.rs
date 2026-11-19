@@ -13,7 +13,7 @@ use crate::https::{
     extractors::{ClientConnInfo, VerifiedClientInformation},
 };
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderMap, HeaderValue},
     middleware::from_fn,
     response::{IntoResponse, Response},
@@ -32,8 +32,8 @@ use kanidm_proto::{
     },
     v1::{
         AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
-        AuthState as ProtoAuthState, Entry as ProtoEntry, GroupUnixExtend, SingleStringRequest,
-        UatStatus, UnixGroupToken, UnixUserToken, WhoamiResponse,
+        AuthState as ProtoAuthState, Entry as ProtoEntry, GroupUnixExtend, OAuth2Session,
+        SingleStringRequest, UatStatus, UnixGroupToken, UnixUserToken, WhoamiResponse,
     },
 };
 use kanidmd_lib::{
@@ -44,7 +44,9 @@ use kanidmd_lib::{
     prelude::*,
     value::PartialValue,
 };
+use serde::Deserialize;
 use std::net::IpAddr;
+use utoipa::IntoParams;
 use uuid::Uuid;
 
 #[utoipa::path(
@@ -2214,6 +2216,43 @@ pub async fn person_identify_user_post(
         .map_err(WebError::from)
 }
 
+#[derive(Deserialize, IntoParams)]
+#[into_params(style = Form, parameter_in = Query)]
+pub struct PersonIdSessionGetQuery {
+    include_inactive: Option<bool>,
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_sessions",
+    params(
+        ("id" = bool, Path, description = "Id of the person to list OAuth2 sessions of"),
+        ("include_expired" = Option<bool>, Query, description = "Include expired sessions"),
+    ),
+    responses(
+        (status=200, body=Vec<OAuth2Session>, content_type=APPLICATION_JSON),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "person",
+    operation_id = "person_sessions_get"
+)]
+pub async fn person_id_sessions_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(id): Path<String>,
+    Query(query): Query<PersonIdSessionGetQuery>,
+) -> Result<Json<Vec<OAuth2Session>>, WebError> {
+    let include_inactive = query.include_inactive.unwrap_or(false);
+    state
+        .qe_r_ref
+        .handle_user_session_retrieval(client_auth_info, kopid.eventid, id, include_inactive)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
 #[utoipa::path(
     get,
     path = "/v1/group",
@@ -3299,6 +3338,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
             "/v1/person/{id}/_identify_user",
             post(person_identify_user_post),
         )
+        .route("/v1/person/{id}/_sessions", get(person_id_sessions_get))
         // Service accounts
         .route(
             "/v1/service_account",
