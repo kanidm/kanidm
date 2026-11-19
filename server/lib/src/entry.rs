@@ -2781,7 +2781,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|vs| vs.as_oauth2session_map())
     }
 
-    pub fn get_ava_as_skim_values<A: AsRef<Attribute>>(
+    pub fn get_ava_as_scim_values<A: AsRef<Attribute>>(
         &self,
         attr: A,
     ) -> Option<ScimResolveStatus> {

@@ -1174,7 +1174,7 @@ impl IdmServerProxyReadTransaction<'_> {
         Ok(
             // From the entry, turn it into the value
             entry
-                .get_ava_as_skim_values(Attribute::OAuth2Session)
+                .get_ava_as_scim_values(Attribute::OAuth2Session)
                 .and_then(|scim_values| match scim_values.resolved() {
                     Some(ScimValueKanidm::OAuth2Session(sessions)) => Some(sessions),
                     _ => None,
