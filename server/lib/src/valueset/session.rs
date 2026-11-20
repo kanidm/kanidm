@@ -258,7 +258,7 @@ impl ValueSetT for ValueSetSession {
         if let PartialValue::Refer(u) = pv {
             if let Some(session) = self.map.get_mut(u) {
                 if !matches!(session.state, SessionState::RevokedAt(_)) {
-                    session.state = SessionState::RevokedAt(cid.clone());
+                    session.state = SessionState::RevokedAt(*cid);
                 }
             }
         }
@@ -269,7 +269,7 @@ impl ValueSetT for ValueSetSession {
         for session in self.map.values_mut() {
             // Send them all to the shadow realm
             if !matches!(session.state, SessionState::RevokedAt(_)) {
-                session.state = SessionState::RevokedAt(cid.clone())
+                session.state = SessionState::RevokedAt(*cid)
             }
         }
         // Can't be purged since we need the cid's of revoked to persist.
@@ -749,7 +749,7 @@ impl ValueSetT for ValueSetOauth2Session {
         if let PartialValue::Refer(u) = pv {
             if let Some(session) = self.map.get_mut(u) {
                 if !matches!(session.state, SessionState::RevokedAt(_)) {
-                    session.state = SessionState::RevokedAt(cid.clone());
+                    session.state = SessionState::RevokedAt(*cid);
                 }
             } else {
                 // What if it's an rs_uuid?
@@ -760,7 +760,7 @@ impl ValueSetT for ValueSetOauth2Session {
                     let mut removed = false;
                     self.map.values_mut().for_each(|session| {
                         if session.rs_uuid == *u {
-                            session.state = SessionState::RevokedAt(cid.clone());
+                            session.state = SessionState::RevokedAt(*cid);
                             removed = true;
                         }
                     });
@@ -774,7 +774,7 @@ impl ValueSetT for ValueSetOauth2Session {
         for session in self.map.values_mut() {
             // Send them all to the shadow realm
             if !matches!(session.state, SessionState::RevokedAt(_)) {
-                session.state = SessionState::RevokedAt(cid.clone())
+                session.state = SessionState::RevokedAt(*cid)
             }
         }
         // Can't be purged since we need the cid's of revoked to persist.

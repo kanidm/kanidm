@@ -407,7 +407,7 @@ pub trait ReplicationUpdateVectorTransaction {
                 } else {
                     let mut idl = IDLBitRange::new();
                     idl.insert_id(eid);
-                    check_ruv.insert(cid.clone(), idl);
+                    check_ruv.insert(*cid, idl);
                 }
             }
         }
@@ -707,7 +707,7 @@ impl ReplicationUpdateVectorWriteTransaction<'_> {
         for cid in iter {
             if !rebuild_ruv.contains_key(&cid) {
                 let idl = IDLBitRange::new();
-                rebuild_ruv.insert(cid.clone(), idl);
+                rebuild_ruv.insert(cid, idl);
             }
 
             if let Some(server_range) = rebuild_range.get_mut(&cid.s_uuid) {
@@ -797,7 +797,7 @@ impl ReplicationUpdateVectorWriteTransaction<'_> {
             let idl = ex_idl as &_ | &idl;
             *ex_idl = idl;
         } else {
-            self.data.insert(cid.clone(), idl);
+            self.data.insert(*cid, idl);
         }
 
         if let Some(server_range) = self.ranged.get_mut(&cid.s_uuid) {
@@ -809,7 +809,7 @@ impl ReplicationUpdateVectorWriteTransaction<'_> {
         }
 
         if let Some(added) = &mut self.added {
-            added.insert(cid.clone());
+            added.insert(*cid);
         }
 
         Ok(())
@@ -832,7 +832,7 @@ impl ReplicationUpdateVectorWriteTransaction<'_> {
             } else {
                 let mut idl = IDLBitRange::new();
                 idl.insert_id(eid);
-                self.data.insert(cid.clone(), idl);
+                self.data.insert(*cid, idl);
             }
 
             if let Some(server_range) = self.ranged.get_mut(&cid.s_uuid) {
@@ -975,14 +975,14 @@ impl ReplicationUpdateVectorWriteTransaction<'_> {
             // (even though it was in the in memory ruv).
             Box::new(added.iter().map(|cid| {
                 debug!(added_cid = ?cid);
-                cid.clone()
+                *cid
             }))
         } else {
             // We have been cleared during this txn, so everything in data is
             // added.
             Box::new(self.data.iter().map(|(cid, _)| {
                 debug!(added_cid = ?cid);
-                cid.clone()
+                *cid
             }))
         }
     }
@@ -993,7 +993,7 @@ impl ReplicationUpdateVectorWriteTransaction<'_> {
             // removed.
             Unbounded
         } else if let Some((min, _)) = self.data.first_key_value() {
-            Excluded(min.clone())
+            Excluded(*min)
         } else {
             // If empty, assume everything is removed.
             Unbounded
@@ -1005,7 +1005,7 @@ impl ReplicationUpdateVectorWriteTransaction<'_> {
             .range((Unbounded, prev_bound))
             .map(|(cid, _)| {
                 debug!(removed_cid = ?cid);
-                cid.clone()
+                *cid
             })
     }
 

@@ -1100,7 +1100,7 @@ impl TryInto<UatPurposeStatus> for SessionScope {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SessionState {
     // IMPORTANT - this order allows sorting by
     // lowest to highest, we always want to take
