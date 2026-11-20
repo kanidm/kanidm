@@ -2223,11 +2223,11 @@ pub struct PersonIdSessionGetQuery {
 }
 
 #[utoipa::path(
-    post,
-    path = "/v1/person/{id}/_sessions",
+    get,
+    path = "/v1/person/{id}/_oauth2_sessions",
     params(
-        ("id" = bool, Path, description = "Id of the person to list OAuth2 sessions of"),
-        ("include_expired" = Option<bool>, Query, description = "Include expired sessions"),
+        ("id" = String, Path, description = "Id of the person to list OAuth2 sessions of"),
+        ("include_inactive" = Option<bool>, Query, description = "Include expired sessions"),
     ),
     responses(
         (status=200, body=Vec<OAuth2Session>, content_type=APPLICATION_JSON),
@@ -2235,9 +2235,9 @@ pub struct PersonIdSessionGetQuery {
     ),
     security(("token_jwt" = [])),
     tag = "person",
-    operation_id = "person_sessions_get"
+    operation_id = "person_oauth2_sessions_get"
 )]
-pub async fn person_id_sessions_get(
+pub async fn person_id_oauth2_sessions_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
@@ -3338,7 +3338,10 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
             "/v1/person/{id}/_identify_user",
             post(person_identify_user_post),
         )
-        .route("/v1/person/{id}/_sessions", get(person_id_sessions_get))
+        .route(
+            "/v1/person/{id}/_oauth2_sessions",
+            get(person_id_oauth2_sessions_get),
+        )
         // Service accounts
         .route(
             "/v1/service_account",

@@ -1150,7 +1150,7 @@ impl IdmServerProxyReadTransaction<'_> {
         }
     }
 
-    pub fn account_list_active_user_oauth2_sessions(
+    pub fn account_list_user_oauth2_sessions(
         &mut self,
         lse: &ListUserOAuth2SessionsEvent,
     ) -> Result<Vec<(Uuid, OAuth2Session)>, OperationError> {

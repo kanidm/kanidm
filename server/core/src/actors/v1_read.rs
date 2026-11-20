@@ -1065,10 +1065,7 @@ impl QueryServerReadV1 {
         })?;
 
         let mut sessions = idms_prox_read
-            .account_list_active_user_oauth2_sessions(&ListUserOAuth2SessionsEvent {
-                ident,
-                target,
-            })
+            .account_list_user_oauth2_sessions(&ListUserOAuth2SessionsEvent { ident, target })
             .map_err(|e| {
                 error!("Failed to retrieve user oauth2 sessions {:?}", e);
                 e
@@ -1080,6 +1077,9 @@ impl QueryServerReadV1 {
 
         // Filter out all expired sessions
         if !include_inactive {
+            // we are counting on kani revoking the expired session, there may be an edge case
+            // where the session has technically expired but kani hasn't written the change
+            // into the db yet and thus the session is still marked as "active"
             sessions.retain(|(_, s)| s.state.revoked().is_none());
         }
 
@@ -1094,10 +1094,6 @@ impl QueryServerReadV1 {
             })
             .collect::<Result<BTreeMap<_, _>, OperationError>>()?;
 
-        #[expect(
-            clippy::indexing_slicing,
-            reason = "client_id is always present in clients; see above"
-        )]
         Ok(sessions
             .into_iter()
             .map(|(id, s)| OAuth2Session {
@@ -1106,7 +1102,10 @@ impl QueryServerReadV1 {
                 revoked: s.state.revoked_odt(),
                 issued_at: s.issued_at,
                 parent: s.parent,
-                oauth_client: clients[&s.rs_uuid].clone(),
+                oauth_client: clients
+                    .get(&s.rs_uuid)
+                    .map(|v| (*v).clone())
+                    .unwrap_or_else(|| s.rs_uuid.to_string()),
             })
             .collect())
     }
