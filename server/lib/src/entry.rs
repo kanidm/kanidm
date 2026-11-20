@@ -43,7 +43,7 @@ use crate::{
     schema::{SchemaAttribute, SchemaClass, SchemaTransaction},
     server::access::AccessEffectivePermission,
     value::{
-        ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue,
+        ApiToken, CredentialType, IndexType, IntentTokenState, OAuth2Session, PartialValue,
         Session, SyntaxType, Value,
     },
     valueset::{self, ScimResolveStatus, ValueSet, ValueSetSpn},
@@ -2776,7 +2776,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub fn get_ava_as_oauth2session_map<A: AsRef<Attribute>>(
         &self,
         attr: A,
-    ) -> Option<&std::collections::BTreeMap<Uuid, Oauth2Session>> {
+    ) -> Option<&std::collections::BTreeMap<Uuid, OAuth2Session>> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.as_oauth2session_map())
     }
