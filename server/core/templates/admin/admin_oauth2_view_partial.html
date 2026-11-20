@@ -36,10 +36,10 @@
         </tr>
     </thead>
     <tbody id="oauth2">
-    (% for rs in resources %)
+    (% for (rs, _) in resources %)
+        (% let oauth2_uuid = rs.uuid %)
         (% let oauth2_name = rs.name %)
         (% let oauth2_display_name = rs.display_name %)
-        (% let oauth2_uuid = rs.uuid %)
         (% include "admin_oauth2_entry_partial.html" %)
     (% endfor %)
     </tbody>
