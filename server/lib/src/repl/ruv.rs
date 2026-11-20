@@ -705,10 +705,7 @@ impl ReplicationUpdateVectorWriteTransaction<'_> {
         let mut rebuild_range: BTreeMap<Uuid, BTreeSet<Duration>> = BTreeMap::default();
 
         for cid in iter {
-            if !rebuild_ruv.contains_key(&cid) {
-                let idl = IDLBitRange::new();
-                rebuild_ruv.insert(cid, idl);
-            }
+            rebuild_ruv.entry(cid).or_default();
 
             if let Some(server_range) = rebuild_range.get_mut(&cid.s_uuid) {
                 server_range.insert(cid.ts);
