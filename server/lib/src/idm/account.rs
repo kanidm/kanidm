@@ -1172,7 +1172,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         Ok(entry
             .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
-            .map(|session_map| session_map.iter().map(|(a, b)| (*a, *b)).collect())
+            .map(|session_map| session_map.iter().map(|(a, b)| (*a, b.clone())).collect())
             .unwrap_or_else(|| Vec::with_capacity(0)))
     }
 }

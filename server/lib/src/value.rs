@@ -1328,7 +1328,7 @@ impl From<OauthClaimMapJoin> for DbValueOauthClaimMapJoinV1 {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OAuth2Session {
     pub parent: Option<Uuid>,
     pub state: SessionState,
