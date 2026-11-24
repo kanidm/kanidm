@@ -1101,7 +1101,7 @@ impl QueryServerReadV1 {
         Ok(sessions
             .into_iter()
             .map(|(id, s)| OAuth2Session {
-                id: id,
+                id,
                 expires: s.state.expires(),
                 revoked: s.state.revoked_odt(),
                 issued_at: s.issued_at,
