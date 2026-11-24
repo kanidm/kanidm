@@ -1080,12 +1080,12 @@ impl QueryServerReadV1 {
 
         // Filter out all expired sessions
         if !include_inactive {
-            sessions.retain(|s| s.revoked.is_none());
+            sessions.retain(|(_, s)| s.state.revoked().is_none());
         }
 
-        let clients: BTreeSet<_> = sessions.iter().map(|s| s.client_id).collect();
+        let rs_servers: BTreeSet<_> = sessions.iter().map(|s| s.1.rs_uuid).collect();
 
-        let clients = clients
+        let clients = rs_servers
             .into_iter()
             .map(|c| {
                 idms_prox_read
@@ -1100,13 +1100,13 @@ impl QueryServerReadV1 {
         )]
         Ok(sessions
             .into_iter()
-            .map(|s| OAuth2Session {
-                id: s.id,
-                expires: s.expires,
-                revoked: s.revoked,
+            .map(|(id, s)| OAuth2Session {
+                id: id,
+                expires: s.state.expires(),
+                revoked: s.state.revoked_odt(),
                 issued_at: s.issued_at,
-                parent: s.parent_id,
-                oauth_client: clients[&s.client_id].clone(),
+                parent: s.parent,
+                oauth_client: clients[&s.rs_uuid].clone(),
             })
             .collect())
     }

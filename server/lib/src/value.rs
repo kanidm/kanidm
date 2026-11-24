@@ -1100,7 +1100,7 @@ impl TryInto<UatPurposeStatus> for SessionScope {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SessionState {
     // IMPORTANT - this order allows sorting by
     // lowest to highest, we always want to take
@@ -1139,6 +1139,29 @@ impl Ord for SessionState {
             (_, SessionState::ExpiresAt(_)) => Ordering::Less,
             // NeverExpires = least.
             (SessionState::NeverExpires, SessionState::NeverExpires) => Ordering::Equal,
+        }
+    }
+}
+
+impl SessionState {
+    pub fn expires(&self) -> Option<OffsetDateTime> {
+        match self {
+            Self::ExpiresAt(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn revoked(&self) -> Option<Cid> {
+        match self {
+            Self::RevokedAt(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn revoked_odt(&self) -> Option<OffsetDateTime> {
+        match self {
+            Self::RevokedAt(v) => Some(v.into()),
+            _ => None,
         }
     }
 }
@@ -1305,7 +1328,7 @@ impl From<OauthClaimMapJoin> for DbValueOauthClaimMapJoinV1 {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct OAuth2Session {
     pub parent: Option<Uuid>,
     pub state: SessionState,

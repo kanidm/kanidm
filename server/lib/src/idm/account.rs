@@ -15,12 +15,11 @@ use crate::{
     modify::{ModifyInvalid, ModifyList},
     prelude::*,
     schema::SchemaTransaction,
-    value::{IntentTokenState, PartialValue, SessionState, Value},
+    value::{IntentTokenState, OAuth2Session, PartialValue, SessionState, Value},
 };
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_proto::{
     internal::{CredentialStatus, UatPurpose, UiHint, UserAuthToken},
-    scim_v1::server::ScimOAuth2Session,
     v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken},
 };
 use sshkey_attest::proto::PublicKey as SshPublicKey;
@@ -1154,7 +1153,7 @@ impl IdmServerProxyReadTransaction<'_> {
     pub fn account_list_active_user_oauth2_sessions(
         &mut self,
         lse: &ListUserOAuth2SessionsEvent,
-    ) -> Result<Vec<ScimOAuth2Session>, OperationError> {
+    ) -> Result<Vec<(Uuid, OAuth2Session)>, OperationError> {
         // Make an event from the request
         let srch = match SearchEvent::from_target_uuid_request(
             lse.ident.clone(),
@@ -1171,16 +1170,10 @@ impl IdmServerProxyReadTransaction<'_> {
         let mut entries = self.qs_read.search_ext(&srch)?;
         let entry = entries.pop().ok_or(OperationError::InvalidEntryId)?;
 
-        Ok(
-            // From the entry, turn it into the value
-            entry
-                .get_ava_as_scim_values(Attribute::OAuth2Session)
-                .and_then(|scim_values| match scim_values.resolved() {
-                    Some(ScimValueKanidm::OAuth2Session(sessions)) => Some(sessions),
-                    _ => None,
-                })
-                .unwrap_or_else(|| Vec::with_capacity(0)),
-        )
+        Ok(entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
+            .map(|session_map| session_map.into_iter().map(|(a, b)| (*a, *b)).collect())
+            .unwrap_or_else(|| Vec::with_capacity(0)))
     }
 }
 

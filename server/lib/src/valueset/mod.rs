@@ -775,22 +775,8 @@ where
     }
 }
 
+#[cfg(test)]
 impl ScimResolveStatus {
-    pub fn resolved(self) -> Option<ScimValueKanidm> {
-        match self {
-            ScimResolveStatus::Resolved(v) => Some(v),
-            ScimResolveStatus::NeedsResolution(_) => None,
-        }
-    }
-
-    pub fn unresolved(self) -> Option<ScimValueIntermediate> {
-        match self {
-            ScimResolveStatus::Resolved(_) => None,
-            ScimResolveStatus::NeedsResolution(svi) => Some(svi),
-        }
-    }
-
-    #[cfg(test)]
     pub fn assume_resolved(self) -> ScimValueKanidm {
         match self {
             ScimResolveStatus::Resolved(v) => v,
@@ -800,7 +786,6 @@ impl ScimResolveStatus {
         }
     }
 
-    #[cfg(test)]
     pub fn assume_unresolved(self) -> ScimValueIntermediate {
         match self {
             ScimResolveStatus::Resolved(_) => panic!("assume_unresolved called on Resolved"),
