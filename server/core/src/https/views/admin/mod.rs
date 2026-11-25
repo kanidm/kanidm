@@ -18,7 +18,7 @@ pub fn admin_router() -> Router<ServerState> {
         )
         .route("/groups", get(groups::view_groups_get))
         .route("/group/{group_uuid}/view", get(groups::view_group_view_get))
-        .route("/oauth2", get(oauth2::get_oauths_get));
+        .route("/oauth2", get(oauth2::view_oauth2_get));
     let guarded_router = Router::new().layer(HxRequestGuardLayer::new("/ui"));
 
     Router::new().merge(unguarded_router).merge(guarded_router)
