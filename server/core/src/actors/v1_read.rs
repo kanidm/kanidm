@@ -48,6 +48,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
+use time::OffsetDateTime;
 use tracing::{error, info, instrument, trace};
 use uuid::Uuid;
 
@@ -1065,7 +1066,10 @@ impl QueryServerReadV1 {
         })?;
 
         let mut sessions = idms_prox_read
-            .account_list_user_oauth2_sessions(&ListUserOAuth2SessionsEvent { ident, target })
+            .account_list_user_oauth2_sessions(&ListUserOAuth2SessionsEvent {
+                ident: ident.clone(),
+                target,
+            })
             .map_err(|e| {
                 error!("Failed to retrieve user oauth2 sessions {:?}", e);
                 e
@@ -1077,22 +1081,36 @@ impl QueryServerReadV1 {
 
         // Filter out all expired sessions
         if !include_inactive {
-            // we are counting on kani revoking the expired session, there may be an edge case
-            // where the session has technically expired but kani hasn't written the change
-            // into the db yet and thus the session is still marked as "active"
-            sessions.retain(|(_, s)| s.state.revoked().is_none());
+            sessions.retain(|(_, s)| s.state.revoked().is_none()
+                && !matches!(s.state.expires(), Some(odt) if odt < OffsetDateTime::UNIX_EPOCH + ct ));
         }
 
         let rs_servers: BTreeSet<_> = sessions.iter().map(|s| s.1.rs_uuid).collect();
 
-        let clients = rs_servers
-            .into_iter()
-            .map(|c| {
-                idms_prox_read
-                    .get_oauth2_rs_by_id(&c)
-                    .map(|rs| (c, rs.name()))
+        let rs_query = filter!(f_and(vec![
+            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
+            f_inc(
+                rs_servers
+                    .iter()
+                    .map(|id| f_eq(Attribute::Uuid, id.into()))
+                    .collect::<Vec<_>>()
+            )
+        ]));
+
+        let rs_entries = idms_prox_read
+            .qs_read
+            .ident_search(&ident, rs_query)
+            .map(|val| {
+                val.iter()
+                    .flat_map(|rs| {
+                        Some((
+                            rs.get_ava_single_uuid(Attribute::Uuid)?,
+                            rs.get_ava_single_proto_string(Attribute::Name)?,
+                        ))
+                    })
+                    .collect::<BTreeMap<_, _>>()
             })
-            .collect::<Result<BTreeMap<_, _>, OperationError>>()?;
+            .unwrap_or(BTreeMap::default());
 
         Ok(sessions
             .into_iter()
@@ -1102,9 +1120,9 @@ impl QueryServerReadV1 {
                 revoked: s.state.revoked_odt(),
                 issued_at: s.issued_at,
                 parent: s.parent,
-                oauth_client: clients
+                oauth_client: rs_entries
                     .get(&s.rs_uuid)
-                    .map(|v| (*v).clone())
+                    .map(|v| v.clone())
                     .unwrap_or_else(|| s.rs_uuid.to_string()),
             })
             .collect())

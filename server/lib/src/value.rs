@@ -629,6 +629,16 @@ pub enum PartialValue {
     Uint64(u64),
 }
 
+impl<T> From<&T> for PartialValue
+where
+    T: Copy,
+    PartialValue: From<T>,
+{
+    fn from(t: &T) -> Self {
+        PartialValue::from(*t)
+    }
+}
+
 impl From<SyntaxType> for PartialValue {
     fn from(s: SyntaxType) -> Self {
         PartialValue::Syntax(s)
@@ -644,12 +654,6 @@ impl From<IndexType> for PartialValue {
 impl From<bool> for PartialValue {
     fn from(b: bool) -> Self {
         PartialValue::Bool(b)
-    }
-}
-
-impl From<&bool> for PartialValue {
-    fn from(b: &bool) -> Self {
-        PartialValue::Bool(*b)
     }
 }
 
@@ -674,6 +678,12 @@ impl From<OffsetDateTime> for PartialValue {
 impl From<Url> for PartialValue {
     fn from(i: Url) -> Self {
         PartialValue::Url(i)
+    }
+}
+
+impl From<Uuid> for PartialValue {
+    fn from(i: Uuid) -> Self {
+        PartialValue::Uuid(i)
     }
 }
 
