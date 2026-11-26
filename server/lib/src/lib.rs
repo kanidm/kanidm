@@ -70,6 +70,7 @@ pub mod testkit;
 // Clippy is wrong, these are used. Hush little clippy.
 #[allow(unused_imports)]
 pub mod prelude {
+    pub(crate) use crate::server::sealed::QueryServerTransactionPrivate;
     pub(crate) use crate::{
         be::Limits,
         constants::uuids::*,
@@ -110,7 +111,7 @@ pub mod prelude {
                 AccessScope, IdentType, IdentUser, Identity, IdentityId, InternalRole, Source,
             },
             QueryServer, QueryServerReadTransaction, QueryServerTransaction,
-            QueryServerWriteTransaction,
+            QueryServerTransactionPublic, QueryServerWriteTransaction,
         },
         time::duration_from_epoch_now,
         value::{ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value},
