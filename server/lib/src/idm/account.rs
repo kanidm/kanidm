@@ -15,7 +15,7 @@ use crate::{
     modify::{ModifyInvalid, ModifyList},
     prelude::*,
     schema::SchemaTransaction,
-    value::{IntentTokenState, PartialValue, SessionState, Value},
+    value::{IntentTokenState, OAuth2Session, PartialValue, SessionState, Value},
 };
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_proto::{
@@ -1078,6 +1078,13 @@ pub struct ListUserAuthTokenEvent {
     pub target: Uuid,
 }
 
+pub struct ListUserOAuth2SessionsEvent {
+    // Who initiated this?
+    pub ident: Identity,
+    // Who is it targeting?
+    pub target: Uuid,
+}
+
 impl IdmServerProxyReadTransaction<'_> {
     pub fn account_list_user_auth_tokens(
         &mut self,
@@ -1141,6 +1148,32 @@ impl IdmServerProxyReadTransaction<'_> {
             }
             Err(e) => Err(e),
         }
+    }
+
+    pub fn account_list_user_oauth2_sessions(
+        &mut self,
+        lse: &ListUserOAuth2SessionsEvent,
+    ) -> Result<Vec<(Uuid, OAuth2Session)>, OperationError> {
+        // Make an event from the request
+        let srch = match SearchEvent::from_target_uuid_request(
+            lse.ident.clone(),
+            lse.target,
+            &self.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin account list user auth tokens: {:?}", e);
+                return Err(e);
+            }
+        };
+
+        let mut entries = self.qs_read.search_ext(&srch)?;
+        let entry = entries.pop().ok_or(OperationError::InvalidEntryId)?;
+
+        Ok(entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
+            .map(|session_map| session_map.iter().map(|(a, b)| (*a, b.clone())).collect())
+            .unwrap_or_else(|| Vec::with_capacity(0)))
     }
 }
 

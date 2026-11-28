@@ -570,6 +570,10 @@ pub struct Oauth2RS {
 }
 
 impl Oauth2RS {
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+
     pub fn is_basic(&self) -> bool {
         match self.type_ {
             OauthRSType::Basic { .. } => true,
@@ -638,6 +642,10 @@ struct Oauth2RSInner {
 impl Oauth2RSInner {
     fn rs_set_get(&self, client_id: &str) -> Option<&Oauth2RS> {
         self.private_rs_set.get(client_id.to_lowercase().as_str())
+    }
+
+    fn rs_from_uuid(&self, rs_uuid: &Uuid) -> Option<&Oauth2RS> {
+        self.private_rs_set.values().find(|rs| rs.uuid == *rs_uuid)
     }
 
     fn rs_from_kid(&self, kid: &str) -> Option<&Oauth2RS> {
@@ -3380,6 +3388,14 @@ impl IdmServerProxyReadTransaction<'_> {
             error!(o2_client = ?o2rs.name, "Unable to retrieve public keys");
             OperationError::InvalidState
         })
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn get_oauth2_rs_by_id(&self, rs_uuid: &Uuid) -> Result<&Oauth2RS, OperationError> {
+        self.oauth2rs
+            .inner
+            .rs_from_uuid(rs_uuid)
+            .ok_or(OperationError::NoMatchingEntries)
     }
 }
 

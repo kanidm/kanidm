@@ -871,24 +871,13 @@ impl ValueSetT for ValueSetOauth2Session {
         Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
-                .map(|(session_id, session)| {
-                    let (expires, revoked) = match &session.state {
-                        SessionState::ExpiresAt(odt) => (Some(*odt), None),
-                        SessionState::NeverExpires => (None, None),
-                        SessionState::RevokedAt(cid) => {
-                            let odt: OffsetDateTime = cid.into();
-                            (None, Some(odt))
-                        }
-                    };
-
-                    ScimOAuth2Session {
-                        id: *session_id,
-                        parent_id: session.parent,
-                        client_id: session.rs_uuid,
-                        issued_at: session.issued_at,
-                        expires,
-                        revoked,
-                    }
+                .map(|(session_id, session)| ScimOAuth2Session {
+                    id: *session_id,
+                    parent_id: session.parent,
+                    client_id: session.rs_uuid,
+                    issued_at: session.issued_at,
+                    expires: session.state.expires(),
+                    revoked: session.state.revoked_odt(),
                 })
                 .collect::<Vec<_>>(),
         )))
